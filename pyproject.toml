@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ditserve"
+version = "0.3.0"
+description = "Lightweight control plane and Python API for cache-aware diffusion serving experiments"
+requires-python = ">=3.8"
+dependencies = []
+
+[project.optional-dependencies]
+reports = ["openpyxl==3.1.5"]
+
+[project.scripts]
+ditserve = "ditserve.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["python"]
