@@ -1,0 +1,26 @@
+{
+  "schema_version": "ditserve.benchmark.config.v1",
+  "name": "wan-smoke",
+  "purpose": "Small end-to-end harness check; not paper-scale performance or quality evidence.",
+  "model": {
+    "id": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+    "revision": "0fad780a534b6463e45facd96134c9f345acfa5b"
+  },
+  "shapes": {
+    "short": {"height": 256, "width": 256, "frames": 9, "steps": 32, "weight": 1},
+    "long": {"height": 256, "width": 256, "frames": 17, "steps": 32, "weight": 1}
+  },
+  "cache": {"enabled": false, "threshold": 0.08, "max_continuous": 3},
+  "guidance_scale": 5.0,
+  "negative_prompt": "",
+  "slo_scale": 2.5,
+  "count": 6,
+  "trace_seeds": [20261012],
+  "batch_burst_size": 3,
+  "sweeps": [
+    {"name": "smoke-poisson", "pattern": "poisson", "loads": [0.7]},
+    {"name": "smoke-gamma", "pattern": "gamma", "loads": [0.7], "cvs": [2.0]},
+    {"name": "smoke-burst", "pattern": "foreground_burst", "loads": [0.7]}
+  ],
+  "sweep_protocol": "Separate named experiments; never form a global Cartesian product. Replay requires an explicit timestamp source."
+}

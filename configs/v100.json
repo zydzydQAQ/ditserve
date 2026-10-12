@@ -1,0 +1,50 @@
+{
+  "schema_version": "ditserve.v100-protocol.v1",
+  "physical_gpu_index": 1,
+  "gpu_uuid": "GPU-a058066e-bde9-c534-efb1-d2a68c117681",
+  "model_id": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+  "revision": "0fad780a534b6463e45facd96134c9f345acfa5b",
+  "preset": "v100-wan",
+  "arms": ["none", "cache-dit"],
+  "warmup": 1,
+  "repeats": 1,
+  "cache": {
+    "fn": 8,
+    "bn": 0,
+    "warmup": 8,
+    "threshold": 0.08,
+    "max_continuous": 3
+  },
+  "prompts": [
+    {
+      "id": "object",
+      "text": "A red bicycle leaning against a blue wall in warm afternoon light. A gentle breeze moves nearby leaves. The camera remains still."
+    },
+    {
+      "id": "motion",
+      "text": "A person wearing a blue jacket walks steadily from left to right along a park path. Their arms swing naturally. The camera remains still."
+    },
+    {
+      "id": "water",
+      "text": "Gentle ripples travel across the surface of a quiet lake, reflecting green trees and a pale blue sky. The camera remains still."
+    }
+  ],
+  "stages": {
+    "smoke": {
+      "height": 256,
+      "width": 256,
+      "frames": 17,
+      "steps": 12,
+      "prompt_ids": ["object"],
+      "seeds": [0]
+    },
+    "formal": {
+      "height": 480,
+      "width": 832,
+      "frames": 17,
+      "steps": 50,
+      "prompt_ids": ["object", "motion", "water"],
+      "seeds": [0, 1]
+    }
+  }
+}

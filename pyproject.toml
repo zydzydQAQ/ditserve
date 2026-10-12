@@ -17,3 +17,7 @@ ditserve = "ditserve.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["python"]
+
+[tool.setuptools.data-files]
+"share/ditserve/configs" = ["configs/*.json", "configs/*.txt"]
+"share/ditserve/configs/benchmark" = ["configs/benchmark/*.json"]

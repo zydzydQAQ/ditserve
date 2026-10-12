@@ -1,10 +1,11 @@
 """Rebuildable experiment archives: data.json.gz + results.xlsx + REPORT.md.
 
-Each archived step stores every small source file (text only) inside
-data.json.gz with per-file SHA256. The workbook and report are pure functions
-of that payload, so `verify` can rebuild them cell by cell and `rebuild`
-restores them after loss. Raw arrays, latents and traces never enter the
-archive; synthetic results are not measured GPU performance.
+Each archived step stores every small text source file inside data.json.gz
+with per-file SHA256. Binary GPU artifacts (raw arrays, media) are recorded
+by hash in `external_artifacts` but never embedded. The workbook and report
+are pure functions of that payload, so `verify` can rebuild them cell by cell
+and `rebuild` restores them after loss. Synthetic results are not measured
+GPU performance.
 """
 
 import gzip
@@ -21,6 +22,9 @@ NOTICE = ("本归档保留表格、报告和小型历史记录，不包含原始
 TABLE_NAMES = ("Config", "Requests", "Results", "Files")
 PURPOSE = "比较固定请求流下各调度策略的参考行为。"
 METHOD = "使用保存的 workload、成本模型和全部到达请求，比较完成、超时、SLO 与参考状态一致性。"
+# GPU runs produce raw arrays/media; the archive records their hashes but does
+# not embed binary payloads (originals are deleted after verification anyway).
+EXCLUDED_SUFFIXES = {".npy", ".pt", ".mp4", ".png", ".jpg", ".jpeg"}
 
 
 def _json_write(path, value):
@@ -135,7 +139,8 @@ def _report(data, tables):
              "Config 表保存逐实验配置；Results 保存逐策略汇总。"
              "字段后缀 `_ms`、`_seconds`、`_bytes`、`_mib` 分别表示毫秒、秒、字节、MiB；`goodput_per_sec` 为请求/秒。", "",
              "## 实际结果", "", _conclusion(data, tables), "",
-             "保存 %d 份原始小文件、%d 条结果记录。" % (len(data["files"]), len(rows)),
+             "保存 %d 份原始小文件、%d 条结果记录；另有 %d 份二进制产物仅登记哈希、不嵌入归档。" %
+             (len(data["files"]), len(rows), len(data.get("external_artifacts", []))),
              "状态计数：`%s`。空白测项表示未知或不适用，不填零。" % json.dumps(statuses, ensure_ascii=False), ""]
     fields = [field for field in ("case", "completed", "rejected", "timed_out", "slo_attainment", "goodput_per_sec",
                                   "p99_latency_ms", "mean_batch_size", "preemptions", "offloads", "restores", "parity_failures")
@@ -208,15 +213,21 @@ def _save_data(step, data):
 
 def _collect_text(paths, source_root, key, title):
     data = {"schema": SCHEMA, "title": title, "step": key, "raw_source_root": str(source_root),
-            "files": {}, "artifacts": [], "raw_artifacts_available": False, "notice": NOTICE}
+            "files": {}, "artifacts": [], "external_artifacts": [],
+            "raw_artifacts_available": False, "notice": NOTICE}
     for path in paths:
+        relative = str(path.relative_to(source_root))
+        if path.suffix.lower() in EXCLUDED_SUFFIXES:
+            raw = path.read_bytes()
+            data["external_artifacts"].append({"source": relative, "bytes": len(raw),
+                                               "sha256": hashlib.sha256(raw).hexdigest()})
+            continue
         raw = path.read_bytes()
         try:
             text = raw.decode("utf-8")
         except UnicodeDecodeError as error:
             raise ValueError("unclassified binary evidence: " + str(path)) from error
-        data["files"][str(path.relative_to(source_root))] = {
-            "text": text, "sha256": hashlib.sha256(raw).hexdigest(), "bytes": len(raw)}
+        data["files"][relative] = {"text": text, "sha256": hashlib.sha256(raw).hexdigest(), "bytes": len(raw)}
     return data
 
 

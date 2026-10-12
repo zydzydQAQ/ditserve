@@ -4,6 +4,7 @@ Layering: cli.py parses arguments -> api.py orchestrates -> CoreBridge is the
 only place that touches the C++ process. Tests inject a fake bridge here.
 """
 
+import importlib.metadata
 import importlib.util
 import itertools
 import platform
@@ -19,19 +20,30 @@ from .util import RUNS, ROOT, atomic_json
 from .workload import generator_payload, load_trace
 
 
+def _package_version(name):
+    try:
+        return importlib.metadata.version(name)
+    except importlib.metadata.PackageNotFoundError:
+        return None
+
+
 def doctor(core=None):
     """Inspect local prerequisites without loading models or starting the GPU."""
     bridge = core or CoreBridge()
     packages = {name: importlib.util.find_spec(name) is not None for name in ("openpyxl", "torch", "diffusers")}
+    gpu_stack = {name: _package_version(name) for name in ("torch", "diffusers", "cache-dit", "transformers", "lpips")}
     gpu = {"available": False, "detail": "nvidia-smi not found"}
     if shutil.which("nvidia-smi"):
         try:
-            result = subprocess.run(["nvidia-smi", "--query-gpu=name,memory.total,driver_version", "--format=csv,noheader"],
+            result = subprocess.run(["nvidia-smi", "--query-gpu=index,uuid,name,memory.total,driver_version", "--format=csv,noheader"],
                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10)
             gpu = {"available": result.returncode == 0, "detail": (result.stdout + result.stderr).strip()}
         except (OSError, subprocess.TimeoutExpired) as error:
             gpu["detail"] = str(error)
     return {"python": platform.python_version(), "platform": platform.platform(), "packages": packages,
+            "gpu_stack_versions": gpu_stack,
+            "gpu_venv_present": (ROOT / ".venv-previs").exists(),
+            "weights_present": (ROOT / ".cache" / "huggingface" / "hub").is_dir(),
             "gpu_driver": gpu, "reference_simulation_ready": bridge.available(), "core_binary": str(bridge.binary),
             "notice": "No model weights loaded, CUDA validation or performance measurements."}
 

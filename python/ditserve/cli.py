@@ -64,10 +64,19 @@ def _shared(args):
 
 
 def main(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] == "benchmark":
+        from .benchmark.cli import main as benchmark_main
+        return benchmark_main(argv[1:])
+    if argv and argv[0] == "profile":
+        from .gpu.profiling import main as profile_main
+        return profile_main(argv[1:])
     parser = argparse.ArgumentParser(prog="ditserve",
                                      description="C++ reference control plane with a Python experiment API")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("doctor", help="Inspect local prerequisites without loading models")
+    sub.add_parser("profile", help="Measure real FLUX/Wan pipelines (forwarded; needs the GPU stack)")
+    sub.add_parser("benchmark", help="Frozen online traces, Wan execution and quality reports (forwarded)")
     simulate = sub.add_parser("simulate", help="Execute synthetic reference states on an analytic timeline")
     _common(simulate)
     simulate.add_argument("--trace", type=Path, help="JSON RequestSpec array with absolute arrival/deadline milliseconds")
