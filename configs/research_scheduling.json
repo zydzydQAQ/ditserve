@@ -1,0 +1,47 @@
+{
+  "schema_version": "ditserve.scheduling.config.v1",
+  "budget_gpu_seconds": 43200.0,
+  "python": "/home/zyd/code/dit-rewrite/.venv-previs/bin/python",
+  "v100_python": "/home/zyd/code/dit-rewrite/.venv-v100/bin/python",
+  "torch_home": "/home/zyd/code/dit/.cache/torch",
+  "models": {
+    "wan": {
+      "id": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+      "path": "/mnt/data/zyd-preempt-phase16-01a1296d/dit-runtime/huggingface/hub/models--Wan-AI--Wan2.1-T2V-1.3B-Diffusers/snapshots/0fad780a534b6463e45facd96134c9f345acfa5b",
+      "revision": "0fad780a534b6463e45facd96134c9f345acfa5b"
+    },
+    "sana": {
+      "id": "Efficient-Large-Model/Sana_Sprint_0.6B_1024px_diffusers",
+      "revision": "aa76e7f4f4928f378716b6716a2130fba3caf5b1",
+      "path": "/mnt/data/zyd-preempt-phase16-01a1296d/dit-directions-assets/huggingface/hub/models--Efficient-Large-Model--Sana_Sprint_0.6B_1024px_diffusers/snapshots/aa76e7f4f4928f378716b6716a2130fba3caf5b1",
+      "verification_manifest": "/home/zyd/code/dit-rewrite/results/research-directions/provisioning/sana-verified.json"
+    }
+  },
+  "shape": {
+    "height": 480,
+    "width": 832,
+    "frames": 81
+  },
+  "steps": 32,
+  "guidance_scale": 5.0,
+  "cache": false,
+  "prompts": [
+    "Steam rises from a silver kettle while hot water pours in a thin stream into a glass cup on a kitchen counter. The camera remains still.",
+    "The brass pendulum of an antique wooden clock swings evenly from side to side behind a glass panel. Close-up view with a stationary camera."
+  ],
+  "seed": 301,
+  "validation_seeds": [
+    401,
+    402
+  ],
+  "legacy_run": "/home/zyd/code/dit-rewrite/results/research-directions/run01",
+  "device_preference": [
+    "V100"
+  ],
+  "sana_profiles": {
+    "A100": "a100_bf16",
+    "V100": "v100_fp32"
+  },
+  "statistical_scope": "single_seed_pilot_is_descriptive_only; no_stable_p99_or_cross_device_pairing",
+  "artifact_policy": "lightweight_metrics_excel_and_hashes; retain_failures_and_unverified_results"
+}

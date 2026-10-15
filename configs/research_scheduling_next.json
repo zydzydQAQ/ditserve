@@ -1,0 +1,90 @@
+{
+  "schema_version": "ditserve.scheduling.next.config.v1",
+  "budget_gpu_seconds": null,
+  "python": "/home/zyd/code/dit-rewrite/.venv-previs/bin/python",
+  "v100_python": "/home/zyd/code/dit-rewrite/.venv-v100/bin/python",
+  "torch_home": "/home/zyd/code/dit/.cache/torch",
+  "models": {
+    "wan": {
+      "id": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+      "path": "/mnt/data/zyd-preempt-phase16-01a1296d/dit-runtime/huggingface/hub/models--Wan-AI--Wan2.1-T2V-1.3B-Diffusers/snapshots/0fad780a534b6463e45facd96134c9f345acfa5b",
+      "revision": "0fad780a534b6463e45facd96134c9f345acfa5b"
+    },
+    "sana": {
+      "id": "Efficient-Large-Model/Sana_Sprint_0.6B_1024px_diffusers",
+      "revision": "aa76e7f4f4928f378716b6716a2130fba3caf5b1",
+      "path": "/mnt/data/zyd-preempt-phase16-01a1296d/dit-directions-assets/huggingface/hub/models--Efficient-Large-Model--Sana_Sprint_0.6B_1024px_diffusers/snapshots/aa76e7f4f4928f378716b6716a2130fba3caf5b1",
+      "verification_manifest": "/home/zyd/code/dit-rewrite/results/research-directions/provisioning/sana-verified.json"
+    }
+  },
+  "shape": {
+    "height": 480,
+    "width": 832,
+    "frames": 81
+  },
+  "steps": 32,
+  "guidance_scale": 5.0,
+  "cache": false,
+  "prompts": [
+    "Steam rises from a silver kettle while hot water pours in a thin stream into a glass cup on a kitchen counter. The camera remains still.",
+    "The brass pendulum of an antique wooden clock swings evenly from side to side behind a glass panel. Close-up view with a stationary camera."
+  ],
+  "seed": 301,
+  "validation_seeds": [
+    401,
+    402
+  ],
+  "legacy_run": "/home/zyd/code/dit-rewrite/results/research-directions/run01",
+  "device_preference": [
+    "V100"
+  ],
+  "sana_profiles": {
+    "A100": "a100_bf16",
+    "V100": "v100_fp32"
+  },
+  "statistical_scope": "single_seed_pilot_is_descriptive_only; no_stable_p99_or_cross_device_pairing",
+  "artifact_policy": "lightweight_metrics_excel_and_hashes; retain_failures_and_unverified_results",
+  "authorization": "user_2026_10_15_unlimited_v100",
+  "authorization_text": "下一步应该跑什么，V100空闲，能不能利用上，GPU预算无限，安排一下下一步优化",
+  "gpu_uuid": "GPU-a058066e-bde9-c534-efb1-d2a68c117681",
+  "source_run": "/home/zyd/code/dit-rewrite/results/research-scheduling/run01",
+  "source_evidence": {
+    "screen_result_path": "/home/zyd/code/dit-rewrite/results/research-scheduling/run01/screen/result.json",
+    "screen_result_sha256": "1f95a22358af42f0d93a6f97cbfd169acd1bcfe34be28828b5f7bcf2a5bdbe8a",
+    "calibration_path": "/home/zyd/code/dit-rewrite/results/research-scheduling/run01/calibrate/result.json",
+    "calibration_sha256": "ce74067ca150dd56c133ec22f6995f29b28dfbf6f73b184d884769a1354881f9",
+    "source_supervisor_path": "/home/zyd/code/dit-rewrite/results/research-scheduling/run01/screen/supervisor.json",
+    "source_supervisor_sha256": "8bdb86a54337e61428ef1118079c4da3dae87ff8514aa4d49878d60ba2e4b955",
+    "calibration_supervisor_path": "/home/zyd/code/dit-rewrite/results/research-scheduling/run01/calibrate/supervisor.json",
+    "calibration_supervisor_sha256": "53e94d26bd03d24d343b20c12a3c5c6eaa33832c248a33d52e7d3cf630bb575b",
+    "source_run": "/home/zyd/code/dit-rewrite/results/research-scheduling/run01"
+  },
+  "phases": [
+    "completion",
+    "granularity",
+    "replicate"
+  ],
+  "phase_watchdog_seconds": {
+    "completion": 172800,
+    "granularity": 172800,
+    "replicate": 172800
+  },
+  "phase_estimated_seconds": {
+    "completion": 12600,
+    "granularity": 36000,
+    "replicate": 57600
+  },
+  "granularity_arms": [
+    "edf_b1",
+    "edf_b4",
+    "edf_b2",
+    "edf_b1_async"
+  ],
+  "replication_baselines": [
+    "edf_b1",
+    "edf_b4",
+    "edf_step"
+  ],
+  "candidate_tie_rule": "within_1_percent_overall_goodput_prefer_edf_b2",
+  "minimum_free_gib": 50
+}

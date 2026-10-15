@@ -1,0 +1,448 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-10-15T08:46:49.391146+00:00",
+  "scope": "Actual CPU/build checks on the source host. No GPU devices were exposed to validation containers.",
+  "images": {
+    "runtime": {
+      "id": "sha256:e9e0af86828b5cf783d897a2a76963cf3e968963d67810035e38fee64a927055",
+      "size_bytes": 7179097889
+    },
+    "longlive": {
+      "id": "sha256:f36134cc78a9990ebeac70e49c7c39c2ed4bb087509cc46f96c54aed525c8bff",
+      "size_bytes": 14699706801
+    }
+  },
+  "baseline_context": {
+    "tag": "preemptlab:tally-cuda12.8-proto",
+    "id": "sha256:d5ec90d54046d156e3ae56614889faf2c7d706cfc6d07cbb0aacf8d10a1c0bfc",
+    "size_bytes": 38962459958,
+    "note": "Existing shared historical development image; not a like-for-like project size comparison. Left unchanged."
+  },
+  "base_provenance": {
+    "default_reference": "python:3.10.20-slim-bookworm@sha256:019e31cc1f52e4139d338bca44f27b71339a9da261738fd80fab9cf4595152fc",
+    "official_amd64_manifest_digest": "sha256:6dafe336b64dbf76f7ec872d07e58b5c7de0e2ea5d4c0853a05c3b6be3278b00",
+    "official_config": {
+      "mediaType": "application/vnd.oci.image.config.v1+json",
+      "digest": "sha256:a5fe93ceab2d4385c613e64e2fbee5e0a0c2ad3846cc3822e42246634b16ab4c",
+      "size": 5497
+    },
+    "official_compressed_layers": [
+      {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:039e6f9f9752f74a3ff4a6a224f64c7c864da16ed98f882107704328f41b9c42",
+        "size": 28232590
+      },
+      {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:bf6650a2b37e3b8c135d72d1865592b65ae79fb423c6a8853c7280154ef826b2",
+        "size": 3520809
+      },
+      {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:29f0f9790bebd307c2cd1745aa20237e4e4346859cad4f816a0f94f61a361e6f",
+        "size": 15462129
+      },
+      {
+        "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+        "digest": "sha256:41a7fb1f35f19a54a3ae673fa7b15d93fbeee44766998f555f6e35e4a192ae0b",
+        "size": 249
+      }
+    ],
+    "actual_local_build_override": "ditserve-python-base:3.10.20-verified",
+    "override_image_id": "sha256:a5fe93ceab2d4385c613e64e2fbee5e0a0c2ad3846cc3822e42246634b16ab4c",
+    "validation": "Official registry manifest, config and all compressed layer lengths/SHA256 verified before docker load.",
+    "reason": "Host Docker daemon proxy repeatedly failed official pulls; importing the verified official blobs avoided modifying daemon settings."
+  },
+  "build": {
+    "builder": "Docker legacy builder (host has no buildx)",
+    "targets": [
+      "runtime-base",
+      "longlive"
+    ],
+    "runtime_target_equivalence": "The final Dockerfile runtime target is FROM runtime-base without additional instructions.",
+    "dependency_transport": "Localhost wheel cache; installer retained all official artifact SHA256 requirements.",
+    "os_package_versions": {
+      "gcc": "4:12.2.0-3",
+      "g++": "4:12.2.0-3",
+      "libc6": "2.36-9+deb12u14",
+      "libssl3": "3.0.22-1~deb12u1",
+      "libstdc++6": "12.2.0-14+deb12u1"
+    },
+    "reproducibility_limit": "Python wheels, source commits and official base are pinned. Debian apt repositories are not date-snapshotted; bit-identical future image rebuilds are not claimed."
+  },
+  "final_layer_refresh": {
+    "tested_parent_image_ids": {
+      "runtime": "sha256:77727a8509e273ac908036c16a786401c3051ed3c8b3575a6da7e4bf3768ee65",
+      "longlive": "sha256:274352406e41c86b85798e76014325e2b8c354c40b29db2f0b67d6231b9b8654"
+    },
+    "exact_refresh_dockerfile": "ARG VALIDATED_IMAGE\nFROM ${VALIDATED_IMAGE}\nCOPY MIGRATION.md Dockerfile /opt/ditserve/\nRUN chmod -R a+rX /opt/ditserve\n",
+    "build_command_template": "DOCKER_BUILDKIT=0 docker build --network none -f <refresh.Dockerfile> --build-arg VALIDATED_IMAGE=<tested-parent-id> -t ditserve:a100-<runtime-or-longlive> .",
+    "layer_provenance": "Each final image retains every tested-parent layer unchanged, followed by exactly two layers: COPY MIGRATION.md/Dockerfile and chmod -R a+rX /opt/ditserve.",
+    "changes": [
+      "MIGRATION.md prose/table corrections for initialization and extra-loader files (four diff hunks).",
+      "Dockerfile records source/config permission normalization for arbitrary numeric UID.",
+      "Source file read/execute permissions normalized without changing Python, tests, dependency manifests or compiled source contents."
+    ],
+    "fresh_build_behavior": "The delivered main Dockerfile includes the corrected documentation via COPY . . and applies the same permission normalization in runtime-base.",
+    "source_fingerprints": {
+      "tested_runtime": {
+        "cli_status": "passed",
+        "migration_sha256": "50a3fa3816fe9d7a5eff71e47eb6444542ae35a8be0b0893742e621623502c97",
+        "dockerfile_sha256": "9580bc945e080adddd9b42a3664d759d17d2c5a47b89cc4217c7a15fe01ca3ef",
+        "source_files_checked": 319,
+        "source_fingerprint_sha256": "569d17115a9a382d7a053cf4d15e8fd8a2a3a017f47e1feb3bfdf68fc3be2a8f",
+        "container_user": "0:0",
+        "image": "sha256:77727a8509e273ac908036c16a786401c3051ed3c8b3575a6da7e4bf3768ee65"
+      },
+      "tested_longlive": {
+        "cli_status": "passed",
+        "migration_sha256": "50a3fa3816fe9d7a5eff71e47eb6444542ae35a8be0b0893742e621623502c97",
+        "dockerfile_sha256": "9580bc945e080adddd9b42a3664d759d17d2c5a47b89cc4217c7a15fe01ca3ef",
+        "source_files_checked": 319,
+        "source_fingerprint_sha256": "569d17115a9a382d7a053cf4d15e8fd8a2a3a017f47e1feb3bfdf68fc3be2a8f",
+        "container_user": "0:0",
+        "image": "sha256:274352406e41c86b85798e76014325e2b8c354c40b29db2f0b67d6231b9b8654"
+      },
+      "final_runtime": {
+        "cli_status": "passed",
+        "migration_sha256": "1165e3934da9c128897179dbfd712532ee109c5579c95470cb3fc531a9101de5",
+        "dockerfile_sha256": "20e4d36e3c9ba9325e917660378610226bd826abda1610acb238237d5023ab2c",
+        "source_files_checked": 319,
+        "source_fingerprint_sha256": "569d17115a9a382d7a053cf4d15e8fd8a2a3a017f47e1feb3bfdf68fc3be2a8f",
+        "container_user": "1002:1002",
+        "image": "ditserve:a100-runtime"
+      },
+      "final_longlive": {
+        "cli_status": "passed",
+        "migration_sha256": "1165e3934da9c128897179dbfd712532ee109c5579c95470cb3fc531a9101de5",
+        "dockerfile_sha256": "20e4d36e3c9ba9325e917660378610226bd826abda1610acb238237d5023ab2c",
+        "source_files_checked": 319,
+        "source_fingerprint_sha256": "569d17115a9a382d7a053cf4d15e8fd8a2a3a017f47e1feb3bfdf68fc3be2a8f",
+        "container_user": "1002:1002",
+        "image": "ditserve:a100-longlive"
+      }
+    }
+  },
+  "dependencies": {
+    "runtime": {
+      "artifact_count": 76,
+      "total_download_bytes": 3735264727,
+      "manifest_sha256": "e6b4cc470f3ffcfa695c1459d430f2a1ad130a7eb177a6f946a4b0ea16cdada8",
+      "installation": "--require-hashes --no-deps; each environment passed pip check"
+    },
+    "longlive": {
+      "artifact_count": 63,
+      "total_download_bytes": 3825693111,
+      "manifest_sha256": "09be75042aef68777148a9ac2c49c8e825cb16f5b506a888700e0dd050bc3e5f",
+      "installation": "--require-hashes --no-deps; each environment passed pip check"
+    }
+  },
+  "checks": {
+    "ctest": {
+      "status": "passed",
+      "tests_run": 1,
+      "tests_passed": 1,
+      "name": "core-contracts",
+      "elapsed_seconds": 0.55,
+      "command": "ctest --test-dir /build/core --output-on-failure"
+    },
+    "runtime_cpu": {
+      "image_id": "sha256:e9e0af86828b5cf783d897a2a76963cf3e968963d67810035e38fee64a927055",
+      "container_user": "1002:1002",
+      "network": "none",
+      "command": "ditserve migrate check --suite cpu",
+      "result": {
+        "status": "passed",
+        "gpu_work_started": false,
+        "inventory": {
+          "status": "observed",
+          "gpu_work_started": false,
+          "python": "3.10.20 (main, Aug  5 2026, 01:14:04) [GCC 12.2.0]",
+          "executable": "/opt/venv/bin/python",
+          "architecture": "x86_64",
+          "packages": {
+            "torch": {
+              "expected": "2.10.0+cu126",
+              "actual": "2.10.0+cu126",
+              "passed": true
+            },
+            "torchvision": {
+              "expected": "0.25.0+cu126",
+              "actual": "0.25.0+cu126",
+              "passed": true
+            },
+            "diffusers": {
+              "expected": "0.36.0",
+              "actual": "0.36.0",
+              "passed": true
+            },
+            "transformers": {
+              "expected": "4.57.6",
+              "actual": "4.57.6",
+              "passed": true
+            },
+            "cache-dit": {
+              "expected": "1.5.0",
+              "actual": "1.5.0",
+              "passed": true
+            },
+            "accelerate": {
+              "expected": "1.12.0",
+              "actual": "1.12.0",
+              "passed": true
+            },
+            "lpips": {
+              "expected": "0.1.4",
+              "actual": "0.1.4",
+              "passed": true
+            },
+            "openpyxl": {
+              "expected": "3.1.5",
+              "actual": "3.1.5",
+              "passed": true
+            }
+          },
+          "gpus": {
+            "status": "unavailable",
+            "devices": [],
+            "reason": "[Errno 2] No such file or directory: 'nvidia-smi'"
+          },
+          "memory_bytes": {
+            "MemTotal": 473041227776,
+            "MemAvailable": 456975572992
+          },
+          "tools": {
+            "docker": null,
+            "nvidia-smi": null,
+            "g++": "/usr/bin/g++",
+            "gcc": "/usr/bin/gcc"
+          },
+          "disk_free_bytes": 98018914304,
+          "scope": "Inventory only; no CUDA initialization or model loading"
+        },
+        "checks": [
+          {
+            "status": "passed",
+            "command": [
+              "/opt/venv/bin/python",
+              "-m",
+              "pip",
+              "check"
+            ],
+            "returncode": 0,
+            "reason": null,
+            "elapsed_seconds": 2.0016952138394117,
+            "gpu_seconds": 0.0,
+            "gpu_work_started": false,
+            "cleanup_confirmed": true,
+            "output_tail": "No broken requirements found.\n",
+            "output_bytes": 30,
+            "output_truncated": false,
+            "probe_records": []
+          },
+          {
+            "status": "passed",
+            "command": [
+              "/opt/venv/bin/python",
+              "-m",
+              "ditserve",
+              "doctor"
+            ],
+            "returncode": 0,
+            "reason": null,
+            "elapsed_seconds": 0.4170478009618819,
+            "gpu_seconds": 0.0,
+            "gpu_work_started": false,
+            "cleanup_confirmed": true,
+            "output_tail": "{\n  \"python\": \"3.10.20\",\n  \"platform\": \"Linux-5.8.0-53-generic-x86_64-with-glibc2.36\",\n  \"packages\": {\n    \"openpyxl\": true,\n    \"torch\": true,\n    \"diffusers\": true\n  },\n  \"gpu_stack_versions\": {\n    \"torch\": \"2.10.0+cu126\",\n    \"diffusers\": \"0.36.0\",\n    \"cache-dit\": \"1.5.0\",\n    \"transformers\": \"4.57.6\",\n    \"lpips\": \"0.1.4\"\n  },\n  \"gpu_venv_present\": false,\n  \"weights_present\": false,\n  \"gpu_driver\": {\n    \"available\": false,\n    \"detail\": \"nvidia-smi not found\"\n  },\n  \"reference_simulation_ready\": true,\n  \"core_binary\": \"/usr/local/bin/ditserve-core\",\n  \"notice\": \"No model weights loaded, CUDA validation or performance measurements.\"\n}\n",
+            "output_bytes": 649,
+            "output_truncated": false,
+            "probe_records": []
+          },
+          {
+            "status": "passed",
+            "command": [
+              "/opt/venv/bin/python",
+              "-m",
+              "unittest",
+              "test_optimizations_sana.SanaAdapterTests.test_real_cpu_inductor_compiles_and_reuses_graph",
+              "test_optimizations_wan.ExternalWanTests.test_real_cpu_inductor_counter_survives_dynamo_backend_unwrapping"
+            ],
+            "returncode": 0,
+            "reason": null,
+            "elapsed_seconds": 26.118194157024845,
+            "gpu_seconds": 0.0,
+            "gpu_work_started": false,
+            "cleanup_confirmed": true,
+            "output_tail": "/opt/venv/lib/python3.10/site-packages/torch/jit/_script.py:362: DeprecationWarning: `torch.jit.script_method` is deprecated. Please switch to `torch.compile` or `torch.export`.\n  warnings.warn(\n..\n----------------------------------------------------------------------\nRan 2 tests in 21.410s\n\nOK\n",
+            "output_bytes": 296,
+            "output_truncated": false,
+            "probe_records": []
+          },
+          {
+            "status": "passed",
+            "command": [
+              "/opt/venv/bin/python",
+              "-c",
+              "from ditserve.core import CoreBridge; core=CoreBridge(); assert core.available(), 'compiled ditserve-core missing'; result=core.generate(dict(count=2, seed=7)); assert isinstance(result, list) and len(result)==2 and all(isinstance(x, dict) for x in result), 'invalid core response'"
+            ],
+            "returncode": 0,
+            "reason": null,
+            "elapsed_seconds": 0.36686451896093786,
+            "gpu_seconds": 0.0,
+            "gpu_work_started": false,
+            "cleanup_confirmed": true,
+            "output_tail": "",
+            "output_bytes": 0,
+            "output_truncated": false,
+            "probe_records": [],
+            "name": "core-protocol"
+          }
+        ],
+        "artifacts": {
+          "workbook": "/data/results/migration-20261015T084211.345078Z/results.xlsx",
+          "report": "/data/results/migration-20261015T084211.345078Z/REPORT.md"
+        }
+      }
+    },
+    "retained_python_suite": {
+      "image_id": "sha256:e9e0af86828b5cf783d897a2a76963cf3e968963d67810035e38fee64a927055",
+      "container_user": "1002:1002",
+      "command": "python -m unittest discover -s tests/python",
+      "runner": "Equivalent unittest discovery through a multiprocessing-safe JSON-recording wrapper.",
+      "result": {
+        "status": "passed",
+        "tests_run": 1528,
+        "elapsed_seconds": 287.7824141799938,
+        "skipped": [
+          {
+            "test": "test_real_readonly_quick_traces_have_one_seed_eight_replays_192_requests (test_optimizations_followup_study.FrozenProtocolTests)",
+            "reason": "historical fixed workload raw source unavailable"
+          },
+          {
+            "test": "test_real_cpu_inductor_cache_transition_and_backend_switch (test_optimizations_stages.DecoderTests)",
+            "reason": "opt in only while no GPU experiment is timing CPU encoding"
+          }
+        ],
+        "failures": [],
+        "errors": []
+      }
+    },
+    "prior_root_python_suite": {
+      "image_id": "sha256:77727a8509e273ac908036c16a786401c3051ed3c8b3575a6da7e4bf3768ee65",
+      "container_user": "0:0",
+      "result": {
+        "status": "passed",
+        "tests_run": 1528,
+        "elapsed_seconds": 297.66898850514553,
+        "skipped": [
+          {
+            "test": "test_real_readonly_quick_traces_have_one_seed_eight_replays_192_requests (test_optimizations_followup_study.FrozenProtocolTests)",
+            "reason": "historical fixed workload raw source unavailable"
+          },
+          {
+            "test": "test_real_cpu_inductor_cache_transition_and_backend_switch (test_optimizations_stages.DecoderTests)",
+            "reason": "opt in only while no GPU experiment is timing CPU encoding"
+          }
+        ],
+        "failures": [],
+        "errors": []
+      }
+    },
+    "longlive_offline": {
+      "image_id": "sha256:f36134cc78a9990ebeac70e49c7c39c2ed4bb087509cc46f96c54aed525c8bff",
+      "container_user": "1002:1002",
+      "network": "none",
+      "result": {
+        "status": "passed",
+        "gpu_work_started": false,
+        "environments": [
+          {
+            "status": "passed",
+            "role": "runtime",
+            "python": "/opt/venv/bin/python",
+            "sys_path": [
+              "/tmp",
+              "/usr/local/lib/python310.zip",
+              "/usr/local/lib/python3.10",
+              "/usr/local/lib/python3.10/lib-dynload",
+              "/opt/venv/lib/python3.10/site-packages",
+              "/opt/ditserve/python"
+            ],
+            "versions": {
+              "torch": "2.10.0+cu126",
+              "diffusers": "0.36.0"
+            },
+            "pinned_artifacts_checked": 76,
+            "cuda_initialized": false
+          },
+          {
+            "status": "passed",
+            "role": "longlive",
+            "python": "/opt/longlive-venv/bin/python",
+            "sys_path": [
+              "/tmp",
+              "/usr/local/lib/python310.zip",
+              "/usr/local/lib/python3.10",
+              "/usr/local/lib/python3.10/lib-dynload",
+              "/opt/longlive-venv/lib/python3.10/site-packages"
+            ],
+            "versions": {
+              "torch": "2.8.0+cu126",
+              "diffusers": "0.31.0"
+            },
+            "pinned_artifacts_checked": 63,
+            "cuda_initialized": false
+          }
+        ],
+        "source_revision": "c6a27e771e803b1c12ffa28b82ba69b42472020e",
+        "source_clean": true
+      }
+    },
+    "runtime_layout": {
+      "status": "passed",
+      "compiler": "gcc/g++",
+      "python_headers": "/usr/local/include/python3.10/Python.h",
+      "absent": [
+        "cmake",
+        "nvcc",
+        "/opt/ditserve/legacy",
+        "/opt/ditserve/history",
+        "/opt/ditserve/models",
+        "/opt/ditserve/results"
+      ]
+    },
+    "cli_help": {
+      "status": "passed",
+      "command": "ditserve --help",
+      "execution": "Every final image build"
+    }
+  },
+  "gpu_validation": {
+    "status": "pending_target_host",
+    "gpu_work_started": false,
+    "unverified": [
+      "Offline Wan/Sana generation",
+      "LPIPS GPU inference",
+      "CUDA Inductor",
+      "Optional Mistral token generation and KV restore",
+      "Eight unique A100 UUID / SM80",
+      "Per-device FP16/BF16/Flash kernels",
+      "Eight-rank NCCL all-reduce",
+      "Optional LongLive finite GPU execution"
+    ]
+  },
+  "deferred_cpu_check": {
+    "name": "Opt-in tiny decoder compiler smoke",
+    "status": "not_run",
+    "reason": "DITSERVE_STAGE_COMPILER_CPU_SMOKE was not enabled on the source host while its experiment queue remained active."
+  },
+  "resolved_validation_findings": [
+    "Arbitrary numeric UID required HOME=/data and USER/LOGNAME defaults for PyTorch getpass.getuser() during Inductor import.",
+    "Inherited source configs with mode 0600 required source-tree read permission normalization for arbitrary numeric UID; final full suite repeated as UID 1002:1002.",
+    "LongLive Git cone sparse checkout includes root files and hydrates clean-status dependencies, allowing offline source identity checks.",
+    "Container PID 1 and process-start timing assumptions were corrected in test fixtures; production supervision guards were unchanged.",
+    "An intermediate JSON unittest wrapper omitted the multiprocessing main guard and was stopped; final suite uses the corrected wrapper."
+  ],
+  "preserved_host_state": "Original live environment, source, experiment container, models and historical images were not modified."
+}

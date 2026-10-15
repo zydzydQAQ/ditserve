@@ -1,0 +1,190 @@
+{
+  "schema_version": "ditserve.research.protocol.v1",
+  "model_id": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+  "revision": "0fad780a534b6463e45facd96134c9f345acfa5b",
+  "steps": 32,
+  "guidance_scale": 5.0,
+  "attention": "flash",
+  "precisions": {
+    "transformer": "float16",
+    "vae": "float32",
+    "text_encoder": "float32"
+  },
+  "dependencies": {
+    "torch": "2.10.0+cu126",
+    "diffusers": "0.36.0",
+    "cache-dit": "1.5.0",
+    "transformers": "4.57.6",
+    "torchvision": "0.25.0+cu126",
+    "lpips": "0.1.4"
+  },
+  "parallel": {
+    "backend": "native_ulysses",
+    "degrees": [
+      1,
+      2,
+      4
+    ],
+    "groups": [
+      [
+        0
+      ],
+      [
+        1
+      ],
+      [
+        2
+      ],
+      [
+        3
+      ],
+      [
+        0,
+        1
+      ],
+      [
+        2,
+        3
+      ],
+      [
+        0,
+        1,
+        2,
+        3
+      ]
+    ],
+    "homogeneous": true,
+    "ring": false,
+    "tp": false,
+    "communication_quantization": false,
+    "compile": false,
+    "cuda_graph": false
+  },
+  "shapes": {
+    "correctness": {
+      "height": 256,
+      "width": 256,
+      "frames": 17,
+      "steps": 32
+    },
+    "probe": {
+      "height": 480,
+      "width": 832,
+      "steps": 32
+    }
+  },
+  "frame_candidates": [
+    17,
+    33,
+    49,
+    81
+  ],
+  "dev_seeds": [
+    101,
+    102
+  ],
+  "holdout_seeds": [
+    201,
+    202
+  ],
+  "prompts": [
+    {
+      "id": "kettle",
+      "split": "dev",
+      "text": "Steam rises from a silver kettle while hot water pours in a thin stream into a glass cup on a kitchen counter. The camera remains still."
+    },
+    {
+      "id": "pendulum",
+      "split": "dev",
+      "text": "The brass pendulum of an antique wooden clock swings evenly from side to side behind a glass panel. Close-up view with a stationary camera."
+    },
+    {
+      "id": "pinwheel",
+      "split": "dev",
+      "text": "A brightly colored paper pinwheel rotates in the wind against a plain cream background. Its folded blades turn around a fixed center. The camera remains still."
+    },
+    {
+      "id": "origami",
+      "split": "dev",
+      "text": "Two hands carefully fold a square sheet of white paper into an origami crane on a dark desk. Overhead view with a stationary camera."
+    },
+    {
+      "id": "tram",
+      "split": "holdout",
+      "text": "A yellow tram travels from right to left past a stone station platform, its windows reflecting the overcast sky. The camera remains still."
+    },
+    {
+      "id": "aquarium",
+      "split": "holdout",
+      "text": "Three orange fish swim around a submerged ceramic arch inside a clear aquarium. Small air bubbles rise through the water. The camera remains still."
+    }
+  ],
+  "recipes": [
+    {
+      "id": "off",
+      "cache": false,
+      "threshold": 0.0,
+      "max_continuous": 1
+    },
+    {
+      "id": "t004",
+      "cache": true,
+      "threshold": 0.04,
+      "max_continuous": 1
+    },
+    {
+      "id": "t008",
+      "cache": true,
+      "threshold": 0.08,
+      "max_continuous": 1
+    }
+  ],
+  "transition_step": 16,
+  "max_policy_changes": 1,
+  "suffix_thresholds": [
+    0.04,
+    0.0
+  ],
+  "actions": [
+    "keep",
+    "hot",
+    "exact_refresh",
+    "cold"
+  ],
+  "max_joint_candidates": 2,
+  "epsilon": 0.05,
+  "budget_gpu_seconds": 28800.0,
+  "stage_budgets_gpu_seconds": {
+    "correctness": 1800.0,
+    "probe": 5400.0,
+    "calibrate": 9000.0,
+    "sp": 9000.0,
+    "reserve": 3600.0
+  },
+  "admission": "real_request_completes_without_artificial_memory_filler",
+  "gain_gate": 0.05,
+  "measurement_scope": "mechanism_gpu_lifecycle_including_encoding_and_decode;_not_online_e2e",
+  "estimate_wall_seconds": {
+    "correctness": 600.0,
+    "probe": 900.0,
+    "calibrate": 900.0,
+    "mechanism": 1200.0,
+    "sp": 1800.0
+  },
+  "cleanup_wall_seconds": 30.0,
+  "timeout_wall_seconds": {
+    "correctness": 1500.0,
+    "probe": 4800.0,
+    "calibrate": 8400.0,
+    "mechanism": 8400.0,
+    "sp": 2000.0
+  },
+  "online_controller": "deferred_until_mechanism_gate",
+  "latent_parallelism": "deferred_until_mainline_evidence",
+  "runtime_threads": {
+    "omp": 8,
+    "mkl": 8,
+    "openblas": 8
+  },
+  "text_encoding": "per_execution_correctness; frozen_CPU_FP32_embeddings_for_mechanism_with_stage_setup_charged"
+}

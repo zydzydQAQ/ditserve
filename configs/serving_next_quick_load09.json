@@ -1,0 +1,37 @@
+{
+  "after_session_id": "795e4faf-ea89-43d6-97e0-ca5f490da72c",
+  "approved_by_user": true,
+  "authorization_binding": {
+    "path": "/home/zyd/code/dit-rewrite/results/optimization-next/authorization.json",
+    "sha256": "6198f1e76c18ddb675892668343ac7dacb6f7a73a22c20c0b7becd99ca286c12"
+  },
+  "base_config_sha256": "a25624e88f7f3c908ea62cbd18c8ec5ba762ca4d8b80083489b8ce712fc15e64",
+  "full_qualification": false,
+  "ledger": "/home/zyd/code/dit-rewrite/results/optimization-next/gpu-budget.json",
+  "load": 0.9,
+  "orders": [
+    [
+      "baseline",
+      "candidate"
+    ],
+    [
+      "candidate",
+      "baseline"
+    ]
+  ],
+  "patterns": [
+    "ordinary",
+    "burst"
+  ],
+  "phase": "cache_load_09",
+  "planned_replays": 8,
+  "planned_requests": 192,
+  "recorded_unix": 1792038551.2203283,
+  "run_root": "/home/zyd/code/dit-rewrite/results/optimization-next/run01",
+  "schema_version": "ditserve.optimizations.quick_amendment.v1",
+  "scope": "replace only unstarted load09 three-seed expansion with one-seed screening; preserve prior configs, workloads, all historical charges and numerical/quality gates",
+  "seed": 101,
+  "seed_selection_reason": "retain the existing seed101 ordinary tail-regression case; fixed before load09 measurements",
+  "user_instruction": "\u505a\u5b8c0.7\u7684\u75281\u4e2aseed\u5feb\u901f\u9a8c\u8bc1",
+  "workloads_sha256": "c7519479f0147f6bfdf95acc2efb3ca1550bae314db9203dc7050730ad44b4aa"
+}

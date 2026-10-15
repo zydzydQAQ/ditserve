@@ -1,0 +1,126 @@
+{
+  "schema_version": "ditserve.sessions.config.v1",
+  "authorization": "user_2026_10_15_unlimited_v100_sessions",
+  "authorization_text": "依次开始",
+  "budget_gpu_seconds": null,
+  "device_preference": [
+    "V100"
+  ],
+  "gpu_uuid": "GPU-a058066e-bde9-c534-efb1-d2a68c117681",
+  "python": "/home/zyd/code/dit-rewrite/.venv-previs/bin/python",
+  "v100_python": "/home/zyd/code/dit-rewrite/.venv-v100/bin/python",
+  "torch_home": "/home/zyd/code/dit/.cache/torch",
+  "models": {
+    "llm": {
+      "id": "mistralai/Mistral-7B-Instruct-v0.2",
+      "path": "/mnt/data/Mistral-7B-Instruct-v0.2",
+      "dtype": "float16",
+      "attention": "sdpa_math",
+      "quantization": null
+    },
+    "sana": {
+      "id": "Efficient-Large-Model/Sana_Sprint_0.6B_1024px_diffusers",
+      "revision": "aa76e7f4f4928f378716b6716a2130fba3caf5b1",
+      "path": "/mnt/data/zyd-preempt-phase16-01a1296d/dit-directions-assets/huggingface/hub/models--Efficient-Large-Model--Sana_Sprint_0.6B_1024px_diffusers/snapshots/aa76e7f4f4928f378716b6716a2130fba3caf5b1",
+      "verification_manifest": "/home/zyd/code/dit-rewrite/results/research-directions/provisioning/sana-verified.json"
+    }
+  },
+  "sana_profile": "v100_fp32",
+  "phases": [
+    "qualify",
+    "pilot",
+    "state"
+  ],
+  "phase_watchdog_seconds": {
+    "qualify": 172800,
+    "pilot": 172800,
+    "state": 172800
+  },
+  "prerequisite_run": "/home/zyd/code/dit-rewrite/results/research-scheduling-next/run01",
+  "seed": 301,
+  "loads": [
+    0.5,
+    0.9
+  ],
+  "arms": [
+    "session_serial",
+    "stage_edf",
+    "session_slack"
+  ],
+  "session_count": 12,
+  "rounds_per_session": 2,
+  "max_new_tokens": 64,
+  "think_ms": 1000,
+  "deadline_multiplier": 2.5,
+  "session_inputs": [
+    [
+      "Describe an image of a red ceramic kettle on a wooden kitchen table. Return only one concise English image prompt.",
+      "Keep the same kettle and setting, but make the kettle blue and add a white cup. Return only the updated image prompt."
+    ],
+    [
+      "Describe an image of a brass pendulum clock in a quiet study. Return only one concise English image prompt.",
+      "Keep the same clock and study, but show warm evening light and a closed book nearby. Return only the updated image prompt."
+    ],
+    [
+      "Write a concise English image prompt for a small sailboat on a calm mountain lake at dawn.",
+      "Keep that boat and lake, change the lighting to moonlight and add a lantern on the boat. Return only the updated image prompt."
+    ],
+    [
+      "Write a concise English image prompt for a library reading desk with a green lamp and an open atlas.",
+      "Keep the scene, close the atlas and place a pair of glasses on top. Return only the updated image prompt."
+    ],
+    [
+      "Write a concise English image prompt for a bicycle leaning against a white garden wall beside roses.",
+      "Keep the bicycle and composition, change the wall to pale blue and add a wicker basket. Return only the updated image prompt."
+    ],
+    [
+      "Write a concise English image prompt for a stone bridge over a narrow stream in an autumn forest.",
+      "Keep the bridge and viewpoint, change the season to snowy winter. Return only the updated image prompt."
+    ],
+    [
+      "Write a concise English image prompt for a bowl of citrus fruit on a dark dining table.",
+      "Keep the bowl and lighting, replace half of the oranges with lemons. Return only the updated image prompt."
+    ],
+    [
+      "Write a concise English image prompt for a quiet railway platform with a red bench at sunrise.",
+      "Keep the platform and bench, change to rainy evening with reflected lights. Return only the updated image prompt."
+    ],
+    [
+      "Write a concise English image prompt for a small lighthouse on a rocky coast under cloudy skies.",
+      "Keep the lighthouse and coast, clear the sky and add warm late afternoon light. Return only the updated image prompt."
+    ],
+    [
+      "Write a concise English image prompt for a glass vase of white flowers on a windowsill.",
+      "Keep the vase and viewpoint, change the flowers to yellow and add soft rain outside. Return only the updated image prompt."
+    ],
+    [
+      "Write a concise English image prompt for an old camera beside a folded map on a wooden desk.",
+      "Keep the camera and map, add a leather notebook and warmer lighting. Return only the updated image prompt."
+    ],
+    [
+      "Write a concise English image prompt for a wooden cabin surrounded by pine trees beside a lake.",
+      "Keep the cabin and lake, add snow on the roof and light in the windows. Return only the updated image prompt."
+    ]
+  ],
+  "qualification_session_indices": [
+    0,
+    1
+  ],
+  "state_capacity_counts": [
+    1,
+    2,
+    4,
+    8,
+    12
+  ],
+  "minimum_free_gib": 10,
+  "cache": false,
+  "correctness": {
+    "rtol": 1e-05,
+    "atol": 1e-06,
+    "llm_token_ids": "exact",
+    "pause_restore_kv": "exact",
+    "sana_latents_and_outputs": "tolerance_and_bitwise_recorded"
+  },
+  "artifact_policy": "final results.xlsx and REPORT.md; explicit verified cleanup after dependencies close"
+}

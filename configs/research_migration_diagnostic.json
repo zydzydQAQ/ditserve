@@ -1,0 +1,40 @@
+{
+  "schema_version": "ditserve.research.migration_diagnostic.protocol.v1",
+  "purpose": "cache_off_heterogeneous_migration_failure_diagnosis",
+  "phases": ["preflight", "probe", "calibrate", "mechanism", "report"],
+  "cases": [
+    {"prompt_id": "kettle", "seed": 101, "case_id": "dev-kettle-101", "role": "passing_control"},
+    {"prompt_id": "kettle", "seed": 102, "case_id": "dev-kettle-102", "role": "failed_case"}
+  ],
+  "recipe_id": "off",
+  "transition_step": 16,
+  "comparisons": ["original", "math"],
+  "attention_by_comparison": {
+    "original": {"a100": "flash", "v100": "efficient"},
+    "math": {"a100": "math", "v100": "math"}
+  },
+  "actions": ["continuous", "local_full_roundtrip", "full_migrate", "shared_prefix_next_step"],
+  "repetitions": ["forward", "reverse"],
+  "trajectory_actions": ["a100_stay", "v100_stay", "full_migrate", "a100_local_restore", "v100_local_restore"],
+  "shadow_step": 17,
+  "math_prerequisite": "original_all_local_restore_and_shadow_neutrality_passed",
+  "repetition_scope": "diagnostic_order_control_only; no_performance_qualification",
+  "source_role": "v100",
+  "target_role": "a100",
+  "shape": {"height": 256, "width": 448, "frames": 17, "steps": 32},
+  "guidance_scale": 5.0,
+  "epsilon": 0.05,
+  "budget_gpu_seconds": 28800.0,
+  "budget_stage": "migration",
+  "budget_policy": "existing_migration_stage_cap_only; no_reallocation_or_borrowing",
+  "cost_safety_factor": 1.3,
+  "estimate_wall_seconds": {"original": 600.0, "math": 600.0},
+  "timeout_wall_seconds": {"original": 2400.0, "math": 2400.0},
+  "cleanup_wall_seconds": 30.0,
+  "performance_qualification": false,
+  "inherit_quality_qualification": false,
+  "inherit_performance_qualification": false,
+  "deferred_phases": ["calibrate", "mechanism"],
+  "measurement_scope": "diagnostic mechanism only; all GPU occupancy charged; not online E2E",
+  "retention_policy": "summary_and_key_samples"
+}

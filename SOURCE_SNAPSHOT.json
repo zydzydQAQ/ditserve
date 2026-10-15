@@ -1,0 +1,2144 @@
+{
+  "source": "/home/zyd/code/dit-rewrite",
+  "destination": "/home/zyd/code/dit-rewrite/.migration/a100",
+  "created_at": "2026-10-15T07:29:24.233594+00:00",
+  "git_head": "715807749653a38e6a427e2b7202d3998cb04df7",
+  "scope": "Working tree including untracked source; no model/environment/cache/results symlinks followed",
+  "files": [
+    {
+      "path": ".gitignore",
+      "bytes": 94,
+      "sha256": "39319252722739a2abafd138b60efa148319abb32e9429d317bdfce894b9ccea"
+    },
+    {
+      "path": "CMakeLists.txt",
+      "bytes": 2979,
+      "sha256": "9e4a4a896dbb432b0acae7f6fa6e5bf476396cf3e89d705e046901fc6bf7666b"
+    },
+    {
+      "path": "README.md",
+      "bytes": 9165,
+      "sha256": "584f69bae44dd545538ffb7df20c6caa55d6eeaaa641d6ac3a709f9419225374"
+    },
+    {
+      "path": "cmd/main.cpp",
+      "bytes": 1611,
+      "sha256": "cf021a678d2a138cfab9094b6adc22bf445adbcba67cfc59297d1d8d7799117f"
+    },
+    {
+      "path": "configs/benchmark/formal.json",
+      "bytes": 1616,
+      "sha256": "6b6f9eec10e5dfe917bc4d8e94e858291801d06075fd8040ac6db6ef2825b058"
+    },
+    {
+      "path": "configs/benchmark/optimization.json",
+      "bytes": 1904,
+      "sha256": "286f9772450f527951adc8ed25416d5ca2be1e5a0ce1dee97f8f63fa1cf5d682"
+    },
+    {
+      "path": "configs/benchmark/smoke.json",
+      "bytes": 1069,
+      "sha256": "d03d1cd370ccb40831ef4f90ed4c6349fc0a223f320e1bd577c8e8e6156b966c"
+    },
+    {
+      "path": "configs/previs.json",
+      "bytes": 2296,
+      "sha256": "b5b4e8e6aabff828f278a2ce031d4b56fe600d128aaf9b50d98a85cc822c23da"
+    },
+    {
+      "path": "configs/previs2.json",
+      "bytes": 27548,
+      "sha256": "5d66ff538c5ab8350170328573c9d499a2f17566b9d0b994b069fdcd43d31cba"
+    },
+    {
+      "path": "configs/requirements-previs.txt",
+      "bytes": 302,
+      "sha256": "48bf67a89755d266291dc42fc59237d342a1213632472d2d410a900341250ec5"
+    },
+    {
+      "path": "configs/requirements-v100.txt",
+      "bytes": 218,
+      "sha256": "ca43411b84fac471a711137559faecb3b342304a3ca72729d4346e1ffb139580"
+    },
+    {
+      "path": "configs/research_cfg.json",
+      "bytes": 6035,
+      "sha256": "94edded5e022e8be859e562b4eb039b409b1af47b4595bbef2ff2cb88834b9d8"
+    },
+    {
+      "path": "configs/research_direction2_state_cost.json",
+      "bytes": 522,
+      "sha256": "7ee510cae2e6e6fa317b00381ef03141fed63951a6f506c6d7ef148ed3e667b1"
+    },
+    {
+      "path": "configs/research_directions.json",
+      "bytes": 5973,
+      "sha256": "6035ed8c6081037b61ae8cf186abd8fb49a695e3bcf784074d6cfd7c0a9636f3"
+    },
+    {
+      "path": "configs/research_migration_diagnostic.json",
+      "bytes": 1906,
+      "sha256": "e8f1ec7a0a2fd967912a37b2017f031098c9ce9084e9d8ae0bb8ab083732bbd7"
+    },
+    {
+      "path": "configs/research_pilot.json",
+      "bytes": 4281,
+      "sha256": "40cf88421a460cb271f13322e3244e339bfa891b322737f873711cb665fabf1b"
+    },
+    {
+      "path": "configs/research_scheduling.json",
+      "bytes": 1984,
+      "sha256": "f656ad62334c53fd4bdb52ad914ac453ab16d8b078d029067d73ffa61dd315a1"
+    },
+    {
+      "path": "configs/research_scheduling_next.json",
+      "bytes": 3837,
+      "sha256": "0730cf8cf79d17f55f553d23846207bfbc5cd003f7ccb5c0858e3c5fcaffd6ed"
+    },
+    {
+      "path": "configs/research_sessions.json",
+      "bytes": 5117,
+      "sha256": "48e6032ef23c03c9557a2b25a36e176c149a503b7edb202133c290a3cbaae1d4"
+    },
+    {
+      "path": "configs/research_two_gpu.json",
+      "bytes": 4245,
+      "sha256": "32beb5b0270da35d2d441e0369f876e1ae17a7f800dc95d53a544c40568a8c34"
+    },
+    {
+      "path": "configs/result_storage.json",
+      "bytes": 457,
+      "sha256": "f1f3795688ff7c0e843497edc84a41f9f40db6afa07bb2478ba2ad291008d981"
+    },
+    {
+      "path": "configs/serving_next_quick_load09.json",
+      "bytes": 1432,
+      "sha256": "f1022cc3113d5763441ec0ddf6a8db60157f29d3201db81825f023505627b018"
+    },
+    {
+      "path": "configs/serving_next_validation.json",
+      "bytes": 6933,
+      "sha256": "6c8b472b341be808ef0e6cf116116d3a4485045d8bc64702f9026bfb5ee0e3d9"
+    },
+    {
+      "path": "configs/serving_optimizations.json",
+      "bytes": 4406,
+      "sha256": "1d6219ea1abe822994ff370afe4865b6e0ee1573e3e91861976a271f04f71184"
+    },
+    {
+      "path": "configs/synthetic.json",
+      "bytes": 380,
+      "sha256": "8051cb30a84d069579398cd76cd644d59f426e8919125bc9553155467307d1db"
+    },
+    {
+      "path": "configs/v100.json",
+      "bytes": 1355,
+      "sha256": "4d1e49348e659782d7415d42865fd855028f20e15863d53fdb124d9bc81e3efa"
+    },
+    {
+      "path": "docs/cache_online_followup.md",
+      "bytes": 4987,
+      "sha256": "e33938a84c42a461c9f531a8ef0f494d6a0d3d64c75c55b7bf4a3a62f1927397"
+    },
+    {
+      "path": "docs/dit_serving_references.bib",
+      "bytes": 9561,
+      "sha256": "409f203a1f1bb111a464953a387b51de0cabdc3b0f8695de9648cab8527c590d"
+    },
+    {
+      "path": "docs/dit_serving_sections.tex",
+      "bytes": 18638,
+      "sha256": "78f91141a8bcf5c570e8c4036a47442786189b7520ebb2b55d28aa580fd74233"
+    },
+    {
+      "path": "docs/gpu_experiments.md",
+      "bytes": 15678,
+      "sha256": "5f0d4bc9dd65129811490f2e0b0b95e810d145a24aab00159317b476f6ebd0e5"
+    },
+    {
+      "path": "docs/motivation_experiments.md",
+      "bytes": 15728,
+      "sha256": "220b22ffa839660bc009a48bd4d60c8460bfc34c699ec7a0164a5f7f5cf9b049"
+    },
+    {
+      "path": "docs/phase_conflict.md",
+      "bytes": 6491,
+      "sha256": "98961d828cc7a201e04ff7ba6c48873c89cc2d13ee562230b99ff0de614a6946"
+    },
+    {
+      "path": "docs/previs2.md",
+      "bytes": 7833,
+      "sha256": "88909ca1ca1e6426e3c7ed7152c034e666ac0f5cc3c8ad55e35e80c59171bae3"
+    },
+    {
+      "path": "docs/research_cfg.md",
+      "bytes": 10542,
+      "sha256": "db08be673e5eeca714a69d28fe43bc2b2c19747afcfa664c6b26ae612c10fdd1"
+    },
+    {
+      "path": "docs/research_directions.md",
+      "bytes": 22812,
+      "sha256": "deed3a28e9729cca7829e3ae42c4b9211b7d228c7bd90155a45f1f223bc3f1d6"
+    },
+    {
+      "path": "docs/research_migration_diagnostic.md",
+      "bytes": 3452,
+      "sha256": "7428ee475c9b05b2d9649528a11adf0a9661daf5b19e943dcc9d61e96cf52313"
+    },
+    {
+      "path": "docs/research_pilot.md",
+      "bytes": 13711,
+      "sha256": "5d33b4f985b354422f74f4ba8127c24101571d7bd49b60f3735d2cc9b47f238d"
+    },
+    {
+      "path": "docs/research_scheduling.md",
+      "bytes": 10162,
+      "sha256": "59c8a5c1e4238c61dc17226e23c91f1ac7b283c95d56ad69b87694cfe2c20758"
+    },
+    {
+      "path": "docs/research_scheduling_next.md",
+      "bytes": 11542,
+      "sha256": "389697cd0fc2fc17f73fc9c048ea14ce209246ea82ae9f89422afcb5c638ecdd"
+    },
+    {
+      "path": "docs/research_sessions.md",
+      "bytes": 9479,
+      "sha256": "4fb3694c3c7e5c37ac0c93f609cec1bdbc17c05d6a2423c2b6834cc55b20d598"
+    },
+    {
+      "path": "docs/research_two_gpu.md",
+      "bytes": 5114,
+      "sha256": "b8b99faa55d2f103f50759511739856409b7d8efc9258b8839574ad9a22f6076"
+    },
+    {
+      "path": "docs/result_storage.md",
+      "bytes": 4130,
+      "sha256": "c5476ddba1be4fcf47a0d1b9542ef32fa74bb2325b46f053bb51ce322e925d7b"
+    },
+    {
+      "path": "docs/serving_optimization.md",
+      "bytes": 8357,
+      "sha256": "1e80cb78dc37930015c0bb16795c3e1acb756208b0c1fc3943a90bb66bef4e52"
+    },
+    {
+      "path": "docs/serving_optimizations_v2.md",
+      "bytes": 13865,
+      "sha256": "c65ce0bc5679372cef412e898121dc4c8181b3fc0c6272a7538b9f252b53da16"
+    },
+    {
+      "path": "docs/video_benchmark.md",
+      "bytes": 11554,
+      "sha256": "a7e0c610e133185bb00d4316ee178d8b8070c27a40e8b8d22c6c2a18c11e7bc3"
+    },
+    {
+      "path": "include/ditserve/backend.hpp",
+      "bytes": 2874,
+      "sha256": "c74a8adf4acdc3eaa824e7cf4f7ea3dfd2c0354a817a57da9d8f09ee7852b2f4"
+    },
+    {
+      "path": "include/ditserve/cost.hpp",
+      "bytes": 1035,
+      "sha256": "de6c57273dcbf2b6ddc49e05747dee897684025d37260d7156307b22d15f1f09"
+    },
+    {
+      "path": "include/ditserve/metrics.hpp",
+      "bytes": 170,
+      "sha256": "8c8d07a2673f101b07de1b17724b2fdee5cc9e5368ae3ebd76c3d099e33ca1ab"
+    },
+    {
+      "path": "include/ditserve/policies.hpp",
+      "bytes": 2349,
+      "sha256": "a79fd879042346d844db31e4e09f997192afe0ffdd6cab0a1e253f86cf606247"
+    },
+    {
+      "path": "include/ditserve/policy.hpp",
+      "bytes": 2015,
+      "sha256": "5d6603d4dbdfd7cf4a6812f19cdfff4bc8ee818b1b47c7f7b3162e279a30579f"
+    },
+    {
+      "path": "include/ditserve/random.hpp",
+      "bytes": 530,
+      "sha256": "45ece2074098eca2de3bf064bbbe223ed52b68b0fe3c79bb5999daa39e7181b8"
+    },
+    {
+      "path": "include/ditserve/runtime.hpp",
+      "bytes": 770,
+      "sha256": "e71dfafa3db5e7c45fa5d66ad42ac411b21dd2764439ec6056a89b279a35cdf6"
+    },
+    {
+      "path": "include/ditserve/types.hpp",
+      "bytes": 1366,
+      "sha256": "8c122a47d05b8e03fdbb7c36b547fef47156be4ae895a1786598f31aaf26e091"
+    },
+    {
+      "path": "include/ditserve/workload.hpp",
+      "bytes": 156,
+      "sha256": "0b6361aec1b6e011ed1a7092bc6644a2a7069e8a61060e29dc04c5916fef8b6d"
+    },
+    {
+      "path": "pyproject.toml",
+      "bytes": 603,
+      "sha256": "73ef656742a2f69cf80ead3056d8be63dab841dd3848998abb1fc84b0b890b7b"
+    },
+    {
+      "path": "python/ditserve/__init__.py",
+      "bytes": 319,
+      "sha256": "91eb50f15c81de8873c920929c5aa272444d3a16dceeeeb8ba591e15abc97614"
+    },
+    {
+      "path": "python/ditserve/__main__.py",
+      "bytes": 83,
+      "sha256": "e0930aeba5a3e2e2d94ca6c5fac4f72c0c4eb2be9bba283becf98e909091471c"
+    },
+    {
+      "path": "python/ditserve/api.py",
+      "bytes": 6307,
+      "sha256": "d5a8bd8a5a1b6b815bcd33d0e147cde742c48604b512dbade5cd7e5ecff213cb"
+    },
+    {
+      "path": "python/ditserve/archive.py",
+      "bytes": 16153,
+      "sha256": "dbedacdb05125b473f1b69974e594522eac7215acc2f576921b1dedf4daaef70"
+    },
+    {
+      "path": "python/ditserve/benchmark/__init__.py",
+      "bytes": 114,
+      "sha256": "7245253bdee3dbd4a733b7c3d8d4adf14f648f21d6048016f8b4852f549ad4ce"
+    },
+    {
+      "path": "python/ditserve/benchmark/backend_quality.py",
+      "bytes": 3038,
+      "sha256": "41b35698527328a21701162cab117de78ce140c1cd566db8b37de79a2e34e441"
+    },
+    {
+      "path": "python/ditserve/benchmark/backends.py",
+      "bytes": 14028,
+      "sha256": "795ff8d7df8bcd4ea0044e309bc27001af9a46494d000d34da2de7826eaec6ea"
+    },
+    {
+      "path": "python/ditserve/benchmark/budget.py",
+      "bytes": 4703,
+      "sha256": "0a58c93ff5e041d6ad45cb248d4ab847a6c11a1f0c683f7267ff5b29a7ff1e16"
+    },
+    {
+      "path": "python/ditserve/benchmark/cli.py",
+      "bytes": 17867,
+      "sha256": "aecb9685d0009715b68bc3e5ad2a4dfcb9448ded741f0d9e285a99af5dc58e7f"
+    },
+    {
+      "path": "python/ditserve/benchmark/common.py",
+      "bytes": 3787,
+      "sha256": "31d09ac7e09501b65df2a169741c05f5fbae5dee138caa83724766b99391aa1f"
+    },
+    {
+      "path": "python/ditserve/benchmark/datasets.py",
+      "bytes": 14870,
+      "sha256": "83512000a110b02e5fdd5d30ad36c3eeae7e0190ca59cf93adf90f78df0f287f"
+    },
+    {
+      "path": "python/ditserve/benchmark/evaluation.py",
+      "bytes": 28163,
+      "sha256": "7d99822d374c42f78ebaa7ea99c37216a1a549722df9edd29c6f578a171413fd"
+    },
+    {
+      "path": "python/ditserve/benchmark/optimization.py",
+      "bytes": 28940,
+      "sha256": "67d212e65d059e9ba523c2e53af0bc88655c007915652c0d2d0b170eed56869e"
+    },
+    {
+      "path": "python/ditserve/benchmark/prefetch.py",
+      "bytes": 3498,
+      "sha256": "f24d9c9bf26050a2fc9d55587693e32ebe116a4d5e09b57c26b897c16bd84ce9"
+    },
+    {
+      "path": "python/ditserve/benchmark/protocols.py",
+      "bytes": 12705,
+      "sha256": "dc695d3dc363e37c6a8be140a0449ca50fdcc6782f5bf9c1b380742d5c2dfd61"
+    },
+    {
+      "path": "python/ditserve/benchmark/reporting.py",
+      "bytes": 28226,
+      "sha256": "8d61a0c67e92bb3a3665abc6564659d877c705508e0f00530d467b08e218e7e8"
+    },
+    {
+      "path": "python/ditserve/benchmark/runner.py",
+      "bytes": 36321,
+      "sha256": "6101ac4dc0420d73656da06a1987f8c2f941641126f29a72bd97451f794153b9"
+    },
+    {
+      "path": "python/ditserve/benchmark/workload.py",
+      "bytes": 19726,
+      "sha256": "a0050e5d51ee6c8654517c24470dd9d143cd5393b8a2783153721224a0248330"
+    },
+    {
+      "path": "python/ditserve/cli.py",
+      "bytes": 9910,
+      "sha256": "a15c3ae6c65423bd82143ec487d315a65ba1fa1bf6a57ef52914b4edbfdde485"
+    },
+    {
+      "path": "python/ditserve/compact_results.py",
+      "bytes": 34843,
+      "sha256": "9d820483821d4da41424e88550367a7d0cd28e5153d61d6491c75dd74cbbdfec"
+    },
+    {
+      "path": "python/ditserve/core.py",
+      "bytes": 1959,
+      "sha256": "eff97b7ff397ed4b57b0f07c1451fccb6fbccc93d65bddff9b72475ecc213348"
+    },
+    {
+      "path": "python/ditserve/directions/__init__.py",
+      "bytes": 146,
+      "sha256": "49e0ca15393555bcb5d5c4dbd54d80a725aaae5a06ae91378ae05328db8187c1"
+    },
+    {
+      "path": "python/ditserve/directions/blind.py",
+      "bytes": 14746,
+      "sha256": "c78f2ba050605d8861ad06692acce5db9d4c99fcc2cdb1d2af73d84987a10c1d"
+    },
+    {
+      "path": "python/ditserve/directions/block_executor.py",
+      "bytes": 12969,
+      "sha256": "407119378cb0cfa38a79bd100063aae31f7fea5ac2185d25642839176edc4660"
+    },
+    {
+      "path": "python/ditserve/directions/budget.py",
+      "bytes": 4996,
+      "sha256": "89cd3a9fbe58ea53f651ef705a1575844d62feb41f546b08fedbc81e86032056"
+    },
+    {
+      "path": "python/ditserve/directions/direction1.py",
+      "bytes": 40473,
+      "sha256": "50ef810f03c61b00e23a7d78c020e649d7f79d9b1e6795a578ae25b90f37a668"
+    },
+    {
+      "path": "python/ditserve/directions/direction2.py",
+      "bytes": 41504,
+      "sha256": "931c91acac7e8241eae236e98f7013573ef4900bcf1ee60261325be4c69ff1e8"
+    },
+    {
+      "path": "python/ditserve/directions/direction2_costs.py",
+      "bytes": 15359,
+      "sha256": "4b9aefd8ca08b4edf62bba335a52dc19d2a482b4d831d8d4467e355ac6bcf866"
+    },
+    {
+      "path": "python/ditserve/directions/direction3.py",
+      "bytes": 45484,
+      "sha256": "b2f5e644a6a59571fae64e8ed400e933852bb1c65d9e1409954ecded432edc5e"
+    },
+    {
+      "path": "python/ditserve/directions/media.py",
+      "bytes": 21439,
+      "sha256": "589b42b3fe6e0961d8d761c972fb5de34f3af6f249489d4d0757f0bea7067e5b"
+    },
+    {
+      "path": "python/ditserve/directions/protocol.py",
+      "bytes": 3484,
+      "sha256": "4aa4cc6eb580288f3a6a3c0f93870be966f7469d2525c493a53c9a2717f4cace"
+    },
+    {
+      "path": "python/ditserve/directions/reporting.py",
+      "bytes": 52772,
+      "sha256": "86bd5db5576c805c971fbb658fb35f5a054d57551f4ffb07d4bef5a2d3a76a0d"
+    },
+    {
+      "path": "python/ditserve/directions/runner.py",
+      "bytes": 21539,
+      "sha256": "27e618ef721623a9baabb564ca1e70f36828504617767ad63c749155830fdcfd"
+    },
+    {
+      "path": "python/ditserve/directions/sana.py",
+      "bytes": 4210,
+      "sha256": "6f2e9ce80fe88d08ba8f81d79622eab86be7f68efa040cd04dff04f34f0d3bf0"
+    },
+    {
+      "path": "python/ditserve/directions/streaming.py",
+      "bytes": 21528,
+      "sha256": "129d7e9353dbbf05872e82bfe13242ef146f3e80ea3a679f8c2c157b5d30ffd4"
+    },
+    {
+      "path": "python/ditserve/directions/worker.py",
+      "bytes": 6304,
+      "sha256": "1ab2af71bddac7ad47b37f8bb08355c8e6a278fd957305cabc694519e46286ba"
+    },
+    {
+      "path": "python/ditserve/experiments/__init__.py",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "python/ditserve/experiments/download_v100_weights.py",
+      "bytes": 3639,
+      "sha256": "594cce509cc40799af9786c19e265790f1b87f77e5940afc735737b29ab50c37"
+    },
+    {
+      "path": "python/ditserve/experiments/previs2_base.py",
+      "bytes": 6107,
+      "sha256": "3ebfe707a8a9434576cc1a09c6688abdac950203d288b9cca7ae23d646e5da02"
+    },
+    {
+      "path": "python/ditserve/experiments/previs2_experiment.py",
+      "bytes": 52777,
+      "sha256": "5d9dc1bfe52da1f1e45d833bc7f6696db3913f0a9b4474e1675f0d53b8aee402"
+    },
+    {
+      "path": "python/ditserve/experiments/previs2_policy.py",
+      "bytes": 23481,
+      "sha256": "378fd5ebb1927ebdac7073f491eeee1c7c461ee061d4b78c4842a55b9622c511"
+    },
+    {
+      "path": "python/ditserve/experiments/previs2_report.py",
+      "bytes": 45432,
+      "sha256": "13f77a58173290bd6c7f697e98ad575c4dda99158a5ce9efd0b131fda5285035"
+    },
+    {
+      "path": "python/ditserve/experiments/previs2_storage.py",
+      "bytes": 3282,
+      "sha256": "5a380a55010543b1bfdf1787982b338ecc55c4bc0b6f8587ecc1bacb2440e3f5"
+    },
+    {
+      "path": "python/ditserve/experiments/previs_storage.py",
+      "bytes": 8810,
+      "sha256": "0b0af815987268493b43aee6c3551060794c361174874ff5fe0db068d5176604"
+    },
+    {
+      "path": "python/ditserve/experiments/previs_verify.py",
+      "bytes": 15755,
+      "sha256": "08dff5ee9cf5c68e3a53e564a08c3603897c45d86ec7135e4e78ddbc6a6d31ae"
+    },
+    {
+      "path": "python/ditserve/experiments/profile_v100_phases.py",
+      "bytes": 25003,
+      "sha256": "4db6c76dde4af1959085f52bd36becb3f03d3cf3c0011e7bd957c73d19d482a2"
+    },
+    {
+      "path": "python/ditserve/experiments/run_phase_conflict.py",
+      "bytes": 27377,
+      "sha256": "b7a1d417a980b422504ff6670a251c65206660ca21ef30d7e1f7233f43ec7a60"
+    },
+    {
+      "path": "python/ditserve/experiments/run_previs2.py",
+      "bytes": 38392,
+      "sha256": "7b74347735cbd0cebfc12c012ca97182a71780aa5399fb1cf6979f17977b29f3"
+    },
+    {
+      "path": "python/ditserve/experiments/run_v100.py",
+      "bytes": 28582,
+      "sha256": "e5c2ea05f01bcefae760a19f1df7176c86e54737dd417e9d54f0c32683ec9ee2"
+    },
+    {
+      "path": "python/ditserve/experiments/summarize_phase_conflict.py",
+      "bytes": 52894,
+      "sha256": "9de0619524c319978ba9c622ae6068ff624988951ea8ebdf278c6df19dd9e0d1"
+    },
+    {
+      "path": "python/ditserve/experiments/summarize_v100.py",
+      "bytes": 55821,
+      "sha256": "526396b5854c44be46be2a2892ac3aa0655ddeca0f0f908bb9505c57274c0899"
+    },
+    {
+      "path": "python/ditserve/experiments/validate_v100_weights.py",
+      "bytes": 2001,
+      "sha256": "1d3961a3df8afc653d2e51acef6b22fc6b7b9a2fc917b51e53545a76daa1d243"
+    },
+    {
+      "path": "python/ditserve/gpu/__init__.py",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "python/ditserve/gpu/media.py",
+      "bytes": 4602,
+      "sha256": "53acd09ab60f772810303259b60e6960e219adc070e8fe152b80f3ccaedba839"
+    },
+    {
+      "path": "python/ditserve/gpu/phase_conflict.py",
+      "bytes": 40758,
+      "sha256": "9a903e7fb23303820f7cca47b3b071d4c97b4751a7699f138b4db2d1caf803b3"
+    },
+    {
+      "path": "python/ditserve/gpu/profiling.py",
+      "bytes": 47420,
+      "sha256": "d9e9714c6c3a4f07a6606c39d93c14ac1e9e7f592ab6228405d87242d47f3edd"
+    },
+    {
+      "path": "python/ditserve/gpu/quality.py",
+      "bytes": 18745,
+      "sha256": "ea2764a9f8c022a9602b819c10282eea74f1b6908e2ab1406012c2c720b2fd1a"
+    },
+    {
+      "path": "python/ditserve/gpu/worker.py",
+      "bytes": 43899,
+      "sha256": "9408148bcbb15dce4dd51adda3d3910a2dc63f54c8851bb1f8a3884497ff4569"
+    },
+    {
+      "path": "python/ditserve/optimizations/__init__.py",
+      "bytes": 81,
+      "sha256": "5714d56c81336dcbff3f9e7f94f2108b493ff7a2d265647ef358b667a18357b6"
+    },
+    {
+      "path": "python/ditserve/optimizations/budget.py",
+      "bytes": 5155,
+      "sha256": "8abf57ae3e320c179c461ac342c19709bc37bae427bf1f5bf62b6aa28385d3e2"
+    },
+    {
+      "path": "python/ditserve/optimizations/cache_archive_view.py",
+      "bytes": 14218,
+      "sha256": "4a6e647c9ea54045b8535e72b679db7218a12b77baf8a2bf28cc3755889b7dfc"
+    },
+    {
+      "path": "python/ditserve/optimizations/cache_executor.py",
+      "bytes": 14949,
+      "sha256": "1323fde6e8bacaf7db0e1b386a3298bc153e82551dae676925dd945ea1ccfefd"
+    },
+    {
+      "path": "python/ditserve/optimizations/cache_followup.py",
+      "bytes": 21375,
+      "sha256": "565f6c50a7dba1bb9444b09a22ef97020d81fe5291fbcde8a50ae26a246bacba"
+    },
+    {
+      "path": "python/ditserve/optimizations/cache_followup_report.py",
+      "bytes": 36699,
+      "sha256": "c642a56c8676a126fc183b0d3c8f03563c1105fa85ceadd20e8c2fdacb80529f"
+    },
+    {
+      "path": "python/ditserve/optimizations/cache_online.py",
+      "bytes": 14061,
+      "sha256": "1df867f63048fbdd30a8eb0d60001185792e8edbc5ef9d767f798fed78d4eabc"
+    },
+    {
+      "path": "python/ditserve/optimizations/cache_replay.py",
+      "bytes": 21811,
+      "sha256": "fb56094fb0b1272a38e55b5d69acbf0e26da47bb556234db70273ad1bbb71162"
+    },
+    {
+      "path": "python/ditserve/optimizations/followup_finish.py",
+      "bytes": 7555,
+      "sha256": "785ee5f6b88377c705231f4e55672b059e363ea456e9d7e8b0e7666c737fcd78"
+    },
+    {
+      "path": "python/ditserve/optimizations/followup_queue.py",
+      "bytes": 14128,
+      "sha256": "c1b242beb4b021e13a740176daf58a44a33b1fe8f43a1e375701934ac82bc9d9"
+    },
+    {
+      "path": "python/ditserve/optimizations/followup_report.py",
+      "bytes": 33866,
+      "sha256": "4923496c0070cf5c676d5cf6daeacc53b4eb6facaa9bea9fc59fb16bcd73f072"
+    },
+    {
+      "path": "python/ditserve/optimizations/followup_sana.py",
+      "bytes": 4311,
+      "sha256": "c38f5522bb17b99eb2649f128345aa47f59c157ea414b538f15073aa51b0fcc4"
+    },
+    {
+      "path": "python/ditserve/optimizations/followup_study.py",
+      "bytes": 26201,
+      "sha256": "f811b333864411217c56f0ec5bde649ce3a38ef8285b72f18d4ccd37ee7fff7f"
+    },
+    {
+      "path": "python/ditserve/optimizations/followup_supervisor.py",
+      "bytes": 14313,
+      "sha256": "aafc26a60042297d9aab8994a19675efa3bcd0d125816eecda7eb5d1798edc09"
+    },
+    {
+      "path": "python/ditserve/optimizations/next_audit.py",
+      "bytes": 64099,
+      "sha256": "bc06c87898e5877fc168ee3493fe7207a14f07cc8e2b022b1bfd9a686732ec96"
+    },
+    {
+      "path": "python/ditserve/optimizations/next_budget.py",
+      "bytes": 22113,
+      "sha256": "a32a4b42e73f925a169caa0ab5349ec871ee052818af54536e50a327adb096ff"
+    },
+    {
+      "path": "python/ditserve/optimizations/next_candidate_failures.py",
+      "bytes": 7287,
+      "sha256": "2b14f283dea838013769b7d40cb6e196914c3c3845ea9477219aeecb390ac23b"
+    },
+    {
+      "path": "python/ditserve/optimizations/next_chain.py",
+      "bytes": 14543,
+      "sha256": "41cc1bcce0862079b02746428493151d721cf1090821c6f7e0f12599b2ea56fe"
+    },
+    {
+      "path": "python/ditserve/optimizations/next_conditional.py",
+      "bytes": 24397,
+      "sha256": "aa6b1c3f3cc523cd4b32b16eaf9cf2b023164f00b0159e50d49ae25aafaeced2"
+    },
+    {
+      "path": "python/ditserve/optimizations/next_encoder.py",
+      "bytes": 4814,
+      "sha256": "57a56692267329b721a8f9b9b1e34513552260abca78835d69a3607624059d40"
+    },
+    {
+      "path": "python/ditserve/optimizations/next_finalize.py",
+      "bytes": 14204,
+      "sha256": "2abda6fcf27a244f0345a9dc353dd984e1a01e3b3b68cced1697d0068bce96a3"
+    },
+    {
+      "path": "python/ditserve/optimizations/next_followups.py",
+      "bytes": 4805,
+      "sha256": "151122a416c9baa187d67f178f51252615e9a83d4fd4dfcd012e288358e32bad"
+    },
+    {
+      "path": "python/ditserve/optimizations/next_numerics.py",
+      "bytes": 18525,
+      "sha256": "bc9ab96997c865be087be69745dc9a369dfd7eea236c91c5a8d829461bd6a958"
+    },
+    {
+      "path": "python/ditserve/optimizations/next_numerics_retry.py",
+      "bytes": 17414,
+      "sha256": "201de6e6af08731b7f20839647a83ce99250b490700fe6d4d201bd9d53a2fc52"
+    },
+    {
+      "path": "python/ditserve/optimizations/next_numerics_retry_report.py",
+      "bytes": 35059,
+      "sha256": "d2702cc510161a512622feefb476ced0366f770df3db5a49a29a46d820cb4699"
+    },
+    {
+      "path": "python/ditserve/optimizations/next_phases.py",
+      "bytes": 17885,
+      "sha256": "787bf10a661eb4d984c61b38dac9aaeb23c5e3e57e502b2934226136cca2438a"
+    },
+    {
+      "path": "python/ditserve/optimizations/next_protocol.py",
+      "bytes": 4242,
+      "sha256": "0fecf244a42bd1c7895516b4c728224211c845aeb70782e65d67a9b2d3866aef"
+    },
+    {
+      "path": "python/ditserve/optimizations/next_quick_amendment.py",
+      "bytes": 5156,
+      "sha256": "b51bc4cf69f7d6eae7811f328be51c195e18351d914cf5264423dbd2c554480a"
+    },
+    {
+      "path": "python/ditserve/optimizations/next_quick_report.py",
+      "bytes": 11146,
+      "sha256": "1af85704ece2835b8488b135a0707af7ecaa285ba5fb4e25a3c4745a5a0d16ca"
+    },
+    {
+      "path": "python/ditserve/optimizations/next_report.py",
+      "bytes": 59602,
+      "sha256": "18e76073688b0a25f0e1172fc42c472acf9ce98c4b45b2997f35fe3f25da55fe"
+    },
+    {
+      "path": "python/ditserve/optimizations/next_resume.py",
+      "bytes": 8907,
+      "sha256": "2d710dd94a18955ca38b779389b6ad21262d89cb118fe548832d150ab709b2c7"
+    },
+    {
+      "path": "python/ditserve/optimizations/next_retention.py",
+      "bytes": 30445,
+      "sha256": "73db60fef632a427e6ab8234b4a2be3ac96bd5924a26ec753482c1f800ed4add"
+    },
+    {
+      "path": "python/ditserve/optimizations/next_sana.py",
+      "bytes": 20089,
+      "sha256": "607283d6f2f439add9527d4769012278b1a78a2a7d9f015800337894e8e0bba8"
+    },
+    {
+      "path": "python/ditserve/optimizations/next_study.py",
+      "bytes": 22539,
+      "sha256": "c90470131f30fc79b3082484b6984542888bca2ec335f01b3193bc6cbdf73128"
+    },
+    {
+      "path": "python/ditserve/optimizations/next_workloads.py",
+      "bytes": 25062,
+      "sha256": "1a2d2fe7fd40d761ca3d868526fea5164dd208d320bf910867db2a1fc22db7e1"
+    },
+    {
+      "path": "python/ditserve/optimizations/online.py",
+      "bytes": 41570,
+      "sha256": "ade6ed164510381cd3302a0cfea682709dc948a024bcb575a99137a572f906b3"
+    },
+    {
+      "path": "python/ditserve/optimizations/protocol.py",
+      "bytes": 4678,
+      "sha256": "847c33e640630c2fe996c8c4c9da244fc69ceff085d22375654fe8c766e73464"
+    },
+    {
+      "path": "python/ditserve/optimizations/replay.py",
+      "bytes": 18403,
+      "sha256": "4eabdeb201589a0522f16f79e81c452bfc09e1756655839398b9d99a62172499"
+    },
+    {
+      "path": "python/ditserve/optimizations/reporting.py",
+      "bytes": 59544,
+      "sha256": "a97dca17a1ef4817d940e59c0698b1416c5f724f430533b0e9eb6213a9c792ea"
+    },
+    {
+      "path": "python/ditserve/optimizations/retention.py",
+      "bytes": 15317,
+      "sha256": "c953df1d957adb91b57c072056df551b8e3eee38d6796a15f91abf53c1eb2bf9"
+    },
+    {
+      "path": "python/ditserve/optimizations/runner.py",
+      "bytes": 17439,
+      "sha256": "e305b0674074e7432eeb68c69076306714c2189acd033f1d940d7c904d41f05b"
+    },
+    {
+      "path": "python/ditserve/optimizations/sana.py",
+      "bytes": 9353,
+      "sha256": "b4a8f2246c1ae4facb5f91482fc125fb08cc0bffe1b426b4e00c44ec1b05c2a4"
+    },
+    {
+      "path": "python/ditserve/optimizations/sana_phases.py",
+      "bytes": 22962,
+      "sha256": "0268aecc9f3a7613fbf8f8626d72885a8b9227331c911a2ead7e5fa4b12c0a85"
+    },
+    {
+      "path": "python/ditserve/optimizations/stage_phases.py",
+      "bytes": 27166,
+      "sha256": "83a40082791cf480792e56d189ed111d163811826d8d78d4d7c273ba71f12ecf"
+    },
+    {
+      "path": "python/ditserve/optimizations/supplement_budget.py",
+      "bytes": 14296,
+      "sha256": "8fd5215bf726d9eb5c269e85b662a580ff6b7d06821f1c26eb786e5cbff5a304"
+    },
+    {
+      "path": "python/ditserve/optimizations/wan.py",
+      "bytes": 11799,
+      "sha256": "6ac2da9367fc2c1379a9708c34df72699519e9cb3cc848445a3c194f3305580e"
+    },
+    {
+      "path": "python/ditserve/optimizations/wan_phases.py",
+      "bytes": 43233,
+      "sha256": "3fe1af6c23d34fbee70010a1e3c036e45225492e347f6a4de05c6d1677f32fea"
+    },
+    {
+      "path": "python/ditserve/optimizations/worker.py",
+      "bytes": 18264,
+      "sha256": "652e54e46023cacd625fe9d1d9cb4a939c51d2908a9764bd31d7b4eb63d07d8a"
+    },
+    {
+      "path": "python/ditserve/report.py",
+      "bytes": 3862,
+      "sha256": "7cc2b2e03c431f738f23c6cd371df597a56af05fe9f48d7959620456a30bbf5f"
+    },
+    {
+      "path": "python/ditserve/research/__init__.py",
+      "bytes": 217,
+      "sha256": "619ef5b8f27cb105a5b6326d1fde046fd76ba9ffbb1a48f9d7e7586e7f0d3d17"
+    },
+    {
+      "path": "python/ditserve/research/adapter.py",
+      "bytes": 7715,
+      "sha256": "5ffffd916235c9a6d8bf4ea4ca15855550a1b504cbb0a82cdb0add384f200dd6"
+    },
+    {
+      "path": "python/ditserve/research/budget.py",
+      "bytes": 8324,
+      "sha256": "bb2175700caaf83260cb458a651a140ee5af125f19ccec69a1eded5c364c4b78"
+    },
+    {
+      "path": "python/ditserve/research/cache_off_diagnostics.py",
+      "bytes": 16315,
+      "sha256": "8079ed6abd66a13399aada17e8ee73d24e244228faaf8d503e90789d1d34877b"
+    },
+    {
+      "path": "python/ditserve/research/cfg_adapter.py",
+      "bytes": 18256,
+      "sha256": "b119ccf63c0124ce5e4c37da130c7713ff29e38b0d3ba16161f8b15a3ee6ab54"
+    },
+    {
+      "path": "python/ditserve/research/cfg_continuation.py",
+      "bytes": 6427,
+      "sha256": "e711254f239357d873cdd8c6202fea2264256e3782680d92574cf5745a337b0a"
+    },
+    {
+      "path": "python/ditserve/research/cfg_cost_plan.py",
+      "bytes": 20367,
+      "sha256": "380f48764c9dd6330b6a7984fe5e8d391f56b144d0052307b4b7eb2b90f012e5"
+    },
+    {
+      "path": "python/ditserve/research/cfg_embeddings.py",
+      "bytes": 13193,
+      "sha256": "d1ec2331a6e1df5122c40d67bc5fcbd28da43e386512c50b1fafa75b7b33969c"
+    },
+    {
+      "path": "python/ditserve/research/cfg_empty_context.py",
+      "bytes": 6203,
+      "sha256": "4ebf5397117fcd288f556c3dd6cf68768ba7b159e95039cd757e2bdb72b747af"
+    },
+    {
+      "path": "python/ditserve/research/cfg_experiment.py",
+      "bytes": 21574,
+      "sha256": "f5bd95daabff3849edf35ec3c43f55bd56cc1ce5ea72cb35da9beae6ec1d8c6e"
+    },
+    {
+      "path": "python/ditserve/research/cfg_matrix.py",
+      "bytes": 19642,
+      "sha256": "9061add94deb911305e0e965bbc13a0e2fe40626d430755a9c0686b28c9df21d"
+    },
+    {
+      "path": "python/ditserve/research/cfg_migration.py",
+      "bytes": 16785,
+      "sha256": "784d579816ad73537f9080cc3a455b3595d49a32521da3de7b1ce6c2040f8139"
+    },
+    {
+      "path": "python/ditserve/research/cfg_policy.py",
+      "bytes": 3059,
+      "sha256": "67f143bdd22cf15ff1f93494cf52bb0acaadffbcddcb723d2d0a5f62fb1e473e"
+    },
+    {
+      "path": "python/ditserve/research/cfg_protocol.py",
+      "bytes": 4183,
+      "sha256": "5d8b5c0a69349ef4655352abe062e778129051cf19c8073c97e7ce48faffee06"
+    },
+    {
+      "path": "python/ditserve/research/cfg_refinement.py",
+      "bytes": 13848,
+      "sha256": "415ba8ec5a87248ea15650028285750ceb8fdb7f190d9c63d5271c6dd3c51a00"
+    },
+    {
+      "path": "python/ditserve/research/cfg_report.py",
+      "bytes": 37420,
+      "sha256": "f0153a322a49cc4e5f1bb2f2512d7eea7b015fee07814de213afd520e5dfa298"
+    },
+    {
+      "path": "python/ditserve/research/cfg_runner.py",
+      "bytes": 24675,
+      "sha256": "1fea47db3ce7dbfac13689ea64c4ac386483d0d91fcd75f24e546c76b73d5382"
+    },
+    {
+      "path": "python/ditserve/research/cfg_split_prefix.py",
+      "bytes": 13402,
+      "sha256": "f87452ab435cb92807551fd686a2cdb5581f9a9f5e19655e4fff6f971f59f053"
+    },
+    {
+      "path": "python/ditserve/research/common.py",
+      "bytes": 2223,
+      "sha256": "785135130578910bb05b2659aa0ae74c378cad803cab5e06fd9fdb00dd672b6c"
+    },
+    {
+      "path": "python/ditserve/research/cost_planning.py",
+      "bytes": 17487,
+      "sha256": "7bbf76436266ae59e0a3fa78d89f96dcd3f38863e9f3b446fdc7783c93dbcbb4"
+    },
+    {
+      "path": "python/ditserve/research/dual_budget.py",
+      "bytes": 18082,
+      "sha256": "3cebc911c20fc2a314926fe13419ef5b30103a60e9551aaf7a425669a8f8d479"
+    },
+    {
+      "path": "python/ditserve/research/dual_evidence.py",
+      "bytes": 9423,
+      "sha256": "cfe11616191b04d500e1dc855d54cff3749555c13798d36d176a8069be213616"
+    },
+    {
+      "path": "python/ditserve/research/dual_experiment.py",
+      "bytes": 39541,
+      "sha256": "787576df15fbada27af553a2e6f09d7726e8200b174c6f9a1fdbfdfe9a6cecd4"
+    },
+    {
+      "path": "python/ditserve/research/dual_matrix.py",
+      "bytes": 14120,
+      "sha256": "fce9c5c5bdf658ec5df972855cad4fdaf92a33e1e21f373e9a73e2e9bc7ee24b"
+    },
+    {
+      "path": "python/ditserve/research/dual_protocol.py",
+      "bytes": 18146,
+      "sha256": "66e5e7aa8b8f1f8490c35cb2e7590a6a5c965369442d50d4dc6a2836483a1bdc"
+    },
+    {
+      "path": "python/ditserve/research/dual_report.py",
+      "bytes": 19143,
+      "sha256": "0ead5b1f9d6e752d80cfca3605fe586bd1c62be00c475209ded707974b3c20e4"
+    },
+    {
+      "path": "python/ditserve/research/dual_runner.py",
+      "bytes": 25755,
+      "sha256": "677115049af41c7bc2f134efbf873db3f1bd3b0493b86c8e2e33cfc7114594ad"
+    },
+    {
+      "path": "python/ditserve/research/dual_runtime.py",
+      "bytes": 21900,
+      "sha256": "e6a71f5a81f9bc77969db213f0a43e5ecceafafd8166192e60115665af3ca807"
+    },
+    {
+      "path": "python/ditserve/research/dual_state.py",
+      "bytes": 31831,
+      "sha256": "259db7b4658c976dc5a33fd0771d52faf2f2d6e2c543f382e1a9f2c34cc6288c"
+    },
+    {
+      "path": "python/ditserve/research/evidence.py",
+      "bytes": 22057,
+      "sha256": "5ad6a704ff5fd06ce87607b23c6334f11b05aaad5dd03bc99358c66bc3b242a8"
+    },
+    {
+      "path": "python/ditserve/research/experiment.py",
+      "bytes": 37121,
+      "sha256": "93f0cc5188362402096e7e3e7af0fa523aff6481229e81884ac9d02c5a43eb13"
+    },
+    {
+      "path": "python/ditserve/research/isolation.py",
+      "bytes": 5680,
+      "sha256": "7d0efc6581fec96fb24c148ee6d71aadfb59b34d37a5ffc86701d669775b4ae1"
+    },
+    {
+      "path": "python/ditserve/research/matrix.py",
+      "bytes": 21871,
+      "sha256": "449c21d0dc1031b4ed573fc2431d74b68bc465822a99ae7e898e61d41b3158eb"
+    },
+    {
+      "path": "python/ditserve/research/memory_experiment.py",
+      "bytes": 9585,
+      "sha256": "3f2587d604b5261d073156aae0288e0c6e46466b55c605221e8e80cda218827b"
+    },
+    {
+      "path": "python/ditserve/research/migration_diagnostic_cost.py",
+      "bytes": 14719,
+      "sha256": "94f89074fadfcd9860fb37ad1bfb6509f0816f3f54f9383eee53f9842f270050"
+    },
+    {
+      "path": "python/ditserve/research/migration_diagnostic_experiment.py",
+      "bytes": 13615,
+      "sha256": "73ea96d7af367ecebfefda15c9359b1a7b9ab86c3d9802eaaa201382719decdb"
+    },
+    {
+      "path": "python/ditserve/research/migration_diagnostic_protocol.py",
+      "bytes": 16977,
+      "sha256": "3c0c735e5fd07640a0f90bbb75a164ccbe8d2c677a00bad57ca72ab0f6c8dc28"
+    },
+    {
+      "path": "python/ditserve/research/migration_diagnostic_report.py",
+      "bytes": 20790,
+      "sha256": "3ad2a9fb62ebd9f6b66a227dae6b17b7854e6b005ef96e5cc9a7d44dc61fea27"
+    },
+    {
+      "path": "python/ditserve/research/migration_diagnostic_runner.py",
+      "bytes": 16266,
+      "sha256": "40e28c80c189c5e30a69bb10fa524cdf62ffb86f2262202faea1fbb3e055083f"
+    },
+    {
+      "path": "python/ditserve/research/parallel.py",
+      "bytes": 45225,
+      "sha256": "f9751b8c05b2793de5c6d2af04c4978da5a65594c445dfa8305d489dd4e7ab4e"
+    },
+    {
+      "path": "python/ditserve/research/preflight.py",
+      "bytes": 6668,
+      "sha256": "07aa4d6b9aaabecf4bd4830b720d937118dc8783391ac43fe13b05b7dca9e8b8"
+    },
+    {
+      "path": "python/ditserve/research/prompt_bank.py",
+      "bytes": 2921,
+      "sha256": "c554a5b93ea3fc42b6a770eadf384f0fe5e7ee6a6d8d4044e7d906e2ed078c99"
+    },
+    {
+      "path": "python/ditserve/research/protocol.py",
+      "bytes": 7912,
+      "sha256": "2be241c97159f0fac2c83aa33ebe8a7016861aa0d2133b6233dc233c22d8370d"
+    },
+    {
+      "path": "python/ditserve/research/report.py",
+      "bytes": 18100,
+      "sha256": "c37a072072df3e0a733ff4d6fa6e256d845f2942fba24f28012a3211bd436a96"
+    },
+    {
+      "path": "python/ditserve/research/retention.py",
+      "bytes": 49220,
+      "sha256": "207d15a84b9a331eafaaa661a6cdb34b8c400cc2ce5b2aef74846d12fc174b10"
+    },
+    {
+      "path": "python/ditserve/research/runner.py",
+      "bytes": 16894,
+      "sha256": "9ec55307ba6c60384e5679c93bc7ff4d97dda837d85e62b98ab772fb9cae5a29"
+    },
+    {
+      "path": "python/ditserve/research/sp_backend.py",
+      "bytes": 11744,
+      "sha256": "8a6a2c51acc3afd4a01e40fde53c212cdb5ad557c5479868c78db1a8d09b9836"
+    },
+    {
+      "path": "python/ditserve/research/sp_experiment.py",
+      "bytes": 39437,
+      "sha256": "fb99e384193dbaf1cf3a650d828d2b4fb3034fed6e1b014703a00beadcd20001"
+    },
+    {
+      "path": "python/ditserve/research/state.py",
+      "bytes": 21221,
+      "sha256": "a00eadf335c867598cc7c27f34e4a5af1c5e36789d7bb1bcf0eca8e7102ab8f1"
+    },
+    {
+      "path": "python/ditserve/research/storage.py",
+      "bytes": 4705,
+      "sha256": "7ab4e84ef349fa91bba4a74f617a2b92b37325db9d475ac2f1b2aa9a452cfb5f"
+    },
+    {
+      "path": "python/ditserve/result_storage.py",
+      "bytes": 2317,
+      "sha256": "bb2ad7bea98dd79d2fb4554caa1bcc411eb02dec4b57a617155ae81e2bb7a7aa"
+    },
+    {
+      "path": "python/ditserve/scheduling/__init__.py",
+      "bytes": 83,
+      "sha256": "c626f5236ccf4467b097bca4a29659d8922cf7a99c314d837d5f999aed43afd3"
+    },
+    {
+      "path": "python/ditserve/scheduling/arrivals.py",
+      "bytes": 1931,
+      "sha256": "b3091a8809457059f7d206cc3ce5739c3eb824e40d0ee20d3129ca88706640c6"
+    },
+    {
+      "path": "python/ditserve/scheduling/budget.py",
+      "bytes": 6210,
+      "sha256": "bcd4af45ac936fe8d57b81a4e5046b027b8b38a541b80e4e35a56825adef3744"
+    },
+    {
+      "path": "python/ditserve/scheduling/execution.py",
+      "bytes": 34349,
+      "sha256": "ca5b79327ea44862d44fdffff0f4a5d934b18af0fa119bf044cafbb5e11624c0"
+    },
+    {
+      "path": "python/ditserve/scheduling/legacy.py",
+      "bytes": 19529,
+      "sha256": "274a0c045f404af1779d009ec91e169694d9164a64b08461404059f744aa4abb"
+    },
+    {
+      "path": "python/ditserve/scheduling/legacy_bridge.py",
+      "bytes": 6606,
+      "sha256": "d6a36c895114d5fc33421191116d18fbeb7d0ceb3d2a3969893ece34a4c7e351"
+    },
+    {
+      "path": "python/ditserve/scheduling/next_budget.py",
+      "bytes": 6026,
+      "sha256": "b41e928d513fdddaa8e947e7ecc912ac84ccd3936a31a89c8dbfb6e3b76fcc92"
+    },
+    {
+      "path": "python/ditserve/scheduling/next_execution.py",
+      "bytes": 15399,
+      "sha256": "870b8a4f1b22ed82996b89920099c22cb933973343e669b1b0736d515e181200"
+    },
+    {
+      "path": "python/ditserve/scheduling/next_persistence.py",
+      "bytes": 6535,
+      "sha256": "b2cd78be9b9638ca4bd346c1163f4dc4f55c53993bf6fcaee60a3fbb402bb772"
+    },
+    {
+      "path": "python/ditserve/scheduling/next_policy.py",
+      "bytes": 903,
+      "sha256": "69cbdc18bd24f327d66a574eca09f255bc6c00b153ab11a21fa27d3bd0e593dd"
+    },
+    {
+      "path": "python/ditserve/scheduling/next_reporting.py",
+      "bytes": 30370,
+      "sha256": "5adf73de998be9273cae5a4a1bb91f557db5208263cc724bd92152aac1bc807b"
+    },
+    {
+      "path": "python/ditserve/scheduling/next_runner.py",
+      "bytes": 16651,
+      "sha256": "6bb6851c75f3df2d7bdab87c7de49dfc59e743140c05a7d668c67bdd33459db6"
+    },
+    {
+      "path": "python/ditserve/scheduling/next_study.py",
+      "bytes": 12529,
+      "sha256": "c7c30b60530459f720e284a2522668252b6b554abc30369814915f06d3fbd204"
+    },
+    {
+      "path": "python/ditserve/scheduling/next_worker.py",
+      "bytes": 6785,
+      "sha256": "08e169eba4f7d5c096ddec8faea969858110d2b91970ba9cb7877fa196a07a68"
+    },
+    {
+      "path": "python/ditserve/scheduling/policy.py",
+      "bytes": 7368,
+      "sha256": "ddd6ddd179ab4b6670269161c6768d0fc7ca6fe09fb77e1a8e003d12e6a9b262"
+    },
+    {
+      "path": "python/ditserve/scheduling/reporting.py",
+      "bytes": 23097,
+      "sha256": "ffa63f9a75191218a3e0f911ce8fd40ee980fd10f638cd6e85efa2dd3258ccdf"
+    },
+    {
+      "path": "python/ditserve/scheduling/runner.py",
+      "bytes": 18887,
+      "sha256": "cacc9dad6cc38f65be94b8c1390fd0f150a72e90a2d5ec04f20430152f3544a6"
+    },
+    {
+      "path": "python/ditserve/scheduling/runtime.py",
+      "bytes": 3072,
+      "sha256": "847b1f8b61013d280b26d6c1d83d2703807d0053f6bffbddac8ae7be39e1f66a"
+    },
+    {
+      "path": "python/ditserve/scheduling/study.py",
+      "bytes": 15539,
+      "sha256": "2322734d24ee1490d26075551a37fdf653576d4eb5a2105625007b64a578b089"
+    },
+    {
+      "path": "python/ditserve/scheduling/worker.py",
+      "bytes": 6402,
+      "sha256": "15f4742be19f3d4e38203bff59fe51dd49875d0d31bcfb7ecb0b6816209e0dcc"
+    },
+    {
+      "path": "python/ditserve/scheduling/workload.py",
+      "bytes": 3063,
+      "sha256": "2184abe97ed2eddb7a94fd9345f3f986c1520a886549819a1850af5a7318a598"
+    },
+    {
+      "path": "python/ditserve/sessions/budget.py",
+      "bytes": 6389,
+      "sha256": "f611a4284cb7b88eb3fe24182c0865359bf9192edf9104c4efaa37543e3021ca"
+    },
+    {
+      "path": "python/ditserve/sessions/execution.py",
+      "bytes": 27877,
+      "sha256": "287f9fc0d38e0dd83270b81e80f3166ab5ac9cba778caf5fdd5d8954a90ca717"
+    },
+    {
+      "path": "python/ditserve/sessions/policy.py",
+      "bytes": 2118,
+      "sha256": "15546d5dcfad03de2de63b1c88ece55d65038a8995720714e2330a800dbcfc72"
+    },
+    {
+      "path": "python/ditserve/sessions/reporting.py",
+      "bytes": 35577,
+      "sha256": "073e16b1dab5b229094c5084c8867a81a365afedebaa517b6fdb442e4dea8b5b"
+    },
+    {
+      "path": "python/ditserve/sessions/runner.py",
+      "bytes": 24364,
+      "sha256": "6cd5412b4ce201259a90a83a3cdb7ce8f5e77949b7c21591b796ae4d6c23919f"
+    },
+    {
+      "path": "python/ditserve/sessions/runtime.py",
+      "bytes": 27288,
+      "sha256": "56f4a0d84a94a29c97304c68456dd4ada3819c3232c4dff86b7bc7d9ff38b451"
+    },
+    {
+      "path": "python/ditserve/sessions/state.py",
+      "bytes": 18823,
+      "sha256": "d5adcac0cac6aeda1f333a40e51f91913e0a2b9b26f0fc9ba726a32f52affcc1"
+    },
+    {
+      "path": "python/ditserve/sessions/study.py",
+      "bytes": 25734,
+      "sha256": "b5b6c02829f57a0aef31c9ef3a01c26762511d1e15f561b30ed3844a4757b7f5"
+    },
+    {
+      "path": "python/ditserve/sessions/worker.py",
+      "bytes": 7379,
+      "sha256": "6a77f07bfa2868105d1855ff72b5f5c29c11e26c120b9d12ab409c175ea6b72f"
+    },
+    {
+      "path": "python/ditserve/sessions/workload.py",
+      "bytes": 5926,
+      "sha256": "4fb095a7091547b598156d5227202ce544a15cb7bce38653722f06c42d934d44"
+    },
+    {
+      "path": "python/ditserve/util.py",
+      "bytes": 2141,
+      "sha256": "5c4b6905fbc1452548c6d97454474ccaad7f997de94e58f714bff1c33f18d485"
+    },
+    {
+      "path": "python/ditserve/workload.py",
+      "bytes": 1069,
+      "sha256": "64ffd0228fb8ba98bd7959f85176de463881f6eef69109a7af865d8e617de026"
+    },
+    {
+      "path": "src/ditserve/backend.cpp",
+      "bytes": 9180,
+      "sha256": "e121e4bbc3b56cd0473258faa3e52dd05f06e8ee65f404729359b35cf32f9c3e"
+    },
+    {
+      "path": "src/ditserve/cost.cpp",
+      "bytes": 4227,
+      "sha256": "5429b15cb399850da5eea0acdbc8fe1523851969124705dc43d0f4470ba42433"
+    },
+    {
+      "path": "src/ditserve/metrics.cpp",
+      "bytes": 4285,
+      "sha256": "3880b2e3957741315aecd31bce1f543fe6b4d821f8ca9cb6a4864eeeaac5b41a"
+    },
+    {
+      "path": "src/ditserve/policies.cpp",
+      "bytes": 602,
+      "sha256": "34414c8d5cd917085f3b9c3f03c00b4ae3b11cdea18bf7ef452b448c3e111064"
+    },
+    {
+      "path": "src/ditserve/policy.cpp",
+      "bytes": 1111,
+      "sha256": "c158df175595da6c1370357f635fc0a7945a0ea78f1b3ad4ed0b4e6bffd27363"
+    },
+    {
+      "path": "src/ditserve/random.cpp",
+      "bytes": 2063,
+      "sha256": "e74f54d62f42bdf3a8fd3dda7e7b2ceca34823c16f82352f183f47a24c363f09"
+    },
+    {
+      "path": "src/ditserve/runtime.cpp",
+      "bytes": 19886,
+      "sha256": "a8fcd867093d169773b57f67c5057dc1639a4bdad3d2af9e6e89bc6546403b33"
+    },
+    {
+      "path": "src/ditserve/types.cpp",
+      "bytes": 5185,
+      "sha256": "c290131a49fe4551a036b25eabea3741977a1feb243e9ddddac2dd2496142c22"
+    },
+    {
+      "path": "src/ditserve/workload.cpp",
+      "bytes": 3701,
+      "sha256": "c571b1faf0a90333c9748fda0372881455e6e91771b5d6f471a72563b0cfb4f6"
+    },
+    {
+      "path": "tests/core/test_core.cpp",
+      "bytes": 15298,
+      "sha256": "cb2bbd8ea8aa8cd7f1ac073df8f5d9fbb6728853f5898a3a5561e0954b0414e4"
+    },
+    {
+      "path": "tests/fixtures/python-core-baseline.json",
+      "bytes": 229330,
+      "sha256": "1dc45c1b676c5732458b1179289cfd575171770017c2b0fbbeb59b51fc994500"
+    },
+    {
+      "path": "tests/python/test_api.py",
+      "bytes": 4538,
+      "sha256": "1640827b6b213a2b7c1d682cfdfcfeb0bfef92f03010447325f9d750fb66ce1c"
+    },
+    {
+      "path": "tests/python/test_archive.py",
+      "bytes": 4222,
+      "sha256": "60ec57cdbe4febc5baf7fb562405d8a1320e703b38dd1d46569d6607e0d5543b"
+    },
+    {
+      "path": "tests/python/test_backend_quality.py",
+      "bytes": 3298,
+      "sha256": "a8ef2b5fc64bbe7d0864e04640f8efcb142c3f8e887128e2035f3f524f894144"
+    },
+    {
+      "path": "tests/python/test_benchmark_backends.py",
+      "bytes": 6673,
+      "sha256": "01ef20eb4ec100b9403ed306d10aceae4a55517075cc55159b6b94aef47aae18"
+    },
+    {
+      "path": "tests/python/test_benchmark_budget.py",
+      "bytes": 3009,
+      "sha256": "dc90638e48dcac0cf6c575eb1b959d744f8db3ae50d41dc3fe29eb400015ac0b"
+    },
+    {
+      "path": "tests/python/test_benchmark_cli.py",
+      "bytes": 4741,
+      "sha256": "e08604172aae7565c8c4e7f39f5bcdc8b90a5eebade9f32b7b75237b1ba33bc0"
+    },
+    {
+      "path": "tests/python/test_benchmark_data.py",
+      "bytes": 12348,
+      "sha256": "f34404d89a8f7b6039b55f7f21f7ca71e10549b4390294fd8967d0ad3b2dce1d"
+    },
+    {
+      "path": "tests/python/test_benchmark_evaluation.py",
+      "bytes": 14055,
+      "sha256": "4208c3b87015e59b8d3e1dc9db34c8d905af79979fddd7f895605204391008ec"
+    },
+    {
+      "path": "tests/python/test_benchmark_optimization.py",
+      "bytes": 16727,
+      "sha256": "b1c72cfcae170269fb907eaaa12dc92c4125df3a7b073734b0bdfc0f74141812"
+    },
+    {
+      "path": "tests/python/test_benchmark_prefetch.py",
+      "bytes": 10119,
+      "sha256": "3ce24609d951b7d1b07136142eb9d5eb294e516f80e1f0ddec712b386095d5e7"
+    },
+    {
+      "path": "tests/python/test_benchmark_protocols.py",
+      "bytes": 10497,
+      "sha256": "5b470bbacc1774a383684fe7b381e03f31c225b8dcd8e18ca8b63f663585466a"
+    },
+    {
+      "path": "tests/python/test_benchmark_reporting.py",
+      "bytes": 11396,
+      "sha256": "1aa37c881e7ee16dcddde6cecbda600e6a585e1d861b6d66f98dccf9b7393c90"
+    },
+    {
+      "path": "tests/python/test_benchmark_runner.py",
+      "bytes": 13502,
+      "sha256": "9709c55009c5e68ae324796daf8caf15670192f3988894a38879aeaaba850c66"
+    },
+    {
+      "path": "tests/python/test_benchmark_workload.py",
+      "bytes": 9459,
+      "sha256": "566e096c789b9d4006588b3b76e6365ebc355257b5d5f46b5c1420ea80e74dc6"
+    },
+    {
+      "path": "tests/python/test_cli.py",
+      "bytes": 3351,
+      "sha256": "c8e3cfbb29527f812de7b0e0b09d61e6e1513c2761d72428ceefeb37cb8b1d62"
+    },
+    {
+      "path": "tests/python/test_compact_cli.py",
+      "bytes": 2068,
+      "sha256": "c0ee03aba9bdf86ce571093f0ac7591798db0bae21fe6224c1d7e83d77143c5c"
+    },
+    {
+      "path": "tests/python/test_compact_results.py",
+      "bytes": 14109,
+      "sha256": "66c6a6a2e728492ecadb333e57ed6b4cb5004fda3c055b1325e49189ddfe5d9e"
+    },
+    {
+      "path": "tests/python/test_core_bridge.py",
+      "bytes": 2713,
+      "sha256": "9fa7e9e5ffec494b70502161e75c59073c85688c37b0cbff898e0b9ee879f35f"
+    },
+    {
+      "path": "tests/python/test_directions_blind.py",
+      "bytes": 9923,
+      "sha256": "28f8e5fe5d11577ca0db599b55d5b74620f193c39d32d1f03cf6d1a544d4072c"
+    },
+    {
+      "path": "tests/python/test_directions_block_executor.py",
+      "bytes": 11195,
+      "sha256": "2521f97be2e46898c8acea0b768411b16f5a9b0630d21329e765d442280c6fea"
+    },
+    {
+      "path": "tests/python/test_directions_budget.py",
+      "bytes": 4133,
+      "sha256": "d80cb20bb218c074c3b2ff860599e0034357fab48ff6366b7b36763fb379ed12"
+    },
+    {
+      "path": "tests/python/test_directions_d1.py",
+      "bytes": 10199,
+      "sha256": "b1460b338df3959d2fb83ea984f5141e71e8edad1ec3f99843a115656a51e0e0"
+    },
+    {
+      "path": "tests/python/test_directions_d2.py",
+      "bytes": 26498,
+      "sha256": "be8e0ef24df8d7943ad1aa0b7e49d24d19de297629a0aa13e44e5e63fb8c8e54"
+    },
+    {
+      "path": "tests/python/test_directions_d2_costs.py",
+      "bytes": 14234,
+      "sha256": "6759155bd858a81835390ca7636985c4a8e11f1e92fba3a45146a42a7bc8bd77"
+    },
+    {
+      "path": "tests/python/test_directions_d3.py",
+      "bytes": 18935,
+      "sha256": "9555a1d2535606f7cee30bf3f84dead6cee6efdfc07fd05527f47c5f4de1dab5"
+    },
+    {
+      "path": "tests/python/test_directions_d3_memory.py",
+      "bytes": 6714,
+      "sha256": "21ca01e1e262ae06e56c7e65b9d1b676b243db6c98bf6885671aa9a40631a58c"
+    },
+    {
+      "path": "tests/python/test_directions_media.py",
+      "bytes": 21213,
+      "sha256": "4350d3c2845ad54e7d0b755633499414dbb1c262809c0b9650c2e31a1d7ec788"
+    },
+    {
+      "path": "tests/python/test_directions_protocol.py",
+      "bytes": 1511,
+      "sha256": "1eeed637bcddf37bbb36487f1dba720954a77ad31f15fae689293822f95615d1"
+    },
+    {
+      "path": "tests/python/test_directions_reporting.py",
+      "bytes": 43091,
+      "sha256": "a0e4c8f87d12e17eacff046ae4ef7738084ab43b8a18c098656b3780e0e79d5a"
+    },
+    {
+      "path": "tests/python/test_directions_runner.py",
+      "bytes": 19223,
+      "sha256": "6c6e30caee1ac07cc37e691e5262653b0a3d6ac12a43053a1c91d9da1e202fea"
+    },
+    {
+      "path": "tests/python/test_directions_streaming.py",
+      "bytes": 10883,
+      "sha256": "8d606cc7225bffc9d632bdaad6b0b29e534ca5ddbf450726e56b31ff3fb84bb4"
+    },
+    {
+      "path": "tests/python/test_directions_supervisor_integration.py",
+      "bytes": 9926,
+      "sha256": "a176ca2853175b01898a4ff588f369f7542e8a25fb947c19ecb6b107f7ed0bc6"
+    },
+    {
+      "path": "tests/python/test_directions_worker.py",
+      "bytes": 6744,
+      "sha256": "a3e8fc7a27d315cca9deb088d11d4eacce0f9d9bf39a1180f146370882ccf99d"
+    },
+    {
+      "path": "tests/python/test_optimizations_budget.py",
+      "bytes": 3267,
+      "sha256": "a033838b1dba473831a2a39d4d5f2ed7ab34bd91e0cb19031fe72289a0cd1cce"
+    },
+    {
+      "path": "tests/python/test_optimizations_cache_archive_view.py",
+      "bytes": 9907,
+      "sha256": "8dfb4f373df8856bc2fd040e975ef58f000fbe0304b9b4b61307ddfe549c905d"
+    },
+    {
+      "path": "tests/python/test_optimizations_cache_executor.py",
+      "bytes": 14943,
+      "sha256": "bfbd4eb15d4d618a71d499634ecc22bd4b82504c324ec971b7dce3993469b5e9"
+    },
+    {
+      "path": "tests/python/test_optimizations_cache_followup.py",
+      "bytes": 9287,
+      "sha256": "2373f706e149fd3c4cd733096bdcebd8627fdadb6b6e54d1cd638f6265e5cd07"
+    },
+    {
+      "path": "tests/python/test_optimizations_cache_followup_report.py",
+      "bytes": 21608,
+      "sha256": "78e870b6c0535768a49e522830acada3256a00afa0812afb5dfa5578befa501d"
+    },
+    {
+      "path": "tests/python/test_optimizations_cache_online.py",
+      "bytes": 19741,
+      "sha256": "b40f17d7f7fb5ca442ada122e8af6b1fb67279dfa93aadc03f40f771e20736cc"
+    },
+    {
+      "path": "tests/python/test_optimizations_cache_replay.py",
+      "bytes": 16798,
+      "sha256": "f52471d8d5a0792012e9f8ad3e5def838fc255177b88d4cbef84cab0aea62452"
+    },
+    {
+      "path": "tests/python/test_optimizations_followup_finish.py",
+      "bytes": 8477,
+      "sha256": "7d0a1de5732f8472275150b995ed7be4d99bbf43db937849d142f3908d65ab19"
+    },
+    {
+      "path": "tests/python/test_optimizations_followup_queue.py",
+      "bytes": 10584,
+      "sha256": "3eb508d9b6f8dd449e2abf470bed1c0d48317c378317b1ca63e62eb0a35f4471"
+    },
+    {
+      "path": "tests/python/test_optimizations_followup_report.py",
+      "bytes": 17273,
+      "sha256": "dd148675e142415dba58711631de1e8da053182bd5136fccbbc8c1c485026084"
+    },
+    {
+      "path": "tests/python/test_optimizations_followup_sana.py",
+      "bytes": 11432,
+      "sha256": "6b4a20b6c13147482601e38e243d818a71d8d1b33029638675dfadf45fc1c567"
+    },
+    {
+      "path": "tests/python/test_optimizations_followup_study.py",
+      "bytes": 7955,
+      "sha256": "394ddeca46186694209c9b9b17bef4d7189d06dfd18282401c3c804233646c9f"
+    },
+    {
+      "path": "tests/python/test_optimizations_followup_supervisor.py",
+      "bytes": 15493,
+      "sha256": "f659ffdf4da7420ec78e4b9caa9b25c6ee082485196fa5d23ee32c3acefe17d8"
+    },
+    {
+      "path": "tests/python/test_optimizations_inheritance.py",
+      "bytes": 15292,
+      "sha256": "4d8e2961f5cfb21aabb824bcdfa1a00c1b61c32ee6d7455e197d2667d8dc0d6d"
+    },
+    {
+      "path": "tests/python/test_optimizations_next_audit.py",
+      "bytes": 42553,
+      "sha256": "723a0b925214a19894d7f1986e99df87aadbe1378f8305bf9de39534ed8d8cf0"
+    },
+    {
+      "path": "tests/python/test_optimizations_next_budget.py",
+      "bytes": 26690,
+      "sha256": "8ef1bfb9980d214ae8c4ccb4dedf326da07110d8b25dd557610b046e6ed9b059"
+    },
+    {
+      "path": "tests/python/test_optimizations_next_candidate_failures.py",
+      "bytes": 10022,
+      "sha256": "36290cf60e56cb2ba2db7f90ce4f9958f6c683b95a06c93abe74343af49b9b64"
+    },
+    {
+      "path": "tests/python/test_optimizations_next_chain.py",
+      "bytes": 11505,
+      "sha256": "352fb279b4367f7a7f5aa4db0037a29f33475c63f4b853a7df7a01431e2b74e7"
+    },
+    {
+      "path": "tests/python/test_optimizations_next_conditional.py",
+      "bytes": 20623,
+      "sha256": "6ba03c59c0649d967b92db2afd0122f5ca9f5c7f82020400730073c0270e2909"
+    },
+    {
+      "path": "tests/python/test_optimizations_next_encoder.py",
+      "bytes": 5551,
+      "sha256": "78f5f8f665e1dcfbccdeeec9a923e0760076a515602d9dc7e2fa88dc67a846f4"
+    },
+    {
+      "path": "tests/python/test_optimizations_next_finalize.py",
+      "bytes": 13709,
+      "sha256": "3c99ea53562733185863069890d556b24bcb86987e55a81488e92849a7f78cfd"
+    },
+    {
+      "path": "tests/python/test_optimizations_next_followups.py",
+      "bytes": 5770,
+      "sha256": "923f3d8b5d922142a189f9bb71cd6a609765ae745e87b56f7e52ec5036a44d94"
+    },
+    {
+      "path": "tests/python/test_optimizations_next_numerics.py",
+      "bytes": 16573,
+      "sha256": "2ac659a384320d5dd5dcc0f7136c29480401269c15473be1c627fb30bb4b25ca"
+    },
+    {
+      "path": "tests/python/test_optimizations_next_numerics_retry.py",
+      "bytes": 16325,
+      "sha256": "dfe3095b03cc882a2870d06546534f55cd1b60fa1428a3737cda1a4077ded66a"
+    },
+    {
+      "path": "tests/python/test_optimizations_next_numerics_retry_report.py",
+      "bytes": 21242,
+      "sha256": "dcb87666915f817e28a67231432106004f2a1c4f1134c3d270ef845d35dc0196"
+    },
+    {
+      "path": "tests/python/test_optimizations_next_phases.py",
+      "bytes": 6335,
+      "sha256": "14114024e0cf22041f317f775a6c14a2a9cf303c07f3abb0e001e95281f2b3f0"
+    },
+    {
+      "path": "tests/python/test_optimizations_next_quick_amendment.py",
+      "bytes": 7339,
+      "sha256": "f700c9df5f5d79e3259028658d9b80abef0033ed5b1bd95014a351fc8c4ee112"
+    },
+    {
+      "path": "tests/python/test_optimizations_next_quick_report.py",
+      "bytes": 6753,
+      "sha256": "96f3901976f0ce94c269a531145843b15c8894115f4c35597136ddfe90692e66"
+    },
+    {
+      "path": "tests/python/test_optimizations_next_quick_workloads.py",
+      "bytes": 6588,
+      "sha256": "ed6c573c41bb53d503e7ef2b3382255068e2449a585974618ec1c791fe0783e3"
+    },
+    {
+      "path": "tests/python/test_optimizations_next_report.py",
+      "bytes": 39741,
+      "sha256": "6f3c6fefd0eb3f591d973be13a126cb86ff1819d1ae75d244dfd776fcc183ceb"
+    },
+    {
+      "path": "tests/python/test_optimizations_next_resume.py",
+      "bytes": 13236,
+      "sha256": "b9c0b2b702756f3270322db1eb0b43f845c842d6203429ba03d525ca871dceb3"
+    },
+    {
+      "path": "tests/python/test_optimizations_next_retention.py",
+      "bytes": 20350,
+      "sha256": "672a8256aa0a7db0c264a54d74ea9fa2e73130ba28d683102207d14996e7ff27"
+    },
+    {
+      "path": "tests/python/test_optimizations_next_sana.py",
+      "bytes": 21435,
+      "sha256": "34a5eee9913bdd6d62a650e68881088d096840ebba2e11920ef02525558cc415"
+    },
+    {
+      "path": "tests/python/test_optimizations_next_study.py",
+      "bytes": 4282,
+      "sha256": "d27ea26c9ead82a093e7b2064cabe3c26a8912a6f5da33d4280fe00bccb10d34"
+    },
+    {
+      "path": "tests/python/test_optimizations_next_supervisor.py",
+      "bytes": 20467,
+      "sha256": "4d44c9e555b7e7f84a163ab10e2f05c75670f4ed3f473724171335f87f71196e"
+    },
+    {
+      "path": "tests/python/test_optimizations_next_workloads.py",
+      "bytes": 18993,
+      "sha256": "e051bf57604314b92d62e182448e2ddcff12094c2585e90daebca24a118a0b5e"
+    },
+    {
+      "path": "tests/python/test_optimizations_online.py",
+      "bytes": 37003,
+      "sha256": "c28d9fe21eaf7e449ccc606414c763574c5446aca009b4547578195d46c36704"
+    },
+    {
+      "path": "tests/python/test_optimizations_replay.py",
+      "bytes": 18580,
+      "sha256": "6b72aa301f03cddbe8c29c0b70a16927d6b622e40fe15e2a222e741224e5b13a"
+    },
+    {
+      "path": "tests/python/test_optimizations_reporting.py",
+      "bytes": 55762,
+      "sha256": "54e4ec4d702168db7036d6ad656582f6f55d89f8db54151ca27bba0f7277ae8e"
+    },
+    {
+      "path": "tests/python/test_optimizations_retention.py",
+      "bytes": 10209,
+      "sha256": "670d1038933bdf37115d3d19cdebc20accbc686807db963faa69202e72450f4b"
+    },
+    {
+      "path": "tests/python/test_optimizations_runner.py",
+      "bytes": 24483,
+      "sha256": "25ad046fcada7a4fecd25d828a4392b1d90c5fe819fef1feefba2f4df198a4b2"
+    },
+    {
+      "path": "tests/python/test_optimizations_sana.py",
+      "bytes": 8822,
+      "sha256": "a9fcd5eacd530f4df8798f7c4f3f77d009b591ad5b6094355ee0fbcf55837b86"
+    },
+    {
+      "path": "tests/python/test_optimizations_sana_phases.py",
+      "bytes": 9576,
+      "sha256": "ea1e66e3d780e3ad0e245e6f607131d5eaa7483e6edd8cc313dac06d21b23a62"
+    },
+    {
+      "path": "tests/python/test_optimizations_stages.py",
+      "bytes": 24647,
+      "sha256": "9ac46a813fe501a78ab6c0348a0c94c26965ef535ab6f86bb8674da60464d59a"
+    },
+    {
+      "path": "tests/python/test_optimizations_supplement_budget.py",
+      "bytes": 17116,
+      "sha256": "ab1b7e9e93939013deebbbd99d7a2a582c1fbf01e6817bc4aaa42be9d377e368"
+    },
+    {
+      "path": "tests/python/test_optimizations_wan.py",
+      "bytes": 11359,
+      "sha256": "9ced6a39dae590572f355173f26f757c7c4fefe09cc1fb22de12bb2024d659a1"
+    },
+    {
+      "path": "tests/python/test_optimizations_wan_online.py",
+      "bytes": 2804,
+      "sha256": "560f61390e6403fb60bc0dfde7c09d463f251cb7bf15e4d890cb12a7134576e5"
+    },
+    {
+      "path": "tests/python/test_optimizations_wan_phases.py",
+      "bytes": 32352,
+      "sha256": "1c53160c46d1020aff65d95e470b4ce35a19e1c2c750c67014aef492d2b8fd18"
+    },
+    {
+      "path": "tests/python/test_optimizations_wan_runtime.py",
+      "bytes": 5615,
+      "sha256": "eda8a575daba22042de9d147cc6e72c863bb50e76d5d70c194b786d12e79f6fb"
+    },
+    {
+      "path": "tests/python/test_phase_conflict_runner.py",
+      "bytes": 40044,
+      "sha256": "5256edf5c618aaaf3c1ceccffe891b30b10a23e1bac2b28c41e5ae71bf3eb3cc"
+    },
+    {
+      "path": "tests/python/test_phase_conflict_summary.py",
+      "bytes": 26694,
+      "sha256": "036ef7523341cc28a1de11a2345b4e4e7e7b4a47eac5067d0cc4d6c1b993ae27"
+    },
+    {
+      "path": "tests/python/test_phase_conflict_worker.py",
+      "bytes": 20608,
+      "sha256": "8b8e41845887fbadd4d7d116057822e8c4f4adec9495bcca3ce7b6e46251e5ac"
+    },
+    {
+      "path": "tests/python/test_previs2_experiment.py",
+      "bytes": 39262,
+      "sha256": "ca4ee5ff6da15456166f487e03baf342dd7d3d02c43cc22226dc97cb273e8485"
+    },
+    {
+      "path": "tests/python/test_previs2_policy.py",
+      "bytes": 15347,
+      "sha256": "77a1e631cefadd9180138ce8be7416536b9f99f1a5d5b5137949f6d8d617d38f"
+    },
+    {
+      "path": "tests/python/test_previs2_report.py",
+      "bytes": 14634,
+      "sha256": "dab821281a33777b48adc9c6d5ada7ef6bb2247800c846843a1289b81257162f"
+    },
+    {
+      "path": "tests/python/test_previs2_runner.py",
+      "bytes": 31937,
+      "sha256": "a663890f094ad2959f08351feeeda218e68e6c249cd724661e3fbc11393114e2"
+    },
+    {
+      "path": "tests/python/test_previs_storage.py",
+      "bytes": 10165,
+      "sha256": "60b3c81609b85adaa9e57635229e3efeab386ff69b769a091d1863276e0f2eb3"
+    },
+    {
+      "path": "tests/python/test_previs_verify.py",
+      "bytes": 12550,
+      "sha256": "9092b8717a63bbd7e082cd6021dc52d94ed4f9588ac4a2cf0d2a2c3a0b01ca17"
+    },
+    {
+      "path": "tests/python/test_profiling.py",
+      "bytes": 38096,
+      "sha256": "a428be6472808a0a644bb42763dc532c7efae8c316b1ba3c8c5df41e6114b449"
+    },
+    {
+      "path": "tests/python/test_report.py",
+      "bytes": 2034,
+      "sha256": "25b7b6cbd223a32e2a02bad9ce494f628a89d543a9f675cbb0a46eb17ae8cbb7"
+    },
+    {
+      "path": "tests/python/test_research_adapter.py",
+      "bytes": 9230,
+      "sha256": "4b9b64e2535a66a04656609292ee2edc8431966556407770108cf7cd6e4d29af"
+    },
+    {
+      "path": "tests/python/test_research_budget.py",
+      "bytes": 3564,
+      "sha256": "a65948cf8404ddc58874d76f0ad85ca37235f1e286e0b8a2237dd1cfd97766a1"
+    },
+    {
+      "path": "tests/python/test_research_cache_off_diagnostics.py",
+      "bytes": 13611,
+      "sha256": "e1b982f95479440a3346dad721ea88bfd3f6642e12d5af305466063f57d2aacd"
+    },
+    {
+      "path": "tests/python/test_research_cfg_adapter.py",
+      "bytes": 20604,
+      "sha256": "191be8b1e73db3ab9e736818e9b1c775af69369b8414c2442aa8b811be17d150"
+    },
+    {
+      "path": "tests/python/test_research_cfg_continuation.py",
+      "bytes": 9604,
+      "sha256": "ed07b7f339b4e7782bbfeedc77c53f144a91b2a6b7090c3dac7758e6802f3bda"
+    },
+    {
+      "path": "tests/python/test_research_cfg_continued_execution.py",
+      "bytes": 7782,
+      "sha256": "7ea072fb73087c71856a7f9ba04fb6771e5486ad8ebe0fb8b14f035a5135035b"
+    },
+    {
+      "path": "tests/python/test_research_cfg_embeddings.py",
+      "bytes": 11102,
+      "sha256": "ae76105afcaf70b97a4eede25169b9beb5a3434b028880c6ff84399318322c58"
+    },
+    {
+      "path": "tests/python/test_research_cfg_empty_context.py",
+      "bytes": 12151,
+      "sha256": "cc436c384f723096b298fc0ce12eb24b0cd8213b8fe401deef5cae50a907732f"
+    },
+    {
+      "path": "tests/python/test_research_cfg_execution.py",
+      "bytes": 13491,
+      "sha256": "f8e12025858d53195dd1adf40b2b1559231a43881d2c0b49a62122d58fee4b6b"
+    },
+    {
+      "path": "tests/python/test_research_cfg_matrix.py",
+      "bytes": 14781,
+      "sha256": "c740a7969c1bc33de89f89b279e7bda95f5336da7cf906b843ace7cf6f0ae187"
+    },
+    {
+      "path": "tests/python/test_research_cfg_migration.py",
+      "bytes": 11225,
+      "sha256": "cf37cf9befb23bd472cbe4bf576bc63276b3c944fb6cd51509c828d7890e6143"
+    },
+    {
+      "path": "tests/python/test_research_cfg_pending_budget.py",
+      "bytes": 9523,
+      "sha256": "7ce73e81306b83d6c70562630972218cba5da120613e73b965d0a3d1e8cc41bc"
+    },
+    {
+      "path": "tests/python/test_research_cfg_protocol.py",
+      "bytes": 9753,
+      "sha256": "b2ed19386d05d20cd5fd350a145d8e139f248f820452d105f0e633a4c2811b35"
+    },
+    {
+      "path": "tests/python/test_research_cfg_refinement.py",
+      "bytes": 16453,
+      "sha256": "0f6e128550690ae1288c7b542ce15fa9821348f8ecedeb9bbf7a88173eb42f79"
+    },
+    {
+      "path": "tests/python/test_research_cfg_report.py",
+      "bytes": 15397,
+      "sha256": "9c0f8960d33ec3979357a77223d28edac84997526ee25c1dc0202d04b769faeb"
+    },
+    {
+      "path": "tests/python/test_research_cfg_split_prefix.py",
+      "bytes": 18597,
+      "sha256": "0f0062d2ad187d192a2f3e9b93578ad49d67c786abb51ffe5ecf088fe159f8a9"
+    },
+    {
+      "path": "tests/python/test_research_cfg_state.py",
+      "bytes": 9802,
+      "sha256": "22d29adaaac5cb462e0d1cc3e85b5cf1fdeb27f7a145e67710469c78ce89d887"
+    },
+    {
+      "path": "tests/python/test_research_cost_planning.py",
+      "bytes": 8910,
+      "sha256": "9ec4b70eac5867971c2382248867066e9f77231563348bb646499f1530e571a6"
+    },
+    {
+      "path": "tests/python/test_research_dual_budget.py",
+      "bytes": 16722,
+      "sha256": "53f9188d88d1cf113bfc8ad64b898829b3b8efdb3053fcf05e51c0c7b0cc378f"
+    },
+    {
+      "path": "tests/python/test_research_dual_evidence.py",
+      "bytes": 9737,
+      "sha256": "6308f774eb1e97f4d73a685adda71628dab3888533ac51caeed30e6258121a86"
+    },
+    {
+      "path": "tests/python/test_research_dual_experiment.py",
+      "bytes": 33434,
+      "sha256": "03bd6bdeb7828f31965632293df45c84a1fa72fc59820ee8eb53fa05f5c2c03c"
+    },
+    {
+      "path": "tests/python/test_research_dual_matrix.py",
+      "bytes": 12853,
+      "sha256": "2d87fbe885b0389acdb58ecd975a2b9fd40e235a20acf786895cf0ed1d0f6c89"
+    },
+    {
+      "path": "tests/python/test_research_dual_protocol.py",
+      "bytes": 10176,
+      "sha256": "0424cba4bfa04c7179744efe680f19974eea125edb80addbcc277e0f28dc0383"
+    },
+    {
+      "path": "tests/python/test_research_dual_report.py",
+      "bytes": 10458,
+      "sha256": "c9afbf2fa911bbb07d3a8522f1fb709062b61f3417177fa71cc84384980728d8"
+    },
+    {
+      "path": "tests/python/test_research_dual_runner.py",
+      "bytes": 15476,
+      "sha256": "e7e7f5607ebb2bdc7e23ef2a0e9eba59f344e103248b17e9e0094eaaa438cd6d"
+    },
+    {
+      "path": "tests/python/test_research_dual_state.py",
+      "bytes": 21914,
+      "sha256": "c6fddc9ea6c2c8961bbaa6c06fc0a63b878ed3af0b86d30d1324947b6d68b425"
+    },
+    {
+      "path": "tests/python/test_research_evidence.py",
+      "bytes": 11714,
+      "sha256": "44d0abfdee0d2512764063e723fe9465753b75bac9e152801d1773aeb4e592f6"
+    },
+    {
+      "path": "tests/python/test_research_execution.py",
+      "bytes": 11014,
+      "sha256": "36e1cf04b318cf3d9f20502b19d673694894c2dc49092636bfb39c0b3e1c43df"
+    },
+    {
+      "path": "tests/python/test_research_experiment.py",
+      "bytes": 10428,
+      "sha256": "53411fbbc45614e6f128386db82dfcb21e47f58a6371ad08e31c03fb41d99280"
+    },
+    {
+      "path": "tests/python/test_research_isolation.py",
+      "bytes": 6467,
+      "sha256": "99fd2fa30cb21bb1f8468270bb5c85798aa0a0c672a22918a3ac9be1fad03a19"
+    },
+    {
+      "path": "tests/python/test_research_matrix.py",
+      "bytes": 11430,
+      "sha256": "99908c4cae3ea49ad1bacbf49e47e6e34975e637cc01fd5668ecf0f40117766c"
+    },
+    {
+      "path": "tests/python/test_research_memory.py",
+      "bytes": 11532,
+      "sha256": "6b2dae782c0e6f29b4cf27dcc4d74df6bf26198fb2bde9db76b6b977624f184d"
+    },
+    {
+      "path": "tests/python/test_research_migration_diagnostic_cost.py",
+      "bytes": 13098,
+      "sha256": "ff613e37366aa312f3abc416abb6d8c530efe3a258a5c7e1d78894b76747b931"
+    },
+    {
+      "path": "tests/python/test_research_migration_diagnostic_execution.py",
+      "bytes": 4297,
+      "sha256": "f07016c0a472722b1a69abc024ed13b61a64b17329ef74de39a165766eb64a5f"
+    },
+    {
+      "path": "tests/python/test_research_migration_diagnostic_protocol.py",
+      "bytes": 12520,
+      "sha256": "09d199b48ab1c3f57d502bb9d2e88408e4138a66bef36d13d61e825064e9edb6"
+    },
+    {
+      "path": "tests/python/test_research_migration_diagnostic_report.py",
+      "bytes": 10883,
+      "sha256": "784f4cfe41e50ba756a5c9a9784d283963210e2865fb2d3428660c499731078e"
+    },
+    {
+      "path": "tests/python/test_research_parallel.py",
+      "bytes": 28685,
+      "sha256": "7bc75710a0c2a751b53274d6c13fbe7746191321edd35f21312863cddf95fca0"
+    },
+    {
+      "path": "tests/python/test_research_prompt_bank.py",
+      "bytes": 2469,
+      "sha256": "bff1f4ef6b7279bc3f52f12e1be7bc99e0d76847b201fff5efcc8242364e6ba9"
+    },
+    {
+      "path": "tests/python/test_research_protocol.py",
+      "bytes": 3027,
+      "sha256": "a3b36672ba7a3948aa08aa6fa3a61dd19f5f56dafdc64cb860b430a4961c3822"
+    },
+    {
+      "path": "tests/python/test_research_report.py",
+      "bytes": 10777,
+      "sha256": "00fb45dbec52945c7bdc3a3e82fef400671cb2a1a4c69d4f9c13bf7882877196"
+    },
+    {
+      "path": "tests/python/test_research_retention.py",
+      "bytes": 31238,
+      "sha256": "487f6b15177dd6f01d9dd37c1e8566ef2b613c72e4137767b636171118478554"
+    },
+    {
+      "path": "tests/python/test_research_runner.py",
+      "bytes": 15595,
+      "sha256": "0945c0cbe5bb04a084c6b1bd9dd991f75c4573b6bb8c123c47dd6bcfa30180ce"
+    },
+    {
+      "path": "tests/python/test_research_sp_backend.py",
+      "bytes": 19380,
+      "sha256": "4ed628b639bded579f7c125810ad8c463fbda24a9a7abf9bb57b05c77ae28b97"
+    },
+    {
+      "path": "tests/python/test_research_state.py",
+      "bytes": 20169,
+      "sha256": "2a46eae7e286ce9c81dbbf8058712147060912c24b65aa8306f703abd3921dec"
+    },
+    {
+      "path": "tests/python/test_research_storage.py",
+      "bytes": 3074,
+      "sha256": "c05e1d7fdf9a2347fa8f62acbe53c20772d15d29aadb88940b9f754e35432f24"
+    },
+    {
+      "path": "tests/python/test_result_storage.py",
+      "bytes": 4650,
+      "sha256": "0196b113799392658c1bed275c886d305dc25dd4849c6722e5a3d3fc9ac6602d"
+    },
+    {
+      "path": "tests/python/test_scheduling_arrivals.py",
+      "bytes": 5843,
+      "sha256": "f6ec4c6b7e5da77f798450457b420558eccf1fd4bbfaa4b6f0c22a4901e50c86"
+    },
+    {
+      "path": "tests/python/test_scheduling_budget.py",
+      "bytes": 4672,
+      "sha256": "a6f227be3e2996f021bc1ccc7254efaf17155e29d62894290871b6fbf080e8b7"
+    },
+    {
+      "path": "tests/python/test_scheduling_execution.py",
+      "bytes": 18900,
+      "sha256": "3d145c8a7e5b6df09d08d95f06d2951e80b4d568adcda86601ac6f9bbc0fe874"
+    },
+    {
+      "path": "tests/python/test_scheduling_legacy.py",
+      "bytes": 11878,
+      "sha256": "2ca557b0c0142cf14e325d343b186e0f88ae3ab7a57b08fd65e397c0d34c9d83"
+    },
+    {
+      "path": "tests/python/test_scheduling_next_budget.py",
+      "bytes": 4497,
+      "sha256": "ed053baaa49f21a168e4ef2d0618012c0906cae8e667a818ddee70af8b724902"
+    },
+    {
+      "path": "tests/python/test_scheduling_next_execution.py",
+      "bytes": 5135,
+      "sha256": "6d6a20bd52cad15e5a949c0fac41ae064b4a1fbea452336acbff7fab6b1bbd94"
+    },
+    {
+      "path": "tests/python/test_scheduling_next_persistence.py",
+      "bytes": 10241,
+      "sha256": "f2b5690e08c4a276d92a4542095319e4d52425209d7408a4eb33bd09b28ebece"
+    },
+    {
+      "path": "tests/python/test_scheduling_next_policy.py",
+      "bytes": 3379,
+      "sha256": "0e15f5fb425453da179803b05a146960ca8889e5f5dcbd8efb567f27563fb8f9"
+    },
+    {
+      "path": "tests/python/test_scheduling_next_reporting.py",
+      "bytes": 15820,
+      "sha256": "8054de2adb51ab520529bf070490e63b4f577ade30827b24860b0ac608c7e48c"
+    },
+    {
+      "path": "tests/python/test_scheduling_next_runner.py",
+      "bytes": 14722,
+      "sha256": "e66dd362696431c9e90f6c79b04a98df9243659c592512556b99a5af3dab3140"
+    },
+    {
+      "path": "tests/python/test_scheduling_next_study.py",
+      "bytes": 13279,
+      "sha256": "f530ca3d3b034b6e247717e82274457d77864272fe96f7d16fe9b42dec834e03"
+    },
+    {
+      "path": "tests/python/test_scheduling_policy.py",
+      "bytes": 7194,
+      "sha256": "97ea832666f537f9a472f6960fc9bd2dc70c06ae1fd9a158997e5027ce83b9d8"
+    },
+    {
+      "path": "tests/python/test_scheduling_reporting.py",
+      "bytes": 10157,
+      "sha256": "17d3c2d5eec3b5b0314701d1e175f88b2272576fe01612d755f03113bfd80e9f"
+    },
+    {
+      "path": "tests/python/test_scheduling_runner.py",
+      "bytes": 15634,
+      "sha256": "e9dc6236d8561efa2dc49b30d1b0213e96fdc9607e01582af7771029229ae656"
+    },
+    {
+      "path": "tests/python/test_scheduling_runtime.py",
+      "bytes": 8085,
+      "sha256": "fef4bc2125650aaae9e7789657e44f9ee528b76ea79008c9fca7fb8f984fdb91"
+    },
+    {
+      "path": "tests/python/test_scheduling_study.py",
+      "bytes": 16749,
+      "sha256": "f92d32b1ff3299b01819991f0a8d5cdab525a1a3419cc90562fdd76837dafac4"
+    },
+    {
+      "path": "tests/python/test_scheduling_workload.py",
+      "bytes": 3780,
+      "sha256": "f202b6b44bd3864e21126d68ae9aabb37b3af25a8b2c302b737656b8d48f6745"
+    },
+    {
+      "path": "tests/python/test_sessions_budget.py",
+      "bytes": 4922,
+      "sha256": "10fbd13185d865c580f636f38bc414cd57f5bb8f959750681dbd86240bd95764"
+    },
+    {
+      "path": "tests/python/test_sessions_execution.py",
+      "bytes": 17121,
+      "sha256": "f4383b6aaf4301a666dd64c7d4b21ff457323aa45b56ff7e8325afe062d1f0a6"
+    },
+    {
+      "path": "tests/python/test_sessions_policy_workload.py",
+      "bytes": 3681,
+      "sha256": "afe571dd2ff86effdd30c423b27120ea5c4cd17cd13f10ec384961dd445068cd"
+    },
+    {
+      "path": "tests/python/test_sessions_reporting.py",
+      "bytes": 16942,
+      "sha256": "6440b27ce60516408c1a0027bedf6ce5280258794cae32a62b34112d5564429b"
+    },
+    {
+      "path": "tests/python/test_sessions_runner.py",
+      "bytes": 20973,
+      "sha256": "786f005a7e7e3788e55af23a3269812bf49c53e719d69d16b50330d56841c9ea"
+    },
+    {
+      "path": "tests/python/test_sessions_runtime.py",
+      "bytes": 16109,
+      "sha256": "b369b123081f452b1eb647a75f1c3ca92b6a6e6218a5d29376dd839b4cd77817"
+    },
+    {
+      "path": "tests/python/test_sessions_state.py",
+      "bytes": 13740,
+      "sha256": "b54c40f88fe853f7328dd72732094d167038a3a525ad3ccb12878682cae0727c"
+    },
+    {
+      "path": "tests/python/test_sessions_study.py",
+      "bytes": 18227,
+      "sha256": "e4f94b9de80dcd14e08a5593807b0879aea86ddf2b730976824bece199d0f934"
+    },
+    {
+      "path": "tests/python/test_v100_phases.py",
+      "bytes": 16171,
+      "sha256": "22b0bb6007700da07e8a8dbe6013add28b5d2101aeecd3fa7b33d13d37fbb030"
+    },
+    {
+      "path": "tests/python/test_v100_runner.py",
+      "bytes": 13379,
+      "sha256": "968d954ffda25dc507d92d1ea589d83e3bfed2c7ecd6a2be08826f7bdd4c1592"
+    },
+    {
+      "path": "tests/python/test_v100_summary.py",
+      "bytes": 16664,
+      "sha256": "c3a48f76fd67bfcbadfa8254c8fdef43e26e156ea27c3a108fa5d9a225b3d31c"
+    },
+    {
+      "path": "tests/python/test_worker_optimization.py",
+      "bytes": 12079,
+      "sha256": "333e323c8bbebf08e32e0f6393b4f4caa512fb87baa541162ec36ea899f20bfe"
+    },
+    {
+      "path": "tests/python/test_workload.py",
+      "bytes": 1583,
+      "sha256": "7370c47b19a849fff5e560cc6720365371c62edf6490cda54b42ba6a4d47c251"
+    },
+    {
+      "path": "workloads/preemption.json",
+      "bytes": 419,
+      "sha256": "5780dfec1931250c07d71a43171bca5ff6cc255ac4d4c96bade99a5adf4f918d"
+    }
+  ]
+}

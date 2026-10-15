@@ -1,0 +1,41 @@
+{
+  "schema_version": "ditserve.benchmark.config.v1",
+  "name": "wan-a100-serving-optimization",
+  "purpose": "Small paired serving ablations; generate a plan before reserving GPU time.",
+  "model": {
+    "id": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+    "revision": "0fad780a534b6463e45facd96134c9f345acfa5b"
+  },
+  "shapes": {
+    "short": {"height": 480, "width": 832, "frames": 17, "steps": 32, "weight": 1}
+  },
+  "cache": {"enabled": false, "threshold": 0.08, "max_continuous": 3},
+  "guidance_scale": 5.0,
+  "negative_prompt": "",
+  "slo_scale": 2.5,
+  "timeout_scale": 10.0,
+  "count": 6,
+  "profile_samples": 1,
+  "trace_seeds": [20261012, 20261013, 20261014],
+  "batch_burst_size": 3,
+  "optimization": {
+    "target_gpu": "A100",
+    "load_reference_variant": "flash_serial",
+    "pilot_count": 3,
+    "pilot_scenarios": ["near"],
+    "policies": ["fcfs"],
+    "variants": {
+      "math_serial": {"attention": "math", "text_prefetch": 0},
+      "flash_serial": {"attention": "flash", "text_prefetch": 0},
+      "flash_prefetch": {"attention": "flash", "text_prefetch": 2}
+    },
+    "scenarios": [
+      {"name": "under", "pattern": "poisson", "load": 0.5},
+      {"name": "near", "pattern": "poisson", "load": 0.9},
+      {"name": "over", "pattern": "poisson", "load": 1.2},
+      {"name": "burst", "pattern": "batch_burst", "load": 0.9}
+    ],
+    "budget_protocol": "Pilot selects one seed and the near-load group only. Remaining scenarios and seeds are deferred, never automatically run. Estimates include references, policy replay, idle arrival spans, and 300 seconds per variant for setup; the existing GPU ledger remains authoritative.",
+    "profile_alias_protocol": "flash_prefetch may explicitly reuse flash_serial's standalone profile because text prefetch changes online overlap, not isolated request execution. Arrival times and deadlines remain identical across all variants."
+  }
+}

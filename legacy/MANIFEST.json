@@ -1,0 +1,916 @@
+{
+  "schema_version": "ditserve.legacy_archive.v1",
+  "source": "isolated full working-copy snapshot",
+  "files": [
+    {
+      "path": "docs/gpu_experiments.md",
+      "archive_path": "legacy/docs/gpu_experiments.md",
+      "size_bytes": 15678,
+      "sha256": "5f0d4bc9dd65129811490f2e0b0b95e810d145a24aab00159317b476f6ebd0e5",
+      "action": "moved"
+    },
+    {
+      "path": "docs/motivation_experiments.md",
+      "archive_path": "legacy/docs/motivation_experiments.md",
+      "size_bytes": 15728,
+      "sha256": "220b22ffa839660bc009a48bd4d60c8460bfc34c699ec7a0164a5f7f5cf9b049",
+      "action": "moved"
+    },
+    {
+      "path": "docs/phase_conflict.md",
+      "archive_path": "legacy/docs/phase_conflict.md",
+      "size_bytes": 6491,
+      "sha256": "98961d828cc7a201e04ff7ba6c48873c89cc2d13ee562230b99ff0de614a6946",
+      "action": "moved"
+    },
+    {
+      "path": "docs/previs2.md",
+      "archive_path": "legacy/docs/previs2.md",
+      "size_bytes": 7833,
+      "sha256": "88909ca1ca1e6426e3c7ed7152c034e666ac0f5cc3c8ad55e35e80c59171bae3",
+      "action": "moved"
+    },
+    {
+      "path": "docs/research_cfg.md",
+      "archive_path": "legacy/docs/research_cfg.md",
+      "size_bytes": 10542,
+      "sha256": "db08be673e5eeca714a69d28fe43bc2b2c19747afcfa664c6b26ae612c10fdd1",
+      "action": "moved"
+    },
+    {
+      "path": "docs/research_migration_diagnostic.md",
+      "archive_path": "legacy/docs/research_migration_diagnostic.md",
+      "size_bytes": 3452,
+      "sha256": "7428ee475c9b05b2d9649528a11adf0a9661daf5b19e943dcc9d61e96cf52313",
+      "action": "moved"
+    },
+    {
+      "path": "docs/research_pilot.md",
+      "archive_path": "legacy/docs/research_pilot.md",
+      "size_bytes": 13711,
+      "sha256": "5d33b4f985b354422f74f4ba8127c24101571d7bd49b60f3735d2cc9b47f238d",
+      "action": "moved"
+    },
+    {
+      "path": "docs/research_two_gpu.md",
+      "archive_path": "legacy/docs/research_two_gpu.md",
+      "size_bytes": 5114,
+      "sha256": "b8b99faa55d2f103f50759511739856409b7d8efc9258b8839574ad9a22f6076",
+      "action": "moved"
+    },
+    {
+      "path": "docs/video_benchmark.md",
+      "archive_path": "legacy/docs/video_benchmark.md",
+      "size_bytes": 11554,
+      "sha256": "a7e0c610e133185bb00d4316ee178d8b8070c27a40e8b8d22c6c2a18c11e7bc3",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/benchmark/backend_quality.py",
+      "archive_path": "legacy/python/ditserve/benchmark/backend_quality.py",
+      "size_bytes": 3038,
+      "sha256": "41b35698527328a21701162cab117de78ce140c1cd566db8b37de79a2e34e441",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/benchmark/backends.py",
+      "archive_path": "legacy/python/ditserve/benchmark/backends.py",
+      "size_bytes": 14028,
+      "sha256": "795ff8d7df8bcd4ea0044e309bc27001af9a46494d000d34da2de7826eaec6ea",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/benchmark/budget.py",
+      "archive_path": "legacy/python/ditserve/benchmark/budget.py",
+      "size_bytes": 4703,
+      "sha256": "0a58c93ff5e041d6ad45cb248d4ab847a6c11a1f0c683f7267ff5b29a7ff1e16",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/benchmark/cli.py",
+      "archive_path": "legacy/python/ditserve/benchmark/cli.py",
+      "size_bytes": 17867,
+      "sha256": "aecb9685d0009715b68bc3e5ad2a4dfcb9448ded741f0d9e285a99af5dc58e7f",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/benchmark/datasets.py",
+      "archive_path": "legacy/python/ditserve/benchmark/datasets.py",
+      "size_bytes": 14870,
+      "sha256": "83512000a110b02e5fdd5d30ad36c3eeae7e0190ca59cf93adf90f78df0f287f",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/benchmark/evaluation.py",
+      "archive_path": "legacy/python/ditserve/benchmark/evaluation.py",
+      "size_bytes": 28163,
+      "sha256": "7d99822d374c42f78ebaa7ea99c37216a1a549722df9edd29c6f578a171413fd",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/benchmark/optimization.py",
+      "archive_path": "legacy/python/ditserve/benchmark/optimization.py",
+      "size_bytes": 28940,
+      "sha256": "67d212e65d059e9ba523c2e53af0bc88655c007915652c0d2d0b170eed56869e",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/benchmark/prefetch.py",
+      "archive_path": "legacy/python/ditserve/benchmark/prefetch.py",
+      "size_bytes": 3498,
+      "sha256": "f24d9c9bf26050a2fc9d55587693e32ebe116a4d5e09b57c26b897c16bd84ce9",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/benchmark/protocols.py",
+      "archive_path": "legacy/python/ditserve/benchmark/protocols.py",
+      "size_bytes": 12705,
+      "sha256": "dc695d3dc363e37c6a8be140a0449ca50fdcc6782f5bf9c1b380742d5c2dfd61",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/benchmark/reporting.py",
+      "archive_path": "legacy/python/ditserve/benchmark/reporting.py",
+      "size_bytes": 28226,
+      "sha256": "8d61a0c67e92bb3a3665abc6564659d877c705508e0f00530d467b08e218e7e8",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/benchmark/runner.py",
+      "archive_path": "legacy/python/ditserve/benchmark/runner.py",
+      "size_bytes": 36321,
+      "sha256": "6101ac4dc0420d73656da06a1987f8c2f941641126f29a72bd97451f794153b9",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/benchmark/workload.py",
+      "archive_path": "legacy/python/ditserve/benchmark/workload.py",
+      "size_bytes": 19726,
+      "sha256": "a0050e5d51ee6c8654517c24470dd9d143cd5393b8a2783153721224a0248330",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/experiments/__init__.py",
+      "archive_path": "legacy/python/ditserve/experiments/__init__.py",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/experiments/download_v100_weights.py",
+      "archive_path": "legacy/python/ditserve/experiments/download_v100_weights.py",
+      "size_bytes": 3639,
+      "sha256": "594cce509cc40799af9786c19e265790f1b87f77e5940afc735737b29ab50c37",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/experiments/previs2_base.py",
+      "archive_path": "legacy/python/ditserve/experiments/previs2_base.py",
+      "size_bytes": 6107,
+      "sha256": "3ebfe707a8a9434576cc1a09c6688abdac950203d288b9cca7ae23d646e5da02",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/experiments/previs2_experiment.py",
+      "archive_path": "legacy/python/ditserve/experiments/previs2_experiment.py",
+      "size_bytes": 52777,
+      "sha256": "5d9dc1bfe52da1f1e45d833bc7f6696db3913f0a9b4474e1675f0d53b8aee402",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/experiments/previs2_policy.py",
+      "archive_path": "legacy/python/ditserve/experiments/previs2_policy.py",
+      "size_bytes": 23481,
+      "sha256": "378fd5ebb1927ebdac7073f491eeee1c7c461ee061d4b78c4842a55b9622c511",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/experiments/previs2_report.py",
+      "archive_path": "legacy/python/ditserve/experiments/previs2_report.py",
+      "size_bytes": 45432,
+      "sha256": "13f77a58173290bd6c7f697e98ad575c4dda99158a5ce9efd0b131fda5285035",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/experiments/previs2_storage.py",
+      "archive_path": "legacy/python/ditserve/experiments/previs2_storage.py",
+      "size_bytes": 3282,
+      "sha256": "5a380a55010543b1bfdf1787982b338ecc55c4bc0b6f8587ecc1bacb2440e3f5",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/experiments/previs_storage.py",
+      "archive_path": "legacy/python/ditserve/experiments/previs_storage.py",
+      "size_bytes": 8810,
+      "sha256": "0b0af815987268493b43aee6c3551060794c361174874ff5fe0db068d5176604",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/experiments/previs_verify.py",
+      "archive_path": "legacy/python/ditserve/experiments/previs_verify.py",
+      "size_bytes": 15755,
+      "sha256": "08dff5ee9cf5c68e3a53e564a08c3603897c45d86ec7135e4e78ddbc6a6d31ae",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/experiments/profile_v100_phases.py",
+      "archive_path": "legacy/python/ditserve/experiments/profile_v100_phases.py",
+      "size_bytes": 25003,
+      "sha256": "4db6c76dde4af1959085f52bd36becb3f03d3cf3c0011e7bd957c73d19d482a2",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/experiments/run_phase_conflict.py",
+      "archive_path": "legacy/python/ditserve/experiments/run_phase_conflict.py",
+      "size_bytes": 27377,
+      "sha256": "b7a1d417a980b422504ff6670a251c65206660ca21ef30d7e1f7233f43ec7a60",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/experiments/run_previs2.py",
+      "archive_path": "legacy/python/ditserve/experiments/run_previs2.py",
+      "size_bytes": 38392,
+      "sha256": "7b74347735cbd0cebfc12c012ca97182a71780aa5399fb1cf6979f17977b29f3",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/experiments/run_v100.py",
+      "archive_path": "legacy/python/ditserve/experiments/run_v100.py",
+      "size_bytes": 28582,
+      "sha256": "e5c2ea05f01bcefae760a19f1df7176c86e54737dd417e9d54f0c32683ec9ee2",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/experiments/summarize_phase_conflict.py",
+      "archive_path": "legacy/python/ditserve/experiments/summarize_phase_conflict.py",
+      "size_bytes": 52894,
+      "sha256": "9de0619524c319978ba9c622ae6068ff624988951ea8ebdf278c6df19dd9e0d1",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/experiments/summarize_v100.py",
+      "archive_path": "legacy/python/ditserve/experiments/summarize_v100.py",
+      "size_bytes": 55821,
+      "sha256": "526396b5854c44be46be2a2892ac3aa0655ddeca0f0f908bb9505c57274c0899",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/experiments/validate_v100_weights.py",
+      "archive_path": "legacy/python/ditserve/experiments/validate_v100_weights.py",
+      "size_bytes": 2001,
+      "sha256": "1d3961a3df8afc653d2e51acef6b22fc6b7b9a2fc917b51e53545a76daa1d243",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/cache_off_diagnostics.py",
+      "archive_path": "legacy/python/ditserve/research/cache_off_diagnostics.py",
+      "size_bytes": 16315,
+      "sha256": "8079ed6abd66a13399aada17e8ee73d24e244228faaf8d503e90789d1d34877b",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/cfg_continuation.py",
+      "archive_path": "legacy/python/ditserve/research/cfg_continuation.py",
+      "size_bytes": 6427,
+      "sha256": "e711254f239357d873cdd8c6202fea2264256e3782680d92574cf5745a337b0a",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/cfg_cost_plan.py",
+      "archive_path": "legacy/python/ditserve/research/cfg_cost_plan.py",
+      "size_bytes": 20367,
+      "sha256": "380f48764c9dd6330b6a7984fe5e8d391f56b144d0052307b4b7eb2b90f012e5",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/cfg_embeddings.py",
+      "archive_path": "legacy/python/ditserve/research/cfg_embeddings.py",
+      "size_bytes": 13193,
+      "sha256": "d1ec2331a6e1df5122c40d67bc5fcbd28da43e386512c50b1fafa75b7b33969c",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/cfg_experiment.py",
+      "archive_path": "legacy/python/ditserve/research/cfg_experiment.py",
+      "size_bytes": 21574,
+      "sha256": "f5bd95daabff3849edf35ec3c43f55bd56cc1ce5ea72cb35da9beae6ec1d8c6e",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/cfg_matrix.py",
+      "archive_path": "legacy/python/ditserve/research/cfg_matrix.py",
+      "size_bytes": 19642,
+      "sha256": "9061add94deb911305e0e965bbc13a0e2fe40626d430755a9c0686b28c9df21d",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/cfg_migration.py",
+      "archive_path": "legacy/python/ditserve/research/cfg_migration.py",
+      "size_bytes": 16785,
+      "sha256": "784d579816ad73537f9080cc3a455b3595d49a32521da3de7b1ce6c2040f8139",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/cfg_protocol.py",
+      "archive_path": "legacy/python/ditserve/research/cfg_protocol.py",
+      "size_bytes": 4183,
+      "sha256": "5d8b5c0a69349ef4655352abe062e778129051cf19c8073c97e7ce48faffee06",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/cfg_refinement.py",
+      "archive_path": "legacy/python/ditserve/research/cfg_refinement.py",
+      "size_bytes": 13848,
+      "sha256": "415ba8ec5a87248ea15650028285750ceb8fdb7f190d9c63d5271c6dd3c51a00",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/cfg_report.py",
+      "archive_path": "legacy/python/ditserve/research/cfg_report.py",
+      "size_bytes": 37420,
+      "sha256": "f0153a322a49cc4e5f1bb2f2512d7eea7b015fee07814de213afd520e5dfa298",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/cfg_runner.py",
+      "archive_path": "legacy/python/ditserve/research/cfg_runner.py",
+      "size_bytes": 24675,
+      "sha256": "1fea47db3ce7dbfac13689ea64c4ac386483d0d91fcd75f24e546c76b73d5382",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/cost_planning.py",
+      "archive_path": "legacy/python/ditserve/research/cost_planning.py",
+      "size_bytes": 17487,
+      "sha256": "7bbf76436266ae59e0a3fa78d89f96dcd3f38863e9f3b446fdc7783c93dbcbb4",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/dual_budget.py",
+      "archive_path": "legacy/python/ditserve/research/dual_budget.py",
+      "size_bytes": 18082,
+      "sha256": "3cebc911c20fc2a314926fe13419ef5b30103a60e9551aaf7a425669a8f8d479",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/dual_evidence.py",
+      "archive_path": "legacy/python/ditserve/research/dual_evidence.py",
+      "size_bytes": 9423,
+      "sha256": "cfe11616191b04d500e1dc855d54cff3749555c13798d36d176a8069be213616",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/dual_experiment.py",
+      "archive_path": "legacy/python/ditserve/research/dual_experiment.py",
+      "size_bytes": 39541,
+      "sha256": "787576df15fbada27af553a2e6f09d7726e8200b174c6f9a1fdbfdfe9a6cecd4",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/dual_matrix.py",
+      "archive_path": "legacy/python/ditserve/research/dual_matrix.py",
+      "size_bytes": 14120,
+      "sha256": "fce9c5c5bdf658ec5df972855cad4fdaf92a33e1e21f373e9a73e2e9bc7ee24b",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/dual_protocol.py",
+      "archive_path": "legacy/python/ditserve/research/dual_protocol.py",
+      "size_bytes": 18146,
+      "sha256": "66e5e7aa8b8f1f8490c35cb2e7590a6a5c965369442d50d4dc6a2836483a1bdc",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/dual_report.py",
+      "archive_path": "legacy/python/ditserve/research/dual_report.py",
+      "size_bytes": 19143,
+      "sha256": "0ead5b1f9d6e752d80cfca3605fe586bd1c62be00c475209ded707974b3c20e4",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/dual_runner.py",
+      "archive_path": "legacy/python/ditserve/research/dual_runner.py",
+      "size_bytes": 25755,
+      "sha256": "677115049af41c7bc2f134efbf873db3f1bd3b0493b86c8e2e33cfc7114594ad",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/dual_runtime.py",
+      "archive_path": "legacy/python/ditserve/research/dual_runtime.py",
+      "size_bytes": 21900,
+      "sha256": "e6a71f5a81f9bc77969db213f0a43e5ecceafafd8166192e60115665af3ca807",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/evidence.py",
+      "archive_path": "legacy/python/ditserve/research/evidence.py",
+      "size_bytes": 22057,
+      "sha256": "5ad6a704ff5fd06ce87607b23c6334f11b05aaad5dd03bc99358c66bc3b242a8",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/experiment.py",
+      "archive_path": "legacy/python/ditserve/research/experiment.py",
+      "size_bytes": 37121,
+      "sha256": "93f0cc5188362402096e7e3e7af0fa523aff6481229e81884ac9d02c5a43eb13",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/matrix.py",
+      "archive_path": "legacy/python/ditserve/research/matrix.py",
+      "size_bytes": 21871,
+      "sha256": "449c21d0dc1031b4ed573fc2431d74b68bc465822a99ae7e898e61d41b3158eb",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/memory_experiment.py",
+      "archive_path": "legacy/python/ditserve/research/memory_experiment.py",
+      "size_bytes": 9585,
+      "sha256": "3f2587d604b5261d073156aae0288e0c6e46466b55c605221e8e80cda218827b",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/migration_diagnostic_cost.py",
+      "archive_path": "legacy/python/ditserve/research/migration_diagnostic_cost.py",
+      "size_bytes": 14719,
+      "sha256": "94f89074fadfcd9860fb37ad1bfb6509f0816f3f54f9383eee53f9842f270050",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/migration_diagnostic_experiment.py",
+      "archive_path": "legacy/python/ditserve/research/migration_diagnostic_experiment.py",
+      "size_bytes": 13615,
+      "sha256": "73ea96d7af367ecebfefda15c9359b1a7b9ab86c3d9802eaaa201382719decdb",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/migration_diagnostic_protocol.py",
+      "archive_path": "legacy/python/ditserve/research/migration_diagnostic_protocol.py",
+      "size_bytes": 16977,
+      "sha256": "3c0c735e5fd07640a0f90bbb75a164ccbe8d2c677a00bad57ca72ab0f6c8dc28",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/migration_diagnostic_report.py",
+      "archive_path": "legacy/python/ditserve/research/migration_diagnostic_report.py",
+      "size_bytes": 20790,
+      "sha256": "3ad2a9fb62ebd9f6b66a227dae6b17b7854e6b005ef96e5cc9a7d44dc61fea27",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/migration_diagnostic_runner.py",
+      "archive_path": "legacy/python/ditserve/research/migration_diagnostic_runner.py",
+      "size_bytes": 16266,
+      "sha256": "40e28c80c189c5e30a69bb10fa524cdf62ffb86f2262202faea1fbb3e055083f",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/report.py",
+      "archive_path": "legacy/python/ditserve/research/report.py",
+      "size_bytes": 18100,
+      "sha256": "c37a072072df3e0a733ff4d6fa6e256d845f2942fba24f28012a3211bd436a96",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/runner.py",
+      "archive_path": "legacy/python/ditserve/research/runner.py",
+      "size_bytes": 16894,
+      "sha256": "9ec55307ba6c60384e5679c93bc7ff4d97dda837d85e62b98ab772fb9cae5a29",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/sp_backend.py",
+      "archive_path": "legacy/python/ditserve/research/sp_backend.py",
+      "size_bytes": 11744,
+      "sha256": "8a6a2c51acc3afd4a01e40fde53c212cdb5ad557c5479868c78db1a8d09b9836",
+      "action": "moved"
+    },
+    {
+      "path": "python/ditserve/research/sp_experiment.py",
+      "archive_path": "legacy/python/ditserve/research/sp_experiment.py",
+      "size_bytes": 39437,
+      "sha256": "fb99e384193dbaf1cf3a650d828d2b4fb3034fed6e1b014703a00beadcd20001",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_backend_quality.py",
+      "archive_path": "legacy/tests/python/test_backend_quality.py",
+      "size_bytes": 3298,
+      "sha256": "a8ef2b5fc64bbe7d0864e04640f8efcb142c3f8e887128e2035f3f524f894144",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_benchmark_backends.py",
+      "archive_path": "legacy/tests/python/test_benchmark_backends.py",
+      "size_bytes": 6673,
+      "sha256": "01ef20eb4ec100b9403ed306d10aceae4a55517075cc55159b6b94aef47aae18",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_benchmark_budget.py",
+      "archive_path": "legacy/tests/python/test_benchmark_budget.py",
+      "size_bytes": 3009,
+      "sha256": "dc90638e48dcac0cf6c575eb1b959d744f8db3ae50d41dc3fe29eb400015ac0b",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_benchmark_cli.py",
+      "archive_path": "legacy/tests/python/test_benchmark_cli.py",
+      "size_bytes": 4741,
+      "sha256": "e08604172aae7565c8c4e7f39f5bcdc8b90a5eebade9f32b7b75237b1ba33bc0",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_benchmark_data.py",
+      "archive_path": "legacy/tests/python/test_benchmark_data.py",
+      "size_bytes": 12348,
+      "sha256": "f34404d89a8f7b6039b55f7f21f7ca71e10549b4390294fd8967d0ad3b2dce1d",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_benchmark_evaluation.py",
+      "archive_path": "legacy/tests/python/test_benchmark_evaluation.py",
+      "size_bytes": 14055,
+      "sha256": "4208c3b87015e59b8d3e1dc9db34c8d905af79979fddd7f895605204391008ec",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_benchmark_optimization.py",
+      "archive_path": "legacy/tests/python/test_benchmark_optimization.py",
+      "size_bytes": 16727,
+      "sha256": "b1c72cfcae170269fb907eaaa12dc92c4125df3a7b073734b0bdfc0f74141812",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_benchmark_prefetch.py",
+      "archive_path": "legacy/tests/python/test_benchmark_prefetch.py",
+      "size_bytes": 10119,
+      "sha256": "3ce24609d951b7d1b07136142eb9d5eb294e516f80e1f0ddec712b386095d5e7",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_benchmark_protocols.py",
+      "archive_path": "legacy/tests/python/test_benchmark_protocols.py",
+      "size_bytes": 10497,
+      "sha256": "5b470bbacc1774a383684fe7b381e03f31c225b8dcd8e18ca8b63f663585466a",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_benchmark_reporting.py",
+      "archive_path": "legacy/tests/python/test_benchmark_reporting.py",
+      "size_bytes": 11396,
+      "sha256": "1aa37c881e7ee16dcddde6cecbda600e6a585e1d861b6d66f98dccf9b7393c90",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_benchmark_runner.py",
+      "archive_path": "legacy/tests/python/test_benchmark_runner.py",
+      "size_bytes": 13502,
+      "sha256": "9709c55009c5e68ae324796daf8caf15670192f3988894a38879aeaaba850c66",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_benchmark_workload.py",
+      "archive_path": "legacy/tests/python/test_benchmark_workload.py",
+      "size_bytes": 9459,
+      "sha256": "566e096c789b9d4006588b3b76e6365ebc355257b5d5f46b5c1420ea80e74dc6",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_optimizations_cache_executor.py",
+      "archive_path": "legacy/tests/python/test_optimizations_cache_executor.py",
+      "size_bytes": 14943,
+      "sha256": "bfbd4eb15d4d618a71d499634ecc22bd4b82504c324ec971b7dce3993469b5e9",
+      "action": "original_preserved"
+    },
+    {
+      "path": "tests/python/test_phase_conflict_runner.py",
+      "archive_path": "legacy/tests/python/test_phase_conflict_runner.py",
+      "size_bytes": 40044,
+      "sha256": "5256edf5c618aaaf3c1ceccffe891b30b10a23e1bac2b28c41e5ae71bf3eb3cc",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_phase_conflict_summary.py",
+      "archive_path": "legacy/tests/python/test_phase_conflict_summary.py",
+      "size_bytes": 26694,
+      "sha256": "036ef7523341cc28a1de11a2345b4e4e7e7b4a47eac5067d0cc4d6c1b993ae27",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_previs2_experiment.py",
+      "archive_path": "legacy/tests/python/test_previs2_experiment.py",
+      "size_bytes": 39262,
+      "sha256": "ca4ee5ff6da15456166f487e03baf342dd7d3d02c43cc22226dc97cb273e8485",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_previs2_policy.py",
+      "archive_path": "legacy/tests/python/test_previs2_policy.py",
+      "size_bytes": 15347,
+      "sha256": "77a1e631cefadd9180138ce8be7416536b9f99f1a5d5b5137949f6d8d617d38f",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_previs2_report.py",
+      "archive_path": "legacy/tests/python/test_previs2_report.py",
+      "size_bytes": 14634,
+      "sha256": "dab821281a33777b48adc9c6d5ada7ef6bb2247800c846843a1289b81257162f",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_previs2_runner.py",
+      "archive_path": "legacy/tests/python/test_previs2_runner.py",
+      "size_bytes": 31937,
+      "sha256": "a663890f094ad2959f08351feeeda218e68e6c249cd724661e3fbc11393114e2",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_previs_storage.py",
+      "archive_path": "legacy/tests/python/test_previs_storage.py",
+      "size_bytes": 10165,
+      "sha256": "60b3c81609b85adaa9e57635229e3efeab386ff69b769a091d1863276e0f2eb3",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_previs_verify.py",
+      "archive_path": "legacy/tests/python/test_previs_verify.py",
+      "size_bytes": 12550,
+      "sha256": "9092b8717a63bbd7e082cd6021dc52d94ed4f9588ac4a2cf0d2a2c3a0b01ca17",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_cache_off_diagnostics.py",
+      "archive_path": "legacy/tests/python/test_research_cache_off_diagnostics.py",
+      "size_bytes": 13611,
+      "sha256": "e1b982f95479440a3346dad721ea88bfd3f6642e12d5af305466063f57d2aacd",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_cfg_continuation.py",
+      "archive_path": "legacy/tests/python/test_research_cfg_continuation.py",
+      "size_bytes": 9604,
+      "sha256": "ed07b7f339b4e7782bbfeedc77c53f144a91b2a6b7090c3dac7758e6802f3bda",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_cfg_continued_execution.py",
+      "archive_path": "legacy/tests/python/test_research_cfg_continued_execution.py",
+      "size_bytes": 7782,
+      "sha256": "7ea072fb73087c71856a7f9ba04fb6771e5486ad8ebe0fb8b14f035a5135035b",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_cfg_embeddings.py",
+      "archive_path": "legacy/tests/python/test_research_cfg_embeddings.py",
+      "size_bytes": 11102,
+      "sha256": "ae76105afcaf70b97a4eede25169b9beb5a3434b028880c6ff84399318322c58",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_cfg_execution.py",
+      "archive_path": "legacy/tests/python/test_research_cfg_execution.py",
+      "size_bytes": 13491,
+      "sha256": "f8e12025858d53195dd1adf40b2b1559231a43881d2c0b49a62122d58fee4b6b",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_cfg_matrix.py",
+      "archive_path": "legacy/tests/python/test_research_cfg_matrix.py",
+      "size_bytes": 14781,
+      "sha256": "c740a7969c1bc33de89f89b279e7bda95f5336da7cf906b843ace7cf6f0ae187",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_cfg_migration.py",
+      "archive_path": "legacy/tests/python/test_research_cfg_migration.py",
+      "size_bytes": 11225,
+      "sha256": "cf37cf9befb23bd472cbe4bf576bc63276b3c944fb6cd51509c828d7890e6143",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_cfg_pending_budget.py",
+      "archive_path": "legacy/tests/python/test_research_cfg_pending_budget.py",
+      "size_bytes": 9523,
+      "sha256": "7ce73e81306b83d6c70562630972218cba5da120613e73b965d0a3d1e8cc41bc",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_cfg_protocol.py",
+      "archive_path": "legacy/tests/python/test_research_cfg_protocol.py",
+      "size_bytes": 9753,
+      "sha256": "b2ed19386d05d20cd5fd350a145d8e139f248f820452d105f0e633a4c2811b35",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_cfg_refinement.py",
+      "archive_path": "legacy/tests/python/test_research_cfg_refinement.py",
+      "size_bytes": 16453,
+      "sha256": "0f6e128550690ae1288c7b542ce15fa9821348f8ecedeb9bbf7a88173eb42f79",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_cfg_report.py",
+      "archive_path": "legacy/tests/python/test_research_cfg_report.py",
+      "size_bytes": 15397,
+      "sha256": "9c0f8960d33ec3979357a77223d28edac84997526ee25c1dc0202d04b769faeb",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_cfg_split_prefix.py",
+      "archive_path": "legacy/tests/python/test_research_cfg_split_prefix.py",
+      "size_bytes": 18597,
+      "sha256": "0f0062d2ad187d192a2f3e9b93578ad49d67c786abb51ffe5ecf088fe159f8a9",
+      "action": "original_preserved"
+    },
+    {
+      "path": "tests/python/test_research_cfg_state.py",
+      "archive_path": "legacy/tests/python/test_research_cfg_state.py",
+      "size_bytes": 9802,
+      "sha256": "22d29adaaac5cb462e0d1cc3e85b5cf1fdeb27f7a145e67710469c78ce89d887",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_cost_planning.py",
+      "archive_path": "legacy/tests/python/test_research_cost_planning.py",
+      "size_bytes": 8910,
+      "sha256": "9ec4b70eac5867971c2382248867066e9f77231563348bb646499f1530e571a6",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_dual_budget.py",
+      "archive_path": "legacy/tests/python/test_research_dual_budget.py",
+      "size_bytes": 16722,
+      "sha256": "53f9188d88d1cf113bfc8ad64b898829b3b8efdb3053fcf05e51c0c7b0cc378f",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_dual_evidence.py",
+      "archive_path": "legacy/tests/python/test_research_dual_evidence.py",
+      "size_bytes": 9737,
+      "sha256": "6308f774eb1e97f4d73a685adda71628dab3888533ac51caeed30e6258121a86",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_dual_experiment.py",
+      "archive_path": "legacy/tests/python/test_research_dual_experiment.py",
+      "size_bytes": 33434,
+      "sha256": "03bd6bdeb7828f31965632293df45c84a1fa72fc59820ee8eb53fa05f5c2c03c",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_dual_matrix.py",
+      "archive_path": "legacy/tests/python/test_research_dual_matrix.py",
+      "size_bytes": 12853,
+      "sha256": "2d87fbe885b0389acdb58ecd975a2b9fd40e235a20acf786895cf0ed1d0f6c89",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_dual_protocol.py",
+      "archive_path": "legacy/tests/python/test_research_dual_protocol.py",
+      "size_bytes": 10176,
+      "sha256": "0424cba4bfa04c7179744efe680f19974eea125edb80addbcc277e0f28dc0383",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_dual_report.py",
+      "archive_path": "legacy/tests/python/test_research_dual_report.py",
+      "size_bytes": 10458,
+      "sha256": "c9afbf2fa911bbb07d3a8522f1fb709062b61f3417177fa71cc84384980728d8",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_dual_runner.py",
+      "archive_path": "legacy/tests/python/test_research_dual_runner.py",
+      "size_bytes": 15476,
+      "sha256": "e7e7f5607ebb2bdc7e23ef2a0e9eba59f344e103248b17e9e0094eaaa438cd6d",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_dual_state.py",
+      "archive_path": "legacy/tests/python/test_research_dual_state.py",
+      "size_bytes": 21914,
+      "sha256": "c6fddc9ea6c2c8961bbaa6c06fc0a63b878ed3af0b86d30d1324947b6d68b425",
+      "action": "original_preserved"
+    },
+    {
+      "path": "tests/python/test_research_evidence.py",
+      "archive_path": "legacy/tests/python/test_research_evidence.py",
+      "size_bytes": 11714,
+      "sha256": "44d0abfdee0d2512764063e723fe9465753b75bac9e152801d1773aeb4e592f6",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_execution.py",
+      "archive_path": "legacy/tests/python/test_research_execution.py",
+      "size_bytes": 11014,
+      "sha256": "36e1cf04b318cf3d9f20502b19d673694894c2dc49092636bfb39c0b3e1c43df",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_experiment.py",
+      "archive_path": "legacy/tests/python/test_research_experiment.py",
+      "size_bytes": 10428,
+      "sha256": "53411fbbc45614e6f128386db82dfcb21e47f58a6371ad08e31c03fb41d99280",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_isolation.py",
+      "archive_path": "legacy/tests/python/test_research_isolation.py",
+      "size_bytes": 6467,
+      "sha256": "99fd2fa30cb21bb1f8468270bb5c85798aa0a0c672a22918a3ac9be1fad03a19",
+      "action": "original_preserved"
+    },
+    {
+      "path": "tests/python/test_research_matrix.py",
+      "archive_path": "legacy/tests/python/test_research_matrix.py",
+      "size_bytes": 11430,
+      "sha256": "99908c4cae3ea49ad1bacbf49e47e6e34975e637cc01fd5668ecf0f40117766c",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_memory.py",
+      "archive_path": "legacy/tests/python/test_research_memory.py",
+      "size_bytes": 11532,
+      "sha256": "6b2dae782c0e6f29b4cf27dcc4d74df6bf26198fb2bde9db76b6b977624f184d",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_migration_diagnostic_cost.py",
+      "archive_path": "legacy/tests/python/test_research_migration_diagnostic_cost.py",
+      "size_bytes": 13098,
+      "sha256": "ff613e37366aa312f3abc416abb6d8c530efe3a258a5c7e1d78894b76747b931",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_migration_diagnostic_execution.py",
+      "archive_path": "legacy/tests/python/test_research_migration_diagnostic_execution.py",
+      "size_bytes": 4297,
+      "sha256": "f07016c0a472722b1a69abc024ed13b61a64b17329ef74de39a165766eb64a5f",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_migration_diagnostic_protocol.py",
+      "archive_path": "legacy/tests/python/test_research_migration_diagnostic_protocol.py",
+      "size_bytes": 12520,
+      "sha256": "09d199b48ab1c3f57d502bb9d2e88408e4138a66bef36d13d61e825064e9edb6",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_migration_diagnostic_report.py",
+      "archive_path": "legacy/tests/python/test_research_migration_diagnostic_report.py",
+      "size_bytes": 10883,
+      "sha256": "784f4cfe41e50ba756a5c9a9784d283963210e2865fb2d3428660c499731078e",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_report.py",
+      "archive_path": "legacy/tests/python/test_research_report.py",
+      "size_bytes": 10777,
+      "sha256": "00fb45dbec52945c7bdc3a3e82fef400671cb2a1a4c69d4f9c13bf7882877196",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_runner.py",
+      "archive_path": "legacy/tests/python/test_research_runner.py",
+      "size_bytes": 15595,
+      "sha256": "0945c0cbe5bb04a084c6b1bd9dd991f75c4573b6bb8c123c47dd6bcfa30180ce",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_sp_backend.py",
+      "archive_path": "legacy/tests/python/test_research_sp_backend.py",
+      "size_bytes": 19380,
+      "sha256": "4ed628b639bded579f7c125810ad8c463fbda24a9a7abf9bb57b05c77ae28b97",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_research_storage.py",
+      "archive_path": "legacy/tests/python/test_research_storage.py",
+      "size_bytes": 3074,
+      "sha256": "c05e1d7fdf9a2347fa8f62acbe53c20772d15d29aadb88940b9f754e35432f24",
+      "action": "original_preserved"
+    },
+    {
+      "path": "tests/python/test_v100_phases.py",
+      "archive_path": "legacy/tests/python/test_v100_phases.py",
+      "size_bytes": 16171,
+      "sha256": "22b0bb6007700da07e8a8dbe6013add28b5d2101aeecd3fa7b33d13d37fbb030",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_v100_runner.py",
+      "archive_path": "legacy/tests/python/test_v100_runner.py",
+      "size_bytes": 13379,
+      "sha256": "968d954ffda25dc507d92d1ea589d83e3bfed2c7ecd6a2be08826f7bdd4c1592",
+      "action": "moved"
+    },
+    {
+      "path": "tests/python/test_v100_summary.py",
+      "archive_path": "legacy/tests/python/test_v100_summary.py",
+      "size_bytes": 16664,
+      "sha256": "c3a48f76fd67bfcbadfa8254c8fdef43e26e156ea27c3a108fa5d9a225b3d31c",
+      "action": "moved"
+    }
+  ]
+}

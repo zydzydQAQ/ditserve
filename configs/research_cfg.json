@@ -1,0 +1,221 @@
+{
+  "schema_version": "ditserve.research.cfg.protocol.v1",
+  "model_id": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+  "revision": "0fad780a534b6463e45facd96134c9f345acfa5b",
+  "model_path": "/mnt/data/zyd-preempt-phase16-01a1296d/dit-runtime/huggingface/hub/models--Wan-AI--Wan2.1-T2V-1.3B-Diffusers/snapshots/0fad780a534b6463e45facd96134c9f345acfa5b",
+  "artifact_root": "/mnt/data/zyd-preempt-phase16-01a1296d/dit-research-artifacts",
+  "offline": true,
+  "steps": 32,
+  "guidance_scale": 5.0,
+  "negative_prompt": "",
+  "precisions": {
+    "transformer": "float16",
+    "vae": "float32",
+    "text_encoder": "float32"
+  },
+  "dependencies": {
+    "torch": "2.10.0+cu126",
+    "diffusers": "0.36.0",
+    "cache-dit": "1.5.0",
+    "transformers": "4.57.6",
+    "torchvision": "0.25.0+cu126",
+    "lpips": "0.1.4"
+  },
+  "attention": {
+    "A100": "flash",
+    "V100": "efficient"
+  },
+  "parallel": {
+    "degrees": [
+      1
+    ],
+    "backend": "none",
+    "heterogeneous_migration": true,
+    "sequence_parallelism": false,
+    "latent_parallelism": false,
+    "compile": false,
+    "cuda_graph": false
+  },
+  "shapes": {
+    "main": {
+      "height": 256,
+      "width": 448,
+      "frames": 17,
+      "steps": 32
+    },
+    "fallback": {
+      "height": 256,
+      "width": 448,
+      "frames": 17,
+      "steps": 32
+    }
+  },
+  "fallback_rule": "disabled_fixed_shape",
+  "dev_seeds": [
+    101,
+    102
+  ],
+  "holdout_seeds": [
+    201,
+    202
+  ],
+  "prompts": [
+    {
+      "id": "kettle",
+      "split": "dev",
+      "text": "Steam rises from a silver kettle while hot water pours in a thin stream into a glass cup on a kitchen counter. The camera remains still."
+    },
+    {
+      "id": "pendulum",
+      "split": "dev",
+      "text": "The brass pendulum of an antique wooden clock swings evenly from side to side behind a glass panel. Close-up view with a stationary camera."
+    },
+    {
+      "id": "pinwheel",
+      "split": "dev",
+      "text": "A brightly colored paper pinwheel rotates in the wind against a plain cream background. Its folded blades turn around a fixed center. The camera remains still."
+    },
+    {
+      "id": "origami",
+      "split": "dev",
+      "text": "Two hands carefully fold a square sheet of white paper into an origami crane on a dark desk. Overhead view with a stationary camera."
+    },
+    {
+      "id": "tram",
+      "split": "holdout",
+      "text": "A yellow tram travels from right to left past a stone station platform, its windows reflecting the overcast sky. The camera remains still."
+    },
+    {
+      "id": "aquarium",
+      "split": "holdout",
+      "text": "Three orange fish swim around a submerged ceramic arch inside a clear aquarium. Small air bubbles rise through the water. The camera remains still."
+    }
+  ],
+  "recipes": [
+    {
+      "id": "off",
+      "cache": false,
+      "threshold": 0.0,
+      "max_continuous": 1,
+      "cfg_mode": "independent"
+    },
+    {
+      "id": "independent_008",
+      "cache": true,
+      "threshold": 0.08,
+      "max_continuous": 1,
+      "cfg_mode": "independent"
+    },
+    {
+      "id": "independent_004",
+      "cache": true,
+      "threshold": 0.04,
+      "max_continuous": 1,
+      "cfg_mode": "independent"
+    },
+    {
+      "id": "paired_008",
+      "cache": true,
+      "threshold": 0.08,
+      "max_continuous": 1,
+      "cfg_mode": "paired"
+    }
+  ],
+  "transition_step": 16,
+  "epsilon": 0.05,
+  "gain_gate": 0.05,
+  "budget_gpu_seconds": 28800.0,
+  "remaining_budget_shares": {
+    "correctness": 0.08,
+    "calibration": 0.2,
+    "migration": 0.3,
+    "mechanism": 0.22,
+    "capacity": 0.05,
+    "reserve": 0.15
+  },
+  "estimate_wall_seconds": {
+    "correctness": 300.0,
+    "calibration": 600.0,
+    "migration": 600.0,
+    "mechanism": 600.0,
+    "capacity": 120.0,
+    "reserve": 120.0
+  },
+  "timeout_wall_seconds": {
+    "correctness": 1800.0,
+    "calibration": 3600.0,
+    "migration": 4800.0,
+    "mechanism": 3600.0,
+    "capacity": 900.0,
+    "reserve": 2400.0
+  },
+  "cleanup_wall_seconds": 30.0,
+  "runtime_threads": {
+    "omp": 8,
+    "mkl": 8,
+    "openblas": 8
+  },
+  "measurement_scope": "independent SP1 mechanism costs; all model load, frozen encoding setup, GPU holding, communication, decode, evaluation, failure and cleanup charged; not online E2E",
+  "text_encoding": "frozen_CPU_FP32_embeddings_for_GPU_correctness_and_mechanism; stage_setup_charged; not_online_E2E",
+  "online_controller": "deferred_until_cache_aware_mechanism_gate",
+  "retention_policy": "summary_and_key_samples",
+  "phases": [
+    "preflight",
+    "probe",
+    "calibrate",
+    "mechanism",
+    "report"
+  ],
+  "candidate_policies": [
+    "independent_004",
+    "paired_008"
+  ],
+  "diagnostic_policy": "independent_008",
+  "screening_inputs": [
+    {
+      "prompt_id": "origami",
+      "seed": 101
+    },
+    {
+      "prompt_id": "origami",
+      "seed": 102
+    },
+    {
+      "prompt_id": "kettle",
+      "seed": 101
+    }
+  ],
+  "paired_prefix_blocks": 8,
+  "paired_implementation_gate": "all_screening_inputs_per_device_lpips_le_0.05_and_optimistic_gain_ge_0.05_on_both_devices; new_split_prefix_correctness_and_quality_required",
+  "cost_safety_factor": 1.3,
+  "calibration_orders": [
+    "forward",
+    "reverse"
+  ],
+  "calibration_rule": "every_input_lpips_le_0.05; per_device_per_order_total_gain_ge_0.05; no_cross_input_quality_averaging",
+  "policy_selection": "minimum_mean_device_normalized_total_time; exact_tie_independent_004; freeze_before_holdout; holdout_failure_stops_without_reselection",
+  "qualification_policy": "current_protocol_source_device_backend_policy_implementation_only; no_historical_quality_inheritance",
+  "migration_actions": [
+    "stay",
+    "full",
+    "cold"
+  ],
+  "migration_screening_inputs": [
+    {
+      "prompt_id": "kettle",
+      "seed": 101
+    },
+    {
+      "prompt_id": "pendulum",
+      "seed": 101
+    }
+  ],
+  "queue_lengths": [
+    1,
+    2,
+    4,
+    8
+  ],
+  "queue_wait_factor": 1.25,
+  "capacity": "deferred_reserved_allowance_not_transferable"
+}

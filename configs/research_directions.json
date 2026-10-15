@@ -1,0 +1,219 @@
+{
+  "schema_version": "ditserve.directions.config.v1",
+  "order": [
+    1,
+    2,
+    3
+  ],
+  "budget_gpu_seconds": 86400.0,
+  "stage_budgets_gpu_seconds": {
+    "direction1": 28800.0,
+    "direction2": 21600.0,
+    "direction3": 28800.0,
+    "reserve": 7200.0
+  },
+  "device": "cuda:0",
+  "gpu_uuid": "GPU-3ab2fedc-ccc1-007d-f4a1-b6058b3479a3",
+  "python": "/home/zyd/code/dit-rewrite/.venv-previs/bin/python",
+  "torch_home": "/home/zyd/code/dit/.cache/torch",
+  "artifact_root": "/mnt/data/zyd-preempt-phase16-01a1296d/dit-directions-assets/artifacts",
+  "models": {
+    "wan": {
+      "id": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+      "path": "/mnt/data/zyd-preempt-phase16-01a1296d/dit-runtime/huggingface/hub/models--Wan-AI--Wan2.1-T2V-1.3B-Diffusers/snapshots/0fad780a534b6463e45facd96134c9f345acfa5b",
+      "revision": "0fad780a534b6463e45facd96134c9f345acfa5b"
+    },
+    "sana": {
+      "id": "Efficient-Large-Model/Sana_Sprint_0.6B_1024px_diffusers",
+      "revision": "aa76e7f4f4928f378716b6716a2130fba3caf5b1",
+      "path": "/mnt/data/zyd-preempt-phase16-01a1296d/dit-directions-assets/huggingface/hub/models--Efficient-Large-Model--Sana_Sprint_0.6B_1024px_diffusers/snapshots/aa76e7f4f4928f378716b6716a2130fba3caf5b1",
+      "verification_manifest": "/home/zyd/code/dit-rewrite/results/research-directions/provisioning/sana-verified.json"
+    },
+    "longlive": {
+      "id": "LongLive-1.3B",
+      "revision": "c6a27e771e803b1c12ffa28b82ba69b42472020e",
+      "source_path": "/mnt/data/zyd-preempt-phase16-01a1296d/dit-directions-assets/longlive/source",
+      "path": "/mnt/data/zyd-preempt-phase16-01a1296d/dit-directions-assets/longlive/weights",
+      "python": "/mnt/data/zyd-preempt-phase16-01a1296d/dit-directions-assets/longlive/venv/bin/python",
+      "checkpoint_revision": "cda9138d93872ef109d9a74c270184eb3a5acc6e",
+      "verification_manifest": "/mnt/data/zyd-preempt-phase16-01a1296d/dit-directions-assets/longlive/provisioning.json"
+    }
+  },
+  "direction1": {
+    "shapes": [
+      {
+        "height": 480,
+        "width": 832,
+        "frames": 17
+      },
+      {
+        "height": 480,
+        "width": 832,
+        "frames": 49
+      },
+      {
+        "height": 480,
+        "width": 832,
+        "frames": 81
+      }
+    ],
+    "steps": 32,
+    "guidance_scale": 5.0,
+    "attention": "flash",
+    "cache": false,
+    "prompts": [
+      "Steam rises from a silver kettle while hot water pours in a thin stream into a glass cup on a kitchen counter. The camera remains still.",
+      "The brass pendulum of an antique wooden clock swings evenly from side to side behind a glass panel. Close-up view with a stationary camera."
+    ],
+    "seeds": [
+      101,
+      102
+    ],
+    "policies": [
+      "step",
+      "cfg",
+      "block-1",
+      "block-4",
+      "block-8"
+    ],
+    "arrival_fractions": [
+      0.1,
+      0.5,
+      0.9
+    ],
+    "online_count": 24,
+    "online_loads": [
+      0.5,
+      0.9
+    ],
+    "online_seeds": [
+      101,
+      102,
+      103
+    ],
+    "online_patterns": [
+      "ordinary",
+      "burst"
+    ],
+    "max_split_overhead": 0.05,
+    "minimum_wait_p95_reduction": 0.3,
+    "maximum_video_attainment_drop": 0.05,
+    "maximum_goodput_loss": 0.05,
+    "profile_steps": 4,
+    "profile_repeats": 2,
+    "patterns": [
+      "ordinary",
+      "burst"
+    ],
+    "wan_text_encoder_scope": "CPU FP32, unchanged existing Flash baseline; Wan DiT/VAE and all Sana components resident on A100",
+    "online_image_warmups": 2
+  },
+  "direction2": {
+    "frames": [
+      49,
+      81
+    ],
+    "height": 480,
+    "width": 832,
+    "steps": 32,
+    "guidance_scale": 5.0,
+    "recipe": "paired_008",
+    "quality_epsilon": 0.05,
+    "minimum_gain": 0.05,
+    "pressure_counts": [
+      1,
+      2,
+      4,
+      8,
+      16
+    ],
+    "sp_resize": "hardware_blocked_no_homogeneous_gpus",
+    "boundary": 16,
+    "max_key_samples": 4
+  },
+  "direction3": {
+    "height": 480,
+    "width": 832,
+    "fps": 16,
+    "denoising_steps": [
+      1000,
+      750,
+      500,
+      250
+    ],
+    "latent_frames_per_chunk": 3,
+    "local_attn_size": 12,
+    "sink_size": 3,
+    "seeds": [
+      101,
+      102
+    ],
+    "buffer_chunks": [
+      0,
+      1,
+      2
+    ],
+    "maximum_sessions": 2,
+    "semantic_review": "blinded_video_window_review_separate_from_condition_version",
+    "correctness_blocks": 6,
+    "profile_blocks": 10,
+    "warmup_blocks": 2,
+    "update_blocks": 16,
+    "decode_max_abs": 0.005,
+    "multisession_policies": [
+      "round_robin",
+      "minimum_playback_slack"
+    ],
+    "global_sink": true,
+    "timestep_shift": 5.0,
+    "context_noise": 0,
+    "burst_updates": 8,
+    "burst_interval_chunks": 0.2,
+    "observation_tail_seconds": 8.0,
+    "minimum_observation_seconds": 20.0,
+    "prompt_pairs": [
+      [
+        "A bright red ball rests on a plain white table. Static camera, natural light.",
+        "A bright blue ball rests on a plain white table. Static camera, natural light."
+      ],
+      [
+        "A woman in a yellow coat stands still in a garden with both hands by her sides. Static camera.",
+        "A woman in a yellow coat waves her right hand in the same garden. Static camera."
+      ]
+    ],
+    "update_patterns": [
+      "sparse",
+      "burst"
+    ],
+    "update_arms": [
+      [
+        "fifo",
+        1
+      ],
+      [
+        "latest_only",
+        0
+      ],
+      [
+        "latest_only",
+        1
+      ],
+      [
+        "latest_only",
+        2
+      ],
+      [
+        "latest_only_flush",
+        1
+      ]
+    ],
+    "stream_warmup_blocks": 5,
+    "stream_warmup_seed": 303,
+    "stream_warmup_prompts": [
+      "A calm mountain landscape under a clear morning sky.",
+      "A calm mountain landscape under an orange sunset sky."
+    ]
+  },
+  "statistical_scope": "bounded_screening_mean_p95_and_sample_counts_not_stable_p99",
+  "artifact_policy": "preserve_metrics_hashes_key_outputs_and_failures; no historical deletion"
+}

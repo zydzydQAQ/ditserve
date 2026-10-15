@@ -1,0 +1,16 @@
+# Install the official torch/torchvision cu126 wheels first; see previs.md.
+torch==2.10.0+cu126
+torchvision==0.25.0+cu126
+diffusers==0.36.0
+transformers==4.57.6
+cache-dit==1.5.0
+accelerate==1.12.0
+lpips==0.1.4
+openpyxl==3.1.5
+matplotlib==3.10.8
+numpy
+sentencepiece
+protobuf
+ftfy
+imageio
+imageio-ffmpeg

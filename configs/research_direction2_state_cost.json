@@ -1,0 +1,20 @@
+{
+  "schema_version": "ditserve.directions.state-cost.protocol.v1",
+  "phase": "state_cost",
+  "prerequisite": "qualify",
+  "frames": 81,
+  "height": 480,
+  "width": 832,
+  "steps": 32,
+  "guidance_scale": 5.0,
+  "prompt_id": "origami",
+  "seed": 101,
+  "split": "dev",
+  "pause_step": 16,
+  "orders": [["keep", "full_cpu", "flush"], ["flush", "full_cpu", "keep"]],
+  "quality_mean_lpips_max": 0.05,
+  "full_cpu_requires_exact_keep": true,
+  "max_retained_outputs": 7,
+  "descriptive_only": true,
+  "urgent_requests": 0
+}

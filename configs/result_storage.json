@@ -1,0 +1,11 @@
+{
+  "schema_version": "ditserve.result_storage.v1",
+  "primary_format": "xlsx",
+  "auto_export_reports": true,
+  "export_directory": "excel",
+  "retain_small_metadata": true,
+  "raw_artifacts": "temporary_until_evaluation_and_continuation_complete",
+  "prune_during_report": false,
+  "protect": ["active_gpu_session", "pending_evaluation", "pending_blind_review", "pending_resume"],
+  "after_verified_cleanup": "recorded_metrics_only_no_raw_reevaluation"
+}

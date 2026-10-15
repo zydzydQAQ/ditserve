@@ -1,0 +1,78 @@
+# Python bytecode, package builds, and local environments.
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+# No trailing slash: environments can be directories OR symlinks.
+.venv*
+/venv
+/env
+
+# Local caches and test/coverage output.
+.cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# CMake output and compiled objects; keep CMakeLists.txt and CMakePresets.json.
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+CMakeUserPresets.json
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
+compile_commands.json
+*.o
+*.obj
+*.a
+*.so
+*.so.*
+*.dylib
+*.dll
+/ditserve-core
+
+# Local models/data, including symlinks to shared storage.
+/models
+/checkpoints
+/weights
+/datasets
+/data
+
+# Experiment output and transient locks. Export selected reports separately.
+/results/
+/logs/
+/tmp/
+/.compact-results.lock
+
+# Isolated migration staging, history snapshots, and delivery archives.
+# Publish the selected migration source as its own repository when needed.
+/.migration/
+/history/
+/wheelhouse/
+/delivery/
+
+# Local secrets; allow shareable environment templates.
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+!.env.*.example
+
+# Machine-local agent state and editor/OS temporary files.
+/.agents/
+/.codex/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~

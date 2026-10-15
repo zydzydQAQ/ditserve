@@ -1,0 +1,174 @@
+{
+  "artifact_root": "/home/zyd/code/dit-rewrite/.cache/optimization-screen",
+  "budget_gpu_seconds": 28800.0,
+  "compile": {
+    "backend": "inductor",
+    "cudagraphs": false,
+    "dynamic": false,
+    "fullgraph": true
+  },
+  "device": "cuda:0",
+  "direction1": {
+    "arrival_fractions": [
+      0.1,
+      0.5,
+      0.9
+    ],
+    "attention": "flash",
+    "cache": false,
+    "guidance_scale": 5.0,
+    "max_split_overhead": 0.05,
+    "maximum_goodput_loss": 0.05,
+    "maximum_video_attainment_drop": 0.05,
+    "minimum_wait_p95_reduction": 0.3,
+    "online_count": 24,
+    "online_image_warmups": 2,
+    "online_loads": [
+      0.5,
+      0.9
+    ],
+    "online_patterns": [
+      "ordinary",
+      "burst"
+    ],
+    "online_seeds": [
+      101,
+      102,
+      103
+    ],
+    "patterns": [
+      "ordinary",
+      "burst"
+    ],
+    "policies": [
+      "step",
+      "cfg",
+      "block-1",
+      "block-4",
+      "block-8"
+    ],
+    "profile_repeats": 2,
+    "profile_steps": 4,
+    "prompts": [
+      "Steam rises from a silver kettle while hot water pours in a thin stream into a glass cup on a kitchen counter. The camera remains still.",
+      "The brass pendulum of an antique wooden clock swings evenly from side to side behind a glass panel. Close-up view with a stationary camera."
+    ],
+    "seeds": [
+      101,
+      102
+    ],
+    "shapes": [
+      {
+        "frames": 17,
+        "height": 480,
+        "width": 832
+      },
+      {
+        "frames": 49,
+        "height": 480,
+        "width": 832
+      },
+      {
+        "frames": 81,
+        "height": 480,
+        "width": 832
+      }
+    ],
+    "steps": 32,
+    "wan_text_encoder_scope": "CPU FP32, unchanged existing Flash baseline; Wan DiT/VAE and all Sana components resident on A100"
+  },
+  "direction2": {
+    "boundary": 16,
+    "frames": [
+      49,
+      81
+    ],
+    "guidance_scale": 5.0,
+    "height": 480,
+    "max_key_samples": 4,
+    "minimum_gain": 0.05,
+    "pressure_counts": [
+      1,
+      2,
+      4,
+      8,
+      16
+    ],
+    "quality_epsilon": 0.05,
+    "recipe": "paired_008",
+    "sp_resize": "hardware_blocked_no_homogeneous_gpus",
+    "steps": 32,
+    "width": 832
+  },
+  "gpu_uuid": "GPU-3ab2fedc-ccc1-007d-f4a1-b6058b3479a3",
+  "metrics": {
+    "maximum_goodput_loss": 0.05,
+    "maximum_latency_increase": 0.05,
+    "maximum_video_drop": 0.05,
+    "minimum_goodput_gain": 0.05,
+    "minimum_latency_gain": 0.1,
+    "minimum_local_gain": 0.05
+  },
+  "models": {
+    "sana": {
+      "id": "Efficient-Large-Model/Sana_Sprint_0.6B_1024px_diffusers",
+      "path": "/mnt/data/zyd-preempt-phase16-01a1296d/dit-directions-assets/huggingface/hub/models--Efficient-Large-Model--Sana_Sprint_0.6B_1024px_diffusers/snapshots/aa76e7f4f4928f378716b6716a2130fba3caf5b1",
+      "revision": "aa76e7f4f4928f378716b6716a2130fba3caf5b1",
+      "verification_manifest": "/home/zyd/code/dit-rewrite/results/research-directions/provisioning/sana-verified.json"
+    },
+    "wan": {
+      "id": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+      "path": "/mnt/data/zyd-preempt-phase16-01a1296d/dit-runtime/huggingface/hub/models--Wan-AI--Wan2.1-T2V-1.3B-Diffusers/snapshots/0fad780a534b6463e45facd96134c9f345acfa5b",
+      "revision": "0fad780a534b6463e45facd96134c9f345acfa5b"
+    }
+  },
+  "old_online": "/home/zyd/code/dit-rewrite/results/research-directions/run01/direction1/direction1-online.json",
+  "online_traces": [
+    {
+      "load": 0.5,
+      "pattern": "burst",
+      "seed": 102
+    },
+    {
+      "load": 0.5,
+      "pattern": "ordinary",
+      "seed": 101
+    }
+  ],
+  "order": [
+    "sana_compile",
+    "sana_batch",
+    "wan_compile",
+    "text_encoder",
+    "vae",
+    "cache_k4"
+  ],
+  "policy": "block-4",
+  "python": "/home/zyd/code/dit-rewrite/.venv-previs/bin/python",
+  "quality": {
+    "atol": 1e-06,
+    "image_lpips": 0.01,
+    "rtol": 1e-05,
+    "video_lpips": 0.05
+  },
+  "repeats": 3,
+  "schema_version": "ditserve.optimizations.config.v1",
+  "scope": "finite paired screening, no p99, no inherited qualification",
+  "seeds": [
+    101,
+    102,
+    201,
+    202
+  ],
+  "stage_budgets_gpu_seconds": {
+    "cache_k4": 5400.0,
+    "reserve": 3600.0,
+    "sana_batch": 5400.0,
+    "sana_compile": 3600.0,
+    "text_encoder": 1800.0,
+    "vae": 1800.0,
+    "wan_compile": 7200.0
+  },
+  "torch_home": "/home/zyd/code/dit/.cache/torch",
+  "v100_uuid": "GPU-a058066e-bde9-c534-efb1-d2a68c117681"
+}
