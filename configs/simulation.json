@@ -1,0 +1,27 @@
+{
+  "generator": {
+    "count": 16,
+    "seed": 7
+  },
+  "policies": [
+    "cache_only",
+    "batch_only",
+    "naive",
+    "edf",
+    "path_aware",
+    "state_aware"
+  ],
+  "runtime": {
+    "max_batch": 4
+  },
+  "matrix": {
+    "/runtime/memory_mb": [
+      128,
+      256
+    ],
+    "/runtime/num_gpus": [
+      1,
+      4
+    ]
+  }
+}

@@ -1,0 +1,497 @@
+{
+  "schema": "ditserve.study.v1",
+  "experiment": "wan-profile-corrected",
+  "note": "User-requested corrected kernel activity/attribution and independent privileged Nsight GPU metrics. Original wan-breakdown archives are read-only. 3600 GPU seconds is an operational cap; all attempts stay on one experiment ledger.",
+  "workers": {
+    "model": {
+      "backend": "wan_profile",
+      "python": "/home/zyd/code/dit-rewrite/.venv-previs/bin/python",
+      "gpu_uuid": "GPU-3ab2fedc-ccc1-007d-f4a1-b6058b3479a3",
+      "config": {
+        "model_path": "/mnt/data/zyd-preempt-phase16-01a1296d/dit-runtime/huggingface/hub/models--Wan-AI--Wan2.1-T2V-1.3B-Diffusers/snapshots/0fad780a534b6463e45facd96134c9f345acfa5b",
+        "device": "cuda:0",
+        "required_uid": 1002,
+        "cpu_threads": 8
+      },
+      "environment": {
+        "OMP_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8",
+        "TOKENIZERS_PARALLELISM": "false"
+      }
+    }
+  },
+  "budget": {
+    "limit_gpu_seconds": 3600,
+    "watchdog_seconds": 1800,
+    "repair_reserve_gpu_seconds": 300,
+    "carry": "none"
+  },
+  "phases": [
+    {
+      "id": "software_trace",
+      "kind": "profile",
+      "worker": "model",
+      "actions": [
+        {
+          "op": "profile",
+          "mode": "warmup",
+          "spec": {
+            "prompt": "A person rides a red bicycle from left to right along a quiet tree-lined street. The camera remains still.",
+            "negative_prompt": "",
+            "seed": 0,
+            "height": 480,
+            "width": 832,
+            "steps": 32,
+            "guidance_scale": 5.0,
+            "frames": 17
+          }
+        },
+        {
+          "op": "profile",
+          "mode": "clean",
+          "spec": {
+            "prompt": "A person rides a red bicycle from left to right along a quiet tree-lined street. The camera remains still.",
+            "negative_prompt": "",
+            "seed": 0,
+            "height": 480,
+            "width": 832,
+            "steps": 32,
+            "guidance_scale": 5.0,
+            "frames": 17
+          }
+        },
+        {
+          "op": "profile",
+          "mode": "trace",
+          "spec": {
+            "prompt": "A person rides a red bicycle from left to right along a quiet tree-lined street. The camera remains still.",
+            "negative_prompt": "",
+            "seed": 0,
+            "height": 480,
+            "width": 832,
+            "steps": 32,
+            "guidance_scale": 5.0,
+            "frames": 17
+          }
+        },
+        {
+          "op": "profile",
+          "mode": "warmup",
+          "spec": {
+            "prompt": "A person rides a red bicycle from left to right along a quiet tree-lined street. The camera remains still.",
+            "negative_prompt": "",
+            "seed": 0,
+            "height": 480,
+            "width": 832,
+            "steps": 32,
+            "guidance_scale": 5.0,
+            "frames": 33
+          }
+        },
+        {
+          "op": "profile",
+          "mode": "clean",
+          "spec": {
+            "prompt": "A person rides a red bicycle from left to right along a quiet tree-lined street. The camera remains still.",
+            "negative_prompt": "",
+            "seed": 0,
+            "height": 480,
+            "width": 832,
+            "steps": 32,
+            "guidance_scale": 5.0,
+            "frames": 33
+          }
+        },
+        {
+          "op": "profile",
+          "mode": "trace",
+          "spec": {
+            "prompt": "A person rides a red bicycle from left to right along a quiet tree-lined street. The camera remains still.",
+            "negative_prompt": "",
+            "seed": 0,
+            "height": 480,
+            "width": 832,
+            "steps": 32,
+            "guidance_scale": 5.0,
+            "frames": 33
+          }
+        },
+        {
+          "op": "profile",
+          "mode": "warmup",
+          "spec": {
+            "prompt": "A person rides a red bicycle from left to right along a quiet tree-lined street. The camera remains still.",
+            "negative_prompt": "",
+            "seed": 0,
+            "height": 480,
+            "width": 832,
+            "steps": 32,
+            "guidance_scale": 5.0,
+            "frames": 65
+          }
+        },
+        {
+          "op": "profile",
+          "mode": "clean",
+          "spec": {
+            "prompt": "A person rides a red bicycle from left to right along a quiet tree-lined street. The camera remains still.",
+            "negative_prompt": "",
+            "seed": 0,
+            "height": 480,
+            "width": 832,
+            "steps": 32,
+            "guidance_scale": 5.0,
+            "frames": 65
+          }
+        },
+        {
+          "op": "profile",
+          "mode": "trace",
+          "spec": {
+            "prompt": "A person rides a red bicycle from left to right along a quiet tree-lined street. The camera remains still.",
+            "negative_prompt": "",
+            "seed": 0,
+            "height": 480,
+            "width": 832,
+            "steps": 32,
+            "guidance_scale": 5.0,
+            "frames": 65
+          }
+        }
+      ],
+      "gates": [
+        {
+          "metric": "/cells/0/operations/0/ranks/0/status",
+          "op": "eq",
+          "value": "ok",
+          "scope": "performance"
+        },
+        {
+          "metric": "/cells/0/operations/1/ranks/0/status",
+          "op": "eq",
+          "value": "ok",
+          "scope": "performance"
+        },
+        {
+          "metric": "/cells/0/operations/2/ranks/0/status",
+          "op": "eq",
+          "value": "ok",
+          "scope": "performance"
+        },
+        {
+          "metric": "/cells/0/operations/2/ranks/0/numerical_validation/passed",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/2/ranks/0/profiler/status",
+          "op": "eq",
+          "value": "measured",
+          "scope": "performance"
+        },
+        {
+          "metric": "/cells/0/operations/2/ranks/0/instrumentation_validation/passed",
+          "op": "eq",
+          "value": true,
+          "scope": "performance"
+        },
+        {
+          "metric": "/cells/0/operations/3/ranks/0/status",
+          "op": "eq",
+          "value": "ok",
+          "scope": "performance"
+        },
+        {
+          "metric": "/cells/0/operations/4/ranks/0/status",
+          "op": "eq",
+          "value": "ok",
+          "scope": "performance"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/0/status",
+          "op": "eq",
+          "value": "ok",
+          "scope": "performance"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/0/numerical_validation/passed",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/0/profiler/status",
+          "op": "eq",
+          "value": "measured",
+          "scope": "performance"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/0/instrumentation_validation/passed",
+          "op": "eq",
+          "value": true,
+          "scope": "performance"
+        },
+        {
+          "metric": "/cells/0/operations/6/ranks/0/status",
+          "op": "eq",
+          "value": "ok",
+          "scope": "performance"
+        },
+        {
+          "metric": "/cells/0/operations/7/ranks/0/status",
+          "op": "eq",
+          "value": "ok",
+          "scope": "performance"
+        },
+        {
+          "metric": "/cells/0/operations/8/ranks/0/status",
+          "op": "eq",
+          "value": "ok",
+          "scope": "performance"
+        },
+        {
+          "metric": "/cells/0/operations/8/ranks/0/numerical_validation/passed",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/8/ranks/0/profiler/status",
+          "op": "eq",
+          "value": "measured",
+          "scope": "performance"
+        },
+        {
+          "metric": "/cells/0/operations/8/ranks/0/instrumentation_validation/passed",
+          "op": "eq",
+          "value": true,
+          "scope": "performance"
+        }
+      ],
+      "admission_wait_seconds": 3600,
+      "admission_poll_seconds": 15,
+      "watchdog_seconds": 1800,
+      "artifact_dependencies": [
+        "profile_validation"
+      ]
+    },
+    {
+      "id": "hardware_metrics",
+      "kind": "profile",
+      "worker": "model",
+      "actions": [
+        {
+          "op": "profile",
+          "mode": "warmup",
+          "spec": {
+            "prompt": "A person rides a red bicycle from left to right along a quiet tree-lined street. The camera remains still.",
+            "negative_prompt": "",
+            "seed": 0,
+            "height": 480,
+            "width": 832,
+            "steps": 32,
+            "guidance_scale": 5.0,
+            "frames": 17
+          }
+        },
+        {
+          "op": "profile",
+          "mode": "clean",
+          "spec": {
+            "prompt": "A person rides a red bicycle from left to right along a quiet tree-lined street. The camera remains still.",
+            "negative_prompt": "",
+            "seed": 0,
+            "height": 480,
+            "width": 832,
+            "steps": 32,
+            "guidance_scale": 5.0,
+            "frames": 17
+          }
+        },
+        {
+          "op": "profile",
+          "mode": "hardware",
+          "spec": {
+            "prompt": "A person rides a red bicycle from left to right along a quiet tree-lined street. The camera remains still.",
+            "negative_prompt": "",
+            "seed": 0,
+            "height": 480,
+            "width": 832,
+            "steps": 32,
+            "guidance_scale": 5.0,
+            "frames": 17
+          }
+        },
+        {
+          "op": "profile",
+          "mode": "warmup",
+          "spec": {
+            "prompt": "A person rides a red bicycle from left to right along a quiet tree-lined street. The camera remains still.",
+            "negative_prompt": "",
+            "seed": 0,
+            "height": 480,
+            "width": 832,
+            "steps": 32,
+            "guidance_scale": 5.0,
+            "frames": 33
+          }
+        },
+        {
+          "op": "profile",
+          "mode": "clean",
+          "spec": {
+            "prompt": "A person rides a red bicycle from left to right along a quiet tree-lined street. The camera remains still.",
+            "negative_prompt": "",
+            "seed": 0,
+            "height": 480,
+            "width": 832,
+            "steps": 32,
+            "guidance_scale": 5.0,
+            "frames": 33
+          }
+        },
+        {
+          "op": "profile",
+          "mode": "hardware",
+          "spec": {
+            "prompt": "A person rides a red bicycle from left to right along a quiet tree-lined street. The camera remains still.",
+            "negative_prompt": "",
+            "seed": 0,
+            "height": 480,
+            "width": 832,
+            "steps": 32,
+            "guidance_scale": 5.0,
+            "frames": 33
+          }
+        },
+        {
+          "op": "profile",
+          "mode": "warmup",
+          "spec": {
+            "prompt": "A person rides a red bicycle from left to right along a quiet tree-lined street. The camera remains still.",
+            "negative_prompt": "",
+            "seed": 0,
+            "height": 480,
+            "width": 832,
+            "steps": 32,
+            "guidance_scale": 5.0,
+            "frames": 65
+          }
+        },
+        {
+          "op": "profile",
+          "mode": "clean",
+          "spec": {
+            "prompt": "A person rides a red bicycle from left to right along a quiet tree-lined street. The camera remains still.",
+            "negative_prompt": "",
+            "seed": 0,
+            "height": 480,
+            "width": 832,
+            "steps": 32,
+            "guidance_scale": 5.0,
+            "frames": 65
+          }
+        },
+        {
+          "op": "profile",
+          "mode": "hardware",
+          "spec": {
+            "prompt": "A person rides a red bicycle from left to right along a quiet tree-lined street. The camera remains still.",
+            "negative_prompt": "",
+            "seed": 0,
+            "height": 480,
+            "width": 832,
+            "steps": 32,
+            "guidance_scale": 5.0,
+            "frames": 65
+          }
+        }
+      ],
+      "gates": [
+        {
+          "metric": "/cells/0/operations/0/ranks/0/status",
+          "op": "eq",
+          "value": "ok",
+          "scope": "performance"
+        },
+        {
+          "metric": "/cells/0/operations/1/ranks/0/status",
+          "op": "eq",
+          "value": "ok",
+          "scope": "performance"
+        },
+        {
+          "metric": "/cells/0/operations/2/ranks/0/status",
+          "op": "eq",
+          "value": "ok",
+          "scope": "performance"
+        },
+        {
+          "metric": "/cells/0/operations/2/ranks/0/numerical_validation/passed",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/3/ranks/0/status",
+          "op": "eq",
+          "value": "ok",
+          "scope": "performance"
+        },
+        {
+          "metric": "/cells/0/operations/4/ranks/0/status",
+          "op": "eq",
+          "value": "ok",
+          "scope": "performance"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/0/status",
+          "op": "eq",
+          "value": "ok",
+          "scope": "performance"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/0/numerical_validation/passed",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/6/ranks/0/status",
+          "op": "eq",
+          "value": "ok",
+          "scope": "performance"
+        },
+        {
+          "metric": "/cells/0/operations/7/ranks/0/status",
+          "op": "eq",
+          "value": "ok",
+          "scope": "performance"
+        },
+        {
+          "metric": "/cells/0/operations/8/ranks/0/status",
+          "op": "eq",
+          "value": "ok",
+          "scope": "performance"
+        },
+        {
+          "metric": "/cells/0/operations/8/ranks/0/numerical_validation/passed",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        }
+      ],
+      "admission_wait_seconds": 0,
+      "admission_poll_seconds": 15,
+      "watchdog_seconds": 1800,
+      "artifact_dependencies": [
+        "profile_validation"
+      ],
+      "requires": [
+        "software_trace"
+      ]
+    }
+  ]
+}

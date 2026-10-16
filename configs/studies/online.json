@@ -1,0 +1,64 @@
+{
+  "schema": "ditserve.study.v1",
+  "experiment": "online",
+  "note": "Wan cache-off block调度；resident_limit覆盖8个请求，半个solver步的packet不支持offload。成本仅示例，需要独立校准。",
+  "workers": {
+    "model": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-REPLACE-WITH-FULL-DEVICE-UUID",
+      "config": {
+        "model_path": "/models/wan",
+        "device": "cuda:0",
+        "options": {
+          "execution": "block"
+        }
+      }
+    }
+  },
+  "budget": {
+    "limit_gpu_seconds": 600,
+    "watchdog_seconds": 300,
+    "repair_reserve_gpu_seconds": 0,
+    "carry": "none"
+  },
+  "phases": [
+    {
+      "id": "replay",
+      "kind": "online",
+      "generator": {
+        "count": 8,
+        "rate_rps": 0.1,
+        "pattern": "poisson",
+        "spec": {
+          "prompt": "A red ceramic kettle on a wooden table.",
+          "seed": 7,
+          "steps": 20,
+          "height": 480,
+          "width": 832,
+          "frames": 17,
+          "guidance_scale": 5.0,
+          "cache": false,
+          "threshold": 0.0,
+          "max_continuous": 1
+        },
+        "service_ms": 10000,
+        "slo_ms": 25000
+      },
+      "policy": "guarded_adaptive",
+      "unit": "block",
+      "text_prefetch": 2,
+      "resident_limit": 8,
+      "costs": {
+        "image_deadline_ms": 2000,
+        "prepare_ms": 300,
+        "step_ms": 500,
+        "block_ms": 8,
+        "finish_ms": 1000
+      },
+      "artifact_dependencies": [
+        "independent_quality_evaluation"
+      ]
+    }
+  ]
+}

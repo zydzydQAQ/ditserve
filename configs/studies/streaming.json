@@ -1,0 +1,53 @@
+{
+  "schema": "ditserve.study.v1",
+  "experiment": "streaming",
+  "note": "独立LongLive环境与完整本地权重，固定source revision c6a27e771e803b1c12ffa28b82ba69b42472020e；仅A100 BF16、480×832、16fps、每chunk3 latent帧，最多2驻留会话。语义正确性需要独立盲评。",
+  "workers": {
+    "model": {
+      "backend": "longlive",
+      "python": "/path/to/longlive-env/bin/python",
+      "gpu_uuid": "GPU-REPLACE-WITH-FULL-DEVICE-UUID",
+      "config": {
+        "model_path": "/models/longlive",
+        "device": "cuda:0",
+        "options": {},
+        "source_path": "/models/LongLive-source"
+      }
+    }
+  },
+  "budget": {
+    "limit_gpu_seconds": 600,
+    "watchdog_seconds": 300,
+    "repair_reserve_gpu_seconds": 0,
+    "carry": "none"
+  },
+  "phases": [
+    {
+      "id": "updates",
+      "kind": "streaming",
+      "chunks": 3,
+      "fps": 16,
+      "buffer_chunks": 1,
+      "prompt_policy": "latest_only_flush",
+      "workload": [
+        {
+          "request_id": "video",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7
+          },
+          "updates": [
+            {
+              "arrival_ms": 500,
+              "version": 1,
+              "prompt": "The same kettle is now blue."
+            }
+          ]
+        }
+      ],
+      "artifact_dependencies": [
+        "semantic_blind_review"
+      ]
+    }
+  ]
+}

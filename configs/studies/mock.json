@@ -1,0 +1,37 @@
+{
+  "schema": "ditserve.study.v1",
+  "experiment": "cpu-smoke",
+  "workers": {
+    "model": {
+      "backend": "mock"
+    }
+  },
+  "budget": {
+    "limit_gpu_seconds": 600,
+    "watchdog_seconds": 300,
+    "repair_reserve_gpu_seconds": 0,
+    "carry": "none"
+  },
+  "phases": [
+    {
+      "id": "online",
+      "kind": "online",
+      "generator": {
+        "count": 4,
+        "spec": {
+          "steps": 3
+        },
+        "pattern": "offline_all"
+      },
+      "policy": "edf",
+      "matrix": {
+        "/policy": [
+          "fcfs",
+          "edf",
+          "srtf"
+        ]
+      },
+      "paired": true
+    }
+  ]
+}

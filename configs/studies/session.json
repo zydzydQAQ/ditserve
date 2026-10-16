@@ -1,0 +1,97 @@
+{
+  "schema": "ditserve.study.v1",
+  "experiment": "session",
+  "note": "两个worker须绑定同一V100(sm70)：Mistral FP16无量化/无sliding-window；Sana Sprint0.6B FP32固定1024×1024、SCM2步、CFG4.5。Sana prompt由上一个LLM阶段提供，只需seed。",
+  "workers": {
+    "llm": {
+      "backend": "mistral",
+      "python": "python3",
+      "gpu_uuid": "GPU-REPLACE-WITH-FULL-DEVICE-UUID",
+      "config": {
+        "model_path": "/models/mistral",
+        "device": "cuda:0",
+        "options": {}
+      }
+    },
+    "image": {
+      "backend": "sana",
+      "python": "python3",
+      "gpu_uuid": "GPU-REPLACE-WITH-FULL-DEVICE-UUID",
+      "config": {
+        "model_path": "/models/sana",
+        "device": "cuda:0",
+        "options": {}
+      }
+    }
+  },
+  "budget": {
+    "limit_gpu_seconds": 600,
+    "watchdog_seconds": 300,
+    "repair_reserve_gpu_seconds": 0,
+    "carry": "none"
+  },
+  "phases": [
+    {
+      "id": "conversation",
+      "kind": "session",
+      "policy": "session_slack",
+      "workload": [
+        {
+          "request_id": "s0-r1",
+          "session_id": "s0",
+          "worker": "llm",
+          "service_ms": 1500,
+          "slo_ms": 3750,
+          "stages": [
+            {
+              "worker": "llm",
+              "spec": {
+                "prompt": "Describe a red kettle. Return only the image prompt.",
+                "max_new_tokens": 32
+              },
+              "cost_ms": 500
+            },
+            {
+              "worker": "image",
+              "spec": {
+                "seed": 7
+              },
+              "prompt_from_previous": true,
+              "cost_ms": 1000
+            }
+          ]
+        },
+        {
+          "request_id": "s0-r2",
+          "session_id": "s0",
+          "after": "s0-r1",
+          "think_ms": 250,
+          "worker": "llm",
+          "service_ms": 1500,
+          "slo_ms": 3750,
+          "stages": [
+            {
+              "worker": "llm",
+              "spec": {
+                "prompt": "Keep the kettle and setting, make it blue. Return only the image prompt.",
+                "max_new_tokens": 32
+              },
+              "cost_ms": 500
+            },
+            {
+              "worker": "image",
+              "spec": {
+                "seed": 7
+              },
+              "prompt_from_previous": true,
+              "cost_ms": 1000
+            }
+          ]
+        }
+      ],
+      "artifact_dependencies": [
+        "session_output_evaluation"
+      ]
+    }
+  ]
+}

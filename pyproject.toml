@@ -4,20 +4,19 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ditserve"
-version = "0.3.0"
-description = "Lightweight control plane and Python API for cache-aware diffusion serving experiments"
+version = "0.4.0"
+description = "C++ experiment controller with resident Python model adapters and verified Excel results"
 requires-python = ">=3.8"
 dependencies = []
 
 [project.optional-dependencies]
 reports = ["openpyxl==3.1.5"]
 
-[project.scripts]
-ditserve = "ditserve.cli:main"
-
 [tool.setuptools.packages.find]
-where = ["python"]
+where = ["workers"]
+include = ["ditserve*"]
+namespaces = false
 
 [tool.setuptools.data-files]
 "share/ditserve/configs" = ["configs/*.json", "configs/*.txt"]
-"share/ditserve/configs/benchmark" = ["configs/benchmark/*.json"]
+"share/ditserve/configs/studies" = ["configs/studies/*.json"]

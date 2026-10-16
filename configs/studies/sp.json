@@ -1,0 +1,108 @@
+{
+  "schema": "ditserve.study.v1",
+  "experiment": "sp",
+  "note": "四个不同GPU的NCCL world，显式Flash；支持固定SP1/2/4组，本例只执行一个solver步。GPU等价性未验证，cached-feature跨组迁移不支持。",
+  "workers": {
+    "0": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-REPLACE-WITH-FULL-DEVICE-UUID-0",
+      "config": {
+        "model_path": "/models/wan",
+        "device": "cuda:0",
+        "options": {},
+        "attention": "flash"
+      }
+    },
+    "1": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-REPLACE-WITH-FULL-DEVICE-UUID-1",
+      "config": {
+        "model_path": "/models/wan",
+        "device": "cuda:0",
+        "options": {},
+        "attention": "flash"
+      }
+    },
+    "2": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-REPLACE-WITH-FULL-DEVICE-UUID-2",
+      "config": {
+        "model_path": "/models/wan",
+        "device": "cuda:0",
+        "options": {},
+        "attention": "flash"
+      }
+    },
+    "3": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-REPLACE-WITH-FULL-DEVICE-UUID-3",
+      "config": {
+        "model_path": "/models/wan",
+        "device": "cuda:0",
+        "options": {},
+        "attention": "flash"
+      }
+    }
+  },
+  "budget": {
+    "limit_gpu_seconds": 600,
+    "watchdog_seconds": 300,
+    "repair_reserve_gpu_seconds": 0,
+    "carry": "none"
+  },
+  "phases": [
+    {
+      "id": "fixed-groups",
+      "kind": "sp",
+      "workers": [
+        "0",
+        "1",
+        "2",
+        "3"
+      ],
+      "actions": [
+        {
+          "op": "distributed",
+          "action": "init",
+          "init_method": "tcp://127.0.0.1:29501",
+          "ranks": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "op": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 20,
+            "height": 480,
+            "width": 832,
+            "frames": 17,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "sp0"
+          },
+          "state_id": "sp0"
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "sp0"
+        },
+        {
+          "op": "release",
+          "state_id": "sp0"
+        }
+      ]
+    }
+  ]
+}

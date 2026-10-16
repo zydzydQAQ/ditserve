@@ -1,0 +1,351 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{microtype}
+\usepackage{xurl}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[hidelinks]{hyperref}
+
+\hypersetup{pdftitle={DiT Model Serving: Background, Motivation, and Related Work}}
+\urlstyle{same}
+\setlength{\emergencystretch}{2em}
+\newcommand{\evidence}[1]{\footnote{Experimental record in the accompanying
+\texttt{dit-rewrite} repository: \nolinkurl{#1}.}}
+
+% References use the companion dit_serving_references.bib database.
+% Build from this directory with a LaTeX/BibTeX-capable toolchain.
+% Evidence was checked against the completed reports on 2026-10-14.
+% Keep two displayed equations: Gaussian noising and a clean-latent estimate.
+% The noise-prediction example does not specify Wan's actual solver update.
+
+\title{DiT Model Serving\\[0.3em]
+\large Background, Motivation, and Related Work}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Background}
+\label{sec:background}
+
+\subsection{Diffusion Models}
+\label{sec:diffusion-models}
+
+Diffusion models generate data by learning to reverse a process that
+progressively corrupts clean samples with noise. Early successful
+formulations, including denoising diffusion probabilistic models (DDPMs),
+predominantly employed convolutional U-Net denoisers~\cite{ho2020ddpm}.
+Latent diffusion subsequently reduced the computational burden by
+performing the iterative generative process in the compressed representation
+of a pretrained autoencoder. A decoder then maps the generated latent back
+to image space. This separates perceptual compression from generative
+modeling while retaining the repeated denoising
+structure~\cite{rombach2022ldm}.
+
+Diffusion Transformers (DiTs) replace the U-Net backbone with a Transformer
+operating on patches of the latent representation~\cite{peebles2023dit}.
+These patches become tokens processed through repeated attention and
+feed-forward blocks, with conditioning information injected into the
+network. For video generation, tokens additionally represent temporal
+structure, increasing the amount of computation within each network
+evaluation. The denoising architecture and the generative formulation are
+separate choices: adopting a Transformer does not prescribe a particular
+noise schedule, prediction parameterization, or numerical sampler.
+
+The basic diffusion process adds Gaussian noise to a clean latent $x_0$:
+\begin{equation}
+  x_t=\alpha_t x_0+\sigma_t\epsilon.
+  \label{eq:noising}
+\end{equation}
+Here, $\epsilon\sim\mathcal N(0,I)$, while $\alpha_t$ and $\sigma_t$
+control the signal and noise levels. Under noise prediction, the model
+estimates $\hat\epsilon_\theta$ from the noisy latent, timestep, and condition.
+For $\alpha_t>0$, this gives a clean-latent estimate:
+\begin{equation}
+  \hat x_0=\frac{x_t-\sigma_t\hat\epsilon_\theta}{\alpha_t}.
+  \label{eq:denoising}
+\end{equation}
+These equations summarize noising and noise prediction; the sampler
+determines the iterative updates used during generation~\cite{ho2020ddpm}.
+
+For text-conditioned latent generation, inference begins by encoding the
+prompt and initializing a Gaussian latent. Each sampling iteration
+evaluates the Transformer at the current latent and timestep, combines
+conditional predictions when required, and updates the latent through the
+sampler. Classifier-free guidance (CFG) combines conditional and
+unconditional predictions using a guidance scale~\cite{ho2022cfg}; its
+two branches introduce additional network evaluations that can be batched
+or otherwise optimized.
+
+The Wan model used in our experiments employs a flow-matching formulation
+that predicts a velocity field along a path between Gaussian noise and
+data~\cite{wan2025}. Our implementation uses UniPC to update the latent
+from velocity predictions, rather than applying the noise-prediction
+example above. The serving abstraction remains repeated \emph{model
+prediction followed by sampler update}, including any solver history.
+After the final update, the VAE decoder produces the output video. This
+formulation exposes the execution hierarchy relevant to serving: a request
+contains sampling iterations, an iteration may contain multiple guidance
+branches, and each branch contains a sequence of Transformer blocks.
+
+\subsection{Diffusion Serving}
+\label{sec:diffusion-serving}
+
+A diffusion serving system executes requests arriving over time while
+sharing limited compute and memory resources. A request specifies its
+conditioning input, model, output dimensions, sampling configuration, and
+potentially a completion deadline. Its end-to-end latency extends from
+arrival to output completion, encompassing encoding, queueing, execution,
+interruptions, and decoding. This differs from isolated generation time
+measured after inputs and models have already been prepared.
+
+Throughput measures completed requests per unit time, whereas
+deadline-constrained goodput measures successfully completed requests that
+meet their deadlines per unit time. End-to-end latency is the difference
+between a request's completion and arrival times. For finite traces, our
+measurement interval includes idle periods and the final drain. Failed or
+late requests do not contribute to goodput, while their execution time
+remains in the observation interval. Output quality is evaluated
+separately under the prescribed comparison protocol.
+
+Three properties shape the scheduling problem. First, image and video
+requests can differ substantially in service time, even when both use
+Transformer-based generators. Second, repeated sampling creates
+opportunities to suspend execution between iterations, guidance branches,
+or smaller network segments. Third, these boundaries expose different
+amounts of live state. A step boundary may require the current latent and
+solver history; an intra-step boundary can additionally require
+intermediate activations, branch outputs, and execution position.
+
+Feature caching introduces another category of state whose lifetime spans
+sampling iterations. Cached features can reduce subsequent computation,
+but preserving, transferring, or discarding them changes memory occupancy
+and future execution cost. Consequently, releasing the GPU for another
+request does not necessarily release the suspended request's memory.
+
+Batching, preemption, and parallel execution address different aspects of
+this problem. Batching amortizes execution costs across compatible
+requests; preemption limits how long one request blocks another;
+parallelism distributes computation across devices. Their effectiveness
+depends on workload composition, execution granularity, and state
+requirements. A serving policy must therefore evaluate both immediate
+responsiveness and the cost of completing suspended work.
+
+\section{Motivation}
+\label{sec:motivation}
+
+Our measurements investigate mixed image--video serving on an A100 PCIe
+GPU with 40\,GB of memory. The principal configuration combines
+Wan2.1-T2V-1.3B video generation with Sana-Sprint-0.6B image generation.
+Wan uses 32 sampling steps, CFG scale 5, and Flash attention; its text
+encoder runs on the CPU, while its DiT and VAE reside on the GPU. We
+distinguish local execution measurements from online experiments
+throughout.
+
+\subsection{Preemption Granularity}
+\label{sec:temporal-heterogeneity}
+
+A sampling iteration can already be too coarse to protect short requests.
+At $480\times832$ resolution, the measured average Wan step time increases
+from 0.581 seconds for 17 frames to 2.021 seconds for 49 frames and 4.122
+seconds for 81 frames. Each estimate comprises six measured steps from
+truncated profiling runs. By comparison, Sana generates a complete
+$1024\times1024$ image in approximately 0.317 seconds under its two-step
+configuration. Thus, one video sampling step can occupy the GPU for
+roughly thirteen times the service time of a complete short image
+request.\evidence{results/research-directions/run01/direction1/direction1-profile.json}
+
+This mismatch limits step-boundary preemption. An urgent image request
+arriving shortly after a video step begins must wait for the remaining
+step even if the scheduler immediately recognizes its priority. We
+therefore evaluate suspension at CFG boundaries and after individual
+Transformer blocks or groups of blocks. In a paired microbenchmark
+comprising two rounds and three arrival positions per round, the
+descriptive p95 waiting time falls from 3,732\,ms with step-boundary
+suspension to 1,659\,ms at CFG boundaries, 44\,ms after individual blocks,
+and 168\,ms after groups of four blocks. These measurements use preencoded
+image conditions and a three-step video prefix, with six observations per
+policy.\evidence{results/research-directions/run01/direction1/direction1-preemption.json}
+
+Finer suspension also retains additional state. For the 81-frame
+configuration, block-level suspension requires approximately 117.5\,MiB
+of extra intermediate state. Separate correctness experiments interleave
+image execution with paused video inference and verify the resumed
+trajectory against uninterrupted execution. All eight tested cases pass,
+covering two video shapes. This establishes the feasibility of the tested
+execution mechanism; the scheduling benefit still requires workload-level
+evaluation.\evidence{results/research-directions/run01/direction1/direction1-correctness.json}
+
+The available online results support further investigation. Eleven traces
+have complete comparisons across all five policies, giving 264 requests
+per policy: 242 images and 22 videos. Step-boundary scheduling completes
+111 requests on time, compared with 202 for block-1 and 199 for block-4;
+all 22 videos meet their deadlines in these three arms. However, the full
+experiment stopped after 57 of 60 planned replays because its allocated
+budget was exhausted. These are descriptive results from the complete
+paired subset. They motivate selecting suspension granularity according
+to short-request response requirements, while accounting for retained
+state and switching
+overhead.\evidence{results/research-directions/run01/REPORT.md}
+
+\subsection{Cache State}
+\label{sec:cache-state}
+
+Feature caching changes the computational structure seen by a scheduler.
+An iteration that recomputes features can be substantially more expensive
+than one that reuses them. Earlier profiling of a 17-frame Wan
+configuration observed approximately 2.965 seconds for computation steps
+and 0.790 seconds for reuse steps on A100, a ratio of about 3.75. These
+measurements used a different attention configuration from the later
+experiments, so their absolute times are not directly comparable. They
+nevertheless demonstrate that a single average step cost can conceal
+substantial variation within one generation
+trajectory.\evidence{results/motivation/m1-summary.json}
+
+Caching also provides measurable local acceleration under quality
+constraints. For 81-frame generation, the selected CFG-coordinated cache
+configuration reduces service time by 19.64\% and 19.68\% across the two
+execution orders. Evaluation covers eight development inputs in both
+orders and four held-out inputs, yielding twenty paired quality
+comparisons. All pass the prescribed mean-LPIPS threshold of 0.05 against
+uncached references. The timing includes preparation after text
+preencoding, denoising, and decoding. It therefore measures local
+generation improvement, while the quality threshold represents empirical
+screening rather than exact output
+preservation.\evidence{results/research-directions/run01/direction2/qualify.json}
+
+Once a request is suspended, the system must decide what to do with its
+cached state. Retaining it avoids transfer and reconstruction; moving it
+to CPU memory releases GPU memory while preserving its contents; clearing
+it reduces residency but can change subsequent computation. In a
+single-input experiment paused after step 16, full CPU offloading
+transfers approximately 447.6\,MB, with mean device-to-host and
+host-to-device times of 197.24\,ms and 37.91\,ms. Both resumed outputs
+match the corresponding keep-state outputs exactly. Each action is
+measured twice, in opposite execution orders.
+
+Clearing the feature cache takes only about 0.04\,ms and releases
+approximately 406\,MB of allocated memory. However, the next step
+increases from 1,129.96\,ms to 4,192.90\,ms. The complete remaining suffix,
+including decoding, increases by only 27.14\,ms on average. This
+difference shows why the immediate action cost, next-step cost, and total
+remaining cost must be measured separately. The cleared-cache outputs
+pass the quality threshold but do not exactly match the keep-state
+outputs. With only two observations, the near-equal suffix times cannot
+establish that reconstruction is generally
+free.\evidence{results/research-directions/run01/direction2/state_cost.json}
+
+Memory savings become useful only when they address an actual resource
+constraint. In our pressure experiment, keeping the state of
+$K=1,2,4,8,$ and $16$ paused requests still permits an urgent request to
+execute. The experiment therefore exposes no admission benefit from
+state eviction within this range, and it does not complete every
+background suffix. The resulting research direction is conditional:
+cache-aware state management should respond to demonstrated memory or
+latency pressure and account for future reuse, rather than treating
+released bytes as evidence of serving
+improvement.\evidence{results/research-directions/run01/direction2/pressure.json}
+
+\subsection{Serving Performance}
+\label{sec:local-versus-serving}
+
+Improving the execution time of one model is valuable, but the serving
+objective depends on how that improvement interacts with arrivals,
+deadlines, and competing requests. We examine this distinction by
+compiling Wan Transformer blocks while retaining the existing block-4
+scheduling boundaries. Across four distinct inputs measured in two
+execution orders, compilation reduces local service time by
+14.40--14.44\%. These measurements include preparation after preencoding,
+denoising, and decoding, with eight observations per arm.
+
+The corresponding online experiment uses two frozen arrival traces and
+both execution orders, producing eight complete replays and 192 request
+executions. Each arm contains 96 requests, including 88 images and eight
+videos. Despite the local reduction, pooled goodput decreases from
+0.03773 to 0.03709 requests per second, a 1.70\% decline. The pooled
+image-latency p95 increases from 1.430 to 1.627 seconds, or 13.76\%. All
+eight videos in each arm meet their deadlines. These finite measurements
+demonstrate that the observed local acceleration does not translate into
+improved serving outcomes under the tested
+configuration.\evidence{results/optimization-screen/run01/wan_compile/attempt03/online.json}
+
+The aggregation is important. Pooled goodput divides the total number of
+on-time completions by the sum of replay durations; it does not average
+per-replay goodput values. Similarly, the image p95 is recomputed from
+the 88 image latencies in each arm. These observations do not establish
+statistically significant degradation or identify its dominant cause.
+They establish the need to evaluate execution optimizations against the
+actual online objective using unchanged arrivals, deadlines, and complete
+accounting.
+
+Together, the measurements motivate a controller that considers request
+urgency, legal execution boundaries, and cache-dependent continuation
+costs. Fine-grained earliest-deadline-first scheduling provides a strong
+baseline: additional state-aware rules must demonstrate benefits beyond
+those obtained simply by exposing shorter execution intervals.
+Continuous video playback and elastic multi-GPU execution introduce
+further constraints, but their benefits require separate validation. The
+present evidence supports a focused investigation of mixed-request
+responsiveness and resumable state on a single GPU.
+
+\section{Related Work}
+\label{sec:related-work}
+
+\subsection{Diffusion Serving Systems}
+\label{sec:related-serving}
+
+TetriServe combines deadline-aware scheduling with elastic sequence
+parallelism and supports cross-request latent reuse through
+NIRVANA~\cite{lu2026tetriserve}.
+DiffServe uses query-aware model cascades and resource allocation to
+balance generation quality and serving efficiency~\cite{ahmad2025diffserve}.
+NIRVANA reuses intermediate noise states across similar prompts to skip
+early sampling steps~\cite{agarwal2024nirvana}.
+
+DistriFusion uses displaced patch parallelism and features from previous
+diffusion steps to overlap communication with
+computation~\cite{li2024distrifusion}.
+PipeFusion combines patch and layer partitioning with cross-step feature
+reuse to reduce communication in pipelined DiT
+inference~\cite{fang2025pipefusion}.
+GENSERVE, a preprint, combines step-boundary preemption, elastic sequence
+parallelism, dynamic batching, and SLO-aware scheduling for heterogeneous
+diffusion workloads~\cite{ye2026genserve}.
+FlashDiff, also a preprint, schedules regional computation at patch
+granularity while restricting preemption to denoising-step
+boundaries~\cite{qiao2026flashdiff}.
+Our study focuses on Transformer-block suspension within a sampling step
+and the request-local state required for resumption.
+
+\subsection{GPU Sharing and Caching}
+\label{sec:related-state}
+
+REEF exploits DNN kernel idempotence for reset-based preemption and uses
+dynamic kernel padding to improve GPU sharing~\cite{han2022reef}.
+Nixie coordinates kernel dispatch and memory migration for transparent
+application-level multiplexing, waiting for outstanding kernels to
+finish before moving memory~\cite{xu2026nixie}.
+
+Pyramid Attention Broadcast reuses attention outputs across sampling
+steps with intervals tailored to different attention
+types~\cite{zhao2025pab}.
+FasterCache combines dynamic feature reuse with CFG-Cache to exploit
+redundancy between conditional and unconditional
+outputs~\cite{lyu2025fastercache}.
+TeaCache uses timestep-modulated inputs to estimate output variation and
+select reuse opportunities~\cite{liu2025teacache}.
+TaylorSeer predicts future features through Taylor expansions using
+derivatives estimated from feature history~\cite{liu2025taylorseer}.
+
+These techniques motivate examining how suspension boundaries and cached
+state jointly affect responsiveness, memory residency, and continuation
+cost; our measurements characterize these tradeoffs without establishing
+general superiority over existing systems.
+
+\bibliographystyle{unsrtnat}
+\bibliography{dit_serving_references}
+\end{document}

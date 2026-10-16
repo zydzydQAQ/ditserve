@@ -1,7 +1,0 @@
-[
-  {"request_id":"long","arrival_ms":0,"deadline_ms":1500,"steps":40,"seed":0,"cache_threshold":0.15},
-  {"request_id":"urgent-1","arrival_ms":8,"deadline_ms":90,"steps":3,"seed":1,"cache_threshold":0.15},
-  {"request_id":"urgent-2","arrival_ms":30,"deadline_ms":180,"steps":5,"seed":2,"cache_threshold":0.15},
-  {"request_id":"later","arrival_ms":150,"deadline_ms":1200,"steps":20,"seed":3,"cache_threshold":0.15}
-]
-
