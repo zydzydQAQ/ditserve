@@ -72,6 +72,24 @@ class ResultsTests(unittest.TestCase):
             book.close()
         self.assertEqual(results.verify(self.output)["status"], "verified")
 
+    def test_ledger_lock_is_taken_through_a_writable_handle(self):
+        # NFS turns flock into a byte-range lock; LOCK_EX on a read-only descriptor is EBADF there.
+        ledger = self.base / "ledger" / "budget.json"
+        ledger.parent.mkdir()
+        ledger.write_text(json.dumps(dict(schema_version="ditserve.budget.v1", active=None, sessions=[])))
+        Path(str(ledger) + ".lock").touch()
+        self.run["budget"]["ledger"] = str(ledger)
+        flock = results.fcntl.flock
+
+        def nfs_flock(handle, operation):
+            if operation & results.fcntl.LOCK_EX and not handle.writable():
+                raise OSError(9, "Bad file descriptor")
+            return flock(handle, operation)
+
+        with patch.object(results.fcntl, "flock", nfs_flock):
+            value = self.final()
+        self.assertEqual(value["status"], "completed", value)
+
     def test_verified_cleanup_and_idempotent_finalization(self):
         raw = self.artifact()
         value = self.final()

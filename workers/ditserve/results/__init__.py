@@ -411,7 +411,9 @@ def _guard(work, run, handles):
         paths += [p for p in {ledger.with_suffix(".lock"), Path(str(ledger) + ".lock")} if p.exists()]
     for path in sorted(set(paths)):
         path = _path(path)
-        handle = path.open("a+b" if path == work / ".finalize.lock" else "rb")
+        # Writable even for the ledger's lock: NFS emulates flock with byte-range
+        # locks, and an exclusive one on a read-only descriptor fails with EBADF.
+        handle = path.open("a+b")
         handles.append(handle)
         fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
     _active(run)
