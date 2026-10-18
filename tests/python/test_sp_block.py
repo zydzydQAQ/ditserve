@@ -262,6 +262,27 @@ class LayoutTests(unittest.TestCase):
         with self.assertRaisesRegex(ParallelContractError, r"rank must be in \[0, 8\)"):
             LayoutHandle(8)
 
+    def test_backend_adopts_controller_groups_only_at_step_boundaries(self):
+        from ditserve.models.wan.backend import WanBackend
+        from ditserve.models.wan.parallel import LayoutHandle
+        backend = WanBackend.__new__(WanBackend)
+        backend.parallel = SimpleNamespace(handle=LayoutHandle(1, (0, 1)))
+        state = SimpleNamespace(step_index=3)
+        backend.continuations = {"r": SimpleNamespace(committed_step=3, packet=None, conditional=None,
+                                                      branch="cond", next_block=0)}
+        backend._adopt(dict(group=[0, 1, 2, 3], epoch=4), state, "r")
+        backend._adopt(dict(group=[0, 1, 2, 3], epoch=4), state, "r")  # the same placement is a no-op
+        current = backend.parallel.handle.current
+        self.assertEqual((current.ranks, current.epoch), ((0, 1, 2, 3), 4))
+        backend.continuations["r"] = SimpleNamespace(committed_step=3, packet={}, conditional=None,
+                                                     branch="cond", next_block=2)
+        with self.assertRaisesRegex(ValueError, "solver-step boundary"):
+            backend._adopt(dict(group=[1], epoch=5), state, "r")
+        backend.parallel = None
+        backend._adopt(dict(group=[0], epoch=1), state, "r")  # SP1 needs no process group
+        with self.assertRaisesRegex(ValueError, "distributed init"):
+            backend._adopt(dict(group=[0, 1], epoch=1), state, "r")
+
 
 if __name__ == "__main__":
     unittest.main()

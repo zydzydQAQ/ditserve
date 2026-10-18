@@ -417,6 +417,41 @@ class NativeStudyTest(unittest.TestCase):
         self.assertEqual(cell["by_kind"]["image"]["completed"], 4)
         self.assertFalse(cell["real_backends_pinned_sp1"])
 
+    def test_cluster_export_transport_moves_state_into_sp_groups(self):
+        phase = self.cluster_phase("block_elastic", options=dict(sp_transport="export"))
+        value = self.run_study(self.config([phase], workers=self.cluster_workers()), name="export")
+        self.assert_completed(value)
+        cell = value["phases"][0]["cells"][0]
+        self.assertEqual((cell["sp_transport"], cell["real_backends_pinned_sp1"]), ("export", False))
+        self.assertEqual(cell["metrics"]["completed"], 6)
+        rows = {row["request_id"]: row for row in cell["requests"]}
+        grouped = [row for name, row in rows.items() if name.startswith("v") and max(row["degrees"]) >= 2]
+        # Placement depends on timing; at least one video gets an SP group on four idle GPUs.
+        self.assertTrue(grouped)
+        for row in grouped:
+            # One rank prepares; every other rank of an SP group receives an exported copy.
+            self.assertGreaterEqual(row["transfers"], 1)
+            self.assertGreater(row["transfer_bytes"], 0)
+        self.assertEqual(list((self.root / "export").rglob("*.pt")), [])
+
+    def test_cluster_export_transport_failure_stops_the_cell(self):
+        workers = self.cluster_workers()
+        for name in ("v1", "v3"):
+            workers[name]["config"]["options"]["fail_ops"] = ["block_import"]
+        phase = self.cluster_phase("block_elastic", options=dict(sp_transport="export"))
+        value = self.run_study(self.config([phase], workers=workers), name="export-fail")
+        self.assertEqual(value["status"], "failed", value)
+        self.assertIn("injected mock block_import failure", json.dumps(value["failures"]))
+
+    def test_cluster_transport_options_are_validated(self):
+        for options, name in ((dict(sp_transport="nccl"), "unknown"),):
+            with self.subTest(name=name), self.assertRaises(CoreError):
+                self.run_study(self.config([self.cluster_phase("block_elastic", options=options)],
+                                           workers=self.cluster_workers()), name="transport-" + name)
+        three = self.cluster_phase("block_elastic", gpus=3, options=dict(sp_transport="export"))
+        with self.assertRaises(CoreError):
+            self.run_study(self.config([three], workers=self.cluster_workers(3)), name="transport-three")
+
     def test_cluster_chunked_decode_completes_across_quanta(self):
         phase = self.cluster_phase("block_elastic", gpus=1, options=dict(quantum_ms=50))
         phase["profile"]["classes"]["video"].update(decode_chunks=4, finish_ms=80)

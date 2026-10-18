@@ -7,6 +7,7 @@
 #include <openssl/sha.h>
 #include <algorithm>
 #include <chrono>
+#include <atomic>
 #include <csignal>
 #include <cmath>
 #include <filesystem>
@@ -85,7 +86,11 @@ std::string environment(const char* name) { const auto* v=std::getenv(name);retu
 struct Worker {
     std::unique_ptr<WorkerProcess> process;
     std::uint64_t sequence=0;
+    // One request/reply at a time: a cluster regroup exports from a rank whose
+    // GPU another quantum or the controller's encode/release calls may be using.
+    std::mutex mutex;
     Json call(Json action,double deadline) {
+        std::lock_guard<std::mutex> lock(mutex);
         action["version"]=1;action["id"]=++sequence;
         return process->call(action,deadline);
     }
@@ -520,8 +525,11 @@ Json replay(const Json& phase,Workers& workers,Budget& budget,Json& record,const
 // quanta the shared cluster_plan decides placement, SP degree and preemption.
 // Worker calls run on std::async threads and every rank of an SP group runs
 // the same quantum concurrently; all bookkeeping stays on this thread.
-// Real backends are limited to pinned SP1 until SP block execution and
-// cross-GPU state transfer are validated; the mock backend exercises the rest.
+// options.sp_transport selects how a request reaches the ranks of a new group:
+// "pinned" (the default for real backends) keeps SP1 and the first placement;
+// "resume" (mock only) re-prepares ranks from step/block counters; "export"
+// joins the video workers in one process group and moves the replicated
+// step-boundary state through a host-staged block_export/block_import.
 Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,const fs::path& work) {
     Json rows=study_workload(phase);
     const ClusterCost cost(phase.at("profile"));
@@ -531,16 +539,38 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     const int gpus=static_cast<int>(slots.size());
     bool fixtures=true;
     for(const auto& slot:slots)fixtures=fixtures&&workers.backend(slot.at("video").get<std::string>())=="mock";
-    if(!fixtures){
-        if(policy.rfind("static_sp",0)==0&&policy!="static_sp1")throw std::invalid_argument("real cluster workers support SP1 only");
+    const auto transport=string_field(options,"sp_transport",fixtures?"resume":"pinned");
+    if(transport!="pinned"&&transport!="resume"&&transport!="export")throw std::invalid_argument("sp_transport must be pinned, resume or export");
+    if(transport=="resume"&&!fixtures)throw std::invalid_argument("resume transport re-prepares from counters and is mock only");
+    if(transport=="export"&&gpus!=2&&gpus!=4&&gpus!=8)throw std::invalid_argument("export transport needs 2, 4 or 8 GPUs");
+    if(transport=="pinned"){
+        if(policy.rfind("static_sp",0)==0&&policy!="static_sp1")throw std::invalid_argument("pinned cluster workers support SP1 only");
         options["degrees"]=Json::array({1});options["pin_started"]=true;
     }
+    const fs::path transfer_dir=options.contains("transfer_dir")?fs::path(string_field(options,"transfer_dir","")):work/"transfer";
     const bool prefetch=phase.value("text_prefetch",0)>0;
     const auto output_mode=phase.value("output_mode",std::string("file"));
     const auto warmed=warmup(phase,workers,budget);
     for(const auto& slot:slots){workers.get(slot.at("video").get<std::string>());workers.get(slot.at("image").get<std::string>());}
+    if(transport=="export"){
+        // init_process_group is collective: every video worker joins at once, each starting at SP1 on its GPU.
+        static std::atomic<int> worlds{0};
+        const int port=int_field(options,"sp_port",29600,1024)+worlds++%100;
+        fs::create_directories(transfer_dir);
+        std::vector<std::future<Json>> ranks;
+        for(int gpu=0;gpu<gpus;++gpu){
+            const auto name=slots.at(gpu).at("video").get<std::string>();
+            Json init={{"op","distributed"},{"action","init"},{"init_method","tcp://127.0.0.1:"+std::to_string(port)},
+                       {"rank",gpu},{"world_size",gpus},{"ranks",Json::array({gpu})}};
+            ranks.push_back(std::async(std::launch::async,[&workers,name,init,deadline=budget.deadline()]{return workers.get(name).call(init,deadline);}));
+        }
+        std::string error;
+        for(auto& rank:ranks){try{rank.get();}catch(const std::exception& failure){error=failure.what();}}
+        if(!error.empty())throw std::runtime_error("SP process group initialization failed: "+error);
+    }
     auto check=[&](){if(cancelled())throw std::runtime_error("run cancelled");budget.check(number_field(phase,"cleanup_reserve_seconds",0));};
-    struct Live{std::string status="pending";bool prepared=false;int steps=0,blocks=0,total=0,encode_gpu=-1,decode_done=0;std::vector<int> group;std::string ticket;std::set<int> resident;};
+    struct Live{std::string status="pending";bool prepared=false;int steps=0,blocks=0,total=0,encode_gpu=-1,decode_done=0,epoch=0;std::vector<int> group;std::string ticket;std::set<int> resident;};
+    int epochs=0,transfers=0;   // export transport: placement epochs and transfer file names
     struct Task{std::size_t row;Json assignment;std::future<Json> result;double started;};
     std::vector<Live> live(rows.size());
     std::vector<Task> tasks;
@@ -600,6 +630,63 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             };
             for(int gpu:state.resident)if(gpu!=group.front())stale[gpu].push_back(id);
             state.resident={group.front()};
+        }else if(transport=="export"){
+            // One rank owns the request (it prepares it, or already holds the replicated
+            // step-boundary state); ranks entering the group import its host-staged export
+            // before any rank advances. Placement changes only here, at step boundaries,
+            // and every rank of a placement receives the same epoch.
+            auto in_group=[&](int gpu){return std::find(group.begin(),group.end(),gpu)!=group.end();};
+            if(group!=state.group)state.epoch=++epochs;
+            int source=-1;Json prepare;
+            if(!state.prepared){
+                const bool ticket=!state.ticket.empty()&&in_group(state.encode_gpu);
+                source=ticket?state.encode_gpu:group.front();
+                prepare={{"op","prepare"},{"state_id",id},{"spec",spec_of(row)},{"sp_degree",degree}};
+                if(ticket)prepare["encode_ticket"]=state.ticket;
+            }else{
+                for(int gpu:state.resident)if(in_group(gpu)){source=gpu;break;}
+                if(source<0&&!state.resident.empty())source=*state.resident.begin();
+            }
+            std::vector<std::string> targets;
+            for(int gpu:group)if(gpu!=source&&!state.resident.count(gpu))targets.push_back(video(gpu));
+            // A source leaving the group releases with its export, never through the
+            // stale list, which the controller may drain before the export runs.
+            const bool release_source=source>=0&&!in_group(source);
+            for(int gpu:state.resident)if(gpu!=source&&!in_group(gpu))stale[gpu].push_back(id);
+            const auto source_name=source>=0?video(source):std::string();
+            const auto transfer=(transfer_dir/(id+"-"+std::to_string(++transfers)+".pt")).string();
+            std::vector<std::pair<std::string,Json>> advances;
+            for(int gpu:group){
+                Json advance={{"op","advance"},{"state_id",id},{"sp_degree",degree},{"group",group},{"epoch",state.epoch}};
+                if(quantum=="step")advance["quantum"]="step";else advance["blocks"]=quantum;
+                advances.emplace_back(video(gpu),advance);
+            }
+            state.resident=std::set<int>(group.begin(),group.end());state.ticket.clear();
+            work_unit=[&workers,id,prepare,source_name,targets,release_source,transfer,advances,deadline]{
+                Json out={{"ranks",Json::array()}};
+                if(!prepare.is_null())out["prepare"]=workers.get(source_name).call(prepare,deadline);
+                if(!targets.empty()){
+                    const auto exported=workers.get(source_name).call({{"op","block_export"},{"state_id",id},{"path",transfer},{"release",release_source}},deadline);
+                    std::vector<std::future<Json>> imports;
+                    for(const auto& name:targets)imports.push_back(std::async(std::launch::async,[&workers,name,id,transfer,exported,deadline]{
+                        return workers.get(name).call({{"op","block_import"},{"state_id",id},{"path",transfer},{"sha256",exported.at("sha256")}},deadline);
+                    }));
+                    Json imported=Json::array();std::string error;
+                    for(auto& rank:imports){try{imported.push_back(rank.get());}catch(const std::exception& failure){error=failure.what();}}
+                    std::error_code ignored;fs::remove(transfer,ignored);
+                    if(!error.empty())throw std::runtime_error(error);
+                    out["transfer"]={{"bytes",exported.value("bytes",0)},{"export_ms",number_field(exported,"export_ms")},
+                                     {"write_ms",number_field(exported,"write_ms")},{"targets",targets.size()},{"imports",imported}};
+                }
+                std::vector<std::future<Json>> ranks;
+                for(const auto& item:advances)ranks.push_back(std::async(std::launch::async,[&workers,item,deadline]{
+                    return workers.get(item.first).call(item.second,deadline);
+                }));
+                std::string error;
+                for(auto& rank:ranks){try{out["ranks"].push_back(rank.get());}catch(const std::exception& failure){error=failure.what();}}
+                if(!error.empty())throw std::runtime_error(error);
+                return out;
+            };
         }else{
             // Ranks entering the group (first quantum or a regroup) prepare;
             // ranks leaving it release once their GPU is idle.
@@ -655,6 +742,12 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             row["model_ms"]=number_field(row,"model_ms")+number_field(out,"model_ms")+number_field(out.at("finish"),"model_ms");
             row["status"]="completed";row["finish_ms"]=now();state.status="completed";state.group.clear();++terminal;
             return;
+        }
+        if(out.contains("transfer")){
+            const auto& transfer=out.at("transfer");
+            row["transfers"]=row.value("transfers",0)+1;
+            row["transfer_bytes"]=number_field(row,"transfer_bytes")+number_field(transfer,"bytes");
+            row["transfer_export_ms"]=number_field(row,"transfer_export_ms")+number_field(transfer,"export_ms")+number_field(transfer,"write_ms");
         }
         const auto& ranks=out.at("ranks");
         const auto progress=ranks.at(0).at("progress");
@@ -726,7 +819,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     for(auto& row:rows)row.erase("preempting");
     return {{"requests",rows},{"metrics",request_summary(rows)},{"elapsed_ms",now()},{"warmup",warmed},
             {"by_kind",{{"video",kind_summary(rows,"video")},{"image",kind_summary(rows,"image")}}},
-            {"policy",policy},{"gpus",gpus},{"real_backends_pinned_sp1",!fixtures}};
+            {"policy",policy},{"gpus",gpus},{"sp_transport",transport},{"real_backends_pinned_sp1",!fixtures&&transport=="pinned"}};
 }
 
 // A real clock consumer independent of the model call. It records dispatch
@@ -1029,6 +1122,11 @@ void validate(const Json& config){
                     }
                     const ClusterCost cost(cell.at("profile"));
                     if(!cluster_policy(cell.at("policy").get<std::string>()))throw std::invalid_argument("unknown cluster policy");
+                    const auto transport=string_field(cell.value("options",Json::object()),"sp_transport","default");
+                    if(transport!="default"&&transport!="pinned"&&transport!="resume"&&transport!="export")
+                        throw std::invalid_argument("sp_transport must be pinned, resume or export");
+                    if(transport=="export"&&slots.size()!=2&&slots.size()!=4&&slots.size()!=8)
+                        throw std::invalid_argument("export transport needs 2, 4 or 8 GPUs");
                     for(const auto& row:rows)if(cost.klass(row.at("class").get<std::string>()).at("kind")!=row.at("kind"))
                         throw std::invalid_argument("request kind differs from its cost class");
                     continue;

@@ -11,7 +11,7 @@ from .base import Backend, artifact, file_hash, positive_int, progress
 class MockBackend(Backend):
     operations = Backend.operations + ("snapshot", "restore", "inventory", "update_prompt", "distributed",
                                       "migration_release", "migration_abort", "encode_start", "encode_poll",
-                                      "decode_start", "decode_poll")
+                                      "decode_start", "decode_poll", "block_export", "block_import")
 
     def __init__(self, config):
         super().__init__(config)
@@ -132,6 +132,8 @@ class MockBackend(Backend):
         if state["step"] == state["steps"]:
             raise ValueError("request has no remaining steps")
         degree = positive_int(request.get("sp_degree", 1), "sp_degree")
+        if request.get("group") is not None and len(request["group"]) != degree:
+            raise ValueError("advance group size differs from sp_degree")
         if state["blocks"] == 1:
             count = positive_int(request.get("steps", request.get("blocks", 1)))
             executed = min(count, state["steps"] - state["step"])
@@ -154,6 +156,32 @@ class MockBackend(Backend):
                     done=state["step"] == state["steps"], model_ms=0., measured=False,
                     frames=4, fps=16., duration_ms=250., prompt_version=state["prompt_version"],
                     progress=self._progress(state))
+
+    def block_export(self, request):
+        """Fixture transport: the request position as JSON, like Wan's step-boundary packet."""
+        self._inject("block_export", request)
+        key = request["state_id"]
+        state = self.state(request)
+        if state["unit"] % state["blocks"] or state["paused"]:
+            raise ValueError("mock export requires a resident solver-step boundary")
+        destination = Path(request["path"]).resolve()
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        with destination.open("x", encoding="utf-8") as stream:
+            json.dump(state, stream, sort_keys=True)
+        released = bool(request.get("release", True))
+        if released:
+            del self.states[key]
+        return dict(path=str(destination), sha256=file_hash(destination), bytes=destination.stat().st_size,
+                    released=released, export_ms=0., write_ms=0., measured=False)
+
+    def block_import(self, request):
+        self._inject("block_import", request)
+        key = self.new_id(request)
+        path = Path(request["path"])
+        if request.get("sha256") and file_hash(path) != request["sha256"]:
+            raise ValueError("mock packet hash mismatch")
+        self.states[key] = json.loads(path.read_text(encoding="utf-8"))
+        return dict(state_id=key, progress=self._progress(self.states[key]), measured=False)
 
     def snapshot(self, request):
         self._inject("snapshot", request)
