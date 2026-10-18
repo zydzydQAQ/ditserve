@@ -382,23 +382,27 @@ step only when they cannot wait for its boundary.
   \item \textbf{Quanta and boundaries.} Videos advance by a time-targeted
   number of blocks; SP degree and placement change only at solver-step
   boundaries; all ranks of a group stop at the same block.
-  \item \textbf{Feasible-first EDF with lazy preemption.} Requests that cannot
-  meet their deadlines yield to feasible ones; an image preempts a mid-step
-  group only if it cannot wait for that group's boundary.
+  \item \textbf{Feasible-first EDF.} Requests that cannot meet their
+  deadlines yield to feasible ones, except short late requests, which keep
+  their EDF position; an arriving image takes a mid-step group at its next
+  block boundary.
   \item \textbf{Preemptible tails.} VAE decode advances by latent-frame
   chunks; prompt encoding is prefetched off the GPU path.
-  \item \textbf{Resumable state.} Block-boundary continuations are exportable;
-  step-boundary state is small enough to offload under memory pressure on
-  40\,GB GPUs, including co-located LLM sessions.
+  \item \textbf{Resumable state.} Block-boundary continuations are exportable
+  and resume bit-exactly in another process or on another GPU, which is what
+  placement changes inside a step require.
 \end{itemize}
 
 \section{Evaluation Plan}
 \label{sec:evaluation-plan}
 
-\emph{Planned for one $8\times$A100 PCIe 40\,GB server.}
-Models: Wan2.2-TI2V-5B as the main video model, for comparability with
-prior work; Wan2.1-1.3B as a short-step video model; Wan2.1-14B optionally,
-for long steps; and Sana-Sprint and FLUX.1-dev for images.
+\emph{Planned in two stages.} First, two RTX~4090 24\,GB consumer GPUs
+without peer-to-peer access: Wan2.1-1.3B at 480p with Sana-Sprint images,
+reproducing the single-GPU results per card, cross-GPU block resume, and the
+first measured SP2 run over host-staged links. Then one $8\times$A100 PCIe
+40\,GB server: Wan2.2-TI2V-5B as the main video model, for comparability
+with prior work; Wan2.1-1.3B as a short-step video model; Wan2.1-14B
+optionally, for long steps; and Sana-Sprint for images.
 Workloads follow prior work: Poisson and bursty arrivals, video:image mixes
 from 20/80 to 80/20, deadlines $\sigma\times1.5\times$ standalone latency
 with $\sigma\in[0.8,1.3]$, and foreground bursts over long requests.
@@ -406,8 +410,8 @@ Baselines: static SP, step-level elastic SP with slack-based victims and
 optional image reservation (GenServe-like), round-based allocation
 (TetriServe-like), and EDF/SRTF. Metrics: per-class SLO attainment, goodput,
 and p50/p95/p99 latency over multiple seeds. Ablations: block vs.\ step
-quanta, lazy vs.\ eager preemption, chunked vs.\ atomic decode, and
-topology-aligned vs.\ unaligned groups.
+quanta, quantum length, chunked vs.\ atomic decode, late-short threshold,
+and topology-aligned vs.\ unaligned groups.
 
 \section{Related Work}
 \label{sec:related-work}

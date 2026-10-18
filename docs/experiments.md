@@ -1,108 +1,87 @@
 # 实验配置
 
-`configs/studies/mock.json` 是可直接运行的 CPU 样例；六个通用 GPU 模板需要填写真实环境和 GPU UUID。`wan_profile_corrected.json` 属于已有 Wan 补采流程，使用前先读其专项说明。所有新实验都使用 `ditserve.study.v1`，不再新增 next/followup/专项 runner。正式入口为 `.cache/build/ditserve run --config configs/studies/mock.json`，无需设置 `PYTHONPATH`；`--python` 可指定已有解释器，模型自身的 `workers.<name>.python` 仍优先使用配置值。
+实验配置（`configs/studies/*.json`，schema `ditserve.study.v1`）与机器无关。`ditserve run|resolve --env <名字>` 用 `configs/env/<名字>.json` 把它们绑定到本机，再交给控制器执行。`ditserve resolve` 只打印绑定结果并做与 `run` 相同的校验，不启动任何 worker。
 
-生产控制实现位于 `src/`，模型、评测和报告适配位于 `workers/ditserve/`，Python 包名仍为 `ditserve`。原生入口自动设置 worker 导入路径；直接使用 Python API 时设置 `PYTHONPATH=workers`。
+## 环境文件（`ditserve.env.v1`）
 
-```json
-{
-  "schema": "ditserve.study.v1",
-  "experiment": "example",
-  "workers": {"model": {"backend": "mock"}},
-  "budget": {"limit_gpu_seconds": 600, "watchdog_seconds": 300,
-             "repair_reserve_gpu_seconds": 60, "carry": "forward",
-             "stage_limits": {"screen": 240, "confirm": 300}},
-  "phases": [
-    {"id": "screen", "kind": "online", "policy": "edf",
-     "generator": {"count": 4, "seed": 7, "pattern": "steady",
-                   "rate_rps": 2, "spec": {"steps": 3}},
-     "matrix": {"/policy": ["fcfs", "edf", "srtf"]}, "paired": true},
-    {"id": "confirm", "kind": "state", "requires": ["screen"],
-     "generator": {"count": 2, "spec": {"steps": 3}},
-     "transitions": [{"at_step": 1, "mode": "hot"}]}
-  ]
-}
-```
-
-## 执行器和矩阵
-
-| kind | 主要字段和用途 | 模板 |
-| --- | --- | --- |
-| `profile` | 顺序/配对测量，`paired:true` 按正序、逆序执行相同冻结矩阵 | `profile.json` |
-| `online` | 到达回放、策略、预编码、异步解码、优化筛选 | `online.json` |
-| `state` | `resident_limit`、hot/cold 驻留、状态快照和迁移 | `state.json` |
-| `sp` | 有限 `actions`，各 rank 同时执行相同操作 | `sp.json` |
-| `streaming` | prompt 更新、FIFO/latest、0/1/2 chunk 缓冲、独立帧消费 | `streaming.json` |
-| `session` | LLM–DiT stages、session ID、KV 继承、think time | `session.json` |
-| `cluster` | 多 GPU 并发回放：`gpus` 按拓扑顺序列出每卡 `{video, image}` worker，`profile` 为成本画像，策略见下文 | `local-a100/` |
-
-矩阵键是相对于 phase 的 JSON pointer，按键排序生成笛卡尔积，最多 10000 个 cell。例如 `/policy`、`/quantum`、`/worker_config/options/execution`。`worker_config` 合并到该 cell 指定 `worker`（默认 `model`）的配置；不能改变 worker 设备或身份。每个观测的模型进程持续复用，cell 间重新创建以隔离配置。配对时记录 cell、正/逆次序和独立 observation ID，失败观测保留在分母中。
-
-`workers.<name>` 包含 `backend`、`python`、`gpu_uuid`、`config` 和可选环境变量；单个进程只绑定自己的完整 GPU UUID，模型使用 `cuda:0`。不能用环境变量覆盖 GPU 绑定、冻结源码或离线加载。SP 实现使用 2/4/8 个独立 rank 的对齐组（rank 按 PCIe/socket 拓扑顺序编号），Flash attention；四卡布局与原固定组相同，8 卡及 SP 内 block 执行未经 GPU 验证；缓存特征的跨 SP 迁移仍不支持。集体操作必须列出不同 worker，`actions[].per_rank` 可提供每个 rank 的补丁。
-
-显式 `actions` 可用于任意 kind，动作包括 `prepare`、`advance`、`snapshot`、`restore`、`reference`、`finish`、`release`、`evaluate`、`distributed`。动作必须自己声明稳定 state ID，后续通过该 ID 引用；常规回放自动处理状态 ID。这样可以表达校准、独立基线、数值检查和 SP 流程，不增加 Python 编排层。
-
-## 保留的模型限制
-
-| 模型路径 | 现有限制 |
+| 字段 | 含义 |
 | --- | --- |
-| Wan step/block/CFG | 固定 torch 2.10.0+cu126、Diffusers 0.36.0、cache-dit 1.5.0；DiT FP16、VAE FP32、UMT5 CPU FP32，整步求解器状态保持原布局。 |
-| Sana step 与 Mistral | 原生步骤实现沿用 sm70 V100 门槛。Sana 为 1024²、FP32、SCM 2 步、CFG 4.5；Mistral 为 FP16、greedy KV、无量化/滑动窗口。 |
-| Sana pipeline | Ampere 及更新 GPU、BF16，eager/transformer_compile/vae_compile/transformer_graph，固定 batch 1/2；原子调用，不提供步骤快照。 |
-| FLUX | 官方本地管线，默认 BF16，设备须支持；可选固定 cache-dit。调用为完整管线。 |
-| LongLive | A100 BF16、固定来源修订、本地完整权重、独立现有环境；480×832、16 fps、每 chunk 3 个 latent 帧、最多两驻留会话。 |
+| `gpus` | `count`；可选 `uuids`（固定顺序，多卡按 PCIe 拓扑排列）、`forbid_uuids`、`name_contains`、`min_memory_mib`。没有 `uuids` 时，取编号最小的符合条件的卡 |
+| `models_root`、`models` | 逻辑模型名对应路径（相对路径以 `models_root` 为根）、`model_id` 和 `revision`。环境变量 `DITSERVE_MODELS_ROOT` 可覆盖 `models_root` |
+| `worker_environment` | 所有 worker 的默认环境变量，例如线程数和 4090 上的 `NCCL_P2P_DISABLE=1`。不能覆盖 GPU 绑定、源码路径或离线加载 |
+| `backends.<backend>` | 该后端 worker 的默认 config，例如 `attention`、`memory_fraction` |
+| `cost_profile`、`links` | 实测成本画像（`configs/profiles/` 下的名字），以及覆盖画像链路的假设场景名（`configs/profiles/link-scenarios.json`） |
+| `serving_classes` | 这台机器能服务的请求类别和权重 |
+| `host` | doctor 检查用的内存、`/dev/shm` 和文本编码器内存需求 |
 
-这些限制来自现有实现；本次 CPU 测试未扩展或重新授予 GPU 支持资格。
+实验配置可以使用以下写法：
 
-## 工作负载和调度边界
+- **按卡展开的 worker：** `per_gpu: true` 展开成 `name.0`…`name.{k-1}`，每张选中的卡一个。
+- **绑定单张卡：** `gpu: N` 绑定第 N 张选中的卡；机器卡数不够时，该 worker 被跳过并记录。
+- **逻辑模型名：** `model: <逻辑名>` 解析为 `config.model_path`。
+- **cluster slot 模板：** cluster 阶段的 `gpus: {video, image}` 按卡数（或 `gpu_count`）展开成 slot；`warmup` 与 operations 阶段的 `workers` 展开为对应实例。
+- **卡数门槛：** `min_gpus` 超过选中卡数的阶段，以及依赖它的阶段，会被跳过并记录。
+- **引用环境字段：** 任意位置的字符串 `"@env.KEY"` 替换为环境文件的对应字段，例如 `"@env.cost_profile"`、`"@env.serving_classes"`。
 
-使用冻结 `workload` 数组，或确定性 `generator`。生成器支持 `offline_all`、`steady`、`poisson`、`bursty`、`gamma`，输入包括 seed、count、rate_rps、cv、prompts、spec/specs、service_ms、slo_ms；`classes` 给出按权重混合的请求类别（class、kind、worker、spec、service_ms、slo_ms 或 slo_scale），同一 seed 下不含 classes 的轨迹与之前一致。模型参数在 `spec`；到达、期限、成本估计是 C++ 调度元数据。
+绑定后，experiment 名加上环境前缀，结果写到 `results/<环境>-<实验>/`。冻结配置的 `environment` 记录 GPU 清单、选中的 UUID、每个 worker 的绑定、模型路径和跳过的阶段。换了机器或环境文件再续跑会被拒绝。
 
-请求可以指定 `arrival_ms`、`deadline_ms`、`session_id`、`after`、`think_ms`、`stages`。`after` 必须引用负载中更早的一项；前一轮完成后才释放下一轮。stage 包含 worker、spec、估计 cost_ms 和可选 `prompt_from_previous:true`。Mistral 自动保存该 session 的对话与 KV，不共享其他 session 状态。
+## 执行器
 
-策略包括 `fcfs`、`edf`、`srtf`、`edf_b1`、`edf_b1_async`、`edf_b2`、`edf_b4`、`edf_step`、`guarded_b4`、`feasible_b4`、`guarded_adaptive`、`session_serial`、`stage_edf`、`session_slack`。Wan 可采用 step/block/paired_block 边界，CFG 和 cache 配方由 worker 验证；hot/cold 与跨设备快照只允许后端声明的合法边界。FLUX 保留完整管线调用边界，没有新增 token/block 抢占能力。FLUX和 `wan_pipeline` 可用 `spec.batch_size` 表达原有固定离线batch：重复同一prompt，整批使用一个CPU Generator(seed)。`wan_pipeline` 不提供步骤抢占、SP或迁移；启用cache后同一worker的steps/CFG配方固定。
+| kind | 用途 |
+| --- | --- |
+| `operations` | 按顺序执行 `actions`，每个动作同时发给阶段的所有 worker（rank），可用 `only_ranks` 只发给其中几个。相对路径在每个 rank 的私有目录下，`@cell/` 开头的路径在该 cell 所有 rank 共享的目录下。用于数值验收、成本测量、跨进程/跨卡恢复和 SP |
+| `cluster` | 多卡并发回放。每张卡上有一个视频 worker 和一个图像 worker，每个 quantum 之后由 `cluster_plan` 重新决定放置、SP 度和抢占 |
 
-`output_mode` 控制 finish 的输出处理：`file`（默认，写入工作目录供后续评测）、`digest`（只计算哈希）、`check`（只校验形状与 finite）。没有下游评测的 serving 实验应使用 `check`，避免把数十 MB 至数百 MB 的输出写盘计入 GPU 关键路径。`warmup` 在回放时钟开始前对列出的 worker 执行一次完整的 prepare/advance/finish/release（模型加载与首次 kernel 不计入首批到达）。`text_prefetch` 限定同时预编码的已到达请求数，`text_prefetch_workers` 限定只对这些 worker 的请求预编码（混合轨迹中只有 Wan 提供异步编码），`decode_mode:"async"` 启用后端支持的异步解码。Wan 异步 VAE 保持 MATH attention 的原限制。模型、加载、控制时间分别记录；通信采样排除进程首次启动、模型加载和 worker 操作耗时，仍包含 JSON 编解码。采样保留每请求前 128 次常驻动作及总计数，不声称是纯管道延迟。
+动作包括 `prepare`、`advance`（`quantum:"step"` 或 `blocks:N`）、`finish`（`decode_frames` 为分块解码）、`release`、`reference`（diffusers 官方循环）、`block_export`/`block_import`、`encode_start`/`encode_poll`、`distributed`、`evaluate`（数值对比，`atol`/`rtol`）、`memory`（分配器峰值，`reset_peak`）、`hello`。
 
-流式 `updates` 按 arrival_ms 排序，版本递增。`prompt_policy` 为 `fifo`、`latest_only`、`latest_only_flush`；`buffer_chunks` 为 0/1/2。播放测量是 C++ 线程的墙钟帧分发，不是浏览器或物理显示时延。drain 超时保留失败及未完成请求，语义盲评保持独立。
+矩阵键是相对阶段的 JSON pointer，按键名排序取笛卡尔积，最多 10000 个 cell。`paired: true` 会再按逆序执行一遍。
 
-FLUX 可设置 `workers.<name>.config.options.profile:true`，记录 text/DiT/scheduler/VAE/postprocess 的 CUDA event spans、逐步 finite 检查和 allocator 峰值。该测量有插桩开销，不能当作无插桩延迟或 kernel-only 时间。用 `/worker_config/options/profile:[false,true]` 表达对照；Wan 分解测量使用 `wan_profile_corrected.json` 的显式 actions。
-
-## 多 GPU 调度与模拟
-
-`cluster` 执行器与 `ditserve simulate` 共用 `control/cluster.cpp` 的 `cluster_plan`。GPU 按拓扑顺序编号，SP 组为对齐的 2 的幂（同 switch pair、同 socket quad、整机）。每个 quantum 结束后请求不占 GPU，重新规划：
+## 调度（`cluster` 与 `ditserve simulate` 共用）
 
 | 策略 | 行为 |
 | --- | --- |
-| `static_sp1/2/4/8` | 固定 SP 度，整步 quantum，已开始的视频留在原组（近似 xDiT 固定并行） |
-| `step_elastic` | EDF；按期限选最小可行 SP 度，无其他等待请求时占用最大空闲组；只在 step 边界换组（近似 GENSERVE/TetriServe 的 step 级弹性 SP） |
-| `block_elastic` | 同上，但视频以 `options.quantum_blocks`（默认 4）个 block 推进，或按 `options.quantum_ms` 由当前类别与 SP 度换算 block 数；图像只有在等不到该视频 step 边界时才在 block 边界抢占（`lazy_preemption`，默认开启） |
+| `static_sp1/2/4/8` | 固定 SP 度，整步推进，已开始的视频留在原组（近似 xDiT） |
+| `step_elastic` | EDF；按期限选最小可行 SP 度，没有其他等待请求时占用最大空闲组；只在 step 边界换组（近似 GENSERVE、TetriServe） |
+| `block_elastic` | 同上，但视频按 `quantum_ms` 换算出的 block 数推进；图像在下一个 block 边界抢占 |
 
-`options.reserve_image_gpus` 给出静态分区基线：最后 R 张卡只服务图像。视频类别的 `decode_chunks` 把 VAE 解码拆成按 latent 帧推进的可抢占 chunk（`options.chunked_decode`，按 `quantum_ms` 换算每次推进的帧数）；真实 Wan worker 用 `finish` 的 `decode_frames` 执行，结果与整段解码逐位一致（CPU 契约测试）。Wan 的 `block_export`/`block_import` 可在 step 内任意 block 边界导出续算状态（未变动的求解器状态 + 运行中的 packet）并在另一进程恢复。
+选项：
 
-所有策略默认采用 feasible-first EDF（`options.demote_late`，默认开启）：即使占用最大组也赶不上期限的请求排在仍可按时完成的请求之后，避免过载时迟到的长视频饿死新到的短请求；剩余工作不超过 `options.late_short_ms`（默认 2000 ms）的迟到请求保留 EDF 位置，避免小的超时被放大成长尾。
+- `quantum_ms`：`block_elastic` 必须给出。时间目标让抢占延迟在不同 GPU 上可比。
+- `chunked_decode`：默认开启。VAE 按 latent 帧推进，每个 quantum 解码的帧数也由 `quantum_ms` 换算。
+- `reserve_image_gpus`：最后 R 张卡只服务图像。
+- `demote_late`、`late_short_ms`：可行优先 EDF。赶不上期限的请求排在能赶上的之后，但剩余工作不超过 2s 的迟到请求保留 EDF 位置。
+- `degrees`、`pin_started`：真实后端会被强制设为 SP1、不换组。
 
-成本画像 `profile` 的 `provenance` 必须为 measured、extrapolated、synthetic 或 mixed。视频类别给出 steps、blocks_per_step、可选 min_degree（单卡放不下时的最小 SP 度，固定 SP 策略也会提升到该值）、prepare/encode/finish、SP1 每步计算时间、每步 Ulysses all-to-all 全序列字节数与集合通信次数；`links` 按 SP 度给出每 rank 带宽和延迟；`sp_efficiency` 与 `resize_ms` 描述并行效率与 step 边界换组成本。模拟结果只描述成本模型，不是模型执行。
+未知选项会被拒绝。
 
-真实后端在 SP 内 block 执行与跨 GPU 状态迁移验证前固定为 SP1 且不换组（`real_backends_pinned_sp1`）；mock 后端可按 `options.costs` 和 `sp_degree` 模拟耗时以测试并发与换组。`simulate` 配置包括 `profile`、`generator`/`workload`、`gpus`、`policies`、`options`、`matrix`；未给出时使用内置 synthetic 示例（`configs/simulation.json` 为完整样例）。
+生成器字段：
+
+- `pattern`：`offline_all`、`steady`、`poisson`、`bursty`、`gamma`。
+- 到达率：`rate_rps`，或 `load`（实测容量的占用率；容量 = 卡数 / 按权重平均的 GPU 服务时间）。
+- 请求数：`count`，或 `count_per_gpu`。
+- `classes`：类别名、kind、权重、spec、`slo_scale`。未给出 `service_ms` 时由成本画像计算：编码 + 准备 + 步数×每步时间 + 解码。
+
+扩散步数取自 spec。cluster 阶段加上 `simulate: true` 时，模拟器会用同一画像复算该 cell 的同一条 trace，结果记在 `simulated`。
+
+成本画像的 `provenance` 必须是 measured、extrapolated、synthetic 或 mixed。视频类别给出 steps、blocks_per_step、decode_chunks、可选的 min_degree、prepare/encode/finish 耗时、SP1 每步计算时间、每步 Ulysses all-to-all 字节数和集合通信次数。`links` 按 SP 度给出每个 rank 的带宽和延迟。画像由 `python -m ditserve.evaluation.cost_profile` 从 `cost_profile` 实验的 run.json 生成。
+
+模拟配置（`configs/simulation.json`）含 `profile`、`generator`、`gpus`、`policies`、`options`、`matrix` 和 `variants`。`variants` 是逐个合并进每个 cell 的补丁，用来表达"这个选项只配这些策略"。
+
+## 模型路径的固定限制
+
+- **Wan：** DiT FP16，VAE FP32，UMT5 在 CPU 上以 FP32 运行；不缓存特征，每步完整计算。形状按 Wan2.1-1.3B 写死（移植 5B 见 MIGRATION.md 第 9 节）。SP 需要 Flash attention 和 NCCL，至今未在 GPU 上验证。
+- **Sana：** 官方 eager 管线，BF16，1024²，SCM 2 步，CFG 4.5，需要 Ampere 或更新的卡。一次调用跑完整条管线，不能在中途暂停。
 
 ## 预算、阶段和资格
 
-`limit_gpu_seconds:null` 表示无限累计额度；有限值包括修复预留，普通运行不能用预留。`stage_limits` 可限制各阶段，`carry:"forward"` 将之前阶段的剩余额度向后结转；`none` 不结转。实际计费可能因清理超过额度，仍须如实记入。CPU mock 为零 GPU 费用，但 wall-clock watchdog 仍有效。
-
-`requires:["parent"]` 只要求技术完成；`requires:[{"phase":"parent","requires":"qualified"}]` 要求该阶段配置的 gates 全部通过。gates 用 metric JSON pointer、op（eq/ge/le/gt/lt）、value 和 scope（numeric/semantic/performance）描述。没有证据或未配置的 scope 显示 `unverified`，数值一致性不能自动授予语义或性能资格。
-
-阶段失败后 `--resume` 创建新 attempt；成功阶段跳过，失败 cell 不原地伪续。修复预算须同时提供 `--repair --retry-of <failed-session-id>`，绑定同一配置与失败阶段。累计账本独立于 run，换 run 不重置实验账本。清理未确认时账本保持 active/unsettled，并拒绝继续使用；不能靠手动清空 active 绕过调查。
-
-`--phase ID` 可只执行一个已满足依赖的阶段。新格式恢复要求配置、运行 ID、账本和冻结源码一致。历史实验只读，通过旧结果适配器访问；历史脚本的逐阶段续跑不在新接口兼容范围内。
+- **GPU 秒预算：** `limit_gpu_seconds` 是该实验所有运行累计的 GPU 秒上限，`null` 表示不限。账本在 `.state/<实验>/budget.json`，换 run 不会重置。另有 `stage_limits`、`carry`（向后结转剩余额度）、`repair_reserve_gpu_seconds`。即使不限额，wall-clock watchdog 也照样生效。
+- **阶段依赖与门槛：**
+  - `requires:[{"phase":"p","requires":"qualified"}]` 要求前一阶段的 gates 全部通过。
+  - gate 是 `metric` JSON pointer 加 op（eq/ge/le/gt/lt）、value 和 scope（numeric/semantic/performance）。
+  - pointer 中的 `*` 段匹配每个元素：所有匹配项都通过才算通过，一个匹配都没有则为 unverified。
+- **续跑：** 失败后 `--resume` 新建一个 attempt，失败的 cell 不会就地续跑。修复预算要同时给 `--repair --retry-of <失败 session>`。
+- **GPU 隔离：** 运行前等所选 GPU 空闲（`admission_wait_seconds`），运行中每 2 秒检查一次，发现外来进程就中止。
 
 ## worker 协议
 
-标准输入/输出为带版本 JSONL，每条消息有单调动作编号：
-
-```json
-{"version":1,"id":1,"op":"prepare","spec":{"request_id":"r0","steps":3}}
-{"version":1,"id":1,"ok":true,"result":{"state_id":"r0","progress":{"step":0,"steps":3,"done":false}}}
-```
-
-错误响应为 `ok:false,error:{type,message}`。模型、张量、RNG、KV 和缓存留在 Python；C++ 只接收状态 ID、进度和有来源的文件元数据。stdout 专用于协议，日志进入 stderr。C++ 用非阻塞管道、进程组和期限监督；模型异常、错误消息、取消、卡死会终止所属进程组，清理无法证实时不结账。无需 RPC 服务或 LibTorch。
+stdin/stdout 上传带版本号的 JSONL，每条消息有单调递增的编号。错误以 `ok:false,error:{type,message}` 返回。模型、张量、RNG 留在 Python 里，C++ 只接收状态 ID、进度和带来源的文件元数据。stdout 专用于协议，日志写到 stderr。模型异常、取消或卡死时，C++ 终止所属进程组；清理无法证实时不结账。

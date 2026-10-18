@@ -42,7 +42,7 @@ ENV PATH=/opt/ditserve/bin:/opt/venv/bin:$PATH \
     HF_HOME=/data/cache/huggingface TORCH_HOME=/models/torch \
     TORCHINDUCTOR_CACHE_DIR=/data/cache/torchinductor \
     TRITON_CACHE_DIR=/data/cache/triton \
-    DITSERVE_CORE=/opt/ditserve/bin/ditserve \
+    DITSERVE_CORE=/opt/ditserve/bin/ditserve PYTHONPATH=/opt/ditserve/share/ditserve/python \
     HOME=/data USER=ditserve LOGNAME=ditserve \
     NVIDIA_VISIBLE_DEVICES=all NVIDIA_DRIVER_CAPABILITIES=compute,utility
 RUN ditserve --version && ditserve doctor \

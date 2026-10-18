@@ -1,6 +1,6 @@
 # 本机 A100 预实验汇总（2026-10-18）
 
-本机为 1×A100 PCIe 40GB（GPU0，`GPU-3ab2fedc…`），V100 不参与。目标机为 8×A100 PCIe 40GB（无 NVLink）。主线为 **多卡 block 级抢占 + 弹性 Ulysses SP**，见[迁移与验收](migration_8xa100.md)和论文草稿 `dit_serving_sections.tex`。每个实验的长期产物只有 `results/<experiment>/<run>/results.xlsx` 与 `REPORT.md`；原始数组在导出校验后已按白名单清理，只能查看历史指标，不能重新评测。所有结果均为单输入或单 seed 的描述性数据，不作显著性结论。
+本机为 1×A100 PCIe 40GB（GPU0，`GPU-3ab2fedc…`），V100 不参与。目标机为 8×A100 PCIe 40GB（无 NVLink）。主线为 **多卡 block 级抢占 + 弹性 Ulysses SP**，见[迁移与复现手册](../MIGRATION.md)和论文草稿 `dit_serving_sections.tex`。每个实验的长期产物只有 `results/<experiment>/<run>/results.xlsx` 与 `REPORT.md`；原始数组在导出校验后已按白名单清理，只能查看历史指标，不能重新评测。所有结果均为单输入或单 seed 的描述性数据，不作显著性结论。
 
 ## 结果一览
 
@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | E0 验收 | 精简后的代码能否在真实 GPU 上运行 | Wan 1.3B 状态往返后与官方管线逐位一致；Wan 与 Sana 两个 worker 同卡混合回放完成 4/4 | `results/a100-e0-acceptance/run01`，106 GPU·s |
 | E1 历史复现 | 新的原生回放能否复现 block-4 相对 step 的收益（`optimization-cache-online` 的 off_k4/off_step） | ordinary trace 可复现：b4 goodput 偏差 −0.8%，step −10%。burst trace 不可复现：偏差 −29%/−39%；输出不落盘后由 −59%/−47% 收窄到这个范围。两条 trace 上 b4 都优于 step | `a100-e1-parity/run01`（写输出）、`a100-e1-parity-check/run01`（`output_mode=check`），2180 + 2161 GPU·s |
-| E2 成本画像 | 调度与模拟需要的实测成本 | 480p 每步 0.58/1.23/4.16 s，720p 每步 1.72/4.14/16.8 s（17/33/81 帧）；block 耗时 = step/60；解码 1.5–15.9 s；暂停态 16–86 MB，恢复 < 10 ms；UMT5 在 CPU 上每个 prompt 18–22 s；Sana 每张 0.30 s | `a100-e2-cost-profile/run01`，`configs/studies/local-a100/profile_a100_measured.json`，377 GPU·s |
+| E2 成本画像 | 调度与模拟需要的实测成本 | 480p 每步 0.58/1.23/4.16 s，720p 每步 1.72/4.14/16.8 s（17/33/81 帧）；block 耗时 = step/60；解码 1.5–15.9 s；暂停态 16–86 MB，恢复 < 10 ms；UMT5 在 CPU 上每个 prompt 18–22 s；Sana 每张 0.30 s | `a100-e2-cost-profile/run01`，画像为 `configs/profiles/a100-pcie-40g.json`，377 GPU·s |
 | E4 推演 | 8×A100 PCIe 上 block 级抢占是否值得做 | 视频 step 长时（外推的 14B），work-conserving 的 step 级弹性 SP 按时率只有 0.49–0.72。为图像预留 1 张卡后为 0.78–0.99。`block_elastic` 不预留也有 0.84–0.998，视频按时率比预留基线高 5–17 个百分点。lazy 与 eager 抢占差别很小。按 E3 实测的服务时间（图像 406 ms、解码 ×1.7）校准后重跑（`cal-*`），block 相对预留基线的优势为总按时率 +1.2–8.0、视频 +5.7–16.2 个百分点，结论不变 | `a100-e4-whatif/*`，仅 CPU；14B 为 FLOP 外推，PCIe 带宽为假设 |
 | E5 block 精确恢复 | step 内部的 block 边界是否是合法的暂停点（GF-DiT 认为不是） | 6 种形状 × 两个 CFG 分支，导出后在新进程恢复，视频和 latent 逐位一致。packet 28–269 MiB，导出 0.15–1.3 s，恢复 0.09–0.45 s | `a100-e5-block-exact/run01`，515 GPU·s |
 | E6 图像批处理 | step 级基线是否需要图像批处理 | Sana 每张图成本：batch 1/2/4/8 为 309/238/210/204 ms；batch 8 的整批延迟为 1.63 s。因此基线与本系统都应支持 batch 2–4 的图像批处理 | `a100-e6-sana-batch/run01`，35 GPU·s |
@@ -31,6 +31,12 @@ GPU 用量合计约 11,500 GPU·s（约 3.2 h），在 12 GPU·h 预算以内。
 
 6. **时间片共置保护不了短请求。** 与 Wan 同时运行时，图像延迟几乎翻倍，LLM 每 token 耗时增加约 70%。block 抢占的等待只有一个 block（约 70 ms），而且不会拖慢视频。40GB 卡上放下 LLM 与两个 DiT 后几乎没有余量，分配器缓存又分散在各进程里，所以暂停态和 KV 的放置（保留、offload、丢弃）在目标机上是真实存在的问题。
 7. **feasible-first EDF 需要修正。** 已超时的短请求不应排到长视频之后。新增的 `late_short_ms`（默认 2 s）让剩余时间短的迟到请求保留 EDF 位置。在校准后的模拟器中，这使图像 p95 从 70–140 s 降到 0.8–4.8 s，代价是按时数变化 −4 到 +5 个（每组 30 或 24 个请求）。真实 GPU 上的 E9 证实：图像 p95 降到 2 s 以内，block 的按时数上升，static_sp1 略降。
+
+## 精简与迁移后的说明（2026-10-18 晚）
+
+- 每个实验的冻结配置都保存在各自的 `results.xlsx` 里。`configs/studies/local-a100/` 中按本机写死的配置已删除，改用可移植的 `configs/studies/` 加 `--env a100-1x40g`（见 [MIGRATION.md](../MIGRATION.md)）。
+- E4 推演早于 `late_short_ms`：用当前二进制并设 `late_short_ms=0` 重算，与归档工作簿逐 cell 一致。`configs/simulation.json` 把 14 个 E4 配置合并成一个，并按当前调度（`late_short_ms=2000`、只保留 eager 抢占）重算，结果见下一节。
+- 删除的研究分支及其理由见 [设计与精简记录](rewrite.md)。E8 共置与 Mistral 会话的结论只保留在历史报告中。
 
 ## 局限与待办
 

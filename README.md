@@ -1,70 +1,49 @@
 # DiT Serving Lab
 
-C++17 管理实验，Python 保留模型、张量、评测和报告。统一路径为：
+研究 DiT 视频/图像混合负载的服务调度：在 Wan DiT 的 step 内按 block 抢占，VAE 解码按 latent 帧分块并可抢占，调度采用可行优先 EDF（迟到的短请求保留 EDF 位置），目标是多卡 PCIe 上的弹性 Ulysses SP。
+
+C++17 控制器负责工作负载、调度、阶段、预算和进程监督；常驻 Python worker 持有模型和张量，二者经 JSONL 交换不透明的状态 ID。
 
 ```text
-C++ CLI / 控制器 → 常驻 Python workers
-命令/调度/预算      模型与不透明状态 ID
-阶段/监督          评测、Excel/报告
+src/ditserve/          C++：control/（study、cluster 调度、environment 绑定、budget、dispatch）、interface/、runtime/
+include/ditserve/      C++ 接口
+cmd/                   main
+benchmarks/            集群模拟器，与真实执行器共用 control/cluster.cpp
+workers/ditserve/      Python：models/（wan、sana、mock）、runtime/、evaluation/（数值对比、成本画像、collectives）、results/
+configs/env/           每台机器一个环境文件：GPU、模型路径、worker 环境、成本画像、请求类别
+configs/studies/       与机器无关的实验：acceptance、cost_profile、block_exact、serving、sp_equivalence、mock
+configs/profiles/      实测成本画像与假设链路；configs/simulation.json 是 8 卡推演
+configs/models/        模型文件的 SHA256
+tests/                 C++ ctest 与 Python CPU 契约测试
+docs/                  预实验结论、实验配置说明、结果处理、论文草稿
 ```
 
-源码按运行职责和构建依赖组织，Python 包名仍为 `ditserve`。
+模型：Wan2.1-T2V-1.3B（视频）和 SANA-Sprint 0.6B（图像）。依赖锁定为 torch 2.10.0+cu126、diffusers 0.36.0、cache-dit 1.5.0。
 
-```text
-src/ditserve/          C++ 生产代码：control/、interface/、runtime/ 和基础类型
-include/ditserve/      C++ 生产接口，与 src 模块对应
-cmd/                  C++ main
-benchmarks/           合成模拟；独立 src/、include/、tests/ 和 golden 数据
-workers/ditserve/     Python 服务包
-  runtime/            协议、环境检查、可选调用客户端
-  models/             模型、张量与缓存状态
-  evaluation/         数值质量、数据集及 wan_profile/ 分析工具
-  results/            Excel、报告、旧格式读取及依赖清理
-tests/                核心单元测试、worker/CLI 集成测试和兼容 fixtures
-configs/              当前配置与固定环境依赖
-docs/                 使用说明、能力边界及研究文档
-```
+## 新机器
 
-`cmd/main.cpp` 启动 `src/ditserve/interface/command.cpp` 中的正式命令入口。C++ 基础核心提供类型、预算、调度和进程监督；benchmark 库依赖核心；应用层组合实验控制器、命令和 benchmark，依赖无环。Python 包只承担 worker 服务和可选客户端，`python -m ditserve` 仅转交原生程序。`results/` 是实际实验产物目录，源码位于 `workers/ditserve/results/`。
+按 [MIGRATION.md](MIGRATION.md) 执行：拉取代码、构建镜像、下载并校验模型、机器检查，再依次跑验收、成本画像和主要实验。开发机（1×A100）、2×RTX 4090、8×A100 共用同一套代码和配置，只换 `--env`。
 
-支持 FLUX、Wan、Sana、LongLive、Mistral；真实后端继续使用已有固定版本环境和硬件限制。合成模拟和 CPU mock 结果不能作为 GPU 性能或模型质量结论。本次重写的真实 GPU 路径尚未验收。
+## 开发
 
-## 构建和验证
-
-Linux、C++17、CMake 3.16+、OpenSSL、Python 3.8+。nlohmann/json 固定 3.11.3 并校验 SHA256；保留 `-ffp-contract=off`。已有模型环境不重建，依赖版本见 `configs/requirements-*.txt`。报告使用 openpyxl 3.1.5，可复用 `.cache/tools`。
+需要 Linux、C++17、CMake 3.16+、OpenSSL、Python 3.8+。nlohmann/json 固定为 3.11.3 并校验 SHA256；编译保留 `-ffp-contract=off`。
 
 ```bash
-cmake -S . -B .cache/build -DCMAKE_BUILD_TYPE=Release
-cmake --build .cache/build -j4
+cmake -S . -B .cache/build -DCMAKE_BUILD_TYPE=Release && cmake --build .cache/build -j8
 (cd .cache/build && ctest --output-on-failure)
-PYTHONPATH=workers CUDA_VISIBLE_DEVICES='' HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
-  .venv-previs/bin/python -m unittest discover -s tests/python -v
+PYTHONPATH=workers CUDA_VISIBLE_DEVICES='' HF_HUB_OFFLINE=1 .venv-previs/bin/python -m unittest discover -s tests/python
 ```
 
-无模型依赖时可以使用 `python3` 跑同一套测试，涉及 torch/transformers/diffusers 的数值用例会跳过；最终验收以固定模型环境的 CPU 测试为准。可以用 `DITSERVE_CORE` 指定二进制。
-
-## 统一入口
+没装 torch/diffusers 时，涉及模型的数值用例会跳过。
 
 ```bash
-.cache/build/ditserve doctor
-.cache/build/ditserve simulate --config configs/simulation.json --run-id demo-sim
-.cache/build/ditserve run --config configs/studies/mock.json --run-id demo-cpu
-.cache/build/ditserve results verify results/cpu-smoke/demo-cpu
-.cache/build/ditserve results inspect results/cpu-smoke/demo-cpu
-.cache/build/ditserve report .cache/results-work/cpu-smoke/demo-cpu
+.cache/build/ditserve run --config configs/studies/mock.json --run-id demo     # CPU：两张 mock 卡的调度冒烟
+.cache/build/ditserve simulate --count 32 --run-id demo-sim                    # CPU：合成成本的模拟
+.cache/build/ditserve resolve --config configs/studies/serving.json --env a100-1x40g   # 看实验在本机绑定成什么
+.cache/build/ditserve doctor --env a100-1x40g [--allow-gpu]
+.cache/build/ditserve run --config configs/studies/acceptance.json --env a100-1x40g --allow-gpu --run-id run01
 ```
 
-运行原生入口无需设置 `PYTHONPATH`。默认使用项目已有 `.venv-previs/bin/python`，可用 `--python /absolute/path/to/python` 或 `DITSERVE_PYTHON` 指定解释器；`--root` 指定项目/结果根目录，`--package-root` 指定包含 `ditserve/` 的源码目录。`--json` 可放在子命令前后。已安装 Python 包的 `python -m ditserve` 是兼容启动器，不再解析实验参数。
+真实模型运行必须加 `--allow-gpu`，并在配置里给出 GPU 秒预算。从阶段开始到清理确认，所选 GPU 全程计费，失败也计入。每次运行只长期保留 `results/<环境>-<实验>/<run>/results.xlsx` 和 `REPORT.md`。
 
-`doctor` 只读环境元数据和 GPU 列表，不加载模型或初始化 CUDA。帮助、版本和 `rpc generate|simulate|control` 完全由 C++ 处理，Python 不可用时仍可运行。低层 stdin/stdout JSON 协议使用 `ditserve rpc <operation>`。`run` 的矩阵、阶段、重试和预算由 C++ 执行；选择阶段使用 `--phase ID`，同一新格式运行继续执行使用 `--resume --run-id ID`。重试新建 attempt，保留失败证据及历史费用。配置、运行身份、账本路径和执行源码发生变化时须创建新运行。
-
-真实 GPU 运行需要先填写模板中的模型路径、已有环境 Python 和完整 GPU UUID，再显式给 `--allow-gpu`。所有登记 GPU 从阶段开始至清理确认均计费，包括模型加载、预热、失败和收尾；独立 wall-clock watchdog 对无限额度同样有效。不要把模板的占位配置直接用于正式实验。
-
-```bash
-.cache/build/ditserve run --config /absolute/path/to/study.json \
-  --run-id trial-01 --allow-gpu
-```
-
-最终交付为 `results/<experiment>/<run>/results.xlsx` 和 `REPORT.md`。累计账本在 `.state/<experiment>/budget.json`；可恢复控制文件和有实际下游依赖的输入在 `.cache/results-work/`。`compact-results` 保留为结果 skill 兼容入口。
-
-[实验配置](docs/experiments.md) · [结果处理](docs/results.md) · [容器镜像](docs/container.md) · [能力覆盖与精简统计](docs/rewrite.md)
+[预实验结论](docs/a100_preexperiments.md) · [实验配置](docs/experiments.md) · [结果处理](docs/results.md) · [设计与精简记录](docs/rewrite.md)
