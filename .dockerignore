@@ -1,0 +1,17 @@
+# Allow-list: only the build inputs reach the context (no results, caches, venvs, or migration archives).
+*
+!CMakeLists.txt
+!cmd
+!include
+!src
+!benchmarks
+!configs
+!workers
+!tests/core
+!tests/fixtures
+!docker/artifacts-runtime.json
+!docker/install_dependencies.py
+# Pinned header; CMake verifies its SHA256 and downloads it only when absent.
+!.cache/deps/nlohmann3.11.3/nlohmann/json.hpp
+**/__pycache__
+**/*.py[cod]

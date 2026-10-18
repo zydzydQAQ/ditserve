@@ -67,4 +67,4 @@ PYTHONPATH=workers CUDA_VISIBLE_DEVICES='' HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE
 
 最终交付为 `results/<experiment>/<run>/results.xlsx` 和 `REPORT.md`。累计账本在 `.state/<experiment>/budget.json`；可恢复控制文件和有实际下游依赖的输入在 `.cache/results-work/`。`compact-results` 保留为结果 skill 兼容入口。
 
-[实验配置](docs/experiments.md) · [结果处理](docs/results.md) · [能力覆盖与精简统计](docs/rewrite.md)
+[实验配置](docs/experiments.md) · [结果处理](docs/results.md) · [容器镜像](docs/container.md) · [能力覆盖与精简统计](docs/rewrite.md)

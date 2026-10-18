@@ -20,17 +20,26 @@
 | --- | --- | --- |
 | Wan-AI/Wan2.1-T2V-1.3B-Diffusers @ `0fad780a534b6463e45facd96134c9f345acfa5b` | 小视频模型；与本机结果对齐 | 从本机复制（约 27GB，UMT5 FP32 占约 22.7GB） |
 | Efficient-Large-Model/Sana_Sprint_0.6B_1024px_diffusers @ `aa76e7f4f4928f378716b6716a2130fba3caf5b1` | 短图像请求 | 从本机复制（约 7.6GB） |
-| Wan-AI/Wan2.2-TI2V-5B-Diffusers | 主视频模型候选：GenServe 与 GF-DiT 均用它，便于直接比较；单卡 40GB 可放下 | 目标机下载；到货后记录 revision |
-| Wan-AI/Wan2.1-T2V-14B-Diffusers | 可选长 step 视频模型（block 级抢占收益最大）；40GB 上 720p 需 SP≥2 | 目标机下载；到货后记录 revision |
+| Wan-AI/Wan2.2-TI2V-5B-Diffusers | **主视频模型**（用户 2026-10-18 确定）：GenServe 与 GF-DiT 均用它，便于直接比较；单卡 40GB 可放下 | 目标机下载；到货后记录 revision |
+| Wan-AI/Wan2.1-T2V-14B-Diffusers | 可选的长 step 视频模型（block 级抢占收益最大）；40GB 上 720p 需 SP≥2；不在默认下载集 | 需要时在目标机下载 |
 | black-forest-labs/FLUX.1-dev | 标准图像 DiT（`models/flux.py` 已有整管线后端） | 目标机下载；需在 HF 接受许可 |
 
-Mistral-7B 与 LongLive 不进入默认迁移集：会话与流式不在主线内，LongLive 还需要独立 torch 2.8 环境（约 +7.5GB）。本机 `/mnt/data/Mistral-7B-Instruct-v0.2` 可在需要 LLM 共置或显存压力实验时单独复制。主视频模型最终选 5B 还是 14B 待用户确认。
+Mistral-7B 与 LongLive 不进入默认迁移集：会话与流式不在主线内，LongLive 还需要独立 torch 2.8 环境（约 +7.5GB）。本机 `/mnt/data/Mistral-7B-Instruct-v0.2` 可在需要 LLM 共置或显存压力实验时单独复制。
+
+**Wan2.2-TI2V-5B 的移植工作**（到货后、正式实验前完成，并在 CPU tiny 模型上测试）。现有 Wan 路径按 Wan2.1-1.3B 的形状写死，需要按 5B 的配置文件放开：
+
+- `models/wan/block.py` 的 `_validate_model` 固定为 30 层、12 头、16 输入通道；
+- `models/wan/parallel.py` 的 `_validate_cache_off_values` 固定 latent 为 16 通道、8 倍空间压缩；
+- `models/pipeline.py` 的 `ChunkedDecode` 拒绝带 `patch_size` 的 VAE（Wan2.2 的 VAE 压缩率更高，解码后需要 unpatchify）；
+- `evaluation/cost_profile.py` 的 `ARCHITECTURES` 需要加入从配置文件读出的 5B 维度。
+
+改完后，用 E2 和 E5 的方法在目标机上重新测量成本、验证逐位一致，再把成本画像换成 5B 的实测值。
 
 容器外下载示例（下载机需外网；完成后生成清单再挂载）：
 
 ```bash
 export MODELS=/data/models
-HF_HUB_OFFLINE=0 huggingface-cli download Wan-AI/Wan2.1-T2V-14B-Diffusers --local-dir "$MODELS/wan2.1-t2v-14b"
+HF_HUB_OFFLINE=0 huggingface-cli download Wan-AI/Wan2.2-TI2V-5B-Diffusers --local-dir "$MODELS/wan2.2-ti2v-5b"
 HF_HUB_OFFLINE=0 huggingface-cli download black-forest-labs/FLUX.1-dev --local-dir "$MODELS/flux1-dev"
 (cd "$MODELS" && find . -type f -print0 | sort -z | xargs -0 sha256sum) > "$MODELS/SHA256SUMS"
 ```
@@ -47,7 +56,7 @@ HF_HUB_OFFLINE=0 huggingface-cli download black-forest-labs/FLUX.1-dev --local-d
    该工具测 pair、quad 和 8 卡的 concurrent/isolated 每 rank 带宽，结果替换模拟器成本画像中的 `links`。通过标准：所有组完成；记录各档 GB/s。
 3. **单卡冒烟。** `ditserve doctor`；每张卡跑一次 `configs/studies/target-8xa100/acceptance.json`（替换 GPU UUID；模型路径已按 `/models` 挂载布局填写）。通过标准：数值阶段精确一致，混合回放全部完成。
 4. **8 slot 并发回放（SP1）。** `configs/studies/target-8xa100/cluster_sp1.json`：每张卡一个 Wan block worker + 一个图像 worker，按混合负载运行 `static_sp1` 与 `block_elastic`（约 300 ms quantum，可抢占解码）。通过标准：全部请求完成，账本结算，GPU 隔离观测为 exclusive。
-5. **SP 等价性。** 先实现 SP 组内的 block 执行与 step 边界换组，再用 1.3B 和 14B 比较 SP1 与 SP2/4/8 的输出：latent 在 BF16/FP16 容差内一致，且有明确记录的最大误差。通过前不得报告 SP 下的任何性能结论。
+5. **SP 等价性。** 先实现 SP 组内的 block 执行与 step 边界换组，再用 1.3B 和 Wan2.2-5B（如做 14B 也一并）比较 SP1 与 SP2/4/8 的输出：latent 在 BF16/FP16 容差内一致，且有明确记录的最大误差。通过前不得报告 SP 下的任何性能结论。
 6. **SP 扩展曲线。** 对 {480p, 720p} × {17, 33, 81} 帧 × SP{1,2,4,8} 测每步时间，拟合成本画像中的 `sp_efficiency`、`links` 和 `comm_mb_per_step`，与本机推演（Phase 4）的预测比较。通过标准：模拟器对留出形状的每步时间误差 ≤10%。
 7. **主实验。** 按负载曲线比较 `static_spK`、`step_elastic`、`block_elastic`（含 lazy/eager 抢占消融），多 seed，报告 SLO 达成率、goodput、分类别 p50/p95/p99。
 
