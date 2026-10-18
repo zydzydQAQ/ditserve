@@ -51,18 +51,17 @@ class FakeCoreTest(unittest.TestCase):
         return CoreBridge(binary)
 
     def test_roundtrip_payload(self):
-        reply = self.bridge().call("simulate", {"schema_version": 2, "workload": []})
+        reply = self.bridge().call("simulate", {"policy": "block_elastic", "workload": []})
         self.assertEqual(reply["command"], "simulate")
-        self.assertEqual(reply["echo"], {"schema_version": 2, "workload": []})
+        self.assertEqual(reply["echo"], {"policy": "block_elastic", "workload": []})
         self.assertEqual(reply["environment"]["DITSERVE_PYTHON"], os.environ.get("DITSERVE_PYTHON", sys.executable))
         self.assertEqual(reply["environment"]["DITSERVE_PACKAGE_ROOT"], os.environ.get("DITSERVE_PACKAGE_ROOT", str(PACKAGE_ROOT)))
 
     def test_generate_and_simulate_wrap_schema(self):
         bridge = self.bridge()
-        self.assertEqual(bridge.generate({"count": 1})["echo"]["generator"], {"count": 1})
-        reply = bridge.simulate({"policy": "edf"}, [], {"compute_ms": 1})
-        self.assertEqual(reply["echo"]["cost_model"], {"compute_ms": 1})
-        self.assertEqual(reply["echo"]["workload"], [])
+        self.assertEqual(bridge.generate({"count": 1})["echo"], {"generator": {"count": 1}})
+        reply = bridge.simulate({"policy": "block_elastic", "gpus": 2, "workload": []})
+        self.assertEqual(reply["echo"], {"policy": "block_elastic", "gpus": 2, "workload": []})
 
     def test_core_failure_raises_core_error(self):
         with self.assertRaisesRegex(CoreError, "boom"):

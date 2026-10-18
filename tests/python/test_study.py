@@ -346,12 +346,98 @@ class NativeStudyTest(unittest.TestCase):
             self.assertGreater(row["operation_counts"]["decode_poll"], 1)
             self.assertEqual(len(row["outputs"]), 1)
 
+    def test_warmup_runs_before_trace_clock_and_prefetch_is_per_worker(self):
+        workers = {"model": {"backend": "mock", "config": {"options": {"encode_delay_ms": 5}}},
+                   "image": {"backend": "mock", "config": {"options": {}}}}
+        phase = self.phase(text_prefetch=1, text_prefetch_workers=["model"],
+                           warmup=[dict(worker="model", spec=dict(steps=2)), dict(worker="image", spec=dict(steps=1))],
+                           workload=[self.request("v"), self.request("i", worker="image", kind="image")])
+        value = self.run_study(self.config([phase], workers=workers))
+        self.assert_completed(value)
+        rows = {row["request_id"]: row for row in value["requests"]}
+        self.assertEqual(rows["v"]["operation_counts"]["encode_start"], 1)
+        self.assertNotIn("encode_start", rows["i"]["operation_counts"])
+        warmed = value["phases"][0]["cells"][0]["warmup"]
+        self.assertEqual([item["worker"] for item in warmed], ["model", "image"])
+        self.assertTrue(all(item["elapsed_ms"] >= 0 for item in warmed))
+        with self.assertRaises(CoreError):
+            self.run_study(self.config([self.phase(text_prefetch_workers=["missing"])]), name="bad-prefetch")
+        with self.assertRaises(CoreError):
+            self.run_study(self.config([self.phase(warmup=[dict(worker="missing")])]), name="bad-warmup")
+
+    def test_output_mode_check_keeps_outputs_off_disk(self):
+        kept = self.run_study(self.config([self.phase(workload=[self.request("a")])]), name="kept")
+        checked = self.run_study(self.config([self.phase(output_mode="check", workload=[self.request("a")])]), name="checked")
+        self.assert_completed(kept)
+        self.assert_completed(checked)
+        self.assertEqual(len(kept["artifacts"]), 1)
+        self.assertEqual(checked["artifacts"], [])
+        output = checked["requests"][0]["outputs"][0]["output"]
+        self.assertEqual(output["output_mode"], "check")
+        self.assertNotIn("path", output)
+        self.assertNotIn("sha256", output)
+        from ditserve.models.base import artifact
+        with self.assertRaises(ValueError):
+            artifact("x", None, "upload")
+
+    def cluster_phase(self, policy, gpus=4, **changes):
+        profile = dict(provenance="synthetic", sp_efficiency=1, resize_ms=1,
+                       classes=dict(video=dict(kind="video", steps=3, blocks_per_step=4, prepare_ms=0, encode_ms=0,
+                                               step_compute_ms=400, comm_mb_per_step=0, collectives_per_step=0, finish_ms=20),
+                                    image=dict(kind="image", service_ms=20)),
+                       links={"2": dict(gbps=10, latency_ms=0), "4": dict(gbps=10, latency_ms=0)})
+        workload = [dict(request_id="v%d" % i, kind="video", worker="v0", arrival_ms=0, slo_ms=20000,
+                         spec=dict(steps=3, blocks_per_step=4)) for i in range(2)]
+        workload += [dict(request_id="i%d" % i, kind="image", worker="i0", arrival_ms=100 + 150 * i, slo_ms=300,
+                          spec=dict(steps=1)) for i in range(4)]
+        for row in workload:
+            row["class"] = row["kind"]
+        value = dict(id="cluster", kind="cluster", policy=policy, profile=profile, text_prefetch=1,
+                     gpus=[dict(video="v%d" % g, image="i%d" % g) for g in range(gpus)], workload=workload)
+        value.update(changes)
+        return value
+
+    def cluster_workers(self, gpus=4):
+        costs = dict(step_ms=400, finish_ms=20)
+        workers = {}
+        for g in range(gpus):
+            workers["v%d" % g] = {"backend": "mock", "config": {"options": {"costs": costs}}}
+            workers["i%d" % g] = {"backend": "mock", "config": {"options": {"costs": dict(finish_ms=20)}}}
+        return workers
+
+    def test_cluster_executor_runs_gpus_concurrently_with_sp_groups(self):
+        value = self.run_study(self.config([self.cluster_phase("block_elastic")], workers=self.cluster_workers()), name="cluster")
+        self.assert_completed(value)
+        cell = value["phases"][0]["cells"][0]
+        self.assertEqual(cell["metrics"]["completed"], 6)
+        rows = {row["request_id"]: row for row in cell["requests"]}
+        # Two 3-step videos at 400 ms/step on four GPUs: SP2 each, not 2.4 s serial.
+        self.assertLess(cell["elapsed_ms"], 2400)
+        self.assertTrue(all(max(rows[v]["degrees"]) >= 2 for v in ("v0", "v1")))
+        self.assertEqual(cell["by_kind"]["image"]["completed"], 4)
+        self.assertFalse(cell["real_backends_pinned_sp1"])
+
+    def test_cluster_static_sp1_and_invalid_slots(self):
+        value = self.run_study(self.config([self.cluster_phase("static_sp1", gpus=2)], workers=self.cluster_workers(2)), name="static")
+        self.assert_completed(value)
+        cell = value["phases"][0]["cells"][0]
+        self.assertTrue(all(row["degrees"] == [1] for row in cell["requests"]))
+        bad = self.cluster_phase("block_elastic", gpus=2)
+        bad["gpus"][1]["video"] = "v0"
+        with self.assertRaises(CoreError):
+            self.run_study(self.config([bad], workers=self.cluster_workers(2)), name="bad-slots")
+        with self.assertRaises(CoreError):
+            self.run_study(self.config([self.cluster_phase("fastest", gpus=2)], workers=self.cluster_workers(2)), name="bad-policy")
+
     def test_simulate_entrypoint_publishes_only_two_files(self):
-        config = dict(generator=dict(count=3, seed=9), policies=["edf", "cache_only"])
+        config = dict(generator=dict(count=6, seed=9), policies=["static_sp1", "block_elastic"], gpus=2)
         value = api.simulate(config, run_id="sim", work_dir=self.root / "sim",
                              results_root=self.root / "results", core=self.bridge)
         self.assertEqual(value["status"], "completed")
-        self.assertEqual(len(value["phases"]), 2)
+        self.assertEqual([phase["id"] for phase in value["phases"]], ["static_sp1-c0", "block_elastic-c0"])
+        for phase in value["phases"]:
+            self.assertEqual(phase["result"]["metrics"]["completed"], 6)
+            self.assertEqual(phase["result"]["provenance"], "synthetic")
         self.assertEqual(value["budget"]["gpu_seconds"], 0)
         self.assertIn("Synthetic", value["notice"])
         self.assert_archive(value, "synthetic", "sim")

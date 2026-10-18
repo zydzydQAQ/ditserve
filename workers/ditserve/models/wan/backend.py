@@ -62,7 +62,7 @@ class WanBackend(Backend):
         request["state_id"] = key
         self.decode_request = None
         return dict(ticket=ticket, ready=True, state_id=key, progress=self._progress(state),
-                    output=artifact(output, self.output_path(request)),
+                    output=self.persist(output, request),
                     model_ms=event["ms"], event=event, **self._evidence(request, state.spec, state.latents, self._paths(state)))
 
     def _progress(self, state):
@@ -128,7 +128,9 @@ class WanBackend(Backend):
                 self.executor.close(self.continuations.pop(key))
             self.runtime.release(state)
             raise
-        return dict(state_id=key, progress=self._progress(state), model_ms=state.prepare_ms)
+        timing = next((event for event in reversed(state.events) if event.get("kind") == "prepare"), {})
+        return dict(state_id=key, progress=self._progress(state), model_ms=state.prepare_ms,
+                    **{name: timing[name] for name in ("cpu_prompt_encode_ms", "gpu_prepare_ms") if name in timing})
 
     def advance(self, request):
         state = self.state(request)
@@ -272,12 +274,13 @@ class WanBackend(Backend):
             if self.runtime.attention != "flash":
                 raise ValueError("pinned Wan SP requires config.attention=flash")
             torch = self.runtime.torch
-            if request.get("world_size", 4) != 4:
-                raise ValueError("pinned fixed-group SP requires exactly four ranks")
+            world_size = request.get("world_size", 4)
+            if world_size not in (2, 4, 8):
+                raise ValueError("aligned-group SP requires 2, 4 or 8 ranks")
             from datetime import timedelta
             if not torch.distributed.is_initialized():
                 torch.distributed.init_process_group(backend="nccl", init_method=request["init_method"],
-                    rank=request["rank"], world_size=4, timeout=timedelta(seconds=request.get("timeout_seconds", 30)))
+                    rank=request["rank"], world_size=world_size, timeout=timedelta(seconds=request.get("timeout_seconds", 30)))
                 self.owns_world = True
             from .parallel import LayoutHandle, build_fixed_groups
             from .sp import PinnedWanUlyssesBackend
@@ -286,7 +289,7 @@ class WanBackend(Backend):
             self.parallel = PinnedWanUlyssesBackend(handle, groups).attach(self.runtime)
             return dict(self.parallel.capabilities, initialized=True)
         if self.parallel is None:
-            raise ValueError("distributed init must complete first on all four ranks")
+            raise ValueError("distributed init must complete first on every rank")
         if action == "prepare":
             return self.prepare(request)
         if action == "step":
@@ -316,7 +319,7 @@ class WanBackend(Backend):
         output = result.pop("output")
         latents = result.pop("latents")
         paths = result.pop("path_history")
-        return dict(result, output=artifact(output, self.output_path(request)),
+        return dict(result, output=self.persist(output, request),
                     **self._evidence(request, spec, latents, paths))
 
     def finish(self, request):
@@ -324,7 +327,7 @@ class WanBackend(Backend):
             raise ValueError("VAE already owns an asynchronous decode; use decode_poll")
         state = self._boundary(request)
         output = self.runtime.finish(state)
-        return dict(state_id=request["state_id"], output=artifact(output, self.output_path(request)),
+        return dict(state_id=request["state_id"], output=self.persist(output, request),
                     progress=self._progress(state), model_ms=state.events[-1]["ms"],
                     **self._evidence(request, state.spec, state.latents, self._paths(state)))
 

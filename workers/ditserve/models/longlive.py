@@ -273,7 +273,7 @@ class LongLiveBackend(Backend):
         state = self.state(request)
         latent, pixels, metrics = self.runtime.chunk(state)
         del latent
-        output = artifact(pixels[None], self.output_path(request))
+        output = self.persist(pixels[None], request)
         self.outputs[request["state_id"]] = output
         return dict(state_id=request["state_id"], progress=progress(state.block, state.blocks),
             output=output, chunk=metrics, chunk_duration_s=len(pixels) / 16.,

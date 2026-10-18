@@ -1,0 +1,1103 @@
+{
+  "schema": "ditserve.study.v1",
+  "experiment": "a100-e1-parity-check",
+  "note": "E1 run02 (outputs not persisted): reproduce the archived cache-off step vs block-4 online comparison (optimization-cache-online run01 off_step/off_k4) through the native C++ replay on the two frozen 24-request traces (22 Sana-Sprint images, 2 Wan 1.3B 81-frame videos, load 0.5). Forward order only; untimed warmup per cell; Wan text encoding on CPU at arrival. Parity gate (evaluated in the report): per-trace goodput within +-10% of archived pooled values and block-4 > step on both traces. Outputs have no consumer after export. run02 differs from run01 only by output_mode=check: generated images/videos are validated (shape, finite) but not written or hashed, matching the archived in-process path that kept no outputs.",
+  "workers": {
+    "wan": {
+      "backend": "wan",
+      "python": "/home/zyd/code/dit-rewrite/.venv-previs/bin/python",
+      "gpu_uuid": "GPU-3ab2fedc-ccc1-007d-f4a1-b6058b3479a3",
+      "environment": {
+        "OMP_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8"
+      },
+      "config": {
+        "model_path": "/mnt/data/zyd-preempt-phase16-01a1296d/dit-runtime/huggingface/hub/models--Wan-AI--Wan2.1-T2V-1.3B-Diffusers/snapshots/0fad780a534b6463e45facd96134c9f345acfa5b",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "block"
+        }
+      }
+    },
+    "sana": {
+      "backend": "sana",
+      "python": "/home/zyd/code/dit-rewrite/.venv-previs/bin/python",
+      "gpu_uuid": "GPU-3ab2fedc-ccc1-007d-f4a1-b6058b3479a3",
+      "environment": {
+        "OMP_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8"
+      },
+      "config": {
+        "model_path": "/mnt/data/zyd-preempt-phase16-01a1296d/dit-directions-assets/huggingface/hub/models--Efficient-Large-Model--Sana_Sprint_0.6B_1024px_diffusers/snapshots/aa76e7f4f4928f378716b6716a2130fba3caf5b1",
+        "device": "cuda:0",
+        "options": {
+          "execution": "pipeline",
+          "candidate": "eager"
+        }
+      }
+    }
+  },
+  "budget": {
+    "limit_gpu_seconds": 4500,
+    "watchdog_seconds": 5400,
+    "repair_reserve_gpu_seconds": 0,
+    "carry": "none"
+  },
+  "phases": [
+    {
+      "id": "replay",
+      "kind": "online",
+      "policy": "edf_b4",
+      "unit": "block",
+      "text_prefetch": 2,
+      "text_prefetch_workers": [
+        "wan"
+      ],
+      "warmup": [
+        {
+          "worker": "wan",
+          "spec": {
+            "prompt": "A wooden boat drifting on a misty river at dawn.",
+            "negative_prompt": "",
+            "seed": 7,
+            "steps": 2,
+            "height": 480,
+            "width": 832,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1
+          },
+          "quantum": "step"
+        },
+        {
+          "worker": "sana",
+          "spec": {
+            "prompt": "A ceramic teapot on a linen tablecloth.",
+            "seed": 7
+          }
+        }
+      ],
+      "costs": {
+        "image_deadline_ms": 792,
+        "prepare_ms": 500,
+        "step_ms": 4122,
+        "block_ms": 69,
+        "finish_ms": 8000
+      },
+      "workload": [
+        {
+          "request_id": "r000",
+          "kind": "video",
+          "arrival_ms": 0.0,
+          "deadline_ms": 398206.9845747901,
+          "service_ms": 159282.79382991605,
+          "worker": "wan",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 102,
+            "steps": 32,
+            "height": 480,
+            "width": 832,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1
+          }
+        },
+        {
+          "request_id": "r001",
+          "kind": "image",
+          "arrival_ms": 0.0,
+          "deadline_ms": 791.8668436468579,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+            "seed": 103
+          }
+        },
+        {
+          "request_id": "r002",
+          "kind": "image",
+          "arrival_ms": 0.0,
+          "deadline_ms": 791.8668436468579,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "seed": 104
+          }
+        },
+        {
+          "request_id": "r003",
+          "kind": "image",
+          "arrival_ms": 0.0,
+          "deadline_ms": 791.8668436468579,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+            "seed": 105
+          }
+        },
+        {
+          "request_id": "r004",
+          "kind": "image",
+          "arrival_ms": 0.0,
+          "deadline_ms": 791.8668436468579,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "seed": 106
+          }
+        },
+        {
+          "request_id": "r005",
+          "kind": "image",
+          "arrival_ms": 81383.50397098111,
+          "deadline_ms": 82175.37081462797,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+            "seed": 107
+          }
+        },
+        {
+          "request_id": "r006",
+          "kind": "image",
+          "arrival_ms": 81383.50397098111,
+          "deadline_ms": 82175.37081462797,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "seed": 108
+          }
+        },
+        {
+          "request_id": "r007",
+          "kind": "image",
+          "arrival_ms": 81383.50397098111,
+          "deadline_ms": 82175.37081462797,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+            "seed": 109
+          }
+        },
+        {
+          "request_id": "r008",
+          "kind": "image",
+          "arrival_ms": 81383.50397098111,
+          "deadline_ms": 82175.37081462797,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "seed": 110
+          }
+        },
+        {
+          "request_id": "r009",
+          "kind": "image",
+          "arrival_ms": 81383.50397098111,
+          "deadline_ms": 82175.37081462797,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+            "seed": 111
+          }
+        },
+        {
+          "request_id": "r010",
+          "kind": "image",
+          "arrival_ms": 162767.00794196222,
+          "deadline_ms": 163558.87478560908,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "seed": 112
+          }
+        },
+        {
+          "request_id": "r011",
+          "kind": "image",
+          "arrival_ms": 162767.00794196222,
+          "deadline_ms": 163558.87478560908,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+            "seed": 113
+          }
+        },
+        {
+          "request_id": "r012",
+          "kind": "video",
+          "arrival_ms": 162767.00794196222,
+          "deadline_ms": 560973.9925167523,
+          "service_ms": 159282.79382991605,
+          "worker": "wan",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 114,
+            "steps": 32,
+            "height": 480,
+            "width": 832,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1
+          }
+        },
+        {
+          "request_id": "r013",
+          "kind": "image",
+          "arrival_ms": 244150.51191294333,
+          "deadline_ms": 244942.3787565902,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+            "seed": 115
+          }
+        },
+        {
+          "request_id": "r014",
+          "kind": "image",
+          "arrival_ms": 244150.51191294333,
+          "deadline_ms": 244942.3787565902,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "seed": 116
+          }
+        },
+        {
+          "request_id": "r015",
+          "kind": "image",
+          "arrival_ms": 325534.01588392444,
+          "deadline_ms": 326325.8827275713,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+            "seed": 117
+          }
+        },
+        {
+          "request_id": "r016",
+          "kind": "image",
+          "arrival_ms": 325534.01588392444,
+          "deadline_ms": 326325.8827275713,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "seed": 118
+          }
+        },
+        {
+          "request_id": "r017",
+          "kind": "image",
+          "arrival_ms": 325534.01588392444,
+          "deadline_ms": 326325.8827275713,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+            "seed": 119
+          }
+        },
+        {
+          "request_id": "r018",
+          "kind": "image",
+          "arrival_ms": 325534.01588392444,
+          "deadline_ms": 326325.8827275713,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "seed": 120
+          }
+        },
+        {
+          "request_id": "r019",
+          "kind": "image",
+          "arrival_ms": 406917.51985490555,
+          "deadline_ms": 407709.3866985524,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+            "seed": 121
+          }
+        },
+        {
+          "request_id": "r020",
+          "kind": "image",
+          "arrival_ms": 406917.51985490555,
+          "deadline_ms": 407709.3866985524,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "seed": 122
+          }
+        },
+        {
+          "request_id": "r021",
+          "kind": "image",
+          "arrival_ms": 406917.51985490555,
+          "deadline_ms": 407709.3866985524,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+            "seed": 123
+          }
+        },
+        {
+          "request_id": "r022",
+          "kind": "image",
+          "arrival_ms": 406917.51985490555,
+          "deadline_ms": 407709.3866985524,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "seed": 124
+          }
+        },
+        {
+          "request_id": "r023",
+          "kind": "image",
+          "arrival_ms": 406917.51985490555,
+          "deadline_ms": 407709.3866985524,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+            "seed": 125
+          }
+        }
+      ],
+      "matrix": {
+        "/policy": [
+          "edf_step",
+          "edf_b4"
+        ],
+        "/workload": [
+          [
+            {
+              "request_id": "r000",
+              "kind": "video",
+              "arrival_ms": 0.0,
+              "deadline_ms": 398206.9845747901,
+              "service_ms": 159282.79382991605,
+              "worker": "wan",
+              "spec": {
+                "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+                "negative_prompt": "",
+                "seed": 102,
+                "steps": 32,
+                "height": 480,
+                "width": 832,
+                "frames": 81,
+                "guidance_scale": 5.0,
+                "cache": false,
+                "threshold": 0.0,
+                "max_continuous": 1
+              }
+            },
+            {
+              "request_id": "r001",
+              "kind": "image",
+              "arrival_ms": 0.0,
+              "deadline_ms": 791.8668436468579,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+                "seed": 103
+              }
+            },
+            {
+              "request_id": "r002",
+              "kind": "image",
+              "arrival_ms": 0.0,
+              "deadline_ms": 791.8668436468579,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+                "seed": 104
+              }
+            },
+            {
+              "request_id": "r003",
+              "kind": "image",
+              "arrival_ms": 0.0,
+              "deadline_ms": 791.8668436468579,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+                "seed": 105
+              }
+            },
+            {
+              "request_id": "r004",
+              "kind": "image",
+              "arrival_ms": 0.0,
+              "deadline_ms": 791.8668436468579,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+                "seed": 106
+              }
+            },
+            {
+              "request_id": "r005",
+              "kind": "image",
+              "arrival_ms": 81383.50397098111,
+              "deadline_ms": 82175.37081462797,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+                "seed": 107
+              }
+            },
+            {
+              "request_id": "r006",
+              "kind": "image",
+              "arrival_ms": 81383.50397098111,
+              "deadline_ms": 82175.37081462797,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+                "seed": 108
+              }
+            },
+            {
+              "request_id": "r007",
+              "kind": "image",
+              "arrival_ms": 81383.50397098111,
+              "deadline_ms": 82175.37081462797,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+                "seed": 109
+              }
+            },
+            {
+              "request_id": "r008",
+              "kind": "image",
+              "arrival_ms": 81383.50397098111,
+              "deadline_ms": 82175.37081462797,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+                "seed": 110
+              }
+            },
+            {
+              "request_id": "r009",
+              "kind": "image",
+              "arrival_ms": 81383.50397098111,
+              "deadline_ms": 82175.37081462797,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+                "seed": 111
+              }
+            },
+            {
+              "request_id": "r010",
+              "kind": "image",
+              "arrival_ms": 162767.00794196222,
+              "deadline_ms": 163558.87478560908,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+                "seed": 112
+              }
+            },
+            {
+              "request_id": "r011",
+              "kind": "image",
+              "arrival_ms": 162767.00794196222,
+              "deadline_ms": 163558.87478560908,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+                "seed": 113
+              }
+            },
+            {
+              "request_id": "r012",
+              "kind": "video",
+              "arrival_ms": 162767.00794196222,
+              "deadline_ms": 560973.9925167523,
+              "service_ms": 159282.79382991605,
+              "worker": "wan",
+              "spec": {
+                "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+                "negative_prompt": "",
+                "seed": 114,
+                "steps": 32,
+                "height": 480,
+                "width": 832,
+                "frames": 81,
+                "guidance_scale": 5.0,
+                "cache": false,
+                "threshold": 0.0,
+                "max_continuous": 1
+              }
+            },
+            {
+              "request_id": "r013",
+              "kind": "image",
+              "arrival_ms": 244150.51191294333,
+              "deadline_ms": 244942.3787565902,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+                "seed": 115
+              }
+            },
+            {
+              "request_id": "r014",
+              "kind": "image",
+              "arrival_ms": 244150.51191294333,
+              "deadline_ms": 244942.3787565902,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+                "seed": 116
+              }
+            },
+            {
+              "request_id": "r015",
+              "kind": "image",
+              "arrival_ms": 325534.01588392444,
+              "deadline_ms": 326325.8827275713,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+                "seed": 117
+              }
+            },
+            {
+              "request_id": "r016",
+              "kind": "image",
+              "arrival_ms": 325534.01588392444,
+              "deadline_ms": 326325.8827275713,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+                "seed": 118
+              }
+            },
+            {
+              "request_id": "r017",
+              "kind": "image",
+              "arrival_ms": 325534.01588392444,
+              "deadline_ms": 326325.8827275713,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+                "seed": 119
+              }
+            },
+            {
+              "request_id": "r018",
+              "kind": "image",
+              "arrival_ms": 325534.01588392444,
+              "deadline_ms": 326325.8827275713,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+                "seed": 120
+              }
+            },
+            {
+              "request_id": "r019",
+              "kind": "image",
+              "arrival_ms": 406917.51985490555,
+              "deadline_ms": 407709.3866985524,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+                "seed": 121
+              }
+            },
+            {
+              "request_id": "r020",
+              "kind": "image",
+              "arrival_ms": 406917.51985490555,
+              "deadline_ms": 407709.3866985524,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+                "seed": 122
+              }
+            },
+            {
+              "request_id": "r021",
+              "kind": "image",
+              "arrival_ms": 406917.51985490555,
+              "deadline_ms": 407709.3866985524,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+                "seed": 123
+              }
+            },
+            {
+              "request_id": "r022",
+              "kind": "image",
+              "arrival_ms": 406917.51985490555,
+              "deadline_ms": 407709.3866985524,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+                "seed": 124
+              }
+            },
+            {
+              "request_id": "r023",
+              "kind": "image",
+              "arrival_ms": 406917.51985490555,
+              "deadline_ms": 407709.3866985524,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+                "seed": 125
+              }
+            }
+          ],
+          [
+            {
+              "request_id": "r000",
+              "kind": "video",
+              "arrival_ms": 0.0,
+              "deadline_ms": 398206.9845747901,
+              "service_ms": 159282.79382991605,
+              "worker": "wan",
+              "spec": {
+                "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+                "negative_prompt": "",
+                "seed": 101,
+                "steps": 32,
+                "height": 480,
+                "width": 832,
+                "frames": 81,
+                "guidance_scale": 5.0,
+                "cache": false,
+                "threshold": 0.0,
+                "max_continuous": 1
+              }
+            },
+            {
+              "request_id": "r001",
+              "kind": "image",
+              "arrival_ms": 23607.930554552288,
+              "deadline_ms": 24399.797398199145,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+                "seed": 102
+              }
+            },
+            {
+              "request_id": "r002",
+              "kind": "image",
+              "arrival_ms": 29484.038559650107,
+              "deadline_ms": 30275.905403296965,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+                "seed": 103
+              }
+            },
+            {
+              "request_id": "r003",
+              "kind": "image",
+              "arrival_ms": 120622.91710491822,
+              "deadline_ms": 121414.78394856508,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+                "seed": 104
+              }
+            },
+            {
+              "request_id": "r004",
+              "kind": "image",
+              "arrival_ms": 190523.52016474152,
+              "deadline_ms": 191315.38700838838,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+                "seed": 105
+              }
+            },
+            {
+              "request_id": "r005",
+              "kind": "image",
+              "arrival_ms": 207600.33129205386,
+              "deadline_ms": 208392.19813570072,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+                "seed": 106
+              }
+            },
+            {
+              "request_id": "r006",
+              "kind": "image",
+              "arrival_ms": 237144.4393620134,
+              "deadline_ms": 237936.30620566025,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+                "seed": 107
+              }
+            },
+            {
+              "request_id": "r007",
+              "kind": "image",
+              "arrival_ms": 243694.83656312883,
+              "deadline_ms": 244486.7034067757,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+                "seed": 108
+              }
+            },
+            {
+              "request_id": "r008",
+              "kind": "image",
+              "arrival_ms": 250494.1138059255,
+              "deadline_ms": 251285.98064957236,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+                "seed": 109
+              }
+            },
+            {
+              "request_id": "r009",
+              "kind": "image",
+              "arrival_ms": 259728.73775393367,
+              "deadline_ms": 260520.60459758053,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+                "seed": 110
+              }
+            },
+            {
+              "request_id": "r010",
+              "kind": "image",
+              "arrival_ms": 291713.24127090006,
+              "deadline_ms": 292505.1081145469,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+                "seed": 111
+              }
+            },
+            {
+              "request_id": "r011",
+              "kind": "image",
+              "arrival_ms": 298189.6167027728,
+              "deadline_ms": 298981.48354641965,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+                "seed": 112
+              }
+            },
+            {
+              "request_id": "r012",
+              "kind": "video",
+              "arrival_ms": 394333.90814575664,
+              "deadline_ms": 792540.8927205468,
+              "service_ms": 159282.79382991605,
+              "worker": "wan",
+              "spec": {
+                "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+                "negative_prompt": "",
+                "seed": 113,
+                "steps": 32,
+                "height": 480,
+                "width": 832,
+                "frames": 81,
+                "guidance_scale": 5.0,
+                "cache": false,
+                "threshold": 0.0,
+                "max_continuous": 1
+              }
+            },
+            {
+              "request_id": "r013",
+              "kind": "image",
+              "arrival_ms": 396312.9652598698,
+              "deadline_ms": 397104.8321035167,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+                "seed": 114
+              }
+            },
+            {
+              "request_id": "r014",
+              "kind": "image",
+              "arrival_ms": 402139.6674649347,
+              "deadline_ms": 402931.53430858155,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+                "seed": 115
+              }
+            },
+            {
+              "request_id": "r015",
+              "kind": "image",
+              "arrival_ms": 404664.25521951925,
+              "deadline_ms": 405456.1220631661,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+                "seed": 116
+              }
+            },
+            {
+              "request_id": "r016",
+              "kind": "image",
+              "arrival_ms": 444520.6391637046,
+              "deadline_ms": 445312.50600735145,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+                "seed": 117
+              }
+            },
+            {
+              "request_id": "r017",
+              "kind": "image",
+              "arrival_ms": 456905.00887959846,
+              "deadline_ms": 457696.8757232453,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+                "seed": 118
+              }
+            },
+            {
+              "request_id": "r018",
+              "kind": "image",
+              "arrival_ms": 474214.1246147036,
+              "deadline_ms": 475005.99145835044,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+                "seed": 119
+              }
+            },
+            {
+              "request_id": "r019",
+              "kind": "image",
+              "arrival_ms": 484917.87587832205,
+              "deadline_ms": 485709.7427219689,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+                "seed": 120
+              }
+            },
+            {
+              "request_id": "r020",
+              "kind": "image",
+              "arrival_ms": 512439.85685016675,
+              "deadline_ms": 513231.7236938136,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+                "seed": 121
+              }
+            },
+            {
+              "request_id": "r021",
+              "kind": "image",
+              "arrival_ms": 526474.0984055804,
+              "deadline_ms": 527265.9652492272,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+                "seed": 122
+              }
+            },
+            {
+              "request_id": "r022",
+              "kind": "image",
+              "arrival_ms": 532809.3146560049,
+              "deadline_ms": 533601.1814996517,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+                "seed": 123
+              }
+            },
+            {
+              "request_id": "r023",
+              "kind": "image",
+              "arrival_ms": 548065.7157272687,
+              "deadline_ms": 548857.5825709156,
+              "service_ms": 316.74673745874316,
+              "worker": "sana",
+              "spec": {
+                "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+                "seed": 124
+              }
+            }
+          ]
+        ]
+      },
+      "watchdog_seconds": 5400,
+      "artifact_dependencies": [],
+      "trace_provenance": {
+        "path": "results/optimization-next/run01/workloads.json",
+        "sha256": "8b738ed97b576fba46bdbac6b3102fb575e6f257cfc3a305536e89d5a94a4846",
+        "traces": [
+          {
+            "trace_sha256": "0071c0c25757609a582b4dc6c31e391a4bbad8482653237ad87f15ac7613aed3",
+            "pattern": "burst",
+            "seed": 102,
+            "load": 0.5
+          },
+          {
+            "trace_sha256": "bf91b23fd8377b39f0fdb14377e91751b7967ab57a43ebb1f79d6ae5efbf82c0",
+            "pattern": "ordinary",
+            "seed": 101,
+            "load": 0.5
+          }
+        ],
+        "prompts": [
+          "A red bicycle leaning against a blue wall in warm afternoon light.",
+          "A small sailboat glides across a calm lake in soft morning light."
+        ],
+        "prompt_rule": "prompts[int(request_id[1:]) % 2], as retired direction1._run_trace"
+      },
+      "historical": {
+        "source": "results/optimization-cache-online/run01/REPORT.md",
+        "per_trace_pooled_both_orders": {
+          "0071c0c25757": {
+            "off_k4": {
+              "goodput_rps": 0.032,
+              "image_p95_ms": 1764.603
+            },
+            "off_step": {
+              "goodput_rps": 0.024,
+              "image_p95_ms": 3570.24
+            }
+          },
+          "bf91b23fd837": {
+            "off_k4": {
+              "goodput_rps": 0.043,
+              "image_p95_ms": 531.573
+            },
+            "off_step": {
+              "goodput_rps": 0.026,
+              "image_p95_ms": 4275.743
+            }
+          }
+        }
+      },
+      "gates": [
+        {
+          "metric": "/cells/0/metrics/failed",
+          "op": "eq",
+          "value": 0,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/1/metrics/failed",
+          "op": "eq",
+          "value": 0,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/2/metrics/failed",
+          "op": "eq",
+          "value": 0,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/3/metrics/failed",
+          "op": "eq",
+          "value": 0,
+          "scope": "numeric"
+        }
+      ],
+      "output_mode": "check"
+    }
+  ]
+}

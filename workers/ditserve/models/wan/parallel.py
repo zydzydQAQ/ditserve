@@ -17,7 +17,19 @@ import time
 import types
 
 
-FIXED_GROUPS = ((0,), (1,), (2,), (3,), (0, 1), (2, 3), (0, 1, 2, 3))
+WORLD_SIZES = (2, 4, 8)
+
+
+def aligned_groups(world_size):
+    """Aligned power-of-two rank groups; ranks follow PCIe/socket topology order."""
+    if world_size not in WORLD_SIZES:
+        raise ParallelContractError("SP world size must be 2, 4 or 8")
+    groups, degree = [], 1
+    while degree <= world_size:
+        groups.extend(tuple(range(start, start + degree)) for start in range(0, world_size, degree))
+        degree *= 2
+    return tuple(groups)
+
 LATENT_CACHE_BUFFER_NAMES = frozenset(
     "blocks_%s_residual_buffer%s" % (part, suffix)
     for part in ("Fn", "Bn") for suffix in ("", "_cfg"))
@@ -35,9 +47,13 @@ class ParallelContractError(RuntimeError):
     """Fail closed before ranks can follow different execution paths."""
 
 
+# The original four-rank research layout; larger worlds use aligned_groups(n).
+FIXED_GROUPS = aligned_groups(4)
+
+
 def _ranks(value):
     value = tuple(value)
-    if any(type(rank) is not int for rank in value) or value not in FIXED_GROUPS:
+    if any(type(rank) is not int for rank in value) or value not in aligned_groups(max(WORLD_SIZES)):
         raise ParallelContractError("unsupported fixed rank group: %r" % (value,))
     return value
 
@@ -142,18 +158,18 @@ class FixedProcessGroups:
 
 
 def build_fixed_groups(*, timeout_seconds=15, backend=None):
-    """All four ranks must call once, in identical order, before execution."""
+    """Every rank must call once, in identical order, before execution."""
     torch = importlib.import_module("torch")
     dist = torch.distributed
-    if not dist.is_initialized() or dist.get_world_size() != 4:
-        raise ParallelContractError("the research harness requires an initialized four-rank world")
+    if not dist.is_initialized() or dist.get_world_size() not in WORLD_SIZES:
+        raise ParallelContractError("the research harness requires an initialized 2-, 4- or 8-rank world")
     if type(timeout_seconds) not in (int, float) or not 0 < timeout_seconds <= 60:
         raise ParallelContractError("group timeout must be in (0, 60] seconds")
     backend = backend or dist.get_backend()
     if backend not in ("gloo", "nccl"):
         raise ParallelContractError("only Gloo contracts and NCCL execution are supported")
     groups = {}
-    for ranks in FIXED_GROUPS:
+    for ranks in aligned_groups(dist.get_world_size()):
         groups[ranks] = dist.new_group(list(ranks), backend=backend,
                                       timeout=datetime.timedelta(seconds=timeout_seconds))
     return FixedProcessGroups(dist.get_rank(), groups, backend=backend,

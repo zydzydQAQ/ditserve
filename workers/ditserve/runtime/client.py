@@ -9,8 +9,7 @@ import sys
 
 from . import PACKAGE_ROOT, ROOT, strict_json
 
-SCHEMA_VERSION = 2
-POLICIES = ("cache_only", "batch_only", "naive", "edf", "path_aware", "state_aware")
+CLUSTER_POLICIES = ("static_sp1", "static_sp2", "static_sp4", "static_sp8", "step_elastic", "block_elastic")
 
 
 def native_binary(binary=None):
@@ -72,13 +71,12 @@ class CoreBridge:
         except ValueError as error:
             raise CoreError("C++ core returned invalid JSON: %s" % error)
 
-    def generate(self, generator, cost_model=None):
-        return self.call("generate", {"schema_version": SCHEMA_VERSION, "cost_model": cost_model or {},
-                                      "generator": generator})
+    def generate(self, generator):
+        return self.call("generate", {"generator": generator})
 
-    def simulate(self, config, workload, cost_model=None):
-        return self.call("simulate", {"schema_version": SCHEMA_VERSION, "config": config,
-                                      "cost_model": cost_model or {}, "workload": workload})
+    def simulate(self, config):
+        """One cluster simulation: workload or generator, profile, policy, gpus, options."""
+        return self.call("simulate", config)
 
 
 def _call(command, core, options):

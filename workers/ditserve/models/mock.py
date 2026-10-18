@@ -91,32 +91,69 @@ class MockBackend(Backend):
                 raise ValueError("previous state must be complete and resident")
             del self.states[request["previous_state_id"]]
         steps = positive_int(spec.get("steps", spec.get("blocks", 2)))
+        blocks = positive_int(spec.get("blocks_per_step", 1), "blocks_per_step")
         seed = spec.get("seed", 0)
         if type(seed) is not int or seed < 0:
             raise ValueError("seed must be a nonnegative integer")
         value = hashlib.sha256(json.dumps({"prompt": spec.get("prompt", ""), "seed": seed},
                                          sort_keys=True).encode()).hexdigest()
-        self.states[key] = dict(step=0, steps=steps, value=value, residency="cpu", paused=False,
-                               prompt_version=spec.get("prompt_version", 0), text=spec.get("prompt", "fixture output"))
+        # Cluster regrouping resumes a request on new ranks from its position.
+        resume = request.get("resume", {})
+        unit = int(resume.get("step", 0)) * blocks + int(resume.get("block", 0))
+        if not 0 <= unit < steps * blocks:
+            raise ValueError("resume position is outside the request")
+        self.states[key] = dict(step=unit // blocks, steps=steps, unit=unit, blocks=blocks, value=value, residency="cpu",
+                               paused=False, prompt_version=spec.get("prompt_version", 0), text=spec.get("prompt", "fixture output"))
+        self._sleep("prepare_ms")
         return dict(state_id=key, done=False, completed_steps=0, remaining_steps=steps,
-                    model_ms=0., measured=False, progress=progress(0, steps))
+                    model_ms=0., measured=False, progress=self._progress(self.states[key]))
+
+    def _sleep(self, key, scale=1.):
+        """Optional fixture timing from options.costs; never a measurement."""
+        value = self.config.get("options", {}).get("costs", {}).get(key, 0) * scale
+        if type(value) not in (float, int) or not 0 <= value <= 60000:
+            raise ValueError("mock costs must be in [0, 60000] ms")
+        if value:
+            time.sleep(value / 1000)
+
+    @staticmethod
+    def _progress(state):
+        blocks = state.get("blocks", 1)
+        if blocks == 1:
+            return progress(state["step"], state["steps"])
+        return dict(progress(state["step"], state["steps"]), block=state["unit"] % blocks,
+                    transfer_ready=state["unit"] % blocks == 0)
 
     def advance(self, request):
         self._inject("advance", request)
         state = self.state(request)
         if state["paused"]:
             raise ValueError("restore the mock state before advancing")
-        count = positive_int(request.get("steps", request.get("blocks", 1)))
         if state["step"] == state["steps"]:
             raise ValueError("request has no remaining steps")
-        for unused in range(min(count, state["steps"] - state["step"])):
-            state["value"] = hashlib.sha256(state["value"].encode()).hexdigest()
-            state["step"] += 1
-        return dict(state_id=request["state_id"], completed_steps=state["step"],
+        degree = positive_int(request.get("sp_degree", 1), "sp_degree")
+        if state["blocks"] == 1:
+            count = positive_int(request.get("steps", request.get("blocks", 1)))
+            executed = min(count, state["steps"] - state["step"])
+            for unused in range(executed):
+                state["value"] = hashlib.sha256(state["value"].encode()).hexdigest()
+                state["step"] += 1
+            state["unit"] = state["step"]
+            self._sleep("step_ms", executed / degree)
+        else:
+            # Block quanta stop at the next solver-step boundary, like Wan.
+            boundary = state["blocks"] - state["unit"] % state["blocks"]
+            executed = boundary if request.get("quantum") == "step" else min(positive_int(request.get("blocks", 1)), boundary)
+            state["unit"] += executed
+            if state["unit"] % state["blocks"] == 0:
+                state["value"] = hashlib.sha256(state["value"].encode()).hexdigest()
+            state["step"] = state["unit"] // state["blocks"]
+            self._sleep("step_ms", executed / state["blocks"] / degree)
+        return dict(state_id=request["state_id"], completed_steps=state["step"], executed_units=executed,
                     remaining_steps=state["steps"] - state["step"],
                     done=state["step"] == state["steps"], model_ms=0., measured=False,
                     frames=4, fps=16., duration_ms=250., prompt_version=state["prompt_version"],
-                    progress=progress(state["step"], state["steps"]))
+                    progress=self._progress(state))
 
     def snapshot(self, request):
         self._inject("snapshot", request)
@@ -168,7 +205,7 @@ class MockBackend(Backend):
         self.state(request)["paused"] = False
         state = self.state(request)
         return dict(state_id=request.get("state_id", request.get("snapshot_id")), model_ms=0.,
-                    measured=False, progress=progress(state["step"], state["steps"]))
+                    measured=False, progress=self._progress(state))
 
     def inventory(self, request):
         return dict(self.state(request), measured=False)
@@ -182,7 +219,8 @@ class MockBackend(Backend):
         state = self.state(request)
         if state["step"] != state["steps"] or state["paused"]:
             raise ValueError("finish requires a complete resident state")
-        output = artifact(json.dumps({"value": state["value"]}, sort_keys=True), self.output_path(request, ".json"))
+        self._sleep("finish_ms")
+        output = self.persist(json.dumps({"value": state["value"]}, sort_keys=True), request, ".json")
         output["text"] = state["text"]
         return dict(state_id=request["state_id"], output=output,
                     done=True, model_ms=0., measured=False)

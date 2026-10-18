@@ -29,7 +29,7 @@ include(CTest)
 add_library(ditserve_core
     src/ditserve/types.cpp
     src/ditserve/runtime/random.cpp src/ditserve/runtime/process.cpp
-    src/ditserve/control/budget.cpp src/ditserve/control/dispatch.cpp)
+    src/ditserve/control/budget.cpp src/ditserve/control/dispatch.cpp src/ditserve/control/cluster.cpp)
 target_include_directories(ditserve_core PUBLIC include)
 target_include_directories(ditserve_core SYSTEM PUBLIC "${JSON_CACHE}")
 target_link_libraries(ditserve_core PUBLIC Threads::Threads)

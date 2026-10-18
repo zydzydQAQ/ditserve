@@ -1,24 +1,29 @@
 #include "ditserve/control/study.hpp"
 #include "ditserve/control/budget.hpp"
+#include "ditserve/control/cluster.hpp"
 #include "ditserve/control/dispatch.hpp"
 #include "ditserve/runtime/process.hpp"
-#include "ditserve/benchmark/simulator.hpp"
-#include "ditserve/benchmark/workload.hpp"
+#include "ditserve/benchmark/cluster_sim.hpp"
 #include <openssl/sha.h>
 #include <algorithm>
 #include <chrono>
 #include <csignal>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <future>
 #include <iomanip>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <deque>
 #include <set>
 #include <sstream>
 #include <stdexcept>
+#include <string>
 #include <thread>
+#include <vector>
 #include <fcntl.h>
 #include <sys/file.h>
 #include <unistd.h>
@@ -237,9 +242,46 @@ double remaining(const Json& row,const Live* live,const Json& costs) {
     return total;
 }
 
+// Untimed preparation before the trace clock starts. Model loading, kernel
+// selection and allocator growth must not be charged to the first arrivals;
+// every warmup state is released before the replay begins.
+Json warmup(const Json& phase,Workers& workers,Budget& budget) {
+    Json results=Json::array();
+    const auto items=phase.value("warmup",Json::array());
+    for(std::size_t index=0;index<items.size();++index){
+        const auto& item=items[index];
+        const auto name=item.at("worker").get<std::string>();
+        auto& worker=workers.get(name);
+        const double started=monotonic_seconds();
+        Json spec=item.value("spec",Json::object());spec["request_id"]="warmup-"+std::to_string(index);
+        if(cancelled())throw std::runtime_error("run cancelled");
+        budget.check();
+        auto prepared=worker.call({{"op","prepare"},{"spec",spec}},budget.deadline());
+        const auto state=prepared.at("state_id").get<std::string>();
+        double load=number_field(prepared,"load_ms");
+        auto progress=prepared.value("progress",Json::object());
+        for(int calls=0;!progress.value("done",false);++calls){
+            if(calls>=10000)throw std::runtime_error("warmup did not finish");
+            if(cancelled())throw std::runtime_error("run cancelled");
+            budget.check();
+            Json action={{"op","advance"},{"state_id",state},{"quantum",item.value("quantum",Json("step"))}};
+            if(item.contains("blocks"))action["blocks"]=item.at("blocks");
+            progress=worker.call(action,budget.deadline()).at("progress");
+        }
+        worker.call({{"op","finish"},{"state_id",state},{"output_mode","check"}},budget.deadline());
+        worker.call({{"op","release"},{"state_id",state}},budget.deadline());
+        results.push_back({{"worker",name},{"load_ms",load},{"elapsed_ms",(monotonic_seconds()-started)*1000}});
+    }
+    return results;
+}
+
 Json replay(const Json& phase,Workers& workers,Budget& budget,Json& record,const fs::path& work,const fs::path& cell_dir) {
     Json rows=study_workload(phase),costs=phase.value("costs",Json::object());
     const auto policy=phase.value("policy",phase.value("kind","")=="profile"?"fcfs":"edf");
+    const auto warmed=warmup(phase,workers,budget);
+    // "file" keeps outputs for downstream evaluation; serving runs without
+    // consumers use "check" (shape/finite only) to keep persistence off the GPU path.
+    const auto output_mode=phase.value("output_mode",std::string("file"));
     std::map<std::string,Live> live;
     std::map<std::string,std::string> previous_llm,encoding;
     std::map<std::string,std::string> decoding;
@@ -350,8 +392,13 @@ Json replay(const Json& phase,Workers& workers,Budget& budget,Json& record,const
                 }
                 if(resident>=resident_limit&&!evictable)continue;
             }
-            if(state==live.end() && phase.value("text_prefetch",0)>0){
-                const auto worker=stages(row).at(0).value("worker",row.at("worker").get<std::string>());
+            // Mixed traces name the workers with asynchronous prompt encoding;
+            // other backends encode inside their own prepare/generate call.
+            const auto first_worker=stages(row).at(0).value("worker",row.at("worker").get<std::string>());
+            const auto prefetch_workers=phase.value("text_prefetch_workers",Json());
+            const bool prefetchable=prefetch_workers.is_null()||std::find(prefetch_workers.begin(),prefetch_workers.end(),first_worker)!=prefetch_workers.end();
+            if(state==live.end() && phase.value("text_prefetch",0)>0 && prefetchable){
+                const auto& worker=first_worker;
                 if(!encoding.count(id)){
                     if(encoding.size()>=static_cast<std::size_t>(int_field(phase,"text_prefetch",0,0)))continue;
                     auto spec=stages(row).at(0).value("spec",row.at("spec"));spec["request_id"]=id+"-s0";
@@ -397,11 +444,11 @@ Json replay(const Json& phase,Workers& workers,Budget& budget,Json& record,const
                 }
                 if(state.progress.value("done",false)) {
                     if(phase.value("decode_mode","sync")=="async"&&state.decoded.is_null()){
-                        const auto started=invoke(state.worker,{{"op","decode_start"},{"state_id",state.state},{"save_latents",phase.value("save_latents",false)}},row);
+                        const auto started=invoke(state.worker,{{"op","decode_start"},{"state_id",state.state},{"save_latents",phase.value("save_latents",false)},{"output_mode",output_mode}},row);
                         state.decode_ticket=started.at("ticket").get<std::string>();decoding[state.worker]=id;
                         continue;
                     }
-                    auto result=state.decoded.is_null()?invoke(state.worker,{{"op","finish"},{"state_id",state.state},{"save_latents",phase.value("save_latents",false)}},row):state.decoded;
+                    auto result=state.decoded.is_null()?invoke(state.worker,{{"op","finish"},{"state_id",state.state},{"save_latents",phase.value("save_latents",false)},{"output_mode",output_mode}},row):state.decoded;
                     state.decoded=nullptr;
                     add_artifacts(record,result,work,phase.value("artifact_dependencies",Json::array()));
                     if(!row.contains("outputs"))row["outputs"]=Json::array();
@@ -466,7 +513,212 @@ Json replay(const Json& phase,Workers& workers,Budget& budget,Json& record,const
         for(auto& row:rows){if(row["status"]=="pending")row["status"]="interrupted";if(!row.contains("finish_ms"))row["finish_ms"]=now();row["observation_ms"]=now();}
         record["requests"].insert(record["requests"].end(),rows.begin(),rows.end());throw;
     }
-    return {{"requests",rows},{"metrics",request_summary(rows)},{"elapsed_ms",now()}};
+    return {{"requests",rows},{"metrics",request_summary(rows)},{"elapsed_ms",now()},{"warmup",warmed}};
+}
+
+// Concurrent multi-GPU replay. Each GPU runs at most one quantum; between
+// quanta the shared cluster_plan decides placement, SP degree and preemption.
+// Worker calls run on std::async threads and every rank of an SP group runs
+// the same quantum concurrently; all bookkeeping stays on this thread.
+// Real backends are limited to pinned SP1 until SP block execution and
+// cross-GPU state transfer are validated; the mock backend exercises the rest.
+Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,const fs::path& work) {
+    Json rows=study_workload(phase);
+    const ClusterCost cost(phase.at("profile"));
+    const auto policy=phase.at("policy").get<std::string>();
+    Json options=phase.value("options",Json::object());
+    const auto slots=phase.at("gpus");
+    const int gpus=static_cast<int>(slots.size());
+    bool fixtures=true;
+    for(const auto& slot:slots)fixtures=fixtures&&workers.backend(slot.at("video").get<std::string>())=="mock";
+    if(!fixtures){
+        if(policy.rfind("static_sp",0)==0&&policy!="static_sp1")throw std::invalid_argument("real cluster workers support SP1 only");
+        options["degrees"]=Json::array({1});options["pin_started"]=true;
+    }
+    const bool prefetch=phase.value("text_prefetch",0)>0;
+    const auto output_mode=phase.value("output_mode",std::string("file"));
+    const auto warmed=warmup(phase,workers,budget);
+    for(const auto& slot:slots){workers.get(slot.at("video").get<std::string>());workers.get(slot.at("image").get<std::string>());}
+    auto check=[&](){if(cancelled())throw std::runtime_error("run cancelled");budget.check(number_field(phase,"cleanup_reserve_seconds",0));};
+    struct Live{std::string status="pending";bool prepared=false;int steps=0,blocks=0,total=0,encode_gpu=-1;std::vector<int> group;std::string ticket;std::set<int> resident;};
+    struct Task{std::size_t row;Json assignment;std::future<Json> result;double started;};
+    std::vector<Live> live(rows.size());
+    std::vector<Task> tasks;
+    std::vector<bool> busy(gpus,false);
+    std::vector<std::vector<std::string>> stale(gpus);   // states to release once the GPU is idle
+    std::map<std::string,std::size_t> index;
+    for(std::size_t i=0;i<rows.size();++i){
+        auto& row=rows[i];
+        if(!row.contains("class"))throw std::invalid_argument("cluster requests require a cost class");
+        if(cost.klass(row.at("class").get<std::string>()).at("kind")!=row.at("kind"))throw std::invalid_argument("request kind differs from its cost class");
+        row["quality"]={{"status","unverified"},{"passed",false}};row["degrees"]=Json::array();
+        row["observation_id"]=phase.at("_observation_id");row["phase"]=phase.at("id");row["attempt"]=phase.at("_attempt");row["cell"]=phase.at("_cell");row["order"]=phase.at("_order");
+        index[row.at("request_id").get<std::string>()]=i;
+    }
+    auto video=[&](int gpu){return slots.at(gpu).at("video").get<std::string>();};
+    auto image=[&](int gpu){return slots.at(gpu).at("image").get<std::string>();};
+    const double origin=monotonic_seconds();
+    auto now=[&](){return (monotonic_seconds()-origin)*1000;};
+    auto spec_of=[&](const Json& row){Json spec=row.at("spec");spec["request_id"]=row.at("request_id");return spec;};
+    std::size_t terminal=0,encoders=0;
+    auto launch=[&](const Json& assignment){
+        const auto id=assignment.at("request_id").get<std::string>();const std::size_t i=index.at(id);
+        auto& row=rows[i];auto& state=live[i];
+        std::vector<int> group;for(const auto& gpu:assignment.at("group"))group.push_back(gpu.get<int>());
+        for(int gpu:group)busy[gpu]=true;
+        if(!row.contains("start_ms"))row["start_ms"]=now();
+        const int degree=static_cast<int>(group.size());
+        if(std::find(row["degrees"].begin(),row["degrees"].end(),degree)==row["degrees"].end())row["degrees"].push_back(degree);
+        if(assignment.at("reason")=="block_preempt")row["preempting"]=true;
+        const auto quantum=assignment.at("quantum");const double deadline=budget.deadline();
+        std::function<Json()> work_unit;
+        if(quantum=="atomic"){
+            const auto name=image(group.front());const auto spec=spec_of(row);
+            work_unit=[&workers,name,id,spec,deadline,output_mode]{
+                auto& w=workers.get(name);
+                Json out={{"calls",Json::array()}};
+                auto progress=w.call({{"op","prepare"},{"state_id",id},{"spec",spec}},deadline).at("progress");
+                for(int calls=0;!progress.value("done",false);++calls){
+                    if(calls>=1000)throw std::runtime_error("image did not finish");
+                    auto advanced=w.call({{"op","advance"},{"state_id",id},{"quantum","step"}},deadline);
+                    progress=advanced.at("progress");out["model_ms"]=number_field(out,"model_ms")+number_field(advanced,"model_ms");
+                }
+                out["finish"]=w.call({{"op","finish"},{"state_id",id},{"output_mode",output_mode}},deadline);
+                w.call({{"op","release"},{"state_id",id}},deadline);
+                return out;
+            };
+        }else if(quantum=="finish"){
+            const auto name=video(group.front());
+            work_unit=[&workers,name,id,deadline,output_mode]{
+                auto& w=workers.get(name);
+                Json out={{"finish",w.call({{"op","finish"},{"state_id",id},{"output_mode",output_mode}},deadline)}};
+                w.call({{"op","release"},{"state_id",id}},deadline);
+                return out;
+            };
+            for(int gpu:state.resident)if(gpu!=group.front())stale[gpu].push_back(id);
+            state.resident.clear();
+        }else{
+            // Ranks entering the group (first quantum or a regroup) prepare;
+            // ranks leaving it release once their GPU is idle.
+            std::vector<std::pair<std::string,Json>> calls;
+            for(int gpu:state.resident)if(std::find(group.begin(),group.end(),gpu)==group.end())stale[gpu].push_back(id);
+            Json resume={{"step",state.steps},{"block",state.blocks}};
+            for(int gpu:group){
+                Json actions=Json::array();
+                if(!state.resident.count(gpu)){
+                    Json prepare={{"op","prepare"},{"state_id",id},{"spec",spec_of(row)},{"sp_degree",degree}};
+                    if(state.prepared)prepare["resume"]=resume;
+                    else if(gpu==state.encode_gpu&&!state.ticket.empty())prepare["encode_ticket"]=state.ticket;
+                    actions.push_back(prepare);
+                }
+                Json advance={{"op","advance"},{"state_id",id},{"sp_degree",degree},{"quantum",quantum}};
+                if(quantum!="step"){advance["blocks"]=quantum;advance["quantum"]=nullptr;}
+                actions.push_back(advance);
+                calls.emplace_back(video(gpu),actions);
+            }
+            state.resident=std::set<int>(group.begin(),group.end());state.ticket.clear();
+            work_unit=[&workers,calls,deadline]{
+                std::vector<std::future<Json>> ranks;
+                for(const auto& item:calls)ranks.push_back(std::async(std::launch::async,[&workers,item,deadline]{
+                    auto& w=workers.get(item.first);Json last;
+                    for(const auto& action:item.second)last=w.call(action,deadline);
+                    return last;
+                }));
+                Json out={{"ranks",Json::array()}};
+                std::string error;
+                for(auto& rank:ranks){try{out["ranks"].push_back(rank.get());}catch(const std::exception& failure){error=failure.what();}}
+                if(!error.empty())throw std::runtime_error(error);
+                return out;
+            };
+        }
+        state.status="running";state.group=group;
+        tasks.push_back({i,assignment,std::async(std::launch::async,work_unit),now()});
+    };
+    auto finish_task=[&](Task& task,const Json& out){
+        auto& row=rows[task.row];auto& state=live[task.row];
+        for(const auto& gpu:task.assignment.at("group"))busy[gpu.get<int>()]=false;
+        const double elapsed=now()-task.started;
+        const auto quantum=task.assignment.at("quantum");
+        const auto key=quantum.is_string()?quantum.get<std::string>():"blocks";
+        row["action_ms"][key]=row.value("action_ms",Json::object()).value(key,0.)+elapsed;
+        row["quanta"]=row.value("quanta",0)+1;
+        if(quantum=="atomic"||quantum=="finish"){
+            add_artifacts(record,out.at("finish"),work,phase.value("artifact_dependencies",Json::array()));
+            row["model_ms"]=number_field(row,"model_ms")+number_field(out,"model_ms")+number_field(out.at("finish"),"model_ms");
+            row["status"]="completed";row["finish_ms"]=now();state.status="completed";state.group.clear();++terminal;
+            return;
+        }
+        const auto& ranks=out.at("ranks");
+        const auto progress=ranks.at(0).at("progress");
+        for(const auto& rank:ranks)if(rank.at("progress").value("step",-1)!=progress.value("step",-2))throw std::runtime_error("SP ranks disagree on solver progress");
+        double model=0;for(const auto& rank:ranks)model=std::max(model,number_field(rank,"model_ms"));
+        row["model_ms"]=number_field(row,"model_ms")+model;
+        const int executed=quantum=="step"?cost.blocks_per_step(row.at("class").get<std::string>())-state.blocks:quantum.get<int>();
+        const int previous_step=state.steps;
+        state.steps=progress.value("step",0);state.total=progress.value("steps",0);state.prepared=true;
+        if(progress.value("transfer_ready",true)||state.steps>previous_step)state.blocks=0;
+        else state.blocks=progress.contains("block")?progress.value("block",0):state.blocks+executed;
+        state.status="suspended";
+    };
+    try{while(terminal<rows.size()){
+        check();
+        bool progressed=false;
+        for(auto it=tasks.begin();it!=tasks.end();){
+            if(it->result.wait_for(std::chrono::seconds(0))!=std::future_status::ready){++it;continue;}
+            Json out;
+            try{out=it->result.get();}catch(const std::exception& error){
+                auto& row=rows[it->row];row["status"]="failed";row["error"]=error.what();row["finish_ms"]=now();++terminal;
+                record["failures"].push_back({{"request_id",row.at("request_id")},{"error",error.what()}});
+                throw;
+            }
+            finish_task(*it,out);it=tasks.erase(it);progressed=true;
+        }
+        const double instant=now();
+        for(int gpu=0;gpu<gpus;++gpu)if(!busy[gpu])for(const auto& id:stale[gpu]){workers.get(video(gpu)).call({{"op","release"},{"state_id",id}},budget.deadline());}
+        for(int gpu=0;gpu<gpus;++gpu)if(!busy[gpu])stale[gpu].clear();
+        for(std::size_t i=0;i<rows.size();++i){
+            auto& state=live[i];auto& row=rows[i];
+            if(state.status=="pending"&&number_field(row,"arrival_ms")<=instant){
+                state.status=row.at("kind")=="video"&&prefetch?"encoding":"waiting";
+                if(state.status=="encoding")state.encode_gpu=static_cast<int>(encoders++%gpus);
+                progressed=true;
+            }
+            if(state.status!="encoding"||busy[state.encode_gpu])continue;
+            auto& w=workers.get(video(state.encode_gpu));
+            if(state.ticket.empty()){state.ticket=w.call({{"op","encode_start"},{"spec",spec_of(row)}},budget.deadline()).at("ticket").get<std::string>();row["encode_submit_ms"]=now();}
+            else if(w.call({{"op","encode_poll"},{"ticket",state.ticket}},budget.deadline()).value("ready",false)){
+                state.status="waiting";row["encode_ready_ms"]=now();progressed=true;
+            }
+        }
+        if(std::find(busy.begin(),busy.end(),false)!=busy.end()){
+            Json requests=Json::array();
+            for(std::size_t i=0;i<rows.size();++i){
+                const auto& state=live[i];
+                if(state.status!="waiting"&&state.status!="suspended")continue;
+                const auto& row=rows[i];
+                Json view={{"request_id",row.at("request_id")},{"kind",row.at("kind")},{"class",row.at("class")},
+                    {"arrival_ms",row.at("arrival_ms")},{"deadline_ms",row.at("deadline_ms")},{"status",state.status},{"ready",true},
+                    {"prepared",state.prepared},{"steps_done",state.steps},{"blocks_done",state.blocks},{"group",state.group}};
+                if(state.total>0)view["steps_total"]=state.total;
+                if(!state.prepared&&!state.ticket.empty())view["affinity"]=state.encode_gpu;
+                requests.push_back(view);
+            }
+            if(!requests.empty()){
+                Json flags=Json::array();for(bool flag:busy)flags.push_back(flag);
+                const auto plan=cluster_plan({{"now_ms",now()},{"gpus",gpus},{"busy",flags},{"requests",requests}},policy,cost,options);
+                for(const auto& assignment:plan.at("assignments")){launch(assignment);progressed=true;}
+            }
+        }
+        if(!progressed)wait_until(monotonic_seconds()+.0005);
+    }}catch(...){
+        for(auto& task:tasks)if(task.result.valid())task.result.wait();
+        for(auto& row:rows){if(!row.contains("status")||row["status"]=="pending")row["status"]="interrupted";if(!row.contains("finish_ms"))row["finish_ms"]=now();row["observation_ms"]=now();}
+        record["requests"].insert(record["requests"].end(),rows.begin(),rows.end());throw;
+    }
+    for(auto& row:rows)row.erase("preempting");
+    return {{"requests",rows},{"metrics",request_summary(rows)},{"elapsed_ms",now()},{"warmup",warmed},
+            {"by_kind",{{"video",kind_summary(rows,"video")},{"image",kind_summary(rows,"image")}}},
+            {"policy",policy},{"gpus",gpus},{"real_backends_pinned_sp1",!fixtures}};
 }
 
 // A real clock consumer independent of the model call. It records dispatch
@@ -672,7 +924,7 @@ bool execute_cells(const Json& phase,const Json& request,const Json& devices,
         });
         try{
             const auto kind=cell.value("kind","online");
-            Json result=cell.contains("actions")?operations(cell,workers,budget,record,work,cell_dir):kind=="streaming"?stream(cell,workers,budget,record,work):replay(cell,workers,budget,record,work,cell_dir);
+            Json result=cell.contains("actions")?operations(cell,workers,budget,record,work,cell_dir):kind=="streaming"?stream(cell,workers,budget,record,work):kind=="cluster"?cluster(cell,workers,budget,record,work):replay(cell,workers,budget,record,work,cell_dir);
             result["cell"]=order[position];result["order"]=position<cells.size()?"forward":"reverse";result["status"]="completed";
             for(auto row:result.value("requests",Json::array())){row["phase"]=id;row["attempt"]=attempt_number;row["cell"]=order[position];row["order"]=result["order"];
                 row["observation_id"]=id+"/"+std::to_string(attempt_number)+"/"+std::to_string(position);
@@ -715,7 +967,7 @@ void validate(const Json& config){
     }
     const auto phases=config.at("phases");if(!phases.is_array() || phases.empty())throw std::invalid_argument("phases must be a nonempty array");
     std::set<std::string> seen;
-    const std::set<std::string> kinds={"profile","online","state","sp","streaming","session"};
+    const std::set<std::string> kinds={"profile","online","state","sp","streaming","session","cluster"};
     for(const auto& phase:phases){
         const auto id=segment(phase.at("id").get<std::string>());if(seen.count(id))throw std::invalid_argument("duplicate phase");
         if(!kinds.count(phase.value("kind","online")))throw std::invalid_argument("unknown executor kind");
@@ -749,7 +1001,30 @@ void validate(const Json& config){
                     if(!ranks.insert(name).second)throw std::invalid_argument("each rank requires a distinct worker");
                 }
             }else{
+                for(const auto& item:cell.value("warmup",Json::array())){
+                    known(item.at("worker").get<std::string>());
+                    if(item.contains("spec")&&!item.at("spec").is_object())throw std::invalid_argument("warmup spec must be an object");
+                }
+                if(cell.contains("text_prefetch_workers")){
+                    if(!cell.at("text_prefetch_workers").is_array())throw std::invalid_argument("text_prefetch_workers must be an array of worker names");
+                    for(const auto& worker:cell.at("text_prefetch_workers"))known(worker.get<std::string>());
+                }
                 const auto rows=study_workload(cell);if(rows.empty())throw std::invalid_argument("phase workload must be nonempty");
+                if(cell.value("kind","online")=="cluster"){
+                    // Slots name the per-GPU video and image workers; rows name cost classes.
+                    const auto& slots=cell.at("gpus");
+                    if(!slots.is_array()||slots.empty())throw std::invalid_argument("cluster gpus must be a nonempty array of worker slots");
+                    std::set<std::string> names;
+                    for(const auto& slot:slots)for(const auto* role:{"video","image"}){
+                        const auto name=slot.at(role).get<std::string>();known(name);
+                        if(!names.insert(name).second)throw std::invalid_argument("each cluster slot needs its own workers");
+                    }
+                    const ClusterCost cost(cell.at("profile"));
+                    if(!cluster_policy(cell.at("policy").get<std::string>()))throw std::invalid_argument("unknown cluster policy");
+                    for(const auto& row:rows)if(cost.klass(row.at("class").get<std::string>()).at("kind")!=row.at("kind"))
+                        throw std::invalid_argument("request kind differs from its cost class");
+                    continue;
+                }
                 for(const auto& row:rows){
                     known(row.at("worker").get<std::string>());
                     const auto list=stages(row);
@@ -888,21 +1163,54 @@ Json run_study(const Json& original_request){
     record["archive"]=publish(record,request,work);return record;
 }
 
+// Illustrative defaults keep `ditserve simulate` runnable without a config.
+// Every result carries the profile provenance; synthetic is never measured.
+Json synthetic_profile(){
+    return {{"provenance","synthetic"},{"description","Illustrative smoke-test costs; not measured."},
+        {"classes",{{"video",{{"kind","video"},{"steps",8},{"blocks_per_step",8},{"prepare_ms",20},{"encode_ms",50},
+                              {"step_compute_ms",400},{"comm_mb_per_step",400},{"collectives_per_step",32},{"finish_ms",150}}},
+                    {"image",{{"kind","image"},{"service_ms",40}}}}},
+        {"links",{{"2",{{"gbps",20},{"latency_ms",0.02}}},{"4",{{"gbps",12},{"latency_ms",0.03}}},{"8",{{"gbps",6},{"latency_ms",0.05}}}}},
+        {"sp_efficiency",0.95},{"resize_ms",5}};
+}
+
 Json simulate_study(const Json& request){
     const auto work=real_path(request.at("work_dir").get<std::string>());fs::create_directories(work);RunLock lock(work/"run.lock");
     if(fs::exists(work/"run.json"))throw std::invalid_argument("simulation run already exists");
-    const auto config=request.at("config");
-    Json record={{"schema","ditserve.run.v1"},{"experiment","synthetic"},{"run_id",segment(request.at("run_id").get<std::string>())},
+    Json config=request.at("config");
+    if(!config.contains("profile"))config["profile"]=synthetic_profile();
+    if(!config.contains("workload")){
+        auto& generator=config["generator"];
+        if(!generator.contains("classes"))generator["classes"]={
+            {{"class","video"},{"kind","video"},{"weight",1},{"service_ms",3400},{"slo_scale",3}},
+            {{"class","image"},{"kind","image"},{"weight",4},{"service_ms",40},{"slo_scale",5}}};
+        if(!generator.contains("pattern")){generator["pattern"]="poisson";generator["rate_rps"]=generator.value("rate_rps",Json(2));}
+    }
+    const auto provenance=config.at("profile").value("provenance","");
+    Json record={{"schema","ditserve.run.v1"},{"experiment",config.value("experiment","synthetic")},{"run_id",segment(request.at("run_id").get<std::string>())},
         {"config",config},{"status","completed"},{"phases",Json::array()},{"requests",Json::array()},{"failures",Json::array()},{"artifacts",Json::array()},
-        {"budget",{{"active",nullptr},{"gpu_seconds",0}}},{"notice","Synthetic cost-model simulation; not measured GPU performance."}};
+        {"budget",{{"active",nullptr},{"gpu_seconds",0}}},
+        {"notice",provenance=="synthetic"?"Synthetic cost-model simulation; not measured GPU performance.":"Cost-model simulation from a "+provenance+" profile; not an execution of models."}};
     Json phase=config;phase["matrix"]=config.value("matrix",Json::object());
-    for(const auto& cell:expand_matrix(phase)){
-        const auto cost=CostModel::from_json(cell.value("cost_model",Json::object()));
-        const auto trace=cell.contains("workload")?read_workload(cell.at("workload")):generate_workload(cell.value("generator",Json::object()),cost);
-        for(const auto& policy:cell.value("policies",Json::array({"cache_only","batch_only","naive","edf","path_aware","state_aware"}))){
-            auto runtime=cell.value("runtime",Json::object());runtime["policy"]=policy;
-            auto result=Simulator(RuntimeConfig::from_json(runtime),cost).run(trace);
-            record["phases"].push_back({{"id",policy},{"status","completed"},{"config",runtime},{"result",result}});
+    const auto cells=expand_matrix(phase);
+    for(std::size_t index=0;index<cells.size();++index){
+        const auto& cell=cells[index];
+        const auto rows=study_workload(cell.contains("workload")?Json{{"workload",cell.at("workload")}}:Json{{"generator",cell.at("generator")}});
+        for(const auto& policy:cell.value("policies",Json::array({"static_sp1","step_elastic","block_elastic"}))){
+            const auto name=policy.get<std::string>();const int gpus=cell.value("gpus",4);
+            if(name.rfind("static_sp",0)==0 && std::stoi(name.substr(9))>gpus){
+                record["phases"].push_back({{"id",name+"-c"+std::to_string(index)},{"status","skipped"},{"policy",policy},{"cell",index},
+                    {"reason","fixed SP degree exceeds the cell's GPUs"}});
+                continue;
+            }
+            Json input={{"workload",rows},{"profile",cell.at("profile")},{"policy",policy},{"gpus",gpus},
+                {"options",cell.value("options",Json::object())},{"dispatch_ms",cell.value("dispatch_ms",0.)}};
+            if(cell.contains("encode_slots"))input["encode_slots"]=cell.at("encode_slots");
+            auto result=simulate_cluster(input);
+            if(!cell.value("keep_requests",false))result.erase("requests");
+            Json settings=cell;settings.erase("workload");settings.erase("matrix");settings.erase("profile");settings.erase("policies");
+            record["phases"].push_back({{"id",policy.get<std::string>()+"-c"+std::to_string(index)},{"status","completed"},
+                {"policy",policy},{"cell",index},{"config",settings},{"result",result}});
         }
     }
     record["archive"]=publish(record,request,work);return record;

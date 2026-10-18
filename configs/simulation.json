@@ -1,27 +1,24 @@
 {
+  "note": "Synthetic smoke-test profile for the cluster simulator; illustrative costs, not measurements. Measured or extrapolated profiles live with their experiments.",
+  "profile": {
+    "provenance": "synthetic",
+    "classes": {
+      "video": {"kind": "video", "steps": 8, "blocks_per_step": 8, "prepare_ms": 20, "encode_ms": 50,
+                "step_compute_ms": 400, "comm_mb_per_step": 400, "collectives_per_step": 32, "finish_ms": 150},
+      "image": {"kind": "image", "service_ms": 40}
+    },
+    "links": {"2": {"gbps": 20, "latency_ms": 0.02}, "4": {"gbps": 12, "latency_ms": 0.03}, "8": {"gbps": 6, "latency_ms": 0.05}},
+    "sp_efficiency": 0.95,
+    "resize_ms": 5
+  },
   "generator": {
-    "count": 16,
-    "seed": 7
-  },
-  "policies": [
-    "cache_only",
-    "batch_only",
-    "naive",
-    "edf",
-    "path_aware",
-    "state_aware"
-  ],
-  "runtime": {
-    "max_batch": 4
-  },
-  "matrix": {
-    "/runtime/memory_mb": [
-      128,
-      256
-    ],
-    "/runtime/num_gpus": [
-      1,
-      4
+    "count": 64, "seed": 7, "pattern": "poisson", "rate_rps": 2,
+    "classes": [
+      {"class": "video", "kind": "video", "weight": 1, "service_ms": 3400, "slo_scale": 3},
+      {"class": "image", "kind": "image", "weight": 4, "service_ms": 40, "slo_scale": 5}
     ]
-  }
+  },
+  "gpus": 4,
+  "policies": ["static_sp1", "static_sp4", "step_elastic", "block_elastic"],
+  "matrix": {"/generator/rate_rps": [1, 2], "/gpus": [2, 4]}
 }

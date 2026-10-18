@@ -175,14 +175,35 @@ Json study_workload(const Json& phase) {
         const auto prompts = g.value("prompts",Json::array({"A red ceramic kettle on a wooden table."}));
         const auto specs = g.value("specs",Json::array({g.value("spec",Json::object())}));
         if (!prompts.is_array() || prompts.empty() || !specs.is_array() || specs.empty()) throw std::invalid_argument("prompts and specs must be nonempty");
+        // Optional request mixture: each class names its kind, worker, cost
+        // class, spec, service estimate and SLO (absolute or a service multiple).
+        const auto classes = g.value("classes",Json::array());
+        if (!classes.is_array()) throw std::invalid_argument("generator classes must be an array");
+        double total_weight = 0;
+        for (const auto& c : classes) total_weight += number_field(c,"weight",1,true);
         double exposure = 0;
         for (int i=0;i<count;++i) {
             if (i) exposure += pattern == "steady" ? 1000/rate : pattern == "gamma" ? gamma(arrivals,1/(cv*cv))*cv*cv*1000/rate : arrivals.exponential(rate/1000/(pattern=="bursty"?fraction:1));
             const double arrival = pattern == "offline_all" ? 0 : pattern == "bursty" ? std::floor(exposure/(period*fraction))*period + std::fmod(exposure,period*fraction) : exposure;
-            Json spec = specs.at(content.bounded(specs.size()));
+            Json row={{"request_id","r"+std::to_string(i)}, {"arrival_ms",arrival}};
+            Json spec;
+            if (classes.empty()) {
+                spec = specs.at(content.bounded(specs.size()));
+                row["service_ms"]=number_field(g,"service_ms",100); row["slo_ms"]=number_field(g,"slo_ms",250);
+            } else {
+                double pick = content.uniform()*total_weight;
+                std::size_t chosen = 0;
+                for (; chosen+1<classes.size(); ++chosen) { pick -= number_field(classes[chosen],"weight",1,true); if (pick < 0) break; }
+                const auto& c = classes[chosen];
+                spec = c.value("spec",Json::object());
+                const double service = number_field(c,"service_ms",100,true);
+                row["service_ms"]=service; row["slo_ms"]=c.contains("slo_ms")?number_field(c,"slo_ms",0,true):service*number_field(c,"slo_scale",2.5,true);
+                row["kind"]=c.at("kind"); row["class"]=c.at("class");
+                if (c.contains("worker")) row["worker"]=c.at("worker");
+            }
             spec["prompt"] = prompts.at(content.bounded(prompts.size())); spec["seed"] = content.bounded(1ULL<<31);
-            rows.push_back({{"request_id","r"+std::to_string(i)}, {"arrival_ms",arrival}, {"spec",spec},
-                            {"service_ms",number_field(g,"service_ms",100)}, {"slo_ms",number_field(g,"slo_ms",250)}});
+            row["spec"]=spec;
+            rows.push_back(row);
         }
     }
     std::set<std::string> ids;
@@ -265,6 +286,22 @@ Json request_summary(const Json& rows) {
             {"communication_p50_ms",overhead.empty()?Json(nullptr):Json(quantile(overhead,.5))},
             {"communication_p99_ms",overhead.empty()?Json(nullptr):Json(quantile(overhead,.99))},
             {"model_ms",work},{"control_ms",control},{"denominator","all frozen requests, including failed and blocked"}};
+}
+
+Json kind_summary(const Json& rows, const std::string& kind) {
+    std::vector<double> latency;
+    std::size_t count=0,ontime=0;
+    for (const auto& row:rows) {
+        if (row.value("kind","")!=kind) continue;
+        ++count;
+        if (row.value("status","")!="completed") continue;
+        latency.push_back(required(row,"finish_ms")-required(row,"arrival_ms"));
+        ontime += required(row,"finish_ms")<=required(row,"deadline_ms");
+    }
+    auto at=[&](double p){return latency.empty()?Json(nullptr):Json(quantile(latency,p));};
+    return {{"requests",count},{"completed",latency.size()},{"ontime",ontime},
+            {"attainment",count?Json(double(ontime)/count):Json(nullptr)},
+            {"latency_p50_ms",at(.5)},{"latency_p95_ms",at(.95)},{"latency_p99_ms",at(.99)}};
 }
 
 Json evaluate_gates(const Json& evidence,const Json& rules) {

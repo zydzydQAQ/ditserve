@@ -34,10 +34,11 @@
 | `sp` | 有限 `actions`，各 rank 同时执行相同操作 | `sp.json` |
 | `streaming` | prompt 更新、FIFO/latest、0/1/2 chunk 缓冲、独立帧消费 | `streaming.json` |
 | `session` | LLM–DiT stages、session ID、KV 继承、think time | `session.json` |
+| `cluster` | 多 GPU 并发回放：`gpus` 按拓扑顺序列出每卡 `{video, image}` worker，`profile` 为成本画像，策略见下文 | `local-a100/` |
 
 矩阵键是相对于 phase 的 JSON pointer，按键排序生成笛卡尔积，最多 10000 个 cell。例如 `/policy`、`/quantum`、`/worker_config/options/execution`。`worker_config` 合并到该 cell 指定 `worker`（默认 `model`）的配置；不能改变 worker 设备或身份。每个观测的模型进程持续复用，cell 间重新创建以隔离配置。配对时记录 cell、正/逆次序和独立 observation ID，失败观测保留在分母中。
 
-`workers.<name>` 包含 `backend`、`python`、`gpu_uuid`、`config` 和可选环境变量；单个进程只绑定自己的完整 GPU UUID，模型使用 `cuda:0`。不能用环境变量覆盖 GPU 绑定、冻结源码或离线加载。SP 的固定实现需要四个独立 rank，Flash attention，支持 degree 1/2/4；缓存特征的跨 SP 迁移仍不支持。集体操作必须列出不同 worker，`actions[].per_rank` 可提供每个 rank 的补丁。
+`workers.<name>` 包含 `backend`、`python`、`gpu_uuid`、`config` 和可选环境变量；单个进程只绑定自己的完整 GPU UUID，模型使用 `cuda:0`。不能用环境变量覆盖 GPU 绑定、冻结源码或离线加载。SP 实现使用 2/4/8 个独立 rank 的对齐组（rank 按 PCIe/socket 拓扑顺序编号），Flash attention；四卡布局与原固定组相同，8 卡及 SP 内 block 执行未经 GPU 验证；缓存特征的跨 SP 迁移仍不支持。集体操作必须列出不同 worker，`actions[].per_rank` 可提供每个 rank 的补丁。
 
 显式 `actions` 可用于任意 kind，动作包括 `prepare`、`advance`、`snapshot`、`restore`、`reference`、`finish`、`release`、`evaluate`、`distributed`。动作必须自己声明稳定 state ID，后续通过该 ID 引用；常规回放自动处理状态 ID。这样可以表达校准、独立基线、数值检查和 SP 流程，不增加 Python 编排层。
 
@@ -55,17 +56,33 @@
 
 ## 工作负载和调度边界
 
-使用冻结 `workload` 数组，或确定性 `generator`。生成器支持 `offline_all`、`steady`、`poisson`、`bursty`、`gamma`，输入包括 seed、count、rate_rps、cv、prompts、spec/specs、service_ms、slo_ms。模型参数在 `spec`；到达、期限、成本估计是 C++ 调度元数据。
+使用冻结 `workload` 数组，或确定性 `generator`。生成器支持 `offline_all`、`steady`、`poisson`、`bursty`、`gamma`，输入包括 seed、count、rate_rps、cv、prompts、spec/specs、service_ms、slo_ms；`classes` 给出按权重混合的请求类别（class、kind、worker、spec、service_ms、slo_ms 或 slo_scale），同一 seed 下不含 classes 的轨迹与之前一致。模型参数在 `spec`；到达、期限、成本估计是 C++ 调度元数据。
 
 请求可以指定 `arrival_ms`、`deadline_ms`、`session_id`、`after`、`think_ms`、`stages`。`after` 必须引用负载中更早的一项；前一轮完成后才释放下一轮。stage 包含 worker、spec、估计 cost_ms 和可选 `prompt_from_previous:true`。Mistral 自动保存该 session 的对话与 KV，不共享其他 session 状态。
 
 策略包括 `fcfs`、`edf`、`srtf`、`edf_b1`、`edf_b1_async`、`edf_b2`、`edf_b4`、`edf_step`、`guarded_b4`、`feasible_b4`、`guarded_adaptive`、`session_serial`、`stage_edf`、`session_slack`。Wan 可采用 step/block/paired_block 边界，CFG 和 cache 配方由 worker 验证；hot/cold 与跨设备快照只允许后端声明的合法边界。FLUX 保留完整管线调用边界，没有新增 token/block 抢占能力。FLUX和 `wan_pipeline` 可用 `spec.batch_size` 表达原有固定离线batch：重复同一prompt，整批使用一个CPU Generator(seed)。`wan_pipeline` 不提供步骤抢占、SP或迁移；启用cache后同一worker的steps/CFG配方固定。
 
-`text_prefetch` 限定同时预编码的已到达请求数，`decode_mode:"async"` 启用后端支持的异步解码。Wan 异步 VAE 保持 MATH attention 的原限制。模型、加载、控制时间分别记录；通信采样排除进程首次启动、模型加载和 worker 操作耗时，仍包含 JSON 编解码。采样保留每请求前 128 次常驻动作及总计数，不声称是纯管道延迟。
+`output_mode` 控制 finish 的输出处理：`file`（默认，写入工作目录供后续评测）、`digest`（只计算哈希）、`check`（只校验形状与 finite）。没有下游评测的 serving 实验应使用 `check`，避免把数十 MB 至数百 MB 的输出写盘计入 GPU 关键路径。`warmup` 在回放时钟开始前对列出的 worker 执行一次完整的 prepare/advance/finish/release（模型加载与首次 kernel 不计入首批到达）。`text_prefetch` 限定同时预编码的已到达请求数，`text_prefetch_workers` 限定只对这些 worker 的请求预编码（混合轨迹中只有 Wan 提供异步编码），`decode_mode:"async"` 启用后端支持的异步解码。Wan 异步 VAE 保持 MATH attention 的原限制。模型、加载、控制时间分别记录；通信采样排除进程首次启动、模型加载和 worker 操作耗时，仍包含 JSON 编解码。采样保留每请求前 128 次常驻动作及总计数，不声称是纯管道延迟。
 
 流式 `updates` 按 arrival_ms 排序，版本递增。`prompt_policy` 为 `fifo`、`latest_only`、`latest_only_flush`；`buffer_chunks` 为 0/1/2。播放测量是 C++ 线程的墙钟帧分发，不是浏览器或物理显示时延。drain 超时保留失败及未完成请求，语义盲评保持独立。
 
 FLUX 可设置 `workers.<name>.config.options.profile:true`，记录 text/DiT/scheduler/VAE/postprocess 的 CUDA event spans、逐步 finite 检查和 allocator 峰值。该测量有插桩开销，不能当作无插桩延迟或 kernel-only 时间。用 `/worker_config/options/profile:[false,true]` 表达对照；Wan 分解测量使用 `wan_profile_corrected.json` 的显式 actions。
+
+## 多 GPU 调度与模拟
+
+`cluster` 执行器与 `ditserve simulate` 共用 `control/cluster.cpp` 的 `cluster_plan`。GPU 按拓扑顺序编号，SP 组为对齐的 2 的幂（同 switch pair、同 socket quad、整机）。每个 quantum 结束后请求不占 GPU，重新规划：
+
+| 策略 | 行为 |
+| --- | --- |
+| `static_sp1/2/4/8` | 固定 SP 度，整步 quantum，已开始的视频留在原组（近似 xDiT 固定并行） |
+| `step_elastic` | EDF；按期限选最小可行 SP 度，无其他等待请求时占用最大空闲组；只在 step 边界换组（近似 GENSERVE/TetriServe 的 step 级弹性 SP） |
+| `block_elastic` | 同上，但视频以 `options.quantum_blocks`（默认 4）个 block 推进，或按 `options.quantum_ms` 由当前类别与 SP 度换算 block 数；图像只有在等不到该视频 step 边界时才在 block 边界抢占（`lazy_preemption`，默认开启） |
+
+所有策略默认采用 feasible-first EDF（`options.demote_late`，默认开启）：即使占用最大组也赶不上期限的请求排在仍可按时完成的请求之后，避免过载时迟到的长视频饿死新到的短请求。
+
+成本画像 `profile` 的 `provenance` 必须为 measured、extrapolated、synthetic 或 mixed。视频类别给出 steps、blocks_per_step、可选 min_degree（单卡放不下时的最小 SP 度，固定 SP 策略也会提升到该值）、prepare/encode/finish、SP1 每步计算时间、每步 Ulysses all-to-all 全序列字节数与集合通信次数；`links` 按 SP 度给出每 rank 带宽和延迟；`sp_efficiency` 与 `resize_ms` 描述并行效率与 step 边界换组成本。模拟结果只描述成本模型，不是模型执行。
+
+真实后端在 SP 内 block 执行与跨 GPU 状态迁移验证前固定为 SP1 且不换组（`real_backends_pinned_sp1`）；mock 后端可按 `options.costs` 和 `sp_degree` 模拟耗时以测试并发与换组。`simulate` 配置包括 `profile`、`generator`/`workload`、`gpus`、`policies`、`options`、`matrix`；未给出时使用内置 synthetic 示例（`configs/simulation.json` 为完整样例）。
 
 ## 预算、阶段和资格
 

@@ -10,7 +10,7 @@
 
 | 旧能力 | 新模块 / 配置与边界 | CPU 验收位置 / GPU 状态 |
 | --- | --- | --- |
-| Python 参考模拟、成本模型、策略与指标 | `benchmarks/src/{simulator,workload,cost,policy,metrics}.cpp`；公共随机数在 `src/ditserve/runtime/random.cpp`，配置为 `configs/simulation.json`。合成成本仍明确标为非实测。 | `benchmarks/tests/test_simulator.cpp`、同目录 `fixtures/python-core-baseline.json`、`test_core_bridge.py`；不产生 GPU 结论。 |
+| 多 GPU 模拟、成本模型与策略 | 2026-10-18 起旧 Python core 对齐模拟器（cache_only/batch_only/naive/edf/path_aware/state_aware 与 schema-v2 golden）删除，换为 `benchmarks/src/cluster_sim.cpp`：与真实 `cluster` 执行器共用 `control/cluster.cpp` 的调度与成本画像（可接受 measured/extrapolated 来源），工作负载复用 `study_workload`。 | `benchmarks/tests/test_cluster.cpp`、`test_core_bridge.py`、`test_study.py`；不产生 GPU 结论。 |
 | 多套预算、监督、phase/next/followup 控制 | `control/budget.cpp`、`runtime/process.cpp`、`control/study.cpp`；独立累计账本、阶段限额、向后结转、修复预留、wall-clock watchdog、失败费用及未结算保护。 | `test_supervision.cpp`、`test_study.py`：锁、超时、进程组、恢复身份、失败重试；GPU 占用与故障清理尚未真实验收。 |
 | 配对 profile、筛选与确认、优化矩阵 | `control/study.cpp` / `control/dispatch.cpp`；`profile.json`、`online.json`；统一矩阵、正反顺序、独立 observation ID、配置门槛。 | `test_control.cpp`、`control-baseline.json`、`test_study.py`；没有新性能提升声明。 |
 | 在线到达、微批策略、步边界调度与准入 | C++ `study_workload`、`select_action`、replay；steady/Poisson/bursty/gamma、FCFS/EDF/SRTF及 guarded/feasible 策略。模型合法步边界仍由 worker 校验。 | 冻结旧 Python oracle、决策边界与 mock 回放；真实吞吐/时延未验证。 |
@@ -18,7 +18,7 @@
 | CFG 协同缓存（paired cache）、CFG 策略适配器、区域编译、exact_refresh 研究适配器 | 2026-10-18 精简删除：主线改为多卡 block 抢占 + 弹性 SP，有损缓存与 Wan 编译（在线无收益）不进主结论，且无任何配置引用。最后包含它们的提交为 `757ee01`；历史结果只读不受影响。 | 无。 |
 | hot/cold、缓存状态库存与跨 worker 迁移 | `state.json`、C++ 状态调度；`models/wan/{state,storage,migration}.py` 保存求解器/RNG/CFG/已知存储别名与两阶段所有权。 | `test_model_state.py`、`test_study.py`：往返、校验失败、ACK/释放/提交；跨 worker 当前仅 SP1 整步。`certified_omit` 必须持有效刷新证明。 |
 | 文本预编码与异步 VAE 解码 | C++ `text_prefetch`、`decode_mode`；Wan 编码线程和 `models/wan/async_decode.py`。异步 VAE 保留 MATH attention、SP1 限制。 | mock 回放及 CUDA stream 替身测试，检查请求身份与同步恢复；未验证真实并发收益。 |
-| SP/Ulysses 固定进程组与重分片 | `sp.json`、C++ rank 并发 actions；`models/wan/{parallel,sp}.py`。固定四进程 NCCL world，组内 degree 1/2/4；只支持既有 cache-off all4↔group01 迁移，不支持缓存特征跨 SP 组。 | CPU 协议和状态重分片契约；多 GPU 等价性、通信、效率均未验证。 |
+| SP/Ulysses 对齐进程组与重分片 | `sp.json`、C++ rank 并发 actions、`cluster` 执行器；`models/wan/{parallel,sp}.py`。2/4/8 进程 NCCL world 的对齐组（4 进程时与原固定组相同）；只支持既有 cache-off all4↔group01 迁移，不支持缓存特征跨 SP 组，SP 内 block 执行尚未实现。 | CPU 协议和状态重分片契约；多 GPU 等价性、通信、效率均未验证。 |
 | Sana 与 Mistral 多轮 LLM–DiT session | `session.json`；C++ stage/think-time/依赖与策略，`models/session/runtime.py` 保存 KV、采样器、RNG及精确前缀所有权。 | `test_model_sessions.py`：实际 tiny Mistral greedy/KV与 tiny Sana SCM2步；交错隔离与状态重建。真实后端沿用原硬件限制，GPU未验证。 |
 | Sana compiled/graph 候选与 FLUX 管线 | `models/sana/{runtime,compile,graph,hardware}.py`、`models/flux.py`、`profiling.py`。保留候选与失败门；FLUX及 `wan_pipeline` 保留固定离线 batch（重复 prompt、整批单CPU Generator），以完整管线为调用边界；不引入连续batch。 | JSON协议、惰性导入、FLUX局部hook数值与失败恢复；GPU compiled/graph容量、质量、在线资格和FLUX路径未验证。 |
 | LongLive 在线 prompt 与播放缓冲 | `streaming.json`；C++ FIFO/latest-only/flush、0/1/2 chunk缓冲及独立帧消费；`models/longlive.py` 保留固定来源。 | `test_study.py`：更新、缓冲、drain超时、未完成请求分母；不是浏览器显示时延，LongLive GPU与语义盲评未验证。 |

@@ -134,7 +134,7 @@ class FluxBackend(Backend):
         state = self.state(request)
         if state["output"] is None:
             raise ValueError("pipeline has not completed")
-        return dict(output=artifact(state["output"], self.output_path(request)), progress=progress(1, 1),
+        return dict(output=self.persist(state["output"], request), progress=progress(1, 1),
                     generation=dict(state["spec"], model=self.config.get("model_path"),
                         revision=self.config.get("revision"), batch_protocol="fixed_repeated_prompt",
                         seed_protocol="single_cpu_generator_for_batch",

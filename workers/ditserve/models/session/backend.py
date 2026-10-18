@@ -77,7 +77,7 @@ class SessionBackend(Backend):
         value = state["output"] if self.pipeline_mode else self.runtime.finish(state)
         suffix = ".txt" if self.kind == "mistral" else ".npy"
         return dict(state_id=request["state_id"], progress=self._progress(state),
-                    output=artifact(value, self.output_path(request, suffix)),
+                    output=self.persist(value, request, suffix),
                     model_ms=getattr(state, "decode_ms", 0.))
 
     def snapshot(self, request):
@@ -110,11 +110,11 @@ class SessionBackend(Backend):
             result = self.runtime.reference(spec.get("messages", [{"role": "user", "content": spec.get("prompt", "")}]),
                 max_new_tokens=spec.get("max_new_tokens", 64))
             result.pop("cache", None)
-            return dict(result, output=artifact(result["text"], self.output_path(request, ".txt")))
+            return dict(result, output=self.persist(result["text"], request, ".txt"))
         result = self.runtime.reference(spec["prompt"], seed=spec.get("seed", 0))
         result.pop("step_latents", None)
         output = result.pop("output")
-        return dict(result, output=artifact(output, self.output_path(request)))
+        return dict(result, output=self.persist(output, request))
 
     def optimize(self, request):
         if not self.pipeline_mode or self.states:
@@ -127,7 +127,7 @@ class SessionBackend(Backend):
         if not self.pipeline_mode:
             raise ValueError("batch execution requires Sana pipeline mode")
         output, service = self.runtime.generate_batch(request["prompts"], seeds=request["seeds"])
-        return dict(output=artifact(output, self.output_path(request)), service=service, qualified=False)
+        return dict(output=self.persist(output, request), service=service, qualified=False)
 
     def release(self, request):
         state = self.state(request)

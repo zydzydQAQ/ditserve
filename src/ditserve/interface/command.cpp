@@ -2,8 +2,7 @@
 #include "ditserve/control/dispatch.hpp"
 #include "ditserve/control/study.hpp"
 #include "ditserve/runtime/process.hpp"
-#include "ditserve/benchmark/simulator.hpp"
-#include "ditserve/benchmark/workload.hpp"
+#include "ditserve/benchmark/cluster_sim.hpp"
 
 #include <algorithm>
 #include <array>
@@ -121,7 +120,8 @@ void normalize_study(const std::string& command, Json& request) {
                                              {"seed", request.value("seed", Json(7))}}}};
     if (!request.contains("config") || !request.at("config").is_object())
         throw std::invalid_argument("config must be a JSON object or config file path");
-    const auto experiment = synthetic ? "synthetic" : segment(string_field(request.at("config"), "experiment", ""), "experiment");
+    // Simulations default to the "synthetic" experiment; a named what-if keeps its own results directory.
+    const auto experiment = segment(string_field(request.at("config"), "experiment", synthetic ? "synthetic" : ""), "experiment");
     const bool resume = bool_field(request, "resume", false);
     const bool repair = bool_field(request, "repair", false);
     if (repair != request.contains("retry_of")) throw std::invalid_argument("--repair and --retry-of must be used together");
@@ -278,16 +278,15 @@ Json pure_rpc(const std::string& command, const Json& request) {
         if (op == "gates") return evaluate_gates(request.at("evidence"), request.at("rules"));
         throw std::invalid_argument("unknown control operation");
     }
-    if (integer(request.at("schema_version"), "schema_version") != 2) throw std::invalid_argument("schema_version must be 2");
-    const auto cost = CostModel::from_json(request.value("cost_model", Json::object()));
     if (command == "generate") {
-        check_keys(request, {"schema_version", "generator", "cost_model"});
-        Json result = Json::array();
-        for (const auto& spec : generate_workload(request.value("generator", Json::object()), cost)) result.push_back(spec.to_json());
-        return result;
+        check_keys(request, {"generator"});
+        return study_workload({{"generator", request.at("generator")}});
     }
-    check_keys(request, {"schema_version", "config", "cost_model", "workload"});
-    return Simulator(RuntimeConfig::from_json(request.value("config", Json::object())), cost).run(read_workload(request.at("workload")));
+    Json config = request;
+    if (!config.contains("profile")) config["profile"] = synthetic_profile();
+    if (!config.contains("workload")) config["workload"] = study_workload({{"generator", config.value("generator", Json::object())}});
+    config.erase("generator");
+    return simulate_cluster(config);
 }
 
 struct TemporaryLog {

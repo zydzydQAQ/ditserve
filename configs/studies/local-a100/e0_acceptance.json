@@ -1,0 +1,336 @@
+{
+  "schema": "ditserve.study.v1",
+  "experiment": "a100-e0-acceptance",
+  "note": "E0 on the local A100 PCIe 40GB after the 2026-10-18 slimming: (1) Wan 1.3B tiny cache-off numeric acceptance, official pipeline vs persistent step worker across hot/cold roundtrips, exact equality; (2) Wan block worker (Flash) and Sana-Sprint pipeline worker sharing one GPU through the online replay with EDF-B4 and Wan-only text prefetch, 1 video + 3 images, completion only. No performance, quality or SP claim. Output arrays have no consumer after export.",
+  "workers": {
+    "model": {
+      "backend": "wan",
+      "python": "/home/zyd/code/dit-rewrite/.venv-previs/bin/python",
+      "gpu_uuid": "GPU-3ab2fedc-ccc1-007d-f4a1-b6058b3479a3",
+      "environment": {
+        "OMP_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8"
+      },
+      "config": {
+        "model_path": "/mnt/data/zyd-preempt-phase16-01a1296d/dit-runtime/huggingface/hub/models--Wan-AI--Wan2.1-T2V-1.3B-Diffusers/snapshots/0fad780a534b6463e45facd96134c9f345acfa5b",
+        "device": "cuda:0",
+        "attention": "math",
+        "spec": {
+          "prompt": "A red ceramic kettle on a wooden table.",
+          "negative_prompt": "",
+          "seed": 7,
+          "height": 64,
+          "width": 64,
+          "frames": 5,
+          "steps": 3,
+          "guidance_scale": 5.0,
+          "cache": false,
+          "threshold": 0.0,
+          "max_continuous": 1
+        }
+      }
+    },
+    "wan": {
+      "backend": "wan",
+      "python": "/home/zyd/code/dit-rewrite/.venv-previs/bin/python",
+      "gpu_uuid": "GPU-3ab2fedc-ccc1-007d-f4a1-b6058b3479a3",
+      "environment": {
+        "OMP_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8"
+      },
+      "config": {
+        "model_path": "/mnt/data/zyd-preempt-phase16-01a1296d/dit-runtime/huggingface/hub/models--Wan-AI--Wan2.1-T2V-1.3B-Diffusers/snapshots/0fad780a534b6463e45facd96134c9f345acfa5b",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "block"
+        }
+      }
+    },
+    "sana": {
+      "backend": "sana",
+      "python": "/home/zyd/code/dit-rewrite/.venv-previs/bin/python",
+      "gpu_uuid": "GPU-3ab2fedc-ccc1-007d-f4a1-b6058b3479a3",
+      "environment": {
+        "OMP_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8"
+      },
+      "config": {
+        "model_path": "/mnt/data/zyd-preempt-phase16-01a1296d/dit-directions-assets/huggingface/hub/models--Efficient-Large-Model--Sana_Sprint_0.6B_1024px_diffusers/snapshots/aa76e7f4f4928f378716b6716a2130fba3caf5b1",
+        "device": "cuda:0",
+        "options": {
+          "execution": "pipeline",
+          "candidate": "eager"
+        }
+      }
+    }
+  },
+  "budget": {
+    "limit_gpu_seconds": 900,
+    "watchdog_seconds": 600,
+    "repair_reserve_gpu_seconds": 0,
+    "carry": "none"
+  },
+  "phases": [
+    {
+      "id": "numeric",
+      "kind": "state",
+      "admission_wait_seconds": 86400,
+      "admission_poll_seconds": 15,
+      "actions": [
+        {
+          "op": "reference",
+          "state_id": "reference",
+          "output_path": "reference.npy",
+          "save_latents": true
+        },
+        {
+          "op": "prepare",
+          "state_id": "candidate"
+        },
+        {
+          "op": "advance",
+          "state_id": "candidate",
+          "steps": 1
+        },
+        {
+          "op": "snapshot",
+          "state_id": "candidate",
+          "mode": "hot"
+        },
+        {
+          "op": "restore",
+          "state_id": "candidate"
+        },
+        {
+          "op": "advance",
+          "state_id": "candidate",
+          "steps": 1
+        },
+        {
+          "op": "snapshot",
+          "state_id": "candidate",
+          "mode": "cold"
+        },
+        {
+          "op": "restore",
+          "state_id": "candidate"
+        },
+        {
+          "op": "advance",
+          "state_id": "candidate",
+          "steps": 1
+        },
+        {
+          "op": "finish",
+          "state_id": "candidate",
+          "output_path": "candidate.npy",
+          "save_latents": true
+        },
+        {
+          "op": "evaluate",
+          "reference": "reference.npy",
+          "output": "candidate.npy",
+          "atol": 0,
+          "rtol": 0
+        },
+        {
+          "op": "evaluate",
+          "reference": "reference.latent.npy",
+          "output": "candidate.latent.npy",
+          "atol": 0,
+          "rtol": 0
+        },
+        {
+          "op": "release",
+          "state_id": "candidate"
+        },
+        {
+          "op": "hello"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "/cells/0/operations/10/ranks/0/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/10/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/10/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/11/ranks/0/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/11/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/11/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/3/ranks/0/residency",
+          "op": "eq",
+          "value": "cpu",
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/6/ranks/0/residency",
+          "op": "eq",
+          "value": "cpu",
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/3/ranks/0/transfer_bytes",
+          "op": "gt",
+          "value": 0,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/4/ranks/0/transfer_bytes",
+          "op": "gt",
+          "value": 0,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/6/ranks/0/transfer_bytes",
+          "op": "gt",
+          "value": 0,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/7/ranks/0/transfer_bytes",
+          "op": "gt",
+          "value": 0,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/13/ranks/0/loaded",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        }
+      ],
+      "artifact_dependencies": []
+    },
+    {
+      "id": "mixed",
+      "kind": "online",
+      "requires": [
+        {
+          "phase": "numeric",
+          "requires": "qualified"
+        }
+      ],
+      "policy": "edf_b4",
+      "unit": "block",
+      "text_prefetch": 1,
+      "text_prefetch_workers": [
+        "wan"
+      ],
+      "costs": {
+        "image_deadline_ms": 800,
+        "prepare_ms": 300,
+        "step_ms": 600,
+        "block_ms": 10,
+        "finish_ms": 1500
+      },
+      "workload": [
+        {
+          "request_id": "v0",
+          "worker": "wan",
+          "kind": "video",
+          "arrival_ms": 0,
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 101,
+            "steps": 8,
+            "height": 480,
+            "width": 832,
+            "frames": 17,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1
+          },
+          "service_ms": 12000,
+          "slo_ms": 36000
+        },
+        {
+          "request_id": "i0",
+          "worker": "sana",
+          "kind": "image",
+          "arrival_ms": 2000,
+          "spec": {
+            "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+            "seed": 200
+          },
+          "service_ms": 320,
+          "slo_ms": 800
+        },
+        {
+          "request_id": "i1",
+          "worker": "sana",
+          "kind": "image",
+          "arrival_ms": 4000,
+          "spec": {
+            "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+            "seed": 201
+          },
+          "service_ms": 320,
+          "slo_ms": 800
+        },
+        {
+          "request_id": "i2",
+          "worker": "sana",
+          "kind": "image",
+          "arrival_ms": 6000,
+          "spec": {
+            "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+            "seed": 202
+          },
+          "service_ms": 320,
+          "slo_ms": 800
+        }
+      ],
+      "watchdog_seconds": 600,
+      "artifact_dependencies": [],
+      "gates": [
+        {
+          "metric": "/cells/0/metrics/completed",
+          "op": "eq",
+          "value": 4,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/metrics/failed",
+          "op": "eq",
+          "value": 0,
+          "scope": "numeric"
+        }
+      ]
+    }
+  ]
+}

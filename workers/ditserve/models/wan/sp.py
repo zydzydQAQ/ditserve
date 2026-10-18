@@ -19,7 +19,7 @@ def shard_patch_output(tensor, local_rank, degree):
     SP1 and SP>1. Spatial coordinates are supplied by separately sharded RoPE;
     unpatchification dimensions remain those computed from the original input.
     """
-    if degree not in (1, 2, 4) or not 0 <= local_rank < degree or tensor.ndim != 5:
+    if degree not in (1, 2, 4, 8) or not 0 <= local_rank < degree or tensor.ndim != 5:
         raise ParallelContractError("invalid Wan patch split")
     if degree == 1:
         return tensor
@@ -33,7 +33,7 @@ def shard_patch_output(tensor, local_rank, degree):
 def shard_rope_output(value, local_rank, degree):
     if type(value) is not tuple or len(value) != 2:
         raise ParallelContractError("Wan RoPE must return a cosine/sine pair")
-    if degree not in (1, 2, 4) or not 0 <= local_rank < degree:
+    if degree not in (1, 2, 4, 8) or not 0 <= local_rank < degree:
         raise ParallelContractError("invalid RoPE split")
     if any(tensor.ndim != 4 or tensor.shape[1] % degree for tensor in value):
         raise ParallelContractError("unsupported Wan RoPE shape")
@@ -51,7 +51,7 @@ class PinnedWanUlyssesBackend:
 
     capabilities = dict(
         backend="cache-dit-1.5-ulysses-native-sdpa-flash",
-        fixed_sp_degrees=[1, 2, 4], explicit_sp1_bypass=True,
+        fixed_sp_degrees=[1, 2, 4, 8], explicit_sp1_bypass=True,
         local_layout_hook_binding=True, request_group_cache_gate=True,
         distributed_request_transport=False, gpu_validated=False,
         cache_off_group01_transport=True, cached_feature_transport=False,
@@ -97,7 +97,7 @@ class PinnedWanUlyssesBackend:
         if getattr(model, "gradient_checkpointing", False):
             raise ParallelContractError("gradient checkpointing is outside inference scope")
         cp = importlib.import_module("cache_dit.distributed.core._modeling_parallel")
-        for ranks in FIXED_GROUPS:
+        for ranks in self.groups.groups:
             if len(ranks) == 1 or self.handle.rank not in ranks:
                 continue
             config = cp._ContextParallelConfig(ulysses_degree=len(ranks), ring_degree=1)

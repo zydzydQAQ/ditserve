@@ -75,7 +75,8 @@ class NativeCliTests(unittest.TestCase):
             with self.subTest(arguments=arguments):
                 self.invoke(arguments, code=2, python=False, environment=environment)
         cases = [
-            ("generate", {"schema_version": 2, "generator": {"count": 2, "seed": 7}}),
+            ("generate", {"generator": {"count": 2, "seed": 7, "pattern": "poisson", "rate_rps": 2, "classes": [
+                {"class": "video", "kind": "video", "service_ms": 3400}, {"class": "image", "kind": "image", "service_ms": 40}]}}),
             ("control", {"op": "matrix", "phase": {"id": "fixture", "matrix": {"/policy": ["edf", "fcfs"]}}}),
         ]
         generated = None
@@ -85,10 +86,11 @@ class NativeCliTests(unittest.TestCase):
                 self.assertEqual(len(value), 2)
                 if operation == "generate":
                     generated = value
-        value = self.structured(["rpc", "simulate"], payload={"schema_version": 2,
-            "config": {"policy": "edf"}, "workload": generated}, python=False, environment=environment)
-        self.assertIn("summary", value)
-        self.assertEqual(len(value["records"]), 2)
+        value = self.structured(["rpc", "simulate"], payload={"policy": "block_elastic", "gpus": 2,
+            "workload": generated}, python=False, environment=environment)
+        self.assertEqual(value["metrics"]["requests"], 2)
+        self.assertEqual(value["provenance"], "synthetic")
+        self.assertEqual(len(value["requests"]), 2)
         self.assertEqual(list(self.root.iterdir()), [])
 
     def test_doctor_is_metadata_only_without_pythonpath(self):

@@ -20,12 +20,25 @@ def positive_int(value, name="steps"):
     return value
 
 
-def artifact(value, path=None):
-    """Persist requested output, returning metadata rather than tensor JSON."""
+OUTPUT_MODES = ("file", "digest", "check")
+
+
+def artifact(value, path=None, mode="file"):
+    """Persist requested output, returning metadata rather than tensor JSON.
+
+    ``digest`` hashes without writing; ``check`` only validates shape and
+    finiteness, for serving runs whose outputs have no downstream consumer.
+    """
+    if mode not in OUTPUT_MODES:
+        raise ValueError("output_mode must be file, digest or check")
+    if mode != "file":
+        path = None
     started = time.perf_counter()
     if isinstance(value, str):
         data = value.encode("utf-8")
-        result = {"text": value, "sha256": hashlib.sha256(data).hexdigest()}
+        result = {"text": value, "output_mode": mode}
+        if mode != "check":
+            result["sha256"] = hashlib.sha256(data).hexdigest()
         if path:
             destination = Path(path).resolve()
             destination.parent.mkdir(parents=True, exist_ok=True)
@@ -42,9 +55,10 @@ def artifact(value, path=None):
     if array.dtype.kind not in "fiu" or not np.isfinite(array).all():
         raise ValueError("model output must be a finite numeric array")
     hashing = time.perf_counter()
-    result = {"shape": list(array.shape), "dtype": str(array.dtype), "finite": True,
-              "array_sha256": hashlib.sha256(array.tobytes(order="C")).hexdigest()}
-    result["array_hash_ms"] = (time.perf_counter() - hashing) * 1000
+    result = {"shape": list(array.shape), "dtype": str(array.dtype), "finite": True, "output_mode": mode}
+    if mode != "check":
+        result["array_sha256"] = hashlib.sha256(array.tobytes(order="C")).hexdigest()
+        result["array_hash_ms"] = (time.perf_counter() - hashing) * 1000
     if path:
         destination = Path(path).resolve()
         if destination.suffix != ".npy":
@@ -81,6 +95,9 @@ class Backend:
         key = hashlib.sha256(str(request.get("state_id", "batch")).encode()).hexdigest()[:16]
         return request.get("output_path") or str(Path(self.config.get("work_dir", ".")) /
                 ("output-%s-%s%s" % (key, request["id"], suffix)))
+
+    def persist(self, value, request, suffix=".npy"):
+        return artifact(value, self.output_path(request, suffix), request.get("output_mode", "file"))
 
     def new_id(self, request):
         key = request.get("state_id", request.get("spec", {}).get("request_id"))
