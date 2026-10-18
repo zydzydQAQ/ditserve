@@ -8,9 +8,9 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 try:  # discover puts tests/python on sys.path; module-path runs do not
-    from test_model_state import fixture
+    from wan_fixture import fixture
 except ImportError:
-    from tests.python.test_model_state import fixture
+    from tests.python.wan_fixture import fixture
 
 
 def tiny_model(torch):
@@ -23,7 +23,7 @@ def tiny_model(torch):
 
 def attach(model):
     from ditserve.models.wan.block import WanBlockExecutor
-    worker, state = fixture(cached=False, boundary=2)
+    worker, state = fixture(boundary=2)
     worker.pipe, worker.attention = SimpleNamespace(transformer=model), "math"
     with patch.object(WanBlockExecutor, "_validate_model"):
         executor = WanBlockExecutor(worker)
@@ -57,7 +57,7 @@ class BlockTransferTests(unittest.TestCase):
         executor.close(continuation)
         worker.release(state)
         # A separate, empty worker with an independent copy of the same weights.
-        target, placeholder = fixture(cached=False, boundary=0)
+        target, placeholder = fixture(boundary=0)
         target.release(placeholder)
         target.pipe, target.attention = SimpleNamespace(transformer=copy.deepcopy(model)), "math"
         with patch.object(WanBlockExecutor, "_validate_model"):
@@ -90,6 +90,20 @@ class BlockTransferTests(unittest.TestCase):
         payload["tensors"]["packet.hidden"] = payload["tensors"]["packet.hidden"] + 1
         with self.assertRaisesRegex(ValueError, "checksum"):
             import_block_state(executor, payload)
+
+    def test_tampered_base_request_is_rejected_by_the_wire_codec(self):
+        from ditserve.models.wan.block import export_block_state, import_block_state
+        from ditserve.models.wan.parallel import ParallelContractError
+        model = tiny_model(self.torch)
+        worker, state, executor, continuation = attach(model)
+        executor.advance(continuation, blocks=5)
+        payload, _ = export_block_state(executor, continuation)
+        executor.close(continuation)
+        worker.release(state)
+        payload["tensors"]["latents"] = payload["tensors"]["latents"] + 1
+        with self.assertRaisesRegex(ParallelContractError, "checksum"):
+            import_block_state(executor, payload)
+        self.assertFalse(worker._states)
 
 
 if __name__ == "__main__":

@@ -1,23 +1,22 @@
-"""Pinned Wan Ulysses attachment for research, with no implicit GPU launch.
+"""Pinned Wan Ulysses attachment, with no implicit GPU launch.
 
-The attachment supplies actual per-step split/attention/gather operations and
-narrow cache-off request transport between all4 and group01. Cached feature
-transport and GPU qualification remain unsupported. Imports are CPU-only/lazy.
+The attachment supplies the per-step split/attention/gather operations for an
+aligned rank group. Moving a request between groups and GPU qualification are
+not implemented yet. Imports are CPU-only/lazy.
 """
 
 import importlib
 import importlib.metadata
 
-from .parallel import (FIXED_GROUPS, CacheOffGroupMigration, ParallelContractError, RequestGroupGate,
-                       bind_request_group_similarity, cache_manager_manifest)
+from .parallel import ParallelContractError, RequestGroupGate
 
 
 def shard_patch_output(tensor, local_rank, degree):
     """Wan immediately flattens Conv3d output into a token sequence.
 
-    Shard before the cached block wrapper, preserving Fn residual semantics at
-    SP1 and SP>1. Spatial coordinates are supplied by separately sharded RoPE;
-    unpatchification dimensions remain those computed from the original input.
+    Shard before the transformer blocks. Spatial coordinates are supplied by
+    separately sharded RoPE; unpatchification dimensions remain those computed
+    from the original input.
     """
     if degree not in (1, 2, 4, 8) or not 0 <= local_rank < degree or tensor.ndim != 5:
         raise ParallelContractError("invalid Wan patch split")
@@ -52,10 +51,8 @@ class PinnedWanUlyssesBackend:
     capabilities = dict(
         backend="cache-dit-1.5-ulysses-native-sdpa-flash",
         fixed_sp_degrees=[1, 2, 4, 8], explicit_sp1_bypass=True,
-        local_layout_hook_binding=True, request_group_cache_gate=True,
-        distributed_request_transport=False, gpu_validated=False,
-        cache_off_group01_transport=True, cached_feature_transport=False,
-        elastic_model_equivalence_validated=False,
+        local_layout_hook_binding=True, distributed_request_transport=False,
+        gpu_validated=False, elastic_model_equivalence_validated=False,
     )
 
     def __init__(self, handle, groups):
@@ -65,7 +62,6 @@ class PinnedWanUlyssesBackend:
         self._hooks = []
         self._processors = []
         self._configs = {}
-        self._binding = None
         self._active_config = None
         self._bound_epoch = None
 
@@ -130,7 +126,6 @@ class PinnedWanUlyssesBackend:
             raise ParallelContractError("attention processors differ from the pinned native recipe")
         self.worker = worker
         try:
-            self._binding = bind_request_group_similarity(worker.manager, self.gate)
             for module in modules:
                 self._processors.append((module, module.processor))
                 module.set_processor(RequestProcessor())
@@ -177,16 +172,8 @@ class PinnedWanUlyssesBackend:
         self._bound_epoch = self.handle.current.epoch
         self._active_config = self._configs.get(self.handle.current.ranks)
         try:
-            context_manifest = {}
-            for name, context in state.contexts.items():
-                with self.worker.manager.enter_context(context):
-                    context_manifest[name] = cache_manager_manifest(self.worker.manager)
-            descriptor = dict(contexts=context_manifest, cache_enabled=state.cache_enabled,
-                              spec=state.spec, latents_shape=list(state.latents.shape),
-                              latents_dtype=str(state.latents.dtype), needs_anchor=state.needs_anchor)
-            self.gate.pre_step(descriptor)
-            if any("invalid" in value for value in context_manifest.values()):
-                raise ParallelContractError("unsupported cache state in pre-step consensus")
+            self.gate.consensus(dict(kind="pre_step", spec=state.spec, latents_shape=list(state.latents.shape),
+                                     latents_dtype=str(state.latents.dtype)))
         except BaseException:
             self.handle.fail()
             raise
@@ -220,18 +207,6 @@ class PinnedWanUlyssesBackend:
         for module, processor in self._processors:
             module.set_processor(processor)
         self._processors.clear()
-        if self._binding is not None:
-            self._binding.close()
-            self._binding = None
         self.worker = None
         self._configs.clear()
         self._active_config = self._bound_epoch = None
-
-    def migrate_cache_off(self, state, source_ranks, target_ranks, *, request_id, step_index, expected_epoch):
-        """All four ranks participate; inactive ranks pass state=None."""
-        if self.worker is None:
-            raise ParallelContractError("attach a worker before migrating")
-        with self.worker._lock:
-            return CacheOffGroupMigration(self.worker, self.handle, self.groups).migrate(
-                state, source_ranks, target_ranks, request_id=request_id,
-                step_index=step_index, expected_epoch=expected_epoch)

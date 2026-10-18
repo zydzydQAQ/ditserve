@@ -1,17 +1,10 @@
 """Small JSON-facing adapter contract; model objects never cross the wire."""
 
 import hashlib
-import json
 from pathlib import Path
 import time
 
 from ..runtime import file_hash
-
-
-def digest(value):
-    """Preserve the exact JSON identity encoding used by cache certificates."""
-    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":"),
-                                     allow_nan=False).encode()).hexdigest()
 
 
 def positive_int(value, name="steps"):

@@ -20,7 +20,6 @@ def fixture(steps=4):
     worker = SimpleNamespace(torch=torch, pipe=SimpleNamespace(transformer=model),
                              _lock=threading.RLock(), _sync=Mock(), _states={})
     worker._dit_attention_context = contextlib.nullcontext
-    worker._update_policy = Mock()
     def check(state, residency):
         if worker._states.get(state.spec["request_id"]) is not state or state.residency != residency:
             raise ValueError("invalid state")
@@ -35,11 +34,10 @@ def fixture(steps=4):
     def prepare(name, guidance=5.):
         scheduler = UniPCMultistepScheduler()
         scheduler.set_timesteps(steps, device="cpu")
-        state = SimpleNamespace(spec=dict(request_id=name, steps=steps, guidance_scale=guidance, cache=False),
+        state = SimpleNamespace(spec=dict(request_id=name, steps=steps, guidance_scale=guidance),
             latents=torch.linspace(-.1, .1, 32).reshape(1, 2, 1, 4, 4),
             prompt_embeds=torch.ones(1, 3, 4), negative_prompt_embeds=torch.zeros(1, 3, 4),
-            scheduler=scheduler, step_index=0, finished=False, residency="gpu", cache_enabled=False,
-            contexts={}, needs_anchor=False, events=[])
+            scheduler=scheduler, step_index=0, finished=False, residency="gpu", events=[])
         worker._states[name] = state
         return state
     with patch.object(WanBlockExecutor, "_validate_model"):
@@ -77,7 +75,7 @@ class BlockExecutorTests(unittest.TestCase):
         state = prepare("a")
         adapter = WanBackend.__new__(WanBackend)
         Backend.__init__(adapter, {})
-        adapter.runtime, adapter.executor, adapter.decode_state = worker, executor, None
+        adapter.runtime, adapter.executor = worker, executor
         adapter.states["a"] = state
         adapter.continuations = {"a": executor.attach(state)}
         conditional = adapter.advance(dict(state_id="a", blocks=30))
@@ -94,55 +92,6 @@ class BlockExecutorTests(unittest.TestCase):
         self.assertEqual(done["events"][0]["blocks"], 60)
         self.assertTrue(done["progress"]["done"])
         executor.close(adapter.continuations["a"])
-
-    def test_async_decoder_joins_only_its_stream_and_restores_sync_on_error(self):
-        import numpy as np
-        from ditserve.models.wan.async_decode import AsyncDecoder
-        for fails in (False, True):
-            with self.subTest(fails=fails):
-                entered, release = threading.Event(), threading.Event()
-                stream = SimpleNamespace(cuda_stream=17, synchronize=Mock(), wait_event=Mock())
-                event = lambda **unused: SimpleNamespace(record=Mock(), synchronize=Mock(), elapsed_time=lambda other: 2.)
-                cuda = SimpleNamespace(Stream=lambda **unused: stream, Event=event,
-                    current_stream=lambda device: stream, device=lambda device: contextlib.nullcontext(),
-                    stream=lambda value: contextlib.nullcontext())
-                flags = SimpleNamespace(math_sdp_enabled=lambda: True, flash_sdp_enabled=lambda: False,
-                    mem_efficient_sdp_enabled=lambda: False, cudnn_sdp_enabled=lambda: False)
-                torch = SimpleNamespace(cuda=cuda, backends=SimpleNamespace(cuda=flags),
-                                        inference_mode=contextlib.nullcontext)
-                original = Mock()
-                worker = SimpleNamespace(attention="math", torch=torch, device="cuda:0", pipe=object(),
-                    _check=Mock(), _sync=original, p=SimpleNamespace(_sdpa_math_context=lambda _: contextlib.nullcontext()))
-                state = SimpleNamespace(latents=SimpleNamespace(record_stream=Mock()), finished=False,
-                                        step_index=2, spec=dict(steps=2))
-                def decode(*unused):
-                    entered.set()
-                    if not release.wait(2):
-                        raise RuntimeError("test decoder did not receive release")
-                    if fails:
-                        raise RuntimeError("decode failed")
-                    return np.zeros((1, 1, 2, 2, 3), dtype=np.float32)
-                decoder = AsyncDecoder(worker)
-                try:
-                    with patch("ditserve.models.wan.async_decode.decode_final_latent", side_effect=decode):
-                        decoder.submit(state)
-                        self.assertTrue(entered.wait(2))
-                        worker._sync()
-                        original.assert_not_called()
-                        stream.synchronize.assert_called_once()
-                        self.assertIsNone(decoder.collect())
-                        release.set()
-                        if fails:
-                            with self.assertRaisesRegex(RuntimeError, "decode failed"):
-                                decoder.collect(wait=True)
-                        else:
-                            output, timing = decoder.collect(wait=True)
-                            self.assertTrue(timing["asynchronous"])
-                    self.assertIs(worker._sync, original)
-                finally:
-                    release.set()
-                    decoder.close()
-
 
     def test_interleaving_different_quantum_preserves_every_native_solver_state(self):
         worker, executor, prepare = fixture()
@@ -172,24 +121,7 @@ class BlockExecutorTests(unittest.TestCase):
         self.assertTrue(self.torch.equal(state.latents, reference.latents))
 
 
-
-    def test_cancel_discards_partial_state_without_solver_commit(self):
-        worker, executor, prepare = fixture()
-        state = prepare("a")
-        continuation = executor.attach(state)
-        original = state.latents.clone()
-        executor.advance(continuation, 33)
-        executor.cancel(continuation)
-        self.assertEqual(state.step_index, 0)
-        self.assertTrue(self.torch.equal(original, state.latents))
-        self.assertEqual(executor.extra_state_bytes(continuation), 0)
-        with self.assertRaisesRegex(ValueError, "cancelled"):
-            executor.advance(continuation)
-        executor.close(continuation)
-        self.assertFalse(executor._states)
-
-
-    def test_duplicate_attach_external_step_cache_and_invalid_quantum_rejected(self):
+    def test_duplicate_attach_external_step_and_invalid_quantum_rejected(self):
         worker, executor, prepare = fixture()
         state = prepare("a")
         continuation = executor.attach(state)
@@ -198,10 +130,6 @@ class BlockExecutorTests(unittest.TestCase):
         for count in (0, -1, True, 1.5):
             with self.assertRaises(ValueError):
                 executor.advance(continuation, count)
-        state.spec["cache"] = True
-        with self.assertRaisesRegex(ValueError, "cache"):
-            executor.advance(continuation)
-        state.spec["cache"] = False
         native_step(worker, state)
         with self.assertRaisesRegex(ValueError, "outside"):
             executor.advance(continuation)
@@ -221,7 +149,6 @@ class BlockExecutorTests(unittest.TestCase):
         self.assertEqual(state.step_index, 0)
         self.assertFalse(executor._advancing)
         executor.close(continuation)
-
 
 
 if __name__ == "__main__":

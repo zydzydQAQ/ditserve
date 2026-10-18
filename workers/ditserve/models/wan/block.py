@@ -1,4 +1,4 @@
-"""Exact, cache-off Wan block continuations; imports never initialize CUDA.
+"""Exact Wan block continuations; imports never initialize CUDA.
 
 Packets retain only the current forward's live tensors, not a history of
 activations. The original RequestState and its checkpoint schema stay intact.
@@ -9,7 +9,7 @@ import dataclasses
 import hashlib
 import time
 
-PACKET_SCHEMA = "ditserve.wan-block-packet.v1"
+PACKET_SCHEMA = "ditserve.wan-block-packet.v2"
 PACKET_TENSORS = ("hidden", "encoder", "temb", "projected")
 
 
@@ -22,7 +22,6 @@ class BlockState:
     next_block: int = 0
     packet: object = None
     conditional: object = None
-    cancelled: bool = False
     failed: bool = False
     closed: bool = False
     events: list = dataclasses.field(default_factory=list)
@@ -31,8 +30,8 @@ class BlockState:
 class WanBlockExecutor:
     """One shared resident Wan model, independent resumable request packets.
 
-    Only this executor may advance an attached base state. Cancellation discards
-    an unfinished step; callers must release rather than resume that request.
+    Only this executor may advance an attached base state. A failed quantum
+    leaves the request unusable; callers release it rather than resume it.
     Safe points are synchronous and local to one GPU; this is not SP support.
     """
 
@@ -64,8 +63,6 @@ class WanBlockExecutor:
     def attach(self, base):
         with self.worker._lock:
             self.worker._check(base, "gpu")
-            if base.cache_enabled or base.spec["cache"] or base.contexts:
-                raise ValueError("block execution is cache-off only")
             if id(base) in self._states:
                 raise ValueError("request already has a block continuation")
             if base.finished or base.step_index >= base.spec["steps"]:
@@ -76,14 +73,11 @@ class WanBlockExecutor:
 
     def _check(self, state):
         if (state.owner is not self._owner or self._states.get(id(state.base)) is not state
-                or state.cancelled or state.failed or state.closed):
-            raise ValueError("inactive, failed, cancelled or foreign block continuation")
+                or state.failed or state.closed):
+            raise ValueError("inactive, failed or foreign block continuation")
         self.worker._check(state.base, "gpu")
         if state.base.step_index != state.committed_step:
             raise ValueError("base solver state changed outside block executor")
-        if state.base.cache_enabled or state.base.spec["cache"] or state.base.contexts:
-            raise ValueError("cache policy changed during block execution")
-        self.worker._update_policy(state.base)
 
     def _begin(self, state):
         base, model = state.base, self.model
@@ -125,7 +119,6 @@ class WanBlockExecutor:
         base.latents = base.scheduler.step(
             prediction, base.scheduler.timesteps[base.step_index], base.latents, return_dict=False)[0]
         base.step_index += 1
-        base.needs_anchor = False
         state.committed_step = base.step_index
         state.branch, state.conditional = "cond", None
         if not bool(self.worker.torch.isfinite(base.latents).all().item()):
@@ -209,34 +202,6 @@ class WanBlockExecutor:
         visit(self.worker._payload(state.base), False)
         return int(visit((state.packet, state.conditional), True))
 
-    def native_step(self, state, *, check_budget=lambda: None):
-        """The unmodified worker baseline, admitted only at a solver boundary."""
-        with self.worker._lock:
-            self._check(state)
-            if self._advancing or state.packet is not None or state.branch != "cond" or state.next_block:
-                raise ValueError("native worker requires an idle solver boundary")
-            check_budget()
-            self._advancing = True
-            try:
-                event = self.worker.step(state.base)
-                state.committed_step = state.base.step_index
-                record = dict(event, kind="native_step", step_completed=True, extra_state_bytes=0,
-                              block_cuda_ms=[], blocks=len(self.model.blocks) *
-                              (2 if state.base.spec["guidance_scale"] > 1 else 1))
-                state.events.append(record)
-                return record
-            except BaseException:
-                state.failed = True
-                raise
-            finally:
-                self._advancing = False
-
-    def cancel(self, state):
-        with self.worker._lock:
-            self._check(state)
-            state.cancelled = True
-            state.packet = state.conditional = None
-
     def close(self, state):
         with self.worker._lock:
             if state.owner is not self._owner or self._states.get(id(state.base)) is not state:
@@ -245,15 +210,6 @@ class WanBlockExecutor:
             state.packet = state.conditional = None
             state.closed = True
             del self._states[id(state.base)]
-
-    def quantum(self, state, policy):
-        if policy == "step":
-            return len(self.model.blocks) * (2 if state.base.spec["guidance_scale"] > 1 else 1)
-        if policy == "cfg":
-            return len(self.model.blocks) - state.next_block
-        if policy.startswith("block-"):
-            return int(policy.split("-", 1)[1])
-        raise ValueError("unknown preemption policy: " + policy)
 
 
 def _digest(torch, value):
@@ -264,12 +220,12 @@ def export_block_state(executor, state):
     """CPU copy of a continuation at any block boundary inside a solver step.
 
     The base solver state is untouched inside a step, so the step-boundary
-    wire codec carries it unchanged. The packet adds the running hidden state,
+    wire codec (parallel.pack_request) carries it unchanged. The packet adds the running hidden state,
     conditioning, RoPE and, in the unconditional branch, the conditional
     prediction. clone() keeps dense strides, so the resumed kernels see the
     same layouts; the caller releases the source after a successful write.
     """
-    from .parallel import pack_cache_off_request
+    from .parallel import pack_request
     worker, torch = executor.worker, executor.worker.torch
     with worker._lock, torch.inference_mode():
         executor._check(state)
@@ -277,7 +233,7 @@ def export_block_state(executor, state):
             raise RuntimeError("cannot export during block execution")
         worker._sync()
         started = time.perf_counter()
-        base, tensors = pack_cache_off_request(worker, state.base)
+        base, tensors = pack_request(worker, state.base)
         layout = dict(committed_step=state.committed_step, branch=state.branch, next_block=state.next_block,
                       packet=state.packet is not None, conditional=state.conditional is not None)
         extra = {}
@@ -304,7 +260,7 @@ def export_block_state(executor, state):
 
 def import_block_state(executor, payload):
     """Rebuild an exported block boundary on this worker; returns (base, continuation)."""
-    from .parallel import unpack_cache_off_request
+    from .parallel import unpack_request
     worker, torch = executor.worker, executor.worker.torch
     manifest, tensors = payload["manifest"], payload["tensors"]
     if manifest.get("schema") != PACKET_SCHEMA:
@@ -319,7 +275,7 @@ def import_block_state(executor, payload):
     layout = manifest["layout"]
     with worker._lock, torch.inference_mode():
         started = time.perf_counter()
-        base = unpack_cache_off_request(worker, manifest["base"], {name: tensors[name] for name in base_names})
+        base = unpack_request(worker, manifest["base"], {name: tensors[name] for name in base_names})
         if base.request_id in worker._states:
             raise ValueError("destination already owns this request")
         worker._states[base.request_id] = base

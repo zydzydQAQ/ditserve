@@ -26,18 +26,15 @@ class ProtocolTests(unittest.TestCase):
         self.sequence += 1
         return self.worker.dispatch(dict(version=1, id=self.sequence, op=op, **fields))
 
-    def test_lifecycle_and_deterministic_pause_restore(self):
+    def test_lifecycle_is_deterministic_across_quantum_sizes(self):
         outputs = []
-        for name, pause in (("a", False), ("b", True)):
+        for name, first in (("a", 1), ("b", 3)):
             result = self.call("prepare", state_id=name, spec=dict(seed=71, prompt="boat", steps=3))
             self.assertEqual(result["progress"], dict(step=0, steps=3, done=False, next_action="advance"))
-            self.call("advance", state_id=name)
-            if pause:
-                snapshot = self.call("snapshot", state_id=name, mode="cold")
-                with self.assertRaisesRegex(ValueError, "restore"):
-                    self.call("advance", state_id=name)
-                self.call("restore", snapshot_id=snapshot["snapshot_id"])
-            result = self.call("advance", state_id=name, steps=8)
+            self.call("advance", state_id=name, steps=first)
+            if first < 3:
+                self.call("advance", state_id=name, steps=8)
+            result = dict(progress=self.worker.backend._progress(self.worker.backend.states[name]))
             self.assertTrue(result["progress"]["done"])
             output = self.call("finish", state_id=name)["output"]
             outputs.append(output)
@@ -58,8 +55,7 @@ class ProtocolTests(unittest.TestCase):
                            ("advance", dict(state_id="a", steps=0)), ("advance", dict(state_id="other"))):
             with self.subTest(op=op), self.assertRaises(ValueError):
                 self.call(op, **fields)
-        self.assertFalse(self.call("inventory", state_id="a")["paused"])
-        self.assertEqual(self.call("inventory", state_id="a")["step"], 0)
+        self.assertEqual(self.worker.backend.states["a"]["step"], 0)
 
     def test_framing_errors_stdout_and_recovery(self):
         commands = ["not json", '{"version":1,"id":1,"op":"hello","value":NaN}',
@@ -118,35 +114,6 @@ class ProtocolTests(unittest.TestCase):
         serve(self.worker, io.StringIO(line), io.StringIO())
         self.assertTrue(self.worker.closed)
         self.assertFalse(self.worker.backend.states)
-
-    def test_mock_migration_requires_target_ack_and_source_release(self):
-        target = Worker("mock", self.config)
-        self.addCleanup(target.close)
-        self.call("prepare", state_id="a", spec=dict(steps=2))
-        self.call("advance", state_id="a")
-        snapshot = self.call("snapshot", state_id="a", target_device="GPU-target",
-                             migration_id="m1", path=str(Path(self.directory.name) / "migration.json"))
-        ack = target.dispatch(dict(version=1, id=1, op="restore", state_id="b",
-                                   path=snapshot["path"], sha256=snapshot["sha256"]))
-        with self.assertRaises(ValueError):
-            target.dispatch(dict(version=1, id=2, op="advance", state_id="b"))
-        with self.assertRaisesRegex(ValueError, "commit or abort"):
-            target.dispatch(dict(version=1, id=2, op="restore", state_id="b"))
-        receipt = self.call("migration_release", migration_id="m1", acknowledgement=ack["acknowledgement"])
-        restored = target.dispatch(dict(version=1, id=3, op="restore", migration_id="m1", receipt=receipt["receipt"]))
-        self.assertEqual(restored["progress"]["step"], 1)
-        self.assertNotIn("a", self.worker.backend.states)
-        result = target.dispatch(dict(version=1, id=4, op="advance", state_id="b"))
-        self.assertTrue(result["progress"]["done"])
-
-        self.call("prepare", state_id="c", spec=dict(steps=2))
-        snapshot = self.call("snapshot", state_id="c", target_device="GPU-target", migration_id="m2",
-                             path=str(Path(self.directory.name) / "abort.json"))
-        target.dispatch(dict(version=1, id=5, op="restore", state_id="d", path=snapshot["path"], sha256=snapshot["sha256"]))
-        target.dispatch(dict(version=1, id=6, op="migration_abort", migration_id="m2"))
-        self.call("migration_abort", migration_id="m2")
-        self.assertNotIn("d", target.backend.states)
-        self.assertEqual(self.call("advance", state_id="c")["progress"]["step"], 1)
 
     def test_text_evaluation_is_exact_and_does_not_claim_perceptual_quality(self):
         left, right = (Path(self.directory.name) / name for name in ("left.txt", "right.txt"))
