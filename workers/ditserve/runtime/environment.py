@@ -16,7 +16,7 @@ def inspect_environment(request):
     packages = {name: importlib.util.find_spec(name) is not None
                 for name in ("openpyxl", "torch", "diffusers")}
     versions = {}
-    for name in ("torch", "diffusers", "cache-dit", "transformers", "lpips"):
+    for name in ("torch", "diffusers", "cache-dit", "transformers"):
         try:
             versions[name] = importlib.metadata.version(name)
         except importlib.metadata.PackageNotFoundError:

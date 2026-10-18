@@ -158,8 +158,23 @@ class ProtocolTests(unittest.TestCase):
         right.write_text("world")
         self.assertFalse(self.call("evaluate", reference=str(left), output=str(right))["passed"])
 
+    def test_array_evaluation_reports_exactness_and_rejects_perceptual_requests(self):
+        try:
+            import numpy as np
+        except ImportError:
+            self.skipTest("numpy required")
+        left, right = (Path(self.directory.name) / name for name in ("left.npy", "right.npy"))
+        np.save(left, np.arange(6, dtype=np.float32))
+        np.save(right, np.arange(6, dtype=np.float32) + 1e-7)
+        result = self.call("evaluate", reference=str(left), output=str(right))
+        self.assertTrue(result["passed"])
+        self.assertFalse(result["exact"])
+        self.assertGreater(result["max_abs"], 0)
+        with self.assertRaisesRegex(ValueError, "numeric reference"):
+            self.call("evaluate", reference=str(left), output=str(right), lpips=True)
+
     def test_evaluation_gpu_requires_accounted_device_and_never_uses_mock(self):
-        request = dict(version=1, id=1, op="evaluate", evaluator="vbench")
+        request = dict(version=1, id=1, op="evaluate", device="cuda:0")
         for name, config in (("mock", {}), ("evaluation", {}),
                              ("evaluation", dict(device="cuda:0", gpu_uuid="GPU-test"))):
             worker = Worker(name, config)

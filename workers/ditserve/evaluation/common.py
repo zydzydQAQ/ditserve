@@ -1,4 +1,4 @@
-"""Small JSON provenance helpers shared by data and quality adapters."""
+"""Small JSON provenance helpers used by the legacy result readers."""
 import copy
 import hashlib
 import json

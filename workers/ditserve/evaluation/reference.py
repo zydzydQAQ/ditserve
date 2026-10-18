@@ -1,13 +1,12 @@
-"""Reference comparisons with optional perceptual evaluation."""
+"""Exact or toleranced numeric comparison against a reference output."""
 
 import json
 from pathlib import Path
 
 
 def evaluate(request):
-    if request.get("evaluator"):
-        from . import evaluate as evaluate_external
-        return evaluate_external(request)
+    if request.get("evaluator") or request.get("lpips"):
+        raise ValueError("only numeric reference comparison is supported; perceptual evaluators were removed")
     if str(request["reference"]).endswith(".txt") and str(request["output"]).endswith(".txt"):
         exact = Path(request["reference"]).read_bytes() == Path(request["output"]).read_bytes()
         return dict(status="ok", exact=exact, allclose=exact, passed=exact,
@@ -34,12 +33,4 @@ def evaluate(request):
                                            rtol=request.get("rtol", 1e-5))),
               "perceptual_quality": "unverified"}
     result.update(passed=result["allclose"], scope="numerical_reference_only_not_perceptual_or_blind_quality")
-    if request.get("lpips"):
-        from .quality import evaluate_quality
-        # The pinned evaluator expects [batch, frames, height, width, channels].
-        if left.ndim == 4:
-            left, right = left[:, None], right[:, None]
-        result["quality"] = evaluate_quality(left, right, with_lpips=True,
-                                            lpips_device=request.get("device", "cpu"))
-        result["perceptual_quality"] = result["quality"]["status"]
     return result

@@ -16,12 +16,8 @@ from . import strict_json
 BACKENDS = {
     "mock": ("mock", "MockBackend"),
     "wan": ("wan.backend", "WanBackend"),
-    "wan_pipeline": ("wan.pipeline", "WanPipelineBackend"),
-    "wan_profile": ("wan.profile", "WanProfileBackend"),
     "sana": ("session.backend", "SessionBackend"),
     "mistral": ("session.backend", "SessionBackend"),
-    "flux": ("flux", "FluxBackend"),
-    "longlive": ("longlive", "LongLiveBackend"),
     "results": None,
     "evaluation": None,
     "environment": None,
@@ -113,8 +109,7 @@ class Worker:
         requested = request.get("device", "cpu")
         if not isinstance(requested, str) or not (requested == "cpu" or requested in ("cuda", "cuda:0")):
             raise ValueError("evaluation device must be cpu or the bound cuda:0")
-        needs_gpu = requested != "cpu" or request.get("evaluator") == "vbench"
-        if not needs_gpu:
+        if requested == "cpu":
             return
         if self.name in ("mock", "results", "environment"):
             raise ValueError(self.name + " permits CPU evaluation only")

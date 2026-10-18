@@ -35,30 +35,24 @@ def _pipeline(torch, diffusers, args):
     load = {"torch_dtype": getattr(torch, args.dtype), "local_files_only": args.local_files_only}
     if args.revision:
         load["revision"] = args.revision
-    if args.model == "flux":
-        pipe = diffusers.FluxPipeline.from_pretrained(args.model_id, **load)
-    else:
-        vae_args = dict(load, torch_dtype=getattr(torch, args.vae_dtype))
-        vae = diffusers.AutoencoderKLWan.from_pretrained(args.model_id, subfolder="vae", **vae_args)
-        # Load directly in the intended precision: FP16 loading followed by a
-        # cast back to FP32 would irreversibly round the encoder weights.
-        transformers = importlib.import_module("transformers")
-        encoder_args = dict(load, torch_dtype=getattr(torch, args.text_encoder_dtype))
-        encoder = transformers.UMT5EncoderModel.from_pretrained(args.model_id, subfolder="text_encoder", **encoder_args)
-        pipeline_class = (_wan_pipeline_class(diffusers.WanPipeline)
-                          if args.text_encoder_device == "cpu" else diffusers.WanPipeline)
-        pipe = pipeline_class.from_pretrained(args.model_id, vae=vae, text_encoder=encoder, **load)
-    if args.model == "wan":
-        # Never pipe.to(cuda) here: it transiently puts the large CPU encoder on
-        # the GPU and can OOM before it is moved back.
-        pipe.transformer.to(device=args.device, dtype=getattr(torch, args.dtype))
-        if getattr(pipe, "transformer_2", None) is not None:
-            pipe.transformer_2.to(device=args.device, dtype=getattr(torch, args.dtype))
-        pipe.vae.to(device=args.device, dtype=getattr(torch, args.vae_dtype))
-        encoder_device = "cpu" if args.text_encoder_device == "cpu" else args.device
-        pipe.text_encoder.to(device=encoder_device, dtype=getattr(torch, args.text_encoder_dtype))
-    else:
-        pipe.to(args.device)
+    vae_args = dict(load, torch_dtype=getattr(torch, args.vae_dtype))
+    vae = diffusers.AutoencoderKLWan.from_pretrained(args.model_id, subfolder="vae", **vae_args)
+    # Load directly in the intended precision: FP16 loading followed by a
+    # cast back to FP32 would irreversibly round the encoder weights.
+    transformers = importlib.import_module("transformers")
+    encoder_args = dict(load, torch_dtype=getattr(torch, args.text_encoder_dtype))
+    encoder = transformers.UMT5EncoderModel.from_pretrained(args.model_id, subfolder="text_encoder", **encoder_args)
+    pipeline_class = (_wan_pipeline_class(diffusers.WanPipeline)
+                      if args.text_encoder_device == "cpu" else diffusers.WanPipeline)
+    pipe = pipeline_class.from_pretrained(args.model_id, vae=vae, text_encoder=encoder, **load)
+    # Never pipe.to(cuda) here: it transiently puts the large CPU encoder on
+    # the GPU and can OOM before it is moved back.
+    pipe.transformer.to(device=args.device, dtype=getattr(torch, args.dtype))
+    if getattr(pipe, "transformer_2", None) is not None:
+        pipe.transformer_2.to(device=args.device, dtype=getattr(torch, args.dtype))
+    pipe.vae.to(device=args.device, dtype=getattr(torch, args.vae_dtype))
+    encoder_device = "cpu" if args.text_encoder_device == "cpu" else args.device
+    pipe.text_encoder.to(device=encoder_device, dtype=getattr(torch, args.text_encoder_dtype))
     pipe.set_progress_bar_config(disable=True)
     return pipe
 

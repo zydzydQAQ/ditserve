@@ -76,7 +76,7 @@ else:
         path.chmod(0o700)
 
     def config(self, *, gpu=False, wait=1, poll=0.02):
-        worker = {"backend": "wan_profile" if gpu else "mock", "config": {}}
+        worker = {"backend": "wan" if gpu else "mock", "config": {}}
         if gpu:
             worker.update(device="cuda:0", gpu_uuid=self.gpu)
         return dict(schema="ditserve.study.v1", experiment="profile_admission",
@@ -153,7 +153,7 @@ else:
         self.assertEqual([row["state"] for row in observations[:4]], ["idle", "busy", "idle", "idle"])
         self.assertGreaterEqual(len(observations), 4)
         hello = result["phases"][0]["cells"][0]["operations"][0]["ranks"][0]
-        self.assertEqual(hello["backend"], "wan_profile")
+        self.assertEqual(hello["backend"], "wan")
         self.assertFalse(hello["loaded"])  # No CUDA/model load is permitted by these tests.
         session = result["budget"]["sessions"][0]
         self.assertGreaterEqual(session["started_monotonic"], observations[3]["monotonic"])
