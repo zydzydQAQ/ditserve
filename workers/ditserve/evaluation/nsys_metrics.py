@@ -51,9 +51,17 @@ def _invalidate(result, reason):
 def _metric_kind(name):
     if not isinstance(name, str):
         return None
-    # Percent suffixes are labels only; arbitrary suffixes and byte/s units are rejected.
-    name = re.sub(r"\s*(?:\[%\]|\(%\))$", "", name).strip()
+    # The actual 2023.4.4 export adds "[Throughput %]" to these documented
+    # percentage metrics.  It is a unit label, not a value encoding: INTEGER
+    # values are already percentages.  Never rescale arbitrary counters to fit.
+    # Other GPU_METRICS rows (MHz, Avg, warps/cycle, byte/s) remain excluded.
+    name = re.sub(r"\s*(?:\[(?:Throughput )?%\]|\(%\))$", "", name).strip()
     return _ALIASES.get(name)
+
+
+def _unit_label(name):
+    match = re.search(r"\[([^\]]+)\]$|\(([^)]+)\)$", name)
+    return (match.group(1) or match.group(2)) if match else "documented percentage metric without suffix"
 
 
 def _unknown_metric(key, reasons, provenance=None):
@@ -182,6 +190,7 @@ def summarize_nsys_metrics(sqlite_path, *, expected_sample_hz=1000.0, gpu_type_i
                              "metric_reference": _DOC + "#gpu-metrics", "verified_local_documentation": _LOCAL_DOC,
                              "backend": "Nsight Systems periodic GPU Metrics; device scope",
                              "timestamp_unit": "ns", "value_unit": "%",
+                             "value_encoding": "GPU_METRICS numeric percentage values used directly; no scaling or bit reinterpretation",
                              "integration": "piecewise linear between adjacent sample timestamps, clipped to NVTX range; no extrapolation",
                              "scope_limitation": "sampling estimates, not per-kernel NCU counters or exact continuous hardware utilization",
                              "expected_sample_hz": expected_sample_hz, "max_gap_periods": max_gap_periods,
@@ -227,6 +236,8 @@ def summarize_nsys_metrics(sqlite_path, *, expected_sample_hz=1000.0, gpu_type_i
                     selection_error = "ambiguous_gpu_metric_stream" if type_ids else "gpu_metrics_not_collected"
             elif gpu_type_id not in type_ids:
                 selection_error = "requested_gpu_metric_stream_missing"
+            if selection_error is None and gpu_type_id is not None and len({s for t, s, unused in streams if t == gpu_type_id}) != 1:
+                selection_error = "ambiguous_gpu_metric_source"
             result["selected_type_id"] = gpu_type_id
             selected = [row for row in metadata if row[0] == gpu_type_id]
             result["unrecognized_metrics"] = [row[4] for row in selected if not _metric_kind(row[4])]
@@ -246,7 +257,9 @@ def summarize_nsys_metrics(sqlite_path, *, expected_sample_hz=1000.0, gpu_type_i
                     provenance = None
                     if records:
                         provenance = [{"type_id": r[0], "source_id": r[1], "type_name": r[2],
-                                       "metric_id": r[3], "metric_name": r[4], "unit": "%"} for r in records]
+                                       "type_name_empty": r[2] == "", "metric_id": r[3],
+                                       "metric_name": r[4], "unit": "%", "source_unit_label": _unit_label(r[4]),
+                                       "value_scale": 1.0} for r in records]
                     reasons = [selection_error] if selection_error else []
                     if not interval["valid"]:
                         reasons.append(interval["reason"])

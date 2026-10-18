@@ -54,6 +54,54 @@ class NsysMetricTests(unittest.TestCase):
         self.assertEqual(len(result["provenance"]["sha256"]), 64)
         self.assertIn("not per-kernel NCU", result["provenance"]["scope_limitation"])
 
+    def test_actual_export_empty_type_name_throughput_units_and_integer_percentages(self):
+        # Observed Nsight Systems 2023.4.4 schema: empty typeName is legal and
+        # type/source IDs are large serialized IDs, not CUDA device indices.
+        type_id = 281479271677952
+        with sqlite3.connect(self.path) as db:
+            db.execute("UPDATE TARGET_INFO_GPU_METRICS SET typeId=?,sourceId=?,typeName='',metricName=metricName || ' [Throughput %]'",
+                       (type_id, type_id))
+            db.execute("UPDATE GPU_METRICS SET typeId=?", (type_id,))
+        result = self.result()
+        self.assertEqual(result["status"], "sampled")
+        self.assertEqual(result["selected_type_id"], type_id)
+        self.assertEqual(result["available_streams"], [dict(type_id=type_id, source_id=type_id, type_name="")])
+        for metric in result["ranges"][0]["metrics"]:
+            self.assertEqual(metric["time_weighted_mean_pct"], 25.0)
+            self.assertEqual(metric["provenance"][0]["type_name"], "")
+            self.assertTrue(metric["provenance"][0]["type_name_empty"])
+            self.assertEqual(metric["provenance"][0]["source_unit_label"], "Throughput %")
+            self.assertEqual(metric["provenance"][0]["value_scale"], 1.0)
+
+    def test_throughput_label_does_not_rescale_or_accept_invalid_counter_values(self):
+        with sqlite3.connect(self.path) as db:
+            db.execute("UPDATE TARGET_INFO_GPU_METRICS SET typeName='',metricName=metricName || ' [Throughput %]'")
+            db.execute("UPDATE GPU_METRICS SET value=100000000 WHERE metricId=0 AND timestamp=5000000")
+        result = self.result(minimum_coverage=0.5)
+        self.assertEqual(self.metric(result)["status"], "unknown")
+        self.assertIsNone(self.metric(result)["time_weighted_mean_pct"])
+        self.assertEqual(self.metric(result)["source_rows"]["invalid_rows"], 1)
+        self.assertEqual(self.metric(result, "tensor_active_pct")["time_weighted_mean_pct"], 25.0)
+
+    def test_nonpercentage_unit_suffixes_remain_unknown(self):
+        for suffix in (" [Avg]", " [MHz]", " [Throughput GB/s]", " [Throughput %] Hz", " [%/s]"):
+            with self.subTest(suffix=suffix):
+                with sqlite3.connect(self.path) as db:
+                    db.execute("UPDATE TARGET_INFO_GPU_METRICS SET metricName=? WHERE metricId=0", ("SM Active" + suffix,))
+                metric = self.metric(self.result())
+                self.assertEqual(metric["status"], "unknown")
+                self.assertIn("metric_not_collected", metric["reason_codes"])
+                self.assertIsNone(metric["time_weighted_mean_pct"])
+
+    def test_empty_display_names_do_not_make_ambiguous_source_identifiers_safe(self):
+        with sqlite3.connect(self.path) as db:
+            db.execute("UPDATE TARGET_INFO_GPU_METRICS SET typeName=''")
+            db.execute("UPDATE TARGET_INFO_GPU_METRICS SET sourceId=2 WHERE metricId=1")
+        result = self.result()
+        self.assertEqual(result["status"], "unknown")
+        self.assertIn("ambiguous_gpu_metric_source", result["reason_codes"])
+        self.assertTrue(all(not metric["measured"] for metric in result["ranges"][0]["metrics"]))
+
     def test_irregular_spacing_is_time_weighted_and_range_clipped(self):
         with sqlite3.connect(self.path) as db:
             db.execute("DELETE FROM GPU_METRICS WHERE metricId=0")
@@ -97,6 +145,9 @@ class NsysMetricTests(unittest.TestCase):
         second = self.result(gpu_type_id=257)
         self.assertEqual(self.metric(second)["time_weighted_mean_pct"], 99)
         self.assertEqual(second["status"], "partial")
+        missing = self.result(gpu_type_id=999)
+        self.assertEqual(missing["status"], "unknown")
+        self.assertIn("requested_gpu_metric_stream_missing", missing["reason_codes"])
 
     def test_registered_nested_ranges_are_separate_and_incomplete_ranges_unknown(self):
         with sqlite3.connect(self.path) as db:

@@ -17,6 +17,7 @@ from ..common import file_hash as _hash
 
 
 _FRAMES = (17, 33, 65)
+_HARDWARE_STUDY_UNSET = object()
 _COLORS = ("#2563a6", "#d78028", "#2f987b", "#8f79ad")
 _PANELS = {
     "e2e": "旧正式样本 E2E 均值，误差线=min/max；每帧数三个不同prompt/seed，非重复计时置信区间",
@@ -78,11 +79,68 @@ def _rank_results(study, prefix=""):
                         yield rank, "%s/phases/%d/cells/%d/operations/%d/ranks/%d" % (prefix, p, c, o, r), phase
 
 
-def build_analysis(legacy_run, legacy_analysis, study=None, hardware=None):
+def _canonical_digest(value):
+    encoded = json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode()
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _hardware_binding(study, capture, source):
+    """Bind an independently collected hardware pass to its actual frozen run."""
+    run = study.get("run", study)
+    reasons = []
+    identity = {key: run.get(key) for key in ("run_id", "experiment", "config_sha256", "status")}
+    identity["source_sha256"] = _canonical_digest(run["source"]) if isinstance(run.get("source"), dict) else None
+    if run.get("schema") != "ditserve.run.v1":
+        reasons.append("hardware_study_schema_missing_or_invalid")
+    if run.get("status") not in ("completed", "incomplete"):
+        reasons.append("hardware_study_not_settled_or_failed")
+    if not all(isinstance(run.get(key), str) and run[key] for key in ("run_id", "experiment")):
+        reasons.append("hardware_study_identity_missing")
+    if not isinstance(run.get("config"), dict) or run.get("config_sha256") != _canonical_digest(run["config"]):
+        reasons.append("hardware_study_config_hash_mismatch")
+    if not isinstance(run.get("source"), dict) or not run["source"]:
+        reasons.append("hardware_study_source_missing")
+    if capture.get("schema") != "ditserve.wan_hardware_capture.v1":
+        reasons.append("independent_hardware_requires_bound_capture_wrapper")
+    preflight = capture.get("preflight", {})
+    if not isinstance(preflight, dict):
+        preflight = {}
+    if preflight.get("ready") is not True:
+        reasons.append("hardware_capture_preflight_unverified")
+    for key in ("config_sha256", "source_sha256"):
+        if not identity.get(key) or preflight.get(key) != identity[key]:
+            reasons.append("hardware_capture_" + key + "_mismatch")
+    # Older capture wrappers have work_dir but no explicit run_id.  Its final
+    # two path components carry the same experiment/run identity.  A declared
+    # run_id/experiment is additionally checked, never allowed to contradict it.
+    work = preflight.get("work_dir")
+    if not isinstance(work, str) or not work:
+        reasons.append("hardware_capture_work_dir_missing")
+    else:
+        work_path = Path(work).resolve()
+        if work_path.name != run.get("run_id") or work_path.parent.name != run.get("experiment"):
+            reasons.append("hardware_capture_run_identity_mismatch")
+        source_path = source.get("path")
+        if source_path and Path(source_path).name == "run.json" and Path(source_path).parent != work_path:
+            reasons.append("hardware_capture_run_path_mismatch")
+    for container in (preflight, capture):
+        for key in ("run_id", "experiment", "config_sha256", "source_sha256"):
+            if key in container and container[key] != identity.get(key):
+                reason = "hardware_capture_" + key + "_mismatch"
+                if reason not in reasons:
+                    reasons.append(reason)
+    return dict(status="verified" if not reasons else "unverified", validation_source="hardware_study",
+                identity=identity, reason_codes=reasons)
+
+
+def build_analysis(legacy_run, legacy_analysis, study=None, hardware=None,
+                   hardware_study=_HARDWARE_STUDY_UNSET):
     """Return bounded, JSON-safe plot values, provenance, definitions and gaps."""
     documents, sources = {}, []
+    independent_hardware = hardware_study is not _HARDWARE_STUDY_UNSET
     for label, value in (("legacy_run", legacy_run), ("legacy_analysis", legacy_analysis),
-                         ("study", study), ("hardware", hardware)):
+                         ("study", study), ("hardware", hardware),
+                         ("hardware_study", hardware_study if independent_hardware else None)):
         document, source, unused = _document(value, label)
         documents[label] = document
         sources.append(source)
@@ -136,10 +194,6 @@ def build_analysis(legacy_run, legacy_analysis, study=None, hardware=None):
     for rank, pointer, phase in _rank_results(documents["study"]):
         phase_valid = (phase.get("status") == "completed" and phase.get("qualification", {}).get("qualified") is True
                        and not phase.get("error") and not phase.get("final_occupancy", {}).get("foreign"))
-        if rank.get("mode") == "hardware":
-            if (phase_valid and rank.get("status") == "ok" and rank.get("numerical_validation", {}).get("passed") is True
-                    and phase.get("final_occupancy", {}).get("status") == "exclusive_observed"):
-                hardware_validations[rank.get("spec", {}).get("frames")].append(pointer)
         if rank.get("mode") != "trace":
             continue
         frames, profiler = rank.get("spec", {}).get("frames"), rank.get("profiler", {})
@@ -180,6 +234,42 @@ def build_analysis(legacy_run, legacy_analysis, study=None, hardware=None):
                     warnings.append("%s/%s/%s excluded %d unverified trace samples" %
                                     (panel, name, frames, len(samples) - len(valid)))
 
+    validation_source = "hardware_study" if independent_hardware else "study"
+    validation_study = documents[validation_source]
+    hardware_binding = (_hardware_binding(validation_study, documents["hardware"],
+                        next(source for source in sources if source["id"] == "hardware_study"))
+                        if independent_hardware else dict(status="shared_study_validation", validation_source="study",
+                                                         reason_codes=[]))
+    if hardware_binding["reason_codes"]:
+        warnings.extend(hardware_binding["reason_codes"])
+    clean_hashes = defaultdict(set)
+    if independent_hardware:
+        for rank, pointer, phase in _rank_results(validation_study):
+            if (phase.get("id") == "hardware_metrics" and phase.get("status") == "completed"
+                    and rank.get("mode") == "clean" and rank.get("status") == "ok"
+                    and rank.get("output", {}).get("finite") is True):
+                clean_hashes[_canonical_digest(rank.get("spec", {}))].add(rank.get("output", {}).get("sha256"))
+    for rank, pointer, phase in _rank_results(validation_study):
+        if rank.get("mode") != "hardware":
+            continue
+        occupancy = phase.get("final_occupancy", {})
+        phase_valid = (phase.get("status") == "completed" and phase.get("qualification", {}).get("qualified") is True
+                       and not phase.get("error") and occupancy.get("status") == "exclusive_observed"
+                       and not occupancy.get("foreign") and not occupancy.get("owned"))
+        numeric = rank.get("numerical_validation", {})
+        valid = phase_valid and rank.get("status") == "ok" and numeric.get("passed") is True and not rank.get("error")
+        if independent_hardware:
+            output = rank.get("output", {})
+            output_hash = output.get("sha256")
+            valid = (valid and hardware_binding["status"] == "verified" and phase.get("id") == "hardware_metrics"
+                     and occupancy.get("foreign") == [] and occupancy.get("owned") == []
+                     and output.get("finite") is True and isinstance(output_hash, str) and len(output_hash) == 64
+                     and all(char in "0123456789abcdef" for char in output_hash)
+                     and numeric.get("reference_sha256") == output_hash
+                     and clean_hashes[_canonical_digest(rank.get("spec", {}))] == {output_hash})
+        if valid:
+            hardware_validations[rank.get("spec", {}).get("frames")].append(pointer)
+
     hardware_groups = defaultdict(list)
     hardware_document = documents["hardware"]
     hardware_prefix, hardware_capture_valid = "", True
@@ -213,13 +303,16 @@ def build_analysis(legacy_run, legacy_analysis, study=None, hardware=None):
                         excluded_samples=len(samples) - len(valid),
                         coverage_fractions=[metric.get("coverage_fraction") for metric, unused in valid],
                         sample_counts=[metric.get("sample_count") for metric, unused in valid],
-                        validation_source="study", validation_source_pointers=hardware_validations[frames])
+                        validation_source=validation_source, validation_source_pointers=hardware_validations[frames],
+                        validation_binding_status=hardware_binding["status"])
     implementation = Path(__file__).resolve()
     return dict(schema="ditserve.wan_profile_figure.v1", frames=list(_FRAMES), sources=sources,
                 implementation=dict(path=str(implementation), bytes=implementation.stat().st_size,
                                     sha256=_hash(implementation)),
                 metrics=rows, panel_definitions=_PANELS, warnings=warnings,
                 study_status=documents["study"].get("run", documents["study"]).get("status", "not_provided"),
+                hardware_study_status=validation_study.get("run", validation_study).get("status", "not_provided"),
+                hardware_binding=hardware_binding,
                 historical_invalid_metrics_used=False,
                 status="complete" if all(row["value"] is not None for row in rows
                     if row["panel"] not in ("named_kernels",)) else "partial",
@@ -285,10 +378,12 @@ def render_figure(analysis, output_prefix):
                 ax.plot(x, y, marker="o", linewidth=2, markersize=5, color=color, linestyle=linestyle, label=label)
                 if annotate:
                     for xx, yy in zip(x, y):
-                        offset = -15 if (panel == "activity" and key == "request") or (
+                        offset = -15 if (panel in ("activity", "sm", "tensor") and
+                            (key == "request" or key.startswith("request/"))) or (
                             xx == 17 and (panel, key) in (("stages", "transformer"),
                                                           ("named_kernels", "Flash Attention"))) else 7
-                        ax.annotate("%.1f" % yy, (xx, yy), xytext=(0, offset), textcoords="offset points",
+                        text_offset = (22, -10) if xx == 17 and (panel, key) == ("stages", "transformer") else (0, offset)
+                        ax.annotate("%.1f" % yy, (xx, yy), xytext=text_offset, textcoords="offset points",
                                     ha="center", fontsize=9, color=color)
                 total += len(data)
             if total:
@@ -348,6 +443,9 @@ def render_figure(analysis, output_prefix):
         lines(axes[2, 2], "dram", [("request/dram_read_active_pct", "请求：读"),
               ("request/dram_write_active_pct", "请求：写"), ("denoise/dram_read_active_pct", "去噪：读"),
               ("denoise/dram_write_active_pct", "去噪：写")], annotate=False)
+        dram_values = [row["value"] for row in by_panel("dram") if row["value"] is not None]
+        if dram_values:
+            axes[2, 2].set_ylim(0, min(100, max(5, math.ceil(max(dram_values) * 1.25 / 5) * 5)))
         for ax, panel in ((axes[0, 0], "e2e"), (axes[0, 1], "stages"),
                           (axes[0, 2], "memory"), (axes[1, 0], "named_kernels")):
             values = [row.get("maximum", row["value"]) for row in by_panel(panel) if row["value"] is not None]
@@ -373,8 +471,9 @@ def render_figure(analysis, output_prefix):
     return output
 
 
-def generate_figure(legacy_run, legacy_analysis, output_prefix, *, study=None, hardware=None):
-    analysis = build_analysis(legacy_run, legacy_analysis, study=study, hardware=hardware)
+def generate_figure(legacy_run, legacy_analysis, output_prefix, *, study=None, hardware=None,
+                    hardware_study=_HARDWARE_STUDY_UNSET):
+    analysis = build_analysis(legacy_run, legacy_analysis, study=study, hardware=hardware, hardware_study=hardware_study)
     analysis["figures"] = render_figure(analysis, output_prefix)
     return analysis
 
@@ -385,11 +484,14 @@ def main():
     parser.add_argument("--legacy-analysis", default="results/wan-breakdown/analysis01")
     parser.add_argument("--study")
     parser.add_argument("--hardware-json")
+    parser.add_argument("--hardware-study", help="independent hardware run/archive; never falls back to --study when missing")
     parser.add_argument("--output-prefix", required=True)
     parser.add_argument("--analysis-json", help="optional temporary scalar analysis for archival; not a default extra result")
     args = parser.parse_args()
-    analysis = generate_figure(args.legacy_run, args.legacy_analysis, args.output_prefix,
-                               study=args.study, hardware=args.hardware_json)
+    options = dict(study=args.study, hardware=args.hardware_json)
+    if args.hardware_study is not None:
+        options["hardware_study"] = args.hardware_study
+    analysis = generate_figure(args.legacy_run, args.legacy_analysis, args.output_prefix, **options)
     if args.analysis_json:
         Path(args.analysis_json).write_text(json.dumps(analysis, ensure_ascii=False, indent=2, allow_nan=False) + "\n")
     print(json.dumps(dict(status=analysis["status"], figures=analysis["figures"],
