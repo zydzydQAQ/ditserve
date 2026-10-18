@@ -22,7 +22,7 @@ BACKENDS = {
     "environment": None,
 }
 SERVICE_OPERATIONS = {"results": ("finalize", "verify", "inspect", "compact"),
-                      "evaluation": ("evaluate",), "environment": ("inspect",)}
+                      "evaluation": ("evaluate",), "environment": ("inspect", "gpus")}
 
 
 def _operation(request):
@@ -76,8 +76,8 @@ class Worker:
         if cls is None:
             started = time.perf_counter()
             if self.name == "environment":
-                from .environment import inspect_environment
-                result = inspect_environment(request)
+                from .environment import gpu_inventory, inspect_environment
+                result = gpu_inventory() if op == "gpus" else inspect_environment(request)
             else:
                 from ..results import dispatch
                 result = dispatch(request, self.config)

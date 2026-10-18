@@ -29,7 +29,8 @@ include(CTest)
 add_library(ditserve_core
     src/ditserve/types.cpp
     src/ditserve/runtime/random.cpp src/ditserve/runtime/process.cpp
-    src/ditserve/control/budget.cpp src/ditserve/control/dispatch.cpp src/ditserve/control/cluster.cpp)
+    src/ditserve/control/budget.cpp src/ditserve/control/dispatch.cpp src/ditserve/control/cluster.cpp
+    src/ditserve/control/environment.cpp)
 target_include_directories(ditserve_core PUBLIC include)
 target_include_directories(ditserve_core SYSTEM PUBLIC "${JSON_CACHE}")
 target_link_libraries(ditserve_core PUBLIC Threads::Threads)
@@ -61,6 +62,9 @@ if(BUILD_TESTING)
     add_executable(control-tests tests/core/test_control.cpp)
     target_link_libraries(control-tests PRIVATE ditserve_core)
     add_test(NAME control-contracts COMMAND control-tests)
+    add_executable(environment-tests tests/core/test_environment.cpp)
+    target_link_libraries(environment-tests PRIVATE ditserve_core)
+    add_test(NAME environment-contracts COMMAND environment-tests)
     add_executable(command-tests tests/core/test_command.cpp)
     target_link_libraries(command-tests PRIVATE ditserve_application)
     add_test(NAME command-contracts COMMAND command-tests)

@@ -1,9 +1,11 @@
 #include "ditserve/interface/command.hpp"
 #include "ditserve/control/dispatch.hpp"
+#include "ditserve/control/environment.hpp"
 #include "ditserve/control/study.hpp"
 #include "ditserve/runtime/process.hpp"
 #include "ditserve/benchmark/cluster_sim.hpp"
 
+#include <openssl/sha.h>
 #include <algorithm>
 #include <array>
 #include <charconv>
@@ -11,8 +13,10 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <random>
+#include <sstream>
 #include <set>
 #include <stdexcept>
 #include <unistd.h>
@@ -51,6 +55,17 @@ Json read_config(const fs::path& path) {
     std::ifstream input(path);
     if (!input) throw std::invalid_argument("cannot read config: " + path.string());
     return read_json(input);
+}
+
+std::string file_sha256(const fs::path& path) {
+    std::ifstream input(path, std::ios::binary);
+    if (!input) throw std::invalid_argument("cannot read " + path.string());
+    const std::string text((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+    unsigned char bytes[SHA256_DIGEST_LENGTH];
+    SHA256(reinterpret_cast<const unsigned char*>(text.data()), text.size(), bytes);
+    std::ostringstream out;
+    for (auto byte : bytes) out << std::hex << std::setw(2) << std::setfill('0') << int(byte);
+    return out.str();
 }
 
 fs::path report_output(const fs::path& work, const fs::path& root) {
@@ -103,6 +118,61 @@ void normalize_environment(Json& request) {
     request["python"] = python;
 }
 
+Json service(const Json& request, const std::string& backend, Json action);
+
+// configs/ next to the sources, or share/ditserve/configs in an installation.
+fs::path configs_root(const Json& request) {
+    const fs::path root = request.at("root").get<std::string>();
+    for (const auto& candidate : {root / "configs", project_root() / "configs", project_root() / "share/ditserve/configs"})
+        if (fs::is_directory(candidate / "env")) return candidate;
+    throw std::invalid_argument("configs/env not found under the project root");
+}
+
+// The environment profile with its referenced files loaded, or null when none
+// is selected (--env NAME|PATH or DITSERVE_ENV). A bare name means
+// configs/env/NAME.json; profile and link references resolve the same way.
+Json load_environment(const Json& request) {
+    const auto selected = configured(request, "env", "DITSERVE_ENV");
+    if (selected.empty()) return nullptr;
+    const auto configs = configs_root(request);
+    auto locate = [&](const std::string& value, const fs::path& directory, const fs::path& base) {
+        return value.find('/') == std::string::npos && fs::path(value).extension() != ".json"
+            ? directory / (value + ".json") : absolute((base / value).string());
+    };
+    const auto path = locate(selected, configs / "env", fs::current_path());
+    Json env = read_config(path);
+    Json refs = Json::array();
+    if (env.contains("cost_profile") && env.at("cost_profile").is_string()) {
+        const auto profile = locate(env.at("cost_profile").get<std::string>(), configs / "profiles", path.parent_path());
+        env["cost_profile"] = read_config(profile);
+        refs.push_back({{"role", "cost_profile"}, {"path", profile.string()}, {"sha256", file_sha256(profile)}});
+    }
+    if (env.contains("links") && env.at("links").is_string()) {
+        const auto scenarios = configs / "profiles/link-scenarios.json";
+        const auto name = env.at("links").get<std::string>();
+        const auto all = read_config(scenarios);
+        if (!all.contains(name)) throw std::invalid_argument("unknown link scenario: " + name);
+        env["links"] = all.at(name);
+        refs.push_back({{"role", "links"}, {"scenario", name}, {"path", scenarios.string()}, {"sha256", file_sha256(scenarios)}});
+    }
+    if (env.contains("links") && env.contains("cost_profile") && env.at("cost_profile").is_object()) {
+        auto& profile = env["cost_profile"];
+        profile["links"] = env.at("links");
+        if (profile.value("provenance", "") == "measured" && !refs.empty() && refs.back().at("role") == "links") profile["provenance"] = "mixed";
+    }
+    const auto models_root = environment("DITSERVE_MODELS_ROOT");
+    if (!models_root.empty()) env["models_root"] = models_root;
+    env["provenance"] = {{"path", path.string()}, {"sha256", file_sha256(path)}, {"refs", refs},
+                         {"models_root_override", models_root.empty() ? Json() : Json(models_root)}};
+    return env;
+}
+
+// nvidia-smi's view of the node; RPC callers (tests) may supply it instead.
+Json gpu_inventory(const Json& request) {
+    if (request.contains("gpu_inventory")) return request.at("gpu_inventory");
+    return service(request, "environment", {{"op", "gpus"}}).at("gpus");
+}
+
 std::string new_run_id(bool synthetic) {
     std::random_device random;
     constexpr char digits[] = "0123456789abcdef";
@@ -120,6 +190,8 @@ void normalize_study(const std::string& command, Json& request) {
                                              {"seed", request.value("seed", Json(7))}}}};
     if (!request.contains("config") || !request.at("config").is_object())
         throw std::invalid_argument("config must be a JSON object or config file path");
+    const auto env = load_environment(request);
+    if (!env.is_null()) request["config"] = resolve_study(request.at("config"), env, synthetic ? Json() : gpu_inventory(request));
     // Simulations default to the "synthetic" experiment; a named what-if keeps its own results directory.
     const auto experiment = segment(string_field(request.at("config"), "experiment", synthetic ? "synthetic" : ""), "experiment");
     const bool resume = bool_field(request, "resume", false);
@@ -191,15 +263,16 @@ Arguments parse(int argc, char** argv) {
     if (result.command == "rpc") {
         if (remaining.size() != 1) throw std::invalid_argument("usage: ditserve rpc COMMAND < request.json");
         result.command = remaining.front(); result.rpc = true;
-        const std::set<std::string> commands = {"generate", "simulate", "control", "run", "simulate-study", "doctor", "report", "results"};
+        const std::set<std::string> commands = {"generate", "simulate", "control", "run", "simulate-study", "resolve", "doctor", "report", "results"};
         if (!commands.count(result.command)) throw std::invalid_argument("unknown RPC command: " + result.command);
         return result;
     }
     std::set<std::string> allowed;
     bool path_required = false;
-    if (result.command == "run") allowed = {"config", "run-id", "work-dir", "results-root", "ledger", "phase", "resume", "allow-gpu", "repair", "retry-of"};
-    else if (result.command == "simulate") allowed = {"config", "run-id", "work-dir", "results-root", "count", "seed", "keep-raw"};
-    else if (result.command == "doctor") {}
+    if (result.command == "run") allowed = {"config", "env", "run-id", "work-dir", "results-root", "ledger", "phase", "resume", "allow-gpu", "repair", "retry-of"};
+    else if (result.command == "simulate") allowed = {"config", "env", "run-id", "work-dir", "results-root", "count", "seed", "keep-raw"};
+    else if (result.command == "resolve") allowed = {"config", "env"};
+    else if (result.command == "doctor") allowed = {"env", "allow-gpu"};
     else if (result.command == "report") { allowed = {"output", "keep-raw"}; path_required = true; }
     else if (result.command == "compact-results") {
         result.command = "results"; result.request["op"] = "compact";
@@ -247,25 +320,28 @@ Arguments parse(int argc, char** argv) {
     if (positional.size() != static_cast<std::size_t>(path_required))
         throw std::invalid_argument(path_required ? "exactly one path is required" : "unexpected positional argument");
     if (path_required) result.request[result.command == "report" ? "work_dir" : "path"] = positional.front();
-    if (result.command == "run" && !result.request.contains("config")) throw std::invalid_argument("run requires --config");
+    if ((result.command == "run" || result.command == "resolve") && !result.request.contains("config"))
+        throw std::invalid_argument(result.command + " requires --config");
     return result;
 }
 
 void help() {
     std::cout << "ditserve " DITSERVE_VERSION " — native C++ experiment controller\n"
         "Usage: ditserve [--json] [--root PATH] [--python PROGRAM] [--package-root PATH] COMMAND\n\n"
-        "  doctor\n"
-        "  simulate [--config PATH] [--count N] [--seed N] [--keep-raw]\n"
+        "  doctor [--env NAME|PATH] [--allow-gpu]\n"
+        "  simulate [--config PATH] [--env NAME|PATH] [--count N] [--seed N] [--keep-raw]\n"
         "           [--run-id ID] [--work-dir PATH] [--results-root PATH]\n"
-        "  run --config PATH [--run-id ID] [--work-dir PATH] [--results-root PATH]\n"
+        "  run --config PATH [--env NAME|PATH] [--run-id ID] [--work-dir PATH] [--results-root PATH]\n"
         "      [--ledger PATH] [--phase ID] [--resume] [--allow-gpu] [--repair --retry-of ID]\n"
+        "  resolve --config PATH --env NAME|PATH   print the study bound to this machine\n"
         "  report WORK_DIR [--output PATH] [--keep-raw]\n"
         "  results inspect|verify PATH\n"
         "  results compact ROOT [--destination PATH] [--prune-raw]\n"
         "  compact-results ROOT [--destination PATH] [--prune-raw]\n"
-        "  rpc generate|simulate|control|run|simulate-study|doctor|report|results < request.json\n\n"
+        "  rpc generate|simulate|control|run|simulate-study|resolve|doctor|report|results < request.json\n\n"
         "Global options work before or after commands. --help and --version need no Python.\n"
-        "DITSERVE_ROOT, DITSERVE_PYTHON and DITSERVE_PACKAGE_ROOT provide defaults.\n";
+        "DITSERVE_ROOT, DITSERVE_PYTHON, DITSERVE_PACKAGE_ROOT, DITSERVE_ENV and\n"
+        "DITSERVE_MODELS_ROOT provide defaults.\n";
 }
 
 Json pure_rpc(const std::string& command, const Json& request) {
@@ -339,8 +415,15 @@ Json service(const Json& request, const std::string& backend, Json action) {
 Json dispatch(const std::string& command, Json request) {
     if (!request.is_object()) throw std::invalid_argument("request must be a JSON object");
     if (command == "generate" || command == "simulate" || command == "control") return pure_rpc(command, request);
-    if (command != "run" && command != "simulate-study" && command != "doctor" && command != "report" && command != "results")
+    if (command != "run" && command != "simulate-study" && command != "resolve" && command != "doctor" && command != "report" && command != "results")
         throw std::invalid_argument("unknown RPC command: " + command);
+    if (command == "resolve") {
+        normalize_environment(request);
+        if (request.at("config").is_string()) request["config"] = read_config(absolute(request.at("config").get<std::string>()));
+        const auto env = load_environment(request);
+        if (env.is_null()) throw std::invalid_argument("resolve requires --env or DITSERVE_ENV");
+        return resolve_study(request.at("config"), env, request.at("config").contains("phases") ? gpu_inventory(request) : Json());
+    }
     request = normalize_request(command, std::move(request));
     if (command == "run") return run_study(request);
     if (command == "simulate-study") return simulate_study(request);

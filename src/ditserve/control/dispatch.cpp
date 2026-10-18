@@ -173,6 +173,34 @@ Json kind_summary(const Json& rows, const std::string& kind) {
             {"latency_p50_ms",at(.5)},{"latency_p95_ms",at(.95)},{"latency_p99_ms",at(.99)}};
 }
 
+namespace {
+// JSON pointers where a "*" segment matches every element or member; a
+// gate over a wildcard needs every match to pass and at least one match.
+void expand_pointer(const Json& value, const std::vector<std::string>& parts, std::size_t index,
+                    const std::string& prefix, std::vector<std::string>& out) {
+    if (index == parts.size()) { out.push_back(prefix); return; }
+    if (parts[index] != "*") {
+        const auto path = prefix + "/" + parts[index];
+        if (value.contains(Json::json_pointer(path))) expand_pointer(value, parts, index + 1, path, out);
+        return;
+    }
+    const auto& node = prefix.empty() ? value : value.at(Json::json_pointer(prefix));
+    if (node.is_array()) for (std::size_t i = 0; i < node.size(); ++i) expand_pointer(value, parts, index + 1, prefix + "/" + std::to_string(i), out);
+    else if (node.is_object()) for (auto it = node.begin(); it != node.end(); ++it) expand_pointer(value, parts, index + 1, prefix + "/" + it.key(), out);
+}
+std::vector<std::string> gate_paths(const Json& evidence, const std::string& path) {
+    if (path.find("/*") == std::string::npos) { Json::json_pointer pointer(path); return {path}; }
+    std::vector<std::string> parts;
+    std::size_t start = 1;
+    if (path.empty() || path.front() != '/') throw std::invalid_argument("gate metric must be a JSON pointer");
+    for (std::size_t end; (end = path.find('/', start)) != std::string::npos; start = end + 1) parts.push_back(path.substr(start, end - start));
+    parts.push_back(path.substr(start));
+    std::vector<std::string> out;
+    expand_pointer(evidence, parts, 0, "", out);
+    return out;
+}
+}
+
 Json evaluate_gates(const Json& evidence,const Json& rules) {
     if(!rules.is_array()) throw std::invalid_argument("gates must be an array");
     Json checks=Json::array(); bool qualified=!rules.empty();
@@ -183,17 +211,22 @@ Json evaluate_gates(const Json& evidence,const Json& rules) {
         const auto scope=rule.value("scope","numeric");
         if(!scopes.contains(scope))throw std::invalid_argument("gate scope must be numeric, semantic or performance");
         const auto path=rule.at("metric").get<std::string>();
-        const Json::json_pointer pointer(path);
-        const bool present=evidence.contains(pointer) && !evidence.at(pointer).is_null();
         const auto op=rule.value("op","ge");
         if(op!="eq" && op!="ge" && op!="le" && op!="gt" && op!="lt") throw std::invalid_argument("unknown gate comparison");
-        const Json actual=present?evidence.at(pointer):Json(nullptr), expected=rule.at("value");
+        const Json expected=rule.at("value");
         const double threshold=op=="eq"?0:signed_number(expected,"gate threshold");
-        bool passed=false;
-        if(present) {
-            if(op=="eq") passed=actual==expected;
-            else {const double a=signed_number(actual,path);passed=op=="ge"?a>=threshold:op=="le"?a<=threshold:op=="gt"?a>threshold:a<threshold;}
+        const auto paths=gate_paths(evidence,path);
+        bool present=!paths.empty(),passed=present;
+        Json actual=paths.size()==1||path.find("/*")==std::string::npos?Json(nullptr):Json::array();
+        for(const auto& item:paths){
+            const Json::json_pointer pointer(item);
+            if(!evidence.contains(pointer) || evidence.at(pointer).is_null()){present=passed=false;continue;}
+            const auto& value=evidence.at(pointer);
+            if(actual.is_array())actual.push_back(value);else actual=value;
+            const bool ok=op=="eq"?value==expected:[&]{const double a=signed_number(value,item);return op=="ge"?a>=threshold:op=="le"?a<=threshold:op=="gt"?a>threshold:a<threshold;}();
+            passed=passed&&ok;
         }
+        passed=present&&passed;
         qualified=qualified&&passed;
         auto& group=scopes[scope];
         group["checks"]=group["checks"].get<int>()+1;

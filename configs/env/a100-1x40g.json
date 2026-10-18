@@ -1,0 +1,82 @@
+{
+  "schema": "ditserve.env.v1",
+  "name": "a100-1x40g",
+  "description": "Development host: one A100 PCIe 40GB. The V100 beside it belongs to another project and is pinned out.",
+  "gpus": {
+    "count": 1,
+    "uuids": [
+      "GPU-3ab2fedc-ccc1-007d-f4a1-b6058b3479a3"
+    ],
+    "forbid_uuids": [
+      "GPU-a058066e-bde9-c534-efb1-d2a68c117681"
+    ],
+    "name_contains": "A100",
+    "min_memory_mib": 40000
+  },
+  "models_root": "/models",
+  "models": {
+    "wan2.1-t2v-1.3b": {
+      "path": "wan2.1-t2v-1.3b",
+      "model_id": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+      "revision": "0fad780a534b6463e45facd96134c9f345acfa5b"
+    },
+    "sana-sprint-0.6b": {
+      "path": "sana-sprint-0.6b",
+      "model_id": "Efficient-Large-Model/Sana_Sprint_0.6B_1024px_diffusers",
+      "revision": "aa76e7f4f4928f378716b6716a2130fba3caf5b1"
+    }
+  },
+  "worker_environment": {
+    "OMP_NUM_THREADS": "8",
+    "MKL_NUM_THREADS": "8",
+    "OPENBLAS_NUM_THREADS": "8",
+    "TOKENIZERS_PARALLELISM": "false"
+  },
+  "backends": {
+    "wan": {
+      "attention": "flash"
+    }
+  },
+  "cost_profile": "a100-pcie-40g",
+  "serving_classes": [
+    {
+      "class": "wan1.3b-480x832x17",
+      "kind": "video",
+      "weight": 1,
+      "slo_scale": 2.5,
+      "spec": {
+        "height": 480,
+        "width": 832,
+        "frames": 17,
+        "steps": 20,
+        "guidance_scale": 5.0,
+        "negative_prompt": ""
+      }
+    },
+    {
+      "class": "wan1.3b-480x832x33",
+      "kind": "video",
+      "weight": 1,
+      "slo_scale": 2.5,
+      "spec": {
+        "height": 480,
+        "width": 832,
+        "frames": 33,
+        "steps": 20,
+        "guidance_scale": 5.0,
+        "negative_prompt": ""
+      }
+    },
+    {
+      "class": "sana-1024",
+      "kind": "image",
+      "weight": 8,
+      "slo_scale": 2.5
+    }
+  ],
+  "host": {
+    "min_ram_gib": 48,
+    "min_shm_gib": 1,
+    "text_encoder_gib_per_wan_worker": 23
+  }
+}

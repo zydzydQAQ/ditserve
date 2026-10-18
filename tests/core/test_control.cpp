@@ -49,6 +49,14 @@ void gates() {
                                                         {{"metric","/blind_review"},{"scope","semantic"},{"value",1}}}));
     require(scoped["scopes"]["performance"]["status"]=="passed" && scoped["scopes"]["semantic"]["status"]=="unverified" &&
             scoped["qualified"]==false,"missing semantic evidence was upgraded by performance evidence");
+    // A "*" segment gates every rank: all matches pass, none means unverified.
+    const Json ranks = {{"cells",Json::array({{{"ranks",Json::array({{{"exact",true}},{{"exact",true}}})}}})}};
+    const Json every = Json::array({{{"metric","/cells/0/ranks/*/exact"},{"op","eq"},{"value",true}}});
+    require(evaluate_gates(ranks,every)["qualified"]==true,"every rank passed");
+    Json one_bad = ranks; one_bad["cells"][0]["ranks"][1]["exact"]=false;
+    require(evaluate_gates(one_bad,every)["checks"][0]["status"]=="failed","one failing rank fails the gate");
+    Json none = ranks; none["cells"][0]["ranks"]=Json::array();
+    require(evaluate_gates(none,every)["checks"][0]["status"]=="unverified","no ranks is not a pass");
     const auto absent = evaluate_gates(evidence, Json::array({{{"metric","/missing"},{"op","ge"},{"value",1}}}));
     require(absent["qualified"] == false && absent["checks"][0]["status"] == "unverified", "missing evidence was treated as success");
     require(evaluate_gates(evidence, Json::array())["status"] == "unverified", "no gates implied scientific qualification");

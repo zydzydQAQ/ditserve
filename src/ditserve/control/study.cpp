@@ -504,16 +504,24 @@ Json operations(const Json& phase,Workers& workers,Budget& budget,Json& record,c
         // Create children on the controlling thread; each call then owns one
         // independent pipe while collective ranks progress concurrently.
         std::vector<Worker*> group;for(const auto& name:names)group.push_back(&workers.get(name.get<std::string>()));
-        for(std::size_t rank=0;rank<group.size();++rank){
-            auto message=action;message["op"]=message.value("op","distributed");message["rank"]=rank;message["world_size"]=group.size();
+        // An action may address a subset of ranks, e.g. export on one GPU
+        // and import on another; the others skip it.
+        std::vector<std::size_t> called;
+        if(action.contains("ranks")){for(const auto& rank:action.at("ranks")){const auto r=static_cast<std::size_t>(integer(rank,"rank"));if(r>=group.size())throw std::invalid_argument("action rank outside the phase workers");called.push_back(r);}}
+        else for(std::size_t rank=0;rank<group.size();++rank)called.push_back(rank);
+        for(const auto rank:called){
+            auto message=action;message.erase("ranks");message["op"]=message.value("op","distributed");message["rank"]=rank;message["world_size"]=group.size();
             if(message.contains("per_rank")){message.merge_patch(message.at("per_rank").at(rank));message.erase("per_rank");}
+            // Relative paths are private to a rank; @cell/ names a file every rank of the cell can reach.
             for(const auto* field:{"output_path","output","reference","path"})if(message.contains(field)&&message[field].is_string()){
-                fs::path path=message[field].get<std::string>();if(path.is_relative())message[field]=(cell_dir/"artifacts"/std::to_string(rank)/path).string();
+                const auto text=message[field].get<std::string>();fs::path path=text;
+                if(text.rfind("@cell/",0)==0)message[field]=(cell_dir/"artifacts"/"shared"/text.substr(6)).string();
+                else if(path.is_relative())message[field]=(cell_dir/"artifacts"/std::to_string(rank)/path).string();
             }
             pending.push_back(std::async(std::launch::async,[&,rank,message]{return group[rank]->call(message,budget.deadline());}));
         }
         Json results=Json::array();std::exception_ptr error;
-        for(std::size_t rank=0;rank<pending.size();++rank)try{auto result=pending[rank].get();result["worker_pid"]=group[rank]->process->pid();add_artifacts(record,result,work,phase.value("artifact_dependencies",Json::array()));results.push_back(result);}catch(...){if(!error)error=std::current_exception();}
+        for(std::size_t index=0;index<pending.size();++index)try{auto result=pending[index].get();result["worker_pid"]=group[called[index]]->process->pid();result["rank"]=called[index];add_artifacts(record,result,work,phase.value("artifact_dependencies",Json::array()));results.push_back(result);}catch(...){if(!error)error=std::current_exception();}
         if(error)std::rethrow_exception(error);
         rows.push_back({{"action",action},{"ranks",results}});
     }

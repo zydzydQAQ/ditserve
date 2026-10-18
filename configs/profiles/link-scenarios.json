@@ -1,0 +1,6 @@
+{
+  "note": "Assumed per-rank Ulysses all-to-all bandwidth (GB/s) and per-collective latency by SP degree, used until collectives are measured on the machine (python -m ditserve.evaluation.collectives). p2p_switch: GPUs pairwise under PCIe switches; host_staged: no GPU peer-to-peer, NCCL through host memory (consumer cards such as the RTX 4090).",
+  "p2p_switch": {"2": {"gbps": 20, "latency_ms": 0.03}, "4": {"gbps": 12, "latency_ms": 0.04}, "8": {"gbps": 6, "latency_ms": 0.06}},
+  "optimistic": {"2": {"gbps": 22, "latency_ms": 0.02}, "4": {"gbps": 18, "latency_ms": 0.03}, "8": {"gbps": 12, "latency_ms": 0.04}},
+  "host_staged": {"2": {"gbps": 10, "latency_ms": 0.05}, "4": {"gbps": 6, "latency_ms": 0.06}, "8": {"gbps": 3, "latency_ms": 0.08}}
+}

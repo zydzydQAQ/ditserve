@@ -92,5 +92,10 @@ def run(config, *, core=None, **options):
     return _call("run", core, dict(options, config=config))
 
 
+def resolve(config, *, core=None, **options):
+    """The study bound to an environment profile; options include env and gpu_inventory."""
+    return _call("resolve", core, dict(options, config=config))
+
+
 def simulate(config=None, *, core=None, **options):
     return _call("simulate-study", core, dict(options, config=config))

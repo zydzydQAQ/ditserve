@@ -1,0 +1,78 @@
+{
+  "schema": "ditserve.env.v1",
+  "name": "rtx4090-2x24g",
+  "description": "Two RTX 4090 24GB consumer cards. No GPU peer-to-peer, so NCCL stages through host memory (host_staged links until collectives are measured). Fill cost_profile from the cost_profile study before serving runs.",
+  "gpus": {
+    "count": 2,
+    "name_contains": "RTX 4090",
+    "min_memory_mib": 23000
+  },
+  "models_root": "/models",
+  "models": {
+    "wan2.1-t2v-1.3b": {
+      "path": "wan2.1-t2v-1.3b",
+      "model_id": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+      "revision": "0fad780a534b6463e45facd96134c9f345acfa5b"
+    },
+    "sana-sprint-0.6b": {
+      "path": "sana-sprint-0.6b",
+      "model_id": "Efficient-Large-Model/Sana_Sprint_0.6B_1024px_diffusers",
+      "revision": "aa76e7f4f4928f378716b6716a2130fba3caf5b1"
+    }
+  },
+  "worker_environment": {
+    "OMP_NUM_THREADS": "8",
+    "MKL_NUM_THREADS": "8",
+    "OPENBLAS_NUM_THREADS": "8",
+    "TOKENIZERS_PARALLELISM": "false",
+    "NCCL_P2P_DISABLE": "1"
+  },
+  "backends": {
+    "wan": {
+      "attention": "flash"
+    }
+  },
+  "cost_profile": null,
+  "links": "host_staged",
+  "serving_classes": [
+    {
+      "class": "wan1.3b-480x832x17",
+      "kind": "video",
+      "weight": 1,
+      "slo_scale": 2.5,
+      "spec": {
+        "height": 480,
+        "width": 832,
+        "frames": 17,
+        "steps": 20,
+        "guidance_scale": 5.0,
+        "negative_prompt": ""
+      }
+    },
+    {
+      "class": "wan1.3b-480x832x33",
+      "kind": "video",
+      "weight": 1,
+      "slo_scale": 2.5,
+      "spec": {
+        "height": 480,
+        "width": 832,
+        "frames": 33,
+        "steps": 20,
+        "guidance_scale": 5.0,
+        "negative_prompt": ""
+      }
+    },
+    {
+      "class": "sana-1024",
+      "kind": "image",
+      "weight": 8,
+      "slo_scale": 2.5
+    }
+  ],
+  "host": {
+    "min_ram_gib": 64,
+    "min_shm_gib": 16,
+    "text_encoder_gib_per_wan_worker": 23
+  }
+}
