@@ -7,7 +7,10 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from test_model_state import fixture
+try:  # discover puts tests/python on sys.path; module-path runs do not
+    from test_model_state import fixture
+except ImportError:
+    from tests.python.test_model_state import fixture
 
 
 def tiny_model(torch):
