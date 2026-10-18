@@ -16,7 +16,7 @@ std::string degree_key(int degree) { return std::to_string(degree); }
 struct Policy {
     int fixed_degree = 0;    // static_spK
     bool elastic = false;    // regroup at step boundaries
-    bool blocks = false;     // advance in block quanta, lazy intra-step preemption
+    bool blocks = false;     // advance in time-targeted block quanta, preempt inside steps
 };
 Policy parse(const std::string& name) {
     Policy policy;
@@ -116,7 +116,49 @@ double ClusterCost::remaining_ms(const Json& request, int degree) const {
     return total + (decode_chunks(name) - std::min(int_field(request, "decode_done", 0, 0), decode_chunks(name))) * chunk_ms(name);
 }
 
+Json resolve_generator(const Json& generator, const ClusterCost& cost, int gpus) {
+    if (gpus < 1) throw std::invalid_argument("generator capacity needs at least one GPU");
+    Json result = generator;
+    Json derived = Json::object();
+    if (generator.contains("count_per_gpu")) {
+        if (generator.contains("count")) throw std::invalid_argument("give count or count_per_gpu, not both");
+        result["count"] = int_field(generator, "count_per_gpu", 0, 0) * gpus;
+        result.erase("count_per_gpu");
+    }
+    auto& classes = result["classes"];
+    if (!classes.is_array()) return result;
+    // Per-class standalone service: the GPU time of one request alone, plus
+    // its CPU prompt encoding for the SLO base. Prefetched encoding overlaps
+    // GPU work, so capacity counts GPU time only.
+    double weight = 0, gpu_ms = 0;
+    for (auto& c : classes) {
+        const auto name = c.at("class").get<std::string>();
+        const auto& row = cost.klass(name);
+        double service, encode = 0;
+        if (row.at("kind") == "video") {
+            const int steps = int_field(c.value("spec", Json::object()), "steps", int_field(row, "steps", 0), 1);
+            service = number_field(row, "prepare_ms") + steps * cost.step_ms(name, 1) + number_field(row, "finish_ms");
+            encode = number_field(row, "encode_ms");
+        } else service = number_field(row, "service_ms", 0, true);
+        if (!c.contains("service_ms")) c["service_ms"] = encode + service;
+        const double w = number_field(c, "weight", 1, true);
+        weight += w; gpu_ms += w * service;
+    }
+    derived["mean_gpu_service_ms"] = gpu_ms / weight;
+    derived["capacity_rps"] = gpus * 1000 / derived["mean_gpu_service_ms"].get<double>();
+    if (generator.contains("load")) {
+        if (generator.contains("rate_rps")) throw std::invalid_argument("give load or rate_rps, not both");
+        const double load = number_field(generator, "load", 0, true);
+        result["rate_rps"] = load * derived["capacity_rps"].get<double>();
+        derived["load"] = load;
+        result.erase("load");
+    }
+    result["derived"] = derived;
+    return result;
+}
+
 Json cluster_plan(const Json& state, const std::string& name, const ClusterCost& cost, const Json& options) {
+    check_keys(options, {"degrees", "quantum_ms", "pin_started", "reserve_image_gpus", "demote_late", "late_short_ms", "chunked_decode"});
     const Policy policy = parse(name);
     const double now = number(state.at("now_ms"), "now_ms");
     const int gpus = static_cast<int>(integer(state.at("gpus"), "gpus"));
@@ -126,17 +168,16 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     if (cluster_groups(gpus, degrees).empty()) throw std::invalid_argument("no SP group fits the cluster");
     // Every aligned group stays addressable: a class minimum can exceed the policy's degrees.
     const auto groups = cluster_groups(gpus, {1, 2, 4, 8});
-    const int quantum_blocks = int_field(options, "quantum_blocks", 4);
-    // Optional time target: blocks per quantum follow the class and SP degree,
-    // so a preemption check happens about every quantum_ms of GPU work.
+    // Time target: blocks per quantum follow the class and SP degree, so a
+    // preemption check happens about every quantum_ms of GPU work whatever the
+    // hardware. It also sizes chunked-decode quanta for every policy.
     const double quantum_ms = number_field(options, "quantum_ms", 0);
+    if (policy.blocks && quantum_ms <= 0) throw std::invalid_argument("block_elastic requires options.quantum_ms > 0");
     auto video_quantum = [&](const std::string& klass, int degree) -> Json {
         if (!policy.blocks) return "step";
-        if (quantum_ms <= 0) return quantum_blocks;
         const int blocks = static_cast<int>(std::floor(quantum_ms / cost.block_ms(klass, degree)));
         return std::max(1, std::min(blocks, cost.blocks_per_step(klass)));
     };
-    const bool lazy = bool_field(options, "lazy_preemption", true);
     // Real backends without state migration keep a started request on its group.
     const bool pin_started = bool_field(options, "pin_started", false);
     // Static partition baseline: the last R GPUs serve images only.
@@ -192,13 +233,6 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         if (int_field(*r, "decode_done", 0, 0) > 0) mid_owner[group_of(*r).front()] = r;
         else if (int_field(*r, "blocks_done", 0, 0) > 0) for (int gpu : group_of(*r)) mid_owner[gpu] = r;
     }
-    auto time_to_boundary = [&](const Json* r) {
-        const auto group = group_of(*r);
-        const auto klass = r->at("class").get<std::string>();
-        if (int_field(*r, "decode_done", 0, 0) > 0)
-            return (cost.decode_chunks(klass) - int_field(*r, "decode_done", 0, 0)) * cost.chunk_ms(klass);
-        return (cost.blocks_per_step(klass) - int_field(*r, "blocks_done", 0, 0)) * cost.block_ms(klass, static_cast<int>(group.size()));
-    };
     auto all_free = [&](const std::vector<int>& group) {
         return std::all_of(group.begin(), group.end(), [&](int gpu) { return free[gpu]; });
     };
@@ -210,18 +244,16 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         const auto id = r.at("request_id").get<std::string>();
         const auto klass = r.at("class").get<std::string>();
         if (r.at("kind") == "image") {
-            const double slack = number_field(r, "deadline_ms") - now - cost.remaining_ms(r, 1);
             int chosen = -1, rank = 3;  // -1 reserved, 0 idle, 1 step-boundary video group, 2 mid-step group
             for (int gpu = 0; gpu < gpus; ++gpu) {
                 if (!free[gpu]) continue;
-                // Prefer idle GPUs; then GPUs of videos at step boundaries; a
-                // mid-step group only when waiting for its boundary would miss.
+                // Prefer idle GPUs, then GPUs of videos at step boundaries,
+                // then a group suspended inside a step (block preemption).
                 int score = reserved(gpu) ? -1 : mid_owner[gpu] ? 2 : 0;
                 if (!score) for (const Json* other : rows) if (other->at("kind") == "video") {
                     const auto group = group_of(*other);
                     if (std::find(group.begin(), group.end(), gpu) != group.end()) score = 1;
                 }
-                if (score == 2 && policy.blocks && lazy && slack >= time_to_boundary(mid_owner[gpu])) continue;
                 if (score < rank) { rank = score; chosen = gpu; }
             }
             if (chosen < 0) continue;
@@ -239,12 +271,12 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                 free[current.front()] = false;
                 Json assignment = {{"request_id", id}, {"group", Json::array({current.front()})}, {"degree", 1}, {"quantum", "finish"},
                                    {"resize", false}, {"reason", "decode"}};
-                // Chunked decode: frames per quantum follow quantum_ms, else decode_chunk_frames.
+                // Chunked decode: latent frames per quantum follow quantum_ms.
                 const int chunks = cost.decode_chunks(klass), done = int_field(r, "decode_done", 0, 0);
-                int frames = int_field(options, "decode_chunk_frames", 0, 0);
-                if (chunks > 1 && quantum_ms > 0 && bool_field(options, "chunked_decode", true))
-                    frames = std::max(1, static_cast<int>(std::floor(quantum_ms / cost.chunk_ms(klass))));
-                if (chunks > 1 && frames > 0) assignment["decode_frames"] = std::min(frames, chunks - done);
+                if (chunks > 1 && quantum_ms > 0 && bool_field(options, "chunked_decode", true)) {
+                    const int frames = std::max(1, static_cast<int>(std::floor(quantum_ms / cost.chunk_ms(klass))));
+                    assignment["decode_frames"] = std::min(frames, chunks - done);
+                }
                 assignments.push_back(assignment);
             }
             continue;

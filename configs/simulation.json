@@ -20,5 +20,6 @@
   },
   "gpus": 4,
   "policies": ["static_sp1", "static_sp4", "step_elastic", "block_elastic"],
+  "options": {"quantum_ms": 250},
   "matrix": {"/generator/rate_rps": [1, 2], "/gpus": [2, 4]}
 }

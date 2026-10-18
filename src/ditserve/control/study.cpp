@@ -230,6 +230,15 @@ void note_calls(Json& row,const Json& ops){
     }
 }
 
+// Requests of a cluster phase or simulation cell; a generator's load and
+// per-class service come from the cost profile and the GPU count.
+Json phase_workload(const Json& phase,const ClusterCost& cost,int gpus,Json* derived=nullptr){
+    if(!phase.contains("generator"))return study_workload(phase);
+    Json resolved=phase;resolved["generator"]=resolve_generator(phase.at("generator"),cost,gpus);
+    if(derived)*derived=resolved["generator"]["derived"];
+    return study_workload(resolved);
+}
+
 // Untimed preparation before the trace clock starts. Model loading, kernel
 // selection and allocator growth must not be charged to the first arrivals;
 // every warmup state is released before the replay begins.
@@ -270,12 +279,13 @@ Json warmup(const Json& phase,Workers& workers,Budget& budget) {
 // Real backends are limited to pinned SP1 until SP block execution and
 // cross-GPU state transfer are validated; the mock backend exercises the rest.
 Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,const fs::path& work) {
-    Json rows=study_workload(phase);
     const ClusterCost cost(phase.at("profile"));
     const auto policy=phase.at("policy").get<std::string>();
     Json options=phase.value("options",Json::object());
     const auto slots=phase.at("gpus");
     const int gpus=static_cast<int>(slots.size());
+    Json derived=nullptr;
+    Json rows=phase_workload(phase,cost,gpus,&derived);
     bool fixtures=true;
     for(const auto& slot:slots)fixtures=fixtures&&workers.backend(slot.at("video").get<std::string>())=="mock";
     if(!fixtures){
@@ -461,6 +471,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                     {"arrival_ms",row.at("arrival_ms")},{"deadline_ms",row.at("deadline_ms")},{"status",state.status},{"ready",true},
                     {"prepared",state.prepared},{"steps_done",state.steps},{"blocks_done",state.blocks},{"group",state.group},{"decode_done",state.decode_done}};
                 if(state.total>0)view["steps_total"]=state.total;
+                else if(row.contains("steps_total"))view["steps_total"]=row.at("steps_total");
                 if(!state.prepared&&!state.ticket.empty())view["affinity"]=state.encode_gpu;
                 requests.push_back(view);
             }
@@ -479,7 +490,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     for(auto& row:rows)row.erase("preempting");
     return {{"requests",rows},{"metrics",request_summary(rows)},{"elapsed_ms",now()},{"warmup",warmed},
             {"by_kind",{{"video",kind_summary(rows,"video")},{"image",kind_summary(rows,"image")}}},
-            {"policy",policy},{"gpus",gpus},{"real_backends_pinned_sp1",!fixtures}};
+            {"policy",policy},{"gpus",gpus},{"real_backends_pinned_sp1",!fixtures},{"generator",derived}};
 }
 
 Json operations(const Json& phase,Workers& workers,Budget& budget,Json& record,const fs::path& work,const fs::path& cell_dir){
@@ -649,7 +660,6 @@ void validate(const Json& config){
                 known(item.at("worker").get<std::string>());
                 if(item.contains("spec")&&!item.at("spec").is_object())throw std::invalid_argument("warmup spec must be an object");
             }
-            const auto rows=study_workload(cell);if(rows.empty())throw std::invalid_argument("phase workload must be nonempty");
             // Slots name the per-GPU video and image workers; rows name cost classes.
             const auto& slots=cell.at("gpus");
             if(!slots.is_array()||slots.empty())throw std::invalid_argument("cluster gpus must be a nonempty array of worker slots");
@@ -659,7 +669,9 @@ void validate(const Json& config){
                 if(!names.insert(name).second)throw std::invalid_argument("each cluster slot needs its own workers");
             }
             const ClusterCost cost(cell.at("profile"));
+            const auto rows=phase_workload(cell,cost,static_cast<int>(slots.size()));if(rows.empty())throw std::invalid_argument("phase workload must be nonempty");
             if(!cluster_policy(cell.at("policy").get<std::string>()))throw std::invalid_argument("unknown cluster policy");
+            cluster_plan({{"now_ms",0},{"gpus",static_cast<int>(slots.size())},{"requests",Json::array()}},cell.at("policy"),cost,cell.value("options",Json::object()));
             for(const auto& row:rows)if(cost.klass(row.at("class").get<std::string>()).at("kind")!=row.at("kind"))
                 throw std::invalid_argument("request kind differs from its cost class");
         }
@@ -802,7 +814,10 @@ Json simulate_study(const Json& request){
     const auto work=real_path(request.at("work_dir").get<std::string>());fs::create_directories(work);RunLock lock(work/"run.lock");
     if(fs::exists(work/"run.json"))throw std::invalid_argument("simulation run already exists");
     Json config=request.at("config");
-    if(!config.contains("profile"))config["profile"]=synthetic_profile();
+    if(!config.contains("profile")){
+        config["profile"]=synthetic_profile();
+        if(!config.contains("options"))config["options"]={{"quantum_ms",250}};
+    }
     if(!config.contains("workload")){
         auto& generator=config["generator"];
         if(!generator.contains("classes"))generator["classes"]={
@@ -819,9 +834,11 @@ Json simulate_study(const Json& request){
     const auto cells=expand_matrix(phase);
     for(std::size_t index=0;index<cells.size();++index){
         const auto& cell=cells[index];
-        const auto rows=study_workload(cell.contains("workload")?Json{{"workload",cell.at("workload")}}:Json{{"generator",cell.at("generator")}});
+        const ClusterCost cost(cell.at("profile"));const int gpus=cell.value("gpus",4);
+        Json derived=nullptr;
+        const auto rows=phase_workload(cell.contains("workload")?Json{{"workload",cell.at("workload")}}:Json{{"generator",cell.at("generator")}},cost,gpus,&derived);
         for(const auto& policy:cell.value("policies",Json::array({"static_sp1","step_elastic","block_elastic"}))){
-            const auto name=policy.get<std::string>();const int gpus=cell.value("gpus",4);
+            const auto name=policy.get<std::string>();
             if(name.rfind("static_sp",0)==0 && std::stoi(name.substr(9))>gpus){
                 record["phases"].push_back({{"id",name+"-c"+std::to_string(index)},{"status","skipped"},{"policy",policy},{"cell",index},
                     {"reason","fixed SP degree exceeds the cell's GPUs"}});
@@ -833,6 +850,7 @@ Json simulate_study(const Json& request){
             auto result=simulate_cluster(input);
             if(!cell.value("keep_requests",false))result.erase("requests");
             Json settings=cell;settings.erase("workload");settings.erase("matrix");settings.erase("profile");settings.erase("policies");
+            if(!derived.is_null())result["generator"]=derived;
             record["phases"].push_back({{"id",policy.get<std::string>()+"-c"+std::to_string(index)},{"status","completed"},
                 {"policy",policy},{"cell",index},{"config",settings},{"result",result}});
         }

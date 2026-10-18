@@ -94,18 +94,18 @@ int main() {
         auto busy = plan(Json::array({video("v", 1e9)}), "step_elastic", 4, Json::array({true, false, false, false}));
         require(busy.size() == 1 && busy[0].at("group") == Json::array({2, 3}), "aligned free pair when GPU 0 is busy");
     });
-    check("lazy block preemption", [] {
+    check("block preemption inside a step", [] {
         // Mid-step video on GPU 0: 6 blocks (600 ms) to the step boundary.
         const auto mid = video("v", 1e9, {{"status", "suspended"}, {"prepared", true}, {"group", {0}}, {"blocks_done", 4}, {"steps_done", 1}});
-        auto patient = plan({image("i", 2000), mid}, "block_elastic", 1);
-        require(patient.size() == 1 && patient[0].at("request_id") == "v" && patient[0].at("quantum") == 4, "image waits for the boundary");
-        auto urgent = plan({image("i", 300), mid}, "block_elastic", 1);
-        require(urgent.size() == 1 && urgent[0].at("reason") == "block_preempt", "urgent image preempts inside the step");
-        auto eager = plan({image("i", 2000), mid}, "block_elastic", 1, Json::array(), {{"lazy_preemption", false}});
-        require(eager.size() == 1 && eager[0].at("request_id") == "i", "eager preemption takes the GPU");
+        const Json timed = {{"quantum_ms", 250}};
+        auto preempted = plan({image("i", 2000), mid}, "block_elastic", 1, Json::array(), timed);
+        require(preempted.size() == 1 && preempted[0].at("request_id") == "i" && preempted[0].at("reason") == "block_preempt",
+                "an image takes the GPU at the next block boundary");
         // 250 ms target at 100 ms per SP1 block: two blocks per quantum.
-        auto timed = plan(Json::array({mid}), "block_elastic", 1, Json::array(), {{"quantum_ms", 250}});
-        require(timed.size() == 1 && timed[0].at("quantum") == 2, "time-targeted quantum");
+        auto alone = plan(Json::array({mid}), "block_elastic", 1, Json::array(), timed);
+        require(alone.size() == 1 && alone[0].at("quantum") == 2, "time-targeted quantum");
+        rejects([&] { plan(Json::array({mid}), "block_elastic", 1); });
+        rejects([&] { plan(Json::array({mid}), "block_elastic", 1, Json::array(), {{"quantum_ms", 250}, {"lazy_preemption", true}}); });
     });
     check("resident groups, finish and pinning", [] {
         const auto suspended = video("v", 1e9, {{"status", "suspended"}, {"prepared", true}, {"group", {2, 3}}, {"steps_done", 1}});
@@ -114,7 +114,7 @@ int main() {
         require(moved.size() == 1 && moved[0].at("resize") == true, "elastic regroups at a step boundary");
         require(plan(Json::array({suspended}), "step_elastic", 4, Json::array({false, false, false, true}), {{"pin_started", true}}).empty(), "pinned");
         const auto done = video("v", 1e9, {{"status", "suspended"}, {"prepared", true}, {"group", {2, 3}}, {"steps_done", 4}});
-        auto finish = plan(Json::array({done}), "block_elastic", 4);
+        auto finish = plan(Json::array({done}), "block_elastic", 4, Json::array(), {{"quantum_ms", 250}});
         require(finish.size() == 1 && finish[0].at("quantum") == "finish" && finish[0].at("group") == Json::array({2}), "decode on the first rank");
     });
     check("minimum SP degree for classes that do not fit one GPU", [] {
@@ -147,9 +147,8 @@ int main() {
         };
         auto next = run(Json::array({decoding}), {{"quantum_ms", 25}});
         require(next.size() == 1 && next[0].at("quantum") == "finish" && next[0].at("decode_frames") == 2, "two 10 ms chunks per 25 ms quantum");
-        // 70 ms of decode remain: a patient image waits, an urgent one preempts.
-        require(run(Json::array({image("i", 200), decoding}), {{"quantum_ms", 25}})[0].at("request_id") == "v", "patient image waits");
-        require(run(Json::array({image("i", 90), decoding}), {{"quantum_ms", 25}})[0].at("reason") == "block_preempt", "urgent image preempts decode");
+        // 70 ms of decode remain; an arriving image takes the GPU between chunks.
+        require(run(Json::array({image("i", 200), decoding}), {{"quantum_ms", 25}})[0].at("reason") == "block_preempt", "image preempts decode");
         // Steps end at 4000 ms; the image arrives 20 ms into the 100 ms decode.
         const Json trace = Json::array({trace_row("v", "video", 0, 1e9), trace_row("i", "image", 4020, 4100)});
         const auto atomic = simulate_cluster({{"workload", trace}, {"profile", chunked}, {"policy", "block_elastic"}, {"gpus", 1}, {"options", {{"quantum_ms", 25}, {"chunked_decode", false}}}});
@@ -176,7 +175,7 @@ int main() {
     check("block preemption shortens image latency on one GPU", [] {
         Json mixed = Json::array({trace_row("v", "video", 0, 1e9)});
         for (int i = 0; i < 6; ++i) mixed.push_back(trace_row("i" + std::to_string(i), "image", 250. + 700 * i, 250. + 700 * i + 200));
-        const auto step = simulate(mixed, "static_sp1", 1), block = simulate(mixed, "block_elastic", 1, {{"lazy_preemption", false}});
+        const auto step = simulate(mixed, "static_sp1", 1), block = simulate(mixed, "block_elastic", 1, {{"quantum_ms", 400}});
         require(block.at("by_kind").at("image").at("ontime") > step.at("by_kind").at("image").at("ontime"), "more on-time images");
         require(block.at("block_preemptions").get<int>() > 0 && step.at("block_preemptions") == 0, "preemptions counted");
         require(block.at("metrics").at("completed") == 7 && step.at("metrics").at("completed") == 7, "all complete");
@@ -200,7 +199,36 @@ int main() {
         }
         require(videos > 30 && videos < 70, "weights respected");
         require(study_workload({{"generator", generator}}) == rows, "deterministic");
-        simulate_cluster({{"workload", rows}, {"profile", profile()}, {"policy", "block_elastic"}, {"gpus", 8}});
+        simulate_cluster({{"workload", rows}, {"profile", profile()}, {"policy", "block_elastic"}, {"gpus", 8}, {"options", {{"quantum_ms", 250}}}});
+    });
+    check("load-based generators scale with the cluster", [] {
+        // The measured E3 classes: load 0.4 on one A100 gave 0.0933 requests/s
+        // and a 32.66 s standalone service (SLO base) for 17-frame videos.
+        const Json measured = {{"provenance", "measured"}, {"classes", {
+            {"video17", {{"kind", "video"}, {"steps", 20}, {"blocks_per_step", 60}, {"prepare_ms", 36.0973309725523},
+                         {"encode_ms", 19519.81210988015}, {"step_compute_ms", 578.1004400923848}, {"comm_mb_per_step", 0},
+                         {"collectives_per_step", 0}, {"finish_ms", 1542.688354384154}}},
+            {"video33", {{"kind", "video"}, {"steps", 20}, {"blocks_per_step", 60}, {"prepare_ms", 11.098547372967005},
+                         {"encode_ms", 21326.00309839472}, {"step_compute_ms", 1229.1148465592414}, {"comm_mb_per_step", 0},
+                         {"collectives_per_step", 0}, {"finish_ms", 2754.5725349336863}}},
+            {"image", {{"kind", "image"}, {"service_ms", 298.32281079143286}}}}}};
+        const Json generator = {{"load", 0.4}, {"count_per_gpu", 30}, {"seed", 101}, {"pattern", "poisson"},
+            {"classes", {{{"class", "video17"}, {"kind", "video"}, {"weight", 1}, {"spec", {{"steps", 20}}}},
+                         {{"class", "video33"}, {"kind", "video"}, {"weight", 1}, {"spec", {{"steps", 20}}}},
+                         {{"class", "image"}, {"kind", "image"}, {"weight", 8}}}}};
+        const ClusterCost cost(measured);
+        const auto one = resolve_generator(generator, cost, 1), two = resolve_generator(generator, cost, 2);
+        near(one.at("rate_rps").get<double>(), 0.09329370996805429, 1e-12);
+        near(one.at("classes")[0].at("service_ms").get<double>(), 32660.606597084552, 1e-6);
+        near(two.at("rate_rps").get<double>(), 2 * one.at("rate_rps").get<double>(), 1e-12);
+        require(one.at("count") == 30 && two.at("count") == 60 && !one.contains("load"), "count scales per GPU");
+        near(one.at("derived").at("load").get<double>(), 0.4);
+        const auto rows = study_workload({{"generator", one}});
+        require(rows.size() == 30 && rows[0].contains("deadline_ms"), "resolved generator is an ordinary generator");
+        Json both = generator; both["rate_rps"] = 1;
+        rejects([&] { resolve_generator(both, cost, 1); });
+        Json unknown = generator; unknown["classes"][0]["class"] = "video99";
+        rejects([&] { resolve_generator(unknown, cost, 1); });
     });
     std::cout << checks - failures << "/" << checks << " cluster checks passed\n";
     return failures ? 1 : 0;

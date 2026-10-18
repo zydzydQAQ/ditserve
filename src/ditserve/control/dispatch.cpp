@@ -96,6 +96,8 @@ Json study_workload(const Json& phase) {
         row["spec"]["request_id"]=id;
         row["worker"] = row.value("worker",phase.value("worker","model"));
         row["kind"] = row.value("kind",phase.value("request_kind","video"));
+        // Diffusion steps belong to the request, not the hardware profile.
+        if (row["kind"]=="video" && row["spec"].contains("steps") && !row.contains("steps_total")) row["steps_total"]=row["spec"]["steps"];
         row["status"]="pending";
     }
     return rows;

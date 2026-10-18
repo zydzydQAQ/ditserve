@@ -282,7 +282,10 @@ Json pure_rpc(const std::string& command, const Json& request) {
         return study_workload({{"generator", request.at("generator")}});
     }
     Json config = request;
-    if (!config.contains("profile")) config["profile"] = synthetic_profile();
+    if (!config.contains("profile")) {
+        config["profile"] = synthetic_profile();
+        if (!config.contains("options")) config["options"] = {{"quantum_ms", 250}};
+    }
     if (!config.contains("workload")) config["workload"] = study_workload({{"generator", config.value("generator", Json::object())}});
     config.erase("generator");
     return simulate_cluster(config);

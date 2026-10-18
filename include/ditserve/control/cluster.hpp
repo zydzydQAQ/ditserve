@@ -36,6 +36,13 @@ private:
     double efficiency_ = 1, resize_ms_ = 0;
 };
 
+// A workload generator may state `load` (offered GPU utilization) instead of
+// rate_rps and `count_per_gpu` instead of count, so one config scales across
+// clusters. Missing per-class service_ms (the SLO base) comes from the
+// profile: encode + prepare + steps * step_ms(1) + finish for videos. The
+// result carries `derived` {mean_gpu_service_ms, capacity_rps, load}.
+Json resolve_generator(const Json& generator, const ClusterCost& cost, int gpus);
+
 // state: {now_ms, gpus, busy:[bool], requests:[...]}; request fields:
 //   request_id, kind (video|image), class, arrival_ms, deadline_ms,
 //   status waiting|suspended, ready (encoded), prepared, steps_done,
@@ -43,6 +50,8 @@ private:
 //   steps_total (overrides the class), affinity (GPU that must host prepare) and
 //   decode_done (latent-frame chunks already decoded).
 // Policies: static_sp1|static_sp2|static_sp4|static_sp8, step_elastic, block_elastic.
+// Options: quantum_ms (required by block_elastic), degrees, pin_started,
+// reserve_image_gpus, demote_late, late_short_ms, chunked_decode.
 // Returns {assignments:[{request_id, group, degree, quantum, resize, reason}]}
 // where quantum is "atomic" (image), "finish" (with decode_frames when the
 // decode is chunked), "step" or a block count.

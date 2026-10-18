@@ -76,7 +76,7 @@ class NativeStudyTest(unittest.TestCase):
                     budget=dict(limit_gpu_seconds=None, watchdog_seconds=10), phases=phases)
 
     def phase(self, phase_id="serve", **changes):
-        value = dict(id=phase_id, kind="cluster", policy="static_sp1", profile=self.PROFILE,
+        value = dict(id=phase_id, kind="cluster", policy="static_sp1", profile=self.PROFILE, options=dict(quantum_ms=20),
                      gpus=[dict(video="model", image="image")], workload=[self.request()])
         value.update(changes)
         return value
@@ -305,7 +305,7 @@ class NativeStudyTest(unittest.TestCase):
                           spec=dict(steps=1)) for i in range(4)]
         for row in workload:
             row["class"] = row["kind"]
-        value = dict(id="cluster", kind="cluster", policy=policy, profile=profile, text_prefetch=1,
+        value = dict(id="cluster", kind="cluster", policy=policy, profile=profile, text_prefetch=1, options=dict(quantum_ms=200),
                      gpus=[dict(video="v%d" % g, image="i%d" % g) for g in range(gpus)], workload=workload)
         value.update(changes)
         return value
