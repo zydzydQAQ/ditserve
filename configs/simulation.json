@@ -1,25 +1,849 @@
 {
-  "note": "Synthetic smoke-test profile for the cluster simulator; illustrative costs, not measurements. Measured or extrapolated profiles live with their experiments.",
-  "profile": {
-    "provenance": "synthetic",
-    "classes": {
-      "video": {"kind": "video", "steps": 8, "blocks_per_step": 8, "prepare_ms": 20, "encode_ms": 50,
-                "step_compute_ms": 400, "comm_mb_per_step": 400, "collectives_per_step": 32, "finish_ms": 150},
-      "image": {"kind": "image", "service_ms": 40}
+ "experiment": "whatif-8xa100",
+ "note": "8x A100 PCIe what-if (the E4 study, now under the current scheduler): Wan 1.3B and Sana costs measured on the local A100 (E2) plus FLOP-extrapolated Wan 14B classes, 300 Poisson requests per cell (two mixes x loads 0.5/0.8 x four seeds), video deadlines 1.5x standalone end-to-end latency, image deadlines 2.5x service. PCIe all-to-all bandwidth is an assumed scenario (p2p_switch or host_staged) until collectives are measured. Variants: fixed SP degrees and step-level elastic SP; step-level elastic SP with one GPU reserved for images; block_elastic. Describes the cost model only.",
+ "profile": {
+  "provenance": "mixed",
+  "classes": {
+   "wan1.3b-480x832x17": {
+    "kind": "video",
+    "steps": 32,
+    "blocks_per_step": 60,
+    "prepare_ms": 36.0973309725523,
+    "encode_ms": 19519.81210988015,
+    "step_compute_ms": 578.1004400923848,
+    "comm_mb_per_step": 5750.784,
+    "collectives_per_step": 240,
+    "finish_ms": 1542.688354384154
+   },
+   "wan1.3b-480x832x33": {
+    "kind": "video",
+    "steps": 32,
+    "blocks_per_step": 60,
+    "prepare_ms": 11.098547372967005,
+    "encode_ms": 21326.00309839472,
+    "step_compute_ms": 1229.1148465592414,
+    "comm_mb_per_step": 10351.4112,
+    "collectives_per_step": 240,
+    "finish_ms": 2754.5725349336863
+   },
+   "wan1.3b-480x832x81": {
+    "kind": "video",
+    "steps": 32,
+    "blocks_per_step": 60,
+    "prepare_ms": 25.449552107602358,
+    "encode_ms": 17972.97461843118,
+    "step_compute_ms": 4158.712215954438,
+    "comm_mb_per_step": 24153.2928,
+    "collectives_per_step": 240,
+    "finish_ms": 6749.039187096059
+   },
+   "wan1.3b-720x1280x17": {
+    "kind": "video",
+    "steps": 32,
+    "blocks_per_step": 60,
+    "prepare_ms": 14.426758047193289,
+    "encode_ms": 19052.241147030145,
+    "step_compute_ms": 1717.4421190284193,
+    "comm_mb_per_step": 13271.04,
+    "collectives_per_step": 240,
+    "finish_ms": 3338.1756241433322
+   },
+   "wan1.3b-720x1280x33": {
+    "kind": "video",
+    "steps": 32,
+    "blocks_per_step": 60,
+    "prepare_ms": 21.729663014411926,
+    "encode_ms": 22557.62804299593,
+    "step_compute_ms": 4138.5201453231275,
+    "comm_mb_per_step": 23887.872,
+    "collectives_per_step": 240,
+    "finish_ms": 6424.372903071344
+   },
+   "wan1.3b-720x1280x81": {
+    "kind": "video",
+    "steps": 32,
+    "blocks_per_step": 60,
+    "prepare_ms": 34.05943186953664,
+    "encode_ms": 17733.00866689533,
+    "step_compute_ms": 16781.961359316483,
+    "comm_mb_per_step": 55738.368,
+    "collectives_per_step": 240,
+    "finish_ms": 15871.945972088724
+   },
+   "sana-1024": {
+    "kind": "image",
+    "service_ms": 298.32281079143286
+   },
+   "wan14b-x480x832x17": {
+    "kind": "video",
+    "steps": 32,
+    "blocks_per_step": 80,
+    "prepare_ms": 36.0973309725523,
+    "encode_ms": 19519.81210988015,
+    "step_compute_ms": 4403.098537823291,
+    "comm_mb_per_step": 25559.04,
+    "collectives_per_step": 320,
+    "finish_ms": 1542.688354384154
+   },
+   "wan14b-x480x832x33": {
+    "kind": "video",
+    "steps": 32,
+    "blocks_per_step": 80,
+    "prepare_ms": 11.098547372967005,
+    "encode_ms": 21326.00309839472,
+    "step_compute_ms": 8496.375364171801,
+    "comm_mb_per_step": 46006.272,
+    "collectives_per_step": 320,
+    "finish_ms": 2754.5725349336863
+   },
+   "wan14b-x480x832x81": {
+    "kind": "video",
+    "steps": 32,
+    "blocks_per_step": 80,
+    "prepare_ms": 25.449552107602358,
+    "encode_ms": 17972.97461843118,
+    "step_compute_ms": 24645.272811429015,
+    "comm_mb_per_step": 107347.968,
+    "collectives_per_step": 320,
+    "finish_ms": 6749.039187096059
+   },
+   "wan14b-x720x1280x17": {
+    "kind": "video",
+    "steps": 32,
+    "blocks_per_step": 80,
+    "prepare_ms": 14.426758047193289,
+    "encode_ms": 19052.241147030145,
+    "step_compute_ms": 11348.728083843098,
+    "comm_mb_per_step": 58982.4,
+    "collectives_per_step": 320,
+    "finish_ms": 3338.1756241433322
+   },
+   "wan14b-x720x1280x33": {
+    "kind": "video",
+    "steps": 32,
+    "blocks_per_step": 80,
+    "prepare_ms": 21.729663014411926,
+    "encode_ms": 22557.62804299593,
+    "step_compute_ms": 24573.106420346616,
+    "comm_mb_per_step": 106168.32,
+    "collectives_per_step": 320,
+    "finish_ms": 6424.372903071344
+   },
+   "wan14b-x720x1280x81": {
+    "kind": "video",
+    "steps": 32,
+    "blocks_per_step": 80,
+    "prepare_ms": 34.05943186953664,
+    "encode_ms": 17733.00866689533,
+    "step_compute_ms": 87574.25925714086,
+    "comm_mb_per_step": 247726.08,
+    "collectives_per_step": 320,
+    "finish_ms": 15871.945972088724
+   }
+  },
+  "links": {
+   "2": {
+    "gbps": 20,
+    "latency_ms": 0.03
+   },
+   "4": {
+    "gbps": 12,
+    "latency_ms": 0.04
+   },
+   "8": {
+    "gbps": 6,
+    "latency_ms": 0.06
+   }
+  },
+  "sp_efficiency": 0.95,
+  "resize_ms": 50.0,
+  "source": {
+   "measured": {
+    "run": "results/a100-e2-cost-profile/run01",
+    "run_json_sha256": "462db70f0cea850c1a4fca5f8ba1b1f1737f8a710f73dc39097d98343db2d8d8",
+    "hardware": "A100-PCIE-40GB GPU-3ab2fedc",
+    "model": "Wan2.1-T2V-1.3B-Diffusers@0fad780a, Sana_Sprint_0.6B@aa76e7f4",
+    "settings": "Wan FP16 DiT, FP32 VAE, UMT5 FP32 on CPU (8 threads), Flash attention, cache off; Sana BF16 eager pipeline",
+    "samples": "n=1 input per shape; 4 measured steps (median), 3 four-block quanta; 7 images after one warmup",
+    "gpu_seconds": 376.53827051632106
+   },
+   "extrapolation": "Wan 14B step compute = measured 1.3B x analytic FLOP ratio at equal utilization; not measured",
+   "links": "assumed PCIe all-to-all scenarios until measured on the target",
+   "encode": "UMT5 on CPU as measured locally (~20 s per prompt, 8 threads)"
+  }
+ },
+ "gpus": 8,
+ "generator": {
+  "count": 300,
+  "seed": 1,
+  "pattern": "poisson",
+  "rate_rps": 0.020522370020928268,
+  "classes": [
+   {
+    "class": "wan14b-x720x1280x81",
+    "kind": "video",
+    "weight": 0.05,
+    "service_ms": 895379.1004467767,
+    "slo_scale": 1.5
+   },
+   {
+    "class": "wan14b-x480x832x81",
+    "kind": "video",
+    "weight": 0.05,
+    "service_ms": 483072.12948696566,
+    "slo_scale": 1.5
+   },
+   {
+    "class": "wan1.3b-480x832x81",
+    "kind": "video",
+    "weight": 0.1,
+    "service_ms": 157826.25426817685,
+    "slo_scale": 1.5
+   },
+   {
+    "class": "sana-1024",
+    "kind": "image",
+    "weight": 0.8,
+    "service_ms": 298.32281079143286,
+    "slo_scale": 2.5
+   }
+  ]
+ },
+ "options": {
+  "quantum_ms": 250
+ },
+ "matrix": {
+  "/profile/links": [
+   {
+    "2": {
+     "gbps": 20,
+     "latency_ms": 0.03
     },
-    "links": {"2": {"gbps": 20, "latency_ms": 0.02}, "4": {"gbps": 12, "latency_ms": 0.03}, "8": {"gbps": 6, "latency_ms": 0.05}},
-    "sp_efficiency": 0.95,
-    "resize_ms": 5
-  },
-  "generator": {
-    "count": 64, "seed": 7, "pattern": "poisson", "rate_rps": 2,
+    "4": {
+     "gbps": 12,
+     "latency_ms": 0.04
+    },
+    "8": {
+     "gbps": 6,
+     "latency_ms": 0.06
+    }
+   },
+   {
+    "2": {
+     "gbps": 10,
+     "latency_ms": 0.05
+    },
+    "4": {
+     "gbps": 6,
+     "latency_ms": 0.06
+    },
+    "8": {
+     "gbps": 3,
+     "latency_ms": 0.08
+    }
+   }
+  ],
+  "/generator": [
+   {
+    "count": 300,
+    "seed": 1,
+    "pattern": "poisson",
+    "rate_rps": 0.020522370020928268,
     "classes": [
-      {"class": "video", "kind": "video", "weight": 1, "service_ms": 3400, "slo_scale": 3},
-      {"class": "image", "kind": "image", "weight": 4, "service_ms": 40, "slo_scale": 5}
+     {
+      "class": "wan14b-x720x1280x81",
+      "kind": "video",
+      "weight": 0.05,
+      "service_ms": 895379.1004467767,
+      "slo_scale": 1.5
+     },
+     {
+      "class": "wan14b-x480x832x81",
+      "kind": "video",
+      "weight": 0.05,
+      "service_ms": 483072.12948696566,
+      "slo_scale": 1.5
+     },
+     {
+      "class": "wan1.3b-480x832x81",
+      "kind": "video",
+      "weight": 0.1,
+      "service_ms": 157826.25426817685,
+      "slo_scale": 1.5
+     },
+     {
+      "class": "sana-1024",
+      "kind": "image",
+      "weight": 0.8,
+      "service_ms": 298.32281079143286,
+      "slo_scale": 2.5
+     }
     ]
+   },
+   {
+    "count": 300,
+    "seed": 2,
+    "pattern": "poisson",
+    "rate_rps": 0.020522370020928268,
+    "classes": [
+     {
+      "class": "wan14b-x720x1280x81",
+      "kind": "video",
+      "weight": 0.05,
+      "service_ms": 895379.1004467767,
+      "slo_scale": 1.5
+     },
+     {
+      "class": "wan14b-x480x832x81",
+      "kind": "video",
+      "weight": 0.05,
+      "service_ms": 483072.12948696566,
+      "slo_scale": 1.5
+     },
+     {
+      "class": "wan1.3b-480x832x81",
+      "kind": "video",
+      "weight": 0.1,
+      "service_ms": 157826.25426817685,
+      "slo_scale": 1.5
+     },
+     {
+      "class": "sana-1024",
+      "kind": "image",
+      "weight": 0.8,
+      "service_ms": 298.32281079143286,
+      "slo_scale": 2.5
+     }
+    ]
+   },
+   {
+    "count": 300,
+    "seed": 1,
+    "pattern": "poisson",
+    "rate_rps": 0.03283579203348523,
+    "classes": [
+     {
+      "class": "wan14b-x720x1280x81",
+      "kind": "video",
+      "weight": 0.05,
+      "service_ms": 895379.1004467767,
+      "slo_scale": 1.5
+     },
+     {
+      "class": "wan14b-x480x832x81",
+      "kind": "video",
+      "weight": 0.05,
+      "service_ms": 483072.12948696566,
+      "slo_scale": 1.5
+     },
+     {
+      "class": "wan1.3b-480x832x81",
+      "kind": "video",
+      "weight": 0.1,
+      "service_ms": 157826.25426817685,
+      "slo_scale": 1.5
+     },
+     {
+      "class": "sana-1024",
+      "kind": "image",
+      "weight": 0.8,
+      "service_ms": 298.32281079143286,
+      "slo_scale": 2.5
+     }
+    ]
+   },
+   {
+    "count": 300,
+    "seed": 2,
+    "pattern": "poisson",
+    "rate_rps": 0.03283579203348523,
+    "classes": [
+     {
+      "class": "wan14b-x720x1280x81",
+      "kind": "video",
+      "weight": 0.05,
+      "service_ms": 895379.1004467767,
+      "slo_scale": 1.5
+     },
+     {
+      "class": "wan14b-x480x832x81",
+      "kind": "video",
+      "weight": 0.05,
+      "service_ms": 483072.12948696566,
+      "slo_scale": 1.5
+     },
+     {
+      "class": "wan1.3b-480x832x81",
+      "kind": "video",
+      "weight": 0.1,
+      "service_ms": 157826.25426817685,
+      "slo_scale": 1.5
+     },
+     {
+      "class": "sana-1024",
+      "kind": "image",
+      "weight": 0.8,
+      "service_ms": 298.32281079143286,
+      "slo_scale": 2.5
+     }
+    ]
+   },
+   {
+    "count": 300,
+    "seed": 1,
+    "pattern": "poisson",
+    "rate_rps": 0.020522370020928268,
+    "classes": [
+     {
+      "class": "wan14b-x720x1280x81",
+      "kind": "video",
+      "weight": 0.05,
+      "service_ms": 895379.1004467767,
+      "slo_scale": 1.9500000000000002
+     },
+     {
+      "class": "wan14b-x480x832x81",
+      "kind": "video",
+      "weight": 0.05,
+      "service_ms": 483072.12948696566,
+      "slo_scale": 1.9500000000000002
+     },
+     {
+      "class": "wan1.3b-480x832x81",
+      "kind": "video",
+      "weight": 0.1,
+      "service_ms": 157826.25426817685,
+      "slo_scale": 1.9500000000000002
+     },
+     {
+      "class": "sana-1024",
+      "kind": "image",
+      "weight": 0.8,
+      "service_ms": 298.32281079143286,
+      "slo_scale": 2.5
+     }
+    ]
+   },
+   {
+    "count": 300,
+    "seed": 2,
+    "pattern": "poisson",
+    "rate_rps": 0.020522370020928268,
+    "classes": [
+     {
+      "class": "wan14b-x720x1280x81",
+      "kind": "video",
+      "weight": 0.05,
+      "service_ms": 895379.1004467767,
+      "slo_scale": 1.9500000000000002
+     },
+     {
+      "class": "wan14b-x480x832x81",
+      "kind": "video",
+      "weight": 0.05,
+      "service_ms": 483072.12948696566,
+      "slo_scale": 1.9500000000000002
+     },
+     {
+      "class": "wan1.3b-480x832x81",
+      "kind": "video",
+      "weight": 0.1,
+      "service_ms": 157826.25426817685,
+      "slo_scale": 1.9500000000000002
+     },
+     {
+      "class": "sana-1024",
+      "kind": "image",
+      "weight": 0.8,
+      "service_ms": 298.32281079143286,
+      "slo_scale": 2.5
+     }
+    ]
+   },
+   {
+    "count": 300,
+    "seed": 1,
+    "pattern": "poisson",
+    "rate_rps": 0.03283579203348523,
+    "classes": [
+     {
+      "class": "wan14b-x720x1280x81",
+      "kind": "video",
+      "weight": 0.05,
+      "service_ms": 895379.1004467767,
+      "slo_scale": 1.9500000000000002
+     },
+     {
+      "class": "wan14b-x480x832x81",
+      "kind": "video",
+      "weight": 0.05,
+      "service_ms": 483072.12948696566,
+      "slo_scale": 1.9500000000000002
+     },
+     {
+      "class": "wan1.3b-480x832x81",
+      "kind": "video",
+      "weight": 0.1,
+      "service_ms": 157826.25426817685,
+      "slo_scale": 1.9500000000000002
+     },
+     {
+      "class": "sana-1024",
+      "kind": "image",
+      "weight": 0.8,
+      "service_ms": 298.32281079143286,
+      "slo_scale": 2.5
+     }
+    ]
+   },
+   {
+    "count": 300,
+    "seed": 2,
+    "pattern": "poisson",
+    "rate_rps": 0.03283579203348523,
+    "classes": [
+     {
+      "class": "wan14b-x720x1280x81",
+      "kind": "video",
+      "weight": 0.05,
+      "service_ms": 895379.1004467767,
+      "slo_scale": 1.9500000000000002
+     },
+     {
+      "class": "wan14b-x480x832x81",
+      "kind": "video",
+      "weight": 0.05,
+      "service_ms": 483072.12948696566,
+      "slo_scale": 1.9500000000000002
+     },
+     {
+      "class": "wan1.3b-480x832x81",
+      "kind": "video",
+      "weight": 0.1,
+      "service_ms": 157826.25426817685,
+      "slo_scale": 1.9500000000000002
+     },
+     {
+      "class": "sana-1024",
+      "kind": "image",
+      "weight": 0.8,
+      "service_ms": 298.32281079143286,
+      "slo_scale": 2.5
+     }
+    ]
+   },
+   {
+    "count": 300,
+    "seed": 1,
+    "pattern": "poisson",
+    "rate_rps": 0.00821649357320355,
+    "classes": [
+     {
+      "class": "wan14b-x720x1280x81",
+      "kind": "video",
+      "weight": 0.125,
+      "service_ms": 895379.1004467767,
+      "slo_scale": 1.5
+     },
+     {
+      "class": "wan14b-x480x832x81",
+      "kind": "video",
+      "weight": 0.125,
+      "service_ms": 483072.12948696566,
+      "slo_scale": 1.5
+     },
+     {
+      "class": "wan1.3b-480x832x81",
+      "kind": "video",
+      "weight": 0.25,
+      "service_ms": 157826.25426817685,
+      "slo_scale": 1.5
+     },
+     {
+      "class": "sana-1024",
+      "kind": "image",
+      "weight": 0.5,
+      "service_ms": 298.32281079143286,
+      "slo_scale": 2.5
+     }
+    ]
+   },
+   {
+    "count": 300,
+    "seed": 2,
+    "pattern": "poisson",
+    "rate_rps": 0.00821649357320355,
+    "classes": [
+     {
+      "class": "wan14b-x720x1280x81",
+      "kind": "video",
+      "weight": 0.125,
+      "service_ms": 895379.1004467767,
+      "slo_scale": 1.5
+     },
+     {
+      "class": "wan14b-x480x832x81",
+      "kind": "video",
+      "weight": 0.125,
+      "service_ms": 483072.12948696566,
+      "slo_scale": 1.5
+     },
+     {
+      "class": "wan1.3b-480x832x81",
+      "kind": "video",
+      "weight": 0.25,
+      "service_ms": 157826.25426817685,
+      "slo_scale": 1.5
+     },
+     {
+      "class": "sana-1024",
+      "kind": "image",
+      "weight": 0.5,
+      "service_ms": 298.32281079143286,
+      "slo_scale": 2.5
+     }
+    ]
+   },
+   {
+    "count": 300,
+    "seed": 1,
+    "pattern": "poisson",
+    "rate_rps": 0.013146389717125681,
+    "classes": [
+     {
+      "class": "wan14b-x720x1280x81",
+      "kind": "video",
+      "weight": 0.125,
+      "service_ms": 895379.1004467767,
+      "slo_scale": 1.5
+     },
+     {
+      "class": "wan14b-x480x832x81",
+      "kind": "video",
+      "weight": 0.125,
+      "service_ms": 483072.12948696566,
+      "slo_scale": 1.5
+     },
+     {
+      "class": "wan1.3b-480x832x81",
+      "kind": "video",
+      "weight": 0.25,
+      "service_ms": 157826.25426817685,
+      "slo_scale": 1.5
+     },
+     {
+      "class": "sana-1024",
+      "kind": "image",
+      "weight": 0.5,
+      "service_ms": 298.32281079143286,
+      "slo_scale": 2.5
+     }
+    ]
+   },
+   {
+    "count": 300,
+    "seed": 2,
+    "pattern": "poisson",
+    "rate_rps": 0.013146389717125681,
+    "classes": [
+     {
+      "class": "wan14b-x720x1280x81",
+      "kind": "video",
+      "weight": 0.125,
+      "service_ms": 895379.1004467767,
+      "slo_scale": 1.5
+     },
+     {
+      "class": "wan14b-x480x832x81",
+      "kind": "video",
+      "weight": 0.125,
+      "service_ms": 483072.12948696566,
+      "slo_scale": 1.5
+     },
+     {
+      "class": "wan1.3b-480x832x81",
+      "kind": "video",
+      "weight": 0.25,
+      "service_ms": 157826.25426817685,
+      "slo_scale": 1.5
+     },
+     {
+      "class": "sana-1024",
+      "kind": "image",
+      "weight": 0.5,
+      "service_ms": 298.32281079143286,
+      "slo_scale": 2.5
+     }
+    ]
+   },
+   {
+    "count": 300,
+    "seed": 1,
+    "pattern": "poisson",
+    "rate_rps": 0.00821649357320355,
+    "classes": [
+     {
+      "class": "wan14b-x720x1280x81",
+      "kind": "video",
+      "weight": 0.125,
+      "service_ms": 895379.1004467767,
+      "slo_scale": 1.9500000000000002
+     },
+     {
+      "class": "wan14b-x480x832x81",
+      "kind": "video",
+      "weight": 0.125,
+      "service_ms": 483072.12948696566,
+      "slo_scale": 1.9500000000000002
+     },
+     {
+      "class": "wan1.3b-480x832x81",
+      "kind": "video",
+      "weight": 0.25,
+      "service_ms": 157826.25426817685,
+      "slo_scale": 1.9500000000000002
+     },
+     {
+      "class": "sana-1024",
+      "kind": "image",
+      "weight": 0.5,
+      "service_ms": 298.32281079143286,
+      "slo_scale": 2.5
+     }
+    ]
+   },
+   {
+    "count": 300,
+    "seed": 2,
+    "pattern": "poisson",
+    "rate_rps": 0.00821649357320355,
+    "classes": [
+     {
+      "class": "wan14b-x720x1280x81",
+      "kind": "video",
+      "weight": 0.125,
+      "service_ms": 895379.1004467767,
+      "slo_scale": 1.9500000000000002
+     },
+     {
+      "class": "wan14b-x480x832x81",
+      "kind": "video",
+      "weight": 0.125,
+      "service_ms": 483072.12948696566,
+      "slo_scale": 1.9500000000000002
+     },
+     {
+      "class": "wan1.3b-480x832x81",
+      "kind": "video",
+      "weight": 0.25,
+      "service_ms": 157826.25426817685,
+      "slo_scale": 1.9500000000000002
+     },
+     {
+      "class": "sana-1024",
+      "kind": "image",
+      "weight": 0.5,
+      "service_ms": 298.32281079143286,
+      "slo_scale": 2.5
+     }
+    ]
+   },
+   {
+    "count": 300,
+    "seed": 1,
+    "pattern": "poisson",
+    "rate_rps": 0.013146389717125681,
+    "classes": [
+     {
+      "class": "wan14b-x720x1280x81",
+      "kind": "video",
+      "weight": 0.125,
+      "service_ms": 895379.1004467767,
+      "slo_scale": 1.9500000000000002
+     },
+     {
+      "class": "wan14b-x480x832x81",
+      "kind": "video",
+      "weight": 0.125,
+      "service_ms": 483072.12948696566,
+      "slo_scale": 1.9500000000000002
+     },
+     {
+      "class": "wan1.3b-480x832x81",
+      "kind": "video",
+      "weight": 0.25,
+      "service_ms": 157826.25426817685,
+      "slo_scale": 1.9500000000000002
+     },
+     {
+      "class": "sana-1024",
+      "kind": "image",
+      "weight": 0.5,
+      "service_ms": 298.32281079143286,
+      "slo_scale": 2.5
+     }
+    ]
+   },
+   {
+    "count": 300,
+    "seed": 2,
+    "pattern": "poisson",
+    "rate_rps": 0.013146389717125681,
+    "classes": [
+     {
+      "class": "wan14b-x720x1280x81",
+      "kind": "video",
+      "weight": 0.125,
+      "service_ms": 895379.1004467767,
+      "slo_scale": 1.9500000000000002
+     },
+     {
+      "class": "wan14b-x480x832x81",
+      "kind": "video",
+      "weight": 0.125,
+      "service_ms": 483072.12948696566,
+      "slo_scale": 1.9500000000000002
+     },
+     {
+      "class": "wan1.3b-480x832x81",
+      "kind": "video",
+      "weight": 0.25,
+      "service_ms": 157826.25426817685,
+      "slo_scale": 1.9500000000000002
+     },
+     {
+      "class": "sana-1024",
+      "kind": "image",
+      "weight": 0.5,
+      "service_ms": 298.32281079143286,
+      "slo_scale": 2.5
+     }
+    ]
+   }
+  ]
+ },
+ "variants": [
+  {
+   "policies": [
+    "static_sp1",
+    "static_sp2",
+    "static_sp4",
+    "static_sp8",
+    "step_elastic"
+   ]
   },
-  "gpus": 4,
-  "policies": ["static_sp1", "static_sp4", "step_elastic", "block_elastic"],
-  "options": {"quantum_ms": 250},
-  "matrix": {"/generator/rate_rps": [1, 2], "/gpus": [2, 4]}
+  {
+   "policies": [
+    "step_elastic"
+   ],
+   "options": {
+    "reserve_image_gpus": 1
+   }
+  },
+  {
+   "policies": [
+    "block_elastic"
+   ]
+  }
+ ]
 }

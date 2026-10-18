@@ -286,6 +286,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     const int gpus=static_cast<int>(slots.size());
     Json derived=nullptr;
     Json rows=phase_workload(phase,cost,gpus,&derived);
+    const Json trace=rows;
     bool fixtures=true;
     for(const auto& slot:slots)fixtures=fixtures&&workers.backend(slot.at("video").get<std::string>())=="mock";
     if(!fixtures){
@@ -488,9 +489,17 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         record["requests"].insert(record["requests"].end(),rows.begin(),rows.end());throw;
     }
     for(auto& row:rows)row.erase("preempting");
-    return {{"requests",rows},{"metrics",request_summary(rows)},{"elapsed_ms",now()},{"warmup",warmed},
+    Json result={{"requests",rows},{"metrics",request_summary(rows)},{"elapsed_ms",now()},{"warmup",warmed},
             {"by_kind",{{"video",kind_summary(rows,"video")},{"image",kind_summary(rows,"image")}}},
             {"policy",policy},{"gpus",gpus},{"real_backends_pinned_sp1",!fixtures},{"generator",derived}};
+    // Calibration: the simulator replays the same trace with the same profile,
+    // policy and options; the executor's own decisions were the real ones.
+    if(phase.value("simulate",false)){
+        auto simulated=simulate_cluster({{"workload",trace},{"profile",phase.at("profile")},{"policy",policy},{"gpus",gpus},{"options",options}});
+        result["simulated"]={{"metrics",simulated.at("metrics")},{"by_kind",simulated.at("by_kind")},{"makespan_ms",simulated.at("makespan_ms")},
+                             {"options",options},{"scope","cost-model replay of this cell's trace; not a measurement"}};
+    }
+    return result;
 }
 
 Json operations(const Json& phase,Workers& workers,Budget& budget,Json& record,const fs::path& work,const fs::path& cell_dir){
@@ -507,10 +516,12 @@ Json operations(const Json& phase,Workers& workers,Budget& budget,Json& record,c
         // An action may address a subset of ranks, e.g. export on one GPU
         // and import on another; the others skip it.
         std::vector<std::size_t> called;
-        if(action.contains("ranks")){for(const auto& rank:action.at("ranks")){const auto r=static_cast<std::size_t>(integer(rank,"rank"));if(r>=group.size())throw std::invalid_argument("action rank outside the phase workers");called.push_back(r);}}
+        if(action.contains("only_ranks")){for(const auto& rank:action.at("only_ranks")){const auto r=static_cast<std::size_t>(integer(rank,"rank"));if(r>=group.size())throw std::invalid_argument("action rank outside the phase workers");called.push_back(r);}}
         else for(std::size_t rank=0;rank<group.size();++rank)called.push_back(rank);
         for(const auto rank:called){
-            auto message=action;message.erase("ranks");message["op"]=message.value("op","distributed");message["rank"]=rank;message["world_size"]=group.size();
+            auto message=action;message.erase("only_ranks");message["op"]=message.value("op","distributed");message["rank"]=rank;
+            // A collective over a subset of the phase's workers names its own world size.
+            if(!message.contains("world_size"))message["world_size"]=group.size();
             if(message.contains("per_rank")){message.merge_patch(message.at("per_rank").at(rank));message.erase("per_rank");}
             // Relative paths are private to a rank; @cell/ names a file every rank of the cell can reach.
             for(const auto* field:{"output_path","output","reference","path"})if(message.contains(field)&&message[field].is_string()){
@@ -687,6 +698,8 @@ void validate(const Json& config){
 }
 }
 
+void validate_study(const Json& config){validate(config);}
+
 Json run_study(const Json& original_request){
     CancelScope signals;
     auto request=original_request;const auto config=request.at("config");validate(config);
@@ -838,17 +851,22 @@ Json simulate_study(const Json& request){
         {"config",config},{"status","completed"},{"phases",Json::array()},{"requests",Json::array()},{"failures",Json::array()},{"artifacts",Json::array()},
         {"budget",{{"active",nullptr},{"gpu_seconds",0}}},
         {"notice",provenance=="synthetic"?"Synthetic cost-model simulation; not measured GPU performance.":"Cost-model simulation from a "+provenance+" profile; not an execution of models."}};
-    Json phase=config;phase["matrix"]=config.value("matrix",Json::object());
+    Json phase=config;phase["matrix"]=config.value("matrix",Json::object());phase.erase("variants");
+    // Variants are merge patches applied to every cell (e.g. the policies an
+    // option applies to); without them each cell runs once.
+    const auto variants=config.value("variants",Json::array({Json::object()}));
+    if(!variants.is_array()||variants.empty())throw std::invalid_argument("variants must be a nonempty array of objects");
     const auto cells=expand_matrix(phase);
-    for(std::size_t index=0;index<cells.size();++index){
-        const auto& cell=cells[index];
+    for(std::size_t index=0;index<cells.size();++index)for(std::size_t variant=0;variant<variants.size();++variant){
+        Json cell=cells[index];cell.merge_patch(variants[variant]);
+        const auto suffix="-c"+std::to_string(index)+(variants.size()>1?"-v"+std::to_string(variant):"");
         const ClusterCost cost(cell.at("profile"));const int gpus=cell.value("gpus",4);
         Json derived=nullptr;
         const auto rows=phase_workload(cell.contains("workload")?Json{{"workload",cell.at("workload")}}:Json{{"generator",cell.at("generator")}},cost,gpus,&derived);
         for(const auto& policy:cell.value("policies",Json::array({"static_sp1","step_elastic","block_elastic"}))){
             const auto name=policy.get<std::string>();
             if(name.rfind("static_sp",0)==0 && std::stoi(name.substr(9))>gpus){
-                record["phases"].push_back({{"id",name+"-c"+std::to_string(index)},{"status","skipped"},{"policy",policy},{"cell",index},
+                record["phases"].push_back({{"id",name+suffix},{"status","skipped"},{"policy",policy},{"cell",index},{"variant",variant},
                     {"reason","fixed SP degree exceeds the cell's GPUs"}});
                 continue;
             }
@@ -859,8 +877,8 @@ Json simulate_study(const Json& request){
             if(!cell.value("keep_requests",false))result.erase("requests");
             Json settings=cell;settings.erase("workload");settings.erase("matrix");settings.erase("profile");settings.erase("policies");
             if(!derived.is_null())result["generator"]=derived;
-            record["phases"].push_back({{"id",policy.get<std::string>()+"-c"+std::to_string(index)},{"status","completed"},
-                {"policy",policy},{"cell",index},{"config",settings},{"result",result}});
+            record["phases"].push_back({{"id",name+suffix},{"status","completed"},
+                {"policy",policy},{"cell",index},{"variant",variant},{"config",settings},{"result",result}});
         }
     }
     record["archive"]=publish(record,request,work);return record;

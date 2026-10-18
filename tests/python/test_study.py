@@ -46,7 +46,7 @@ class NativeStudyTest(unittest.TestCase):
         self.addCleanup(directory.cleanup)
         self.root = Path(directory.name)
         self.bridge = FixtureBridge(self.package_root)
-        paths = [str(ROOT / "workers")]
+        paths = [str(PACKAGE_ROOT)]
         if importlib.util.find_spec("openpyxl") is None:
             paths.append(str(ROOT / ".cache/tools"))
         if os.environ.get("PYTHONPATH"):

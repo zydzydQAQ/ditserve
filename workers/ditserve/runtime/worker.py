@@ -54,7 +54,7 @@ class Worker:
         if op == "occupancy":
             return occupancy(request, mock=self.name == "mock")
         if op == "memory":
-            return process_memory()
+            return process_memory(reset_peak=bool(request.get("reset_peak", False)))
         if op == "shutdown":
             self.close()
             return {"shutdown": True}
@@ -94,6 +94,14 @@ class Worker:
         load_ms = 0.
         if self.backend is None:
             started = time.perf_counter()
+            fraction = self.config.get("memory_fraction")
+            if fraction is not None:
+                # A per-process cap: a co-resident worker on a smaller card
+                # fails with an allocator error instead of starving its peer.
+                if isinstance(fraction, bool) or not isinstance(fraction, (int, float)) or not 0 < fraction <= 1:
+                    raise ValueError("memory_fraction must be in (0, 1]")
+                import torch
+                torch.cuda.set_per_process_memory_fraction(float(fraction), 0)
             self.backend = cls(self.config)
             load_ms = (time.perf_counter() - started) * 1000
         started = time.perf_counter()
@@ -125,15 +133,24 @@ class Worker:
             self.closed = True
 
 
-def process_memory():
-    """This process's CUDA allocator and the device's driver-free memory; never initializes CUDA."""
+def process_memory(reset_peak=False):
+    """This process's CUDA allocator and the device's driver-free memory; never initializes CUDA.
+
+    Peaks cover the time since the last reset_peak, so a probe can bracket one
+    request and size a co-resident worker on a smaller card.
+    """
     torch = sys.modules.get("torch")
     if torch is None or not torch.cuda.is_initialized():
         return dict(cuda_initialized=False)
     free, total = torch.cuda.mem_get_info()
-    return dict(cuda_initialized=True, allocated_bytes=int(torch.cuda.memory_allocated()),
-                reserved_bytes=int(torch.cuda.memory_reserved()), peak_allocated_bytes=int(torch.cuda.max_memory_allocated()),
-                driver_free_bytes=int(free), device_total_bytes=int(total))
+    result = dict(cuda_initialized=True, allocated_bytes=int(torch.cuda.memory_allocated()),
+                  reserved_bytes=int(torch.cuda.memory_reserved()), peak_allocated_bytes=int(torch.cuda.max_memory_allocated()),
+                  peak_reserved_bytes=int(torch.cuda.max_memory_reserved()),
+                  driver_free_bytes=int(free), device_total_bytes=int(total))
+    if reset_peak:
+        torch.cuda.reset_peak_memory_stats()
+        result["peak_reset"] = True
+    return result
 
 
 def occupancy(request, *, mock=False):

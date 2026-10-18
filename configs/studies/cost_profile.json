@@ -1,0 +1,503 @@
+{
+  "schema": "ditserve.study.v1",
+  "experiment": "cost-profile",
+  "note": "Per-shape SP1 costs for the cluster scheduler and simulator on GPU 0: Wan 1.3B (Flash, block worker) at 480p x {17,33,81} frames, 5 steps (one warm step, three timed steps, three timed 4-block quanta), a full VAE decode, synchronous CPU prompt encoding; Sana-Sprint 1024px images after one warmup. Each model's peak allocator memory is bracketed per shape; their sum decides whether Wan and Sana can share one card. Turn the work directory's run.json into configs/profiles/<hw>.json with python -m ditserve.evaluation.cost_profile.",
+  "workers": {
+    "wan": {
+      "backend": "wan",
+      "gpu": 0,
+      "model": "wan2.1-t2v-1.3b",
+      "config": {
+        "options": {
+          "execution": "block"
+        }
+      }
+    },
+    "sana": {
+      "backend": "sana",
+      "gpu": 0,
+      "model": "sana-sprint-0.6b"
+    }
+  },
+  "budget": {
+    "limit_gpu_seconds": 2400,
+    "watchdog_seconds": 1800,
+    "repair_reserve_gpu_seconds": 0,
+    "carry": "none"
+  },
+  "phases": [
+    {
+      "id": "wan_shapes",
+      "kind": "operations",
+      "worker": "wan",
+      "admission_wait_seconds": 600,
+      "admission_poll_seconds": 15,
+      "actions": [
+        {
+          "op": "memory",
+          "reset_peak": true,
+          "label": "reset"
+        },
+        {
+          "op": "prepare",
+          "state_id": "s480x832x17",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 101,
+            "height": 480,
+            "width": 832,
+            "frames": 17,
+            "steps": 5,
+            "guidance_scale": 5.0
+          },
+          "label": "prepare"
+        },
+        {
+          "op": "advance",
+          "state_id": "s480x832x17",
+          "quantum": "step",
+          "label": "warm_step"
+        },
+        {
+          "op": "advance",
+          "state_id": "s480x832x17",
+          "quantum": "step",
+          "observe": true,
+          "label": "step"
+        },
+        {
+          "op": "advance",
+          "state_id": "s480x832x17",
+          "quantum": "step",
+          "observe": true,
+          "label": "step"
+        },
+        {
+          "op": "advance",
+          "state_id": "s480x832x17",
+          "quantum": "step",
+          "observe": true,
+          "label": "step"
+        },
+        {
+          "op": "advance",
+          "state_id": "s480x832x17",
+          "blocks": 4,
+          "observe": true,
+          "label": "block4"
+        },
+        {
+          "op": "advance",
+          "state_id": "s480x832x17",
+          "blocks": 4,
+          "observe": true,
+          "label": "block4"
+        },
+        {
+          "op": "advance",
+          "state_id": "s480x832x17",
+          "blocks": 4,
+          "observe": true,
+          "label": "block4"
+        },
+        {
+          "op": "advance",
+          "state_id": "s480x832x17",
+          "quantum": "step",
+          "label": "step_rest"
+        },
+        {
+          "op": "finish",
+          "state_id": "s480x832x17",
+          "output_mode": "check",
+          "label": "decode"
+        },
+        {
+          "op": "memory",
+          "label": "memory"
+        },
+        {
+          "op": "release",
+          "state_id": "s480x832x17"
+        },
+        {
+          "op": "memory",
+          "reset_peak": true,
+          "label": "reset"
+        },
+        {
+          "op": "prepare",
+          "state_id": "s480x832x33",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 101,
+            "height": 480,
+            "width": 832,
+            "frames": 33,
+            "steps": 5,
+            "guidance_scale": 5.0
+          },
+          "label": "prepare"
+        },
+        {
+          "op": "advance",
+          "state_id": "s480x832x33",
+          "quantum": "step",
+          "label": "warm_step"
+        },
+        {
+          "op": "advance",
+          "state_id": "s480x832x33",
+          "quantum": "step",
+          "observe": true,
+          "label": "step"
+        },
+        {
+          "op": "advance",
+          "state_id": "s480x832x33",
+          "quantum": "step",
+          "observe": true,
+          "label": "step"
+        },
+        {
+          "op": "advance",
+          "state_id": "s480x832x33",
+          "quantum": "step",
+          "observe": true,
+          "label": "step"
+        },
+        {
+          "op": "advance",
+          "state_id": "s480x832x33",
+          "blocks": 4,
+          "observe": true,
+          "label": "block4"
+        },
+        {
+          "op": "advance",
+          "state_id": "s480x832x33",
+          "blocks": 4,
+          "observe": true,
+          "label": "block4"
+        },
+        {
+          "op": "advance",
+          "state_id": "s480x832x33",
+          "blocks": 4,
+          "observe": true,
+          "label": "block4"
+        },
+        {
+          "op": "advance",
+          "state_id": "s480x832x33",
+          "quantum": "step",
+          "label": "step_rest"
+        },
+        {
+          "op": "finish",
+          "state_id": "s480x832x33",
+          "output_mode": "check",
+          "label": "decode"
+        },
+        {
+          "op": "memory",
+          "label": "memory"
+        },
+        {
+          "op": "release",
+          "state_id": "s480x832x33"
+        },
+        {
+          "op": "memory",
+          "reset_peak": true,
+          "label": "reset"
+        },
+        {
+          "op": "prepare",
+          "state_id": "s480x832x81",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 101,
+            "height": 480,
+            "width": 832,
+            "frames": 81,
+            "steps": 5,
+            "guidance_scale": 5.0
+          },
+          "label": "prepare"
+        },
+        {
+          "op": "advance",
+          "state_id": "s480x832x81",
+          "quantum": "step",
+          "label": "warm_step"
+        },
+        {
+          "op": "advance",
+          "state_id": "s480x832x81",
+          "quantum": "step",
+          "observe": true,
+          "label": "step"
+        },
+        {
+          "op": "advance",
+          "state_id": "s480x832x81",
+          "quantum": "step",
+          "observe": true,
+          "label": "step"
+        },
+        {
+          "op": "advance",
+          "state_id": "s480x832x81",
+          "quantum": "step",
+          "observe": true,
+          "label": "step"
+        },
+        {
+          "op": "advance",
+          "state_id": "s480x832x81",
+          "blocks": 4,
+          "observe": true,
+          "label": "block4"
+        },
+        {
+          "op": "advance",
+          "state_id": "s480x832x81",
+          "blocks": 4,
+          "observe": true,
+          "label": "block4"
+        },
+        {
+          "op": "advance",
+          "state_id": "s480x832x81",
+          "blocks": 4,
+          "observe": true,
+          "label": "block4"
+        },
+        {
+          "op": "advance",
+          "state_id": "s480x832x81",
+          "quantum": "step",
+          "label": "step_rest"
+        },
+        {
+          "op": "finish",
+          "state_id": "s480x832x81",
+          "output_mode": "check",
+          "label": "decode"
+        },
+        {
+          "op": "memory",
+          "label": "memory"
+        },
+        {
+          "op": "release",
+          "state_id": "s480x832x81"
+        }
+      ]
+    },
+    {
+      "id": "sana_service",
+      "kind": "operations",
+      "worker": "sana",
+      "actions": [
+        {
+          "op": "memory",
+          "reset_peak": true,
+          "label": "reset"
+        },
+        {
+          "op": "prepare",
+          "state_id": "img0",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "seed": 300
+          }
+        },
+        {
+          "op": "advance",
+          "state_id": "img0",
+          "label": "image_warm"
+        },
+        {
+          "op": "finish",
+          "state_id": "img0",
+          "output_mode": "check",
+          "label": "image_warm_finish"
+        },
+        {
+          "op": "release",
+          "state_id": "img0"
+        },
+        {
+          "op": "prepare",
+          "state_id": "img1",
+          "spec": {
+            "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+            "seed": 301
+          }
+        },
+        {
+          "op": "advance",
+          "state_id": "img1",
+          "label": "image"
+        },
+        {
+          "op": "finish",
+          "state_id": "img1",
+          "output_mode": "check",
+          "label": "image_finish"
+        },
+        {
+          "op": "release",
+          "state_id": "img1"
+        },
+        {
+          "op": "prepare",
+          "state_id": "img2",
+          "spec": {
+            "prompt": "A ceramic teapot steaming on a wooden kitchen table.",
+            "seed": 302
+          }
+        },
+        {
+          "op": "advance",
+          "state_id": "img2",
+          "label": "image"
+        },
+        {
+          "op": "finish",
+          "state_id": "img2",
+          "output_mode": "check",
+          "label": "image_finish"
+        },
+        {
+          "op": "release",
+          "state_id": "img2"
+        },
+        {
+          "op": "prepare",
+          "state_id": "img3",
+          "spec": {
+            "prompt": "A paper lantern floating over a quiet night market.",
+            "seed": 303
+          }
+        },
+        {
+          "op": "advance",
+          "state_id": "img3",
+          "label": "image"
+        },
+        {
+          "op": "finish",
+          "state_id": "img3",
+          "output_mode": "check",
+          "label": "image_finish"
+        },
+        {
+          "op": "release",
+          "state_id": "img3"
+        },
+        {
+          "op": "prepare",
+          "state_id": "img4",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "seed": 304
+          }
+        },
+        {
+          "op": "advance",
+          "state_id": "img4",
+          "label": "image"
+        },
+        {
+          "op": "finish",
+          "state_id": "img4",
+          "output_mode": "check",
+          "label": "image_finish"
+        },
+        {
+          "op": "release",
+          "state_id": "img4"
+        },
+        {
+          "op": "prepare",
+          "state_id": "img5",
+          "spec": {
+            "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+            "seed": 305
+          }
+        },
+        {
+          "op": "advance",
+          "state_id": "img5",
+          "label": "image"
+        },
+        {
+          "op": "finish",
+          "state_id": "img5",
+          "output_mode": "check",
+          "label": "image_finish"
+        },
+        {
+          "op": "release",
+          "state_id": "img5"
+        },
+        {
+          "op": "prepare",
+          "state_id": "img6",
+          "spec": {
+            "prompt": "A ceramic teapot steaming on a wooden kitchen table.",
+            "seed": 306
+          }
+        },
+        {
+          "op": "advance",
+          "state_id": "img6",
+          "label": "image"
+        },
+        {
+          "op": "finish",
+          "state_id": "img6",
+          "output_mode": "check",
+          "label": "image_finish"
+        },
+        {
+          "op": "release",
+          "state_id": "img6"
+        },
+        {
+          "op": "prepare",
+          "state_id": "img7",
+          "spec": {
+            "prompt": "A paper lantern floating over a quiet night market.",
+            "seed": 307
+          }
+        },
+        {
+          "op": "advance",
+          "state_id": "img7",
+          "label": "image"
+        },
+        {
+          "op": "finish",
+          "state_id": "img7",
+          "output_mode": "check",
+          "label": "image_finish"
+        },
+        {
+          "op": "release",
+          "state_id": "img7"
+        },
+        {
+          "op": "memory",
+          "label": "memory"
+        }
+      ]
+    }
+  ]
+}

@@ -118,7 +118,7 @@ void normalize_environment(Json& request) {
     request["python"] = python;
 }
 
-Json service(const Json& request, const std::string& backend, Json action);
+Json service(const Json& request, const std::string& backend, Json action, const std::string& visible = "");
 
 // configs/ next to the sources, or share/ditserve/configs in an installation.
 fs::path configs_root(const Json& request) {
@@ -378,7 +378,8 @@ struct TemporaryLog {
 };
 
 
-Json service(const Json& request, const std::string& backend, Json action) {
+// Services see no GPU unless a caller names the devices (doctor --allow-gpu).
+Json service(const Json& request, const std::string& backend, Json action, const std::string& visible) {
     TemporaryLog log;
     CancelScope signals;
     const fs::path root = request.at("root").get<std::string>();
@@ -393,7 +394,7 @@ Json service(const Json& request, const std::string& backend, Json action) {
     options.environment = {{"PYTHONPATH", package.string() + ":" + environment("PYTHONPATH")},
         {"DITSERVE_ROOT", root.string()}, {"PYTHONDONTWRITEBYTECODE", "1"},
         {"DITSERVE_REPORT_TOOLS", (package.parent_path() / ".cache/tools").string()},
-        {"HF_HUB_OFFLINE", "1"}, {"TRANSFORMERS_OFFLINE", "1"}};
+        {"HF_HUB_OFFLINE", "1"}, {"TRANSFORMERS_OFFLINE", "1"}, {"CUDA_VISIBLE_DEVICES", visible}};
     try {
         WorkerProcess worker(options);
         action["version"] = 1; action["id"] = 1;
@@ -422,13 +423,33 @@ Json dispatch(const std::string& command, Json request) {
         if (request.at("config").is_string()) request["config"] = read_config(absolute(request.at("config").get<std::string>()));
         const auto env = load_environment(request);
         if (env.is_null()) throw std::invalid_argument("resolve requires --env or DITSERVE_ENV");
-        return resolve_study(request.at("config"), env, request.at("config").contains("phases") ? gpu_inventory(request) : Json());
+        const bool study = request.at("config").contains("phases");
+        auto resolved = resolve_study(request.at("config"), env, study ? gpu_inventory(request) : Json());
+        if (study) validate_study(resolved);
+        return resolved;
     }
     request = normalize_request(command, std::move(request));
     if (command == "run") return run_study(request);
     if (command == "simulate-study") return simulate_study(request);
     if (command == "doctor") {
-        auto result = service(request, "environment", {{"op", "inspect"}, {"root", request.at("root")}});
+        Json action = {{"op", "inspect"}, {"root", request.at("root")}};
+        std::string visible;
+        const auto env = load_environment(request);
+        if (!env.is_null()) {
+            action["env"] = env;
+            try {
+                action["inventory"] = gpu_inventory(request);
+                Json selected = Json::array();
+                for (const auto& row : select_gpus(env, action["inventory"])) {
+                    selected.push_back(row.at("uuid"));
+                    visible += (visible.empty() ? "" : ",") + row.at("uuid").get<std::string>();
+                }
+                action["selected"] = selected;
+            } catch (const std::exception& error) { action["selection_error"] = error.what(); visible.clear(); }
+            action["gpu_checks"] = bool_field(request, "allow_gpu", false) && !visible.empty();
+            if (!action["gpu_checks"].get<bool>()) visible.clear();
+        }
+        auto result = service(request, "environment", action, visible);
         result["core_binary"] = executable().string(); result["root"] = request.at("root");
         result["core_version"] = core_version(); result["reference_simulation_ready"] = true;
         return result;

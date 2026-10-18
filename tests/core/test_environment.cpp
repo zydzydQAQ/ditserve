@@ -117,7 +117,9 @@ int main() {
         Json unknown = study(); unknown["workers"]["wan"]["model"] = "flux";
         rejects([&] { resolve_study(unknown, rtx_env(), pair()); });
         Json far = study(); far["workers"]["exporter"]["gpu"] = 2;
-        rejects([&] { resolve_study(far, rtx_env(), pair()); });
+        const auto partial = resolve_study(far, rtx_env(), pair());
+        require(!partial.at("workers").contains("exporter") && partial.at("environment").at("unplaced_workers").size() == 1,
+                "a worker beyond the selection is left out and recorded");
         Json unsafe = rtx_env(); unsafe["worker_environment"]["CUDA_VISIBLE_DEVICES"] = "0";
         rejects([&] { resolve_study(study(), unsafe, pair()); });
         Json typo = rtx_env(); typo["gpu"] = 1;

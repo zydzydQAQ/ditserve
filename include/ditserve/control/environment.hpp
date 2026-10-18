@@ -16,7 +16,8 @@ Json select_gpus(const Json& env, const Json& inventory);
 
 // Returns a concrete study for this machine:
 //   * workers with per_gpu become name.0 .. name.{k-1}, one per selected GPU;
-//     gpu: N binds the Nth selected GPU; model: <logical name> becomes
+//     gpu: N binds the Nth selected GPU (workers beyond the selection are left
+//     out and recorded); model: <logical name> becomes
 //     config.model_path (relative paths resolve against models_root);
 //   * env worker_environment and backends.<backend> are defaults the study
 //     overrides;

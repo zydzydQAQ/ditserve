@@ -1,0 +1,159 @@
+{
+  "schema": "ditserve.study.v1",
+  "experiment": "serving",
+  "note": "Main serving comparison on every GPU of the environment (real backends pinned to SP1): step-level static_sp1 against block_elastic (block preemption at ~300 ms quanta, chunked VAE decode, late short requests kept in EDF order). Poisson load curves at 0.4/0.6/0.8 of measured capacity (30 requests per GPU, the environment's serving_classes mix) and a bursty trace. Each cell also replays its trace through the simulator with the same profile for calibration. Needs the environment's measured cost_profile.",
+  "workers": {
+    "wan": {
+      "backend": "wan",
+      "per_gpu": true,
+      "model": "wan2.1-t2v-1.3b",
+      "config": {
+        "options": {
+          "execution": "block"
+        }
+      }
+    },
+    "sana": {
+      "backend": "sana",
+      "per_gpu": true,
+      "model": "sana-sprint-0.6b"
+    }
+  },
+  "budget": {
+    "limit_gpu_seconds": 14400,
+    "watchdog_seconds": 7200,
+    "repair_reserve_gpu_seconds": 0,
+    "carry": "none"
+  },
+  "phases": [
+    {
+      "id": "load",
+      "kind": "cluster",
+      "gpus": {
+        "video": "wan",
+        "image": "sana"
+      },
+      "policy": "static_sp1",
+      "options": {
+        "quantum_ms": 300
+      },
+      "profile": "@env.cost_profile",
+      "generator": {
+        "load": 0.4,
+        "count_per_gpu": 30,
+        "seed": 101,
+        "pattern": "poisson",
+        "prompts": [
+          "A red bicycle leaning against a blue wall in warm afternoon light.",
+          "A small sailboat glides across a calm lake in soft morning light.",
+          "A ceramic teapot steaming on a wooden kitchen table.",
+          "A paper lantern floating over a quiet night market."
+        ],
+        "classes": "@env.serving_classes"
+      },
+      "matrix": {
+        "/policy": [
+          "static_sp1",
+          "block_elastic"
+        ],
+        "/generator/load": [
+          0.4,
+          0.6,
+          0.8
+        ]
+      },
+      "text_prefetch": 1,
+      "output_mode": "check",
+      "simulate": true,
+      "watchdog_seconds": 7200,
+      "admission_wait_seconds": 600,
+      "admission_poll_seconds": 15,
+      "warmup": [
+        {
+          "worker": "wan",
+          "spec": {
+            "prompt": "A wooden boat drifting on a misty river at dawn.",
+            "negative_prompt": "",
+            "seed": 7,
+            "height": 480,
+            "width": 832,
+            "frames": 33,
+            "steps": 2,
+            "guidance_scale": 5.0
+          },
+          "quantum": "step"
+        },
+        {
+          "worker": "sana",
+          "spec": {
+            "prompt": "A ceramic teapot on a linen tablecloth.",
+            "seed": 7
+          }
+        }
+      ]
+    },
+    {
+      "id": "burst",
+      "kind": "cluster",
+      "gpus": {
+        "video": "wan",
+        "image": "sana"
+      },
+      "policy": "static_sp1",
+      "options": {
+        "quantum_ms": 300
+      },
+      "profile": "@env.cost_profile",
+      "generator": {
+        "load": 0.6,
+        "count_per_gpu": 24,
+        "seed": 7,
+        "pattern": "bursty",
+        "burst_period_ms": 80000,
+        "burst_active_fraction": 0.2,
+        "prompts": [
+          "A red bicycle leaning against a blue wall in warm afternoon light.",
+          "A small sailboat glides across a calm lake in soft morning light.",
+          "A ceramic teapot steaming on a wooden kitchen table.",
+          "A paper lantern floating over a quiet night market."
+        ],
+        "classes": "@env.serving_classes"
+      },
+      "matrix": {
+        "/policy": [
+          "static_sp1",
+          "block_elastic"
+        ]
+      },
+      "text_prefetch": 1,
+      "output_mode": "check",
+      "simulate": true,
+      "watchdog_seconds": 7200,
+      "admission_wait_seconds": 600,
+      "admission_poll_seconds": 15,
+      "warmup": [
+        {
+          "worker": "wan",
+          "spec": {
+            "prompt": "A wooden boat drifting on a misty river at dawn.",
+            "negative_prompt": "",
+            "seed": 7,
+            "height": 480,
+            "width": 832,
+            "frames": 33,
+            "steps": 2,
+            "guidance_scale": 5.0
+          },
+          "quantum": "step"
+        },
+        {
+          "worker": "sana",
+          "spec": {
+            "prompt": "A ceramic teapot on a linen tablecloth.",
+            "seed": 7
+          }
+        }
+      ]
+    }
+  ]
+}

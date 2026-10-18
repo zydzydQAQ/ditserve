@@ -1,0 +1,465 @@
+{
+  "schema": "ditserve.study.v1",
+  "experiment": "acceptance",
+  "note": "Arrival acceptance on every GPU of the environment. numeric: the stepwise worker equals the official diffusers loop bit for bit (MATH attention, 64x64x5, 3 steps). block: a Flash block worker suspended inside a step, exported to a file, re-imported and decoded in latent-frame chunks equals its own uninterrupted run bit for bit. mixed: two 480p videos and two images through the cluster executor with block preemption and chunked decode.",
+  "workers": {
+    "model": {
+      "backend": "wan",
+      "per_gpu": true,
+      "model": "wan2.1-t2v-1.3b",
+      "config": {
+        "attention": "math"
+      }
+    },
+    "wan": {
+      "backend": "wan",
+      "per_gpu": true,
+      "model": "wan2.1-t2v-1.3b",
+      "config": {
+        "options": {
+          "execution": "block"
+        }
+      }
+    },
+    "sana": {
+      "backend": "sana",
+      "per_gpu": true,
+      "model": "sana-sprint-0.6b"
+    }
+  },
+  "budget": {
+    "limit_gpu_seconds": 2400,
+    "watchdog_seconds": 1800,
+    "repair_reserve_gpu_seconds": 0,
+    "carry": "none"
+  },
+  "phases": [
+    {
+      "id": "numeric",
+      "kind": "operations",
+      "workers": [
+        "model"
+      ],
+      "admission_wait_seconds": 600,
+      "admission_poll_seconds": 15,
+      "actions": [
+        {
+          "op": "reference",
+          "state_id": "reference",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 101,
+            "height": 64,
+            "width": 64,
+            "frames": 5,
+            "steps": 3,
+            "guidance_scale": 5.0
+          },
+          "output_path": "reference.npy",
+          "save_latents": true
+        },
+        {
+          "op": "prepare",
+          "state_id": "candidate",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 101,
+            "height": 64,
+            "width": 64,
+            "frames": 5,
+            "steps": 3,
+            "guidance_scale": 5.0
+          }
+        },
+        {
+          "op": "advance",
+          "state_id": "candidate",
+          "steps": 1
+        },
+        {
+          "op": "advance",
+          "state_id": "candidate",
+          "steps": 1
+        },
+        {
+          "op": "advance",
+          "state_id": "candidate",
+          "steps": 1
+        },
+        {
+          "op": "finish",
+          "state_id": "candidate",
+          "output_path": "candidate.npy",
+          "save_latents": true
+        },
+        {
+          "op": "evaluate",
+          "reference": "reference.npy",
+          "output": "candidate.npy",
+          "atol": 0,
+          "rtol": 0
+        },
+        {
+          "op": "evaluate",
+          "reference": "reference.latent.npy",
+          "output": "candidate.latent.npy",
+          "atol": 0,
+          "rtol": 0
+        },
+        {
+          "op": "release",
+          "state_id": "candidate"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "/cells/0/operations/6/ranks/*/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/6/ranks/*/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/6/ranks/*/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/7/ranks/*/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/7/ranks/*/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/7/ranks/*/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        }
+      ]
+    },
+    {
+      "id": "block",
+      "kind": "operations",
+      "workers": [
+        "wan"
+      ],
+      "requires": [
+        {
+          "phase": "numeric",
+          "requires": "qualified"
+        }
+      ],
+      "actions": [
+        {
+          "op": "prepare",
+          "state_id": "ref",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 101,
+            "height": 64,
+            "width": 64,
+            "frames": 5,
+            "steps": 3,
+            "guidance_scale": 5.0
+          }
+        },
+        {
+          "op": "advance",
+          "state_id": "ref",
+          "quantum": "step"
+        },
+        {
+          "op": "advance",
+          "state_id": "ref",
+          "quantum": "step"
+        },
+        {
+          "op": "advance",
+          "state_id": "ref",
+          "quantum": "step"
+        },
+        {
+          "op": "finish",
+          "state_id": "ref",
+          "output_path": "ref.npy",
+          "save_latents": true
+        },
+        {
+          "op": "release",
+          "state_id": "ref"
+        },
+        {
+          "op": "prepare",
+          "state_id": "cand",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 101,
+            "height": 64,
+            "width": 64,
+            "frames": 5,
+            "steps": 3,
+            "guidance_scale": 5.0
+          }
+        },
+        {
+          "op": "advance",
+          "state_id": "cand",
+          "quantum": "step"
+        },
+        {
+          "op": "advance",
+          "state_id": "cand",
+          "blocks": 13,
+          "label": "suspend_at_block_13"
+        },
+        {
+          "op": "block_export",
+          "state_id": "cand",
+          "path": "cand.pt"
+        },
+        {
+          "op": "block_import",
+          "state_id": "cand",
+          "path": "cand.pt"
+        },
+        {
+          "op": "advance",
+          "state_id": "cand",
+          "quantum": "step"
+        },
+        {
+          "op": "advance",
+          "state_id": "cand",
+          "quantum": "step"
+        },
+        {
+          "op": "finish",
+          "state_id": "cand",
+          "decode_frames": 1,
+          "label": "decode_chunk"
+        },
+        {
+          "op": "finish",
+          "state_id": "cand",
+          "decode_frames": 1,
+          "output_path": "cand.npy",
+          "save_latents": true
+        },
+        {
+          "op": "evaluate",
+          "reference": "ref.npy",
+          "output": "cand.npy",
+          "atol": 0,
+          "rtol": 0
+        },
+        {
+          "op": "evaluate",
+          "reference": "ref.latent.npy",
+          "output": "cand.latent.npy",
+          "atol": 0,
+          "rtol": 0
+        },
+        {
+          "op": "release",
+          "state_id": "cand"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "/cells/0/operations/15/ranks/*/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/15/ranks/*/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/15/ranks/*/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/16/ranks/*/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/16/ranks/*/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/16/ranks/*/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        }
+      ]
+    },
+    {
+      "id": "mixed",
+      "kind": "cluster",
+      "requires": [
+        {
+          "phase": "block",
+          "requires": "qualified"
+        }
+      ],
+      "gpus": {
+        "video": "wan",
+        "image": "sana"
+      },
+      "policy": "block_elastic",
+      "options": {
+        "quantum_ms": 300
+      },
+      "profile": {
+        "provenance": "synthetic",
+        "sp_efficiency": 1,
+        "resize_ms": 0,
+        "links": {},
+        "description": "Acceptance-only scheduling estimates; the gates check completion, not timing.",
+        "classes": {
+          "video": {
+            "kind": "video",
+            "steps": 8,
+            "blocks_per_step": 60,
+            "prepare_ms": 50,
+            "encode_ms": 20000,
+            "step_compute_ms": 1000,
+            "comm_mb_per_step": 0,
+            "collectives_per_step": 0,
+            "finish_ms": 3000,
+            "decode_chunks": 5
+          },
+          "image": {
+            "kind": "image",
+            "service_ms": 500
+          }
+        }
+      },
+      "text_prefetch": 1,
+      "output_mode": "check",
+      "workload": [
+        {
+          "request_id": "v0",
+          "kind": "video",
+          "arrival_ms": 0,
+          "slo_ms": 600000,
+          "class": "video",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 101,
+            "height": 480,
+            "width": 832,
+            "frames": 17,
+            "steps": 8,
+            "guidance_scale": 5.0
+          }
+        },
+        {
+          "request_id": "i1",
+          "kind": "image",
+          "arrival_ms": 2000,
+          "slo_ms": 60000,
+          "class": "image",
+          "spec": {
+            "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+            "seed": 201
+          }
+        },
+        {
+          "request_id": "v2",
+          "kind": "video",
+          "arrival_ms": 4000,
+          "slo_ms": 600000,
+          "class": "video",
+          "spec": {
+            "prompt": "A ceramic teapot steaming on a wooden kitchen table.",
+            "negative_prompt": "",
+            "seed": 103,
+            "height": 480,
+            "width": 832,
+            "frames": 17,
+            "steps": 8,
+            "guidance_scale": 5.0
+          }
+        },
+        {
+          "request_id": "i3",
+          "kind": "image",
+          "arrival_ms": 6000,
+          "slo_ms": 60000,
+          "class": "image",
+          "spec": {
+            "prompt": "A paper lantern floating over a quiet night market.",
+            "seed": 203
+          }
+        }
+      ],
+      "warmup": [
+        {
+          "worker": "wan",
+          "spec": {
+            "prompt": "A wooden boat drifting on a misty river at dawn.",
+            "negative_prompt": "",
+            "seed": 7,
+            "height": 480,
+            "width": 832,
+            "frames": 17,
+            "steps": 1,
+            "guidance_scale": 5.0
+          },
+          "quantum": "step"
+        },
+        {
+          "worker": "sana",
+          "spec": {
+            "prompt": "A ceramic teapot on a linen tablecloth.",
+            "seed": 7
+          }
+        }
+      ],
+      "watchdog_seconds": 1200,
+      "gates": [
+        {
+          "metric": "/cells/0/metrics/completed",
+          "op": "eq",
+          "value": 4,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/metrics/failed",
+          "op": "eq",
+          "value": 0,
+          "scope": "numeric"
+        }
+      ]
+    }
+  ]
+}

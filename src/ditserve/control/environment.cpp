@@ -130,7 +130,7 @@ Json resolve_study(const Json& study, const Json& env, const Json& inventory) {
         if (!environment.empty()) worker["environment"] = environment;
         return worker;
     };
-    Json workers = Json::object();
+    Json workers = Json::object(), unplaced = Json::array();
     const Json defined = out.value("workers", Json::object());
     for (auto it = defined.begin(); it != defined.end(); ++it) {
         Json worker = it.value();
@@ -146,6 +146,8 @@ Json resolve_study(const Json& study, const Json& env, const Json& inventory) {
             const int gpu = static_cast<int>(integer(worker.at("gpu"), "gpu"));
             if (gpu < 0) throw std::invalid_argument("gpu must be a nonnegative index into the selected GPUs");
             worker.erase("gpu");
+            // Absent on smaller machines; a phase that still names it fails validation.
+            if (gpu >= gpus) { unplaced.push_back({{"worker", name}, {"gpu", gpu}}); continue; }
             workers[name] = bind(worker, name, gpu);
         } else workers[name] = worker.contains("model") || worker.contains("environment") || worker.contains("config") ? bind(worker, name, -1) : worker;
     }
@@ -203,7 +205,7 @@ Json resolve_study(const Json& study, const Json& env, const Json& inventory) {
     for (const auto& row : selected) selected_uuids.push_back(row.at("uuid"));
     out["environment"].update({{"schema", "ditserve.env-resolution.v1"}, {"name", env_name},
         {"provenance", env.value("provenance", Json())}, {"inventory", inventory}, {"selected", selected_uuids},
-        {"workers", bindings}, {"models", models}});
+        {"workers", bindings}, {"unplaced_workers", unplaced}, {"models", models}});
     return out;
 }
 }

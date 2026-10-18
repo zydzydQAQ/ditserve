@@ -1,0 +1,2094 @@
+{
+  "schema": "ditserve.study.v1",
+  "experiment": "block-exact",
+  "note": "Block boundaries as suspension points (contra GF-DiT). For each 480p shape (3 steps), a source worker runs one step plus 13 or 45 blocks, exports the block packet with the untouched solver state and releases it; another worker process imports it, finishes, and video and final latents are compared bit for bit with an uninterrupted run. same_gpu uses a second process on GPU 0; cross_gpu imports on GPU 1 (two or more GPUs).",
+  "workers": {
+    "source": {
+      "backend": "wan",
+      "gpu": 0,
+      "model": "wan2.1-t2v-1.3b",
+      "config": {
+        "options": {
+          "execution": "block"
+        }
+      }
+    },
+    "target": {
+      "backend": "wan",
+      "gpu": 0,
+      "model": "wan2.1-t2v-1.3b",
+      "config": {
+        "options": {
+          "execution": "block"
+        }
+      }
+    },
+    "remote": {
+      "backend": "wan",
+      "gpu": 1,
+      "model": "wan2.1-t2v-1.3b",
+      "config": {
+        "options": {
+          "execution": "block"
+        }
+      }
+    }
+  },
+  "budget": {
+    "limit_gpu_seconds": 3600,
+    "watchdog_seconds": 1800,
+    "repair_reserve_gpu_seconds": 0,
+    "carry": "none"
+  },
+  "phases": [
+    {
+      "id": "same_gpu",
+      "kind": "operations",
+      "workers": [
+        "source",
+        "target"
+      ],
+      "admission_wait_seconds": 600,
+      "admission_poll_seconds": 15,
+      "actions": [
+        {
+          "op": "prepare",
+          "state_id": "ref-480x832x17",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 101,
+            "height": 480,
+            "width": 832,
+            "frames": 17,
+            "steps": 3,
+            "guidance_scale": 5.0
+          },
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "ref-480x832x17",
+          "quantum": "step",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "ref-480x832x17",
+          "quantum": "step",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "ref-480x832x17",
+          "quantum": "step",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "finish",
+          "state_id": "ref-480x832x17",
+          "output_path": "@cell/ref-480x832x17.npy",
+          "save_latents": true,
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "release",
+          "state_id": "ref-480x832x17",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "prepare",
+          "state_id": "cand-480x832x17-b13",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 101,
+            "height": 480,
+            "width": 832,
+            "frames": 17,
+            "steps": 3,
+            "guidance_scale": 5.0
+          },
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x17-b13",
+          "quantum": "step",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x17-b13",
+          "blocks": 13,
+          "only_ranks": [
+            0
+          ],
+          "label": "suspend"
+        },
+        {
+          "op": "block_export",
+          "state_id": "cand-480x832x17-b13",
+          "path": "@cell/cand-480x832x17-b13.pt",
+          "only_ranks": [
+            0
+          ],
+          "label": "export"
+        },
+        {
+          "op": "block_import",
+          "state_id": "cand-480x832x17-b13",
+          "path": "@cell/cand-480x832x17-b13.pt",
+          "only_ranks": [
+            1
+          ],
+          "label": "import"
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x17-b13",
+          "quantum": "step",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x17-b13",
+          "quantum": "step",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "finish",
+          "state_id": "cand-480x832x17-b13",
+          "output_path": "@cell/cand-480x832x17-b13.npy",
+          "save_latents": true,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "evaluate",
+          "reference": "@cell/ref-480x832x17.npy",
+          "output": "@cell/cand-480x832x17-b13.npy",
+          "atol": 0,
+          "rtol": 0,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "evaluate",
+          "reference": "@cell/ref-480x832x17.latent.npy",
+          "output": "@cell/cand-480x832x17-b13.latent.npy",
+          "atol": 0,
+          "rtol": 0,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "release",
+          "state_id": "cand-480x832x17-b13",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "prepare",
+          "state_id": "cand-480x832x17-b45",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 101,
+            "height": 480,
+            "width": 832,
+            "frames": 17,
+            "steps": 3,
+            "guidance_scale": 5.0
+          },
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x17-b45",
+          "quantum": "step",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x17-b45",
+          "blocks": 45,
+          "only_ranks": [
+            0
+          ],
+          "label": "suspend"
+        },
+        {
+          "op": "block_export",
+          "state_id": "cand-480x832x17-b45",
+          "path": "@cell/cand-480x832x17-b45.pt",
+          "only_ranks": [
+            0
+          ],
+          "label": "export"
+        },
+        {
+          "op": "block_import",
+          "state_id": "cand-480x832x17-b45",
+          "path": "@cell/cand-480x832x17-b45.pt",
+          "only_ranks": [
+            1
+          ],
+          "label": "import"
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x17-b45",
+          "quantum": "step",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x17-b45",
+          "quantum": "step",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "finish",
+          "state_id": "cand-480x832x17-b45",
+          "output_path": "@cell/cand-480x832x17-b45.npy",
+          "save_latents": true,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "evaluate",
+          "reference": "@cell/ref-480x832x17.npy",
+          "output": "@cell/cand-480x832x17-b45.npy",
+          "atol": 0,
+          "rtol": 0,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "evaluate",
+          "reference": "@cell/ref-480x832x17.latent.npy",
+          "output": "@cell/cand-480x832x17-b45.latent.npy",
+          "atol": 0,
+          "rtol": 0,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "release",
+          "state_id": "cand-480x832x17-b45",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "prepare",
+          "state_id": "ref-480x832x33",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 101,
+            "height": 480,
+            "width": 832,
+            "frames": 33,
+            "steps": 3,
+            "guidance_scale": 5.0
+          },
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "ref-480x832x33",
+          "quantum": "step",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "ref-480x832x33",
+          "quantum": "step",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "ref-480x832x33",
+          "quantum": "step",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "finish",
+          "state_id": "ref-480x832x33",
+          "output_path": "@cell/ref-480x832x33.npy",
+          "save_latents": true,
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "release",
+          "state_id": "ref-480x832x33",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "prepare",
+          "state_id": "cand-480x832x33-b13",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 101,
+            "height": 480,
+            "width": 832,
+            "frames": 33,
+            "steps": 3,
+            "guidance_scale": 5.0
+          },
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x33-b13",
+          "quantum": "step",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x33-b13",
+          "blocks": 13,
+          "only_ranks": [
+            0
+          ],
+          "label": "suspend"
+        },
+        {
+          "op": "block_export",
+          "state_id": "cand-480x832x33-b13",
+          "path": "@cell/cand-480x832x33-b13.pt",
+          "only_ranks": [
+            0
+          ],
+          "label": "export"
+        },
+        {
+          "op": "block_import",
+          "state_id": "cand-480x832x33-b13",
+          "path": "@cell/cand-480x832x33-b13.pt",
+          "only_ranks": [
+            1
+          ],
+          "label": "import"
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x33-b13",
+          "quantum": "step",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x33-b13",
+          "quantum": "step",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "finish",
+          "state_id": "cand-480x832x33-b13",
+          "output_path": "@cell/cand-480x832x33-b13.npy",
+          "save_latents": true,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "evaluate",
+          "reference": "@cell/ref-480x832x33.npy",
+          "output": "@cell/cand-480x832x33-b13.npy",
+          "atol": 0,
+          "rtol": 0,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "evaluate",
+          "reference": "@cell/ref-480x832x33.latent.npy",
+          "output": "@cell/cand-480x832x33-b13.latent.npy",
+          "atol": 0,
+          "rtol": 0,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "release",
+          "state_id": "cand-480x832x33-b13",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "prepare",
+          "state_id": "cand-480x832x33-b45",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 101,
+            "height": 480,
+            "width": 832,
+            "frames": 33,
+            "steps": 3,
+            "guidance_scale": 5.0
+          },
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x33-b45",
+          "quantum": "step",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x33-b45",
+          "blocks": 45,
+          "only_ranks": [
+            0
+          ],
+          "label": "suspend"
+        },
+        {
+          "op": "block_export",
+          "state_id": "cand-480x832x33-b45",
+          "path": "@cell/cand-480x832x33-b45.pt",
+          "only_ranks": [
+            0
+          ],
+          "label": "export"
+        },
+        {
+          "op": "block_import",
+          "state_id": "cand-480x832x33-b45",
+          "path": "@cell/cand-480x832x33-b45.pt",
+          "only_ranks": [
+            1
+          ],
+          "label": "import"
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x33-b45",
+          "quantum": "step",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x33-b45",
+          "quantum": "step",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "finish",
+          "state_id": "cand-480x832x33-b45",
+          "output_path": "@cell/cand-480x832x33-b45.npy",
+          "save_latents": true,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "evaluate",
+          "reference": "@cell/ref-480x832x33.npy",
+          "output": "@cell/cand-480x832x33-b45.npy",
+          "atol": 0,
+          "rtol": 0,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "evaluate",
+          "reference": "@cell/ref-480x832x33.latent.npy",
+          "output": "@cell/cand-480x832x33-b45.latent.npy",
+          "atol": 0,
+          "rtol": 0,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "release",
+          "state_id": "cand-480x832x33-b45",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "prepare",
+          "state_id": "ref-480x832x81",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 101,
+            "height": 480,
+            "width": 832,
+            "frames": 81,
+            "steps": 3,
+            "guidance_scale": 5.0
+          },
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "ref-480x832x81",
+          "quantum": "step",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "ref-480x832x81",
+          "quantum": "step",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "ref-480x832x81",
+          "quantum": "step",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "finish",
+          "state_id": "ref-480x832x81",
+          "output_path": "@cell/ref-480x832x81.npy",
+          "save_latents": true,
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "release",
+          "state_id": "ref-480x832x81",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "prepare",
+          "state_id": "cand-480x832x81-b13",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 101,
+            "height": 480,
+            "width": 832,
+            "frames": 81,
+            "steps": 3,
+            "guidance_scale": 5.0
+          },
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x81-b13",
+          "quantum": "step",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x81-b13",
+          "blocks": 13,
+          "only_ranks": [
+            0
+          ],
+          "label": "suspend"
+        },
+        {
+          "op": "block_export",
+          "state_id": "cand-480x832x81-b13",
+          "path": "@cell/cand-480x832x81-b13.pt",
+          "only_ranks": [
+            0
+          ],
+          "label": "export"
+        },
+        {
+          "op": "block_import",
+          "state_id": "cand-480x832x81-b13",
+          "path": "@cell/cand-480x832x81-b13.pt",
+          "only_ranks": [
+            1
+          ],
+          "label": "import"
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x81-b13",
+          "quantum": "step",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x81-b13",
+          "quantum": "step",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "finish",
+          "state_id": "cand-480x832x81-b13",
+          "output_path": "@cell/cand-480x832x81-b13.npy",
+          "save_latents": true,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "evaluate",
+          "reference": "@cell/ref-480x832x81.npy",
+          "output": "@cell/cand-480x832x81-b13.npy",
+          "atol": 0,
+          "rtol": 0,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "evaluate",
+          "reference": "@cell/ref-480x832x81.latent.npy",
+          "output": "@cell/cand-480x832x81-b13.latent.npy",
+          "atol": 0,
+          "rtol": 0,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "release",
+          "state_id": "cand-480x832x81-b13",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "prepare",
+          "state_id": "cand-480x832x81-b45",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 101,
+            "height": 480,
+            "width": 832,
+            "frames": 81,
+            "steps": 3,
+            "guidance_scale": 5.0
+          },
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x81-b45",
+          "quantum": "step",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x81-b45",
+          "blocks": 45,
+          "only_ranks": [
+            0
+          ],
+          "label": "suspend"
+        },
+        {
+          "op": "block_export",
+          "state_id": "cand-480x832x81-b45",
+          "path": "@cell/cand-480x832x81-b45.pt",
+          "only_ranks": [
+            0
+          ],
+          "label": "export"
+        },
+        {
+          "op": "block_import",
+          "state_id": "cand-480x832x81-b45",
+          "path": "@cell/cand-480x832x81-b45.pt",
+          "only_ranks": [
+            1
+          ],
+          "label": "import"
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x81-b45",
+          "quantum": "step",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x81-b45",
+          "quantum": "step",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "finish",
+          "state_id": "cand-480x832x81-b45",
+          "output_path": "@cell/cand-480x832x81-b45.npy",
+          "save_latents": true,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "evaluate",
+          "reference": "@cell/ref-480x832x81.npy",
+          "output": "@cell/cand-480x832x81-b45.npy",
+          "atol": 0,
+          "rtol": 0,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "evaluate",
+          "reference": "@cell/ref-480x832x81.latent.npy",
+          "output": "@cell/cand-480x832x81-b45.latent.npy",
+          "atol": 0,
+          "rtol": 0,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "release",
+          "state_id": "cand-480x832x81-b45",
+          "only_ranks": [
+            1
+          ]
+        }
+      ],
+      "gates": [
+        {
+          "metric": "/cells/0/operations/14/ranks/0/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/14/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/14/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/15/ranks/0/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/15/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/15/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/25/ranks/0/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/25/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/25/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/26/ranks/0/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/26/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/26/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/42/ranks/0/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/42/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/42/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/43/ranks/0/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/43/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/43/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/53/ranks/0/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/53/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/53/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/54/ranks/0/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/54/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/54/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/70/ranks/0/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/70/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/70/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/71/ranks/0/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/71/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/71/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/81/ranks/0/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/81/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/81/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/82/ranks/0/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/82/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/82/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        }
+      ]
+    },
+    {
+      "id": "cross_gpu",
+      "kind": "operations",
+      "workers": [
+        "source",
+        "remote"
+      ],
+      "min_gpus": 2,
+      "actions": [
+        {
+          "op": "prepare",
+          "state_id": "ref-480x832x17",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 101,
+            "height": 480,
+            "width": 832,
+            "frames": 17,
+            "steps": 3,
+            "guidance_scale": 5.0
+          },
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "ref-480x832x17",
+          "quantum": "step",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "ref-480x832x17",
+          "quantum": "step",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "ref-480x832x17",
+          "quantum": "step",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "finish",
+          "state_id": "ref-480x832x17",
+          "output_path": "@cell/ref-480x832x17.npy",
+          "save_latents": true,
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "release",
+          "state_id": "ref-480x832x17",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "prepare",
+          "state_id": "cand-480x832x17-b13",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 101,
+            "height": 480,
+            "width": 832,
+            "frames": 17,
+            "steps": 3,
+            "guidance_scale": 5.0
+          },
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x17-b13",
+          "quantum": "step",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x17-b13",
+          "blocks": 13,
+          "only_ranks": [
+            0
+          ],
+          "label": "suspend"
+        },
+        {
+          "op": "block_export",
+          "state_id": "cand-480x832x17-b13",
+          "path": "@cell/cand-480x832x17-b13.pt",
+          "only_ranks": [
+            0
+          ],
+          "label": "export"
+        },
+        {
+          "op": "block_import",
+          "state_id": "cand-480x832x17-b13",
+          "path": "@cell/cand-480x832x17-b13.pt",
+          "only_ranks": [
+            1
+          ],
+          "label": "import"
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x17-b13",
+          "quantum": "step",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x17-b13",
+          "quantum": "step",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "finish",
+          "state_id": "cand-480x832x17-b13",
+          "output_path": "@cell/cand-480x832x17-b13.npy",
+          "save_latents": true,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "evaluate",
+          "reference": "@cell/ref-480x832x17.npy",
+          "output": "@cell/cand-480x832x17-b13.npy",
+          "atol": 0,
+          "rtol": 0,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "evaluate",
+          "reference": "@cell/ref-480x832x17.latent.npy",
+          "output": "@cell/cand-480x832x17-b13.latent.npy",
+          "atol": 0,
+          "rtol": 0,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "release",
+          "state_id": "cand-480x832x17-b13",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "prepare",
+          "state_id": "cand-480x832x17-b45",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 101,
+            "height": 480,
+            "width": 832,
+            "frames": 17,
+            "steps": 3,
+            "guidance_scale": 5.0
+          },
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x17-b45",
+          "quantum": "step",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x17-b45",
+          "blocks": 45,
+          "only_ranks": [
+            0
+          ],
+          "label": "suspend"
+        },
+        {
+          "op": "block_export",
+          "state_id": "cand-480x832x17-b45",
+          "path": "@cell/cand-480x832x17-b45.pt",
+          "only_ranks": [
+            0
+          ],
+          "label": "export"
+        },
+        {
+          "op": "block_import",
+          "state_id": "cand-480x832x17-b45",
+          "path": "@cell/cand-480x832x17-b45.pt",
+          "only_ranks": [
+            1
+          ],
+          "label": "import"
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x17-b45",
+          "quantum": "step",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x17-b45",
+          "quantum": "step",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "finish",
+          "state_id": "cand-480x832x17-b45",
+          "output_path": "@cell/cand-480x832x17-b45.npy",
+          "save_latents": true,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "evaluate",
+          "reference": "@cell/ref-480x832x17.npy",
+          "output": "@cell/cand-480x832x17-b45.npy",
+          "atol": 0,
+          "rtol": 0,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "evaluate",
+          "reference": "@cell/ref-480x832x17.latent.npy",
+          "output": "@cell/cand-480x832x17-b45.latent.npy",
+          "atol": 0,
+          "rtol": 0,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "release",
+          "state_id": "cand-480x832x17-b45",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "prepare",
+          "state_id": "ref-480x832x33",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 101,
+            "height": 480,
+            "width": 832,
+            "frames": 33,
+            "steps": 3,
+            "guidance_scale": 5.0
+          },
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "ref-480x832x33",
+          "quantum": "step",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "ref-480x832x33",
+          "quantum": "step",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "ref-480x832x33",
+          "quantum": "step",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "finish",
+          "state_id": "ref-480x832x33",
+          "output_path": "@cell/ref-480x832x33.npy",
+          "save_latents": true,
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "release",
+          "state_id": "ref-480x832x33",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "prepare",
+          "state_id": "cand-480x832x33-b13",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 101,
+            "height": 480,
+            "width": 832,
+            "frames": 33,
+            "steps": 3,
+            "guidance_scale": 5.0
+          },
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x33-b13",
+          "quantum": "step",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x33-b13",
+          "blocks": 13,
+          "only_ranks": [
+            0
+          ],
+          "label": "suspend"
+        },
+        {
+          "op": "block_export",
+          "state_id": "cand-480x832x33-b13",
+          "path": "@cell/cand-480x832x33-b13.pt",
+          "only_ranks": [
+            0
+          ],
+          "label": "export"
+        },
+        {
+          "op": "block_import",
+          "state_id": "cand-480x832x33-b13",
+          "path": "@cell/cand-480x832x33-b13.pt",
+          "only_ranks": [
+            1
+          ],
+          "label": "import"
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x33-b13",
+          "quantum": "step",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x33-b13",
+          "quantum": "step",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "finish",
+          "state_id": "cand-480x832x33-b13",
+          "output_path": "@cell/cand-480x832x33-b13.npy",
+          "save_latents": true,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "evaluate",
+          "reference": "@cell/ref-480x832x33.npy",
+          "output": "@cell/cand-480x832x33-b13.npy",
+          "atol": 0,
+          "rtol": 0,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "evaluate",
+          "reference": "@cell/ref-480x832x33.latent.npy",
+          "output": "@cell/cand-480x832x33-b13.latent.npy",
+          "atol": 0,
+          "rtol": 0,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "release",
+          "state_id": "cand-480x832x33-b13",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "prepare",
+          "state_id": "cand-480x832x33-b45",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 101,
+            "height": 480,
+            "width": 832,
+            "frames": 33,
+            "steps": 3,
+            "guidance_scale": 5.0
+          },
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x33-b45",
+          "quantum": "step",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x33-b45",
+          "blocks": 45,
+          "only_ranks": [
+            0
+          ],
+          "label": "suspend"
+        },
+        {
+          "op": "block_export",
+          "state_id": "cand-480x832x33-b45",
+          "path": "@cell/cand-480x832x33-b45.pt",
+          "only_ranks": [
+            0
+          ],
+          "label": "export"
+        },
+        {
+          "op": "block_import",
+          "state_id": "cand-480x832x33-b45",
+          "path": "@cell/cand-480x832x33-b45.pt",
+          "only_ranks": [
+            1
+          ],
+          "label": "import"
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x33-b45",
+          "quantum": "step",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x33-b45",
+          "quantum": "step",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "finish",
+          "state_id": "cand-480x832x33-b45",
+          "output_path": "@cell/cand-480x832x33-b45.npy",
+          "save_latents": true,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "evaluate",
+          "reference": "@cell/ref-480x832x33.npy",
+          "output": "@cell/cand-480x832x33-b45.npy",
+          "atol": 0,
+          "rtol": 0,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "evaluate",
+          "reference": "@cell/ref-480x832x33.latent.npy",
+          "output": "@cell/cand-480x832x33-b45.latent.npy",
+          "atol": 0,
+          "rtol": 0,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "release",
+          "state_id": "cand-480x832x33-b45",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "prepare",
+          "state_id": "ref-480x832x81",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 101,
+            "height": 480,
+            "width": 832,
+            "frames": 81,
+            "steps": 3,
+            "guidance_scale": 5.0
+          },
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "ref-480x832x81",
+          "quantum": "step",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "ref-480x832x81",
+          "quantum": "step",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "ref-480x832x81",
+          "quantum": "step",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "finish",
+          "state_id": "ref-480x832x81",
+          "output_path": "@cell/ref-480x832x81.npy",
+          "save_latents": true,
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "release",
+          "state_id": "ref-480x832x81",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "prepare",
+          "state_id": "cand-480x832x81-b13",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 101,
+            "height": 480,
+            "width": 832,
+            "frames": 81,
+            "steps": 3,
+            "guidance_scale": 5.0
+          },
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x81-b13",
+          "quantum": "step",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x81-b13",
+          "blocks": 13,
+          "only_ranks": [
+            0
+          ],
+          "label": "suspend"
+        },
+        {
+          "op": "block_export",
+          "state_id": "cand-480x832x81-b13",
+          "path": "@cell/cand-480x832x81-b13.pt",
+          "only_ranks": [
+            0
+          ],
+          "label": "export"
+        },
+        {
+          "op": "block_import",
+          "state_id": "cand-480x832x81-b13",
+          "path": "@cell/cand-480x832x81-b13.pt",
+          "only_ranks": [
+            1
+          ],
+          "label": "import"
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x81-b13",
+          "quantum": "step",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x81-b13",
+          "quantum": "step",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "finish",
+          "state_id": "cand-480x832x81-b13",
+          "output_path": "@cell/cand-480x832x81-b13.npy",
+          "save_latents": true,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "evaluate",
+          "reference": "@cell/ref-480x832x81.npy",
+          "output": "@cell/cand-480x832x81-b13.npy",
+          "atol": 0,
+          "rtol": 0,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "evaluate",
+          "reference": "@cell/ref-480x832x81.latent.npy",
+          "output": "@cell/cand-480x832x81-b13.latent.npy",
+          "atol": 0,
+          "rtol": 0,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "release",
+          "state_id": "cand-480x832x81-b13",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "prepare",
+          "state_id": "cand-480x832x81-b45",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 101,
+            "height": 480,
+            "width": 832,
+            "frames": 81,
+            "steps": 3,
+            "guidance_scale": 5.0
+          },
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x81-b45",
+          "quantum": "step",
+          "only_ranks": [
+            0
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x81-b45",
+          "blocks": 45,
+          "only_ranks": [
+            0
+          ],
+          "label": "suspend"
+        },
+        {
+          "op": "block_export",
+          "state_id": "cand-480x832x81-b45",
+          "path": "@cell/cand-480x832x81-b45.pt",
+          "only_ranks": [
+            0
+          ],
+          "label": "export"
+        },
+        {
+          "op": "block_import",
+          "state_id": "cand-480x832x81-b45",
+          "path": "@cell/cand-480x832x81-b45.pt",
+          "only_ranks": [
+            1
+          ],
+          "label": "import"
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x81-b45",
+          "quantum": "step",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "cand-480x832x81-b45",
+          "quantum": "step",
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "finish",
+          "state_id": "cand-480x832x81-b45",
+          "output_path": "@cell/cand-480x832x81-b45.npy",
+          "save_latents": true,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "evaluate",
+          "reference": "@cell/ref-480x832x81.npy",
+          "output": "@cell/cand-480x832x81-b45.npy",
+          "atol": 0,
+          "rtol": 0,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "evaluate",
+          "reference": "@cell/ref-480x832x81.latent.npy",
+          "output": "@cell/cand-480x832x81-b45.latent.npy",
+          "atol": 0,
+          "rtol": 0,
+          "only_ranks": [
+            1
+          ]
+        },
+        {
+          "op": "release",
+          "state_id": "cand-480x832x81-b45",
+          "only_ranks": [
+            1
+          ]
+        }
+      ],
+      "gates": [
+        {
+          "metric": "/cells/0/operations/14/ranks/0/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/14/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/14/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/15/ranks/0/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/15/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/15/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/25/ranks/0/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/25/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/25/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/26/ranks/0/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/26/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/26/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/42/ranks/0/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/42/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/42/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/43/ranks/0/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/43/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/43/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/53/ranks/0/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/53/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/53/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/54/ranks/0/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/54/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/54/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/70/ranks/0/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/70/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/70/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/71/ranks/0/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/71/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/71/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/81/ranks/0/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/81/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/81/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/82/ranks/0/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/82/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/82/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        }
+      ]
+    }
+  ]
+}

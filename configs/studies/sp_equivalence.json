@@ -1,0 +1,184 @@
+{
+  "schema": "ditserve.study.v1",
+  "experiment": "sp-equivalence",
+  "note": "Experimental: the first GPU run of the Ulysses SP2 path (cache-dit attention, NCCL) on GPUs 0-1 against an SP1 Flash reference on GPU 0, 480p x 17 frames, 4 steps. SP changes reduction order, so the comparison is toleranced and records the maximum error; a failure is recorded, and no SP performance claim is made before this passes.",
+  "workers": {
+    "rank": {
+      "backend": "wan",
+      "per_gpu": true,
+      "model": "wan2.1-t2v-1.3b"
+    },
+    "reference": {
+      "backend": "wan",
+      "gpu": 0,
+      "model": "wan2.1-t2v-1.3b"
+    }
+  },
+  "budget": {
+    "limit_gpu_seconds": 1800,
+    "watchdog_seconds": 1800,
+    "repair_reserve_gpu_seconds": 0,
+    "carry": "none"
+  },
+  "phases": [
+    {
+      "id": "sp2",
+      "kind": "operations",
+      "workers": [
+        "rank",
+        "reference"
+      ],
+      "gpu_count": 2,
+      "min_gpus": 2,
+      "admission_wait_seconds": 600,
+      "admission_poll_seconds": 15,
+      "actions": [
+        {
+          "op": "prepare",
+          "state_id": "sp1",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 101,
+            "height": 480,
+            "width": 832,
+            "frames": 17,
+            "steps": 4,
+            "guidance_scale": 5.0
+          },
+          "only_ranks": [
+            2
+          ]
+        },
+        {
+          "op": "advance",
+          "state_id": "sp1",
+          "steps": 4,
+          "only_ranks": [
+            2
+          ]
+        },
+        {
+          "op": "finish",
+          "state_id": "sp1",
+          "output_path": "@cell/sp1.npy",
+          "save_latents": true,
+          "only_ranks": [
+            2
+          ]
+        },
+        {
+          "op": "release",
+          "state_id": "sp1",
+          "only_ranks": [
+            2
+          ]
+        },
+        {
+          "op": "distributed",
+          "action": "init",
+          "init_method": "tcp://127.0.0.1:29531",
+          "world_size": 2,
+          "ranks": [
+            0,
+            1
+          ],
+          "only_ranks": [
+            0,
+            1
+          ],
+          "timeout_seconds": 60
+        },
+        {
+          "op": "distributed",
+          "action": "prepare",
+          "state_id": "sp2",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 101,
+            "height": 480,
+            "width": 832,
+            "frames": 17,
+            "steps": 4,
+            "guidance_scale": 5.0
+          },
+          "only_ranks": [
+            0,
+            1
+          ]
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "sp2",
+          "steps": 4,
+          "only_ranks": [
+            0,
+            1
+          ]
+        },
+        {
+          "op": "finish",
+          "state_id": "sp2",
+          "output_path": "sp2.npy",
+          "save_latents": true,
+          "only_ranks": [
+            0,
+            1
+          ]
+        },
+        {
+          "op": "evaluate",
+          "reference": "@cell/sp1.npy",
+          "output": "sp2.npy",
+          "atol": 0.05,
+          "rtol": 0,
+          "only_ranks": [
+            0,
+            1
+          ]
+        },
+        {
+          "op": "evaluate",
+          "reference": "@cell/sp1.latent.npy",
+          "output": "sp2.latent.npy",
+          "atol": 0.05,
+          "rtol": 0,
+          "only_ranks": [
+            0,
+            1
+          ]
+        },
+        {
+          "op": "release",
+          "state_id": "sp2",
+          "only_ranks": [
+            0,
+            1
+          ]
+        }
+      ],
+      "gates": [
+        {
+          "metric": "/cells/0/operations/8/ranks/*/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/8/ranks/*/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/8/ranks/*/max_abs",
+          "op": "le",
+          "value": 0.05,
+          "scope": "numeric"
+        }
+      ]
+    }
+  ]
+}
