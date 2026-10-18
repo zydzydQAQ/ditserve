@@ -125,7 +125,8 @@ else:
 
     def test_busy_gpu_timeout_never_starts_worker_or_charges_budget(self):
         self.fake_smi(["busy"])
-        result = self.run_study(self.config(gpu=True, wait=0.4), allow_gpu=True)
+        # Long enough for a cold probe worker (~0.3 s without bytecode caches) plus a Python fake.
+        result = self.run_study(self.config(gpu=True, wait=2), allow_gpu=True)
         self.assertEqual(result["status"], "blocked", result)
         self.assertIn("timed out", result["admission"]["error"])
         # The final bounded probe may itself hit the total wait deadline and
@@ -147,7 +148,8 @@ else:
 
     def test_busy_between_idle_observations_resets_the_consecutive_count(self):
         self.fake_smi(["idle", "busy", "idle", "idle"])
-        result = self.run_study(self.config(gpu=True, wait=3), allow_gpu=True)
+        # Four observations with cold probe starts can exceed 3 s on a loaded or slow-filesystem host.
+        result = self.run_study(self.config(gpu=True, wait=10), allow_gpu=True)
         self.assertEqual(result["status"], "completed", result)
         observations = [json.loads(line) for line in self.observations.read_text().splitlines()]
         self.assertEqual([row["state"] for row in observations[:4]], ["idle", "busy", "idle", "idle"])
