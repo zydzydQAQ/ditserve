@@ -125,7 +125,8 @@ else:
 
     def test_busy_gpu_timeout_never_starts_worker_or_charges_budget(self):
         self.fake_smi(["busy"])
-        result = self.run_study(self.config(gpu=True, wait=0.4), allow_gpu=True)
+        # Long enough for a probe to start even without bytecode caches (as in the image).
+        result = self.run_study(self.config(gpu=True, wait=3), allow_gpu=True)
         self.assertEqual(result["status"], "blocked", result)
         self.assertIn("timed out", result["admission"]["error"])
         # The final bounded probe may itself hit the total wait deadline and

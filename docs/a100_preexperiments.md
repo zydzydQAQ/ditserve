@@ -38,6 +38,16 @@ GPU 用量合计约 11,500 GPU·s（约 3.2 h），在 12 GPU·h 预算以内。
 - E4 推演早于 `late_short_ms`：用当前二进制并设 `late_short_ms=0` 重算，与归档工作簿逐 cell 一致。`configs/simulation.json` 把 14 个 E4 配置合并成一个，并按当前调度（`late_short_ms=2000`、只保留 eager 抢占）重算，结果见下一节。
 - 删除的研究分支及其理由见 [设计与精简记录](rewrite.md)。E8 共置与 Mistral 会话的结论只保留在历史报告中。
 
+## 精简后在本机上的复核（2026-10-18 晚）
+
+| 检查 | 结果 | 证据 |
+| --- | --- | --- |
+| 验收：原生运行 | 去掉 DBCache 的 stepwise worker 与官方循环逐位一致；block 中途导出、恢复并分块解码后逐位一致；混合 cluster 4/4 完成 | `results/a100-1x40g-acceptance/smoke01`，174 GPU·s |
+| 验收：新镜像内运行 | 同上，用 `--pid=host` 加 `DITSERVE_ENV` | `results/a100-1x40g-acceptance/image01`，196 GPU·s |
+| 成本画像 | 480p 每步 575/1224/4151 ms，与 E2 相差不到 0.5%；Sana 每张 326 ms（E2 为 298 ms）。Wan 峰值分配 11.1–11.4GiB、预留 15.0GiB，与帧数无关；Sana 分别为 8.2GiB 和 10.2GiB | `results/a100-1x40g-cost-profile/smoke01`，114 GPU·s |
+| 24GB 显存模拟 | 每进程上限 Wan 12.95GiB、Sana 9.6GiB，开启 expandable segments：全部完成，预留降到 12.85GiB 和 8.55GiB，速度不变。合计加上下文约 22.4GiB，可以放进 4090 | `results/a100-as-24g-cost-profile/emu01`，122 GPU·s |
+| E4 按当前调度重算 | block_elastic 相对"step 级弹性 SP + 预留 1 张图像卡"：p2p_switch 下总按时率 +0 到 +8.7、视频 +0 到 +21.7 个百分点；host_staged 下为 +0 到 +7.3 和 +0 到 +25.0。没有一个 cell 更差 | `configs/simulation.json`，只用 CPU |
+
 ## 局限与待办
 
 - 14B 成本和 PCIe all-to-all 带宽是估计值。到货后按验收清单第 2、6 步实测，再重跑 E4。

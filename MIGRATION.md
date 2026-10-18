@@ -151,10 +151,11 @@ ds python -m ditserve.evaluation.cost_profile \
 
 - **`cost_profile`：** 填上 `"$ENV"`，即刚生成的画像文件名。
 - **`links`：** 因为画像里已经带了实测链路，删掉这个字段（它原本是假设的场景）。
-- **显存（24GB 卡要看这一项）：** CLI 打印的每个类别都带 `memory.peak_reserved_bytes`。
+- **显存（24GB 卡要看这一项）：** CLI 打印的每个类别都带 `memory.peak_allocated_bytes` 和 `peak_reserved_bytes`。
   - Wan 最大形状的峰值加上 Sana 的峰值，再加两个 CUDA 上下文（约 1GiB），必须小于单卡显存。
-  - 超出时有两种处理：从 `serving_classes` 里去掉放不下的形状；或者在 `backends.wan` / `backends.sana` 下设 `memory_fraction`，让超限的那个 worker 明确报错，而不是挤爆同卡的另一个。
-  - 参考值：A100 上 480p 解码后 Wan 预留约 15GiB；Sana 峰值分配 8.2GiB、预留 10.2GiB。
+  - `rtx4090-2x24g.json` 已按 A100 上的模拟设了上限：Wan `memory_fraction` 0.54（12.95GiB），Sana 0.40（9.6GiB），并开启 `expandable_segments`。
+  - A100 上不加上限时，Wan 480p 峰值分配 11.4GiB、预留 15.0GiB，Sana 分别为 8.2GiB 和 10.2GiB，按预留合计超过 24GB。加上上限后，两者预留只到 12.85GiB 和 8.55GiB，速度不变（`results/a100-as-24g-cost-profile/emu01`）。
+  - 4090 上的 kernel workspace 可能不同：如果这里的峰值接近上限，或者 cost_profile 报分配失败，就从 `serving_classes` 里去掉 81 帧，或者调整两个上限。
 
 改完后，再跑一次 `ds ditserve resolve --config "$C/studies/serving.json" --env "$ENV"`，确认能解析。
 
