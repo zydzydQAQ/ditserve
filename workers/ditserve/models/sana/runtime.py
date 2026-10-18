@@ -1,4 +1,4 @@
-"""Local-only official SANA-Sprint 0.6B adapter for direction 1."""
+"""Local-only official SANA-Sprint 0.6B adapter."""
 
 import dataclasses
 import importlib

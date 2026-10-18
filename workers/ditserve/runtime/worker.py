@@ -16,8 +16,7 @@ from . import strict_json
 BACKENDS = {
     "mock": ("mock", "MockBackend"),
     "wan": ("wan.backend", "WanBackend"),
-    "sana": ("session.backend", "SessionBackend"),
-    "mistral": ("session.backend", "SessionBackend"),
+    "sana": ("sana.backend", "SanaBackend"),
     "results": None,
     "evaluation": None,
     "environment": None,
