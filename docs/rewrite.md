@@ -14,9 +14,9 @@
 | 多套预算、监督、phase/next/followup 控制 | `control/budget.cpp`、`runtime/process.cpp`、`control/study.cpp`；独立累计账本、阶段限额、向后结转、修复预留、wall-clock watchdog、失败费用及未结算保护。 | `test_supervision.cpp`、`test_study.py`：锁、超时、进程组、恢复身份、失败重试；GPU 占用与故障清理尚未真实验收。 |
 | 配对 profile、筛选与确认、优化矩阵 | `control/study.cpp` / `control/dispatch.cpp`；`profile.json`、`online.json`；统一矩阵、正反顺序、独立 observation ID、配置门槛。 | `test_control.cpp`、`control-baseline.json`、`test_study.py`；没有新性能提升声明。 |
 | 在线到达、微批策略、步边界调度与准入 | C++ `study_workload`、`select_action`、replay；steady/Poisson/bursty/gamma、FCFS/EDF/SRTF及 guarded/feasible 策略。模型合法步边界仍由 worker 校验。 | 冻结旧 Python oracle、决策边界与 mock 回放；真实吞吐/时延未验证。 |
-| Wan 整步、block continuation、paired cache | `models/wan/{runtime,block,compile,cache}.py`；C++ 控制推进量与切换时机。半步 packet 不可作为可迁移整步状态。 | `test_model_blocks.py`：tiny Wan 30 层的 block/整步数值、求解器提交、取消与释放；真实编译/GPU路径未验证。 |
-| CFG 各分支、oracle/native、split-prefix 与空上下文 | `models/wan/cfg*.py`、`models/wan/research.py`；策略和实际 spec 绑定，保留诊断隔离与失败回滚。 | `test_model_cfg.py`：四种门控、冷锚点、RNG及别名；GPU性能与质量资格未验证。 |
-| hot/cold、缓存状态库存与跨 worker 迁移 | `state.json`、C++ 状态调度；`models/wan/{state,storage,migration}.py` 保存求解器/RNG/CFG/已知存储别名与两阶段所有权。 | `test_model_state.py`、`test_study.py`：往返、校验失败、ACK/释放/提交；跨 worker 当前仅 SP1 整步。`certified_omit` 必须持有效刷新证明；本地 `exact_refresh` 仅 validation 模式。 |
+| Wan 整步与 block continuation | `models/wan/{runtime,block}.py`；C++ 控制推进量与切换时机。半步 packet 不可作为可迁移整步状态。 | `test_model_blocks.py`：tiny Wan 30 层的 block/整步数值、求解器提交、取消与释放；GPU路径未验证。 |
+| CFG 协同缓存（paired cache）、CFG 策略适配器、区域编译、exact_refresh 研究适配器 | 2026-10-18 精简删除：主线改为多卡 block 抢占 + 弹性 SP，有损缓存与 Wan 编译（在线无收益）不进主结论，且无任何配置引用。最后包含它们的提交为 `757ee01`；历史结果只读不受影响。 | 无。 |
+| hot/cold、缓存状态库存与跨 worker 迁移 | `state.json`、C++ 状态调度；`models/wan/{state,storage,migration}.py` 保存求解器/RNG/CFG/已知存储别名与两阶段所有权。 | `test_model_state.py`、`test_study.py`：往返、校验失败、ACK/释放/提交；跨 worker 当前仅 SP1 整步。`certified_omit` 必须持有效刷新证明。 |
 | 文本预编码与异步 VAE 解码 | C++ `text_prefetch`、`decode_mode`；Wan 编码线程和 `models/wan/async_decode.py`。异步 VAE 保留 MATH attention、SP1 限制。 | mock 回放及 CUDA stream 替身测试，检查请求身份与同步恢复；未验证真实并发收益。 |
 | SP/Ulysses 固定进程组与重分片 | `sp.json`、C++ rank 并发 actions；`models/wan/{parallel,sp}.py`。固定四进程 NCCL world，组内 degree 1/2/4；只支持既有 cache-off all4↔group01 迁移，不支持缓存特征跨 SP 组。 | CPU 协议和状态重分片契约；多 GPU 等价性、通信、效率均未验证。 |
 | Sana 与 Mistral 多轮 LLM–DiT session | `session.json`；C++ stage/think-time/依赖与策略，`models/session/runtime.py` 保存 KV、采样器、RNG及精确前缀所有权。 | `test_model_sessions.py`：实际 tiny Mistral greedy/KV与 tiny Sana SCM2步；交错隔离与状态重建。真实后端沿用原硬件限制，GPU未验证。 |

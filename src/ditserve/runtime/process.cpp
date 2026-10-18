@@ -3,6 +3,7 @@
 #include <cerrno>
 #include <climits>
 #include <cmath>
+#include <csignal>
 #include <cstring>
 #include <fcntl.h>
 #include <poll.h>
@@ -51,6 +52,17 @@ double monotonic_seconds() {
     if (clock_gettime(CLOCK_MONOTONIC, &value) < 0) throw system_error("monotonic clock");
     return static_cast<double>(value.tv_sec) + static_cast<double>(value.tv_nsec) / 1e9;
 }
+
+namespace {
+volatile std::sig_atomic_t cancel_requested = 0;
+void request_cancel(int) { cancel_requested = 1; }
+}
+
+CancelScope::CancelScope() : interrupt_(std::signal(SIGINT, request_cancel)), terminate_(std::signal(SIGTERM, request_cancel)) {
+    cancel_requested = 0;
+}
+CancelScope::~CancelScope() { std::signal(SIGINT, interrupt_); std::signal(SIGTERM, terminate_); }
+bool CancelScope::requested() { return cancel_requested != 0; }
 
 WorkerProcess::WorkerProcess(const ProcessOptions& options)
     : max_message_bytes_(options.max_message_bytes), cleanup_timeout_seconds_(options.cleanup_timeout_seconds), heartbeat_(options.heartbeat) {

@@ -8,6 +8,19 @@
 namespace ditserve {
 double monotonic_seconds();
 
+// Captures SIGINT/SIGTERM for one command and restores prior handlers on exit.
+class CancelScope {
+public:
+    CancelScope();
+    ~CancelScope();
+    CancelScope(const CancelScope&) = delete;
+    CancelScope& operator=(const CancelScope&) = delete;
+    static bool requested();
+private:
+    void (*interrupt_)(int);
+    void (*terminate_)(int);
+};
+
 struct ProcessOptions {
     std::vector<std::string> argv;
     std::map<std::string, std::string> environment;

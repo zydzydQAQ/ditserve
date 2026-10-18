@@ -16,5 +16,7 @@ int int_field(const Json& object, const char* key, int fallback, int minimum = 1
 bool bool_field(const Json& object, const char* key, bool fallback);
 std::string string_field(const Json& object, const char* key, const std::string& fallback);
 void check_keys(const Json& object, std::initializer_list<const char*> allowed);
+// One portable file-name component: [A-Za-z0-9][A-Za-z0-9_.-]{0,119}.
+std::string path_segment(const std::string& value, const std::string& name);
 Json core_version();
 }

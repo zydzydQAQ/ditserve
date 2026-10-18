@@ -19,11 +19,10 @@ from ditserve.models.wan.state import refresh_certificate
 class CertificateIdentityTests(unittest.TestCase):
     def test_shared_digest_preserves_frozen_unicode_identity_and_rejects_nonfinite(self):
         from ditserve.models.base import digest
-        from ditserve.models.wan.cfg_policy import digest as policy_digest
         from ditserve.models.wan.migration import _hash as migration_digest
         from ditserve.models.wan.state import _hash as certificate_digest
         value = dict(name="实验", threshold=.08, scopes=["cfg", None])
-        for encode in (digest, policy_digest, migration_digest, certificate_digest):
+        for encode in (digest, migration_digest, certificate_digest):
             self.assertEqual(encode(value), "6b7b8cc41a0f89326c7a93066d80ec00cc4020094622f5f529720783bdd42812")
             for invalid in (float("nan"), float("inf"), -float("inf")):
                 with self.assertRaises(ValueError):

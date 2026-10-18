@@ -51,6 +51,14 @@ void check_keys(const Json& object, std::initializer_list<const char*> allowed) 
         if (!names.count(it.key())) throw std::invalid_argument("unknown field: " + it.key());
 }
 
+std::string path_segment(const std::string& value, const std::string& name) {
+    static const std::string alnum = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    if (value.empty() || value.size() > 120 || alnum.find(value.front()) == std::string::npos ||
+        value.find_first_not_of(alnum + "_.-") != std::string::npos)
+        throw std::invalid_argument(name + " must be a safe path component: " + value);
+    return value;
+}
+
 Json core_version() {
     return {{"version", "ditserve-core.v2"}, {"rng_version", "mt19937_64-box-muller.v1"},
             {"fingerprint_version", "sha256-nlohmann-json.v2"}, {"checkpoint_version", 2}};

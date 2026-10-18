@@ -201,11 +201,6 @@ def pack_request(worker, state, *, action, target_device, migration_id, epoch=0,
                        needs_anchor=state.needs_anchor, current_step_refreshed=state.current_step_refreshed)
     source_payload = dict(base_sha256=base["state_sha256"], cache_state=cache_state,
                           contexts=contexts, features=features)
-    research_policy = _research_policy(worker, state.request_id, state.spec)
-    if research_policy is not None:
-        if action == "certified_omit":
-            raise ParallelContractError("CFG protocol has no certified-omission qualification")
-        source_payload["research_policy"] = research_policy
     source_digest = _hash(source_payload)
     proof = None if checked is None else dict(certificate=checked, source_state_sha256=source_digest,
                                               target_device=target_device, migration_id=migration_id, epoch=epoch)
@@ -215,37 +210,15 @@ def pack_request(worker, state, *, action, target_device, migration_id, epoch=0,
                     source_state_sha256=source_digest, certificate_binding=proof,
                     transfer_bytes=sum(t.numel() * t.element_size() for t in tensors.values()),
                     omitted_feature_bytes=0 if action == "full_migrate" else sum(f["bytes"] for f in features.values()))
-    if research_policy is not None:
-        manifest["schema"] = SCHEMA + ".cfg1"
-        manifest["research_policy"] = research_policy
     manifest["sha256"] = _hash(manifest)
     return manifest, tensors
-
-
-def _research_policy(worker, request_id, spec, supplied=None):
-    config = getattr(worker, "_cfg_research_config", None)
-    if config is None:
-        if supplied is not None:
-            raise ParallelContractError("target does not support CFG policy-bound state")
-        return None
-    from .cfg_policy import resolve_policy
-    value = supplied if supplied is not None else worker._cfg_policies.get(request_id)
-    if not isinstance(value, dict):
-        raise ParallelContractError("missing request CFG policy binding")
-    policy = resolve_policy(config, value["id"], value["implementation"])
-    if value != policy or any(spec[key] != policy[key] for key in ("cache", "threshold", "max_continuous")):
-        raise ParallelContractError("CFG policy does not match transported state")
-    return copy.deepcopy(policy)
 
 
 def _verify_manifest(manifest, *, target_device, migration_id, epoch):
     expected = {"schema", "action", "target_device", "migration_id", "epoch", "request_id", "step_index",
                 "base", "cache_state", "contexts", "features", "source_state_sha256", "certificate_binding",
                 "transfer_bytes", "omitted_feature_bytes", "sha256"}
-    cfg_bound = manifest.get("schema") == SCHEMA + ".cfg1"
-    if cfg_bound:
-        expected.add("research_policy")
-    if set(manifest) != expected or manifest["schema"] not in (SCHEMA, SCHEMA + ".cfg1") or manifest["action"] not in ACTIONS:
+    if set(manifest) != expected or manifest["schema"] != SCHEMA or manifest["action"] not in ACTIONS:
         raise ParallelContractError("unknown dual-state manifest")
     if _hash({key: value for key, value in manifest.items() if key != "sha256"}) != manifest["sha256"]:
         raise ParallelContractError("dual-state manifest checksum mismatch")
@@ -253,10 +226,6 @@ def _verify_manifest(manifest, *, target_device, migration_id, epoch):
         raise ParallelContractError("migration destination, ID or epoch mismatch")
     source_payload = dict(base_sha256=manifest["base"]["state_sha256"], cache_state=manifest["cache_state"],
                           contexts=manifest["contexts"], features=manifest["features"])
-    if cfg_bound:
-        source_payload["research_policy"] = manifest["research_policy"]
-        if manifest["action"] == "certified_omit":
-            raise ParallelContractError("CFG omission is unqualified")
     digest = _hash(source_payload)
     if digest != manifest["source_state_sha256"]:
         raise ParallelContractError("source checkpoint checksum mismatch")
@@ -278,10 +247,6 @@ def _verify_manifest(manifest, *, target_device, migration_id, epoch):
 def unpack_request(worker, manifest, tensors, *, target_device, migration_id, epoch=0):
     """Validate each reconstructed tensor before returning an unregistered state."""
     _verify_manifest(manifest, target_device=target_device, migration_id=migration_id, epoch=epoch)
-    policy = _research_policy(worker, manifest["request_id"], manifest["cache_state"]["spec"],
-                              supplied=manifest.get("research_policy"))
-    if policy is not None and "research_policy" not in manifest:
-        raise ParallelContractError("CFG target requires a policy-bound checkpoint")
     base_names = set(manifest["base"]["tensor_hashes"])
     torch = importlib.import_module("torch")
     if any(not torch.is_tensor(value) or value.device.type != "cpu" for value in tensors.values()):
@@ -362,8 +327,6 @@ def unpack_request(worker, manifest, tensors, *, target_device, migration_id, ep
         state.needs_anchor = True
     worker._validate_request_schema(state)
     worker._sync()
-    if policy is not None:
-        worker._cfg_policies[state.request_id] = policy
     return state
 
 
@@ -442,8 +405,6 @@ class MigrationEndpoint:
                 row["phase"] = "failed"
                 raise
             row["phase"] = "released"
-            if hasattr(self.worker, "_cfg_policies"):
-                self.worker._cfg_policies.pop(state.request_id, None)
             self._epochs[state.request_id] = row["manifest"]["epoch"] + 1
             return self._token(row["manifest"], "released", row["context_name_mapping"])
 
@@ -470,10 +431,6 @@ class MigrationEndpoint:
                 source["state"].residency = "gpu"
                 del self._sources[migration_id]
             target = self._targets.pop(migration_id, None)
-            if target is not None and hasattr(self.worker, "_cfg_policies"):
-                request_id = target["state"].request_id
-                if request_id not in self.worker._states:
-                    self.worker._cfg_policies.pop(request_id, None)
             if source is None and target is None:
                 raise ParallelContractError("unknown or already closed migration")
             self._closed.add(migration_id)

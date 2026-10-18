@@ -17,10 +17,10 @@ class WanBackend(Backend):
             model_path=config.get("model_path"), attention=config.get("attention", "math"))
         self.options = config.get("options", {})
         self.execution = self.options.get("execution", "step")
-        if self.execution not in ("step", "block", "paired_block"):
-            raise ValueError("Wan execution must be step, block, or paired_block")
-        self.executor = self.cfg = self.research = self.parallel = None
-        self.continuations, self.policies, self.pending = {}, {}, {}
+        if self.execution not in ("step", "block"):
+            raise ValueError("Wan execution must be step or block")
+        self.executor = self.parallel = None
+        self.continuations, self.pending = {}, {}
         self.encoder = ThreadPoolExecutor(max_workers=1, thread_name_prefix="prompt-encoder")
         self.tickets, self.ticket_counter = {}, 0
         from .migration import MigrationEndpoint
@@ -74,12 +74,8 @@ class WanBackend(Backend):
         if continuation is None:
             return True
         return (continuation.committed_step == state.step_index
-                and getattr(continuation, "packet", None) is None
-                and getattr(continuation, "conditional", None) is None
-                and not getattr(continuation, "packets", {})
-                and not getattr(continuation, "predictions", {})
-                and continuation.branch == "cond" and continuation.next_block == 0
-                and getattr(continuation, "phase", "prefix") == "prefix")
+                and continuation.packet is None and continuation.conditional is None
+                and continuation.branch == "cond" and continuation.next_block == 0)
 
     def encode_start(self, request):
         spec = self._spec(request)
@@ -102,15 +98,6 @@ class WanBackend(Backend):
         from .runtime import normalize_spec
         value = dict(self.config.get("spec", {}), **request.get("spec", {}))
         value.setdefault("request_id", request.get("state_id"))
-        policy = request.get("cfg_policy", self.options.get("cfg_policy"))
-        if policy:
-            from .cfg_policy import POLICIES, resolve_policy
-            resolved = resolve_policy({"recipes": list(POLICIES)}, policy,
-                request.get("implementation", self.options.get("implementation")))
-            for key in ("cache", "threshold", "max_continuous"):
-                if key in value and value[key] != resolved[key]:
-                    raise ValueError("spec and CFG policy differ: " + key)
-                value[key] = resolved[key]
         return normalize_spec(value)
 
     def prepare(self, request):
@@ -130,35 +117,13 @@ class WanBackend(Backend):
         else:
             state = self.runtime.prepare(spec)
         try:
-            if self.execution != "step":
+            if self.execution == "block":
                 if self.executor is None:
-                    from .compile import BlockBackend, WanCompiledExecutor, NativeWanExecutor
-                    if self.execution == "paired_block":
-                        from .cache import PairedCacheExecutor
-                        self.executor = PairedCacheExecutor(self.runtime, BlockBackend(self.runtime,
-                            compiled=self.options.get("compiled", False), group_size=self.options.get("group_size", 1)))
-                    elif self.options.get("compiled"):
-                        self.executor = WanCompiledExecutor(self.runtime, BlockBackend(self.runtime, compiled=True,
-                            group_size=self.options.get("group_size", 1)))
-                    else:
-                        self.executor = NativeWanExecutor(self.runtime)
+                    from .block import WanBlockExecutor
+                    self.executor = WanBlockExecutor(self.runtime)
                 self.continuations[key] = self.executor.attach(state)
-            policy = request.get("cfg_policy", self.options.get("cfg_policy"))
-            if policy:
-                if self.execution != "step":
-                    raise ValueError("cfg_policy step adapter cannot be mixed with block continuations")
-                from .cfg_policy import POLICIES, resolve_policy
-                self.policies[key] = resolve_policy({"recipes": list(POLICIES)}, policy,
-                    request.get("implementation", self.options.get("implementation")))
-                if self.states and not hasattr(self.runtime, "_cfg_research_config"):
-                    raise ValueError("start a fresh worker before introducing CFG-bound state")
-                self.runtime._cfg_research_config = {"recipes": list(POLICIES)}
-                if not hasattr(self.runtime, "_cfg_policies"):
-                    self.runtime._cfg_policies = {}
-                self.runtime._cfg_policies[state.request_id] = self.policies[key]
             self.states[key] = state
         except BaseException:
-            self.policies.pop(key, None)
             if key in self.continuations:
                 self.executor.close(self.continuations.pop(key))
             self.runtime.release(state)
@@ -177,17 +142,7 @@ class WanBackend(Backend):
                 observe=bool(request.get("observe", False))))
         else:
             for unused in range(min(positive_int(request.get("steps", 1)), state.spec["steps"] - state.step_index)):
-                if key in self.policies:
-                    if self.parallel:
-                        raise ValueError("CFG research adapter and SP cannot be combined")
-                    if self.cfg is None:
-                        from .cfg import CfgResearchAdapter
-                        self.cfg = CfgResearchAdapter(self.runtime)
-                    reference = self.states.get(request.get("reference_state_id"))
-                    records.append(self.cfg.step(state, policy=self.policies[key],
-                        diagnostic=bool(request.get("diagnostic", False)), reference_state=reference))
-                else:
-                    records.append((self.parallel or self.runtime).step(state))
+                records.append((self.parallel or self.runtime).step(state))
         if not records:
             raise ValueError("request has no remaining work")
         return dict(state_id=key, progress=self._progress(state), events=records,
@@ -225,18 +180,15 @@ class WanBackend(Backend):
             return dict(snapshot_id=migration_id, path=str(destination), sha256=file_hash(destination),
                         bytes=destination.stat().st_size, phase="paused", manifest=manifest, **timing)
         mode = request.get("mode", "hot")
-        if request.get("certified"):
-            result = self._research().snapshot(state, mode, certificate=request.get("certificate"))
-        else:
-            from .state import state_inventory, assert_transfer_supported
-            with self.runtime._lock:
-                inventory = state_inventory(state, torch_module=self.runtime.torch)
-                assert_transfer_supported(inventory)
-                if mode in ("hot", "cold") and any(row.get("supported_timestep_views") for row in inventory["storages"]):
-                    from .storage import snapshot_timestep_views
-                    result = snapshot_timestep_views(self.runtime, state, mode, inventory)
-                else:
-                    result = self.runtime.snapshot(state, mode)
+        from .state import state_inventory, assert_transfer_supported
+        with self.runtime._lock:
+            inventory = state_inventory(state, torch_module=self.runtime.torch)
+            assert_transfer_supported(inventory)
+            if mode in ("hot", "cold") and any(row.get("supported_timestep_views") for row in inventory["storages"]):
+                from .storage import snapshot_timestep_views
+                result = snapshot_timestep_views(self.runtime, state, mode, inventory)
+            else:
+                result = self.runtime.snapshot(state, mode)
         return dict(result, snapshot_id=key, state_id=key)
 
     def restore(self, request):
@@ -248,13 +200,6 @@ class WanBackend(Backend):
             if not request.get("sha256") or file_hash(path) != request["sha256"]:
                 raise ValueError("migration snapshot hash mismatch")
             payload = self.runtime.torch.load(path, map_location="cpu", weights_only=True)
-            if payload["manifest"].get("research_policy") is not None:
-                from .cfg_policy import POLICIES
-                if self.states and not hasattr(self.runtime, "_cfg_research_config"):
-                    raise ValueError("CFG migration requires a fresh or CFG-bound target worker")
-                self.runtime._cfg_research_config = {"recipes": list(POLICIES)}
-                if not hasattr(self.runtime, "_cfg_policies"):
-                    self.runtime._cfg_policies = {}
             ack = self.endpoint.prepare(payload["manifest"], payload["tensors"])
             self.pending[ack["migration_id"]] = key
             return dict(state_id=key, snapshot_id=ack["migration_id"], phase="prepared", acknowledgement=ack,
@@ -266,9 +211,6 @@ class WanBackend(Backend):
             state = self.endpoint.commit(migration_id, request["receipt"])
             key = self.pending.pop(migration_id)
             self.states[key] = state
-            policy = getattr(self.runtime, "_cfg_policies", {}).get(state.request_id)
-            if policy:
-                self.policies[key] = policy
             return dict(state_id=key, progress=self._progress(state), phase="committed", runnable=True)
         state = self.state(request)
         if state.pending_snapshot and state.pending_snapshot.get("research_storage_codec"):
@@ -287,7 +229,6 @@ class WanBackend(Backend):
         for key, state in list(self.states.items()):
             if state.request_id == receipt["request_id"]:
                 del self.states[key]
-                self.policies.pop(key, None)
         return dict(receipt=receipt, phase="released")
 
     def migration_abort(self, request):
@@ -295,25 +236,14 @@ class WanBackend(Backend):
         self.pending.pop(request["migration_id"], None)
         return dict(aborted=request["migration_id"])
 
-    def _research(self):
-        if self.research is None:
-            from .research import ResearchWanAdapter
-            self.research = ResearchWanAdapter(worker=self.runtime,
-                validation_only=bool(self.options.get("validation_only", False)))
-        return self.research
-
     def inventory(self, request):
         from .state import state_inventory
-        state = self.state(request)
-        result = state_inventory(state, torch_module=self.runtime.torch)
-        if request.get("certificate"):
-            result["certificate"] = self._research().certificate(state)
-        return result
+        return state_inventory(self.state(request), torch_module=self.runtime.torch)
 
     def set_cache(self, request):
         state = self._boundary(request)
-        if request["state_id"] in self.continuations or request["state_id"] in self.policies:
-            raise ValueError("fixed continuation/CFG policies cannot be changed")
+        if request["state_id"] in self.continuations:
+            raise ValueError("block continuations are cache-off and cannot change cache policy")
         from .runtime import normalize_spec
         spec = dict(state.spec)
         for key in ("cache", "threshold", "max_continuous"):
@@ -427,8 +357,6 @@ class WanBackend(Backend):
             self.executor.close(self.continuations.pop(key))
         self.runtime.release(state)
         del self.states[key]
-        self.policies.pop(key, None)
-        getattr(self.runtime, "_cfg_policies", {}).pop(state.request_id, None)
         return dict(released=key)
 
     def close(self):

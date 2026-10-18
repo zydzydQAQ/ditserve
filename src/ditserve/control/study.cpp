@@ -26,14 +26,7 @@
 namespace ditserve {
 namespace {
 namespace fs=std::filesystem;
-volatile std::sig_atomic_t cancelled=0;
-void cancel_handler(int) { cancelled=1; }
-struct Signals {
-    using Handler=void(*)(int);
-    Handler interrupt,terminate;
-    Signals():interrupt(std::signal(SIGINT,cancel_handler)),terminate(std::signal(SIGTERM,cancel_handler)){cancelled=0;}
-    ~Signals(){std::signal(SIGINT,interrupt);std::signal(SIGTERM,terminate);}
-};
+bool cancelled(){return CancelScope::requested();}
 struct RunLock {
     int fd=-1;
     explicit RunLock(const fs::path& path) {
@@ -72,11 +65,7 @@ std::string file_hash(const fs::path& path) {
     unsigned char bytes[SHA256_DIGEST_LENGTH];SHA256_Final(bytes,&ctx);
     std::ostringstream out;for(auto b:bytes)out<<std::hex<<std::setw(2)<<std::setfill('0')<<int(b);return out.str();
 }
-std::string segment(const std::string& value) {
-    if(value.empty() || value.size()>120 || std::string("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789").find(value.front())==std::string::npos || value.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.")!=std::string::npos)
-        throw std::invalid_argument("invalid path identifier: "+value);
-    return value;
-}
+std::string segment(const std::string& value){return path_segment(value,"path identifier");}
 fs::path real_path(const fs::path& path) {
     const auto absolute=fs::absolute(path).lexically_normal();
     if(fs::weakly_canonical(absolute)!=absolute)throw std::invalid_argument("work/result paths cannot traverse symlinks: "+absolute.string());
@@ -179,14 +168,29 @@ Json freeze_sources(const Json& request,const fs::path& work,bool resume) {
     write(manifest_path,manifest);return manifest;
 }
 
+// A CPU mock worker answers occupancy checks. Heartbeats keep one per cell
+// instead of spawning a process every observation; a failed probe is dropped
+// and recreated on the next check.
+class OccupancyProbe {
+public:
+    OccupancyProbe(const Json& request,fs::path work):request_(request),work_(std::move(work)){}
+    ~OccupancyProbe(){if(probe_)probe_->stop();}
+    Json observe(const Json& devices,const std::vector<int>& allowed,double deadline) {
+        if(devices.empty())return {{"status","exclusive_observed"},{"owned",Json::array()},{"foreign",Json::array()}};
+        try {
+            if(!probe_)probe_=std::make_unique<Workers>(Json{{"probe",{{"backend","mock"}}}},request_,work_);
+            return probe_->get("probe").call({{"op","occupancy"},{"gpu_uuids",devices},{"allowed_pids",allowed},{"allowed_pgids",allowed}},deadline>0?deadline:monotonic_seconds()+15);
+        }catch(const std::exception& error){
+            if(probe_){probe_->stop();probe_.reset();}
+            return {{"status","unknown"},{"reason",error.what()}};
+        }
+    }
+private:
+    Json request_;fs::path work_;std::unique_ptr<Workers> probe_;
+};
+
 Json gpu_observation(const Json& request,const fs::path& work,const Json& devices,const std::vector<int>& allowed={},double deadline=0) {
-    if(devices.empty())return {{"status","exclusive_observed"},{"owned",Json::array()},{"foreign",Json::array()}};
-    const Json defs={{"probe",{{"backend","mock"}}}};
-    Workers probe(defs,request,work/"probe");
-    try {
-        auto result=probe.get("probe").call({{"op","occupancy"},{"gpu_uuids",devices},{"allowed_pids",allowed},{"allowed_pgids",allowed}},deadline>0?deadline:monotonic_seconds()+15);
-        probe.stop();return result;
-    }catch(const std::exception& error){probe.stop();return {{"status","unknown"},{"reason",error.what()}};}
+    return OccupancyProbe(request,work/"probe").observe(devices,allowed,deadline);
 }
 
 void add_artifacts(Json& record,const Json& result,const fs::path& work,const Json& dependencies) {
@@ -242,7 +246,7 @@ Json replay(const Json& phase,Workers& workers,Budget& budget,Json& record,const
     std::map<std::string,Json> conversation;
     const double origin=monotonic_seconds();
     auto now=[&](){return (monotonic_seconds()-origin)*1000;};
-    auto check=[&](){if(cancelled)throw std::runtime_error("run cancelled");budget.check(number_field(phase,"cleanup_reserve_seconds",0));};
+    auto check=[&](){if(cancelled())throw std::runtime_error("run cancelled");budget.check(number_field(phase,"cleanup_reserve_seconds",0));};
     auto invoke=[&](const std::string& worker,Json action,Json& row) {
         check();const double started=monotonic_seconds();
         auto& process=workers.get(worker);
@@ -512,7 +516,7 @@ Json stream(const Json& phase,Workers& workers,Budget& budget,Json& record,const
     Json events=Json::array();std::size_t cursor=0,finished=0;
     for(auto& row:rows){row["observation_id"]=phase.at("_observation_id");row["phase"]=phase.at("id");row["attempt"]=phase.at("_attempt");row["cell"]=phase.at("_cell");row["order"]=phase.at("_order");row["quality"]={{"status","unverified"},{"passed",false}};}
     try{while(finished<rows.size()){
-        if(cancelled)throw std::runtime_error("run cancelled");
+        if(cancelled())throw std::runtime_error("run cancelled");
         budget.check();const double now=(monotonic_seconds()-origin)*1000;
         bool advanced=false;
         for(std::size_t offset=0;offset<rows.size();++offset){
@@ -560,7 +564,7 @@ Json stream(const Json& phase,Workers& workers,Budget& budget,Json& record,const
         if(!advanced)wait_until(monotonic_seconds()+.001);
     }
     const double drain=monotonic_seconds()+number_field(phase,"playback_drain_seconds",chunks/fps*16+1);
-    while(monotonic_seconds()<drain){if(cancelled)throw std::runtime_error("run cancelled");budget.check();bool empty=true;for(auto& item:players)if(!item.second->empty())empty=false;if(empty)break;wait_until(monotonic_seconds()+.005);}
+    while(monotonic_seconds()<drain){if(cancelled())throw std::runtime_error("run cancelled");budget.check();bool empty=true;for(auto& item:players)if(!item.second->empty())empty=false;if(empty)break;wait_until(monotonic_seconds()+.005);}
     bool drained=true;
     for(auto& row:rows)if(!players.at(row.at("request_id").get<std::string>())->empty()){
         drained=false;row["status"]="failed";row["error"]="playback drain timed out";
@@ -590,7 +594,7 @@ Json operations(const Json& phase,Workers& workers,Budget& budget,Json& record,c
     const auto actions=phase.at("actions");if(!actions.is_array() || actions.empty())throw std::invalid_argument("SP phase requires actions");
     Json rows=Json::array();
     for(auto action:actions){
-        budget.check();if(cancelled)throw std::runtime_error("run cancelled");
+        budget.check();if(cancelled())throw std::runtime_error("run cancelled");
         std::vector<std::future<Json>> pending;
         // Create children on the controlling thread; each call then owns one
         // independent pipe while collective ranks progress concurrently.
@@ -651,17 +655,18 @@ bool execute_cells(const Json& phase,const Json& request,const Json& devices,
         Json definitions=request.at("config").at("workers");
         if(cell.contains("worker_config"))definitions[cell.value("worker","model")]["config"].merge_patch(cell.at("worker_config"));
         Workers workers(definitions,request,cell_dir);
+        OccupancyProbe probe(request,cell_dir/"probe");
         double last_observation=0;
         std::mutex heartbeat_mutex;
         workers.heartbeat([&]{
             // Collective ranks call concurrently. One observation owns the
             // probe paths, and its timestamp must not race with other ranks.
             std::lock_guard<std::mutex> guard(heartbeat_mutex);
-            if(cancelled)throw std::runtime_error("run cancelled");
+            if(cancelled())throw std::runtime_error("run cancelled");
             budget.check();
             if(!devices.empty()&&monotonic_seconds()-last_observation>=2){
                 last_observation=monotonic_seconds();
-                auto observed=gpu_observation(request,cell_dir,devices,workers.pids(),std::min(budget.deadline(),monotonic_seconds()+3));
+                auto observed=probe.observe(devices,workers.pids(),std::min(budget.deadline(),monotonic_seconds()+3));
                 if(observed.value("status","")!="exclusive_observed")throw std::runtime_error("GPU isolation lost: "+observed.dump());
             }
         });
@@ -764,7 +769,7 @@ void validate(const Json& config){
 }
 
 Json run_study(const Json& original_request){
-    Signals signals;
+    CancelScope signals;
     auto request=original_request;const auto config=request.at("config");validate(config);
     const auto work=real_path(request.at("work_dir").get<std::string>());
     request["work_dir"]=work.string();
@@ -835,7 +840,7 @@ Json run_study(const Json& original_request){
         auto observation=gpu_observation(request,attempt_dir,devices,{},waiting_limit>0?std::min(waiting_deadline,waiting_started+15):0);
         int idle_observations=0;
         while(waiting_limit>0){
-            if(cancelled || monotonic_seconds()>=waiting_deadline)break;
+            if(cancelled() || monotonic_seconds()>=waiting_deadline)break;
             const bool idle=observation.value("status","")=="exclusive_observed" && observation.value("foreign",Json::array()).empty();
             idle_observations=idle?idle_observations+1:0;
             if(idle_observations>=2)break;
@@ -843,16 +848,16 @@ Json run_study(const Json& original_request){
             record["status"]="waiting_resource";
             record["admission"]={{"phase",id},{"observation",observation},{"wait_seconds",elapsed},{"gpu_time_charged",false}};
             write(run_path,record);
-            if(cancelled || elapsed>=waiting_limit)break;
+            if(cancelled() || elapsed>=waiting_limit)break;
             const double next=std::min(waiting_started+waiting_limit,monotonic_seconds()+waiting_poll);
-            while(!cancelled && monotonic_seconds()<next)wait_until(next);
-            if(cancelled)break;
+            while(!cancelled() && monotonic_seconds()<next)wait_until(next);
+            if(cancelled())break;
             observation=gpu_observation(request,attempt_dir,devices,{},std::min(waiting_deadline,monotonic_seconds()+15));
         }
         if(waiting_limit>0)record["admission_wait_seconds"]=monotonic_seconds()-waiting_started;
-        if(cancelled || (waiting_limit>0 && idle_observations<2)){
+        if(cancelled() || (waiting_limit>0 && idle_observations<2)){
             record["status"]="blocked";
-            record["admission"]={{"phase",id},{"error",cancelled?"cancelled while waiting for isolated GPU":"GPU admission wait timed out"},{"observation",observation}};
+            record["admission"]={{"phase",id},{"error",cancelled()?"cancelled while waiting for isolated GPU":"GPU admission wait timed out"},{"observation",observation}};
             write(run_path,record);break;
         }
         if(observation.value("status","")!="exclusive_observed" || !observation.value("foreign",Json::array()).empty()){

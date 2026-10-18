@@ -34,13 +34,7 @@ fs::path absolute(const std::string& path) {
     return result;
 }
 
-std::string segment(const std::string& value, const char* name) {
-    if (value.empty() || value.size() > 120 ||
-        std::string("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789").find(value.front()) == std::string::npos ||
-        value.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.-") != std::string::npos)
-        throw std::invalid_argument(std::string(name) + " must be a safe path component");
-    return value;
-}
+std::string segment(const std::string& value, const char* name) { return path_segment(value, name); }
 
 Json read_json(std::istream& input) {
     constexpr std::size_t limit = 64 * 1024 * 1024;
@@ -306,19 +300,10 @@ struct TemporaryLog {
     ~TemporaryLog() { std::error_code error; fs::remove_all(directory, error); }
 };
 
-volatile std::sig_atomic_t service_cancelled = 0;
-void cancel_service(int) { service_cancelled = 1; }
-struct ServiceSignals {
-    using Handler = void(*)(int);
-    Handler interrupt = std::signal(SIGINT, cancel_service);
-    Handler terminate = std::signal(SIGTERM, cancel_service);
-    ServiceSignals() { service_cancelled = 0; }
-    ~ServiceSignals() { std::signal(SIGINT, interrupt); std::signal(SIGTERM, terminate); }
-};
 
 Json service(const Json& request, const std::string& backend, Json action) {
     TemporaryLog log;
-    ServiceSignals signals;
+    CancelScope signals;
     const fs::path root = request.at("root").get<std::string>();
     const fs::path package = request.at("package_root").get<std::string>();
     ProcessOptions options;
@@ -326,7 +311,7 @@ Json service(const Json& request, const std::string& backend, Json action) {
     options.stderr_path = log.directory / "stderr.log";
     options.max_message_bytes = 65 * 1024 * 1024; // 64 MiB result plus protocol envelope.
     options.heartbeat = [] {
-        if (service_cancelled) throw std::runtime_error("service cancelled");
+        if (CancelScope::requested()) throw std::runtime_error("service cancelled");
     };
     options.environment = {{"PYTHONPATH", package.string() + ":" + environment("PYTHONPATH")},
         {"DITSERVE_ROOT", root.string()}, {"PYTHONDONTWRITEBYTECODE", "1"},
