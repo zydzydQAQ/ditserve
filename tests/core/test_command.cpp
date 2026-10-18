@@ -1,3 +1,4 @@
+#include "ditserve/control/study.hpp"
 #include "ditserve/interface/command.hpp"
 
 #include <filesystem>
@@ -60,6 +61,21 @@ int main() {
             try { normalize_request("run", invalid); } catch (const std::exception&) { rejected = true; }
             require(rejected, "invalid admission options accepted");
         }
+
+        // Heartbeat isolation: unanswered probes are tolerated twice in a row, others are not.
+        const Json exclusive = {{"status", "exclusive_observed"}, {"owned", Json::array()}, {"foreign", Json::array()}};
+        const Json unknown = {{"status", "unknown"}, {"reason", "worker action timed out"}};
+        const Json busy = {{"status", "busy"}, {"foreign", Json::array({Json{{"pid", 7}}})}};
+        int streak = 0;
+        require(isolation_holds(exclusive, streak) && streak == 0, "exclusive observation rejected");
+        require(isolation_holds(unknown, streak) && isolation_holds(unknown, streak), "slow probe ended the run");
+        require(!isolation_holds(unknown, streak), "three unanswered probes tolerated");
+        streak = 0;
+        require(isolation_holds(unknown, streak) && isolation_holds(exclusive, streak) && streak == 0,
+                "an exclusive observation did not reset the streak");
+        require(!isolation_holds(busy, streak), "foreign process tolerated");
+        require(!isolation_holds(Json{{"status", "exclusive_observed"}, {"foreign", Json::array({1})}}, streak),
+                "foreign rows tolerated");
         fs::remove_all(root);
         std::cout << "native request normalization passed\n";
         return 0;

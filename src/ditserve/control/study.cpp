@@ -186,6 +186,16 @@ Json freeze_sources(const Json& request,const fs::path& work,bool resume) {
     write(manifest_path,manifest);return manifest;
 }
 
+}  // namespace
+
+bool isolation_holds(const Json& observation,int& unknown_streak,int tolerance) {
+    const auto status=observation.value("status","");
+    if(status=="unknown")return ++unknown_streak<=tolerance;
+    unknown_streak=0;
+    return status=="exclusive_observed"&&observation.value("foreign",Json::array()).empty();
+}
+
+namespace {
 // A CPU mock worker answers occupancy checks. Heartbeats keep one per cell
 // instead of spawning a process every observation; a failed probe is dropped
 // and recreated on the next check.
@@ -1018,6 +1028,8 @@ bool execute_cells(const Json& phase,const Json& request,const Json& devices,
         Workers workers(definitions,request,cell_dir);
         OccupancyProbe probe(request,cell_dir/"probe");
         double last_observation=0;
+        int unknown_streak=0;
+        Json tolerated=Json::array();
         std::mutex heartbeat_mutex;
         workers.heartbeat([&]{
             // Collective ranks call concurrently. One observation owns the
@@ -1028,13 +1040,17 @@ bool execute_cells(const Json& phase,const Json& request,const Json& devices,
             if(!devices.empty()&&monotonic_seconds()-last_observation>=2){
                 last_observation=monotonic_seconds();
                 auto observed=probe.observe(devices,workers.pids(),std::min(budget.deadline(),monotonic_seconds()+3));
-                if(observed.value("status","")!="exclusive_observed")throw std::runtime_error("GPU isolation lost: "+observed.dump());
+                // A CPU-bound host can delay nvidia-smi past the probe deadline; that alone
+                // proves nothing about other processes on the GPU.
+                if(!isolation_holds(observed,unknown_streak))throw std::runtime_error("GPU isolation lost: "+observed.dump());
+                if(unknown_streak)tolerated.push_back(observed);
             }
         });
         try{
             const auto kind=cell.value("kind","online");
             Json result=cell.contains("actions")?operations(cell,workers,budget,record,work,cell_dir):kind=="streaming"?stream(cell,workers,budget,record,work):kind=="cluster"?cluster(cell,workers,budget,record,work):replay(cell,workers,budget,record,work,cell_dir);
             result["cell"]=order[position];result["order"]=position<cells.size()?"forward":"reverse";result["status"]="completed";
+            if(!tolerated.empty())result["unknown_observations"]=tolerated;
             for(auto row:result.value("requests",Json::array())){row["phase"]=id;row["attempt"]=attempt_number;row["cell"]=order[position];row["order"]=result["order"];
                 row["observation_id"]=id+"/"+std::to_string(attempt_number)+"/"+std::to_string(position);
                 row["observation_ms"]=result.value("elapsed_ms",number_field(row,"finish_ms"));record["requests"].push_back(row);}
