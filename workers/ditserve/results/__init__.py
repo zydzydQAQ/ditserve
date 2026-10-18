@@ -642,19 +642,28 @@ def finalize(work_dir, destination=None, *, prune=True):
 
 
 
+def _legacy(name):
+    """Readers of pre-rewrite formats live in the repository checkout only; the runtime image omits them."""
+    try:
+        return importlib.import_module("." + name, __name__)
+    except ModuleNotFoundError as error:
+        if error.name != __name__ + "." + name:
+            raise
+        raise ValueError("legacy result format: read it from a repository checkout (this installation omits %s.py)" % name) from error
+
+
 def load(directory):
     """Read preserved values only; never rebuild, refresh or reevaluate history."""
     root = _path(directory)
     if (root / "manifest.json").exists():
         manifest, unused = _document(root / "manifest.json")
         if manifest.get("schema") == "ditserve.compact-results.v1":
-            from . import compact
+            compact = _legacy("compact")
             compact.verify(root)
             return compact._load(root)
     if (root / "data.json.gz").exists():
         _excel()  # Enable the same lazy optional-dependency lookup as new books.
-        from . import legacy
-        return legacy._verify_step(root.parent, root.name)
+        return _legacy("legacy")._verify_step(root.parent, root.name)
     book = _excel().load_workbook(root / "results.xlsx", read_only=True, data_only=False)
     try:
         if "manifest" in book:
@@ -662,8 +671,7 @@ def load(directory):
             if (root / "REPORT.md").read_text(encoding="utf-8") != _report(value):
                 raise ValueError("report differs from workbook metadata")
             return value
-        from .legacy import load_book
-        return load_book(book)
+        return _legacy("legacy").load_book(book)
     finally:
         book.close()
 
@@ -672,8 +680,7 @@ def verify(directory):
     root = _path(directory)
     if (root / "archive.json").exists():
         _excel()
-        from . import legacy
-        return legacy.verify(root)
+        return _legacy("legacy").verify(root)
     value = load(root)
     return dict(status="verified", format=value.get("schema", value.get("summary", {}).get("schema_version")),
                 workbook=str(root / "results.xlsx"), report=str(root / "REPORT.md"),
@@ -694,7 +701,6 @@ def dispatch(request, config):
     if operation == "inspect":
         return load(request["path"])
     if operation == "compact":
-        from . import compact
         root = Path(request["root"])
         path = root / "run.json"
         metadata = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
@@ -702,6 +708,7 @@ def dispatch(request, config):
         prune = request.get("prune_raw", False)
         if isinstance(metadata, dict) and metadata.get("schema") == "ditserve.run.v1":
             return finalize(root, destination, prune=prune)
+        compact = _legacy("compact")
         destination = Path(destination) if destination else root / "excel"
         result = compact.export(root, destination, replace_existing=True)
         if prune and result.get("status") == "verified":

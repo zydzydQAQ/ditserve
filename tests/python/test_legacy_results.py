@@ -10,9 +10,14 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import unittest
 from unittest.mock import patch
 import zipfile
+
+import importlib.util
+import unittest
+
+if importlib.util.find_spec("ditserve.results.legacy") is None:
+    raise unittest.SkipTest("legacy result readers ship only in a repository checkout")
 
 from ditserve import results
 from ditserve.results import compact

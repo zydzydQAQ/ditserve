@@ -54,6 +54,8 @@ install(DIRECTORY include src cmd benchmarks DESTINATION share/ditserve
     FILES_MATCHING PATTERN "*.cpp" PATTERN "*.hpp" PATTERN "CMakeLists.txt" PATTERN "__pycache__" EXCLUDE)
 install(FILES CMakeLists.txt DESTINATION share/ditserve)
 install(DIRECTORY configs DESTINATION share/ditserve)
+# CPU contract tests, runnable against the installed package and binary.
+install(DIRECTORY tests/python DESTINATION share/ditserve/tests FILES_MATCHING PATTERN "*.py" PATTERN "__pycache__" EXCLUDE)
 
 if(BUILD_TESTING)
     add_executable(supervision-tests tests/core/test_supervision.cpp)

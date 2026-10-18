@@ -1,6 +1,7 @@
 """Native user commands run without PYTHONPATH; all evidence stays in fixtures."""
 
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -12,6 +13,8 @@ import tempfile
 import time
 import unittest
 
+
+from ditserve.runtime import PACKAGE_ROOT
 
 ROOT = Path(__file__).resolve().parents[2]
 BINARY = Path(os.environ.get("DITSERVE_CORE", ROOT / ".cache/build/ditserve"))
@@ -28,7 +31,7 @@ class NativeCliTests(unittest.TestCase):
         self.environment.pop("PYTHONPATH", None)
 
     def invoke(self, arguments, *, code=0, payload=None, python=True, environment=None, package_root=None):
-        command = [str(BINARY), "--root", str(self.root), "--package-root", str(package_root or ROOT / "workers")]
+        command = [str(BINARY), "--root", str(self.root), "--package-root", str(package_root or PACKAGE_ROOT)]
         if python:
             command += ["--python", sys.executable]
         completed = subprocess.run(command + list(arguments), cwd=self.root,
@@ -157,6 +160,7 @@ class NativeCliTests(unittest.TestCase):
         self.assertEqual({path.name: hashlib.sha256(path.read_bytes()).hexdigest()
                           for path in destination.iterdir()}, before)
 
+    @unittest.skipUnless(importlib.util.find_spec("ditserve.results.legacy"), "legacy readers ship only in a repository checkout")
     def test_legacy_compact_alias_and_explicit_fixture_cleanup(self):
         for index, prefix in enumerate((["results", "compact"], ["compact-results"])):
             with self.subTest(prefix=prefix):

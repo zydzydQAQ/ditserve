@@ -2,6 +2,7 @@
 
 import copy
 import hashlib
+import importlib.util
 import json
 from pathlib import Path
 import tempfile
@@ -10,6 +11,8 @@ from unittest.mock import patch
 
 from ditserve import results
 
+
+LEGACY_READERS = importlib.util.find_spec("ditserve.results.legacy") is not None
 
 class ResultsTests(unittest.TestCase):
     def setUp(self):
@@ -196,6 +199,7 @@ class ResultsTests(unittest.TestCase):
         receipt = results.load(self.output)["finalization"]["deleted"][0]
         self.assertEqual(receipt["status"], "absent_after_recorded_delete_intent")
 
+    @unittest.skipUnless(LEGACY_READERS, "legacy readers ship only in a repository checkout")
     def test_hash_mismatch_escape_symlinks_and_legacy_destination_never_prune(self):
         for mistake in ("hash", "escape", "symlink", "legacy"):
             with self.subTest(mistake=mistake):
@@ -257,6 +261,7 @@ class ResultsTests(unittest.TestCase):
         self.assertEqual(results.finalize(self.work, self.output)["status"], "completed")
         self.assertFalse(raw.exists())
 
+    @unittest.skipUnless(LEGACY_READERS, "legacy readers ship only in a repository checkout")
     def test_compact_archive_is_read_only(self):
         from ditserve.results import compact as compact_results
         (self.work / "summary.json").write_text(json.dumps({"loss": 1.25, "status": "failed"}))
@@ -266,6 +271,7 @@ class ResultsTests(unittest.TestCase):
         self.assertEqual(results.load(self.output)["schema"], compact_results.SCHEMA)
         self.assertEqual(before, {p.name: p.read_bytes() for p in self.output.iterdir() if p.is_file()})
 
+    @unittest.skipUnless(LEGACY_READERS, "legacy readers ship only in a repository checkout")
     def test_legacy_sessions_two_file_read_preserves_typed_values(self):
         self.output.mkdir()
         book = results._excel().Workbook()

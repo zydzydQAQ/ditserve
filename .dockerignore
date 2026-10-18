@@ -8,10 +8,15 @@
 !configs
 !workers
 !tests/core
-!tests/fixtures
+!tests/python
 !docker/artifacts-runtime.json
 !docker/install_dependencies.py
 # Pinned header; CMake verifies its SHA256 and downloads it only when absent.
 !.cache/deps/nlohmann3.11.3/nlohmann/json.hpp
+# Readers of pre-rewrite result formats, and their tests, stay in the repository.
+workers/ditserve/results/legacy.py
+workers/ditserve/results/compact.py
+tests/python/test_legacy_results.py
+tests/python/test_wan_profile_results.py
 **/__pycache__
 **/*.py[cod]

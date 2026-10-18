@@ -5,7 +5,12 @@ import hashlib
 import json
 from pathlib import Path
 import tempfile
+
+import importlib.util
 import unittest
+
+if importlib.util.find_spec("ditserve.results.legacy") is None:
+    raise unittest.SkipTest("legacy result readers ship only in a repository checkout")
 
 from ditserve import results
 

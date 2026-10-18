@@ -1,5 +1,6 @@
 # Lean runtime: C++ controller + resident Python workers on the locked torch 2.10.0+cu126 stack.
-# Offline build: serve the wheelhouse on the host and pass --network host, see docs/container.md.
+# The image is GPU-architecture neutral (no compiled CUDA kernels; torch wheels carry sm_80/sm_86/sm_90).
+# Build and run instructions, including an offline wheelhouse build: MIGRATION.md.
 ARG PYTHON_BASE=python:3.10.20-slim-bookworm@sha256:019e31cc1f52e4139d338bca44f27b71339a9da261738fd80fab9cf4595152fc
 FROM ${PYTHON_BASE} AS runtime-system
 # GCC/G++ and /usr/local/include/python3.10 are required by torch.compile.
@@ -41,7 +42,7 @@ ENV PATH=/opt/ditserve/bin:/opt/venv/bin:$PATH \
     HF_HOME=/data/cache/huggingface TORCH_HOME=/models/torch \
     TORCHINDUCTOR_CACHE_DIR=/data/cache/torchinductor \
     TRITON_CACHE_DIR=/data/cache/triton \
-    MPLCONFIGDIR=/data/cache/matplotlib \
+    DITSERVE_CORE=/opt/ditserve/bin/ditserve \
     HOME=/data USER=ditserve LOGNAME=ditserve \
     NVIDIA_VISIBLE_DEVICES=all NVIDIA_DRIVER_CAPABILITIES=compute,utility
 RUN ditserve --version && ditserve doctor \

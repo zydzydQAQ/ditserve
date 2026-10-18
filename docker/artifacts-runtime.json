@@ -47,15 +47,6 @@
       "origin": "official PyPI"
     },
     {
-      "name": "contourpy",
-      "version": "1.3.2",
-      "filename": "contourpy-1.3.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
-      "url": "https://files.pythonhosted.org/packages/32/5c/1ee32d1c7956923202f00cf8d2a14a62ed7517bdc0ee1e55301227fc273c/contourpy-1.3.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
-      "sha256": "ad687a04bc802cbe8b9c399c07162a3c35e227e2daccf1668eb1f278cb698631",
-      "bytes": 325027,
-      "origin": "official PyPI"
-    },
-    {
       "name": "cuda-bindings",
       "version": "12.9.4",
       "filename": "cuda_bindings-12.9.4-cp310-cp310-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl",
@@ -71,15 +62,6 @@
       "url": "https://files.pythonhosted.org/packages/b9/fb/f8e1890428f9f590b4beebd63b068aac1ce32a3331510c847b9f9a78f261/cuda_pathfinder-1.8.3-py3-none-any.whl",
       "sha256": "e29e59829c297a7a5233bd9cc71094fc5bddbd076951482670178f9eade39b1f",
       "bytes": 62561,
-      "origin": "official PyPI"
-    },
-    {
-      "name": "cycler",
-      "version": "0.12.1",
-      "filename": "cycler-0.12.1-py3-none-any.whl",
-      "url": "https://files.pythonhosted.org/packages/e7/05/c19819d5e3d95294a6f5947fb9b9629efb316b96de511b418c53d245aae6/cycler-0.12.1-py3-none-any.whl",
-      "sha256": "85cef7cff222d8644161529808465972e51340599459b8ac3ccbac5a854e0d30",
-      "bytes": 8321,
       "origin": "official PyPI"
     },
     {
@@ -116,15 +98,6 @@
       "url": "https://files.pythonhosted.org/packages/ee/86/032133892a5de43b5a98200b01aadcad68cc255e274a762f08b8a76d2912/filelock-4.1.0-py3-none-any.whl",
       "sha256": "2ce9818e3e2d8f284c1a964414447ef148d42a5fd5e2a477a7118e574b293ec1",
       "bytes": 133003,
-      "origin": "official PyPI"
-    },
-    {
-      "name": "fonttools",
-      "version": "4.65.0",
-      "filename": "fonttools-4.65.0-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
-      "url": "https://files.pythonhosted.org/packages/ee/56/151b5e81d20c63834f48ad37a0cbbbe2f9b248e38f8d10387f0cf5219244/fonttools-4.65.0-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
-      "sha256": "fb53892b570f7f1f0055e75fc4de32673e32f749c4c8a606b63d5c436650e634",
-      "bytes": 5253649,
       "origin": "official PyPI"
     },
     {
@@ -218,39 +191,12 @@
       "origin": "official PyPI"
     },
     {
-      "name": "kiwisolver",
-      "version": "1.5.1",
-      "filename": "kiwisolver-1.5.1-cp310-cp310-manylinux_2_12_x86_64.manylinux2010_x86_64.whl",
-      "url": "https://files.pythonhosted.org/packages/f1/0e/9f394d693be549fa3fab62498c2778294595991047adc3dcf10aa99b91c0/kiwisolver-1.5.1-cp310-cp310-manylinux_2_12_x86_64.manylinux2010_x86_64.whl",
-      "sha256": "e05c2f7925f1d88778e53cb44f14e0223204a3bdd09a41664750363acfb1f2ef",
-      "bytes": 1628782,
-      "origin": "official PyPI"
-    },
-    {
-      "name": "lpips",
-      "version": "0.1.4",
-      "filename": "lpips-0.1.4-py3-none-any.whl",
-      "url": "https://files.pythonhosted.org/packages/9b/13/1df50c7925d9d2746702719f40e864f51ed66f307b20ad32392f1ad2bb87/lpips-0.1.4-py3-none-any.whl",
-      "sha256": "fd537af5828b69d2e6ffc0a397bd506dbc28ca183543617690844c08e102ec5e",
-      "bytes": 53763,
-      "origin": "official PyPI"
-    },
-    {
       "name": "markupsafe",
       "version": "3.0.4",
       "filename": "markupsafe-3.0.4-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
       "url": "https://files.pythonhosted.org/packages/00/26/c4708ed3b0f08e8e6d7cbce3314ac130cb5352d1f62951b6fef7878f2b1e/markupsafe-3.0.4-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
       "sha256": "d1aca03ede943eb80ab3d63bb082c84b7aab85ea83bd0fd0c200260945fb49d9",
       "bytes": 20712,
-      "origin": "official PyPI"
-    },
-    {
-      "name": "matplotlib",
-      "version": "3.10.8",
-      "filename": "matplotlib-3.10.8-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
-      "url": "https://files.pythonhosted.org/packages/cb/aa/7ab67f2b729ae6a91bcf9dcac0affb95fb8c56f7fd2b2af894ae0b0cf6fa/matplotlib-3.10.8-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
-      "sha256": "ee40c27c795bda6a5292e9cff9890189d32f7e3a0bf04e0e3c9430c4a00c37df",
-      "bytes": 8700452,
       "origin": "official PyPI"
     },
     {
@@ -470,24 +416,6 @@
       "origin": "official PyPI"
     },
     {
-      "name": "pyparsing",
-      "version": "3.3.3",
-      "filename": "pyparsing-3.3.3-py3-none-any.whl",
-      "url": "https://files.pythonhosted.org/packages/38/bb/d215ee7c73b61497b28a5503f9f53523f294fcc936762b7caf90e0c1c2b5/pyparsing-3.3.3-py3-none-any.whl",
-      "sha256": "ece8c00a69cf01b45d0b1dedabb469c90d8caf996d4fda40f147627a122849a4",
-      "bytes": 126420,
-      "origin": "official PyPI"
-    },
-    {
-      "name": "python-dateutil",
-      "version": "2.9.0.post0",
-      "filename": "python_dateutil-2.9.0.post0-py2.py3-none-any.whl",
-      "url": "https://files.pythonhosted.org/packages/ec/57/56b9bcc3c9c6a792fcbaf139543cee77261f3651ca9da0c93f5c1221264b/python_dateutil-2.9.0.post0-py2.py3-none-any.whl",
-      "sha256": "a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427",
-      "bytes": 229892,
-      "origin": "official PyPI"
-    },
-    {
       "name": "pyyaml",
       "version": "6.0.3",
       "filename": "pyyaml-6.0.3-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
@@ -524,15 +452,6 @@
       "origin": "official PyPI"
     },
     {
-      "name": "scipy",
-      "version": "1.15.3",
-      "filename": "scipy-1.15.3-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
-      "url": "https://files.pythonhosted.org/packages/8e/6d/41991e503e51fc1134502694c5fa7a1671501a17ffa12716a4a9151af3df/scipy-1.15.3-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
-      "sha256": "9e2abc762b0811e09a0d3258abee2d98e0c703eee49464ce0069590846f31d40",
-      "bytes": 37662964,
-      "origin": "official PyPI"
-    },
-    {
       "name": "sentencepiece",
       "version": "0.2.2",
       "filename": "sentencepiece-0.2.2-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
@@ -548,15 +467,6 @@
       "url": "https://files.pythonhosted.org/packages/a3/dc/17031897dae0efacfea57dfd3a82fdd2a2aeb58e0ff71b77b87e44edc772/setuptools-80.9.0-py3-none-any.whl",
       "sha256": "062d34222ad13e0cc312a4c02d73f059e86a4acbfbdea8f8f76b28c99f306922",
       "bytes": 1201486,
-      "origin": "official PyPI"
-    },
-    {
-      "name": "six",
-      "version": "1.17.0",
-      "filename": "six-1.17.0-py2.py3-none-any.whl",
-      "url": "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl",
-      "sha256": "4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274",
-      "bytes": 11050,
       "origin": "official PyPI"
     },
     {
