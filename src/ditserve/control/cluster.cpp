@@ -163,6 +163,10 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     // largest group yields to those that still can, so an overloaded queue of
     // late videos does not starve newly arrived short requests.
     const bool demote_late = bool_field(options, "demote_late", true);
+    // Late requests shorter than this keep their EDF position: they barely
+    // delay feasible work, and demoting them behind a long video only turns a
+    // small miss into a very long tail.
+    const double late_short_ms = number_field(options, "late_short_ms", 2000);
     const int widest = *std::max_element(degrees.begin(), degrees.end());
     std::map<const Json*, bool> late;
     for (const Json* r : rows) {
@@ -171,7 +175,8 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         while (degree > 1 && !power_of_two(degree)) --degree;
         const auto group = group_of(*r);
         if (r->value("prepared", false) && int_field(*r, "blocks_done", 0, 0) > 0) degree = static_cast<int>(group.size());
-        late[r] = demote_late && now + cost.remaining_ms(*r, degree) > number_field(*r, "deadline_ms");
+        const double remaining = cost.remaining_ms(*r, degree);
+        late[r] = demote_late && remaining > late_short_ms && now + remaining > number_field(*r, "deadline_ms");
     }
     auto edf = [&](const Json* r) {
         return std::make_tuple(late.at(r), number_field(*r, "deadline_ms"), number_field(*r, "arrival_ms"), r->at("request_id").get<std::string>());

@@ -9,7 +9,7 @@
 \usepackage[numbers,sort&compress]{natbib}
 \usepackage[hidelinks]{hyperref}
 
-\hypersetup{pdftitle={DiT Model Serving: Background, Motivation, and Related Work}}
+\hypersetup{pdftitle={DiT Model Serving: Background, Motivation, Design Outline, and Related Work}}
 \urlstyle{same}
 \setlength{\emergencystretch}{2em}
 \newcommand{\evidence}[1]{\footnote{Experimental record in the accompanying
@@ -17,12 +17,14 @@
 
 % References use the companion dit_serving_references.bib database.
 % Build from this directory with a LaTeX/BibTeX-capable toolchain.
-% Evidence was checked against the completed reports on 2026-10-14.
+% Evidence was checked against the completed reports on 2026-10-14; the
+% 2026-10-18 additions cite results/a100-e* (local A100 PCIe 40GB) and the
+% cluster simulator, whose 14B costs and PCIe links are labeled estimates.
 % Keep two displayed equations: Gaussian noising and a clean-latent estimate.
 % The noise-prediction example does not specify Wan's actual solver update.
 
 \title{DiT Model Serving\\[0.3em]
-\large Background, Motivation, and Related Work}
+\large Background, Motivation, Design Outline, and Related Work}
 \author{}
 \date{}
 
@@ -283,14 +285,128 @@ actual online objective using unchanged arrivals, deadlines, and complete
 accounting.
 
 Together, the measurements motivate a controller that considers request
-urgency, legal execution boundaries, and cache-dependent continuation
-costs. Fine-grained earliest-deadline-first scheduling provides a strong
-baseline: additional state-aware rules must demonstrate benefits beyond
-those obtained simply by exposing shorter execution intervals.
-Continuous video playback and elastic multi-GPU execution introduce
-further constraints, but their benefits require separate validation. The
-present evidence supports a focused investigation of mixed-request
-responsiveness and resumable state on a single GPU.
+urgency, legal execution boundaries, and continuation costs. Fine-grained
+earliest-deadline-first scheduling provides a strong baseline: additional
+rules must demonstrate benefits beyond those obtained simply by exposing
+shorter execution intervals. The following measurements extend this
+observation to the multi-GPU setting that motivates our design.
+
+\subsection{Long Steps and Multi-GPU Execution}
+\label{sec:long-steps}
+
+Step boundaries become rarer as models and outputs grow. On the same A100,
+one Wan2.1-1.3B solver step takes 0.58\,s at $480\times832$ with 17 frames,
+4.16\,s with 81 frames, and 16.8\,s at $720\times1280$ with 81 frames; each
+step consists of 60 Transformer-block evaluations of almost equal cost
+(two CFG branches of 30 blocks).\evidence{results/a100-e2-cost-profile/run01}
+Scaling these measurements by the analytic FLOP ratio of
+Wan2.1-14B, at equal utilization, suggests roughly 25\,s per step at 480p and
+88\,s at 720p on one GPU. These 14B numbers are estimates until measured on
+the target machine. Sequence parallelism shortens a step, but the request
+then holds several GPUs, so a step-boundary scheduler must either wait for
+the whole group or keep GPUs idle for short requests.
+
+The effect survives the full serving path on one GPU. Through the native
+multi-GPU executor with real Wan and Sana workers, a 30-request Poisson mix
+of images and 17/33-frame videos at loads of 0.4, 0.6, and 0.8 of measured
+capacity meets 73\%, 67\%, and 50\% of deadlines under step-boundary EDF,
+and 93\%, 80\%, and 83\% when videos advance in four-block
+quanta.\evidence{results/a100-e3-load-curves/run01}
+Two costs of that design are visible in the same runs. Feasible-first
+ordering lets requests that are already late wait behind feasible videos,
+raising the image p95 latency to 74--118\,s at high load; keeping late
+requests with at most 2\,s of remaining work in EDF order removes this tail
+(image p95 1.8\,s) and raises on-time completions under block quanta from 24
+to 27 of 30.\evidence{results/a100-e9-late-short/run01}
+The lazy variant, which lets an image wait for a nearby step boundary,
+gained nothing over eager preemption on one GPU.
+
+A cost-model study of an $8\times$A100 PCIe server illustrates the trade-off.
+It uses the measured 1.3B and image costs, the extrapolated 14B classes,
+assumed PCIe all-to-all bandwidths, and deadlines of $\sigma\times1.5$ times
+standalone latency. When elastic step-level SP gives every idle GPU to a
+video, images wait for step boundaries: overall deadline attainment is
+0.49--0.72. Reserving one GPU for images restores image attainment and
+yields 0.78--0.99. Block-level suspension with step-boundary regrouping
+reaches 0.84--0.998 without a reservation, improving video attainment by
+5--17 percentage points over the reserved
+baseline.\evidence{results/a100-e4-whatif}
+These are simulator outcomes, not system measurements; they identify the
+regime (tight video deadlines, high load, video-heavy mixes) in which the
+evaluation must demonstrate the effect.
+
+Suspension inside a step is cheap in state. With caching disabled, the
+step-boundary request state of the measured shapes occupies 16--86\,MB and
+restores in under 10\,ms. A block-boundary continuation additionally keeps
+28--260\,MiB of live activations.\evidence{results/a100-e2-cost-profile/run01}
+Contrary to the view that intermediate points of a step are not valid
+stopping points, the continuation can be serialized and resumed in another
+process. For all six measured shapes, a Wan2.1-1.3B request suspended after
+13 blocks of the conditional branch or 15 blocks of the unconditional branch
+(which also carries the conditional prediction) was exported with its
+untouched solver state, released, and resumed in a fresh worker process; the
+decoded videos and final latents matched an uninterrupted run bit for bit.
+The packets occupied 28--269\,MiB; export and import took 0.15--1.3\,s and
+0.09--0.45\,s including integrity hashing.\evidence{results/a100-e5-block-exact/run01}
+Finally, the VAE decode becomes the remaining non-preemptible tail once
+denoising is preemptible: it takes 1.5--15.9\,s for the measured shapes,
+but decodes causally one latent frame at a time and can therefore yield
+between frames. Decoding in such chunks matches the whole decode bit for bit
+and, on a frozen burst trace, raised on-time completions from 7 to 10 of 24
+under block quanta and from 5 to 8 under step quanta.\evidence{results/a100-e7-chunked-decode/run01}
+
+Time-sliced co-location is not a substitute for preemption. With
+Mistral-7B, Wan2.1-1.3B, and Sana-Sprint resident as three processes on
+one 40\,GB A100, a concurrent Wan step slows image generation from 0.30 to
+0.58\,s and LLM decoding from 34--41 to 63--66\,ms per token, while the
+Wan step itself slows by 6--22\%. The three resident models and one video
+leave 7.4\,GiB free; six 3.9k-token conversations (488\,MiB of KV each)
+reduce that to 0.53\,GiB, and per-process allocator caches hold about
+11\,GiB that the other processes cannot use.\evidence{results/a100-e8-colocation/run01}
+On 40\,GB GPUs, placement of suspended DiT state and LLM KV therefore
+becomes a real constraint once models share a device.
+
+The present evidence therefore supports a multi-GPU design for PCIe servers
+in which requests advance in block quanta, sequence-parallel groups change
+only at step boundaries, and short requests preempt a long request inside a
+step only when they cannot wait for its boundary.
+
+\section{Design Outline}
+\label{sec:design}
+
+\emph{Outline; to be completed with target-machine evidence.}
+\begin{itemize}
+  \item \textbf{Aligned SP groups.} GPUs are numbered in PCIe topology order;
+  SP groups are aligned pairs, quads, and the node, matching switch and
+  socket boundaries.
+  \item \textbf{Quanta and boundaries.} Videos advance by a time-targeted
+  number of blocks; SP degree and placement change only at solver-step
+  boundaries; all ranks of a group stop at the same block.
+  \item \textbf{Feasible-first EDF with lazy preemption.} Requests that cannot
+  meet their deadlines yield to feasible ones; an image preempts a mid-step
+  group only if it cannot wait for that group's boundary.
+  \item \textbf{Preemptible tails.} VAE decode advances by latent-frame
+  chunks; prompt encoding is prefetched off the GPU path.
+  \item \textbf{Resumable state.} Block-boundary continuations are exportable;
+  step-boundary state is small enough to offload under memory pressure on
+  40\,GB GPUs, including co-located LLM sessions.
+\end{itemize}
+
+\section{Evaluation Plan}
+\label{sec:evaluation-plan}
+
+\emph{Planned for one $8\times$A100 PCIe 40\,GB server.}
+Models: Wan2.1-1.3B and a larger Wan model (Wan2.2-5B for comparability with
+prior work, Wan2.1-14B for long steps), Sana-Sprint and FLUX.1-dev images.
+Workloads follow prior work: Poisson and bursty arrivals, video:image mixes
+from 20/80 to 80/20, deadlines $\sigma\times1.5\times$ standalone latency
+with $\sigma\in[0.8,1.3]$, and foreground bursts over long requests.
+Baselines: static SP, step-level elastic SP with slack-based victims and
+optional image reservation (GenServe-like), round-based allocation
+(TetriServe-like), and EDF/SRTF. Metrics: per-class SLO attainment, goodput,
+and p50/p95/p99 latency over multiple seeds. Ablations: block vs.\ step
+quanta, lazy vs.\ eager preemption, chunked vs.\ atomic decode, and
+topology-aligned vs.\ unaligned groups.
 
 \section{Related Work}
 \label{sec:related-work}
@@ -318,8 +434,15 @@ diffusion workloads~\cite{ye2026genserve}.
 FlashDiff, also a preprint, schedules regional computation at patch
 granularity while restricting preemption to denoising-step
 boundaries~\cite{qiao2026flashdiff}.
-Our study focuses on Transformer-block suspension within a sampling step
-and the request-local state required for resumption.
+GF-DiT schedules per step, re-forms SP groups quickly, and argues that
+points inside a step are not valid stopping points~\cite{gfdit2026}.
+Our study focuses on Transformer-block suspension within a sampling step,
+its interaction with elastic SP on PCIe servers, and the request-local
+state required for resumption. xDiT provides the underlying parallel
+inference strategies and notes that Ulysses all-to-all is sensitive to PCIe
+topology~\cite{fang2024xdit}. In LLM serving, ConServe and FlowPrefill
+preempt at layer or operator granularity within an
+iteration~\cite{qiu2024conserve,flowprefill2026}.
 
 \subsection{GPU Sharing and Caching}
 \label{sec:related-state}

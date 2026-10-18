@@ -157,6 +157,13 @@ int main() {
         require(atomic.at("by_kind").at("image").at("ontime") == 0 && split.at("by_kind").at("image").at("ontime") == 1, "decode no longer blocks the image");
         near(split.at("makespan_ms").get<double>(), 4000 + 100 + 50, 1e-6);
     });
+    check("late short requests keep their EDF position", [] {
+        // An image that cannot meet its deadline ahead of a feasible video.
+        const Json rows = Json::array({image("i", 10), video("v", 1e9)});  // 50 ms image, 10 ms deadline: late
+        require(plan(rows, "static_sp1", 1)[0].at("request_id") == "i", "short late image is not demoted");
+        require(plan(rows, "static_sp1", 1, Json::array(), {{"late_short_ms", 0}})[0].at("request_id") == "v", "strict demotion");
+        require(plan(rows, "static_sp1", 1, Json::array(), {{"demote_late", false}})[0].at("request_id") == "i", "plain EDF");
+    });
     check("simulation accounting", [] {
         Json images = Json::array();
         for (int i = 0; i < 4; ++i) images.push_back(trace_row("i" + std::to_string(i), "image", 0, 1000));

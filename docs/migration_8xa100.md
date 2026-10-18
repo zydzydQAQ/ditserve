@@ -42,11 +42,11 @@ HF_HUB_OFFLINE=0 huggingface-cli download black-forest-labs/FLUX.1-dev --local-d
 每一步的配置和结果按 save-experiment-results 约定保存为 `results/<experiment>/<run>/results.xlsx` + `REPORT.md`；未通过的步骤保持 failed/unverified，不进入下一步的结论。
 
 1. **拓扑与 P2P。** 记录 `nvidia-smi -L`、`nvidia-smi topo -m`、`nvidia-smi topo -p2p r`、`nvidia-smi -q | grep -i -A2 "bus id"`。确认 8 张卡同型号、同显存、驱动 ≥ 570.181。CUDA 设备序号要按拓扑顺序排列，使对齐的 pair 同 PCIe switch、quad 同 socket；否则在 `cluster.gpus` 与 SP rank 顺序里显式重排。若 P2P 读不可用，检查 PCIe switch 的 ACS（`lspci -vvv | grep -i acsctl`）和 IOMMU 设置（需宿主管理员）。通过标准：拓扑记录完整，序号映射已写入配置。
-2. **all-to-all 带宽。** 容器以 `--gpus all --ipc=host --shm-size=32g --ulimit memlock=-1` 启动，运行
+2. **all-to-all 带宽。** 容器以 `--gpus all --pid=host --ipc=host --shm-size=32g --ulimit memlock=-1` 启动。`--pid=host` 是必需的：GPU 隔离检查把 `nvidia-smi` 报告的宿主 PID 与 worker PID 比对，容器的 PID 命名空间会让自己的 worker 被误判为外来进程，运行因此以 "GPU isolation lost" 失败（本机 A100 冒烟已复现并验证此参数，见 `results/a100-image-smoke`）。运行
    `torchrun --nproc_per_node 8 -m ditserve.evaluation.collectives --output /data/collectives.json`。
    该工具测 pair、quad 和 8 卡的 concurrent/isolated 每 rank 带宽，结果替换模拟器成本画像中的 `links`。通过标准：所有组完成；记录各档 GB/s。
-3. **单卡冒烟。** `ditserve doctor`；每张卡跑一次 `configs/studies/local-a100/e0_acceptance.json` 的副本（替换 GPU UUID 和模型路径）。通过标准：数值阶段精确一致，混合回放全部完成。
-4. **8 slot 并发回放（SP1）。** `cluster` 执行器，每张卡一个 Wan block worker + 一个图像 worker，按混合负载运行 `static_sp1` 与 `block_elastic`。通过标准：全部请求完成，账本结算，GPU 隔离观测为 exclusive。
+3. **单卡冒烟。** `ditserve doctor`；每张卡跑一次 `configs/studies/target-8xa100/acceptance.json`（替换 GPU UUID；模型路径已按 `/models` 挂载布局填写）。通过标准：数值阶段精确一致，混合回放全部完成。
+4. **8 slot 并发回放（SP1）。** `configs/studies/target-8xa100/cluster_sp1.json`：每张卡一个 Wan block worker + 一个图像 worker，按混合负载运行 `static_sp1` 与 `block_elastic`（约 300 ms quantum，可抢占解码）。通过标准：全部请求完成，账本结算，GPU 隔离观测为 exclusive。
 5. **SP 等价性。** 先实现 SP 组内的 block 执行与 step 边界换组，再用 1.3B 和 14B 比较 SP1 与 SP2/4/8 的输出：latent 在 BF16/FP16 容差内一致，且有明确记录的最大误差。通过前不得报告 SP 下的任何性能结论。
 6. **SP 扩展曲线。** 对 {480p, 720p} × {17, 33, 81} 帧 × SP{1,2,4,8} 测每步时间，拟合成本画像中的 `sp_efficiency`、`links` 和 `comm_mb_per_step`，与本机推演（Phase 4）的预测比较。通过标准：模拟器对留出形状的每步时间误差 ≤10%。
 7. **主实验。** 按负载曲线比较 `static_spK`、`step_elastic`、`block_elastic`（含 lazy/eager 抢占消融），多 seed，报告 SLO 达成率、goodput、分类别 p50/p95/p99。
