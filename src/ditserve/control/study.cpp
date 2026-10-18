@@ -130,7 +130,15 @@ public:
         auto* result=worker.get();workers_[name]=std::move(worker);return *result;
     }
     bool stop() {bool clean=true;for(auto& item:workers_)clean=item.second->process->stop()&&clean;return clean;}
-    void shutdown(double deadline){for(auto& item:workers_)item.second->call({{"op","shutdown"}},deadline);}
+    // Concurrent: ranks of one NCCL world tear it down together, and a rank that
+    // waits for its peers must not hold the next worker's shutdown behind it.
+    void shutdown(double deadline){
+        std::vector<std::future<Json>> calls;
+        for(auto& item:workers_)calls.push_back(std::async(std::launch::async,[worker=item.second.get(),deadline]{return worker->call({{"op","shutdown"}},deadline);}));
+        std::exception_ptr error;
+        for(auto& call:calls)try{call.get();}catch(...){if(!error)error=std::current_exception();}
+        if(error)std::rethrow_exception(error);
+    }
     std::string backend(const std::string& name)const{return definitions_.at(name).at("backend").get<std::string>();}
     void heartbeat(std::function<void()> callback){heartbeat_=std::move(callback);}
     std::vector<int> pids()const{std::vector<int> p;for(const auto& item:workers_)p.push_back(item.second->process->pid());return p;}
