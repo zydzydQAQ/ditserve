@@ -1,0 +1,308 @@
+{
+  "schema": "ditserve.study.v1",
+  "experiment": "a100-e6-sana-batch",
+  "note": "E6: Sana-Sprint 1024^2 (BF16 eager pipeline, 2 steps) whole-batch service time at batch 1/2/4/8 on the local A100, one warmup plus three measured batches each; per-image throughput decides whether the step-level baseline needs image batching. Same-prompt-set batches; outputs validated (shape, finite) and not written.",
+  "workers": {
+    "sana": {
+      "backend": "sana",
+      "python": "/home/zyd/code/dit-rewrite/.venv-previs/bin/python",
+      "gpu_uuid": "GPU-3ab2fedc-ccc1-007d-f4a1-b6058b3479a3",
+      "environment": {
+        "OMP_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8"
+      },
+      "config": {
+        "model_path": "/mnt/data/zyd-preempt-phase16-01a1296d/dit-directions-assets/huggingface/hub/models--Efficient-Large-Model--Sana_Sprint_0.6B_1024px_diffusers/snapshots/aa76e7f4f4928f378716b6716a2130fba3caf5b1",
+        "device": "cuda:0",
+        "options": {
+          "execution": "pipeline",
+          "candidate": "eager"
+        }
+      }
+    }
+  },
+  "budget": {
+    "limit_gpu_seconds": 600,
+    "watchdog_seconds": 600,
+    "repair_reserve_gpu_seconds": 0,
+    "carry": "none"
+  },
+  "phases": [
+    {
+      "id": "batch",
+      "kind": "profile",
+      "worker": "sana",
+      "workers": [
+        "sana"
+      ],
+      "actions": [
+        {
+          "op": "generate_batch",
+          "prompts": [
+            "A small sailboat glides across a calm lake in soft morning light."
+          ],
+          "seeds": [
+            500
+          ],
+          "output_mode": "check",
+          "label": "warm"
+        },
+        {
+          "op": "generate_batch",
+          "prompts": [
+            "A small sailboat glides across a calm lake in soft morning light."
+          ],
+          "seeds": [
+            510
+          ],
+          "output_mode": "check",
+          "label": "batch1"
+        },
+        {
+          "op": "generate_batch",
+          "prompts": [
+            "A small sailboat glides across a calm lake in soft morning light."
+          ],
+          "seeds": [
+            520
+          ],
+          "output_mode": "check",
+          "label": "batch1"
+        },
+        {
+          "op": "generate_batch",
+          "prompts": [
+            "A small sailboat glides across a calm lake in soft morning light."
+          ],
+          "seeds": [
+            530
+          ],
+          "output_mode": "check",
+          "label": "batch1"
+        },
+        {
+          "op": "generate_batch",
+          "prompts": [
+            "A small sailboat glides across a calm lake in soft morning light.",
+            "A ceramic teapot steaming on a wooden kitchen table."
+          ],
+          "seeds": [
+            500,
+            501
+          ],
+          "output_mode": "check",
+          "label": "warm"
+        },
+        {
+          "op": "generate_batch",
+          "prompts": [
+            "A small sailboat glides across a calm lake in soft morning light.",
+            "A ceramic teapot steaming on a wooden kitchen table."
+          ],
+          "seeds": [
+            510,
+            511
+          ],
+          "output_mode": "check",
+          "label": "batch2"
+        },
+        {
+          "op": "generate_batch",
+          "prompts": [
+            "A small sailboat glides across a calm lake in soft morning light.",
+            "A ceramic teapot steaming on a wooden kitchen table."
+          ],
+          "seeds": [
+            520,
+            521
+          ],
+          "output_mode": "check",
+          "label": "batch2"
+        },
+        {
+          "op": "generate_batch",
+          "prompts": [
+            "A small sailboat glides across a calm lake in soft morning light.",
+            "A ceramic teapot steaming on a wooden kitchen table."
+          ],
+          "seeds": [
+            530,
+            531
+          ],
+          "output_mode": "check",
+          "label": "batch2"
+        },
+        {
+          "op": "generate_batch",
+          "prompts": [
+            "A small sailboat glides across a calm lake in soft morning light.",
+            "A ceramic teapot steaming on a wooden kitchen table.",
+            "A paper lantern floating over a quiet night market.",
+            "A red bicycle leaning against a blue wall in warm afternoon light."
+          ],
+          "seeds": [
+            500,
+            501,
+            502,
+            503
+          ],
+          "output_mode": "check",
+          "label": "warm"
+        },
+        {
+          "op": "generate_batch",
+          "prompts": [
+            "A small sailboat glides across a calm lake in soft morning light.",
+            "A ceramic teapot steaming on a wooden kitchen table.",
+            "A paper lantern floating over a quiet night market.",
+            "A red bicycle leaning against a blue wall in warm afternoon light."
+          ],
+          "seeds": [
+            510,
+            511,
+            512,
+            513
+          ],
+          "output_mode": "check",
+          "label": "batch4"
+        },
+        {
+          "op": "generate_batch",
+          "prompts": [
+            "A small sailboat glides across a calm lake in soft morning light.",
+            "A ceramic teapot steaming on a wooden kitchen table.",
+            "A paper lantern floating over a quiet night market.",
+            "A red bicycle leaning against a blue wall in warm afternoon light."
+          ],
+          "seeds": [
+            520,
+            521,
+            522,
+            523
+          ],
+          "output_mode": "check",
+          "label": "batch4"
+        },
+        {
+          "op": "generate_batch",
+          "prompts": [
+            "A small sailboat glides across a calm lake in soft morning light.",
+            "A ceramic teapot steaming on a wooden kitchen table.",
+            "A paper lantern floating over a quiet night market.",
+            "A red bicycle leaning against a blue wall in warm afternoon light."
+          ],
+          "seeds": [
+            530,
+            531,
+            532,
+            533
+          ],
+          "output_mode": "check",
+          "label": "batch4"
+        },
+        {
+          "op": "generate_batch",
+          "prompts": [
+            "A small sailboat glides across a calm lake in soft morning light.",
+            "A ceramic teapot steaming on a wooden kitchen table.",
+            "A paper lantern floating over a quiet night market.",
+            "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "A small sailboat glides across a calm lake in soft morning light.",
+            "A ceramic teapot steaming on a wooden kitchen table.",
+            "A paper lantern floating over a quiet night market.",
+            "A red bicycle leaning against a blue wall in warm afternoon light."
+          ],
+          "seeds": [
+            500,
+            501,
+            502,
+            503,
+            504,
+            505,
+            506,
+            507
+          ],
+          "output_mode": "check",
+          "label": "warm"
+        },
+        {
+          "op": "generate_batch",
+          "prompts": [
+            "A small sailboat glides across a calm lake in soft morning light.",
+            "A ceramic teapot steaming on a wooden kitchen table.",
+            "A paper lantern floating over a quiet night market.",
+            "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "A small sailboat glides across a calm lake in soft morning light.",
+            "A ceramic teapot steaming on a wooden kitchen table.",
+            "A paper lantern floating over a quiet night market.",
+            "A red bicycle leaning against a blue wall in warm afternoon light."
+          ],
+          "seeds": [
+            510,
+            511,
+            512,
+            513,
+            514,
+            515,
+            516,
+            517
+          ],
+          "output_mode": "check",
+          "label": "batch8"
+        },
+        {
+          "op": "generate_batch",
+          "prompts": [
+            "A small sailboat glides across a calm lake in soft morning light.",
+            "A ceramic teapot steaming on a wooden kitchen table.",
+            "A paper lantern floating over a quiet night market.",
+            "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "A small sailboat glides across a calm lake in soft morning light.",
+            "A ceramic teapot steaming on a wooden kitchen table.",
+            "A paper lantern floating over a quiet night market.",
+            "A red bicycle leaning against a blue wall in warm afternoon light."
+          ],
+          "seeds": [
+            520,
+            521,
+            522,
+            523,
+            524,
+            525,
+            526,
+            527
+          ],
+          "output_mode": "check",
+          "label": "batch8"
+        },
+        {
+          "op": "generate_batch",
+          "prompts": [
+            "A small sailboat glides across a calm lake in soft morning light.",
+            "A ceramic teapot steaming on a wooden kitchen table.",
+            "A paper lantern floating over a quiet night market.",
+            "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "A small sailboat glides across a calm lake in soft morning light.",
+            "A ceramic teapot steaming on a wooden kitchen table.",
+            "A paper lantern floating over a quiet night market.",
+            "A red bicycle leaning against a blue wall in warm afternoon light."
+          ],
+          "seeds": [
+            530,
+            531,
+            532,
+            533,
+            534,
+            535,
+            536,
+            537
+          ],
+          "output_mode": "check",
+          "label": "batch8"
+        }
+      ],
+      "artifact_dependencies": []
+    }
+  ]
+}

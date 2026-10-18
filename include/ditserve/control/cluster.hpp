@@ -25,6 +25,9 @@ public:
     double step_ms(const std::string& klass, int degree) const;
     double block_ms(const std::string& klass, int degree) const;
     int blocks_per_step(const std::string& klass) const;
+    // VAE decode splits into decode_chunks latent-frame chunks (1 = atomic).
+    int decode_chunks(const std::string& klass) const;
+    double chunk_ms(const std::string& klass) const;
     // Remaining GPU time on `degree` GPUs from the request's current progress.
     double remaining_ms(const Json& request, int degree) const;
     double resize_ms() const { return resize_ms_; }
@@ -37,10 +40,12 @@ private:
 //   request_id, kind (video|image), class, arrival_ms, deadline_ms,
 //   status waiting|suspended, ready (encoded), prepared, steps_done,
 //   blocks_done (inside the current step), group ([] when unplaced), optional
-//   steps_total (overrides the class) and affinity (GPU that must host prepare).
+//   steps_total (overrides the class), affinity (GPU that must host prepare) and
+//   decode_done (latent-frame chunks already decoded).
 // Policies: static_sp1|static_sp2|static_sp4|static_sp8, step_elastic, block_elastic.
 // Returns {assignments:[{request_id, group, degree, quantum, resize, reason}]}
-// where quantum is "atomic" (image), "finish", "step" or a block count.
+// where quantum is "atomic" (image), "finish" (with decode_frames when the
+// decode is chunked), "step" or a block count.
 Json cluster_plan(const Json& state, const std::string& policy, const ClusterCost& cost, const Json& options = Json::object());
 bool cluster_policy(const std::string& policy);
 }

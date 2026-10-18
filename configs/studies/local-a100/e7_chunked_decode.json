@@ -1,0 +1,494 @@
+{
+  "schema": "ditserve.study.v1",
+  "experiment": "a100-e7-chunked-decode",
+  "note": "E7: the frozen burst trace (0071c0c25757, 22 Sana images + 2 Wan 1.3B 81-frame videos) through the native cluster executor on the local A100 (pinned SP1, outputs validated not written): static_sp1 (EDF, whole steps) vs block_elastic with ~300 ms quanta (4 blocks), with the VAE decode atomic or preemptible at latent-frame chunks (21 per video). Tests whether the non-preemptible decode tail is the remaining head-of-line blocker after block preemption. static_sp1 ignores the decode option; its two cells are repeats.",
+  "workers": {
+    "wan": {
+      "backend": "wan",
+      "python": "/home/zyd/code/dit-rewrite/.venv-previs/bin/python",
+      "gpu_uuid": "GPU-3ab2fedc-ccc1-007d-f4a1-b6058b3479a3",
+      "environment": {
+        "OMP_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8"
+      },
+      "config": {
+        "model_path": "/mnt/data/zyd-preempt-phase16-01a1296d/dit-runtime/huggingface/hub/models--Wan-AI--Wan2.1-T2V-1.3B-Diffusers/snapshots/0fad780a534b6463e45facd96134c9f345acfa5b",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "block"
+        }
+      }
+    },
+    "sana": {
+      "backend": "sana",
+      "python": "/home/zyd/code/dit-rewrite/.venv-previs/bin/python",
+      "gpu_uuid": "GPU-3ab2fedc-ccc1-007d-f4a1-b6058b3479a3",
+      "environment": {
+        "OMP_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8"
+      },
+      "config": {
+        "model_path": "/mnt/data/zyd-preempt-phase16-01a1296d/dit-directions-assets/huggingface/hub/models--Efficient-Large-Model--Sana_Sprint_0.6B_1024px_diffusers/snapshots/aa76e7f4f4928f378716b6716a2130fba3caf5b1",
+        "device": "cuda:0",
+        "options": {
+          "execution": "pipeline",
+          "candidate": "eager"
+        }
+      }
+    }
+  },
+  "budget": {
+    "limit_gpu_seconds": 3600,
+    "watchdog_seconds": 5400,
+    "repair_reserve_gpu_seconds": 0,
+    "carry": "none"
+  },
+  "phases": [
+    {
+      "id": "burst",
+      "kind": "cluster",
+      "policy": "block_elastic",
+      "profile": {
+        "provenance": "measured",
+        "classes": {
+          "video": {
+            "kind": "video",
+            "steps": 32,
+            "blocks_per_step": 60,
+            "prepare_ms": 25.449552107602358,
+            "encode_ms": 17972.97461843118,
+            "step_compute_ms": 4158.712215954438,
+            "comm_mb_per_step": 24153.2928,
+            "collectives_per_step": 240,
+            "finish_ms": 6749.039187096059,
+            "decode_chunks": 21
+          },
+          "image": {
+            "kind": "image",
+            "service_ms": 298.32281079143286
+          }
+        },
+        "links": {},
+        "sp_efficiency": 1.0,
+        "resize_ms": 0.0,
+        "source": {
+          "run": "results/a100-e2-cost-profile/run01",
+          "run_json_sha256": "462db70f0cea850c1a4fca5f8ba1b1f1737f8a710f73dc39097d98343db2d8d8",
+          "hardware": "A100-PCIE-40GB GPU-3ab2fedc",
+          "model": "Wan2.1-T2V-1.3B-Diffusers@0fad780a, Sana_Sprint_0.6B@aa76e7f4",
+          "settings": "Wan FP16 DiT, FP32 VAE, UMT5 FP32 on CPU (8 threads), Flash attention, cache off; Sana BF16 eager pipeline",
+          "samples": "n=1 input per shape; 4 measured steps (median), 3 four-block quanta; 7 images after one warmup",
+          "gpu_seconds": 376.53827051632106
+        }
+      },
+      "gpus": [
+        {
+          "video": "wan",
+          "image": "sana"
+        }
+      ],
+      "text_prefetch": 1,
+      "output_mode": "check",
+      "warmup": [
+        {
+          "worker": "wan",
+          "spec": {
+            "prompt": "A wooden boat drifting on a misty river at dawn.",
+            "negative_prompt": "",
+            "seed": 7,
+            "steps": 2,
+            "height": 480,
+            "width": 832,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1
+          },
+          "quantum": "step"
+        },
+        {
+          "worker": "sana",
+          "spec": {
+            "prompt": "A ceramic teapot on a linen tablecloth.",
+            "seed": 7
+          }
+        }
+      ],
+      "workload": [
+        {
+          "request_id": "r000",
+          "kind": "video",
+          "arrival_ms": 0.0,
+          "deadline_ms": 398206.9845747901,
+          "service_ms": 159282.79382991605,
+          "worker": "wan",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 102,
+            "steps": 32,
+            "height": 480,
+            "width": 832,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1
+          },
+          "class": "video"
+        },
+        {
+          "request_id": "r001",
+          "kind": "image",
+          "arrival_ms": 0.0,
+          "deadline_ms": 791.8668436468579,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+            "seed": 103
+          },
+          "class": "image"
+        },
+        {
+          "request_id": "r002",
+          "kind": "image",
+          "arrival_ms": 0.0,
+          "deadline_ms": 791.8668436468579,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "seed": 104
+          },
+          "class": "image"
+        },
+        {
+          "request_id": "r003",
+          "kind": "image",
+          "arrival_ms": 0.0,
+          "deadline_ms": 791.8668436468579,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+            "seed": 105
+          },
+          "class": "image"
+        },
+        {
+          "request_id": "r004",
+          "kind": "image",
+          "arrival_ms": 0.0,
+          "deadline_ms": 791.8668436468579,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "seed": 106
+          },
+          "class": "image"
+        },
+        {
+          "request_id": "r005",
+          "kind": "image",
+          "arrival_ms": 81383.50397098111,
+          "deadline_ms": 82175.37081462797,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+            "seed": 107
+          },
+          "class": "image"
+        },
+        {
+          "request_id": "r006",
+          "kind": "image",
+          "arrival_ms": 81383.50397098111,
+          "deadline_ms": 82175.37081462797,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "seed": 108
+          },
+          "class": "image"
+        },
+        {
+          "request_id": "r007",
+          "kind": "image",
+          "arrival_ms": 81383.50397098111,
+          "deadline_ms": 82175.37081462797,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+            "seed": 109
+          },
+          "class": "image"
+        },
+        {
+          "request_id": "r008",
+          "kind": "image",
+          "arrival_ms": 81383.50397098111,
+          "deadline_ms": 82175.37081462797,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "seed": 110
+          },
+          "class": "image"
+        },
+        {
+          "request_id": "r009",
+          "kind": "image",
+          "arrival_ms": 81383.50397098111,
+          "deadline_ms": 82175.37081462797,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+            "seed": 111
+          },
+          "class": "image"
+        },
+        {
+          "request_id": "r010",
+          "kind": "image",
+          "arrival_ms": 162767.00794196222,
+          "deadline_ms": 163558.87478560908,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "seed": 112
+          },
+          "class": "image"
+        },
+        {
+          "request_id": "r011",
+          "kind": "image",
+          "arrival_ms": 162767.00794196222,
+          "deadline_ms": 163558.87478560908,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+            "seed": 113
+          },
+          "class": "image"
+        },
+        {
+          "request_id": "r012",
+          "kind": "video",
+          "arrival_ms": 162767.00794196222,
+          "deadline_ms": 560973.9925167523,
+          "service_ms": 159282.79382991605,
+          "worker": "wan",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "negative_prompt": "",
+            "seed": 114,
+            "steps": 32,
+            "height": 480,
+            "width": 832,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1
+          },
+          "class": "video"
+        },
+        {
+          "request_id": "r013",
+          "kind": "image",
+          "arrival_ms": 244150.51191294333,
+          "deadline_ms": 244942.3787565902,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+            "seed": 115
+          },
+          "class": "image"
+        },
+        {
+          "request_id": "r014",
+          "kind": "image",
+          "arrival_ms": 244150.51191294333,
+          "deadline_ms": 244942.3787565902,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "seed": 116
+          },
+          "class": "image"
+        },
+        {
+          "request_id": "r015",
+          "kind": "image",
+          "arrival_ms": 325534.01588392444,
+          "deadline_ms": 326325.8827275713,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+            "seed": 117
+          },
+          "class": "image"
+        },
+        {
+          "request_id": "r016",
+          "kind": "image",
+          "arrival_ms": 325534.01588392444,
+          "deadline_ms": 326325.8827275713,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "seed": 118
+          },
+          "class": "image"
+        },
+        {
+          "request_id": "r017",
+          "kind": "image",
+          "arrival_ms": 325534.01588392444,
+          "deadline_ms": 326325.8827275713,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+            "seed": 119
+          },
+          "class": "image"
+        },
+        {
+          "request_id": "r018",
+          "kind": "image",
+          "arrival_ms": 325534.01588392444,
+          "deadline_ms": 326325.8827275713,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "seed": 120
+          },
+          "class": "image"
+        },
+        {
+          "request_id": "r019",
+          "kind": "image",
+          "arrival_ms": 406917.51985490555,
+          "deadline_ms": 407709.3866985524,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+            "seed": 121
+          },
+          "class": "image"
+        },
+        {
+          "request_id": "r020",
+          "kind": "image",
+          "arrival_ms": 406917.51985490555,
+          "deadline_ms": 407709.3866985524,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "seed": 122
+          },
+          "class": "image"
+        },
+        {
+          "request_id": "r021",
+          "kind": "image",
+          "arrival_ms": 406917.51985490555,
+          "deadline_ms": 407709.3866985524,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+            "seed": 123
+          },
+          "class": "image"
+        },
+        {
+          "request_id": "r022",
+          "kind": "image",
+          "arrival_ms": 406917.51985490555,
+          "deadline_ms": 407709.3866985524,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A red bicycle leaning against a blue wall in warm afternoon light.",
+            "seed": 124
+          },
+          "class": "image"
+        },
+        {
+          "request_id": "r023",
+          "kind": "image",
+          "arrival_ms": 406917.51985490555,
+          "deadline_ms": 407709.3866985524,
+          "service_ms": 316.74673745874316,
+          "worker": "sana",
+          "spec": {
+            "prompt": "A small sailboat glides across a calm lake in soft morning light.",
+            "seed": 125
+          },
+          "class": "image"
+        }
+      ],
+      "options": {
+        "quantum_ms": 300,
+        "chunked_decode": false
+      },
+      "matrix": {
+        "/policy": [
+          "static_sp1",
+          "block_elastic"
+        ],
+        "/options": [
+          {
+            "quantum_ms": 300,
+            "chunked_decode": false
+          },
+          {
+            "quantum_ms": 300,
+            "chunked_decode": true
+          }
+        ]
+      },
+      "watchdog_seconds": 5400,
+      "artifact_dependencies": [],
+      "trace_provenance": {
+        "path": "results/optimization-next/run01/workloads.json",
+        "sha256": "8b738ed97b576fba46bdbac6b3102fb575e6f257cfc3a305536e89d5a94a4846",
+        "traces": [
+          {
+            "trace_sha256": "0071c0c25757609a582b4dc6c31e391a4bbad8482653237ad87f15ac7613aed3",
+            "pattern": "burst",
+            "seed": 102,
+            "load": 0.5
+          }
+        ],
+        "prompts": [
+          "A red bicycle leaning against a blue wall in warm afternoon light.",
+          "A small sailboat glides across a calm lake in soft morning light."
+        ],
+        "prompt_rule": "prompts[int(request_id[1:]) % 2], as retired direction1._run_trace"
+      }
+    }
+  ]
+}

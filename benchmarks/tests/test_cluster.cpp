@@ -130,6 +130,33 @@ int main() {
         Json odd = profile(); odd["classes"]["video"]["min_degree"] = 3;
         rejects([&] { ClusterCost{odd}; });
     });
+    check("GPUs reserved for images", [] {
+        auto result = plan(Json::array({video("v", 1e9), image("i", 100)}), "step_elastic", 4, Json::array(), {{"reserve_image_gpus", 2}});
+        require(result.size() == 2 && result[0].at("group") == Json::array({2}), "image on a reserved GPU");
+        require(result[1].at("group") == Json::array({0, 1}), "video limited to unreserved GPUs");
+        rejects([] { plan(Json::array({video("v", 1e9)}), "step_elastic", 2, Json::array(), {{"reserve_image_gpus", 2}}); });
+    });
+    check("chunked decode is preemptible between latent frames", [] {
+        Json chunked = profile(); chunked["classes"]["video"]["decode_chunks"] = 10;
+        const ClusterCost cost(chunked);
+        near(cost.chunk_ms("video"), 10);
+        const auto decoding = video("v", 1e9, {{"status", "suspended"}, {"prepared", true}, {"group", {0}}, {"steps_done", 4}, {"decode_done", 3}});
+        near(cost.remaining_ms(decoding, 1), 70);
+        auto run = [&](const Json& rows, const Json& options) {
+            return cluster_plan({{"now_ms", 0}, {"gpus", 1}, {"busy", Json::array()}, {"requests", rows}}, "block_elastic", cost, options).at("assignments");
+        };
+        auto next = run(Json::array({decoding}), {{"quantum_ms", 25}});
+        require(next.size() == 1 && next[0].at("quantum") == "finish" && next[0].at("decode_frames") == 2, "two 10 ms chunks per 25 ms quantum");
+        // 70 ms of decode remain: a patient image waits, an urgent one preempts.
+        require(run(Json::array({image("i", 200), decoding}), {{"quantum_ms", 25}})[0].at("request_id") == "v", "patient image waits");
+        require(run(Json::array({image("i", 90), decoding}), {{"quantum_ms", 25}})[0].at("reason") == "block_preempt", "urgent image preempts decode");
+        // Steps end at 4000 ms; the image arrives 20 ms into the 100 ms decode.
+        const Json trace = Json::array({trace_row("v", "video", 0, 1e9), trace_row("i", "image", 4020, 4100)});
+        const auto atomic = simulate_cluster({{"workload", trace}, {"profile", chunked}, {"policy", "block_elastic"}, {"gpus", 1}, {"options", {{"quantum_ms", 25}, {"chunked_decode", false}}}});
+        const auto split = simulate_cluster({{"workload", trace}, {"profile", chunked}, {"policy", "block_elastic"}, {"gpus", 1}, {"options", {{"quantum_ms", 25}}}});
+        require(atomic.at("by_kind").at("image").at("ontime") == 0 && split.at("by_kind").at("image").at("ontime") == 1, "decode no longer blocks the image");
+        near(split.at("makespan_ms").get<double>(), 4000 + 100 + 50, 1e-6);
+    });
     check("simulation accounting", [] {
         Json images = Json::array();
         for (int i = 0; i < 4; ++i) images.push_back(trace_row("i" + std::to_string(i), "image", 0, 1000));

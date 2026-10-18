@@ -181,9 +181,11 @@ class _Runtime:
         if any(not bool(self.torch.isfinite(value).all()) for value in tensors if value is not None):
             raise RuntimeError("nonfinite session model output")
 
-    def _validate_v100(self):
-        if not self.device.startswith("cuda") or self.torch.cuda.get_device_capability(self.device) != (7, 0):
-            raise ValueError("session runtime requires the explicitly qualified V100 device")
+    def _validate_v100(self, *, allow_a100=False):
+        allowed = ((7, 0), (8, 0)) if allow_a100 else ((7, 0),)
+        if not self.device.startswith("cuda") or self.torch.cuda.get_device_capability(self.device) not in allowed:
+            raise ValueError("session runtime requires the explicitly qualified V100 device"
+                             + (" or an A100 (unqualified)" if allow_a100 else ""))
 
     def offload_to_cpu(self, state):
         with self._lock:
@@ -221,7 +223,8 @@ class MistralRuntime(_Runtime):
 
     def __init__(self, model_path, device="cuda:0"):
         self._initialize_runtime(device)
-        self._validate_v100()
+        # A100 co-location runs are unqualified until compared with references there.
+        self._validate_v100(allow_a100=True)
         path = Path(model_path).resolve()
         transformers = importlib.import_module("transformers")
         self.tokenizer = transformers.AutoTokenizer.from_pretrained(str(path), local_files_only=True)

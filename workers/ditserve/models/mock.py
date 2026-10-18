@@ -212,6 +212,16 @@ class MockBackend(Backend):
 
     def finish(self, request):
         self._check_not_decoding(request["state_id"])
+        if request.get("decode_frames") is not None:
+            state = self.state(request)
+            chunks = int(self.config.get("options", {}).get("decode_chunks", 1))
+            frames = positive_int(request["decode_frames"], "decode_frames")
+            state["decoded"] = min(chunks, state.get("decoded", 0) + frames)
+            self._sleep("finish_ms", frames / chunks)
+            info = dict(frames_done=state["decoded"], frames=chunks, done=state["decoded"] == chunks)
+            if not info["done"]:
+                return dict(state_id=request["state_id"], decode=info, model_ms=0., measured=False)
+            return dict(self._finish(dict(request, _chunked=True)), decode=info)
         return self._finish(request)
 
     def _finish(self, request):
@@ -219,7 +229,8 @@ class MockBackend(Backend):
         state = self.state(request)
         if state["step"] != state["steps"] or state["paused"]:
             raise ValueError("finish requires a complete resident state")
-        self._sleep("finish_ms")
+        if not request.get("_chunked"):
+            self._sleep("finish_ms")
         output = self.persist(json.dumps({"value": state["value"]}, sort_keys=True), request, ".json")
         output["text"] = state["text"]
         return dict(state_id=request["state_id"], output=output,

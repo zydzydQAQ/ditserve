@@ -77,3 +77,54 @@ def decode_final_latent(torch, pipe, latent):
            for value in getattr(pipe.vae, name, [])):
         raise RuntimeError("VAE retained temporal feature caches after decode")
     return array
+
+
+class ChunkedDecode:
+    """Wan VAE decode suspendable at latent-frame boundaries.
+
+    AutoencoderKLWan decodes causally one latent frame at a time and carries
+    its temporal feature cache as an explicit argument. This replays diffusers
+    0.36 ``_decode`` in the same order with the cache held per request, so the
+    GPU can run other work between chunks; the result matches
+    ``decode_final_latent``. Tiled decoding and patched VAEs are not supported.
+    """
+
+    def __init__(self, torch, pipe, latent):
+        vae = pipe.vae
+        if getattr(vae, "use_tiling", False) or vae.config.patch_size is not None or latent.shape[0] != 1:
+            raise ValueError("chunked decode supports the untiled, unpatched single-video Wan VAE")
+        self.torch, self.pipe = torch, pipe
+        latent = latent.to(vae.dtype)
+        mean = torch.tensor(vae.config.latents_mean).view(1, vae.config.z_dim, 1, 1, 1).to(latent.device, latent.dtype)
+        inverse_std = 1.0 / torch.tensor(vae.config.latents_std).view(1, vae.config.z_dim, 1, 1, 1).to(latent.device, latent.dtype)
+        self.x = vae.post_quant_conv(latent / inverse_std + mean)
+        self.frames, self.index, self.chunks = self.x.shape[2], 0, []
+        self.cache = [None] * vae._conv_num
+
+    @property
+    def done(self):
+        return self.index == self.frames
+
+    def advance(self, count=1):
+        """Decode up to ``count`` latent frames; returns True after the last one."""
+        if type(count) is not int or count < 1:
+            raise ValueError("decode chunk count must be a positive integer")
+        decoder = self.pipe.vae.decoder
+        for _ in range(min(count, self.frames - self.index)):
+            i = self.index
+            chunk = self.x[:, :, i:i + 1, :, :]
+            if i == 0:
+                out = decoder(chunk, feat_cache=self.cache, feat_idx=[0], first_chunk=True)
+            else:
+                out = decoder(chunk, feat_cache=self.cache, feat_idx=[0])
+            self.chunks.append(out)
+            self.index += 1
+        return self.done
+
+    def finish(self):
+        if not self.done:
+            raise ValueError("decode has remaining latent frames")
+        video = self.torch.clamp(self.torch.cat(self.chunks, 2), min=-1.0, max=1.0)
+        array = self.pipe.video_processor.postprocess_video(video, output_type="np")
+        self.x = self.cache = self.chunks = None
+        return array

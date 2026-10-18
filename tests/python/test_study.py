@@ -417,6 +417,19 @@ class NativeStudyTest(unittest.TestCase):
         self.assertEqual(cell["by_kind"]["image"]["completed"], 4)
         self.assertFalse(cell["real_backends_pinned_sp1"])
 
+    def test_cluster_chunked_decode_completes_across_quanta(self):
+        phase = self.cluster_phase("block_elastic", gpus=1, options=dict(quantum_ms=50))
+        phase["profile"]["classes"]["video"].update(decode_chunks=4, finish_ms=80)
+        workers = self.cluster_workers(1)
+        workers["v0"]["config"]["options"].update(decode_chunks=4)
+        value = self.run_study(self.config([phase], workers=workers), name="chunked")
+        self.assert_completed(value)
+        rows = {row["request_id"]: row for row in value["phases"][0]["cells"][0]["requests"]}
+        self.assertEqual(value["phases"][0]["cells"][0]["metrics"]["completed"], 6)
+        # 4 chunks of 20 ms at a 50 ms quantum: two finish quanta per video.
+        self.assertGreater(rows["v0"]["action_ms"]["finish"], 0)
+        self.assertTrue(all(len(row["outputs"]) == 1 if "outputs" in row else True for row in rows.values()))
+
     def test_cluster_static_sp1_and_invalid_slots(self):
         value = self.run_study(self.config([self.cluster_phase("static_sp1", gpus=2)], workers=self.cluster_workers(2)), name="static")
         self.assert_completed(value)

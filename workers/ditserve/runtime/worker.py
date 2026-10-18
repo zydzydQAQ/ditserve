@@ -58,6 +58,8 @@ class Worker:
             raise ValueError("worker is shut down")
         if op == "occupancy":
             return occupancy(request, mock=self.name == "mock")
+        if op == "memory":
+            return process_memory()
         if op == "shutdown":
             self.close()
             return {"shutdown": True}
@@ -69,7 +71,7 @@ class Worker:
         cls = getattr(importlib.import_module("ditserve.models." + definition[0]), definition[1]) if definition else None
         operations = cls.operations if cls else SERVICE_OPERATIONS[self.name]
         if op == "hello":
-            return {"backend": self.name, "operations": list(dict.fromkeys(["hello", "occupancy", *operations, "evaluate", "shutdown"])),
+            return {"backend": self.name, "operations": list(dict.fromkeys(["hello", "occupancy", "memory", *operations, "evaluate", "shutdown"])),
                     "loaded": self.backend is not None, "measured": self.name not in ("mock", "results", "environment"),
                     "capabilities": {"operations": list(operations), "persistent_states": cls is not None},
                     "qualification": "fixture_only" if self.name == "mock" else "unverified",
@@ -127,6 +129,17 @@ class Worker:
                 self.backend.close()
         finally:
             self.closed = True
+
+
+def process_memory():
+    """This process's CUDA allocator and the device's driver-free memory; never initializes CUDA."""
+    torch = sys.modules.get("torch")
+    if torch is None or not torch.cuda.is_initialized():
+        return dict(cuda_initialized=False)
+    free, total = torch.cuda.mem_get_info()
+    return dict(cuda_initialized=True, allocated_bytes=int(torch.cuda.memory_allocated()),
+                reserved_bytes=int(torch.cuda.memory_reserved()), peak_allocated_bytes=int(torch.cuda.max_memory_allocated()),
+                driver_free_bytes=int(free), device_total_bytes=int(total))
 
 
 def occupancy(request, *, mock=False):

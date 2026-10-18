@@ -78,6 +78,8 @@ FLUX 可设置 `workers.<name>.config.options.profile:true`，记录 text/DiT/sc
 | `step_elastic` | EDF；按期限选最小可行 SP 度，无其他等待请求时占用最大空闲组；只在 step 边界换组（近似 GENSERVE/TetriServe 的 step 级弹性 SP） |
 | `block_elastic` | 同上，但视频以 `options.quantum_blocks`（默认 4）个 block 推进，或按 `options.quantum_ms` 由当前类别与 SP 度换算 block 数；图像只有在等不到该视频 step 边界时才在 block 边界抢占（`lazy_preemption`，默认开启） |
 
+`options.reserve_image_gpus` 给出静态分区基线：最后 R 张卡只服务图像。视频类别的 `decode_chunks` 把 VAE 解码拆成按 latent 帧推进的可抢占 chunk（`options.chunked_decode`，按 `quantum_ms` 换算每次推进的帧数）；真实 Wan worker 用 `finish` 的 `decode_frames` 执行，结果与整段解码逐位一致（CPU 契约测试）。Wan 的 `block_export`/`block_import` 可在 step 内任意 block 边界导出续算状态（未变动的求解器状态 + 运行中的 packet）并在另一进程恢复。
+
 所有策略默认采用 feasible-first EDF（`options.demote_late`，默认开启）：即使占用最大组也赶不上期限的请求排在仍可按时完成的请求之后，避免过载时迟到的长视频饿死新到的短请求。
 
 成本画像 `profile` 的 `provenance` 必须为 measured、extrapolated、synthetic 或 mixed。视频类别给出 steps、blocks_per_step、可选 min_degree（单卡放不下时的最小 SP 度，固定 SP 策略也会提升到该值）、prepare/encode/finish、SP1 每步计算时间、每步 Ulysses all-to-all 全序列字节数与集合通信次数；`links` 按 SP 度给出每 rank 带宽和延迟；`sp_efficiency` 与 `resize_ms` 描述并行效率与 step 边界换组成本。模拟结果只描述成本模型，不是模型执行。

@@ -67,7 +67,7 @@ ClusterCost::ClusterCost(const Json& profile) : profile_(profile) {
         const auto kind = row.at("kind").get<std::string>();
         if (kind == "image") { number_field(row, "service_ms", 0, true); continue; }
         if (kind != "video") throw std::invalid_argument("cost class kind must be video or image");
-        int_field(row, "steps", 0); int_field(row, "blocks_per_step", 1);
+        int_field(row, "steps", 0); int_field(row, "blocks_per_step", 1); int_field(row, "decode_chunks", 1);
         if (!power_of_two(int_field(row, "min_degree", 1))) throw std::invalid_argument("min_degree must be a power of two");
         number_field(row, "step_compute_ms", 0, true); number_field(row, "finish_ms");
         number_field(row, "prepare_ms"); number_field(row, "comm_mb_per_step"); number_field(row, "collectives_per_step");
@@ -99,6 +99,10 @@ double ClusterCost::step_ms(const std::string& name, int degree) const {
 
 int ClusterCost::blocks_per_step(const std::string& name) const { return int_field(klass(name), "blocks_per_step", 1); }
 
+int ClusterCost::decode_chunks(const std::string& name) const { return int_field(klass(name), "decode_chunks", 1); }
+
+double ClusterCost::chunk_ms(const std::string& name) const { return number_field(klass(name), "finish_ms") / decode_chunks(name); }
+
 double ClusterCost::block_ms(const std::string& name, int degree) const { return step_ms(name, degree) / blocks_per_step(name); }
 
 double ClusterCost::remaining_ms(const Json& request, int degree) const {
@@ -109,7 +113,7 @@ double ClusterCost::remaining_ms(const Json& request, int degree) const {
     const int blocks = int_field(request, "blocks_done", 0, 0);
     double total = request.value("prepared", false) ? 0 : number_field(row, "prepare_ms");
     total += std::max(0, steps - done) * step_ms(name, degree) - blocks * block_ms(name, degree);
-    return total + number_field(row, "finish_ms");
+    return total + (decode_chunks(name) - std::min(int_field(request, "decode_done", 0, 0), decode_chunks(name))) * chunk_ms(name);
 }
 
 Json cluster_plan(const Json& state, const std::string& name, const ClusterCost& cost, const Json& options) {
@@ -135,6 +139,10 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     const bool lazy = bool_field(options, "lazy_preemption", true);
     // Real backends without state migration keep a started request on its group.
     const bool pin_started = bool_field(options, "pin_started", false);
+    // Static partition baseline: the last R GPUs serve images only.
+    const int reserve = int_field(options, "reserve_image_gpus", 0, 0);
+    if (reserve >= gpus) throw std::invalid_argument("reserve_image_gpus must leave a GPU for videos");
+    auto reserved = [&](int gpu) { return gpu >= gpus - reserve; };
 
     std::vector<bool> free(gpus, true);
     const auto busy = state.value("busy", Json::array());
@@ -173,12 +181,17 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     // GPUs of a video suspended inside a solver step. Its state is resident on
     // exactly that group, so taking one of them blocks the whole group.
     std::vector<const Json*> mid_owner(gpus, nullptr);
-    for (const Json* r : rows)
-        if (r->at("kind") == "video" && int_field(*r, "blocks_done", 0, 0) > 0)
-            for (int gpu : group_of(*r)) mid_owner[gpu] = r;
+    // A chunked decode in progress holds only its decoding GPU.
+    for (const Json* r : rows) {
+        if (r->at("kind") != "video") continue;
+        if (int_field(*r, "decode_done", 0, 0) > 0) mid_owner[group_of(*r).front()] = r;
+        else if (int_field(*r, "blocks_done", 0, 0) > 0) for (int gpu : group_of(*r)) mid_owner[gpu] = r;
+    }
     auto time_to_boundary = [&](const Json* r) {
         const auto group = group_of(*r);
         const auto klass = r->at("class").get<std::string>();
+        if (int_field(*r, "decode_done", 0, 0) > 0)
+            return (cost.decode_chunks(klass) - int_field(*r, "decode_done", 0, 0)) * cost.chunk_ms(klass);
         return (cost.blocks_per_step(klass) - int_field(*r, "blocks_done", 0, 0)) * cost.block_ms(klass, static_cast<int>(group.size()));
     };
     auto all_free = [&](const std::vector<int>& group) {
@@ -193,12 +206,12 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         const auto klass = r.at("class").get<std::string>();
         if (r.at("kind") == "image") {
             const double slack = number_field(r, "deadline_ms") - now - cost.remaining_ms(r, 1);
-            int chosen = -1, rank = 3;
+            int chosen = -1, rank = 3;  // -1 reserved, 0 idle, 1 step-boundary video group, 2 mid-step group
             for (int gpu = 0; gpu < gpus; ++gpu) {
                 if (!free[gpu]) continue;
                 // Prefer idle GPUs; then GPUs of videos at step boundaries; a
                 // mid-step group only when waiting for its boundary would miss.
-                int score = mid_owner[gpu] ? 2 : 0;
+                int score = reserved(gpu) ? -1 : mid_owner[gpu] ? 2 : 0;
                 if (!score) for (const Json* other : rows) if (other->at("kind") == "video") {
                     const auto group = group_of(*other);
                     if (std::find(group.begin(), group.end(), gpu) != group.end()) score = 1;
@@ -219,8 +232,15 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             if (current.empty()) throw std::invalid_argument("finished request has no resident group");
             if (free[current.front()]) {
                 free[current.front()] = false;
-                assignments.push_back({{"request_id", id}, {"group", Json::array({current.front()})}, {"degree", 1}, {"quantum", "finish"},
-                                       {"resize", false}, {"reason", "decode"}});
+                Json assignment = {{"request_id", id}, {"group", Json::array({current.front()})}, {"degree", 1}, {"quantum", "finish"},
+                                   {"resize", false}, {"reason", "decode"}};
+                // Chunked decode: frames per quantum follow quantum_ms, else decode_chunk_frames.
+                const int chunks = cost.decode_chunks(klass), done = int_field(r, "decode_done", 0, 0);
+                int frames = int_field(options, "decode_chunk_frames", 0, 0);
+                if (chunks > 1 && quantum_ms > 0 && bool_field(options, "chunked_decode", true))
+                    frames = std::max(1, static_cast<int>(std::floor(quantum_ms / cost.chunk_ms(klass))));
+                if (chunks > 1 && frames > 0) assignment["decode_frames"] = std::min(frames, chunks - done);
+                assignments.push_back(assignment);
             }
             continue;
         }
@@ -261,6 +281,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             int best_busy = -1;
             for (const auto& group : groups) {
                 if (static_cast<int>(group.size()) != *d || !all_free(group)) continue;
+                if (std::any_of(group.begin(), group.end(), reserved)) continue;
                 if (affinity >= 0 && std::find(group.begin(), group.end(), affinity) == group.end()) continue;
                 if (std::any_of(group.begin(), group.end(), [&](int gpu) { return mid_owner[gpu] && mid_owner[gpu] != &r; })) continue;
                 // Best fit: prefer the group whose aligned parent is most occupied.

@@ -715,9 +715,42 @@ class WanStepWorker:
             state.events.append({"kind": "decode", "ms": ms, "shape": list(array.shape), "finite": True})
             return array
 
+    def decode_chunks(self, state, count):
+        """Advance a resumable decode by ``count`` latent frames.
+
+        Returns (array or None, info); the array appears with the last chunk.
+        Arithmetic and order match ``finish``; other work may run in between.
+        """
+        with self._lock, self.torch.inference_mode(), self.p._sdpa_math_context(self.torch):
+            self._check(state, "gpu")
+            if state.step_index != state.spec["steps"] or state.finished:
+                raise ValueError("chunked decode requires a complete undecoded request")
+            decodes = self.__dict__.setdefault("_chunked_decodes", {})
+            self._sync()
+            started = time.perf_counter()
+            from ..pipeline import ChunkedDecode
+            decode = decodes.get(state.request_id) or decodes.setdefault(
+                state.request_id, ChunkedDecode(self.torch, self.pipe, state.latents))
+            done = decode.advance(count)
+            info = dict(frames_done=decode.index, frames=decode.frames, done=done)
+            array = None
+            if done:
+                array = decode.finish()
+                del decodes[state.request_id]
+            self._sync()
+            info["ms"] = (time.perf_counter() - started) * 1000
+            if done:
+                numpy = importlib.import_module("numpy")
+                if not numpy.isfinite(array).all():
+                    raise RuntimeError("nonfinite decoded output")
+                state.finished = True
+            state.events.append(dict(kind="decode_chunk", shape=list(array.shape) if done else None, **info))
+            return array, info
+
     def release(self, state):
         with self._lock:
             self._check(state)
+            self.__dict__.get("_chunked_decodes", {}).pop(state.request_id, None)
             self._sync()
             self._detach_contexts()
             state.latents = state.prompt_embeds = state.negative_prompt_embeds = None

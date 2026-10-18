@@ -2,13 +2,15 @@
 
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+import time
 
 from ..base import Backend, artifact, file_hash, positive_int, progress
 
 
 class WanBackend(Backend):
     operations = Backend.operations + ("snapshot", "restore", "inventory", "set_cache", "reference",
-        "encode_start", "encode_poll", "decode_start", "decode_poll", "migration_release", "migration_abort", "local_roundtrip", "distributed")
+        "encode_start", "encode_poll", "decode_start", "decode_poll", "migration_release", "migration_abort", "local_roundtrip", "distributed",
+        "block_export", "block_import")
 
     def __init__(self, config):
         super().__init__(config)
@@ -224,6 +226,52 @@ class WanBackend(Backend):
         return dict(result, state_id=request.get("state_id", request.get("snapshot_id")),
                     progress=self._progress(state))
 
+    def block_export(self, request):
+        """Write a block-boundary continuation to a file; release the source by default."""
+        key = request["state_id"]
+        state = self.state(request)
+        if key not in self.continuations:
+            raise ValueError("block export requires a block continuation")
+        if key == self.decode_state:
+            raise ValueError("state is owned by an outstanding async decode")
+        from .block import export_block_state
+        payload, timing = export_block_state(self.executor, self.continuations[key])
+        destination = Path(request["path"]).resolve()
+        started = time.perf_counter()
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        with destination.open("xb") as stream:
+            self.runtime.torch.save(payload, stream)
+        timing["write_ms"] = (time.perf_counter() - started) * 1000
+        layout = payload["manifest"]["layout"]
+        if request.get("release", True):
+            self.executor.close(self.continuations.pop(key))
+            self.runtime.release(state)
+            del self.states[key]
+        return dict(timing, path=str(destination), sha256=file_hash(destination), bytes=destination.stat().st_size,
+                    layout=layout, released=bool(request.get("release", True)))
+
+    def block_import(self, request):
+        if self.execution != "block":
+            raise ValueError("block import requires a block-execution worker")
+        key = self.new_id(request)
+        path = Path(request["path"])
+        # Per-tensor hashes inside the manifest always verify the payload; a
+        # file hash is checked too when the caller knows it.
+        observed = file_hash(path)
+        if request.get("sha256") and observed != request["sha256"]:
+            raise ValueError("block packet hash mismatch")
+        started = time.perf_counter()
+        payload = self.runtime.torch.load(path, map_location="cpu", weights_only=True)
+        read_ms = (time.perf_counter() - started) * 1000
+        if self.executor is None:
+            from .block import WanBlockExecutor
+            self.executor = WanBlockExecutor(self.runtime)
+        from .block import import_block_state
+        state, continuation, timing = import_block_state(self.executor, payload)
+        self.states[key], self.continuations[key] = state, continuation
+        return dict(timing, read_ms=read_ms, state_id=key, progress=self._progress(state), sha256=observed,
+                    layout=payload["manifest"]["layout"])
+
     def migration_release(self, request):
         migration_id = request["migration_id"]
         self.endpoint.acknowledge(migration_id, request["acknowledgement"])
@@ -326,6 +374,14 @@ class WanBackend(Backend):
         if self.decode_ticket is not None:
             raise ValueError("VAE already owns an asynchronous decode; use decode_poll")
         state = self._boundary(request)
+        if request.get("decode_frames") is not None:
+            # Preemptible decode: repeated finish calls advance latent-frame chunks.
+            output, info = self.runtime.decode_chunks(state, positive_int(request["decode_frames"], "decode_frames"))
+            if output is None:
+                return dict(state_id=request["state_id"], progress=self._progress(state), decode=info, model_ms=info["ms"])
+            return dict(state_id=request["state_id"], output=self.persist(output, request), decode=info,
+                        progress=self._progress(state), model_ms=info["ms"],
+                        **self._evidence(request, state.spec, state.latents, self._paths(state)))
         output = self.runtime.finish(state)
         return dict(state_id=request["state_id"], output=self.persist(output, request),
                     progress=self._progress(state), model_ms=state.events[-1]["ms"],

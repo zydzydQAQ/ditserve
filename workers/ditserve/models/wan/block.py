@@ -6,7 +6,11 @@ Arithmetic follows diffusers 0.36.0 WanTransformer3DModel (Apache-2.0).
 """
 
 import dataclasses
+import hashlib
 import time
+
+PACKET_SCHEMA = "ditserve.wan-block-packet.v1"
+PACKET_TENSORS = ("hidden", "encoder", "temb", "projected")
 
 
 @dataclasses.dataclass
@@ -250,3 +254,91 @@ class WanBlockExecutor:
         if policy.startswith("block-"):
             return int(policy.split("-", 1)[1])
         raise ValueError("unknown preemption policy: " + policy)
+
+
+def _digest(torch, value):
+    return hashlib.sha256(value.detach().cpu().contiguous().reshape(-1).view(torch.uint8).numpy().tobytes()).hexdigest()
+
+
+def export_block_state(executor, state):
+    """CPU copy of a continuation at any block boundary inside a solver step.
+
+    The base solver state is untouched inside a step, so the step-boundary
+    wire codec carries it unchanged. The packet adds the running hidden state,
+    conditioning, RoPE and, in the unconditional branch, the conditional
+    prediction. clone() keeps dense strides, so the resumed kernels see the
+    same layouts; the caller releases the source after a successful write.
+    """
+    from .parallel import pack_cache_off_request
+    worker, torch = executor.worker, executor.worker.torch
+    with worker._lock, torch.inference_mode():
+        executor._check(state)
+        if executor._advancing:
+            raise RuntimeError("cannot export during block execution")
+        worker._sync()
+        started = time.perf_counter()
+        base, tensors = pack_cache_off_request(worker, state.base)
+        layout = dict(committed_step=state.committed_step, branch=state.branch, next_block=state.next_block,
+                      packet=state.packet is not None, conditional=state.conditional is not None)
+        extra = {}
+        if state.packet is not None:
+            for name in PACKET_TENSORS:
+                extra["packet." + name] = state.packet[name]
+            for index, value in enumerate(state.packet["rotary"]):
+                extra["packet.rotary.%d" % index] = value
+            layout["shape"] = list(state.packet["shape"])
+            layout["rotary"] = len(state.packet["rotary"])
+        if state.conditional is not None:
+            extra["conditional"] = state.conditional
+        packet_bytes = 0
+        for name, value in extra.items():
+            tensors[name] = value.detach().cpu().clone()
+            packet_bytes += value.numel() * value.element_size()
+        manifest = dict(schema=PACKET_SCHEMA, base=base, layout=layout,
+                        packet_sha256={name: _digest(torch, tensors[name]) for name in extra},
+                        strides={name: list(tensors[name].stride()) for name in extra})
+        return dict(manifest=manifest, tensors=tensors), dict(
+            export_ms=(time.perf_counter() - started) * 1000, packet_bytes=packet_bytes,
+            transfer_bytes=sum(value.numel() * value.element_size() for value in tensors.values()))
+
+
+def import_block_state(executor, payload):
+    """Rebuild an exported block boundary on this worker; returns (base, continuation)."""
+    from .parallel import unpack_cache_off_request
+    worker, torch = executor.worker, executor.worker.torch
+    manifest, tensors = payload["manifest"], payload["tensors"]
+    if manifest.get("schema") != PACKET_SCHEMA:
+        raise ValueError("unknown block packet schema")
+    names = set(manifest["packet_sha256"])
+    base_names = set(manifest["base"]["tensor_hashes"])
+    if set(tensors) != base_names | names:
+        raise ValueError("block packet tensor set mismatch")
+    for name in names:
+        if _digest(torch, tensors[name]) != manifest["packet_sha256"][name] or list(tensors[name].stride()) != manifest["strides"][name]:
+            raise ValueError("block packet tensor checksum or layout mismatch: " + name)
+    layout = manifest["layout"]
+    with worker._lock, torch.inference_mode():
+        started = time.perf_counter()
+        base = unpack_cache_off_request(worker, manifest["base"], {name: tensors[name] for name in base_names})
+        if base.request_id in worker._states:
+            raise ValueError("destination already owns this request")
+        worker._states[base.request_id] = base
+        try:
+            if base.step_index != layout["committed_step"]:
+                raise ValueError("block packet and base solver step disagree")
+            state = executor.attach(base)
+            device = base.latents.device
+            state.branch, state.next_block = layout["branch"], layout["next_block"]
+            if layout["packet"]:
+                packet = {name: tensors["packet." + name].to(device) for name in PACKET_TENSORS}
+                packet["rotary"] = tuple(tensors["packet.rotary.%d" % index].to(device) for index in range(layout["rotary"]))
+                packet["shape"] = tuple(layout["shape"])
+                state.packet = packet
+            if layout["conditional"]:
+                state.conditional = tensors["conditional"].to(device)
+            worker._sync()
+        except BaseException:
+            worker.release(base)
+            worker._states.pop(base.request_id, None)
+            raise
+        return base, state, dict(import_ms=(time.perf_counter() - started) * 1000)

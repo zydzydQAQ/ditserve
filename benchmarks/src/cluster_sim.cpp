@@ -35,7 +35,7 @@ Json simulate_cluster(const Json& config) {
         if (cost.klass(klass).at("kind") != row.at("kind")) throw std::invalid_argument("request kind differs from its cost class");
         // Keep only scheduling fields: every plan copies the queue.
         Json light;
-        for (const auto* key : {"request_id", "kind", "class", "arrival_ms", "deadline_ms", "slo_ms", "service_ms", "steps_total"})
+        for (const auto* key : {"request_id", "kind", "class", "arrival_ms", "deadline_ms", "slo_ms", "service_ms", "steps_total", "decode_done"})
             if (row.contains(key)) light[key] = row.at(key);
         row = light;
         row["status"] = "pending"; row["steps_done"] = 0; row["blocks_done"] = 0; row["prepared"] = false;
@@ -84,7 +84,10 @@ Json simulate_cluster(const Json& config) {
                 double duration = dispatch;
                 int blocks = 0;
                 if (quantum == "atomic") duration += number_field(cost.klass(klass), "service_ms");
-                else if (quantum == "finish") duration += number_field(cost.klass(klass), "finish_ms");
+                else if (quantum == "finish") {
+                    blocks = assignment.value("decode_frames", cost.decode_chunks(klass) - row.value("decode_done", 0));
+                    duration += blocks * cost.chunk_ms(klass);
+                }
                 else {
                     const int remaining = cost.blocks_per_step(klass) - row.at("blocks_done").get<int>();
                     blocks = quantum == "step" ? remaining : std::min(quantum.get<int>(), remaining);
@@ -118,10 +121,13 @@ Json simulate_cluster(const Json& config) {
             auto& row = rows[it->row];
             const auto quantum = it->assignment.at("quantum");
             for (const auto& gpu : it->assignment.at("group")) busy[gpu.get<int>()] = false;
-            if (quantum == "atomic" || quantum == "finish") {
+            const auto klass = row.at("class").get<std::string>();
+            if (quantum == "finish" && row.value("decode_done", 0) + it->blocks < cost.decode_chunks(klass)) {
+                row["decode_done"] = row.value("decode_done", 0) + it->blocks; row["status"] = "suspended";
+                row["group"] = it->assignment.at("group");
+            } else if (quantum == "atomic" || quantum == "finish") {
                 row["status"] = "completed"; row["finish_ms"] = it->end; row["group"] = Json::array(); ++completed;
             } else {
-                const auto klass = row.at("class").get<std::string>();
                 int blocks = row.at("blocks_done").get<int>() + it->blocks;
                 if (blocks >= cost.blocks_per_step(klass)) { blocks = 0; row["steps_done"] = row.at("steps_done").get<int>() + 1; }
                 row["blocks_done"] = blocks; row["prepared"] = true;

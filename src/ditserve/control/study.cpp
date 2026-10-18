@@ -540,7 +540,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     const auto warmed=warmup(phase,workers,budget);
     for(const auto& slot:slots){workers.get(slot.at("video").get<std::string>());workers.get(slot.at("image").get<std::string>());}
     auto check=[&](){if(cancelled())throw std::runtime_error("run cancelled");budget.check(number_field(phase,"cleanup_reserve_seconds",0));};
-    struct Live{std::string status="pending";bool prepared=false;int steps=0,blocks=0,total=0,encode_gpu=-1;std::vector<int> group;std::string ticket;std::set<int> resident;};
+    struct Live{std::string status="pending";bool prepared=false;int steps=0,blocks=0,total=0,encode_gpu=-1,decode_done=0;std::vector<int> group;std::string ticket;std::set<int> resident;};
     struct Task{std::size_t row;Json assignment;std::future<Json> result;double started;};
     std::vector<Live> live(rows.size());
     std::vector<Task> tasks;
@@ -589,14 +589,17 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             };
         }else if(quantum=="finish"){
             const auto name=video(group.front());
-            work_unit=[&workers,name,id,deadline,output_mode]{
+            Json action={{"op","finish"},{"state_id",id},{"output_mode",output_mode}};
+            if(assignment.contains("decode_frames"))action["decode_frames"]=assignment.at("decode_frames");
+            work_unit=[&workers,name,id,deadline,action]{
                 auto& w=workers.get(name);
-                Json out={{"finish",w.call({{"op","finish"},{"state_id",id},{"output_mode",output_mode}},deadline)}};
-                w.call({{"op","release"},{"state_id",id}},deadline);
+                Json out={{"finish",w.call(action,deadline)}};
+                // A chunked decode releases its state with the last chunk.
+                if(out["finish"].value("decode",Json::object()).value("done",true))w.call({{"op","release"},{"state_id",id}},deadline);
                 return out;
             };
             for(int gpu:state.resident)if(gpu!=group.front())stale[gpu].push_back(id);
-            state.resident.clear();
+            state.resident={group.front()};
         }else{
             // Ranks entering the group (first quantum or a regroup) prepare;
             // ranks leaving it release once their GPU is idle.
@@ -642,6 +645,11 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         const auto key=quantum.is_string()?quantum.get<std::string>():"blocks";
         row["action_ms"][key]=row.value("action_ms",Json::object()).value(key,0.)+elapsed;
         row["quanta"]=row.value("quanta",0)+1;
+        if(quantum=="finish"&&!out.at("finish").value("decode",Json::object()).value("done",true)){
+            row["model_ms"]=number_field(row,"model_ms")+number_field(out.at("finish"),"model_ms");
+            state.decode_done=out.at("finish").at("decode").value("frames_done",state.decode_done);state.status="suspended";
+            return;
+        }
         if(quantum=="atomic"||quantum=="finish"){
             add_artifacts(record,out.at("finish"),work,phase.value("artifact_dependencies",Json::array()));
             row["model_ms"]=number_field(row,"model_ms")+number_field(out,"model_ms")+number_field(out.at("finish"),"model_ms");
@@ -698,7 +706,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 const auto& row=rows[i];
                 Json view={{"request_id",row.at("request_id")},{"kind",row.at("kind")},{"class",row.at("class")},
                     {"arrival_ms",row.at("arrival_ms")},{"deadline_ms",row.at("deadline_ms")},{"status",state.status},{"ready",true},
-                    {"prepared",state.prepared},{"steps_done",state.steps},{"blocks_done",state.blocks},{"group",state.group}};
+                    {"prepared",state.prepared},{"steps_done",state.steps},{"blocks_done",state.blocks},{"group",state.group},{"decode_done",state.decode_done}};
                 if(state.total>0)view["steps_total"]=state.total;
                 if(!state.prepared&&!state.ticket.empty())view["affinity"]=state.encode_gpu;
                 requests.push_back(view);

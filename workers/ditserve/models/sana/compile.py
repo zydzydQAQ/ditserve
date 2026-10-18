@@ -84,8 +84,8 @@ class OptimizedSanaAdapter(SanaAdapter):
     def generate_batch(self, prompts, *, seeds, encoded=None, check_budget=lambda: None):
         import numpy as np
         prompts, seeds = list(prompts), list(seeds)
-        if len(prompts) not in (1, 2) or len(seeds) != len(prompts):
-            raise ValueError("Sana accepts one or two prompts with one seed per prompt")
+        if len(prompts) not in (1, 2, 4, 8) or len(seeds) != len(prompts):
+            raise ValueError("Sana accepts 1, 2, 4 or 8 prompts with one seed per prompt")
         if any(not isinstance(prompt, str) for prompt in prompts):
             raise TypeError("Sana prompts must be strings")
         if any(type(seed) is not int for seed in seeds):
