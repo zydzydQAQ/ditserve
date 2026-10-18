@@ -55,21 +55,29 @@ class NativeStudyTest(unittest.TestCase):
         environment.start()
         self.addCleanup(environment.stop)
 
+    PROFILE = dict(provenance="synthetic", sp_efficiency=1, resize_ms=0, links={},
+                   classes=dict(video=dict(kind="video", steps=2, blocks_per_step=4, prepare_ms=0, encode_ms=0,
+                                           step_compute_ms=20, comm_mb_per_step=0, collectives_per_step=0, finish_ms=5),
+                                image=dict(kind="image", service_ms=5)))
+
     @staticmethod
-    def request(request_id="r0", **changes):
-        value = dict(request_id=request_id, arrival_ms=0, service_ms=20, slo_ms=10000,
-                     spec=dict(steps=2, prompt="a ceramic kettle", seed=7))
+    def request(request_id="r0", kind="video", **changes):
+        value = dict(request_id=request_id, kind=kind, arrival_ms=0, service_ms=20, slo_ms=10000,
+                     spec=dict(steps=2, blocks_per_step=4, prompt="a ceramic kettle", seed=7) if kind == "video"
+                     else dict(steps=1, prompt="a ceramic kettle", seed=7))
+        value["class"] = kind
         value.update(changes)
         return value
 
     def config(self, phases, options=None, workers=None):
-        return dict(schema="ditserve.study.v1", experiment="native",
-                    workers=workers or {"model": {"backend": "mock", "config": {"options": options or {}}}},
+        workers = workers or {"model": {"backend": "mock", "config": {"options": options or {}}},
+                              "image": {"backend": "mock", "config": {"options": {}}}}
+        return dict(schema="ditserve.study.v1", experiment="native", workers=workers,
                     budget=dict(limit_gpu_seconds=None, watchdog_seconds=10), phases=phases)
 
-    def phase(self, phase_id="online", **changes):
-        value = dict(id=phase_id, kind="online", worker="model", policy="edf",
-                     workload=[self.request()])
+    def phase(self, phase_id="serve", **changes):
+        value = dict(id=phase_id, kind="cluster", policy="static_sp1", profile=self.PROFILE,
+                     gpus=[dict(video="model", image="image")], workload=[self.request()])
         value.update(changes)
         return value
 
@@ -96,7 +104,7 @@ class NativeStudyTest(unittest.TestCase):
 
     def test_paired_matrix_counts_resident_workers_and_completed_resume(self):
         phase = self.phase(workload=[self.request("a"), self.request("b")],
-                           matrix={"/policy": ["edf", "srtf"]}, paired=True)
+                           matrix={"/policy": ["static_sp1", "block_elastic"]}, paired=True)
         config = self.config([phase])
         value = self.run_study(config)
         self.assert_completed(value)
@@ -112,7 +120,9 @@ class NativeStudyTest(unittest.TestCase):
         for cell in cells:
             self.assertEqual(len({row["worker_pids"]["model"] for row in cell["requests"]}), 1)
             for row in cell["requests"]:
-                self.assertEqual(row["operation_counts"], dict(prepare=1, advance=2, finish=1, release=1))
+                counts = row["operation_counts"]
+                self.assertEqual((counts["prepare"], counts["finish"], counts["release"]), (1, 1, 1))
+                self.assertGreaterEqual(counts["advance"], 2)
         self.assertEqual(self.assert_archive(value)["metrics"], value["metrics"])
         ledger = self.root / "run-budget.json"
         before = ledger.read_bytes()
@@ -123,7 +133,7 @@ class NativeStudyTest(unittest.TestCase):
         self.assert_archive(resumed)
 
     def test_gates_require_actual_evidence_before_next_phase(self):
-        first = self.phase("profile", kind="profile", gates=[dict(metric="/cells/0/metrics/completed", op="ge", value=1)])
+        first = self.phase("profile", gates=[dict(metric="/cells/0/metrics/completed", op="ge", value=1)])
         second = self.phase("quality", requires=[dict(phase="profile", requires="qualified")],
                             gates=[dict(metric="/cells/0/metrics/quality_score", op="ge", value=.9)])
         third = self.phase("after_quality", requires=[dict(phase="quality", requires="qualified")])
@@ -137,79 +147,11 @@ class NativeStudyTest(unittest.TestCase):
         self.assertIsNone(value["budget"]["active"])
         self.assertTrue(value["retention"]["pending_dependencies"])
 
-    def test_hot_cold_eviction_preserves_outputs_and_cross_worker_migration(self):
-        phase = self.phase("state", kind="state", resident_limit=1,
-                           workload=[self.request("long", spec=dict(steps=3, prompt="long", seed=4)),
-                                     self.request("urgent", arrival_ms=1, deadline_ms=1000)],
-                           matrix={"/eviction": ["hot", "cold"]})
-        workers = {name: dict(backend="mock", config=dict(options=dict(delay_ms=3))) for name in ("model", "target")}
-        migration = self.phase("migration", kind="state", resident_limit=1, workload=[
-            self.request("occupied", worker="target", spec=dict(steps=3, prompt="resident", seed=2)),
-            self.request("move", arrival_ms=1, deadline_ms=1000, transitions=[
-                dict(at_step=1, target_worker="target", target_device="cpu", mode="cold")])])
-        value = self.run_study(self.config([phase, migration], workers=workers))
-        self.assert_completed(value)
-        hashes = []
-        for cell in value["phases"][0]["cells"]:
-            rows = {row["request_id"]: row for row in cell["requests"]}
-            self.assertGreaterEqual(rows["long"]["operation_counts"].get("snapshot", 0), 1)
-            self.assertGreaterEqual(rows["long"]["operation_counts"].get("restore", 0), 1)
-            hashes.append({key: row["outputs"][0]["output"]["sha256"] for key, row in rows.items()})
-        self.assertEqual(hashes[0], hashes[1])
-        resident, moved = value["phases"][1]["cells"][0]["requests"]
-        self.assertGreaterEqual(resident["operation_counts"].get("snapshot", 0), 1)
-        self.assertGreaterEqual(resident["operation_counts"].get("restore", 0), 1)
-        self.assertEqual(set(moved["worker_pids"]), {"model", "target"})
-        self.assertEqual(len(set(moved["worker_pids"].values())), 2)
-        self.assertEqual(moved["operation_counts"]["migration_release"], 1)
-        self.assertEqual(moved["operation_counts"]["restore"], 2)
-        self.assertEqual(moved["status"], "completed")
-
-    def test_two_stage_session_and_think_time_are_causal(self):
-        stages = [dict(worker="text", spec=dict(steps=2, prompt="blue cup", seed=8), cost_ms=10),
-                  dict(worker="image", spec=dict(steps=2, prompt="overwritten", seed=9),
-                       prompt_from_previous=True, cost_ms=30)]
-        rows = [self.request("first", session_id="chat", stages=stages),
-                self.request("second", session_id="chat", stages=stages, after="first", think_ms=17)]
-        workers = {name: dict(backend="mock") for name in ("text", "image")}
-        value = self.run_study(self.config([self.phase(kind="session", policy="stage_edf", worker="text", workload=rows)], workers=workers))
-        self.assert_completed(value)
-        first, second = value["requests"]
-        self.assertAlmostEqual(second["arrival_ms"], first["finish_ms"] + 17)
-        self.assertGreaterEqual(second["start_ms"], second["arrival_ms"])
-        for row in (first, second):
-            self.assertEqual(row["operation_counts"]["prepare"], 2)
-            self.assertEqual(len(row["outputs"]), 2)
-            self.assertEqual(row["outputs"][0]["output"]["text"], "blue cup")
-            self.assertEqual(row["outputs"][1]["output"]["text"], "blue cup")
-            self.assertEqual(set(row["worker_pids"]), {"text", "image"})
-
-    def test_streaming_updates_buffers_and_full_playback_drain(self):
-        row = self.request(updates=[dict(arrival_ms=0, version=1, prompt="first"),
-                                    dict(arrival_ms=0, version=2, prompt="second")])
-        phase = self.phase(kind="streaming", workload=[row], chunks=3, fps=1000,
-                           matrix={"/buffer_chunks": [0, 2], "/prompt_policy": ["fifo", "latest_only"]})
-        value = self.run_study(self.config([phase]))
-        self.assert_completed(value)
-        cells = value["phases"][0]["cells"]
-        self.assertEqual(len(cells), 4)
-        for cell in cells:
-            playback = cell["requests"][0]["playback"]
-            self.assertEqual(playback["frames_played"], 12)
-            self.assertEqual(playback["frames_dropped"], 0)
-            events = cell["prompt_events"]
-            self.assertEqual(len(events), 2)
-            self.assertFalse(any(event["status"] == "pending_at_stop" for event in events))
-            applied = [event["version"] for event in events if event["status"] == "applied"]
-            self.assertIn(applied, ([1, 2], [2]))
-            self.assertEqual(playback["samples"][-1]["version"], 2)
-            self.assertEqual(cell["semantic_status"], "unverified")
-
-    def test_sp_actions_use_persistent_independent_ranks(self):
+    def test_operations_use_persistent_independent_ranks(self):
         actions = [dict(op="prepare", state_id="sp", spec=dict(steps=2, prompt="rank", seed=0)),
-                   dict(op="advance", state_id="sp", steps=2), dict(op="inventory", state_id="sp"),
+                   dict(op="advance", state_id="sp", steps=1), dict(op="advance", state_id="sp", steps=1),
                    dict(op="release", state_id="sp")]
-        phase = dict(id="sp", kind="sp", workers=["rank0", "rank1"], actions=actions)
+        phase = dict(id="sp", kind="operations", workers=["rank0", "rank1"], actions=actions)
         workers = {name: dict(backend="mock") for name in phase["workers"]}
         value = self.run_study(self.config([phase], workers=workers))
         self.assert_completed(value)
@@ -218,8 +160,7 @@ class NativeStudyTest(unittest.TestCase):
         self.assertEqual(len(set(pids)), 2)
         for operation in operations:
             self.assertEqual([rank["worker_pid"] for rank in operation["ranks"]], pids)
-        self.assertTrue(all(rank["progress"]["done"] for rank in operations[1]["ranks"]))
-        self.assertTrue(all(rank["step"] == 2 for rank in operations[2]["ranks"]))
+        self.assertTrue(all(rank["progress"]["done"] and rank["progress"]["step"] == 2 for rank in operations[2]["ranks"]))
 
     def test_failed_resume_appends_attempt_and_rejects_config_changes(self):
         config = self.config([self.phase()], options=dict(fail_on="advance"))
@@ -240,7 +181,7 @@ class NativeStudyTest(unittest.TestCase):
             self.assertTrue(session["cleanup_verified"])
         before = (self.root / "run-budget.json").read_bytes()
         changed = copy.deepcopy(config)
-        changed["phases"][0]["policy"] = "srtf"
+        changed["phases"][0]["policy"] = "block_elastic"
         with self.assertRaisesRegex(CoreError, "frozen config differs"):
             self.run_study(changed, resume=True)
         self.assertEqual((self.root / "run-budget.json").read_bytes(), before)
@@ -274,33 +215,12 @@ class NativeStudyTest(unittest.TestCase):
                 self.assertEqual(ledger.read_bytes(), before)
                 self.assertFalse(replacement.exists())
 
-    def test_stream_failure_keeps_entire_frozen_request_denominator(self):
-        phase = self.phase(kind="streaming", chunks=2, fps=1000,
-                           workload=[self.request("failed"), self.request("waiting", arrival_ms=1000)])
-        value = self.run_study(self.config([phase], options=dict(fail_on="advance")))
-        self.assertEqual(value["status"], "failed")
-        self.assertIsNone(value["budget"]["active"])
-        self.assertEqual(value["metrics"]["requests"], 2)
-        self.assertGreaterEqual(value["metrics"]["failed"], 1)
-        self.assertEqual({row["request_id"] for row in value["requests"]}, {"failed", "waiting"})
-        self.assertTrue(all(row.get("observation_id") for row in value["requests"]))
-
-    def test_stream_drain_timeout_cannot_report_success(self):
-        phase = self.phase(kind="streaming", chunks=1, fps=1, buffer_chunks=2,
-                           playback_drain_seconds=0)
-        value = self.run_study(self.config([phase]))
-        self.assertEqual(value["status"], "failed")
-        self.assertRegex(value["phases"][0]["error"], "drain|playback")
-        self.assertEqual(value["metrics"]["requests"], 1)
-        self.assertIsNone(value["budget"]["active"])
-
     def test_invalid_execution_inputs_leave_no_active_budget(self):
-        cases = [self.phase(paired="yes"), self.phase(workload=[]),
-                 self.phase(workload=[self.request(stages=[])]), self.phase(worker="missing"),
+        cases = [self.phase(paired="yes"), self.phase(workload=[]), self.phase(kind="online"),
+                 self.phase(gpus=[dict(video="missing", image="image")]),
                  self.phase(worker_config=[]), self.phase(worker_config=dict(device="cuda:0")),
-                 self.phase(workload=[self.request(updates=[dict(arrival_ms=2, version=1, prompt="first"),
-                                                            dict(arrival_ms=1, version=2, prompt="second")])]),
-                 dict(id="sp", kind="sp", workers=["model", "model"], actions=[dict(op="hello")])]
+                 self.phase(workload=[self.request(kind="image", **{"class": "video"})]),
+                 dict(id="sp", kind="operations", workers=["model", "model"], actions=[dict(op="hello")])]
         for index, phase in enumerate(cases):
             with self.subTest(phase=phase):
                 name = "invalid-%d" % index
@@ -315,7 +235,7 @@ class NativeStudyTest(unittest.TestCase):
     def test_worker_config_cannot_bypass_gpu_admission_or_source_binding(self):
         # hello is deliberately harmless even if admission regresses: no model
         # is loaded and no evaluator is invoked by this CPU test.
-        phase = dict(id="probe", kind="profile", workers=["model"], actions=[dict(op="hello")])
+        phase = dict(id="probe", kind="operations", workers=["model"], actions=[dict(op="hello")])
         gpu = "GPU-00000000-0000-0000-0000-000000000000"
         workers = dict(model=dict(backend="evaluation", device="cuda:0", gpu_uuid=gpu, config={}))
         with self.assertRaisesRegex(CoreError, "allow-gpu"):
@@ -331,10 +251,9 @@ class NativeStudyTest(unittest.TestCase):
                 with self.assertRaisesRegex(CoreError, "environment cannot override"):
                     self.run_study(self.config([phase], workers=workers), name="environment-%d" % index)
 
-    def test_prefetch_identity_and_async_decode(self):
-        phase = self.phase(text_prefetch=2, decode_mode="async", resident_limit=1,
-                           workload=[self.request("a"), self.request("b"), self.request("c")])
-        value = self.run_study(self.config([phase], options=dict(encode_delay_ms=5, decode_delay_ms=20)))
+    def test_prefetch_encodes_each_video_once_before_it_starts(self):
+        phase = self.phase(text_prefetch=2, workload=[self.request("a"), self.request("b"), self.request("c")])
+        value = self.run_study(self.config([phase], options=dict(encode_delay_ms=5)))
         self.assert_completed(value)
         for row in value["requests"]:
             self.assertGreaterEqual(row["encode_ready_ms"], row["encode_submit_ms"])
@@ -342,17 +261,13 @@ class NativeStudyTest(unittest.TestCase):
             self.assertEqual(row["operation_counts"]["encode_start"], 1)
             self.assertGreaterEqual(row["operation_counts"]["encode_poll"], 1)
             self.assertEqual(row["operation_counts"]["prepare"], 1)
-            self.assertEqual(row["operation_counts"]["decode_start"], 1)
-            self.assertGreater(row["operation_counts"]["decode_poll"], 1)
             self.assertEqual(len(row["outputs"]), 1)
 
-    def test_warmup_runs_before_trace_clock_and_prefetch_is_per_worker(self):
-        workers = {"model": {"backend": "mock", "config": {"options": {"encode_delay_ms": 5}}},
-                   "image": {"backend": "mock", "config": {"options": {}}}}
-        phase = self.phase(text_prefetch=1, text_prefetch_workers=["model"],
+    def test_warmup_runs_before_trace_clock_and_images_skip_prefetch(self):
+        phase = self.phase(text_prefetch=1,
                            warmup=[dict(worker="model", spec=dict(steps=2)), dict(worker="image", spec=dict(steps=1))],
-                           workload=[self.request("v"), self.request("i", worker="image", kind="image")])
-        value = self.run_study(self.config([phase], workers=workers))
+                           workload=[self.request("v"), self.request("i", kind="image")])
+        value = self.run_study(self.config([phase], options=dict(encode_delay_ms=5)))
         self.assert_completed(value)
         rows = {row["request_id"]: row for row in value["requests"]}
         self.assertEqual(rows["v"]["operation_counts"]["encode_start"], 1)
@@ -360,8 +275,6 @@ class NativeStudyTest(unittest.TestCase):
         warmed = value["phases"][0]["cells"][0]["warmup"]
         self.assertEqual([item["worker"] for item in warmed], ["model", "image"])
         self.assertTrue(all(item["elapsed_ms"] >= 0 for item in warmed))
-        with self.assertRaises(CoreError):
-            self.run_study(self.config([self.phase(text_prefetch_workers=["missing"])]), name="bad-prefetch")
         with self.assertRaises(CoreError):
             self.run_study(self.config([self.phase(warmup=[dict(worker="missing")])]), name="bad-warmup")
 

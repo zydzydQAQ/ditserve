@@ -50,11 +50,15 @@ class NativeCliTests(unittest.TestCase):
     def study(self, *, failure=False):
         return {"schema": "ditserve.study.v1", "experiment": "cli-fixture",
                 "workers": {"model": {"backend": "mock", "config": {
-                    "options": {"fail_on": "advance"} if failure else {}}}},
+                    "options": {"fail_on": "advance"} if failure else {}}}, "image": {"backend": "mock"}},
                 "budget": {"limit_gpu_seconds": 10, "watchdog_seconds": 10},
-                "phases": [{"id": "online", "kind": "online", "policy": "edf", "workload": [
-                    {"request_id": "one", "arrival_ms": 0, "service_ms": 1, "slo_ms": 1000,
-                     "spec": {"steps": 1, "prompt": "CPU CLI fixture", "seed": 7}}]}]}
+                "phases": [{"id": "serve", "kind": "cluster", "policy": "static_sp1",
+                            "gpus": [{"video": "model", "image": "image"}],
+                            "profile": {"provenance": "synthetic", "classes": {"video": {
+                                "kind": "video", "steps": 1, "step_compute_ms": 1, "finish_ms": 1}}},
+                            "workload": [{"request_id": "one", "kind": "video", "class": "video", "arrival_ms": 0,
+                                          "service_ms": 1, "slo_ms": 1000,
+                                          "spec": {"steps": 1, "prompt": "CPU CLI fixture", "seed": 7}}]}]}
 
     def fake_worker(self, code):
         package = self.root / "fake-package/ditserve"
@@ -77,7 +81,7 @@ class NativeCliTests(unittest.TestCase):
         cases = [
             ("generate", {"generator": {"count": 2, "seed": 7, "pattern": "poisson", "rate_rps": 2, "classes": [
                 {"class": "video", "kind": "video", "service_ms": 3400}, {"class": "image", "kind": "image", "service_ms": 40}]}}),
-            ("control", {"op": "matrix", "phase": {"id": "fixture", "matrix": {"/policy": ["edf", "fcfs"]}}}),
+            ("control", {"op": "matrix", "phase": {"id": "fixture", "matrix": {"/policy": ["static_sp1", "block_elastic"]}}}),
         ]
         generated = None
         for operation, payload in cases:

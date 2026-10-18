@@ -81,7 +81,7 @@ else:
             worker.update(device="cuda:0", gpu_uuid=self.gpu)
         return dict(schema="ditserve.study.v1", experiment="profile_admission",
             workers={"model": worker}, budget=dict(limit_gpu_seconds=5, watchdog_seconds=5),
-            phases=[dict(id="probe", kind="profile", worker="model", actions=[dict(op="hello")],
+            phases=[dict(id="probe", kind="operations", worker="model", actions=[dict(op="hello")],
                          admission_wait_seconds=wait, admission_poll_seconds=poll)])
 
     def run_study(self, config, name="run", *, allow_gpu=False):

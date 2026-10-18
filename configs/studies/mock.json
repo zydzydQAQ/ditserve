@@ -1,36 +1,40 @@
 {
   "schema": "ditserve.study.v1",
   "experiment": "cpu-smoke",
+  "note": "CPU-only smoke of the serving executor: two mock GPU slots, a video/image mix, step-level static SP1 against block-level preemption. Costs are illustrative.",
   "workers": {
-    "model": {
-      "backend": "mock"
-    }
+    "wan0": {"backend": "mock", "config": {"options": {"costs": {"step_ms": 40, "finish_ms": 20}}}},
+    "sana0": {"backend": "mock", "config": {"options": {"costs": {"finish_ms": 10}}}},
+    "wan1": {"backend": "mock", "config": {"options": {"costs": {"step_ms": 40, "finish_ms": 20}}}},
+    "sana1": {"backend": "mock", "config": {"options": {"costs": {"finish_ms": 10}}}}
   },
-  "budget": {
-    "limit_gpu_seconds": 600,
-    "watchdog_seconds": 300,
-    "repair_reserve_gpu_seconds": 0,
-    "carry": "none"
-  },
+  "budget": {"limit_gpu_seconds": 600, "watchdog_seconds": 300, "repair_reserve_gpu_seconds": 0, "carry": "none"},
   "phases": [
     {
-      "id": "online",
-      "kind": "online",
-      "generator": {
-        "count": 4,
-        "spec": {
-          "steps": 3
+      "id": "serve",
+      "kind": "cluster",
+      "gpus": [{"video": "wan0", "image": "sana0"}, {"video": "wan1", "image": "sana1"}],
+      "profile": {
+        "provenance": "synthetic",
+        "classes": {
+          "video": {"kind": "video", "steps": 3, "blocks_per_step": 4, "prepare_ms": 0, "encode_ms": 0,
+                    "step_compute_ms": 40, "comm_mb_per_step": 0, "collectives_per_step": 0, "finish_ms": 20},
+          "image": {"kind": "image", "service_ms": 10}
         },
-        "pattern": "offline_all"
+        "links": {"2": {"gbps": 10, "latency_ms": 0}},
+        "sp_efficiency": 1,
+        "resize_ms": 0
       },
-      "policy": "edf",
-      "matrix": {
-        "/policy": [
-          "fcfs",
-          "edf",
-          "srtf"
+      "generator": {
+        "count": 12, "seed": 7, "pattern": "poisson", "rate_rps": 20,
+        "classes": [
+          {"class": "video", "kind": "video", "weight": 1, "service_ms": 140, "slo_scale": 4, "spec": {"steps": 3, "blocks_per_step": 4}},
+          {"class": "image", "kind": "image", "weight": 3, "service_ms": 10, "slo_scale": 5, "spec": {"steps": 1}}
         ]
       },
+      "policy": "static_sp1",
+      "options": {"quantum_ms": 20},
+      "matrix": {"/policy": ["static_sp1", "block_elastic"]},
       "paired": true
     }
   ]

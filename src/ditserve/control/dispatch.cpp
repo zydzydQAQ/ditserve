@@ -2,12 +2,10 @@
 #include "ditserve/runtime/random.hpp"
 #include <algorithm>
 #include <cmath>
-#include <functional>
 #include <map>
 #include <numeric>
 #include <set>
 #include <stdexcept>
-#include <tuple>
 
 namespace ditserve {
 namespace {
@@ -17,36 +15,6 @@ double signed_number(const Json& value, const std::string& name) {
     const double result = value.get<double>();
     if (!std::isfinite(result)) throw std::invalid_argument(name + " must be finite");
     return result;
-}
-using Row = const Json*;
-auto edf(Row r) {
-    return std::make_tuple(number_field(*r, "deadline_ms"), number_field(*r, "arrival_ms"), r->at("request_id").get<std::string>());
-}
-double slack(Row r, double now) { return number_field(*r, "deadline_ms") - now - number_field(*r, "remaining_ms"); }
-std::string qkey(const Json& q) { return q.is_string() ? q.get<std::string>() : q.dump(); }
-double action_cost(Row r, const Json& q) {
-    return number(r->at("action_ms_by_quantum").at(qkey(q)), "action cost");
-}
-bool threatened(const std::vector<Row>& rows, Row selected, double cost, double now) {
-    return std::any_of(rows.begin(), rows.end(), [&](Row r) {
-        return r != selected && slack(r, now) >= 0 && slack(r, now) < cost;
-    });
-}
-std::pair<Json, bool> choose_quantum(Row row, const std::vector<Row>& rows,
-                                   double now, const Json& q, const Json& costs) {
-    if (q != "adaptive") { action_cost(row, q); return {q, false}; }
-    double limit = number(costs.at("image_deadline_ms"), "image_deadline_ms", true) * .5;
-    for (Row other : rows) if (other != row && slack(other, now) >= 0) limit = std::min(limit, slack(other, now));
-    int best = 0;
-    for (int size : {1, 4, 8}) {
-        if (size != 1 && row->value("action", "") != "denoise") break;
-        if (action_cost(row, size) <= limit) best = size;
-    }
-    return {best ? best : 1, best == 0};
-}
-Json decision(Row row, const Json& q, const std::string& reason, bool conflict, double now) {
-    return {{"request_id", row->at("request_id")}, {"quantum", q}, {"reason", reason},
-            {"predicted_deadline_conflict", conflict}, {"slack_ms", slack(row, now)}};
 }
 double quantile(std::vector<double> values, double p) {
     std::sort(values.begin(), values.end());
@@ -64,99 +32,6 @@ double gamma(Random& rng, double shape) {
         if (u < 1 - .0331 * x*x*x*x || std::log(std::max(u, 1e-15)) < .5*x*x + d*(1-v+std::log(v))) return d * v;
     }
 }
-}
-
-Json select_action(const Json& input, double now, const std::string& policy,
-                   const Json& costs, const std::string& active, const Json& default_quantum) {
-    number(now, "now_ms");
-    if (!input.is_array()) throw std::invalid_argument("ready rows must be an array");
-    const bool session = policy == "session_serial" || policy == "stage_edf" || policy == "session_slack";
-    const bool benchmark = policy == "fcfs" || policy == "edf" || policy == "srtf";
-    static const std::set<std::string> arms = {"edf_b1", "edf_b1_async", "edf_b2", "edf_b4", "edf_step", "guarded_b4", "guarded_adaptive", "feasible_b4"};
-    if (!session && !benchmark && !arms.count(policy)) throw std::invalid_argument("unknown policy: " + policy);
-    std::vector<Row> rows;
-    std::set<std::string> ids;
-    for (const auto& row : input) {
-        const auto status = row.value("status", "");
-        if (status != "pending" && !(session && status == "running")) continue;
-        if (session ? !row.value("ready", false) : (!row.value("arrived", false) || !row.value("gpu_ready", false))) continue;
-        if (required(row, session ? "release_ms" : "arrival_ms") > now) continue;
-        const auto id = row.at("request_id").get<std::string>();
-        if (id.empty() || !ids.insert(id).second) throw std::invalid_argument("ready IDs must be unique and nonempty");
-        required(row, "deadline_ms");
-        if (session) {
-            required(row, "stage_deadline_ms"); required(row, "remaining_total_ms");
-            if (number_field(row, "deadline_ms") < number_field(row, "release_ms")) throw std::invalid_argument("deadline precedes release");
-        } else {
-            required(row, "remaining_ms");
-            if (!benchmark) {
-                const double since = required(row, "ready_since_ms");
-                if (since < number_field(row, "arrival_ms") || since > now) throw std::invalid_argument("invalid ready interval");
-                if (required(row, "service_ms") <= 0 || (row.at("kind") != "video" && row.at("kind") != "image"))
-                    throw std::invalid_argument("invalid service cost or kind");
-                const auto action = row.at("action").get<std::string>();
-                if (action != "prepare" && action != "denoise" && action != "decode" && action != "image")
-                    throw std::invalid_argument("unknown request action");
-            }
-        }
-        rows.push_back(&row);
-    }
-    if (rows.empty()) return {{"request_id", nullptr}, {"quantum", nullptr}, {"reason", "no_ready_request"},
-                              {"predicted_deadline_conflict", false}, {"slack_ms", nullptr}};
-    Row current = nullptr;
-    for (Row r : rows) if (r->at("request_id") == active) current = r;
-    if (session) {
-        auto key = [&](Row r) {
-            const double primary = policy == "stage_edf" ? number_field(*r, "stage_deadline_ms") :
-                policy == "session_slack" ? number_field(*r, "deadline_ms") - now - number_field(*r, "remaining_total_ms") : number_field(*r, "deadline_ms");
-            return std::make_tuple(primary, number_field(*r, "deadline_ms"), number_field(*r, "release_ms"), r->at("request_id").get<std::string>());
-        };
-        Row selected = policy == "session_serial" && current ? current : *std::min_element(rows.begin(), rows.end(), [&](Row a, Row b){ return key(a) < key(b); });
-        return {{"request_id", selected->at("request_id")}, {"quantum", default_quantum}, {"reason", policy},
-                {"predicted_deadline_conflict", false}, {"slack_ms", number_field(*selected, "deadline_ms") - now - number_field(*selected, "remaining_total_ms")}};
-    }
-    if (benchmark) {
-        auto priority = [&](Row r) { return number_field(*r, policy == "fcfs" ? "arrival_ms" : policy == "edf" ? "deadline_ms" : "remaining_ms"); };
-        Row best = *std::min_element(rows.begin(), rows.end(), [&](Row a, Row b) {
-            return std::make_tuple(priority(a), number_field(*a, "arrival_ms"), a->at("request_id")) <
-                   std::make_tuple(priority(b), number_field(*b, "arrival_ms"), b->at("request_id"));
-        });
-        if (current && (policy == "fcfs" || priority(current) <= priority(best))) best = current;
-        return decision(best, default_quantum, policy, false, now);
-    }
-    const Json quantum = policy == "edf_step" ? Json("step") : policy == "guarded_adaptive" ? Json("adaptive") :
-                         policy == "edf_b2" ? Json(2) : policy == "edf_b1" || policy == "edf_b1_async" ? Json(1) : Json(4);
-    Row earliest = *std::min_element(rows.begin(), rows.end(), [](Row a, Row b){ return edf(a) < edf(b); });
-    if (policy.compare(0, 3, "edf") == 0) { action_cost(earliest, quantum); return decision(earliest, quantum, "edf", false, now); }
-    Row waiting = nullptr;
-    auto wait_key = [](Row r) { return std::make_tuple(number_field(*r,"ready_since_ms") + 2.5*number_field(*r,"service_ms"), edf(r)); };
-    for (Row r : rows) if (now - number_field(*r,"ready_since_ms") >= 2.5*number_field(*r,"service_ms") && (!waiting || wait_key(r) < wait_key(waiting))) waiting = r;
-    if (waiting) {
-        auto q = choose_quantum(waiting, rows, now, quantum, costs);
-        const bool conflict = q.second || threatened(rows, waiting, action_cost(waiting,q.first),now);
-        if (!conflict) return decision(waiting,q.first,"waiting_guard",false,now);
-        action_cost(earliest,1); return decision(earliest,1,"deadline_conflict_edf_min_quantum",true,now);
-    }
-    Row candidate = nullptr;
-    for (Row r : rows) if (slack(r,now) >= 0 && (!candidate || edf(r) < edf(candidate))) candidate = r;
-    const std::string reason = candidate ? "feasible_edf" : "edf_all_predicted_late";
-    if (!candidate) candidate = earliest;
-    auto q = choose_quantum(candidate,rows,now,quantum,costs);
-    const double cost = action_cost(candidate,q.first);
-    if (policy.compare(0,7,"guarded") == 0) {
-        std::vector<Row> videos;
-        for (Row r : rows) if (r != candidate && r->at("kind") == "video" && r->value("started",false) && slack(r,now) >= 0 && slack(r,now) < cost) videos.push_back(r);
-        std::sort(videos.begin(),videos.end(),[&](Row a,Row b){ return std::make_tuple(slack(a,now),edf(a)) < std::make_tuple(slack(b,now),edf(b)); });
-        for (Row r : videos) {
-            auto vq = choose_quantum(r,rows,now,quantum,costs);
-            const double vc = action_cost(r,vq.first);
-            if (!vq.second && slack(candidate,now) >= vc && !threatened(rows,r,vc,now)) return decision(r,vq.first,"video_resume_guard",false,now);
-        }
-    }
-    if (q.second || threatened(rows,candidate,cost,now)) {
-        action_cost(earliest,1); return decision(earliest,1,"deadline_conflict_edf_min_quantum",true,now);
-    }
-    return decision(candidate,q.first,reason,false,now);
 }
 
 Json study_workload(const Json& phase) {
@@ -222,14 +97,6 @@ Json study_workload(const Json& phase) {
         row["worker"] = row.value("worker",phase.value("worker","model"));
         row["kind"] = row.value("kind",phase.value("request_kind","video"));
         row["status"]="pending";
-    }
-    for (const auto& row:rows) if (row.contains("after") && (!ids.count(row.at("after").get<std::string>()) || row.at("after")==row.at("request_id"))) throw std::invalid_argument("invalid predecessor request");
-    // A dependency must precede its consumer in the frozen trace. This also
-    // excludes cycles without a second workflow graph implementation.
-    ids.clear();
-    for (const auto& row:rows) {
-        if (row.contains("after") && !ids.count(row.at("after").get<std::string>())) throw std::invalid_argument("predecessor must precede request in trace");
-        ids.insert(row.at("request_id").get<std::string>());
     }
     return rows;
 }

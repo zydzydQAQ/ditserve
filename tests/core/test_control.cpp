@@ -1,14 +1,9 @@
 #include "ditserve/control/dispatch.hpp"
 #include <cmath>
-#include <fstream>
 #include <functional>
 #include <iostream>
 #include <set>
 #include <stdexcept>
-
-#ifndef CONTROL_BASELINE_PATH
-#define CONTROL_BASELINE_PATH "tests/fixtures/control-baseline.json"
-#endif
 
 using namespace ditserve;
 namespace {
@@ -24,47 +19,14 @@ void check(const std::string& name, const std::function<void()>& action) {
     try { action(); }
     catch (const std::exception& error) { ++failures; std::cerr << name << ": " << error.what() << '\n'; }
 }
-void golden() {
-    std::ifstream source(CONTROL_BASELINE_PATH);
-    if (!source) throw std::runtime_error("missing frozen control baseline");
-    Json fixture; source >> fixture;
-    require(fixture.at("schema") == "ditserve.control-baseline.v1", "unknown control fixture");
-    require(fixture.at("provenance").at("sources").size() == 3, "missing Python oracle provenance");
-    for (const auto& example : fixture.at("cases")) check(example.at("name"), [&] {
-        const auto before = example.at("rows");
-        auto rows = before;
-        const auto execute = [&] { return select_action(rows, example.at("now_ms"), example.at("policy"),
-                                                       example.at("costs"), example.at("active")); };
-        if (example.value("expect_error", false)) rejects([&] { execute(); });
-        else {
-            const auto actual = execute();
-            if (example.contains("expected_request_id"))
-                require(actual.at("request_id") == example.at("expected_request_id"), "session choice differs from frozen Python");
-            else require(actual == example.at("expected"), "dispatch differs from frozen Python: " + actual.dump());
-        }
-        require(rows == before, "selection mutated input");
-    });
-}
-void benchmark() {
-    Json rows = Json::array({{{"request_id","old"},{"arrival_ms",0},{"deadline_ms",100},{"remaining_ms",50},
-                             {"arrived",true},{"gpu_ready",true},{"status","pending"}},
-                            {{"request_id","urgent"},{"arrival_ms",1},{"deadline_ms",20},{"remaining_ms",5},
-                             {"arrived",true},{"gpu_ready",true},{"status","pending"}}});
-    require(select_action(rows, 10, "fcfs", Json::object(), "old")["request_id"] == "old", "FCFS interrupted active work");
-    for (const auto& policy : {"edf", "srtf"})
-        require(select_action(rows, 10, policy, Json::object(), "old")["request_id"] == "urgent", "priority did not preempt");
-    rows[1]["deadline_ms"] = 100; rows[1]["remaining_ms"] = 50;
-    for (const auto& policy : {"edf", "srtf"})
-        require(select_action(rows, 10, policy, Json::object(), "urgent")["request_id"] == "urgent", "priority tie switched active work");
-}
 void matrix() {
-    const Json phase = {{"kind","online"},{"spec",{{"steps",3}}},
+    const Json phase = {{"kind","cluster"},{"spec",{{"steps",3}}},
                         {"matrix",{{"/policy",Json::array({"edf","srtf"})},{"/spec/seed",Json::array({1,2})}}}};
     const auto variants = expand_matrix(phase);
     require(variants.size() == 4, "matrix omitted Cartesian combinations");
     std::set<std::pair<std::string,int>> combinations;
     for (const auto& cell : variants) {
-        require(cell["kind"] == "online" && cell["spec"]["steps"] == 3 && !cell.contains("matrix"), "matrix changed base configuration");
+        require(cell["kind"] == "cluster" && cell["spec"]["steps"] == 3 && !cell.contains("matrix"), "matrix changed base configuration");
         combinations.emplace(cell["policy"], cell["spec"]["seed"]);
     }
     require(combinations == std::set<std::pair<std::string,int>>{{"edf",1},{"edf",2},{"srtf",1},{"srtf",2}}, "matrix duplicated or missed a cell");
@@ -178,18 +140,13 @@ void workloads() {
     near(slow[3]["arrival_ms"], 1500); near(fast[3]["arrival_ms"], 750);
     require(slow[3]["spec"] == fast[3]["spec"], "load sweep changed paired content");
     phase["generator"]["count"] = 0; require(study_workload(phase).empty(), "zero-count workload invented requests");
-    const Json causal = {{"workload",Json::array({{{"request_id","first"}},{{"request_id","second"},{"after","first"},{"think_ms",17}}})}};
-    require(study_workload(causal)[1]["think_ms"] == 17, "causal think time lost");
     rejects([] { study_workload({{"workload",Json::array({{{"request_id","same"}},{{"request_id","same"}}})}}); });
-    rejects([] { study_workload({{"workload",Json::array({{{"request_id","a"},{"after","b"}},{{"request_id","b"},{"after","a"}}})}}); });
     rejects([] { study_workload({{"workload",Json::array({{{"arrival_ms",10},{"deadline_ms",9}}})}}); });
     rejects([] { study_workload({{"generator",{{"pattern","unsupported"}}}}); });
 }
 }
 
 int main() {
-    try { golden(); } catch (const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }
-    check("benchmark policies", benchmark);
     check("matrix", matrix);
     check("gates", gates);
     check("summary", summary);

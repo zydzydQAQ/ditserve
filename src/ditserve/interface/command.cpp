@@ -271,7 +271,6 @@ void help() {
 Json pure_rpc(const std::string& command, const Json& request) {
     if (command == "control") {
         const auto op = request.at("op");
-        if (op == "select") return select_action(request.at("rows"), number(request.at("now_ms"), "now_ms"), request.at("policy"), request.value("costs", Json::object()), request.value("active", ""), request.value("quantum", Json(1)));
         if (op == "workload") return study_workload(request.at("phase"));
         if (op == "matrix") return expand_matrix(request.at("phase"));
         if (op == "summary") return request_summary(request.at("rows"));

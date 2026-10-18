@@ -17,7 +17,6 @@
 #include <map>
 #include <memory>
 #include <mutex>
-#include <deque>
 #include <set>
 #include <sstream>
 #include <stdexcept>
@@ -217,29 +216,18 @@ void add_artifacts(Json& record,const Json& result,const fs::path& work,const Js
     }
 }
 
-struct Live {
-    std::string worker,state,snapshot,decode_ticket;
-    Json progress=Json::object();
-    Json decoded=nullptr;
-    std::size_t stage=0;
-    std::set<std::size_t> transitions;
-    bool suspended=false;
-};
-Json stages(const Json& row) {
-    if(row.contains("stages"))return row.at("stages");
-    return Json::array({{{"worker",row.at("worker")},{"spec",row.at("spec")}}});
+// Worker threads note each call they make; the controlling thread folds the
+// notes into the request row, so rows are never touched concurrently.
+Json traced(Worker& worker,const std::string& name,const Json& action,double deadline,Json& ops){
+    ops.push_back({{"worker",name},{"op",action.at("op")},{"pid",worker.process->pid()}});
+    return worker.call(action,deadline);
 }
-double remaining(const Json& row,const Live* live,const Json& costs) {
-    const auto list=stages(row);const std::size_t stage=live?live->stage:0;
-    double total=0;
-    for(std::size_t i=stage;i<list.size();++i) {
-        const auto& spec=list[i].value("spec",row.at("spec"));
-        const int steps=int_field(spec,"steps",int_field(spec,"max_new_tokens",1),1);
-        const int step=live && i==stage?live->progress.value("step",0):0;
-        total+=std::max(0,steps-step)*number_field(costs,"step_ms",number_field(row,"service_ms",100)/steps)+number_field(costs,"finish_ms",0);
-        if(!live || i!=stage)total+=number_field(costs,"prepare_ms",0);
+void note_calls(Json& row,const Json& ops){
+    for(const auto& op:ops){
+        row["worker_pids"][op.at("worker").get<std::string>()]=op.at("pid");
+        const auto key=op.at("op").get<std::string>();
+        row["operation_counts"][key]=row.value("operation_counts",Json::object()).value(key,0)+1;
     }
-    return total;
 }
 
 // Untimed preparation before the trace clock starts. Model loading, kernel
@@ -273,247 +261,6 @@ Json warmup(const Json& phase,Workers& workers,Budget& budget) {
         results.push_back({{"worker",name},{"load_ms",load},{"elapsed_ms",(monotonic_seconds()-started)*1000}});
     }
     return results;
-}
-
-Json replay(const Json& phase,Workers& workers,Budget& budget,Json& record,const fs::path& work,const fs::path& cell_dir) {
-    Json rows=study_workload(phase),costs=phase.value("costs",Json::object());
-    const auto policy=phase.value("policy",phase.value("kind","")=="profile"?"fcfs":"edf");
-    const auto warmed=warmup(phase,workers,budget);
-    // "file" keeps outputs for downstream evaluation; serving runs without
-    // consumers use "check" (shape/finite only) to keep persistence off the GPU path.
-    const auto output_mode=phase.value("output_mode",std::string("file"));
-    std::map<std::string,Live> live;
-    std::map<std::string,std::string> previous_llm,encoding;
-    std::map<std::string,std::string> decoding;
-    std::map<std::string,Json> conversation;
-    const double origin=monotonic_seconds();
-    auto now=[&](){return (monotonic_seconds()-origin)*1000;};
-    auto check=[&](){if(cancelled())throw std::runtime_error("run cancelled");budget.check(number_field(phase,"cleanup_reserve_seconds",0));};
-    auto invoke=[&](const std::string& worker,Json action,Json& row) {
-        check();const double started=monotonic_seconds();
-        auto& process=workers.get(worker);
-        const bool starting=process.sequence==0;
-        row["worker_pids"][worker]=process.process->pid();
-        const auto op=action.at("op").get<std::string>();
-        row["operation_counts"][op]=row.value("operation_counts",Json::object()).value(op,0)+1;
-        auto result=process.call(action,budget.deadline());
-        if(result.contains("profile")){
-            if(!row.contains("profiles"))row["profiles"]=Json::array();
-            row["profiles"].push_back({{"worker",worker},{"state_id",action.value("state_id","")},{"operation",op},
-                {"phase_ms",result.value("phase_ms",Json::object())},{"profile",result.at("profile")}});
-        }
-        const double elapsed=(monotonic_seconds()-started)*1000;
-        const double model=number_field(result,"model_ms",result.value("elapsed_ms",0.));
-        const double transport=std::max(0.,elapsed-number_field(result,"worker_operation_ms",model)-number_field(result,"load_ms"));
-        row["model_ms"]=number_field(row,"model_ms")+model;
-        row["model_load_ms"]=number_field(row,"model_load_ms")+number_field(result,"load_ms");
-        row["control_ms"]=number_field(row,"control_ms")+std::max(0.,elapsed-model);
-        row["action_ms"][op]=row.value("action_ms",Json::object()).value(op,0.)+elapsed;
-        if(!row.contains("communication_samples_ms"))row["communication_samples_ms"]=Json::array();
-        if(starting)row["worker_startup_ms"]=number_field(row,"worker_startup_ms")+transport;
-        else {
-            if(row["communication_samples_ms"].size()<128)row["communication_samples_ms"].push_back(transport);
-            row["communication_samples_total"]=row.value("communication_samples_total",0)+1;
-        }
-        row["communication_sample_scope"]="first 128 resident actions per request, excluding process startup, model load and worker operation; includes JSON framing";
-        return result;
-    };
-    for(auto& row:rows){row["ready_since_ms"]=row["arrival_ms"];row["quality"]={{"status","unverified"},{"passed",false}};
-        row["observation_id"]=phase.at("_observation_id");row["phase"]=phase.at("id");row["attempt"]=phase.at("_attempt");row["cell"]=phase.at("_cell");row["order"]=phase.at("_order");}
-    std::string active;
-    std::size_t terminal=0;
-    const int resident_limit=int_field(phase,"resident_limit",100000,1);
-    auto make_room=[&](const std::string& incoming,const std::string& worker){
-        int resident=0;for(const auto& item:live)if(item.second.worker==worker&&!item.second.suspended)++resident;
-        if(resident<resident_limit)return;
-        for(auto& item:live)if(item.first!=incoming&&item.second.worker==worker&&!item.second.suspended&&item.second.decode_ticket.empty()){
-            auto& victim=*std::find_if(rows.begin(),rows.end(),[&](const Json& r){return r["request_id"]==item.first;});
-            if(!item.second.progress.value("transfer_ready",true)){
-                const auto advanced=invoke(worker,{{"op","advance"},{"state_id",item.second.state},{"quantum","step"}},victim);
-                item.second.progress=advanced.at("progress");
-                if(!item.second.progress.value("transfer_ready",true))throw std::runtime_error("backend did not reach a transferable boundary");
-            }
-            auto snap=invoke(worker,{{"op","snapshot"},{"state_id",item.second.state},{"mode",phase.value("eviction","hot")}},victim);
-            item.second.snapshot=snap.value("snapshot_id",item.second.state);item.second.suspended=true;
-            if(--resident<resident_limit)return;
-        }
-        throw std::runtime_error("no legal state can be evicted before admission");
-    };
-    auto prepare=[&](Live& state,Json& row,const Json& stage){
-        state.worker=stage.value("worker",row.at("worker").get<std::string>());
-        const auto id=row.at("request_id").get<std::string>();
-        make_room(id,state.worker);
-        Json spec=stage.value("spec",row.at("spec"));spec["request_id"]=id+"-s"+std::to_string(state.stage);
-        Json action={{"op","prepare"},{"spec",spec}};
-        if(state.stage==0 && encoding.count(id))action["encode_ticket"]=encoding[id];
-        if(workers.backend(state.worker)=="mistral"){
-            const auto session=row.value("session_id",id);
-            if(!spec.contains("messages")){
-                auto messages=conversation.count(session)?conversation[session]:Json::array();
-                messages.push_back({{"role","user"},{"content",spec.at("prompt")}});spec["messages"]=messages;action["spec"]=spec;
-            }
-            if(previous_llm.count(session)){
-                invoke(state.worker,{{"op","restore"},{"state_id",previous_llm[session]}},row);
-                action["previous_state_id"]=previous_llm[session];
-                previous_llm.erase(session);
-            }
-            conversation[session]=spec["messages"];
-        }
-        auto prepared=invoke(state.worker,action,row);
-        if(state.stage==0)encoding.erase(id);
-        state.state=prepared.at("state_id").get<std::string>();state.progress=prepared.value("progress",Json::object());
-        row["prepare"]=prepared;
-        row["generation"]=spec;
-    };
-    try{while(terminal<rows.size()) {
-        check();const double instant=now();Json ready=Json::array();
-        for(auto& row:rows) {
-            if(row.at("status")!="pending")continue;
-            if(row.contains("after") && !row.value("released",false)) {
-                auto previous=std::find_if(rows.begin(),rows.end(),[&](const Json& r){return r["request_id"]==row["after"];});
-                if(previous->at("status")=="failed" || previous->at("status")=="blocked") {row["status"]="blocked";row["reason"]="predecessor did not complete";++terminal;continue;}
-                if(previous->at("status")!="completed")continue;
-                row["arrival_ms"]=number_field(*previous,"finish_ms")+number_field(row,"think_ms");row["deadline_ms"]=number_field(row,"arrival_ms")+number_field(row,"slo_ms");row["ready_since_ms"]=row["arrival_ms"];row["released"]=true;
-            }
-            if(number_field(row,"arrival_ms")>instant)continue;
-            const auto id=row.at("request_id").get<std::string>();auto state=live.find(id);
-            if(state!=live.end()&&!state->second.decode_ticket.empty()){
-                auto& current=state->second;
-                auto decoded=invoke(current.worker,{{"op","decode_poll"},{"ticket",current.decode_ticket}},row);
-                if(!decoded.value("ready",false))continue;
-                current.decoded=decoded;current.decode_ticket.clear();decoding.erase(current.worker);
-            }
-            if(state!=live.end()&&state->second.progress.value("done",false)&&decoding.count(state->second.worker))continue;
-            if(state==live.end()||state->second.suspended){
-                const auto target=state==live.end()?stages(row).at(0).value("worker",row.at("worker").get<std::string>()):state->second.worker;
-                int resident=0;bool evictable=false;
-                for(const auto& item:live)if(item.second.worker==target&&!item.second.suspended){
-                    ++resident;if(item.first!=id&&item.second.decode_ticket.empty())evictable=true;
-                }
-                if(resident>=resident_limit&&!evictable)continue;
-            }
-            // Mixed traces name the workers with asynchronous prompt encoding;
-            // other backends encode inside their own prepare/generate call.
-            const auto first_worker=stages(row).at(0).value("worker",row.at("worker").get<std::string>());
-            const auto prefetch_workers=phase.value("text_prefetch_workers",Json());
-            const bool prefetchable=prefetch_workers.is_null()||std::find(prefetch_workers.begin(),prefetch_workers.end(),first_worker)!=prefetch_workers.end();
-            if(state==live.end() && phase.value("text_prefetch",0)>0 && prefetchable){
-                const auto& worker=first_worker;
-                if(!encoding.count(id)){
-                    if(encoding.size()>=static_cast<std::size_t>(int_field(phase,"text_prefetch",0,0)))continue;
-                    auto spec=stages(row).at(0).value("spec",row.at("spec"));spec["request_id"]=id+"-s0";
-                    auto submitted=invoke(worker,{{"op","encode_start"},{"spec",spec}},row);
-                    encoding[id]=submitted.at("ticket").get<std::string>();row["encode_submit_ms"]=now();
-                }
-                auto encoded=invoke(worker,{{"op","encode_poll"},{"ticket",encoding[id]}},row);
-                if(!encoded.value("ready",false))continue;
-                if(!row.contains("encode_ready_ms")){row["encode_ready_ms"]=now();row["ready_since_ms"]=row["encode_ready_ms"];}
-            }
-            auto view=row;
-            view["arrived"]=true;view["gpu_ready"]=true;view["ready"]=true;view["release_ms"]=row["arrival_ms"];
-            view["started"]=state!=live.end();view["remaining_ms"]=remaining(row,state==live.end()?nullptr:&state->second,costs);
-            view["remaining_total_ms"]=view["remaining_ms"];
-            const auto list=stages(row);const std::size_t si=state==live.end()?0:state->second.stage;
-            double cumulative=0,total=0;
-            for(std::size_t n=0;n<list.size();++n){const double cost=number_field(list[n],"cost_ms",number_field(row,"service_ms")/list.size());total+=cost;if(n<=si)cumulative+=cost;}
-            view["stage_deadline_ms"]=number_field(row,"arrival_ms")+number_field(row,"slo_ms")*(total>0?cumulative/total:double(si+1)/list.size());
-            view["action"]=state==live.end()?"prepare":state->second.progress.value("done",false)?"decode":"denoise";
-            const double per=number_field(costs,"block_ms",number_field(costs,"step_ms",number_field(row,"service_ms",100)/int_field(row.at("spec"),"steps",1)));
-            const bool atomic=view["action"]!="denoise";
-            const double base=atomic?number_field(costs,view["action"]=="prepare"?"prepare_ms":"finish_ms",per):per;
-            view["action_ms_by_quantum"]={{"1",base},{"2",atomic?base:2*per},{"4",atomic?base:4*per},{"8",atomic?base:8*per},{"step",atomic?base:number_field(costs,"step_ms",per)}};
-            ready.push_back(view);
-        }
-        if(ready.empty()){if(terminal==rows.size())break;wait_until(monotonic_seconds()+.001);continue;}
-        const auto selected=select_action(ready,now(),policy,costs,active,phase.value("quantum",Json(1)));
-        const auto id=selected.at("request_id").get<std::string>();
-        auto& row=*std::find_if(rows.begin(),rows.end(),[&](const Json& r){return r["request_id"]==id;});
-        active=id;
-        try {
-            auto it=live.find(id);
-            if(it==live.end()) {
-                const auto list=stages(row);const auto& stage=list.at(0);
-                Live state;
-                if(!row.contains("start_ms"))row["start_ms"]=now();
-                prepare(state,row,stage);live[id]=state;
-            } else {
-                auto& state=it->second;
-                if(state.suspended) {
-                    make_room(id,state.worker);
-                    invoke(state.worker,{{"op","restore"},{"state_id",state.state},{"snapshot_id",state.snapshot}},row);state.suspended=false;
-                }
-                if(state.progress.value("done",false)) {
-                    if(phase.value("decode_mode","sync")=="async"&&state.decoded.is_null()){
-                        const auto started=invoke(state.worker,{{"op","decode_start"},{"state_id",state.state},{"save_latents",phase.value("save_latents",false)},{"output_mode",output_mode}},row);
-                        state.decode_ticket=started.at("ticket").get<std::string>();decoding[state.worker]=id;
-                        continue;
-                    }
-                    auto result=state.decoded.is_null()?invoke(state.worker,{{"op","finish"},{"state_id",state.state},{"save_latents",phase.value("save_latents",false)},{"output_mode",output_mode}},row):state.decoded;
-                    state.decoded=nullptr;
-                    add_artifacts(record,result,work,phase.value("artifact_dependencies",Json::array()));
-                    if(!row.contains("outputs"))row["outputs"]=Json::array();
-                    row["outputs"].push_back(result);
-                    if(row.contains("reference")) {
-                        auto quality=invoke(state.worker,{{"op","evaluate"},{"output",result.at("output").at("path")},{"reference",row.at("reference")}},row);
-                        row["quality"]=quality;
-                    }
-                    if(workers.backend(state.worker)=="mistral"){
-                        const auto session=row.value("session_id",id);
-                        previous_llm[session]=state.state;
-                        conversation[session].push_back({{"role","assistant"},{"content",result.at("output").at("text")}});
-                        invoke(state.worker,{{"op","snapshot"},{"state_id",state.state},{"mode","hot"}},row);
-                    }else invoke(state.worker,{{"op","release"},{"state_id",state.state}},row);
-                    const auto list=stages(row);
-                    if(++state.stage<list.size()) {
-                        auto stage=list[state.stage];Json spec=stage.value("spec",row.at("spec"));
-                        if(stage.value("prompt_from_previous",false)) {
-                            if(!result.value("output",Json::object()).contains("text"))throw std::runtime_error("previous stage did not return text");
-                            spec["prompt"]=result.at("output").at("text");
-                        }
-                        stage["spec"]=spec;state.suspended=true;
-                        prepare(state,row,stage);state.suspended=false;state.transitions.clear();
-                    } else {row["status"]="completed";row["finish_ms"]=now();++terminal;live.erase(it);}
-                } else {
-                    const auto transitions=row.value("transitions",phase.value("transitions",Json::array()));
-                    for(std::size_t t=0;t<transitions.size();++t)if(!state.transitions.count(t) && state.progress.value("step",0)>=int_field(transitions[t],"at_step",0,0)) {
-                        const auto& change=transitions[t];const auto target=change.value("target_worker",state.worker);
-                        Json action={{"op","snapshot"},{"state_id",state.state},{"mode",change.value("mode","hot")}};
-                        if(target!=state.worker) {
-                            action["migration_id"]=id+"-"+std::to_string(t);action["target_device"]=change.at("target_device");
-                            action["path"]=(cell_dir/"artifacts"/(id+"-migration-"+std::to_string(t)+".pt")).string();
-                        }
-                        auto saved=invoke(state.worker,action,row);
-                        if(saved.contains("path"))add_artifacts(record,{{"output",saved}},work,Json::array({"migration_commit"}));
-                        if(target==state.worker)invoke(state.worker,{{"op","restore"},{"state_id",state.state},{"snapshot_id",saved.value("snapshot_id",state.state)}},row);
-                        else {
-                            make_room(id,target);
-                            auto restored=invoke(target,{{"op","restore"},{"path",saved.at("path")},{"sha256",saved.at("sha256")},{"state_id",state.state},{"migration_id",action["migration_id"]}},row);
-                            auto released=invoke(state.worker,{{"op","migration_release"},{"migration_id",action["migration_id"]},{"acknowledgement",restored.at("acknowledgement")}},row);
-                            auto committed=invoke(target,{{"op","restore"},{"state_id",restored.at("state_id")},{"migration_id",action["migration_id"]},{"receipt",released.at("receipt")}},row);
-                            state.worker=target;state.state=restored.at("state_id").get<std::string>();state.progress=committed.value("progress",state.progress);
-                            for(auto& artifact:record["artifacts"])if((work/artifact.at("path").get<std::string>()).string()==saved.at("path"))artifact["dependencies"]=Json::array();
-                        }
-                        state.transitions.insert(t);
-                    }
-                    Json action={{"op","advance"},{"state_id",state.state},{"quantum",selected.at("quantum")}};
-                    const auto unit=phase.value("unit","step");
-                    if(selected.at("quantum")!="step")action[unit=="block"?"blocks":"steps"]=selected.at("quantum");
-                    auto result=invoke(state.worker,action,row);state.progress=result.at("progress");
-                }
-            }
-            row["ready_since_ms"]=now();
-        }catch(const std::exception& error) {
-            row["status"]="failed";row["error"]=error.what();row["finish_ms"]=now();++terminal;
-            record["failures"].push_back({{"request_id",id},{"error",error.what()}});
-            // A failed worker invalidates its live states. Stop this cell rather
-            // than silently restarting and fabricating successful requests.
-            throw;
-        }
-    }}catch(...){
-        for(auto& row:rows){if(row["status"]=="pending")row["status"]="interrupted";if(!row.contains("finish_ms"))row["finish_ms"]=now();row["observation_ms"]=now();}
-        record["requests"].insert(record["requests"].end(),rows.begin(),rows.end());throw;
-    }
-    return {{"requests",rows},{"metrics",request_summary(rows)},{"elapsed_ms",now()},{"warmup",warmed}};
 }
 
 // Concurrent multi-GPU replay. Each GPU runs at most one quantum; between
@@ -576,15 +323,15 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             const auto name=image(group.front());const auto spec=spec_of(row);
             work_unit=[&workers,name,id,spec,deadline,output_mode]{
                 auto& w=workers.get(name);
-                Json out={{"calls",Json::array()}};
-                auto progress=w.call({{"op","prepare"},{"state_id",id},{"spec",spec}},deadline).at("progress");
+                Json out={{"ops",Json::array()}};
+                auto progress=traced(w,name,{{"op","prepare"},{"state_id",id},{"spec",spec}},deadline,out["ops"]).at("progress");
                 for(int calls=0;!progress.value("done",false);++calls){
                     if(calls>=1000)throw std::runtime_error("image did not finish");
-                    auto advanced=w.call({{"op","advance"},{"state_id",id},{"quantum","step"}},deadline);
+                    auto advanced=traced(w,name,{{"op","advance"},{"state_id",id},{"quantum","step"}},deadline,out["ops"]);
                     progress=advanced.at("progress");out["model_ms"]=number_field(out,"model_ms")+number_field(advanced,"model_ms");
                 }
-                out["finish"]=w.call({{"op","finish"},{"state_id",id},{"output_mode",output_mode}},deadline);
-                w.call({{"op","release"},{"state_id",id}},deadline);
+                out["finish"]=traced(w,name,{{"op","finish"},{"state_id",id},{"output_mode",output_mode}},deadline,out["ops"]);
+                traced(w,name,{{"op","release"},{"state_id",id}},deadline,out["ops"]);
                 return out;
             };
         }else if(quantum=="finish"){
@@ -593,9 +340,10 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             if(assignment.contains("decode_frames"))action["decode_frames"]=assignment.at("decode_frames");
             work_unit=[&workers,name,id,deadline,action]{
                 auto& w=workers.get(name);
-                Json out={{"finish",w.call(action,deadline)}};
+                Json out={{"ops",Json::array()}};
+                out["finish"]=traced(w,name,action,deadline,out["ops"]);
                 // A chunked decode releases its state with the last chunk.
-                if(out["finish"].value("decode",Json::object()).value("done",true))w.call({{"op","release"},{"state_id",id}},deadline);
+                if(out["finish"].value("decode",Json::object()).value("done",true))traced(w,name,{{"op","release"},{"state_id",id}},deadline,out["ops"]);
                 return out;
             };
             for(int gpu:state.resident)if(gpu!=group.front())stale[gpu].push_back(id);
@@ -623,13 +371,13 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             work_unit=[&workers,calls,deadline]{
                 std::vector<std::future<Json>> ranks;
                 for(const auto& item:calls)ranks.push_back(std::async(std::launch::async,[&workers,item,deadline]{
-                    auto& w=workers.get(item.first);Json last;
-                    for(const auto& action:item.second)last=w.call(action,deadline);
-                    return last;
+                    auto& w=workers.get(item.first);Json rank={{"ops",Json::array()}};
+                    for(const auto& action:item.second)rank["result"]=traced(w,item.first,action,deadline,rank["ops"]);
+                    return rank;
                 }));
-                Json out={{"ranks",Json::array()}};
+                Json out={{"ranks",Json::array()},{"ops",Json::array()}};
                 std::string error;
-                for(auto& rank:ranks){try{out["ranks"].push_back(rank.get());}catch(const std::exception& failure){error=failure.what();}}
+                for(auto& rank:ranks){try{auto value=rank.get();out["ranks"].push_back(value.at("result"));for(const auto& op:value.at("ops"))out["ops"].push_back(op);}catch(const std::exception& failure){error=failure.what();}}
                 if(!error.empty())throw std::runtime_error(error);
                 return out;
             };
@@ -640,6 +388,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     auto finish_task=[&](Task& task,const Json& out){
         auto& row=rows[task.row];auto& state=live[task.row];
         for(const auto& gpu:task.assignment.at("group"))busy[gpu.get<int>()]=false;
+        note_calls(row,out.at("ops"));
         const double elapsed=now()-task.started;
         const auto quantum=task.assignment.at("quantum");
         const auto key=quantum.is_string()?quantum.get<std::string>():"blocks";
@@ -653,6 +402,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         if(quantum=="atomic"||quantum=="finish"){
             add_artifacts(record,out.at("finish"),work,phase.value("artifact_dependencies",Json::array()));
             row["model_ms"]=number_field(row,"model_ms")+number_field(out,"model_ms")+number_field(out.at("finish"),"model_ms");
+            row["outputs"]=Json::array({out.at("finish")});
             row["status"]="completed";row["finish_ms"]=now();state.status="completed";state.group.clear();++terminal;
             return;
         }
@@ -682,7 +432,9 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             finish_task(*it,out);it=tasks.erase(it);progressed=true;
         }
         const double instant=now();
-        for(int gpu=0;gpu<gpus;++gpu)if(!busy[gpu])for(const auto& id:stale[gpu]){workers.get(video(gpu)).call({{"op","release"},{"state_id",id}},budget.deadline());}
+        for(int gpu=0;gpu<gpus;++gpu)if(!busy[gpu])for(const auto& id:stale[gpu]){
+            Json ops=Json::array();traced(workers.get(video(gpu)),video(gpu),{{"op","release"},{"state_id",id}},budget.deadline(),ops);note_calls(rows[index.at(id)],ops);
+        }
         for(int gpu=0;gpu<gpus;++gpu)if(!busy[gpu])stale[gpu].clear();
         for(std::size_t i=0;i<rows.size();++i){
             auto& state=live[i];auto& row=rows[i];
@@ -692,11 +444,12 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 progressed=true;
             }
             if(state.status!="encoding"||busy[state.encode_gpu])continue;
-            auto& w=workers.get(video(state.encode_gpu));
-            if(state.ticket.empty()){state.ticket=w.call({{"op","encode_start"},{"spec",spec_of(row)}},budget.deadline()).at("ticket").get<std::string>();row["encode_submit_ms"]=now();}
-            else if(w.call({{"op","encode_poll"},{"ticket",state.ticket}},budget.deadline()).value("ready",false)){
+            auto& w=workers.get(video(state.encode_gpu));Json ops=Json::array();
+            if(state.ticket.empty()){state.ticket=traced(w,video(state.encode_gpu),{{"op","encode_start"},{"spec",spec_of(row)}},budget.deadline(),ops).at("ticket").get<std::string>();row["encode_submit_ms"]=now();}
+            else if(traced(w,video(state.encode_gpu),{{"op","encode_poll"},{"ticket",state.ticket}},budget.deadline(),ops).value("ready",false)){
                 state.status="waiting";row["encode_ready_ms"]=now();progressed=true;
             }
+            note_calls(row,ops);
         }
         if(std::find(busy.begin(),busy.end(),false)!=busy.end()){
             Json requests=Json::array();
@@ -727,125 +480,6 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     return {{"requests",rows},{"metrics",request_summary(rows)},{"elapsed_ms",now()},{"warmup",warmed},
             {"by_kind",{{"video",kind_summary(rows,"video")},{"image",kind_summary(rows,"image")}}},
             {"policy",policy},{"gpus",gpus},{"real_backends_pinned_sp1",!fixtures}};
-}
-
-// A real clock consumer independent of the model call. It records dispatch
-// timing, not browser/display latency. Only bounded samples are retained.
-class Player {
-public:
-    Player(double fps,int buffer):fps_(fps),limit_(buffer+1),thread_([this]{loop();}){}
-    ~Player(){stop();}
-    bool room(){std::lock_guard<std::mutex> lock(mutex_);return queue_.size()+(current_?1:0)<static_cast<std::size_t>(limit_);}
-    bool empty(){std::lock_guard<std::mutex> lock(mutex_);return queue_.empty()&&!current_;}
-    void accept(int frames,int version,double ready){std::lock_guard<std::mutex> lock(mutex_);if(frames<=0)throw std::invalid_argument("chunk has no frames");queue_.push_back({frames,version,ready});peak_=std::max(peak_,queue_.size()+(current_?1:0));}
-    void flush(){std::lock_guard<std::mutex> lock(mutex_);for(const auto& chunk:queue_)dropped_+=chunk.frames;queue_.clear();}
-    Json result(){std::lock_guard<std::mutex> lock(mutex_);return {{"frames_played",played_},{"frames_dropped",dropped_},{"peak_chunks",peak_},{"late_frames",late_},{"samples",samples_},{"sample_scope","first 128 dispatched frames; all counts retained"},{"measurement_scope","wall-clock frame dispatch; not a browser or physical display"}};}
-    void stop(){{std::lock_guard<std::mutex> lock(mutex_);stopping_=true;}if(thread_.joinable())thread_.join();}
-private:
-    struct Chunk{int frames,version;double ready;};
-    double fps_;int limit_;std::mutex mutex_;std::deque<Chunk> queue_;bool current_=false,stopping_=false;
-    std::uint64_t played_=0,dropped_=0,late_=0;std::size_t peak_=0;Json samples_=Json::array();std::thread thread_;
-    void loop(){
-        double target=0;
-        for(;;){
-            Chunk chunk{};
-            {std::lock_guard<std::mutex> lock(mutex_);if(stopping_)return;if(!queue_.empty()){chunk=queue_.front();queue_.pop_front();current_=true;}}
-            if(!chunk.frames){std::this_thread::sleep_for(std::chrono::milliseconds(1));continue;}
-            target=std::max(target,chunk.ready);
-            for(int i=0;i<chunk.frames;++i){
-                while(monotonic_seconds()<target){{std::lock_guard<std::mutex> lock(mutex_);if(stopping_)return;}wait_until(target);}
-                const double observed=monotonic_seconds();
-                {std::lock_guard<std::mutex> lock(mutex_);++played_;if(observed-target>1/fps_)++late_;if(samples_.size()<128)samples_.push_back({{"version",chunk.version},{"target_monotonic_s",target},{"observed_monotonic_s",observed}});}
-                target+=1/fps_;
-            }
-            while(monotonic_seconds()<target){{std::lock_guard<std::mutex> lock(mutex_);if(stopping_)return;}wait_until(target);}
-            {std::lock_guard<std::mutex> lock(mutex_);current_=false;}
-        }
-    }
-};
-
-Json stream(const Json& phase,Workers& workers,Budget& budget,Json& record,const fs::path& work){
-    auto rows=study_workload(phase);
-    const auto policy=phase.value("prompt_policy","fifo");
-    if(policy!="fifo" && policy!="latest_only" && policy!="latest_only_flush")throw std::invalid_argument("unknown prompt policy");
-    const int buffer=int_field(phase,"buffer_chunks",0,0);if(buffer>2)throw std::invalid_argument("buffer_chunks must be 0, 1 or 2");
-    const double fps=number(phase.value("fps",Json(16)),"fps",true),origin=monotonic_seconds();
-    const int chunks=int_field(phase,"chunks",2,1);
-    std::map<std::string,std::unique_ptr<Player>> players;std::map<std::string,std::string> states;
-    std::map<std::string,std::deque<Json>> pending;std::map<std::string,int> produced,versions;std::map<std::string,std::size_t> cursors;
-    Json events=Json::array();std::size_t cursor=0,finished=0;
-    for(auto& row:rows){row["observation_id"]=phase.at("_observation_id");row["phase"]=phase.at("id");row["attempt"]=phase.at("_attempt");row["cell"]=phase.at("_cell");row["order"]=phase.at("_order");row["quality"]={{"status","unverified"},{"passed",false}};}
-    try{while(finished<rows.size()){
-        if(cancelled())throw std::runtime_error("run cancelled");
-        budget.check();const double now=(monotonic_seconds()-origin)*1000;
-        bool advanced=false;
-        for(std::size_t offset=0;offset<rows.size();++offset){
-            const std::size_t i=(cursor+offset)%rows.size();auto& row=rows[i];
-            if(row["status"]!="pending" || number_field(row,"arrival_ms")>now)continue;
-            const auto id=row.at("request_id").get<std::string>(),worker=row.at("worker").get<std::string>();
-            auto& runtime=workers.get(worker);
-            row["worker_pids"][worker]=runtime.process->pid();
-            if(!states.count(id)){
-                auto spec=row.at("spec");spec["blocks"]=chunks;spec["steps"]=chunks;
-                auto prepared=runtime.call({{"op","prepare"},{"spec",spec}},budget.deadline());
-                states[id]=prepared.at("state_id").get<std::string>();players[id]=std::make_unique<Player>(fps,buffer);row["start_ms"]=now;
-            }
-            const auto updates=row.value("updates",Json::array());
-            while(cursors[id]<updates.size() && number_field(updates[cursors[id]],"arrival_ms")<=now){
-                Json event=updates[cursors[id]++];event["request_id"]=id;event["status"]="pending";
-                if(policy!="fifo")while(!pending[id].empty()){auto old=pending[id].front();pending[id].pop_front();old["status"]="superseded_before_encoding";events.push_back(old);}
-                pending[id].push_back(event);
-            }
-            if(!pending[id].empty()){
-                auto update=pending[id].front();pending[id].pop_front();
-                const int version=update.value("version",versions[id]+1);
-                runtime.call({{"op","update_prompt"},{"state_id",states[id]},{"prompt",update.at("prompt")},{"prompt_version",version}},budget.deadline());
-                versions[id]=version;update["status"]="applied";update["applied_ms"]=(monotonic_seconds()-origin)*1000;update["semantic_status"]="unverified";events.push_back(update);
-                if(policy=="latest_only_flush")players[id]->flush();
-            }
-            if(!players[id]->room())continue;
-            auto result=runtime.call({{"op","advance"},{"state_id",states[id]},{"steps",1}},budget.deadline());
-            const int frames=int_field(result,"frames",1,1);
-            players[id]->accept(frames,versions[id],monotonic_seconds());
-            add_artifacts(record,result,work,phase.value("artifact_dependencies",Json::array({"semantic_blind_review"})));
-            row["model_ms"]=number_field(row,"model_ms")+number_field(result,"model_ms");
-            ++produced[id];cursor=(i+1)%rows.size();advanced=true;
-            if(produced[id]>=chunks){
-                auto output=runtime.call({{"op","finish"},{"state_id",states[id]}},budget.deadline());
-                // LongLive's finish references the last registered chunk.
-                if(output.value("output_scope","")!="last_chunk; controller retains per-chunk artifacts")
-                    add_artifacts(record,output,work,phase.value("artifact_dependencies",Json::array({"semantic_blind_review"})));
-                row["outputs"]=Json::array({output});
-                runtime.call({{"op","release"},{"state_id",states[id]}},budget.deadline());
-                row["status"]="completed";row["finish_ms"]=(monotonic_seconds()-origin)*1000;++finished;
-            }
-            break;
-        }
-        if(!advanced)wait_until(monotonic_seconds()+.001);
-    }
-    const double drain=monotonic_seconds()+number_field(phase,"playback_drain_seconds",chunks/fps*16+1);
-    while(monotonic_seconds()<drain){if(cancelled())throw std::runtime_error("run cancelled");budget.check();bool empty=true;for(auto& item:players)if(!item.second->empty())empty=false;if(empty)break;wait_until(monotonic_seconds()+.005);}
-    bool drained=true;
-    for(auto& row:rows)if(!players.at(row.at("request_id").get<std::string>())->empty()){
-        drained=false;row["status"]="failed";row["error"]="playback drain timed out";
-    }
-    if(!drained)throw std::runtime_error("playback drain timed out");
-    }catch(const std::exception& error){
-        const double elapsed=(monotonic_seconds()-origin)*1000;
-        for(auto& row:rows){
-            const auto id=row.at("request_id").get<std::string>();
-            if(players.count(id)){players[id]->stop();row["playback"]=players[id]->result();}
-            if(row["status"]=="pending")row["status"]="interrupted";
-            row["observation_ms"]=elapsed;if(!row.contains("finish_ms"))row["finish_ms"]=elapsed;
-            row["interruption"]=error.what();
-        }
-        record["requests"].insert(record["requests"].end(),rows.begin(),rows.end());
-        record["prompt_events"]=events;
-        throw;
-    }
-    for(auto& row:rows){const auto id=row.at("request_id").get<std::string>();players[id]->stop();row["playback"]=players[id]->result();row["quality"]={{"status","unverified"},{"passed",false}};}
-    for(auto& item:pending)for(auto event:item.second){event["status"]="pending_at_stop";events.push_back(event);}
-    return {{"requests",rows},{"metrics",request_summary(rows)},{"prompt_events",events},{"semantic_status","unverified"},{"elapsed_ms",(monotonic_seconds()-origin)*1000}};
 }
 
 Json operations(const Json& phase,Workers& workers,Budget& budget,Json& record,const fs::path& work,const fs::path& cell_dir){
@@ -931,8 +565,7 @@ bool execute_cells(const Json& phase,const Json& request,const Json& devices,
             }
         });
         try{
-            const auto kind=cell.value("kind","online");
-            Json result=cell.contains("actions")?operations(cell,workers,budget,record,work,cell_dir):kind=="streaming"?stream(cell,workers,budget,record,work):kind=="cluster"?cluster(cell,workers,budget,record,work):replay(cell,workers,budget,record,work,cell_dir);
+            Json result=cell.at("kind")=="operations"?operations(cell,workers,budget,record,work,cell_dir):cluster(cell,workers,budget,record,work);
             result["cell"]=order[position];result["order"]=position<cells.size()?"forward":"reverse";result["status"]="completed";
             for(auto row:result.value("requests",Json::array())){row["phase"]=id;row["attempt"]=attempt_number;row["cell"]=order[position];row["order"]=result["order"];
                 row["observation_id"]=id+"/"+std::to_string(attempt_number)+"/"+std::to_string(position);
@@ -975,10 +608,12 @@ void validate(const Json& config){
     }
     const auto phases=config.at("phases");if(!phases.is_array() || phases.empty())throw std::invalid_argument("phases must be a nonempty array");
     std::set<std::string> seen;
-    const std::set<std::string> kinds={"profile","online","state","sp","streaming","session","cluster"};
+    // Scripted per-worker actions (numeric checks, cost profiles, SP ranks)
+    // or the concurrent serving executor; nothing else runs models.
+    const std::set<std::string> kinds={"operations","cluster"};
     for(const auto& phase:phases){
         const auto id=segment(phase.at("id").get<std::string>());if(seen.count(id))throw std::invalid_argument("duplicate phase");
-        if(!kinds.count(phase.value("kind","online")))throw std::invalid_argument("unknown executor kind");
+        if(!kinds.count(phase.value("kind","")))throw std::invalid_argument("phase kind must be operations or cluster");
         for(const auto& dependency:phase.value("requires",Json::array())){
             const auto parent=dependency.is_string()?dependency.get<std::string>():dependency.at("phase").get<std::string>();
             if(!seen.count(parent))throw std::invalid_argument("phase dependency must precede its consumer");
@@ -993,7 +628,7 @@ void validate(const Json& config){
             throw std::invalid_argument("admission wait must be <=24h and poll in (0,60] seconds");
         evaluate_gates(Json::object(),phase.value("gates",Json::array()));
         for(const auto& cell:expand_matrix(phase)){
-            if(cell.at("id")!=id || !kinds.count(cell.value("kind","online")))throw std::invalid_argument("matrix cannot change phase identity or introduce an unknown executor");
+            if(cell.at("id")!=id || cell.value("kind","")!=phase.value("kind",""))throw std::invalid_argument("matrix cannot change phase identity or executor");
             if(cell.contains("worker_config")&&!cell.at("worker_config").is_object())throw std::invalid_argument("worker_config must be an object");
             auto known=[&](const std::string& worker){if(!config.at("workers").contains(worker))throw std::invalid_argument("unknown worker: "+worker);};
             if(cell.contains("worker_config")){
@@ -1001,51 +636,32 @@ void validate(const Json& config){
                 for(const auto* field:{"device","gpu_uuid","device_id","backend","work_dir"})
                     if(cell.at("worker_config").contains(field))throw std::invalid_argument("matrix cannot change worker device or identity");
             }
-            if(cell.contains("actions")){
-                if(!cell.at("actions").is_array()||cell.at("actions").empty())throw std::invalid_argument("actions must be a nonempty array");
+            if(cell.at("kind")=="operations"){
+                if(!cell.contains("actions")||!cell.at("actions").is_array()||cell.at("actions").empty())throw std::invalid_argument("operations phases need a nonempty actions array");
                 std::set<std::string> ranks;
                 for(const auto& worker:cell.value("workers",Json::array({cell.value("worker","model")}))){
                     const auto name=worker.get<std::string>();known(name);
                     if(!ranks.insert(name).second)throw std::invalid_argument("each rank requires a distinct worker");
                 }
-            }else{
-                for(const auto& item:cell.value("warmup",Json::array())){
-                    known(item.at("worker").get<std::string>());
-                    if(item.contains("spec")&&!item.at("spec").is_object())throw std::invalid_argument("warmup spec must be an object");
-                }
-                if(cell.contains("text_prefetch_workers")){
-                    if(!cell.at("text_prefetch_workers").is_array())throw std::invalid_argument("text_prefetch_workers must be an array of worker names");
-                    for(const auto& worker:cell.at("text_prefetch_workers"))known(worker.get<std::string>());
-                }
-                const auto rows=study_workload(cell);if(rows.empty())throw std::invalid_argument("phase workload must be nonempty");
-                if(cell.value("kind","online")=="cluster"){
-                    // Slots name the per-GPU video and image workers; rows name cost classes.
-                    const auto& slots=cell.at("gpus");
-                    if(!slots.is_array()||slots.empty())throw std::invalid_argument("cluster gpus must be a nonempty array of worker slots");
-                    std::set<std::string> names;
-                    for(const auto& slot:slots)for(const auto* role:{"video","image"}){
-                        const auto name=slot.at(role).get<std::string>();known(name);
-                        if(!names.insert(name).second)throw std::invalid_argument("each cluster slot needs its own workers");
-                    }
-                    const ClusterCost cost(cell.at("profile"));
-                    if(!cluster_policy(cell.at("policy").get<std::string>()))throw std::invalid_argument("unknown cluster policy");
-                    for(const auto& row:rows)if(cost.klass(row.at("class").get<std::string>()).at("kind")!=row.at("kind"))
-                        throw std::invalid_argument("request kind differs from its cost class");
-                    continue;
-                }
-                for(const auto& row:rows){
-                    known(row.at("worker").get<std::string>());
-                    const auto list=stages(row);
-                    if(!list.is_array()||list.empty())throw std::invalid_argument("request stages must be nonempty");
-                    for(const auto& stage:list){known(stage.value("worker",row.at("worker").get<std::string>()));if(stage.contains("spec")&&!stage.at("spec").is_object())throw std::invalid_argument("stage spec must be an object");}
-                    double arrival=-1;int version=0;
-                    for(const auto& update:row.value("updates",Json::array())){
-                        const double next=number_field(update,"arrival_ms");const int next_version=int_field(update,"version",version+1,1);
-                        if(next<arrival||next_version<=version)throw std::invalid_argument("prompt updates must have ordered arrivals and increasing versions");
-                        update.at("prompt").get<std::string>();arrival=next;version=next_version;
-                    }
-                }
+                continue;
             }
+            for(const auto& item:cell.value("warmup",Json::array())){
+                known(item.at("worker").get<std::string>());
+                if(item.contains("spec")&&!item.at("spec").is_object())throw std::invalid_argument("warmup spec must be an object");
+            }
+            const auto rows=study_workload(cell);if(rows.empty())throw std::invalid_argument("phase workload must be nonempty");
+            // Slots name the per-GPU video and image workers; rows name cost classes.
+            const auto& slots=cell.at("gpus");
+            if(!slots.is_array()||slots.empty())throw std::invalid_argument("cluster gpus must be a nonempty array of worker slots");
+            std::set<std::string> names;
+            for(const auto& slot:slots)for(const auto* role:{"video","image"}){
+                const auto name=slot.at(role).get<std::string>();known(name);
+                if(!names.insert(name).second)throw std::invalid_argument("each cluster slot needs its own workers");
+            }
+            const ClusterCost cost(cell.at("profile"));
+            if(!cluster_policy(cell.at("policy").get<std::string>()))throw std::invalid_argument("unknown cluster policy");
+            for(const auto& row:rows)if(cost.klass(row.at("class").get<std::string>()).at("kind")!=row.at("kind"))
+                throw std::invalid_argument("request kind differs from its cost class");
         }
     }
 }
