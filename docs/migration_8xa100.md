@@ -9,7 +9,7 @@
 | C++ 控制面、`cluster` 执行器、模拟器 | CPU 测试；mock 8 worker 并发 | 真实 8 slot 回放 |
 | Wan 1.3B / Sana 单卡后端 | A100 数值验收与混合回放（`results/a100-e0-acceptance`） | 每张卡重复 E0 |
 | SP 对齐进程组（2/4/8） | 四进程布局与原实现相同；8 进程只经 CPU 契约 | NCCL 初始化、等价性、扩展曲线 |
-| SP 内 block 执行、跨组状态迁移 | 未实现（真实后端固定 SP1、不换组） | 先实现，再按第 5 步验收 |
+| SP 内 block 执行、跨组状态迁移 | 已实现：block quanta 的组内安全点、step 边界换组（host-staged 导出/导入），`cluster` 执行器 `sp_transport=export`；只有 Gloo/CPU 契约（与 SP1 逐位一致） | 按第 5 步验收 |
 | PCIe 拓扑与 all-to-all 带宽 | 无法在本机测 | 第 1–2 步 |
 
 ## 模型集
@@ -56,7 +56,7 @@ HF_HUB_OFFLINE=0 huggingface-cli download black-forest-labs/FLUX.1-dev --local-d
    该工具测 pair、quad 和 8 卡的 concurrent/isolated 每 rank 带宽，结果替换模拟器成本画像中的 `links`。通过标准：所有组完成；记录各档 GB/s。
 3. **单卡冒烟。** `ditserve doctor`；每张卡跑一次 `configs/studies/target-8xa100/acceptance.json`（替换 GPU UUID；模型路径已按 `/models` 挂载布局填写）。通过标准：数值阶段精确一致，混合回放全部完成。
 4. **8 slot 并发回放（SP1）。** `configs/studies/target-8xa100/cluster_sp1.json`：每张卡一个 Wan block worker + 一个图像 worker，按混合负载运行 `static_sp1` 与 `block_elastic`（约 300 ms quantum，可抢占解码）。通过标准：全部请求完成，账本结算，GPU 隔离观测为 exclusive。
-5. **SP 等价性。** 先实现 SP 组内的 block 执行与 step 边界换组，再用 1.3B 和 Wan2.2-5B（如做 14B 也一并）比较 SP1 与 SP2/4/8 的输出：latent 在 BF16/FP16 容差内一致，且有明确记录的最大误差。通过前不得报告 SP 下的任何性能结论。
+5. **SP 等价性。** SP 组内的 block 执行与 step 边界换组已有 CPU 契约实现，用 1.3B 和 Wan2.2-5B（如做 14B 也一并）比较 SP1 与 SP2/4/8 的输出：latent 在 BF16/FP16 容差内一致，且有明确记录的最大误差。通过前不得报告 SP 下的任何性能结论。
 6. **SP 扩展曲线。** 对 {480p, 720p} × {17, 33, 81} 帧 × SP{1,2,4,8} 测每步时间，拟合成本画像中的 `sp_efficiency`、`links` 和 `comm_mb_per_step`，与本机推演（Phase 4）的预测比较。通过标准：模拟器对留出形状的每步时间误差 ≤10%。
 7. **主实验。** 按负载曲线比较 `static_spK`、`step_elastic`、`block_elastic`（含 lazy/eager 抢占消融），多 seed，报告 SLO 达成率、goodput、分类别 p50/p95/p99。
 

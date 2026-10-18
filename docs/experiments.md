@@ -38,7 +38,7 @@
 
 矩阵键是相对于 phase 的 JSON pointer，按键排序生成笛卡尔积，最多 10000 个 cell。例如 `/policy`、`/quantum`、`/worker_config/options/execution`。`worker_config` 合并到该 cell 指定 `worker`（默认 `model`）的配置；不能改变 worker 设备或身份。每个观测的模型进程持续复用，cell 间重新创建以隔离配置。配对时记录 cell、正/逆次序和独立 observation ID，失败观测保留在分母中。
 
-`workers.<name>` 包含 `backend`、`python`、`gpu_uuid`、`config` 和可选环境变量；单个进程只绑定自己的完整 GPU UUID，模型使用 `cuda:0`。不能用环境变量覆盖 GPU 绑定、冻结源码或离线加载。SP 实现使用 2/4/8 个独立 rank 的对齐组（rank 按 PCIe/socket 拓扑顺序编号），Flash attention；四卡布局与原固定组相同，8 卡及 SP 内 block 执行未经 GPU 验证；缓存特征的跨 SP 迁移仍不支持。集体操作必须列出不同 worker，`actions[].per_rank` 可提供每个 rank 的补丁。
+`workers.<name>` 包含 `backend`、`python`、`gpu_uuid`、`config` 和可选环境变量；单个进程只绑定自己的完整 GPU UUID，模型使用 `cuda:0`。不能用环境变量覆盖 GPU 绑定、冻结源码或离线加载。SP 实现使用 2/4/8 个独立 rank 的对齐组（rank 按 PCIe/socket 拓扑顺序编号），Flash attention；四卡布局与原固定组相同。block worker 可加入 SP 组：step 在首个 block 前开启，停在 step 内部的每个 quantum 是组内共识安全点，求解器提交时关闭；组只在 step 边界按控制器下发的 `group`/`epoch` 切换。8 卡与 SP 内 block 执行未经 GPU 验证；缓存特征的跨 SP 迁移仍不支持。集体操作必须列出不同 worker，`actions[].per_rank` 可提供每个 rank 的补丁。
 
 显式 `actions` 可用于任意 kind，动作包括 `prepare`、`advance`、`snapshot`、`restore`、`reference`、`finish`、`release`、`evaluate`、`distributed`。动作必须自己声明稳定 state ID，后续通过该 ID 引用；常规回放自动处理状态 ID。这样可以表达校准、独立基线、数值检查和 SP 流程，不增加 Python 编排层。
 
@@ -84,7 +84,7 @@ FLUX 可设置 `workers.<name>.config.options.profile:true`，记录 text/DiT/sc
 
 成本画像 `profile` 的 `provenance` 必须为 measured、extrapolated、synthetic 或 mixed。视频类别给出 steps、blocks_per_step、可选 min_degree（单卡放不下时的最小 SP 度，固定 SP 策略也会提升到该值）、prepare/encode/finish、SP1 每步计算时间、每步 Ulysses all-to-all 全序列字节数与集合通信次数；`links` 按 SP 度给出每 rank 带宽和延迟；`sp_efficiency` 与 `resize_ms` 描述并行效率与 step 边界换组成本。模拟结果只描述成本模型，不是模型执行。
 
-真实后端在 SP 内 block 执行与跨 GPU 状态迁移验证前固定为 SP1 且不换组（`real_backends_pinned_sp1`）；mock 后端可按 `options.costs` 和 `sp_degree` 模拟耗时以测试并发与换组。`simulate` 配置包括 `profile`、`generator`/`workload`、`gpus`、`policies`、`options`、`matrix`；未给出时使用内置 synthetic 示例（`configs/simulation.json` 为完整样例）。
+`options.sp_transport` 决定请求如何到达新组的 rank：`pinned`（真实后端默认）固定 SP1 且不换组（`real_backends_pinned_sp1`）；`resume`（仅 mock）按 step/block 计数在新 rank 重新 prepare；`export` 让各卡视频 worker 组成一个进程组（`options.sp_port`，默认 29600），由一个 rank prepare，进入组的 rank 在任何 rank 推进前导入其 step 边界状态的 host-staged 副本（`block_export`/`block_import`，目录 `options.transfer_dir`，默认工作目录下 `transfer/`）。`export` 需要 2/4/8 张卡；请求记录 `transfers`、`transfer_bytes`、`transfer_export_ms`。mock 后端可按 `options.costs` 和 `sp_degree` 模拟耗时以测试并发与换组。`simulate` 配置包括 `profile`、`generator`/`workload`、`gpus`、`policies`、`options`、`matrix`；未给出时使用内置 synthetic 示例（`configs/simulation.json` 为完整样例）。
 
 ## 预算、阶段和资格
 
