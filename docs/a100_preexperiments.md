@@ -39,3 +39,29 @@ GPU 用量合计约 11,500 GPU·s（约 3.2 h），在 12 GPU·h 预算以内。
 - 所有 GPU 数据都只有一个输入或一个 seed。负载曲线（E3）仍需增加 seed 和形状。
 - 评测中同时报告按时率和 p99；`late_short_ms` 的取值需要在目标机上做敏感性分析。
 - E4 的 14B 成本与 PCIe 带宽仍为估计值；到货后用目标机实测替换并重跑。
+
+## 收尾清理凭据（2026-10-18）
+
+有 14 个原始文件没有登记为运行产物，因此 finalizer 没有删除它们：
+
+- E1 run01 预热阶段写出的视频和图像。当时预热还没有使用 `output_mode=check`。
+- E5 跨进程使用的 block packet。当时 `block_export` 的输出还没有登记为产物。
+
+两个原因都已在代码中修正。这些文件都没有下游使用：对应运行已全部完成，不会续跑，工作簿与报告已导出并校验过。清理前逐个记录了大小和 SHA256，然后按显式白名单删除，共回收 2462944993 字节。删除后只能查看历史指标，这些原始数据无法恢复，也不能重新评测。
+
+| 路径 | 字节 | SHA256 |
+| --- | --- | --- |
+| `.cache/results-work/a100-e1-parity/run01/attempts/replay/attempt-1/cell-0/artifacts/wan/output-3485f442c3bd5349-4.npy` | 388178048 | `dc14b01537c2a5b9c5039eb25fd6f0aa31565ed8fff57f2dab7a4fc83e042f66` |
+| `.cache/results-work/a100-e1-parity/run01/attempts/replay/attempt-1/cell-1/artifacts/wan/output-3485f442c3bd5349-4.npy` | 388178048 | `dc14b01537c2a5b9c5039eb25fd6f0aa31565ed8fff57f2dab7a4fc83e042f66` |
+| `.cache/results-work/a100-e1-parity/run01/attempts/replay/attempt-1/cell-2/artifacts/wan/output-3485f442c3bd5349-4.npy` | 388178048 | `dc14b01537c2a5b9c5039eb25fd6f0aa31565ed8fff57f2dab7a4fc83e042f66` |
+| `.cache/results-work/a100-e1-parity/run01/attempts/replay/attempt-1/cell-3/artifacts/wan/output-3485f442c3bd5349-4.npy` | 388178048 | `dc14b01537c2a5b9c5039eb25fd6f0aa31565ed8fff57f2dab7a4fc83e042f66` |
+| `.cache/results-work/a100-e5-block-exact/run01/transfer/cand-480x832x17.pt` | 43970663 | `5e9ae64332c076d8dc2130f4b55ab8f7b8e2f045133aea7ec28eeed7e074b76e` |
+| `.cache/results-work/a100-e5-block-exact/run01/transfer/cand-480x832x33.pt` | 72924644 | `4a3f9e36ff88b91435c2ed7d51b84f8ae98449845e930a3f5f6733001bb08578` |
+| `.cache/results-work/a100-e5-block-exact/run01/transfer/cand-480x832x81.pt` | 152596583 | `41768fc5ce85143958de0003c7800ae1108b64652c11ab3bb2fdddc134319ad3` |
+| `.cache/results-work/a100-e5-block-exact/run01/transfer/cand-720x1280x17.pt` | 90665444 | `058663000c7a807fbc68edc9b0dbc316f17357daf2a8bf20950fdc5425b06bdf` |
+| `.cache/results-work/a100-e5-block-exact/run01/transfer/cand-720x1280x33.pt` | 151029863 | `58926cca1763be16952ec5859c6b3a01bd6829a76e105b7ffa786ce4e4b6a66f` |
+| `.cache/results-work/a100-e5-block-exact/run01/transfer/cand-720x1280x81.pt` | 348713444 | `2b439277a745501488d72e844cf44f6c2d28f1b1e74164ad9bfc5d116c4de448` |
+| `.cache/results-work/a100-e1-parity/run01/attempts/replay/attempt-1/cell-0/artifacts/sana/output-be808f9763ab27c9-3.npy` | 12583040 | `fdbcefd6bacfe268c51ce5ce0b5761ab302f08b6004ff47736be3b52e806bf1f` |
+| `.cache/results-work/a100-e1-parity/run01/attempts/replay/attempt-1/cell-1/artifacts/sana/output-be808f9763ab27c9-3.npy` | 12583040 | `fdbcefd6bacfe268c51ce5ce0b5761ab302f08b6004ff47736be3b52e806bf1f` |
+| `.cache/results-work/a100-e1-parity/run01/attempts/replay/attempt-1/cell-2/artifacts/sana/output-be808f9763ab27c9-3.npy` | 12583040 | `fdbcefd6bacfe268c51ce5ce0b5761ab302f08b6004ff47736be3b52e806bf1f` |
+| `.cache/results-work/a100-e1-parity/run01/attempts/replay/attempt-1/cell-3/artifacts/sana/output-be808f9763ab27c9-3.npy` | 12583040 | `fdbcefd6bacfe268c51ce5ce0b5761ab302f08b6004ff47736be3b52e806bf1f` |

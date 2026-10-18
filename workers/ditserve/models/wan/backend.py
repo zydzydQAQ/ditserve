@@ -247,8 +247,11 @@ class WanBackend(Backend):
             self.executor.close(self.continuations.pop(key))
             self.runtime.release(state)
             del self.states[key]
-        return dict(timing, path=str(destination), sha256=file_hash(destination), bytes=destination.stat().st_size,
-                    layout=layout, released=bool(request.get("release", True)))
+        digest, size = file_hash(destination), destination.stat().st_size
+        # Registered as a raw artifact so the run finalizer prunes it after use.
+        return dict(timing, path=str(destination), sha256=digest, bytes=size, layout=layout,
+                    released=bool(request.get("release", True)),
+                    artifacts=[dict(path=str(destination), sha256=digest, bytes=size, kind="raw")])
 
     def block_import(self, request):
         if self.execution != "block":
