@@ -101,8 +101,8 @@ class LayoutHandle:
     """
 
     def __init__(self, rank, initial_ranks=None):
-        if type(rank) is not int or not 0 <= rank < 4:
-            raise ParallelContractError("rank must be one of 0, 1, 2, 3")
+        if type(rank) is not int or not 0 <= rank < max(WORLD_SIZES):
+            raise ParallelContractError("rank must be in [0, %d)" % max(WORLD_SIZES))
         self.rank = rank
         self.current = FixedLayout((rank,) if initial_ranks is None else initial_ranks)
         if rank not in self.current.ranks:
@@ -116,6 +116,22 @@ class LayoutHandle:
         if expected_epoch != self.current.epoch:
             raise ParallelContractError("stale layout epoch")
         candidate = FixedLayout(ranks, self.current.epoch + 1)
+        if self.rank not in candidate.ranks:
+            raise ParallelContractError("local rank is not in the new group")
+        self.current = candidate
+        return candidate
+
+    def adopt(self, ranks, *, epoch):
+        """Take a controller placement at a step boundary.
+
+        A cluster worker serves requests on different groups, so epochs are
+        not local counters: the controller gives every rank of a placement the
+        same epoch, and group consensus then also checks that all ranks act on
+        one placement.
+        """
+        if self.active is not None or self.failed:
+            raise ParallelContractError("layout can change only at a healthy step boundary")
+        candidate = FixedLayout(ranks, epoch)
         if self.rank not in candidate.ranks:
             raise ParallelContractError("local rank is not in the new group")
         self.current = candidate

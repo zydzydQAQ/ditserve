@@ -33,32 +33,38 @@ class WanBlockExecutor:
 
     Only this executor may advance an attached base state. Cancellation discards
     an unfinished step; callers must release rather than resume that request.
-    Safe points are synchronous and local to one GPU; this is not SP support.
+    Without ``parallel`` safe points are local to one GPU. With the attached
+    Ulysses backend every rank of the request group runs the same quanta: the
+    step opens before its first block, each quantum that stops inside the step
+    is a collective safe point, and the solver commit closes the step.
     """
 
-    def __init__(self, worker):
-        self.worker, self.model = worker, worker.pipe.transformer
+    def __init__(self, worker, parallel=None):
+        self.worker, self.model, self.parallel = worker, worker.pipe.transformer, parallel
         self._validate_model()
         self._owner, self._states, self._advancing = object(), {}, False
 
     def _validate_model(self):
         from diffusers.models.transformers.transformer_wan import WanTransformer3DModel, WanTransformerBlock
         model = self.model
-        if (type(model) is not WanTransformer3DModel or len(model.blocks) != 30
-                or tuple(model.config.patch_size) != (1, 2, 2)
-                or model.config.in_channels != 16 or model.config.num_attention_heads != 12
+        if (type(model) is not WanTransformer3DModel or tuple(model.config.patch_size) != (1, 2, 2)
+                or model.config.added_kv_proj_dim is not None or model.config.image_dim is not None
                 or model.gradient_checkpointing or getattr(model, "_is_parallelized", False)
                 or getattr(model, "peft_config", None) or getattr(model, "_hf_peft_config_loaded", False)):
-            raise ValueError("block execution requires the unadapted pinned Wan1.3B model")
-        if self.worker.torch.distributed.is_initialized():
-            raise ValueError("single-GPU block execution does not implement collective safe points")
+            raise ValueError("block execution requires an unadapted Wan T2V transformer")
+        if self.worker.torch.distributed.is_initialized() and self.parallel is None:
+            raise ValueError("block execution in a process group requires the SP attachment's safe points")
         if any(type(block) is not WanTransformerBlock for block in model.blocks):
             raise ValueError("unknown Wan block implementation")
+        # The SP attachment shards at the patch embedding and RoPE and gathers at the
+        # output projection; any other hook would change the arithmetic unseen.
+        sharding = {id(model.patch_embedding), id(model.rope), id(model.proj_out)} if self.parallel else set()
         for module in model.modules():
             if (module.training or getattr(module, "_hf_hook", None) is not None
                     or getattr(module, "_orig_mod", None) is not None
                     or getattr(module, "_compiled_call_impl", None) is not None
-                    or getattr(module, "_forward_hooks", {}) or getattr(module, "_forward_pre_hooks", {})):
+                    or (getattr(module, "_forward_hooks", {}) and id(module) not in sharding)
+                    or getattr(module, "_forward_pre_hooks", {})):
                 raise ValueError("training, module hooks, offload and compilation are unsupported")
 
     def attach(self, base):
@@ -159,6 +165,8 @@ class WanBlockExecutor:
                 for _ in range(blocks):
                     check_budget()
                     if state.packet is None:
+                        if self.parallel is not None and state.branch == "cond":
+                            self.parallel.begin_step(state.base)
                         self._begin(state)
                     packet, index, branch = state.packet, state.next_block, state.branch
                     if observe:
@@ -176,6 +184,13 @@ class WanBlockExecutor:
                         if completed:
                             break
                 worker._sync()
+                if self.parallel is not None:
+                    if completed:
+                        self.parallel.end_step()
+                    else:
+                        self.parallel.quantum_point(dict(request_id=state.base.request_id, step=state.committed_step,
+                                                         branch=state.branch, next_block=state.next_block,
+                                                         blocks=executed))
                 wall_ms = (time.perf_counter() - started) * 1000
                 row = dict(kind="block_quantum", step_index=step, branch=initial_branch,
                            start_block=initial_block, next_block=state.next_block, next_branch=state.branch,
@@ -187,6 +202,8 @@ class WanBlockExecutor:
                 return row
             except BaseException:
                 state.failed = True
+                if self.parallel is not None:
+                    self.parallel.handle.fail()
                 raise
             finally:
                 self._advancing = False
@@ -218,7 +235,7 @@ class WanBlockExecutor:
             check_budget()
             self._advancing = True
             try:
-                event = self.worker.step(state.base)
+                event = (self.parallel or self.worker).step(state.base)
                 state.committed_step = state.base.step_index
                 record = dict(event, kind="native_step", step_completed=True, extra_state_bytes=0,
                               block_cuda_ms=[], blocks=len(self.model.blocks) *
@@ -275,6 +292,11 @@ def export_block_state(executor, state):
         executor._check(state)
         if executor._advancing:
             raise RuntimeError("cannot export during block execution")
+        # Inside an SP step the packet holds this rank's token shard; only the
+        # replicated step-boundary state can move to another group.
+        if executor.parallel is not None and (state.packet is not None or state.conditional is not None
+                                              or state.branch != "cond" or state.next_block):
+            raise ValueError("SP block export is limited to solver-step boundaries")
         worker._sync()
         started = time.perf_counter()
         base, tensors = pack_cache_off_request(worker, state.base)

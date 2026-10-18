@@ -1,8 +1,10 @@
 """Pinned Wan Ulysses attachment for research, with no implicit GPU launch.
 
-The attachment supplies actual per-step split/attention/gather operations and
-narrow cache-off request transport between all4 and group01. Cached feature
-transport and GPU qualification remain unsupported. Imports are CPU-only/lazy.
+The attachment supplies actual split/attention/gather operations for whole
+steps and for block quanta (WanBlockExecutor), controller-placed layouts that
+change only at solver-step boundaries, and the narrow cache-off all4/group01
+transport. Cached feature transport and GPU qualification remain unsupported.
+Imports are CPU-only/lazy.
 """
 
 import importlib
@@ -56,6 +58,7 @@ class PinnedWanUlyssesBackend:
         distributed_request_transport=False, gpu_validated=False,
         cache_off_group01_transport=True, cached_feature_transport=False,
         elastic_model_equivalence_validated=False,
+        block_quantum_safe_points=True, step_boundary_regroup="host_staged_file",
     )
 
     def __init__(self, handle, groups):
@@ -77,18 +80,20 @@ class PinnedWanUlyssesBackend:
             if importlib.metadata.version(package) != version:
                 raise ParallelContractError("unsupported pinned dependency: " + package)
         torch = importlib.import_module("torch")
-        if self.groups.backend != "nccl" or not torch.cuda.is_available():
+        # NCCL on CUDA is the only execution path; Gloo on a CPU worker is the contract harness.
+        contract = self.groups.backend == "gloo" and torch.device(worker.device).type == "cpu"
+        if not contract and (self.groups.backend != "nccl" or not torch.cuda.is_available()):
             raise ParallelContractError("Wan execution requires initialized NCCL and an available GPU")
         wan = importlib.import_module("diffusers.models.transformers.transformer_wan")
         model = worker.pipe.transformer
         if type(model) is not wan.WanTransformer3DModel:
             raise ParallelContractError("only the pinned WanTransformer3DModel is supported")
+        # Token and RoPE sharding read their sizes from the tensors, so any Wan T2V
+        # width or depth works; image conditioning adds context tokens it does not split.
         if (tuple(model.config.patch_size) != (1, 2, 2)
-                or model.config.num_attention_heads != 12 or model.config.num_layers != 30
-                or model.config.in_channels != 16 or model.config.out_channels != 16
-                or model.config.added_kv_proj_dim is not None):
-            raise ParallelContractError("only Wan2.1 T2V 1.3B is supported")
-        if worker.attention != "flash":
+                or model.config.added_kv_proj_dim is not None or model.config.image_dim is not None):
+            raise ParallelContractError("only Wan T2V transformers without image conditioning are supported")
+        if worker.attention != "flash" and not contract:
             raise ParallelContractError("research SP requires the explicit Flash attention worker")
         if (getattr(model, "_cp_config", None) is not None
                 or getattr(model, "_parallel_config", None) is not None
@@ -104,7 +109,7 @@ class PinnedWanUlyssesBackend:
             # Ulysses consumes only this 1D mesh. Reuse the already-created group;
             # do not create communicators while handling a request.
             config._ulysses_mesh = torch.distributed.device_mesh.DeviceMesh.from_group(
-                self.groups.group(ranks), "cuda", mesh=list(ranks), mesh_dim_names=("ulysses",))
+                self.groups.group(ranks), "cpu" if contract else "cuda", mesh=list(ranks), mesh_dim_names=("ulysses",))
             config._rank = ranks.index(self.handle.rank)
             config._world_size = len(ranks)
             config._device = torch.device(worker.device)
@@ -197,6 +202,15 @@ class PinnedWanUlyssesBackend:
         self.gate.consensus(dict(kind="step_complete"))
         self.handle.end_step()
         self._active_config = self._bound_epoch = None
+
+    def quantum_point(self, position):
+        """Collective safe point after a block quantum that stops inside a solver step.
+
+        The step stays active; every rank must report the same request position
+        before any of them returns, so a diverged quantum fails here, not later.
+        """
+        self._require_active()
+        self.gate.consensus(dict(kind="block_quantum", position=position))
 
     def step(self, state):
         """One real worker step, with group agreement before and after execution."""

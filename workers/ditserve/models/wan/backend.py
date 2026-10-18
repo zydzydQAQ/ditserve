@@ -137,6 +137,8 @@ class WanBackend(Backend):
     def advance(self, request):
         state = self.state(request)
         key = request["state_id"]
+        if request.get("group") is not None:
+            self._adopt(request, state, key)
         records = []
         if key in self.continuations:
             blocks = (2 * len(self.runtime.pipe.transformer.blocks) if request.get("quantum") == "step"
@@ -151,6 +153,21 @@ class WanBackend(Backend):
             raise ValueError("request has no remaining work")
         return dict(state_id=key, progress=self._progress(state), events=records,
                     model_ms=sum(record.get("ms", 0.) for record in records))
+
+    def _adopt(self, request, state, key):
+        """Run this quantum on the controller's group; layouts change only at step boundaries."""
+        group = tuple(request["group"])
+        if self.parallel is None:
+            if len(group) != 1:
+                raise ValueError("an SP group requires distributed init on every rank")
+            return
+        layout = self.parallel.handle.current
+        epoch = request.get("epoch", layout.epoch)
+        if (group, epoch) == (layout.ranks, layout.epoch):
+            return
+        if not self._transfer_ready(state, self.continuations.get(key)):
+            raise ValueError("SP group changes only at a solver-step boundary")
+        self.parallel.handle.adopt(group, epoch=epoch)
 
     def _boundary(self, request):
         state = self.state(request)
@@ -320,25 +337,33 @@ class WanBackend(Backend):
     def distributed(self, request):
         action = request.get("action", "init")
         if action == "init":
-            if self.parallel is not None or self.states or self.execution != "step":
-                raise ValueError("SP initialization requires a fresh whole-step worker")
-            if self.runtime.attention != "flash":
-                raise ValueError("pinned Wan SP requires config.attention=flash")
+            if self.parallel is not None or self.states:
+                raise ValueError("SP initialization requires a fresh worker without request states")
             torch = self.runtime.torch
+            # Gloo on a CPU worker exists only for contract tests; the SP attachment enforces it.
+            backend = request.get("backend", "nccl")
+            if backend not in ("nccl", "gloo"):
+                raise ValueError("SP process groups use NCCL (or Gloo for CPU contracts)")
+            if backend == "nccl" and self.runtime.attention != "flash":
+                raise ValueError("pinned Wan SP requires config.attention=flash")
             world_size = request.get("world_size", 4)
             if world_size not in (2, 4, 8):
                 raise ValueError("aligned-group SP requires 2, 4 or 8 ranks")
             from datetime import timedelta
             if not torch.distributed.is_initialized():
-                torch.distributed.init_process_group(backend="nccl", init_method=request["init_method"],
+                torch.distributed.init_process_group(backend=backend, init_method=request["init_method"],
                     rank=request["rank"], world_size=world_size, timeout=timedelta(seconds=request.get("timeout_seconds", 30)))
                 self.owns_world = True
             from .parallel import LayoutHandle, build_fixed_groups
             from .sp import PinnedWanUlyssesBackend
-            groups = build_fixed_groups(backend="nccl", timeout_seconds=request.get("timeout_seconds", 30))
+            groups = build_fixed_groups(backend=backend, timeout_seconds=request.get("timeout_seconds", 30))
             handle = LayoutHandle(torch.distributed.get_rank(), request.get("ranks"))
             self.parallel = PinnedWanUlyssesBackend(handle, groups).attach(self.runtime)
-            return dict(self.parallel.capabilities, initialized=True)
+            if self.execution == "block":
+                # A warmup may have built a single-GPU executor; block quanta now need SP safe points.
+                from .block import WanBlockExecutor
+                self.executor = WanBlockExecutor(self.runtime, parallel=self.parallel)
+            return dict(self.parallel.capabilities, initialized=True, execution=self.execution)
         if self.parallel is None:
             raise ValueError("distributed init must complete first on every rank")
         if action == "prepare":
