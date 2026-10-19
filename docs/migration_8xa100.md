@@ -26,7 +26,12 @@
 
 Mistral-7B 与 LongLive 不进入默认迁移集：会话与流式不在主线内，LongLive 还需要独立 torch 2.8 环境（约 +7.5GB）。本机 `/mnt/data/Mistral-7B-Instruct-v0.2` 可在需要 LLM 共置或显存压力实验时单独复制。
 
-**Wan2.2-TI2V-5B 的移植工作**（到货后、正式实验前完成，并在 CPU tiny 模型上测试）。现有 Wan 路径按 Wan2.1-1.3B 的形状写死，需要按 5B 的配置文件放开：
+**Wan2.2-TI2V-5B 的移植工作**已在 e2de3e4 完成，Kairos 上的验证见 [kairos_preexperiments.md](kairos_preexperiments.md) 的 K12–K14。实际改动比下面的原清单多出几处：
+- 逐 token 时间步（`expand_timesteps`）：`runtime.model_timestep`、block 执行器，以及 SP 对 `temb`/`timestep_proj` 按序列维的切分；
+- 高和宽要求是 32 的倍数；
+- 状态校验按模型读取 latent 形状。
+
+原清单如下（均已处理）：
 
 - `models/wan/block.py` 的 `_validate_model` 固定为 30 层、12 头、16 输入通道；
 - `models/wan/parallel.py` 的 `_validate_cache_off_values` 固定 latent 为 16 通道、8 倍空间压缩；
