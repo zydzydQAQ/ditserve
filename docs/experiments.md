@@ -82,7 +82,10 @@ FLUX 可设置 `workers.<name>.config.options.profile:true`，记录 text/DiT/sc
 
 所有策略默认采用 feasible-first EDF（`options.demote_late`，默认开启）：即使占用最大组也赶不上期限的请求排在仍可按时完成的请求之后，避免过载时迟到的长视频饿死新到的短请求；剩余工作不超过 `options.late_short_ms`（默认 2000 ms）的迟到请求保留 EDF 位置，避免小的超时被放大成长尾。
 
-迟到判断（feasible-first 降级）假设的 SP 度由 `options.feasibility_degree` 决定：`widest`（默认）用策略的最大度，在负载下偏乐观——整组空闲很少见，只有空闲整机才能救的请求保留 EDF 优先级、以窄组运行并迟到，拖累其后的可行请求；`free` 用规划时刻空闲的最宽对齐组。
+迟到判断（feasible-first 降级）假设的 SP 度由 `options.feasibility_degree` 决定：
+- `free`：弹性策略（`step_elastic`、`block_elastic`）的默认值。用规划时刻真正可用的最宽对齐组：留给图像的卡（`reserve_image_gpus`），以及被别的视频停在 step 中途或正在分段解码占着的卡，都不算空闲。
+- `widest`：用策略的最大度，在负载下偏乐观。整组空闲很少见，只有空闲整机才能救的请求仍保留 EDF 优先级，以窄组运行后迟到，拖累其后本可按时完成的请求。`configs/studies/local-a100/e4*.json` 显式使用 `widest`，以复现原来的 E4 结果。
+- static_spK 始终按固定度数（再提升到该类别的 `min_degree`）判断，忽略这个选项，因此覆盖所有策略的 `/options` 矩阵仍然可用。
 
 成本画像 `profile` 的 `provenance` 必须为 measured、extrapolated、synthetic 或 mixed。视频类别给出 steps、blocks_per_step、可选 min_degree（单卡放不下时的最小 SP 度，固定 SP 策略也会提升到该值）、prepare/encode/finish、SP1 每步计算时间、每步 Ulysses all-to-all 全序列字节数与集合通信次数；`links` 按 SP 度给出每 rank 带宽和延迟；`sp_efficiency` 与 `resize_ms` 描述并行效率与 step 边界换组成本。模拟结果只描述成本模型，不是模型执行。
 

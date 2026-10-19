@@ -150,14 +150,11 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     for (std::size_t g = 0; g < busy.size(); ++g) free[g] = !busy[g].get<bool>();
     // Degree assumed by the lateness test. "widest": the largest policy degree, optimistic under
     // load, where a full group is rarely free: a request only an idle node could save keeps its EDF
-    // priority, runs narrow and misses, delaying feasible work behind it. "free": the widest aligned
-    // group free when this plan starts.
-    const auto feasibility = options.value("feasibility_degree", std::string("widest"));
+    // priority, runs narrow and misses, delaying feasible work behind it. "free" (the default for
+    // elastic policies): the widest aligned group free when this plan starts. Static policies test
+    // at their fixed degree and ignore the option.
+    const auto feasibility = options.value("feasibility_degree", std::string(policy.elastic ? "free" : "widest"));
     if (feasibility != "widest" && feasibility != "free") throw std::invalid_argument("feasibility_degree must be widest or free");
-    int free_widest = 1;
-    for (int d : degrees)
-        for (const auto& group : cluster_groups(gpus, {d}))
-            if (d > free_widest && std::all_of(group.begin(), group.end(), [&](int gpu) { return free[gpu]; })) free_widest = d;
 
     std::vector<const Json*> rows;
     std::set<std::string> ids;
@@ -169,6 +166,25 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         for (int gpu : group_of(row)) if (gpu < 0 || gpu >= gpus) throw std::invalid_argument("request group names an unknown GPU");
         rows.push_back(&row);
     }
+    // GPUs of a video suspended inside a solver step. Its state is resident on
+    // exactly that group, so taking one of them blocks the whole group.
+    std::vector<const Json*> mid_owner(gpus, nullptr);
+    // The worker contract behind that hold: an SP video worker keeps one request
+    // inside a solver step at a time. The decode hold is scheduling policy only.
+    std::vector<const Json*> step_owner(gpus, nullptr);
+    // A chunked decode in progress holds only its decoding GPU.
+    for (const Json* r : rows) {
+        if (r->at("kind") != "video") continue;
+        if (int_field(*r, "decode_done", 0, 0) > 0) mid_owner[group_of(*r).front()] = r;
+        else if (int_field(*r, "blocks_done", 0, 0) > 0) for (int gpu : group_of(*r)) mid_owner[gpu] = step_owner[gpu] = r;
+    }
+    // A group counts as free only if a new placement could take it: not reserved
+    // for images and not held by a video inside a step or decode.
+    int free_widest = 1;
+    for (int d : degrees)
+        for (const auto& group : cluster_groups(gpus, {d}))
+            if (d > free_widest && std::all_of(group.begin(), group.end(), [&](int gpu) { return free[gpu] && !reserved(gpu) && !mid_owner[gpu]; }))
+                free_widest = d;
     // Feasible-first EDF: a request that cannot meet its deadline even on the
     // largest group yields to those that still can, so an overloaded queue of
     // late videos does not starve newly arrived short requests.
@@ -177,7 +193,8 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     // delay feasible work, and demoting them behind a long video only turns a
     // small miss into a very long tail.
     const double late_short_ms = number_field(options, "late_short_ms", 2000);
-    const int widest = feasibility == "free" ? free_widest : *std::max_element(degrees.begin(), degrees.end());
+    const int widest = policy.fixed_degree ? policy.fixed_degree
+                       : feasibility == "free" ? free_widest : *std::max_element(degrees.begin(), degrees.end());
     std::map<const Json*, bool> late;
     for (const Json* r : rows) {
         const int best = r->at("kind") == "image" ? 1 : std::min(std::max(widest, int_field(cost.klass(r->at("class").get<std::string>()), "min_degree", 1)), gpus);
@@ -193,18 +210,6 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     };
     std::sort(rows.begin(), rows.end(), [&](const Json* a, const Json* b) { return edf(a) < edf(b); });
 
-    // GPUs of a video suspended inside a solver step. Its state is resident on
-    // exactly that group, so taking one of them blocks the whole group.
-    std::vector<const Json*> mid_owner(gpus, nullptr);
-    // The worker contract behind that hold: an SP video worker keeps one request
-    // inside a solver step at a time. The decode hold is scheduling policy only.
-    std::vector<const Json*> step_owner(gpus, nullptr);
-    // A chunked decode in progress holds only its decoding GPU.
-    for (const Json* r : rows) {
-        if (r->at("kind") != "video") continue;
-        if (int_field(*r, "decode_done", 0, 0) > 0) mid_owner[group_of(*r).front()] = r;
-        else if (int_field(*r, "blocks_done", 0, 0) > 0) for (int gpu : group_of(*r)) mid_owner[gpu] = step_owner[gpu] = r;
-    }
     auto time_to_boundary = [&](const Json* r) {
         const auto group = group_of(*r);
         const auto klass = r->at("class").get<std::string>();

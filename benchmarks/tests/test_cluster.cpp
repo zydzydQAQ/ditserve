@@ -147,11 +147,23 @@ int main() {
         // One free GPU. "a" needs SP4 (1.16 s) to meet 3 s, SP1 takes 4.1 s; "b" meets 5 s on SP1.
         const Json rows = {video("a", 3000), video("b", 5000)};
         const Json busy = {true, true, true, false};
-        require(plan(rows, "step_elastic", 4, busy)[0].at("request_id") == "a", "widest: SP4 feasibility keeps EDF order");
-        require(plan(rows, "step_elastic", 4, busy, {{"feasibility_degree", "free"}})[0].at("request_id") == "b",
-                "free: the request late on the free GPU yields");
-        require(plan(rows, "step_elastic", 4, Json::array(), {{"feasibility_degree", "free"}})[0].at("request_id") == "a",
-                "free: an idle node still saves it");
+        require(plan(rows, "step_elastic", 4, busy, {{"feasibility_degree", "widest"}})[0].at("request_id") == "a", "widest: SP4 feasibility keeps EDF order");
+        for (const auto* policy : {"step_elastic", "block_elastic"})
+            require(plan(rows, policy, 4, busy)[0].at("request_id") == "b", "elastic default is free: the request late on the free GPU yields");
+        require(plan(rows, "step_elastic", 4, Json::array())[0].at("request_id") == "a", "free: an idle node still saves it");
+        // "a" now meets 2 s on SP4 (1.16 s) but not on SP2 (2.14 s). A reserved image GPU or a
+        // video inside a step on GPU 3 leaves only pairs free.
+        const Json tight = {video("a", 2000), video("b", 5000)};
+        require(plan(tight, "step_elastic", 4)[0].at("request_id") == "a", "an idle node saves the tight video");
+        require(plan(tight, "step_elastic", 4, Json::array(), {{"reserve_image_gpus", 1}})[0].at("request_id") == "b", "reserved GPUs are not free");
+        Json held = tight;
+        held.push_back(video("m", 1e9, {{"status", "suspended"}, {"prepared", true}, {"group", {3}}, {"blocks_done", 2}}));
+        require(plan(held, "block_elastic", 4)[0].at("request_id") == "b", "GPUs held inside a step are not free");
+        // Static policies test lateness at their fixed degree whatever the option says.
+        const Json one_busy = {true, false, false, false};
+        const auto fixed = plan(rows, "static_sp2", 4, one_busy, {{"feasibility_degree", "free"}});
+        require(fixed.size() == 1 && fixed == plan(rows, "static_sp2", 4, one_busy, {{"feasibility_degree", "widest"}}),
+                "static ignores feasibility_degree");
         rejects([] { plan(Json::array({video("v", 1)}), "step_elastic", 4, Json::array(), {{"feasibility_degree", "any"}}); });
     });
     check("lazy block preemption", [] {

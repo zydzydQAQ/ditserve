@@ -215,7 +215,8 @@
  "options": {
   "quantum_ms": 250,
   "lazy_preemption": true,
-  "reserve_image_gpus": 2
+  "reserve_image_gpus": 2,
+  "feasibility_degree": "widest"
  },
  "matrix": {
   "/generator": [

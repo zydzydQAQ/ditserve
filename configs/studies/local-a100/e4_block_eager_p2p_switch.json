@@ -214,7 +214,8 @@
  ],
  "options": {
   "quantum_ms": 250,
-  "lazy_preemption": false
+  "lazy_preemption": false,
+  "feasibility_degree": "widest"
  },
  "matrix": {
   "/generator": [
