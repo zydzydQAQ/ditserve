@@ -2,7 +2,7 @@
 
 ## 实验环境
 
-- 硬件：Kairos 集群（`jjjkairos`），A100-PCIE-40GB，无 NVLink，拓扑为 PHB：所有卡经 CPU host bridge 互连。驱动 570.133.20，低于清单要求的 570.181。
+- 硬件：Kairos 集群（`jjjkairos`），A100-PCIE-40GB，无 NVLink，拓扑为 PHB：所有卡经 CPU host bridge 互连。驱动 570.133.20，低于清单要求的 570.181。2026-10-19 用 1×8 作业整机确认（gpu03，`acceptance/nvlink-20261019t1105z/interconnect.txt`）：8 卡两两之间都是 PHB，`nvidia-smi nvlink --status` 对每张卡报告 "all links are inActive"；P2P 读写可用但走 PCIe；PCI 地址为同一总线上连续的 `00:06.0`–`00:0D.0`，是虚拟机直通布局。
 - 作业规模：1×1、1×2、1×4 容器作业。每张卡配 8 个 CPU、64 GiB 内存上限、32 GB `/dev/shm`；`/shared` 为 NFS 4.2。
 - 镜像：在 `ditserve:rewrite-runtime`（`3a5e738`）上增量替换 `/opt/ditserve`，venv 不变。使用过的标签：
   - `rewrite-runtime`：K0–K2 首轮；
