@@ -17,6 +17,7 @@ struct Running {
     double end;
     int blocks;
     std::size_t partner = SIZE_MAX;   // the second request of a lockstep pair
+    std::vector<std::size_t> batch;   // the other images of a batch
 };
 }
 
@@ -59,7 +60,7 @@ Json simulate_cluster(const Json& config) {
         return form_of(assignment).sp >= 2 && assignment.at("quantum") != "atomic" && assignment.at("quantum") != "finish";
     };
     double now = 0, busy_ms = 0;
-    std::size_t completed = 0, preemptions = 0, resizes = 0, plans = 0, pairs = 0;
+    std::size_t completed = 0, preemptions = 0, resizes = 0, plans = 0, pairs = 0, batches = 0, batched = 0;
     std::vector<std::size_t> arrival_order(rows.size());
     for (std::size_t i = 0; i < rows.size(); ++i) arrival_order[i] = i;
     std::stable_sort(arrival_order.begin(), arrival_order.end(), [&](std::size_t a, std::size_t b) {
@@ -106,7 +107,8 @@ Json simulate_cluster(const Json& config) {
                 const auto quantum = assignment.at("quantum");
                 double duration = dispatch + cost.quantum_overhead_ms();
                 int blocks = 0;
-                if (quantum == "atomic") duration += number_field(cost.klass(klass), "service_ms");
+                if (quantum == "atomic") duration += assignment.contains("batch") ? cost.batch_ms(klass, static_cast<int>(assignment.at("batch").size()))
+                                                                               : number_field(cost.klass(klass), "service_ms");
                 else if (quantum == "finish") {
                     blocks = assignment.value("decode_frames", cost.decode_chunks(klass) - row.value("decode_done", 0));
                     duration += blocks * cost.chunk_ms(klass);
@@ -132,6 +134,10 @@ Json simulate_cluster(const Json& config) {
                 const auto kind = quantum.is_string() ? quantum.get<std::string>() : std::string("blocks");
                 std::vector<std::size_t> members = {at};
                 if (assignment.contains("pair")) members.push_back(index.at(assignment.at("pair").get<std::string>()));
+                if (assignment.contains("batch")) for (const auto& member : assignment.at("batch")) {
+                    const std::size_t m = index.at(member.get<std::string>());
+                    if (m != at) members.push_back(m);
+                }
                 for (std::size_t member : members) {
                     auto& item = rows[member];
                     action_ms[member][kind] = action_ms[member].value(kind, 0.) + duration;
@@ -146,9 +152,13 @@ Json simulate_cluster(const Json& config) {
                 }
                 preemptions += assignment.at("reason") == "block_preempt";
                 pairs += assignment.contains("pair");
+                batches += assignment.contains("batch");
+                if (assignment.contains("batch")) batched += assignment.at("batch").size();
                 for (const auto& gpu : assignment.at("group")) busy[gpu.get<int>()] = true;
                 busy_ms += duration * degree;
-                running.push_back({at, assignment, now + duration, blocks, members.size() > 1 ? members[1] : SIZE_MAX});
+                Running item{at, assignment, now + duration, blocks, assignment.contains("pair") ? members[1] : SIZE_MAX};
+                if (assignment.contains("batch")) item.batch.assign(members.begin() + 1, members.end());
+                running.push_back(item);
             }
         }
 
@@ -174,6 +184,10 @@ Json simulate_cluster(const Json& config) {
                 row["group"] = it->assignment.at("group"); row["form"] = "sp1";
             } else if (quantum == "atomic" || quantum == "finish") {
                 row["status"] = "completed"; row["finish_ms"] = it->end; row["group"] = Json::array(); row.erase("form"); ++completed;
+                for (std::size_t m : it->batch) {
+                    auto& other = rows[m];
+                    other["status"] = "completed"; other["finish_ms"] = it->end; other["group"] = Json::array(); ++completed;
+                }
             } else {
                 std::vector<std::size_t> members = {it->row};
                 if (it->partner != SIZE_MAX) members.push_back(it->partner);
@@ -202,6 +216,7 @@ Json simulate_cluster(const Json& config) {
             {"by_kind", {{"video", kind_summary(rows, "video")}, {"image", kind_summary(rows, "image")}}},
             {"makespan_ms", makespan}, {"gpu_utilization", makespan > 0 ? busy_ms / (gpus * makespan) : 0.},
             {"block_preemptions", preemptions}, {"resizes", resizes}, {"plans", plans}, {"pairs", pairs},
+            {"batches", batches}, {"batched_images", batched},
             {"provenance", cost.profile().at("provenance")}, {"requests", rows},
             {"notice", "Cost-model simulation; durations come from the profile, not from executing models."}};
 }

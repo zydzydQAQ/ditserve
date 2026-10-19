@@ -9,7 +9,7 @@ from .base import Backend, artifact, file_hash, positive_int, progress
 
 
 class MockBackend(Backend):
-    operations = Backend.operations + ("snapshot", "restore", "inventory", "update_prompt", "distributed",
+    operations = Backend.operations + ("snapshot", "restore", "inventory", "update_prompt", "distributed", "generate_batch",
                                       "migration_release", "migration_abort", "encode_start", "encode_poll",
                                       "decode_start", "decode_poll", "block_export", "block_import")
 
@@ -261,6 +261,22 @@ class MockBackend(Backend):
 
     def inventory(self, request):
         return dict(self.state(request), measured=False)
+
+    def generate_batch(self, request):
+        """Fixture batching: one call serves every prompt; costs.batch_ms[size] or size x step_ms."""
+        self._inject("generate_batch", request)
+        prompts, seeds = request["prompts"], request["seeds"]
+        if not prompts or len(prompts) != len(seeds):
+            raise ValueError("generate_batch needs one seed per prompt")
+        costs = self.config.get("options", {}).get("costs", {})
+        size = len(prompts)
+        ms = float(costs.get("batch_ms", {}).get(str(size), size * (float(costs.get("finish_ms", 0.)) + float(costs.get("step_ms", 0.)))))
+        if not 0 <= ms <= 60000:
+            raise ValueError("mock costs must be in [0, 60000] ms")
+        time.sleep(ms / 1000)
+        digest = hashlib.sha256(json.dumps([prompts, seeds]).encode()).hexdigest()
+        return dict(output=dict(sha256=digest, shape=[size, 4, 4, 3], output_mode=request.get("output_mode", "check")),
+                    service=dict(total_ms=ms, batch_size=size), qualified=False, model_ms=ms)
 
     def finish(self, request):
         self._check_not_decoding(request["state_id"])

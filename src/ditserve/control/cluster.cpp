@@ -93,7 +93,19 @@ ClusterCost::ClusterCost(const Json& profile) : profile_(profile) {
     for (auto it = classes.begin(); it != classes.end(); ++it) {
         const auto& row = it.value();
         const auto kind = row.at("kind").get<std::string>();
-        if (kind == "image") { number_field(row, "service_ms", 0, true); continue; }
+        if (kind == "image") {
+            number_field(row, "service_ms", 0, true);
+            if (row.contains("batch_ms")) {
+                if (!row.at("batch_ms").is_object() || row.at("batch_ms").empty()) throw std::invalid_argument("batch_ms maps batch sizes to service times");
+                for (auto entry = row.at("batch_ms").begin(); entry != row.at("batch_ms").end(); ++entry) {
+                    const auto& key = entry.key();
+                    if (key.empty() || !std::all_of(key.begin(), key.end(), [](char c) { return c >= '0' && c <= '9'; }) || std::stoi(key) < 1)
+                        throw std::invalid_argument("batch_ms keys are batch sizes");
+                    number(entry.value(), "batch_ms", true);
+                }
+            }
+            continue;
+        }
         if (kind != "video") throw std::invalid_argument("cost class kind must be video or image");
         int_field(row, "steps", 0); int_field(row, "blocks_per_step", 1); int_field(row, "decode_chunks", 1);
         if (!power_of_two(int_field(row, "min_degree", 1))) throw std::invalid_argument("min_degree must be a power of two");
@@ -215,6 +227,24 @@ double ClusterCost::pair_ms(const std::string& first, const std::string& second,
     const Terms a = terms(first, form, sp_groups, group), b = terms(second, form, sp_groups, group);
     const double compute = a.compute + b.compute, comm = a.comm + b.comm;
     return compute + comm - pair_overlap_ * std::min(compute, comm) + a.latency + b.latency + a.exchange + b.exchange;
+}
+
+double ClusterCost::batch_ms(const std::string& name, int size) const {
+    const auto& row = klass(name);
+    if (row.at("kind") != "image") throw std::invalid_argument("only image classes batch");
+    if (size < 1) throw std::invalid_argument("batch size must be positive");
+    const double single = number_field(row, "service_ms", 0, true);
+    if (!row.contains("batch_ms")) return size * single;
+    std::map<int, double> table = {{1, single}};
+    for (auto entry = row.at("batch_ms").begin(); entry != row.at("batch_ms").end(); ++entry) table[std::stoi(entry.key())] = entry.value().get<double>();
+    auto upper = table.lower_bound(size);
+    if (upper != table.end() && upper->first == size) return upper->second;
+    if (upper == table.end()) {   // beyond the table: the last listed per-image rate
+        const auto last = std::prev(table.end());
+        return last->second / last->first * size;
+    }
+    const auto lower = std::prev(upper);
+    return lower->second + (upper->second - lower->second) * (size - lower->first) / (upper->first - lower->first);
 }
 
 int ClusterCost::blocks_per_step(const std::string& name) const { return int_field(klass(name), "blocks_per_step", 1); }
@@ -464,6 +494,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         const double block = cost.pair_ms(first, second, form, n, group) / cost.blocks_per_step(first);
         return std::max(1, std::min(static_cast<int>(std::floor(quantum_ms / block)), cost.blocks_per_step(first)));
     };
+    const int image_batch = int_field(options, "image_batch", 1);
     Json assignments = Json::array();
     for (std::size_t index = 0; index < rows.size(); ++index) {
         const Json& r = *rows[index];
@@ -487,8 +518,29 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             }
             if (chosen < 0) continue;
             free[chosen] = false;
-            assignments.push_back({{"request_id", id}, {"group", Json::array({chosen})}, {"degree", 1}, {"quantum", "atomic"},
-                                   {"resize", false}, {"reason", rank == 2 ? "block_preempt" : "edf"}});
+            Json assignment = {{"request_id", id}, {"group", Json::array({chosen})}, {"degree", 1}, {"quantum", "atomic"},
+                               {"resize", false}, {"reason", rank == 2 ? "block_preempt" : "edf"}};
+            // Dynamic batching: further waiting images of this class join while every member of
+            // the batch still meets its deadline at the batch's service time.
+            if (image_batch > 1) {
+                std::vector<const Json*> members = {&r};
+                for (std::size_t j = index + 1; j < rows.size() && static_cast<int>(members.size()) < image_batch; ++j) {
+                    const Json& q = *rows[j];
+                    if (q.at("kind") != "image" || taken.count(&q) || q.at("class") != r.at("class")) continue;
+                    const double service = cost.batch_ms(klass, static_cast<int>(members.size()) + 1) + cost.quantum_overhead_ms();
+                    bool fits = now + service <= number_field(q, "deadline_ms");
+                    for (const Json* m : members) fits = fits && now + service <= number_field(*m, "deadline_ms");
+                    if (!fits) continue;
+                    members.push_back(&q);
+                }
+                if (members.size() > 1) {
+                    Json batch = Json::array();
+                    for (const Json* m : members) batch.push_back(m->at("request_id"));
+                    for (std::size_t m = 1; m < members.size(); ++m) taken.insert(members[m]);
+                    assignment["batch"] = batch;
+                }
+            }
+            assignments.push_back(assignment);
             continue;
         }
         const auto current = group_of(r);
@@ -554,6 +606,18 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                 for (int d : order) {
                     const Form form = form_for(klass, d);
                     if (d > target && single / (d * cost.step_ms(klass, form, sp_groups(form))) >= widen) target = d;
+                    // With pairing, a wide SP form can be work-neutral for two requests together:
+                    // widen when some waiting video could join and the pair's per-GPU efficiency qualifies.
+                    else if (d > target && pairing && cost.pair_overlap() > 0 && form.sp >= 2) {
+                        for (std::size_t j = index + 1; j < rows.size(); ++j) {
+                            const Json& q = *rows[j];
+                            if (q.at("kind") != "video" || taken.count(&q) || pair_of.count(&q) || int_field(q, "blocks_done", 0, 0) > 0
+                                || int_field(q, "decode_done", 0, 0) > 0) continue;
+                            const auto qklass = q.at("class").get<std::string>();
+                            const double paired = cost.pair_ms(klass, qklass, form, sp_groups(form));
+                            if ((single + cost.step_ms(qklass, Form{}, 1)) / (d * paired) >= widen) { target = d; break; }
+                        }
+                    }
                 }
             }
         }

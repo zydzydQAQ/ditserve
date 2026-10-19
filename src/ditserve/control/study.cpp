@@ -640,7 +640,24 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             pstate.status="running";pstate.group=group;pstate.form=form_label;
         }
         std::function<Json()> work_unit;
-        if(quantum=="atomic"){
+        if(quantum=="atomic"&&assignment.contains("batch")){
+            // Dynamic batching: one generate_batch call on the image worker for every member.
+            const auto name=image(group.front());
+            Json prompts=Json::array(),seeds=Json::array();
+            for(const auto& member:assignment.at("batch")){
+                auto& mrow=rows[index.at(member.get<std::string>())];const auto mspec=spec_of(mrow);
+                prompts.push_back(mspec.value("prompt",""));seeds.push_back(mspec.value("seed",0));
+                if(!mrow.contains("start_ms"))mrow["start_ms"]=now();
+                mrow["batched"]=static_cast<int>(assignment.at("batch").size());live[index.at(member.get<std::string>())].status="running";
+            }
+            work_unit=[&workers,name,prompts,seeds,deadline,output_mode]{
+                auto& w=workers.get(name);
+                Json out={{"calls",Json::array()}};
+                out["finish"]=w.call({{"op","generate_batch"},{"prompts",prompts},{"seeds",seeds},{"output_mode",output_mode}},deadline);
+                out["model_ms"]=number_field(out["finish"].value("service",Json::object()),"total_ms",number_field(out["finish"],"model_ms"));
+                return out;
+            };
+        }else if(quantum=="atomic"){
             const auto name=image(group.front());const auto spec=spec_of(row);
             work_unit=[&workers,name,id,spec,deadline,output_mode]{
                 auto& w=workers.get(name);
@@ -798,6 +815,13 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             add_artifacts(record,out.at("finish"),work,phase.value("artifact_dependencies",Json::array()));
             row["model_ms"]=number_field(row,"model_ms")+number_field(out,"model_ms")+number_field(out.at("finish"),"model_ms");
             row["status"]="completed";row["finish_ms"]=now();state.status="completed";state.group.clear();++terminal;
+            if(task.assignment.contains("batch"))for(const auto& member:task.assignment.at("batch")){
+                const std::size_t m=index.at(member.get<std::string>());if(m==task.row)continue;
+                auto& mrow=rows[m];auto& mstate=live[m];
+                mrow["action_ms"][key]=mrow.value("action_ms",Json::object()).value(key,0.)+elapsed;
+                mrow["quanta"]=mrow.value("quanta",0)+1;mrow["model_ms"]=number_field(mrow,"model_ms")+number_field(out,"model_ms");
+                mrow["status"]="completed";mrow["finish_ms"]=now();mstate.status="completed";mstate.group.clear();++terminal;
+            }
             return;
         }
         if(out.contains("transfer")){

@@ -484,6 +484,23 @@ class NativeStudyTest(unittest.TestCase):
         self.assertTrue(all(rows[v].get("paired_quanta", 0) > 0 for v in ("v0", "v1")))
         self.assertTrue(all("paired_quanta" not in row for name, row in rows.items() if name.startswith("i")))
 
+    def test_cluster_batches_images_on_the_image_worker(self):
+        # image_batch 4 with a batch table: the four images arrive together with deadlines that
+        # outlast worker start-up, so they go out as one generate_batch call.
+        phase = self.cluster_phase("static_sp1", gpus=1, options=dict(image_batch=4))
+        phase["profile"]["classes"]["image"]["batch_ms"] = {"2": 25, "4": 30}
+        for row in phase["workload"]:
+            if row["kind"] == "image":
+                row["arrival_ms"], row["slo_ms"] = 0, 20000
+        workers = self.cluster_workers(1)
+        workers["i0"]["config"]["options"]["costs"]["batch_ms"] = {"2": 25, "4": 30}
+        value = self.run_study(self.config([phase], workers=workers), name="batches")
+        self.assert_completed(value)
+        cell = value["phases"][0]["cells"][0]
+        self.assertEqual(cell["metrics"]["completed"], 6)
+        rows = {row["request_id"]: row for row in cell["requests"]}
+        self.assertTrue(any(row.get("batched", 0) >= 2 for name, row in rows.items() if name.startswith("i")))
+
     def test_cluster_export_transport_failure_stops_the_cell(self):
         workers = self.cluster_workers()
         for name in ("v1", "v3"):

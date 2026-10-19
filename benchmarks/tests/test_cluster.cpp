@@ -277,6 +277,38 @@ int main() {
         const auto preempted = simulate_cluster({{"workload", mixed}, {"profile", prof}, {"policy", "block_elastic"}, {"gpus", 2}, {"options", options}});
         require(preempted.at("by_kind").at("image").at("ontime") == 1 && preempted.at("metrics").at("completed") == 3, "image on time beside the pair");
     });
+    check("image batches", [] {
+        Json prof = profile(); prof["classes"]["image"]["batch_ms"] = {{"2", 70}, {"4", 110}};
+        const ClusterCost cost(prof);
+        near(cost.batch_ms("image", 1), 50);
+        near(cost.batch_ms("image", 2), 70);
+        near(cost.batch_ms("image", 3), 90);                                  // interpolated
+        near(cost.batch_ms("image", 8), 220);                                 // beyond the table: the last per-image rate
+        near(ClusterCost(profile()).batch_ms("image", 4), 200);               // no table: no gain
+        rejects([] { ClusterCost(profile()).batch_ms("video", 2); });
+        Json broken = profile(); broken["classes"]["image"]["batch_ms"] = {{"0", 10}};
+        rejects([&] { ClusterCost{broken}; });
+        // Four waiting images, one GPU: image_batch 4 sends them as one batch when their deadlines allow it.
+        const Json rows = {image("a", 1000), image("b", 1000), image("c", 1000), image("d", 1000)};
+        auto run = [&](const Json& options) {
+            return cluster_plan({{"now_ms", 0}, {"gpus", 1}, {"busy", Json::array()}, {"requests", rows}}, "static_sp1", cost, options).at("assignments");
+        };
+        const auto single = run(Json::object());
+        require(single.size() == 1 && !single[0].contains("batch"), "one image at a time by default");
+        const auto batched = run({{"image_batch", 4}});
+        require(batched.size() == 1 && batched[0].at("batch") == Json::array({"a", "b", "c", "d"}), "all four in one batch");
+        // A tight deadline keeps the batch small: with "c" due at 80 ms a batch of three would miss.
+        const Json tight = {image("a", 1000), image("b", 1000), image("c", 80), image("d", 1000)};
+        const auto limited = cluster_plan({{"now_ms", 0}, {"gpus", 1}, {"busy", Json::array()}, {"requests", tight}}, "static_sp1", cost, {{"image_batch", 4}}).at("assignments");
+        require(limited.size() == 1 && limited[0].at("request_id") == "c" && limited[0].at("batch") == Json::array({"c", "a"}), "EDF first, then only members that fit");
+        // Simulated: four images on one GPU finish in 110 ms batched against 200 ms in sequence.
+        Json trace = Json::array();
+        for (int i = 0; i < 4; ++i) trace.push_back(trace_row("i" + std::to_string(i), "image", 0, 1000));
+        const auto together = simulate_cluster({{"workload", trace}, {"profile", prof}, {"policy", "static_sp1"}, {"gpus", 1}, {"options", {{"image_batch", 4}}}});
+        near(together.at("makespan_ms").get<double>(), 110);
+        require(together.at("batches") == 1 && together.at("batched_images") == 4 && together.at("metrics").at("completed") == 4, "batch counted");
+        near(simulate_cluster({{"workload", trace}, {"profile", prof}, {"policy", "static_sp1"}, {"gpus", 1}}).at("makespan_ms").get<double>(), 200);
+    });
     check("queue order and round-based regrouping", [] {
         // "b" is due later but arrived earlier and has less work left (3 steps of 4): edf takes "a",
         // srtf and fcfs take "b".

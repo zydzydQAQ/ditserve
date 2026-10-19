@@ -61,6 +61,10 @@ public:
     double pair_ms(const std::string& first, const std::string& second, const Form& form, int sp_groups = 1,
                    const std::vector<int>* group = nullptr) const;
     double pair_overlap() const { return pair_overlap_; }
+    // Service time of `size` images of an image class generated as one batch: the class's
+    // batch_ms table ({"1": ms, "2": ms, ...}, interpolated between listed sizes), else
+    // size times service_ms (no gain).
+    double batch_ms(const std::string& klass, int size) const;
     // Plain sequence parallelism of `degree` GPUs.
     double step_ms(const std::string& klass, int degree, int sp_groups = 1) const { return step_ms(klass, Form{1, degree}, sp_groups); }
     double block_ms(const std::string& klass, int degree, int sp_groups = 1) const { return block_ms(klass, Form{1, degree}, sp_groups); }
@@ -87,6 +91,9 @@ private:
 //   (overrides the class), affinity (GPU that must host prepare) and
 //   decode_done (latent-frame chunks already decoded), pair (the request this
 //   one is inside a step with, in lockstep on the same group).
+// options.image_batch (default 1) lets a plan send up to that many waiting
+// images of one class to a GPU as one batch when every member still meets its
+// deadline at the batch's service time; the assignment lists them in `batch`.
 // options.pairing lets an elastic policy advance two videos in lockstep on one
 // group when the profile's pair_overlap makes that cheaper than their steps
 // in sequence; the assignment then names the partner in `pair`.
