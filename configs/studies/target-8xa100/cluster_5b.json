@@ -1,7 +1,7 @@
 {
   "schema": "ditserve.study.v1",
   "experiment": "target-cluster-5b",
-  "note": "TEMPLATE for the 5B main experiments on the 8x A100 PCIe target: 8 slots (Wan2.2-TI2V-5B block worker + Sana pipeline worker per GPU), ~300 ms quanta and chunked decode; classes wan5b-704x1280x121 (50 steps, 31 latent-frame decode chunks), wan5b-512x896x81 (21 chunks) and Sana 1024, mixed 20/80 by request count; 160 Poisson requests at load 1.0 of the 8-GPU SP1 capacity (0.1455 rps); video deadline 1.5x and image deadline 2.5x the SP1 standalone service. kairos_cluster.sh replaces GPU UUIDs, model paths, links and policies and scales the load with the slot count.",
+  "note": "TEMPLATE for the 5B main experiments on the 8x A100 PCIe target: 8 slots (Wan2.2-TI2V-5B block worker + Sana pipeline worker per GPU), ~300 ms quanta and chunked decode; classes wan5b-704x1280x121 (50 steps, 31 latent-frame decode chunks), wan5b-512x896x81 (21 chunks) and Sana 1024, mixed 20/80 by request count; 160 Poisson requests at load 1.0 of the 8-GPU SP1 capacity (0.1498 rps); video deadline 1.5x and image deadline 2.5x the SP1 standalone service. kairos_cluster.sh replaces GPU UUIDs, model paths, links and policies and scales the load with the slot count.",
   "workers": {
     "wan0": {
       "backend": "wan",
@@ -19,7 +19,8 @@
         "attention": "flash",
         "options": {
           "execution": "block"
-        }
+        },
+        "vae_dtype": "bfloat16"
       }
     },
     "sana0": {
@@ -57,7 +58,8 @@
         "attention": "flash",
         "options": {
           "execution": "block"
-        }
+        },
+        "vae_dtype": "bfloat16"
       }
     },
     "sana1": {
@@ -95,7 +97,8 @@
         "attention": "flash",
         "options": {
           "execution": "block"
-        }
+        },
+        "vae_dtype": "bfloat16"
       }
     },
     "sana2": {
@@ -133,7 +136,8 @@
         "attention": "flash",
         "options": {
           "execution": "block"
-        }
+        },
+        "vae_dtype": "bfloat16"
       }
     },
     "sana3": {
@@ -171,7 +175,8 @@
         "attention": "flash",
         "options": {
           "execution": "block"
-        }
+        },
+        "vae_dtype": "bfloat16"
       }
     },
     "sana4": {
@@ -209,7 +214,8 @@
         "attention": "flash",
         "options": {
           "execution": "block"
-        }
+        },
+        "vae_dtype": "bfloat16"
       }
     },
     "sana5": {
@@ -247,7 +253,8 @@
         "attention": "flash",
         "options": {
           "execution": "block"
-        }
+        },
+        "vae_dtype": "bfloat16"
       }
     },
     "sana6": {
@@ -285,7 +292,8 @@
         "attention": "flash",
         "options": {
           "execution": "block"
-        }
+        },
+        "vae_dtype": "bfloat16"
       }
     },
     "sana7": {
@@ -325,42 +333,42 @@
           "wan5b-704x1280x121": {
             "kind": "video",
             "blocks_per_step": 60,
-            "prepare_ms": 35.996497608721256,
-            "encode_ms": 18863.309174776077,
-            "step_compute_ms": 8151.922892313451,
+            "prepare_ms": 35.759493708610535,
+            "encode_ms": 16579.650584608316,
+            "step_compute_ms": 8196.061480324715,
             "comm_mb_per_step": 40225.9968,
             "collectives_per_step": 240,
             "cfg_exchange_mb": 10.47552,
-            "finish_ms": 32906.8634994328,
+            "finish_ms": 17330.78948687762,
             "steps": 50,
             "decode_chunks": 31
           },
           "wan5b-512x896x81": {
             "kind": "video",
             "blocks_per_step": 60,
-            "prepare_ms": 16.87092427164316,
-            "encode_ms": 19093.089036643505,
-            "step_compute_ms": 1931.0517134144902,
+            "prepare_ms": 16.06904435902834,
+            "encode_ms": 17469.739104621112,
+            "step_compute_ms": 1956.1972292140126,
             "comm_mb_per_step": 13872.66048,
             "collectives_per_step": 240,
             "cfg_exchange_mb": 3.612672,
-            "finish_ms": 10261.944370344281,
+            "finish_ms": 6253.747857175767,
             "steps": 50,
             "decode_chunks": 21
           },
           "sana-1024": {
             "kind": "image",
-            "service_ms": 322.6054860278964
+            "service_ms": 342.7151944488287
           }
         },
         "links": {},
         "sp_efficiency": 1.0,
         "resize_ms": 0.0,
         "source": {
-          "run": "results/kairos-e2-cost-profile-5b/p3-20261019t1325z",
+          "run": "results/kairos-e2-cost-profile-5b/p3b-20261019t1550z",
           "hardware": "Kairos A100-PCIE-40GB (1 GPU of a job on gpu node)",
           "model": "Wan-AI/Wan2.2-TI2V-5B-Diffusers@b8fff731, Sana_Sprint_0.6B@aa76e7f4",
-          "settings": "Wan FP16 DiT, FP32 VAE, UMT5 on CPU (8 threads), Flash attention, cache off, block executor; Sana BF16 eager pipeline",
+          "settings": "Wan FP16 DiT, BF16 VAE, UMT5 on CPU (8 threads), Flash attention, cache off, block executor; Sana BF16 eager pipeline",
           "samples": "n=1 input per shape; 4 measured steps (median), 3 four-block quanta; 7 images after one warmup",
           "note": "SP1 costs from P3; links are per job placement (K16b) and come from kairos_cluster.sh"
         }
@@ -599,7 +607,7 @@
         "count": 160,
         "seed": 101,
         "pattern": "poisson",
-        "rate_rps": 0.14546743930055475,
+        "rate_rps": 0.14981525262979378,
         "prompts": [
           "A red bicycle leaning against a blue wall in warm afternoon light.",
           "A small sailboat glides across a calm lake in soft morning light."
@@ -609,7 +617,7 @@
             "class": "wan5b-704x1280x121",
             "kind": "video",
             "weight": 1,
-            "service_ms": 459402.31378749013,
+            "service_ms": 443749.2735814303,
             "slo_scale": 1.5,
             "spec": {
               "negative_prompt": "",
@@ -627,7 +635,7 @@
             "class": "wan5b-512x896x81",
             "kind": "video",
             "weight": 1,
-            "service_ms": 125924.49000198394,
+            "service_ms": 121549.41746685654,
             "slo_scale": 1.5,
             "spec": {
               "negative_prompt": "",
@@ -645,7 +653,7 @@
             "class": "sana-1024",
             "kind": "image",
             "weight": 8,
-            "service_ms": 322.6054860278964,
+            "service_ms": 342.7151944488287,
             "slo_scale": 2.5
           }
         ]
