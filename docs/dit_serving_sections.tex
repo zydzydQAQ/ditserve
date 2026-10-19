@@ -504,12 +504,40 @@ holds the same state; a CFG pair needs no further transfer because both
 halves keep the full state. Prompt encoding runs on the CPU ahead of
 admission and is never on the GPU path.
 
+\paragraph{Lockstep pairs.}
+Interleaving the two branches of one request hides communication only in
+forms where a rank holds both branches. Two \emph{requests} can be
+interleaved the same way: block $i$ of a second video runs on the side
+stream while block $i$ of the first runs on the main stream, each request
+keeping its own packets and its branches in sequence, so the CFG halves and
+CFG2$\times$SP forms hide communication as well. A pair forms when both
+requests stand at a step boundary on the same group, advances as one
+quantum, stops at the same block under preemption, and resumes together;
+its output equals the two sequential runs bit for bit. The planner prices a
+pair step as the sum of both requests' compute and communication less a
+measured fraction $h_{\mathrm{pair}}$ of the shorter sum, pairs a placed
+video with the next waiting one when that beats the two in sequence and
+both keep their deadlines at the pair's pace, and may widen a video to a
+group whose form is work-neutral only for a pair. Because a pair converts
+hidden communication into a second request's progress, it raises the
+throughput of wide forms rather than only the latency of one request.
+
+\paragraph{Exactness as a scheduling objective.}
+Single-GPU execution and the CFG forms produce the same output; sequence
+parallelism does not (Section~\ref{sec:long-steps}). The planner can
+prefer an output-preserving form of a group size unless an approximate
+one is faster by more than a margin, so a service can trade a bounded
+amount of latency for reproducible output.
+
 \paragraph{What is deliberately left out.}
 Feature caching is off throughout: block quanta require every block to be
 computed, cached features do not survive a change of group, and caching
 trades output for time, which the SLO evaluation would then have to qualify
-per configuration. Image batching is not used by any policy. Requests never
-span nodes.
+per configuration. Image batching exists as an option that every policy
+can use (a batch of waiting images goes to one GPU when each member still
+meets its deadline at the batch's measured service time), so that the
+GENSERVE-style baseline is not handicapped; it is not part of the
+contribution. Requests never span nodes.
 
 \section{Evaluation Plan}
 \label{sec:evaluation-plan}
@@ -531,16 +559,22 @@ cell, a second seed on the headline cells, ten seeds in the simulator.
 \paragraph{Baselines.}
 All arms share the planner, workers, quanta, and cost model, so they differ
 in one rule each: static SP1/SP2/SP4, static CFG2 (xDiT-like fixed
-hybrid), step-boundary elastic SP (the GENSERVE/GF-DiT regime, without
-batching), round-based regrouping every $r$ steps (TetriServe-like), and
-EDF/SRTF/FCFS ordering.
+hybrid), step-boundary elastic SP with dynamic image batching (the
+GENSERVE regime; GF-DiT's group-free regrouping is approximated by the
+same step-boundary elasticity), round-based regrouping every $r$ steps
+(TetriServe-like), and EDF/SRTF/FCFS ordering. Image batching is enabled
+for every arm in the main comparison and switched off in one ablation.
+Every job calibrates its own link table at start-up (one step of each form
+on each aligned group of the placement), so no arm benefits from a table
+measured on different GPUs.
 
 \paragraph{Ladder.}
 Each contribution is isolated by adding one mechanism at a time to the
 step-boundary SP-only baseline, on the real node (one seed) and in the
 simulator (ten seeds): (1) block quanta with lazy preemption, (2) chunked
-decode, (3) interleaved branches, (4) form selection with CFG forms,
-(5) contention-aware rates. Component ablations on the full system turn off
+decode, (3) interleaved branches, (4) form selection with CFG forms and
+work-neutral widening, (5) lockstep pairs, (6) per-placement rates.
+Component ablations on the full system turn off
 one item each: lazy versus eager preemption, free versus widest lateness
 test, the late-short rule, quantum length (150/300/600\,ms), an image
 reservation, and contention-blind planning.
