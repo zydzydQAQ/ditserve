@@ -903,7 +903,11 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 if(state.total>0)view["steps_total"]=state.total;
                 if(!state.group.empty())view["form"]=state.form;
                 if(!state.pair.empty())view["pair"]=state.pair;
-                if(!state.prepared&&!state.ticket.empty())view["affinity"]=state.encode_gpu;
+                // Under the export transport the encoding worker prepares the request and exports
+                // it to whatever group the planner picks, so the prompt's GPU is no constraint;
+                // the other transports must prepare on that GPU (K26: with the pin, videos waited
+                // minutes for their encoding GPU while others stood idle).
+                if(!state.prepared&&!state.ticket.empty()&&transport!="export")view["affinity"]=state.encode_gpu;
                 requests.push_back(view);
             }
             if(!requests.empty()){
