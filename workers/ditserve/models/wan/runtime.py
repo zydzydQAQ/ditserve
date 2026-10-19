@@ -248,12 +248,16 @@ class RequestState:
 class WanStepWorker:
     """One resident model, independent request schedulers/RNG/cache state."""
 
-    def __init__(self, device="cuda:0", model_path=None, attention="math"):
+    def __init__(self, device="cuda:0", model_path=None, attention="math", vae_dtype="float32"):
         if not isinstance(device, str) or not device.startswith("cuda:") or not device[5:].isdigit():
             raise ValueError("device must be an explicit cuda:N device")
         if attention not in ATTENTION_BACKENDS:
             raise ValueError("attention must be math, flash, or efficient")
-        self.attention = attention
+        # The VAE's precision: float32 is the official recipe; bfloat16 halves the decode's
+        # transient memory (about 20 GB for a 720p Wan2.2 decode, K20) and is a measured deviation.
+        if vae_dtype not in ("float32", "bfloat16", "float16"):
+            raise ValueError("vae_dtype must be float32, bfloat16 or float16")
+        self.attention, self.vae_dtype = attention, vae_dtype
         for package, expected in REQUIRED_VERSIONS.items():
             actual = importlib.metadata.version(package)
             if actual != expected:
@@ -272,7 +276,7 @@ class WanStepWorker:
             raise RuntimeError("CUDA is unavailable")
         from types import SimpleNamespace
         args = SimpleNamespace(model="wan", model_id=str(self.model_path), revision=REVISION,
-                               dtype="float16", vae_dtype="float32", text_encoder_dtype="float32",
+                               dtype="float16", vae_dtype=self.vae_dtype, text_encoder_dtype="float32",
                                text_encoder_device="cpu", local_files_only=True, device=device)
         self.pipe = p._pipeline(self.torch, self.diffusers, args)
         # One transformer and the UniPC recipe: Wan2.1 T2V, or Wan2.2 TI2V used for

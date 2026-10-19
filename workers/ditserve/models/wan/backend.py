@@ -16,7 +16,8 @@ class WanBackend(Backend):
         super().__init__(config)
         from .runtime import WanStepWorker
         self.runtime = WanStepWorker(device=config.get("device", "cuda:0"),
-            model_path=config.get("model_path"), attention=config.get("attention", "math"))
+            model_path=config.get("model_path"), attention=config.get("attention", "math"),
+            vae_dtype=config.get("vae_dtype", "float32"))
         self.options = config.get("options", {})
         self.execution = self.options.get("execution", "step")
         if self.execution not in ("step", "block", "block_interleaved"):
@@ -432,7 +433,7 @@ class WanBackend(Backend):
         from .runtime import REVISION
         generation = dict(spec, model="Wan-AI/Wan2.1-T2V-1.3B-Diffusers", revision=REVISION,
             model_path=str(self.runtime.model_path), model_integrity="local_snapshot_not_rehashed",
-            dtype="float16", vae_dtype="float32", text_encoder_dtype="float32", text_encoder_device="cpu",
+            dtype="float16", vae_dtype=self.runtime.vae_dtype, text_encoder_dtype="float32", text_encoder_device="cpu",
             fps=self.config.get("fps", 16), attention=self.runtime.attention,
             cache_enabled=spec["cache"], cache_threshold=spec["threshold"],
             approximate=bool(spec["cache"] or any(row.get("reused_forwards", 0) for row in paths)))
