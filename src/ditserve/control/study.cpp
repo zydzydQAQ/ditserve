@@ -117,6 +117,9 @@ public:
         ProcessOptions options;
         options.argv={definition.value("python",request_.value("python","python3")),"-u","-m","ditserve.runtime.worker","--backend",definition.at("backend").get<std::string>(),"--config",config_path.string()};
         options.stderr_path=work_/"workers"/(name+".log");
+        // A killed GPU worker can take seconds to release a large CUDA context;
+        // stop() returns as soon as the group is gone, so only slow exits wait.
+        options.cleanup_timeout_seconds=definition.value("cleanup_timeout_seconds",60.0);
         options.heartbeat=heartbeat_;
         const auto root=fs::path(request_.at("package_root").get<std::string>());
         const auto frozen=request_.contains("frozen_python")?fs::path(request_.at("frozen_python").get<std::string>()):work_/"sources"/"python";
@@ -129,7 +132,15 @@ public:
         worker->process=std::make_unique<WorkerProcess>(options);
         auto* result=worker.get();workers_[name]=std::move(worker);return *result;
     }
-    bool stop() {bool clean=true;for(auto& item:workers_)clean=item.second->process->stop()&&clean;return clean;}
+    // Concurrent, like shutdown: slow exits must not add up across a cell's workers.
+    // Returns the workers whose process group could not be verified gone.
+    Json stop() {
+        std::vector<std::pair<std::string,std::future<bool>>> calls;
+        for(auto& item:workers_)calls.emplace_back(item.first,std::async(std::launch::async,[process=item.second->process.get()]{return process->stop();}));
+        Json unverified=Json::array();
+        for(auto& call:calls)if(!call.second.get())unverified.push_back({{"worker",call.first},{"pid",workers_.at(call.first)->process->pid()}});
+        return unverified;
+    }
     // Concurrent: ranks of one NCCL world tear it down together, and a rank that
     // waits for its peers must not hold the next worker's shutdown behind it.
     void shutdown(double deadline){
@@ -1148,7 +1159,8 @@ bool execute_cells(const Json& phase,const Json& request,const Json& devices,
             workers.shutdown(std::min(budget.deadline(),monotonic_seconds()+5));
         }catch(const std::exception& failure){error=failure.what();attempt["cells"].push_back({{"cell",order[position]},{"status","failed"},{"error",error}});}
         const auto pids=workers.pids();attempt_pids.insert(attempt_pids.end(),pids.begin(),pids.end());
-        cleanup=workers.stop()&&cleanup;
+        const auto unverified=workers.stop();
+        if(!unverified.empty()){cleanup=false;attempt["unverified_workers"].push_back({{"cell",order[position]},{"workers",unverified}});}
         if(!error.empty() || !cleanup)break;
     }
     const auto final_gpu=gpu_observation(request,attempt_dir,devices,attempt_pids);
