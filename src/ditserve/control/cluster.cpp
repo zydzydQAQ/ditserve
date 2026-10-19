@@ -262,6 +262,10 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         return remaining + cost.quantum_overhead_ms() * (r.at("kind") == "image" ? 1 : quanta_left(r, form, n));
     };
     const bool lazy = bool_field(options, "lazy_preemption", true);
+    // Minimum per-GPU efficiency (SP1 step time / (GPUs x form step time)) at which a video
+    // widens beyond its minimal feasible group while others wait; 0 keeps the minimal group.
+    const double widen = number_field(options, "widen_efficiency");
+    if (widen > 1) throw std::invalid_argument("widen_efficiency must be in [0, 1]");
     // Real backends without state migration keep a started request on its group.
     const bool pin_started = bool_field(options, "pin_started", false);
     // Static partition baseline: the last R GPUs serve images only.
@@ -432,6 +436,16 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                 const double extra = prepared && static_cast<int>(current.size()) != d ? cost.resize_ms() : 0;
                 const Form form = form_for(klass, d);
                 if (now + estimate(r, form, sp_groups(form)) + extra <= number_field(r, "deadline_ms")) { target = d; break; }
+            }
+            // Work-neutral widening: a wider form that keeps at least widen_efficiency of the
+            // single-GPU throughput (CFG halves do; PCIe sequence parallelism does not) finishes
+            // the video sooner and returns its GPUs sooner, so it costs the queue nothing.
+            if (widen > 0) {
+                const double single = cost.step_ms(klass, Form{}, 1);
+                for (int d : order) {
+                    const Form form = form_for(klass, d);
+                    if (d > target && single / (d * cost.step_ms(klass, form, sp_groups(form))) >= widen) target = d;
+                }
             }
         }
         // A prompt encoded on one worker must be prepared on that GPU.

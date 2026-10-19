@@ -81,6 +81,8 @@ FLUX 可设置 `workers.<name>.config.options.profile:true`，记录 text/DiT/sc
 
 视频组的**并行形态**（`Form`）由 cfg ∈ {1, 2} 和 SP 度 sp 组成，占 cfg × sp 张卡，名字为 `sp1`、`sp2`、`sp4`、`sp8`、`cfg2`、`cfg2sp2`、`cfg2sp4`。弹性策略在 `options.forms`（默认为 `options.degrees` 对应的纯 SP 形态，即 `{1, 2, 4, 8}` → `sp1/sp2/sp4/sp8`，两者不能同时给出）中选择：组的大小按原来的最小可行度数规则决定，同一大小的形态取成本模型预测每步时间最小的。规划结果的每条 assignment 带 `form`，状态里停在 step 中途的请求带 `form`（缺省为 `sp<组大小>`），step 内不换形态。模拟器与执行器按形态计价并记录每个请求用过的 `forms`；`sp_groups_running` 只计 sp ≥ 2 的组（CFG 对每步只交换一个 latent，不争用 host bridge）。
 
+`options.widen_efficiency`（默认 0）：有其他请求等待时，视频默认只取能赶上期限的最小组；设为 e ∈ (0, 1] 后，若某个更宽的形态的每卡效率（SP1 每步时间 ÷ (卡数 × 该形态每步时间)）不低于 e，就扩到该形态。CFG 对的效率接近 1（每步只交换一个 latent），所以 e=0.95 时视频在有空闲对时总以 CFG2 运行，更早完成、更早还卡，对队列没有代价；PCIe 上的 SP 形态效率低于 e，不会被选中。
+
 `options.reserve_image_gpus` 给出静态分区基线：最后 R 张卡只服务图像。视频类别的 `decode_chunks` 把 VAE 解码拆成按 latent 帧推进的可抢占 chunk（`options.chunked_decode`，按 `quantum_ms` 换算每次推进的帧数）；真实 Wan worker 用 `finish` 的 `decode_frames` 执行，结果与整段解码逐位一致（CPU 契约测试）。Wan 的 `block_export`/`block_import` 可在 step 内任意 block 边界导出续算状态（未变动的求解器状态 + 运行中的 packet）并在另一进程恢复。
 
 所有策略默认采用 feasible-first EDF（`options.demote_late`，默认开启）：即使占用最大组也赶不上期限的请求排在仍可按时完成的请求之后，避免过载时迟到的长视频饿死新到的短请求；剩余工作不超过 `options.late_short_ms`（默认 2000 ms）的迟到请求保留 EDF 位置，避免小的超时被放大成长尾。

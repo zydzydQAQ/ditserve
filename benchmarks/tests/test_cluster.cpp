@@ -183,6 +183,15 @@ int main() {
         near(twin.at("makespan_ms").get<double>(), 4 * 501.1 + 100, 1e-6);
         require(twin.at("requests")[0].at("forms") == Json::array({"cfg2"}) && twin.at("requests")[0].at("degrees") == Json::array({2, 1}), "forms recorded");
         near(simulate_cluster({{"workload", pair}, {"profile", shared}, {"policy", "static_sp2"}, {"gpus", 4}}).at("makespan_ms").get<double>(), 4 * 521. + 100);
+        // Work-neutral widening: two waiting videos on 4 GPUs run SP1 by default (minimal feasible);
+        // with widen_efficiency 0.97 each takes a CFG pair (efficiency 0.998; SP2 0.978 would pass too,
+        // SP4 0.94 would not), with 0.999 nothing qualifies.
+        const Json two = Json::array({video("a", 1e9), video("b", 1e9)});
+        require(run(two, "step_elastic", 4, forms, prof)[0].at("degree") == 1, "minimal feasible by default");
+        auto widened = run(two, "step_elastic", 4, {{"forms", {"sp1", "sp2", "cfg2", "sp4"}}, {"widen_efficiency", 0.97}}, prof);
+        require(widened.size() == 2 && widened[0].at("form") == "cfg2" && widened[1].at("form") == "cfg2", "widened to CFG pairs");
+        require(run(two, "step_elastic", 4, {{"forms", {"sp1", "sp2", "cfg2", "sp4"}}, {"widen_efficiency", 0.999}}, prof)[0].at("degree") == 1, "threshold respected");
+        rejects([&] { run(two, "step_elastic", 4, {{"widen_efficiency", 1.5}}); });
         // Elastic with forms: the lone video on 4 GPUs takes the cheapest quad form, CFG2 x SP2 (256.6 ms) over SP4 (266 ms).
         const auto quad = simulate_cluster({{"workload", Json::array({trace_row("v", "video", 0, 1e9)})}, {"profile", prof}, {"policy", "step_elastic"}, {"gpus", 4},
                                             {"options", {{"forms", {"sp1", "cfg2", "sp2", "cfg2sp2", "sp4"}}}}});
