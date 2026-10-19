@@ -366,6 +366,7 @@
             }
           }
         },
+        "pair_overlap": 0.4,
         "links": {},
         "sp_efficiency": 1.0,
         "resize_ms": 0.0,

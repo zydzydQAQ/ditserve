@@ -520,7 +520,13 @@ video with the next waiting one when that beats the two in sequence and
 both keep their deadlines at the pair's pace, and may widen a video to a
 group whose form is work-neutral only for a pair. Because a pair converts
 hidden communication into a second request's progress, it raises the
-throughput of wide forms rather than only the latency of one request.
+throughput of wide forms rather than only the latency of one request: on
+four target GPUs a pair of 720p requests hides 45\% of the communication
+of CFG2$\times$SP2 and 35\% of SP4, 18--20\% more group throughput, with
+output identical to the sequential runs. The per-GPU efficiency of the
+paired four-GPU forms (0.75) still trails a CFG pair per request (0.99), so
+the planner reaches for pairs only where deadlines force wide
+forms.\evidence{docs/kairos\_preexperiments.md (K24, K27)}
 
 \paragraph{Exactness as a scheduling objective.}
 Single-GPU execution and the CFG forms produce the same output; sequence
