@@ -31,6 +31,27 @@ class ChunkedDecodeTests(unittest.TestCase):
                 self.assertTrue(decode.done)
                 self.assertTrue((decode.finish() == reference).all())
 
+    def test_patched_wan22_vae_folds_pixels_back_like_the_whole_decode(self):
+        from diffusers import AutoencoderKLWan
+        from diffusers.video_processor import VideoProcessor
+        from ditserve.models.pipeline import ChunkedDecode, decode_final_latent
+        torch = self.torch
+        # Wan2.2 TI2V layout: residual blocks and 2x2 pixel patches (3*2*2 channels).
+        vae = AutoencoderKLWan(base_dim=8, decoder_base_dim=16, z_dim=16, dim_mult=[1, 2, 2, 2], num_res_blocks=1,
+                               temperal_downsample=[False, True, True], is_residual=True, patch_size=2,
+                               in_channels=12, out_channels=12).eval()
+        pipe = SimpleNamespace(vae=vae, video_processor=VideoProcessor(vae_scale_factor=16))
+        latent = torch.randn(1, 16, 3, 2, 2)
+        with torch.inference_mode():
+            reference = decode_final_latent(torch, pipe, latent.clone())
+            for grouping in ([1, 1, 1], [2, 1], [3]):
+                decode = ChunkedDecode(torch, pipe, latent.clone())
+                for count in grouping:
+                    decode.advance(count)
+                video = decode.finish()
+                self.assertEqual(video.shape, reference.shape)
+                self.assertTrue((video == reference).all())
+
     def test_interleaved_requests_keep_separate_temporal_caches(self):
         from ditserve.models.pipeline import ChunkedDecode, decode_final_latent
         torch = self.torch

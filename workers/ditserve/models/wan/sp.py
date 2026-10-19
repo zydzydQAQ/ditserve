@@ -44,6 +44,28 @@ def shard_rope_output(value, local_rank, degree):
     return tuple(tensor.chunk(degree, dim=1)[local_rank].contiguous() for tensor in value)
 
 
+def shard_condition_output(value, local_rank, degree):
+    """Per-token timestep conditioning (Wan2.2 TI2V) follows the token split.
+
+    The embedder returns (temb, timestep_proj, text, image). With one timestep per
+    video temb is [batch, dim] and stays replicated. With per-token timesteps temb
+    is [batch, tokens, dim] and timestep_proj [batch, tokens, 6*dim]; both split
+    along the tokens exactly like the patch output, whose flattening order
+    (frame, height, width) the timestep mask shares.
+    """
+    if type(value) is not tuple or len(value) != 4:
+        raise ParallelContractError("Wan condition embedder must return four outputs")
+    if degree not in (1, 2, 4, 8) or not 0 <= local_rank < degree:
+        raise ParallelContractError("invalid condition split")
+    temb, projected, encoder, image = value
+    if temb.ndim == 2 or degree == 1:
+        return value
+    if temb.ndim != 3 or projected.ndim != 3 or temb.shape[1] != projected.shape[1] or temb.shape[1] % degree:
+        raise ParallelContractError("unsupported per-token Wan timestep embedding")
+    return (temb.chunk(degree, dim=1)[local_rank].contiguous(), projected.chunk(degree, dim=1)[local_rank].contiguous(),
+            encoder, image)
+
+
 class PinnedWanUlyssesBackend:
     """Attach once, then call step(state) on every rank in the active group.
 
@@ -141,6 +163,7 @@ class PinnedWanUlyssesBackend:
                 module.set_processor(RequestProcessor())
             self._hooks.append(model.patch_embedding.register_forward_hook(self._patch_hook))
             self._hooks.append(model.rope.register_forward_hook(self._rope_hook))
+            self._hooks.append(model.condition_embedder.register_forward_hook(self._condition_hook))
             self._hooks.append(model.proj_out.register_forward_hook(self._gather_hook))
         except BaseException:
             self.close()
@@ -161,6 +184,11 @@ class PinnedWanUlyssesBackend:
         self._require_active()
         layout = self.handle.current
         return shard_rope_output(output, layout.ranks.index(self.handle.rank), layout.degree)
+
+    def _condition_hook(self, module, args, output):
+        self._require_active()
+        layout = self.handle.current
+        return shard_condition_output(output, layout.ranks.index(self.handle.rank), layout.degree)
 
     def _gather_hook(self, module, args, output):
         self._require_active()

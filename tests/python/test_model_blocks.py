@@ -10,14 +10,15 @@ from unittest.mock import Mock, patch
 from ditserve.models.wan.block import WanBlockExecutor
 
 
-def fixture(steps=4):
+def fixture(steps=4, expand=False):
     import torch
     from diffusers import WanTransformer3DModel, UniPCMultistepScheduler
     torch.manual_seed(731)
     model = WanTransformer3DModel(num_attention_heads=1, attention_head_dim=12,
         in_channels=2, out_channels=2, num_layers=30, ffn_dim=24, freq_dim=4,
         text_dim=4, patch_size=(1, 2, 2), rope_max_seq_len=16).eval()
-    worker = SimpleNamespace(torch=torch, pipe=SimpleNamespace(transformer=model),
+    # expand: Wan2.2 TI2V per-token timesteps.
+    worker = SimpleNamespace(torch=torch, pipe=SimpleNamespace(transformer=model), expand_timesteps=expand,
                              _lock=threading.RLock(), _sync=Mock(), _states={})
     worker._dit_attention_context = contextlib.nullcontext
     worker._update_policy = Mock()
@@ -48,12 +49,14 @@ def fixture(steps=4):
 
 
 def native_step(worker, state):
+    from ditserve.models.wan.runtime import model_timestep
     torch, model = worker.torch, worker.pipe.transformer
     with torch.inference_mode():
         timestep = state.scheduler.timesteps[state.step_index]
-        conditional = model(state.latents, timestep.expand(1), state.prompt_embeds, return_dict=False)[0]
+        model_input = model_timestep(torch, state.latents, timestep, worker.expand_timesteps)
+        conditional = model(state.latents, model_input, state.prompt_embeds, return_dict=False)[0]
         if state.spec["guidance_scale"] > 1:
-            negative = model(state.latents, timestep.expand(1), state.negative_prompt_embeds, return_dict=False)[0]
+            negative = model(state.latents, model_input, state.negative_prompt_embeds, return_dict=False)[0]
             conditional = negative + state.spec["guidance_scale"] * (conditional - negative)
         state.latents = state.scheduler.step(conditional, timestep, state.latents, return_dict=False)[0]
         state.step_index += 1
@@ -162,6 +165,23 @@ class BlockExecutorTests(unittest.TestCase):
                 self.assertTrue(actual is expected if actual is None or expected is None
                                 else self.torch.equal(actual, expected))
         self.assertEqual(len(left.events), 4)
+
+    def test_per_token_timesteps_match_the_official_forward_bit_exactly(self):
+        from ditserve.models.wan.runtime import model_timestep
+        worker, executor, prepare = fixture(expand=True)
+        state, reference = prepare("a"), prepare("reference")
+        timestep = model_timestep(self.torch, state.latents, state.scheduler.timesteps[0], True)
+        self.assertEqual(tuple(timestep.shape), (1, 4))   # 1 frame x (4/2) x (4/2) patch tokens
+        continuation = executor.attach(state)
+        for step in range(4):
+            native_step(worker, reference)
+            executor.advance(continuation, 7)
+            # Mid-step the packet carries per-token conditioning.
+            self.assertEqual(continuation.packet["temb"].ndim, 3)
+            self.assertEqual(tuple(continuation.packet["projected"].shape[:3]), (1, 4, 6))
+            while state.step_index <= step:
+                executor.advance(continuation, 11)
+            self.assertTrue(self.torch.equal(state.latents, reference.latents))
 
     def test_no_cfg_completes_after_one_forward(self):
         worker, executor, prepare = fixture()

@@ -27,17 +27,18 @@ def tiny_model(torch):
                                  rope_max_seq_len=16).eval().to(torch.float16)
 
 
-def plain_executor(torch, *, empty=False):
+def plain_executor(torch, *, empty=False, expand=False):
     from ditserve.models.wan.block import WanBlockExecutor
     if empty:
         worker, state = empty_target(), None
     else:
         worker, state = fixture(cached=False, boundary=2)
     worker.pipe, worker.attention = SimpleNamespace(transformer=tiny_model(torch)), "math"
+    worker.expand_timesteps = expand
     return worker, state, WanBlockExecutor(worker)
 
 
-def sp_executor(torch, rank, ranks, *, empty=False):
+def sp_executor(torch, rank, ranks, *, empty=False, expand=False):
     """One rank's worker with the Ulysses attachment over the Gloo world."""
     from ditserve.models.wan.block import WanBlockExecutor
     from ditserve.models.wan.parallel import LayoutHandle, build_fixed_groups
@@ -47,6 +48,7 @@ def sp_executor(torch, rank, ranks, *, empty=False):
     else:
         worker, state = fixture(cached=False, boundary=2)
     worker.pipe, worker.attention = SimpleNamespace(transformer=tiny_model(torch)), "math"
+    worker.expand_timesteps = expand   # Wan2.2 TI2V per-token timesteps
     groups = build_fixed_groups(backend="gloo")
     parallel = PinnedWanUlyssesBackend(LayoutHandle(rank, ranks), groups).attach(worker)
     return worker, state, parallel, WanBlockExecutor(worker, parallel=parallel)
@@ -71,10 +73,10 @@ def load_payload(torch, executor, path):
     return base, continuation
 
 
-def scenario_quanta(torch, rank, world, directory, quanta):
+def scenario_quanta(torch, rank, world, directory, quanta, expand=False):
     """All ranks in one group; the quanta pattern varies, the result must not."""
     ranks = tuple(range(world))
-    worker, state, parallel, executor = sp_executor(torch, rank, ranks)
+    worker, state, parallel, executor = sp_executor(torch, rank, ranks, expand=expand)
     continuation = executor.attach(state)
     executor.advance(continuation, blocks=1)
     tokens = continuation.packet["hidden"].shape[1]  # this rank's shard of the 8 patch tokens
@@ -154,6 +156,8 @@ def scenario_guards(torch, rank, world, directory):
 
 SCENARIOS = dict(quanta_whole=lambda t, r, w, d: scenario_quanta(t, r, w, d, [STEP_BLOCKS]),
                  quanta_ragged=lambda t, r, w, d: scenario_quanta(t, r, w, d, [1, 4, 2, 5]),
+                 expand_whole=lambda t, r, w, d: scenario_quanta(t, r, w, d, [STEP_BLOCKS], expand=True),
+                 expand_ragged=lambda t, r, w, d: scenario_quanta(t, r, w, d, [1, 4, 2, 5], expand=True),
                  grow=scenario_grow, move=scenario_move, shrink=scenario_shrink, guards=scenario_guards)
 
 
@@ -178,6 +182,9 @@ class SpBlockTests(unittest.TestCase):
         worker, state, executor = plain_executor(torch)
         run_quanta(executor, executor.attach(state), [STEP_BLOCKS], until=4)
         cls.reference = state.latents.clone()
+        worker, state, executor = plain_executor(torch, expand=True)
+        run_quanta(executor, executor.attach(state), [STEP_BLOCKS], until=4)
+        cls.reference_expand = state.latents.clone()
 
     def spawn(self, name, world):
         import torch.multiprocessing as mp
@@ -196,10 +203,11 @@ class SpBlockTests(unittest.TestCase):
         for result in results[1:]:
             self.assertTrue(self.torch.equal(result["latents"], results[0]["latents"]))
 
-    def assert_sp1(self, latents):
+    def assert_sp1(self, latents, reference=None):
         # CPU kernels reproduce the unsharded result bit for bit; GPU deviation is measured, not assumed.
-        error = (latents.double() - self.reference.double()).abs().max().item()
-        self.assertTrue(self.torch.equal(latents, self.reference), "SP deviates from SP1 by %g" % error)
+        reference = self.reference if reference is None else reference
+        error = (latents.double() - reference.double()).abs().max().item()
+        self.assertTrue(self.torch.equal(latents, reference), "SP deviates from SP1 by %g" % error)
 
     def test_block_quanta_are_exact_within_each_degree_and_match_sp1(self):
         for world in (2, 4):
@@ -211,6 +219,17 @@ class SpBlockTests(unittest.TestCase):
                 self.assert_replicated(ragged)
                 self.assertTrue(self.torch.equal(whole[0]["latents"], ragged[0]["latents"]))
                 self.assert_sp1(whole[0]["latents"])
+
+    def test_per_token_timesteps_split_with_the_tokens_and_match_sp1(self):
+        for world in (2, 4):
+            with self.subTest(degree=world):
+                whole, unused = self.spawn("expand_whole", world)
+                ragged, unused = self.spawn("expand_ragged", world)
+                self.assertEqual({result["tokens"] for result in whole + ragged}, {8 // world})
+                self.assert_replicated(whole)
+                self.assert_replicated(ragged)
+                self.assertTrue(self.torch.equal(whole[0]["latents"], ragged[0]["latents"]))
+                self.assert_sp1(whole[0]["latents"], self.reference_expand)
 
     def test_growing_a_group_gives_imported_ranks_the_resident_state(self):
         results, payload = self.spawn("grow", 4)

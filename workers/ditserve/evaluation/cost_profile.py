@@ -12,19 +12,28 @@ import json
 import statistics
 from pathlib import Path
 
-# Published Diffusers transformer configs; 14B is not on the local disk.
+# Published Diffusers transformer configs; 14B is not on the local disk. spatial is the
+# VAE's spatial compression: Wan2.2's VAE compresses 16x, so a shape has 4x fewer tokens.
 ARCHITECTURES = {
-    "wan2.1-t2v-1.3b": dict(dim=1536, ffn=8960, layers=30, text_tokens=512, verified="local transformer/config.json"),
-    "wan2.1-t2v-14b": dict(dim=5120, ffn=13824, layers=40, text_tokens=512, verified="published config; re-check on arrival"),
+    "wan2.1-t2v-1.3b": dict(dim=1536, ffn=8960, layers=30, text_tokens=512, spatial=8, prefix="wan1.3b-",
+                            verified="local transformer/config.json"),
+    "wan2.1-t2v-14b": dict(dim=5120, ffn=13824, layers=40, text_tokens=512, spatial=8, prefix="wan14b-",
+                           verified="published config; re-check on arrival"),
+    "wan2.2-ti2v-5b": dict(dim=3072, ffn=14336, layers=30, text_tokens=512, spatial=16, prefix="wan5b-",
+                           verified="Wan-AI/Wan2.2-TI2V-5B-Diffusers@b8fff731 transformer/ and vae/config.json"),
 }
 CFG_BRANCHES = 2
 
 
-def wan_tokens(height, width, frames):
-    """VAE 4x temporal / 8x spatial compression, then 1x2x2 patches."""
-    if height % 16 or width % 16 or (frames - 1) % 4:
-        raise ValueError("Wan shape must be 16-aligned with 4k+1 frames")
-    return ((frames - 1) // 4 + 1) * (height // 16) * (width // 16)
+def wan_tokens(height, width, frames, spatial=8):
+    """VAE 4x temporal / ``spatial``x spatial compression, then 1x2x2 patches."""
+    if height % (2 * spatial) or width % (2 * spatial) or (frames - 1) % 4:
+        raise ValueError("Wan shape must be %d-aligned with 4k+1 frames" % (2 * spatial))
+    return ((frames - 1) // 4 + 1) * (height // (2 * spatial)) * (width // (2 * spatial))
+
+
+def architecture_tokens(architecture, height, width, frames):
+    return wan_tokens(height, width, frames, ARCHITECTURES[architecture]["spatial"])
 
 
 def step_flops(architecture, tokens):
@@ -48,8 +57,10 @@ def _median(values):
     return statistics.median(values)
 
 
-def measured_classes(run_json, *, wan_worker="wan", sana_worker="sana", steps=None, blocks_per_step=60):
+def measured_classes(run_json, *, wan_worker="wan", sana_worker="sana", steps=None, blocks_per_step=60,
+                     architecture="wan2.1-t2v-1.3b"):
     """SP1 per-shape costs from the E2 explicit-action run; n is per sample."""
+    arch = ARCHITECTURES[architecture]
     record = json.loads(Path(run_json).read_text())
     shapes, image = {}, dict(service=[], finish=[])
     cells = [cell for phase in record["phases"] for cell in phase.get("cells", [])]
@@ -88,17 +99,18 @@ def measured_classes(run_json, *, wan_worker="wan", sana_worker="sana", steps=No
     classes = {}
     for sid, row in shapes.items():
         spec = row["spec"]
-        name = "wan1.3b-%dx%dx%d" % (spec["height"], spec["width"], spec["frames"])
+        tokens = architecture_tokens(architecture, spec["height"], spec["width"], spec["frames"])
+        name = arch["prefix"] + "%dx%dx%d" % (spec["height"], spec["width"], spec["frames"])
         classes[name] = dict(kind="video", steps=steps or spec["steps"], blocks_per_step=blocks_per_step,
                              prepare_ms=row.get("prepare_ms", 0.), encode_ms=row.get("encode_ms", 0.), step_compute_ms=_median(row["step"]),
-                             comm_mb_per_step=ulysses_comm_mb("wan2.1-t2v-1.3b", wan_tokens(spec["height"], spec["width"], spec["frames"])),
-                             collectives_per_step=4 * ARCHITECTURES["wan2.1-t2v-1.3b"]["layers"] * CFG_BRANCHES,
+                             comm_mb_per_step=ulysses_comm_mb(architecture, tokens),
+                             collectives_per_step=4 * arch["layers"] * CFG_BRANCHES,
                              finish_ms=row["finish_ms"],
                              evidence=dict(step_samples=row["step"], block4_samples=row["blocks4"],
                                            block_cuda_ms_median=_median(row["block"]) if row["block"] else None,
                                            offload_ms=row.get("offload_ms"), offload_bytes=row.get("offload_bytes"),
                                            restore_ms=row.get("restore_ms"), shape=[spec["height"], spec["width"], spec["frames"]],
-                                           tokens=wan_tokens(spec["height"], spec["width"], spec["frames"])))
+                                           tokens=tokens))
     if image["service"]:
         classes["sana-1024"] = dict(kind="image", service_ms=_median(image["service"]) + _median(image["finish"] or [0.]),
                                     evidence=dict(service_samples=image["service"], finish_samples=image["finish"]))
@@ -112,8 +124,9 @@ def extrapolate(measured, source="wan2.1-t2v-1.3b", target="wan2.1-t2v-14b", nam
         if row["kind"] != "video":
             continue
         height, width, frames = row["evidence"]["shape"]
-        tokens = wan_tokens(height, width, frames)
-        ratio = step_flops(target, tokens) / step_flops(source, tokens)
+        # The same video shape has fewer tokens behind a stronger VAE.
+        source_tokens, tokens = architecture_tokens(source, height, width, frames), architecture_tokens(target, height, width, frames)
+        ratio = step_flops(target, tokens) / step_flops(source, source_tokens)
         result[name_prefix + "%dx%dx%d" % (height, width, frames)] = dict(
             row, step_compute_ms=row["step_compute_ms"] * ratio,
             blocks_per_step=2 * ARCHITECTURES[target]["layers"],

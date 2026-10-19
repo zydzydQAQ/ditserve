@@ -86,13 +86,14 @@ class ChunkedDecode:
     its temporal feature cache as an explicit argument. This replays diffusers
     0.36 ``_decode`` in the same order with the cache held per request, so the
     GPU can run other work between chunks; the result matches
-    ``decode_final_latent``. Tiled decoding and patched VAEs are not supported.
+    ``decode_final_latent``. The Wan2.2 VAE's pixel patches are folded back after
+    the last chunk, as ``_decode`` does. Tiled decoding is not supported.
     """
 
     def __init__(self, torch, pipe, latent):
         vae = pipe.vae
-        if getattr(vae, "use_tiling", False) or vae.config.patch_size is not None or latent.shape[0] != 1:
-            raise ValueError("chunked decode supports the untiled, unpatched single-video Wan VAE")
+        if getattr(vae, "use_tiling", False) or latent.shape[0] != 1:
+            raise ValueError("chunked decode supports the untiled single-video Wan VAE")
         self.torch, self.pipe = torch, pipe
         latent = latent.to(vae.dtype)
         mean = torch.tensor(vae.config.latents_mean).view(1, vae.config.z_dim, 1, 1, 1).to(latent.device, latent.dtype)
@@ -124,7 +125,12 @@ class ChunkedDecode:
     def finish(self):
         if not self.done:
             raise ValueError("decode has remaining latent frames")
-        video = self.torch.clamp(self.torch.cat(self.chunks, 2), min=-1.0, max=1.0)
+        video = self.torch.cat(self.chunks, 2)
+        patch = self.pipe.vae.config.patch_size
+        if patch is not None:
+            from diffusers.models.autoencoders.autoencoder_kl_wan import unpatchify
+            video = unpatchify(video, patch_size=patch)
+        video = self.torch.clamp(video, min=-1.0, max=1.0)
         array = self.pipe.video_processor.postprocess_video(video, output_type="np")
         self.x = self.cache = self.chunks = None
         return array

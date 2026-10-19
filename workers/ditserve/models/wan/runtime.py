@@ -1,4 +1,7 @@
-"""Explicit request state for the pinned Wan 1.3B mechanism experiments.
+"""Explicit request state for the pinned Wan mechanism experiments.
+
+Wan2.1 T2V 1.3B is the reference model; Wan2.2 TI2V-5B runs as text-to-video
+with per-token timesteps (``model_timestep``).
 
 Only the standard library is imported until a worker is constructed. GPU work is
 serialized on one device; CPU prompt encoding may overlap it on another thread.
@@ -146,6 +149,19 @@ def normalize_spec(spec):
     return result
 
 
+def model_timestep(torch, latents, timestep, expand):
+    """The transformer's timestep input, in diffusers 0.36 WanPipeline's order.
+
+    Wan2.1 passes the solver timestep once per video. Wan2.2 TI2V
+    (``expand_timesteps``) passes one per patch token, from an all-ones text-to-video
+    mask sampled at the 1x2x2 patch grid, so the result is (batch, tokens).
+    """
+    if not expand:
+        return timestep.expand(latents.shape[0])
+    mask = torch.ones(latents.shape, dtype=torch.float32, device=latents.device)
+    return (mask[0][0][:, ::2, ::2] * timestep).flatten().unsqueeze(0).expand(latents.shape[0], -1)
+
+
 def _tree_map(value, is_tensor, transform, memo=None):
     """Map the complete supported state graph while preserving object aliases.
 
@@ -259,10 +275,15 @@ class WanStepWorker:
                                dtype="float16", vae_dtype="float32", text_encoder_dtype="float32",
                                text_encoder_device="cpu", local_files_only=True, device=device)
         self.pipe = p._pipeline(self.torch, self.diffusers, args)
+        # One transformer and the UniPC recipe: Wan2.1 T2V, or Wan2.2 TI2V used for
+        # text-to-video (per-token timesteps). The two-expert Wan2.2 A14B is not.
         if (type(self.pipe.scheduler).__name__ != "UniPCMultistepScheduler" or
-                self.pipe.config.boundary_ratio is not None or self.pipe.config.expand_timesteps or
+                self.pipe.config.boundary_ratio is not None or
                 getattr(self.pipe, "transformer_2", None) is not None):
-            raise RuntimeError("worker supports only fixed Wan2.1 1.3B and UniPC recipe")
+            raise RuntimeError("worker supports only single-transformer Wan with the UniPC recipe")
+        self.expand_timesteps = bool(self.pipe.config.expand_timesteps)
+        # Latent H/W must split into whole 1x2x2 patches.
+        self.spatial_multiple = self.pipe.vae_scale_factor_spatial * self.pipe.transformer.config.patch_size[1]
         if self.pipe.scheduler.config.solver_p is not None:
             raise RuntimeError("external UniPC predictor state is unsupported")
         self._scheduler_config = dict(self.pipe.scheduler.config)
@@ -280,7 +301,7 @@ class WanStepWorker:
             raise RuntimeError("unsupported DBCache context manager contract")
         self._context_names = tuple(self.pipe.transformer._context_names)
         if len(self._context_names) != 1:
-            raise RuntimeError("expected one Wan1.3B cached blocks context")
+            raise RuntimeError("expected one cached Wan blocks context")
         self._lock = threading.RLock()
         self._encoder_lock = threading.Lock()
         self._owner = object()
@@ -451,6 +472,8 @@ class WanStepWorker:
         overlapped another request. It is not the caller's wall-clock interval.
         """
         spec = normalize_spec(spec)
+        if spec["height"] % self.spatial_multiple or spec["width"] % self.spatial_multiple:
+            raise ValueError("this Wan model requires H/W multiples of %d" % self.spatial_multiple)
         with self._lock, self.torch.inference_mode(), self.p._sdpa_math_context(self.torch):
             if not isinstance(payload, EncodedPrompt) or payload.owner is not self._owner:
                 raise ValueError("encoded prompt belongs to another worker")
@@ -522,7 +545,7 @@ class WanStepWorker:
             anchor = state.needs_anchor
             with self._activate(state):
                 timestep_scalar = state.scheduler.timesteps[index]
-                timestep = timestep_scalar.expand(state.latents.shape[0])
+                timestep = model_timestep(self.torch, state.latents, timestep_scalar, self.expand_timesteps)
                 model_input = state.latents.to(self.pipe.transformer.dtype)
                 with self.pipe.transformer.cache_context("cond"):
                     prediction = self.pipe.transformer(hidden_states=model_input, timestep=timestep,

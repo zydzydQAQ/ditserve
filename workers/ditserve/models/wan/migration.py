@@ -114,6 +114,10 @@ class _BaseView:
     def __init__(self, worker, source, shadow):
         self.worker, self.source, self.shadow = worker, source, shadow
 
+    @property
+    def pipe(self):   # the latent shape check reads the model's channels and VAE factors
+        return getattr(self.worker, "pipe", None)
+
     def _check(self, state, residency):
         if state is not self.shadow:
             raise ParallelContractError("invalid base view")

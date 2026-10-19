@@ -41,6 +41,8 @@ class WanBlockExecutor:
 
     def __init__(self, worker, parallel=None):
         self.worker, self.model, self.parallel = worker, worker.pipe.transformer, parallel
+        # Wan2.2 TI2V conditions every patch token on its own timestep.
+        self.expand_timesteps = bool(getattr(worker, "expand_timesteps", False))
         self._validate_model()
         self._owner, self._states, self._advancing = object(), {}, False
 
@@ -56,9 +58,11 @@ class WanBlockExecutor:
             raise ValueError("block execution in a process group requires the SP attachment's safe points")
         if any(type(block) is not WanTransformerBlock for block in model.blocks):
             raise ValueError("unknown Wan block implementation")
-        # The SP attachment shards at the patch embedding and RoPE and gathers at the
-        # output projection; any other hook would change the arithmetic unseen.
-        sharding = {id(model.patch_embedding), id(model.rope), id(model.proj_out)} if self.parallel else set()
+        # The SP attachment shards at the patch embedding, RoPE and (per-token
+        # timesteps) the condition embedder, and gathers at the output projection;
+        # any other hook would change the arithmetic unseen.
+        sharding = ({id(model.patch_embedding), id(model.rope), id(model.condition_embedder), id(model.proj_out)}
+                    if self.parallel else set())
         for module in model.modules():
             if (module.training or getattr(module, "_hf_hook", None) is not None
                     or getattr(module, "_orig_mod", None) is not None
@@ -98,19 +102,26 @@ class WanBlockExecutor:
         pt, ph, pw = model.config.patch_size
         rotary = model.rope(latent)
         hidden = model.patch_embedding(latent).flatten(2).transpose(1, 2)
-        timestep = base.scheduler.timesteps[base.step_index].expand(batch)
+        from .runtime import model_timestep
+        timestep = model_timestep(self.worker.torch, base.latents, base.scheduler.timesteps[base.step_index],
+                                  self.expand_timesteps)
+        tokens = timestep.shape[1] if timestep.ndim == 2 else None
         embedding = base.prompt_embeds if state.branch == "cond" else base.negative_prompt_embeds
         temb, projected, encoder, image = model.condition_embedder(
-            timestep, embedding, None, timestep_seq_len=None)
-        if image is not None or temb.ndim != 2:
-            raise ValueError("expanded timestep and image conditioning are unsupported")
+            timestep.flatten() if tokens else timestep, embedding, None, timestep_seq_len=tokens)
+        if image is not None or temb.ndim != (3 if tokens else 2):
+            raise ValueError("unexpected timestep embedding or image conditioning")
         state.packet = dict(hidden=hidden, encoder=encoder, temb=temb,
-                            projected=projected.unflatten(1, (6, -1)), rotary=rotary,
+                            projected=projected.unflatten(2 if tokens else 1, (6, -1)), rotary=rotary,
                             shape=(batch, frames // pt, height // ph, width // pw, pt, ph, pw))
 
     def _prediction(self, packet):
         model, hidden, temb = self.model, packet["hidden"], packet["temb"]
-        shift, scale = (model.scale_shift_table.to(temb.device) + temb.unsqueeze(1)).chunk(2, dim=1)
+        if temb.ndim == 3:   # per-token timesteps (Wan2.2 TI2V)
+            shift, scale = (model.scale_shift_table.unsqueeze(0).to(temb.device) + temb.unsqueeze(2)).chunk(2, dim=2)
+            shift, scale = shift.squeeze(2), scale.squeeze(2)
+        else:
+            shift, scale = (model.scale_shift_table.to(temb.device) + temb.unsqueeze(1)).chunk(2, dim=1)
         shift, scale = shift.to(hidden.device), scale.to(hidden.device)
         hidden = (model.norm_out(hidden.float()) * (1 + scale) + shift).type_as(hidden)
         hidden = model.proj_out(hidden)

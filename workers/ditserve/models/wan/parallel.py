@@ -522,8 +522,20 @@ def _tensor_digest(tensor):
     return hashlib.sha256(value.numpy().tobytes()).hexdigest()
 
 
-def _validate_cache_off_values(state, torch):
-    shape = (1, 16, (state.spec["frames"] - 1) // 4 + 1, state.spec["height"] // 8, state.spec["width"] // 8)
+def wan_latent_shape(worker, spec):
+    """(1, C, F, H, W): transformer input channels and the VAE compression.
+
+    Wan2.1 1.3B is 16 channels at 4x temporal / 8x spatial; Wan2.2 TI2V-5B 48 at 4x/16x.
+    Worker doubles without a pipeline or model config default to Wan2.1 1.3B.
+    """
+    pipe = getattr(worker, "pipe", None)
+    channels = getattr(getattr(getattr(pipe, "transformer", None), "config", None), "in_channels", 16)
+    temporal = getattr(pipe, "vae_scale_factor_temporal", 4)
+    spatial = getattr(pipe, "vae_scale_factor_spatial", 8)
+    return (1, channels, (spec["frames"] - 1) // temporal + 1, spec["height"] // spatial, spec["width"] // spatial)
+
+
+def _validate_cache_off_values(state, torch, shape):
     device = state.latents.device
 
     def check(value, dimensions, dtype, placement, optional=False):
@@ -571,7 +583,7 @@ def pack_cache_off_request(worker, state):
         raise ParallelContractError("migration requires the pinned two-step UniPC scheduler")
     if str(state.generator.device) != "cpu":
         raise ParallelContractError("migration requires the request's CPU RNG")
-    _validate_cache_off_values(state, torch)
+    _validate_cache_off_values(state, torch, wan_latent_shape(worker, state.spec))
     assert_transfer_supported(state_inventory(state, torch_module=torch))
     tensors, references, devices, identities = {}, {}, {}, {}
 
@@ -717,7 +729,7 @@ def unpack_cache_off_request(worker, manifest, tensors):
                          prompt_embeds=get("prompt_embeds"), negative_prompt_embeds=get("negative_prompt_embeds"),
                          contexts={}, residency="gpu", pending_snapshot=None, owner=worker._owner)
     worker._validate_request_schema(state)
-    _validate_cache_off_values(state, torch)
+    _validate_cache_off_values(state, torch, wan_latent_shape(worker, state.spec))
     if state.cache_enabled or state.contexts or state.spec["cache"] or state.request_id != state.spec["request_id"]:
         raise ParallelContractError("invalid transported cache-off identity")
     return state
