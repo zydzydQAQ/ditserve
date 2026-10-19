@@ -340,9 +340,10 @@ Within an SP group, the two branches can also be interleaved block by block
 on two CUDA streams so that one branch's all-to-all overlaps the other's
 compute. The interleaved execution hides 33--87\% of the communication of a
 step depending on degree and placement (SP4 reaches $2.4$--$3.0\times$) and
-deviates from single-GPU output by the same deterministic amount as the
-plain SP run of the same degree, whose GEMMs see a different token-shard
-size.\evidence{docs/kairos\_preexperiments.md (K16b, K16c)}
+is bit-exact with the plain SP run of the same layout; what plain SP
+itself changes relative to one GPU is the token-shard size its GEMMs see,
+not anything the interleaving
+adds.\evidence{docs/kairos\_preexperiments.md (K16b, K16c, K16e)}
 Plain SP is not exact on GPUs: at 50 steps the 5B model's SP4 output at
 $512\times896\times81$ differs from the single-GPU output by a mean LPIPS of
 0.107 (SP2: 0.041), while at $704\times1280\times121$ both stay at
