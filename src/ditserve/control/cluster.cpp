@@ -107,6 +107,8 @@ ClusterCost::ClusterCost(const Json& profile) : profile_(profile) {
     overhead_ms_ = number_field(profile, "quantum_overhead_ms");
     overlap_ = number_field(profile, "sp_overlap");
     if (overlap_ > 1) throw std::invalid_argument("sp_overlap must be in [0, 1]");
+    pair_overlap_ = number_field(profile, "pair_overlap");
+    if (pair_overlap_ > 1) throw std::invalid_argument("pair_overlap must be in [0, 1]");
     const auto links = profile.value("links", Json::object());
     for (auto it = links.begin(); it != links.end(); ++it) {
         const auto& link = it.value();
@@ -143,7 +145,7 @@ const Json& ClusterCost::klass(const std::string& name) const {
     return classes.at(name);
 }
 
-double ClusterCost::step_ms(const std::string& name, const Form& form, int sp_groups, const std::vector<int>* group) const {
+ClusterCost::Terms ClusterCost::terms(const std::string& name, const Form& form, int sp_groups, const std::vector<int>* group) const {
     const auto& row = klass(name);
     if (row.at("kind") != "video") throw std::invalid_argument("image classes have no solver steps");
     form_name(form);   // validates
@@ -153,7 +155,8 @@ double ClusterCost::step_ms(const std::string& name, const Form& form, int sp_gr
         return links.at(degree_key(sp));
     };
     const double cfg = form.cfg, sp = form.sp;
-    double step = number_field(row, "step_compute_ms", 0, true) / (cfg * sp * efficiency_);
+    Terms t;
+    t.compute = number_field(row, "step_compute_ms", 0, true) / (cfg * sp * efficiency_);
     if (form.sp > 1) {
         const auto& link = link_of(form.sp);
         double gbps = number_field(link, "gbps", 0, true), latency = number_field(link, "latency_ms");
@@ -189,18 +192,29 @@ double ClusterCost::step_ms(const std::string& name, const Form& form, int sp_gr
             }
             gbps *= contended / number_field(link, "gbps", 0, true);
         }
-        const double comm = number_field(row, "comm_mb_per_step") / cfg * (sp - 1) / (sp * sp) / gbps;
+        t.comm = number_field(row, "comm_mb_per_step") / cfg * (sp - 1) / (sp * sp) / gbps;
         // Branch interleaving hides part of the shorter term behind the other branch;
         // with the branches on separate halves (cfg = 2) each rank has one branch.
-        // The hidden fraction falls as communication approaches compute, so a link may name its own.
-        const double hidden = form.cfg == 1 ? overlap * std::min(step, comm) : 0;
-        step += comm - hidden + number_field(row, "collectives_per_step") / cfg * latency;
+        t.overlap = form.cfg == 1 ? overlap : 0;
+        t.latency = number_field(row, "collectives_per_step") / cfg * latency;
     }
     if (form.cfg == 2) {
         const auto& pair = link_of(2);
-        step += number_field(row, "cfg_exchange_mb") / number_field(pair, "gbps", 0, true) + number_field(pair, "latency_ms");
+        t.exchange = number_field(row, "cfg_exchange_mb") / number_field(pair, "gbps", 0, true) + number_field(pair, "latency_ms");
     }
-    return step;
+    return t;
+}
+
+double ClusterCost::step_ms(const std::string& name, const Form& form, int sp_groups, const std::vector<int>* group) const {
+    const Terms t = terms(name, form, sp_groups, group);
+    return t.compute + t.comm - t.overlap * std::min(t.compute, t.comm) + t.latency + t.exchange;
+}
+
+double ClusterCost::pair_ms(const std::string& first, const std::string& second, const Form& form, int sp_groups,
+                            const std::vector<int>* group) const {
+    const Terms a = terms(first, form, sp_groups, group), b = terms(second, form, sp_groups, group);
+    const double compute = a.compute + b.compute, comm = a.comm + b.comm;
+    return compute + comm - pair_overlap_ * std::min(compute, comm) + a.latency + b.latency + a.exchange + b.exchange;
 }
 
 int ClusterCost::blocks_per_step(const std::string& name) const { return int_field(klass(name), "blocks_per_step", 1); }
@@ -356,6 +370,25 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         if (int_field(*r, "decode_done", 0, 0) > 0) mid_owner[group_of(*r).front()] = r;
         else if (int_field(*r, "blocks_done", 0, 0) > 0) for (int gpu : group_of(*r)) mid_owner[gpu] = step_owner[gpu] = r;
     }
+    // Two videos inside a step in lockstep (request-level interleaving) resume together; the
+    // state names the partner on both rows.
+    const bool pairing = bool_field(options, "pairing", false);
+    std::map<const Json*, const Json*> pair_of;
+    {
+        std::map<std::string, const Json*> by_id;
+        for (const Json* r : rows) by_id[r->at("request_id").get<std::string>()] = r;
+        for (const Json* r : rows) {
+            if (!r->contains("pair") || r->at("pair").is_null()) continue;
+            const auto partner = r->at("pair").get<std::string>();
+            if (!by_id.count(partner)) throw std::invalid_argument("paired request " + partner + " is not in the queue");
+            const Json* q = by_id.at(partner);
+            if (group_of(*r) != group_of(*q) || int_field(*r, "blocks_done", 0, 0) != int_field(*q, "blocks_done", 0, 0)
+                || int_field(*r, "blocks_done", 0, 0) == 0)
+                throw std::invalid_argument("paired requests must be inside the same step on the same group");
+            pair_of[r] = q;
+        }
+    }
+    std::set<const Json*> taken;   // partners consumed by a pair assignment this plan
     // A group counts as free only if a new placement could take it: not reserved
     // for images and not held by a video inside a step or decode.
     int free_widest = 1;
@@ -424,9 +457,17 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         return std::any_of(group.begin(), group.end(), [&](int gpu) { return mid_owner[gpu] && mid_owner[gpu] != r; });
     };
 
+    // Blocks per quantum when two requests advance in lockstep on `form`.
+    auto pair_quantum = [&](const std::string& first, const std::string& second, const Form& form, int n, const std::vector<int>* group) -> Json {
+        if (!policy.blocks) return "step";
+        if (quantum_ms <= 0) return quantum_blocks;
+        const double block = cost.pair_ms(first, second, form, n, group) / cost.blocks_per_step(first);
+        return std::max(1, std::min(static_cast<int>(std::floor(quantum_ms / block)), cost.blocks_per_step(first)));
+    };
     Json assignments = Json::array();
     for (std::size_t index = 0; index < rows.size(); ++index) {
         const Json& r = *rows[index];
+        if (taken.count(&r)) continue;
         const auto id = r.at("request_id").get<std::string>();
         const auto klass = r.at("class").get<std::string>();
         if (r.at("kind") == "image") {
@@ -472,9 +513,17 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             if (all_free(current)) {
                 take(current);
                 const Form form = form_of(r, current);
-                assignments.push_back({{"request_id", id}, {"group", current}, {"degree", form.degree()}, {"form", form_name(form)},
-                                       {"quantum", video_quantum(klass, form, sp_groups(form), &current)},
-                                       {"resize", false}, {"reason", "resume"}});
+                Json assignment = {{"request_id", id}, {"group", current}, {"degree", form.degree()}, {"form", form_name(form)},
+                                   {"quantum", video_quantum(klass, form, sp_groups(form), &current)},
+                                   {"resize", false}, {"reason", "resume"}};
+                if (pair_of.count(&r)) {
+                    const Json* q = pair_of.at(&r);
+                    assignment["pair"] = q->at("request_id");
+                    assignment["pair_resize"] = false;
+                    assignment["quantum"] = pair_quantum(klass, q->at("class").get<std::string>(), form, sp_groups(form), &current);
+                    taken.insert(q);
+                }
+                assignments.push_back(assignment);
                 sp_assigned += form.sp >= 2;
             }
             continue;
@@ -536,9 +585,41 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         if (chosen.empty()) continue;
         take(chosen);
         const Form form = form_for(klass, static_cast<int>(chosen.size()), &chosen);
-        assignments.push_back({{"request_id", id}, {"group", chosen}, {"degree", form.degree()}, {"form", form_name(form)},
-                               {"quantum", video_quantum(klass, form, sp_groups(form), &chosen)},
-                               {"resize", prepared && chosen != current}, {"reason", prepared ? "regroup" : "admit"}});
+        Json assignment = {{"request_id", id}, {"group", chosen}, {"degree", form.degree()}, {"form", form_name(form)},
+                           {"quantum", video_quantum(klass, form, sp_groups(form), &chosen)},
+                           {"resize", prepared && chosen != current}, {"reason", prepared ? "regroup" : "admit"}};
+        // Request-level interleaving: a waiting video at a step boundary joins this one on the
+        // group when the pair's step is cheaper than the two in sequence and both still make
+        // their deadlines at the pair's pace (or neither would alone).
+        if (pairing && others_waiting && cost.pair_overlap() > 0 && form.sp >= 2) {
+            for (std::size_t j = index + 1; j < rows.size(); ++j) {
+                const Json& q = *rows[j];
+                if (q.at("kind") != "video" || taken.count(&q) || pair_of.count(&q)) continue;
+                if (int_field(q, "blocks_done", 0, 0) > 0 || int_field(q, "decode_done", 0, 0) > 0) continue;
+                const auto qklass = q.at("class").get<std::string>();
+                const int qsteps = int_field(q, "steps_total", int_field(cost.klass(qklass), "steps", 0), 1);
+                if (q.value("prepared", false) && int_field(q, "steps_done", 0, 0) >= qsteps) continue;
+                if (cost.blocks_per_step(qklass) != cost.blocks_per_step(klass)) continue;
+                if (!q.value("prepared", false) && q.contains("affinity")
+                    && std::find(chosen.begin(), chosen.end(), static_cast<int>(integer(q.at("affinity"), "affinity"))) == chosen.end()) continue;
+                if (q.value("prepared", false) && !policy.elastic && group_of(q) != chosen) continue;
+                const double pair_step = cost.pair_ms(klass, qklass, form, sp_groups(form), &chosen);
+                if (pair_step >= cost.step_ms(klass, form, sp_groups(form), &chosen) + cost.step_ms(qklass, form, sp_groups(form), &chosen)) break;
+                auto fits = [&](const Json& v, const std::string& vklass) {
+                    const int left = std::max(0, int_field(v, "steps_total", int_field(cost.klass(vklass), "steps", 0), 1) - int_field(v, "steps_done", 0, 0));
+                    const double rest = (v.value("prepared", false) ? 0 : number_field(cost.klass(vklass), "prepare_ms")) + left * pair_step
+                                        + number_field(cost.klass(vklass), "finish_ms");
+                    return now + rest <= number_field(v, "deadline_ms");
+                };
+                if (!((fits(r, klass) && fits(q, qklass)) || (late.at(&r) && late.at(&q)))) continue;
+                assignment["pair"] = q.at("request_id");
+                assignment["pair_resize"] = q.value("prepared", false) && group_of(q) != chosen;
+                assignment["quantum"] = pair_quantum(klass, qklass, form, sp_groups(form), &chosen);
+                taken.insert(&q);
+                break;
+            }
+        }
+        assignments.push_back(assignment);
         sp_assigned += form.sp >= 2;
     }
     // Shared by the executor and the simulator, so a planner bug fails here with
@@ -551,9 +632,10 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             const auto& quantum = assignment.at("quantum");
             if (quantum == "atomic" || quantum == "finish") continue;
             const auto id = assignment.at("request_id").get<std::string>();
+            const Json* partner = assignment.contains("pair") ? by_id.at(assignment.at("pair").get<std::string>()) : nullptr;
             for (const auto& gpu : assignment.at("group")) {
                 const Json* owner = step_owner[gpu.get<int>()];
-                if (owner && owner != by_id.at(id))
+                if (owner && owner != by_id.at(id) && owner != partner)
                     throw std::logic_error("cluster plan advances " + id + " on GPU " + std::to_string(gpu.get<int>()) + " while " +
                                            owner->at("request_id").get<std::string>() + " is inside a solver step there");
             }

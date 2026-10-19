@@ -16,6 +16,7 @@ struct Running {
     Json assignment;
     double end;
     int blocks;
+    std::size_t partner = SIZE_MAX;   // the second request of a lockstep pair
 };
 }
 
@@ -58,7 +59,7 @@ Json simulate_cluster(const Json& config) {
         return form_of(assignment).sp >= 2 && assignment.at("quantum") != "atomic" && assignment.at("quantum") != "finish";
     };
     double now = 0, busy_ms = 0;
-    std::size_t completed = 0, preemptions = 0, resizes = 0, plans = 0;
+    std::size_t completed = 0, preemptions = 0, resizes = 0, plans = 0, pairs = 0;
     std::vector<std::size_t> arrival_order(rows.size());
     for (std::size_t i = 0; i < rows.size(); ++i) arrival_order[i] = i;
     std::stable_sort(arrival_order.begin(), arrival_order.end(), [&](std::size_t a, std::size_t b) {
@@ -117,22 +118,37 @@ Json simulate_cluster(const Json& config) {
                     if (assignment.at("resize").get<bool>()) { duration += cost.resize_ms(); ++resizes; }
                     std::vector<int> group;
                     for (const auto& gpu : assignment.at("group")) group.push_back(gpu.get<int>());
-                    duration += blocks * cost.block_ms(klass, form, form.sp >= 2 ? sp_groups : 1, &group);
+                    if (assignment.contains("pair")) {
+                        // Two requests in lockstep: the pair's block time, plus the partner's prepare/resize.
+                        auto& other = rows[index.at(assignment.at("pair").get<std::string>())];
+                        const auto oklass = other.at("class").get<std::string>();
+                        if (!other.at("prepared").get<bool>()) duration += number_field(cost.klass(oklass), "prepare_ms");
+                        if (assignment.value("pair_resize", false)) { duration += cost.resize_ms(); ++resizes; }
+                        duration += blocks * cost.pair_ms(klass, oklass, form, form.sp >= 2 ? sp_groups : 1, &group) / cost.blocks_per_step(klass);
+                    } else {
+                        duration += blocks * cost.block_ms(klass, form, form.sp >= 2 ? sp_groups : 1, &group);
+                    }
                 }
                 const auto kind = quantum.is_string() ? quantum.get<std::string>() : std::string("blocks");
-                action_ms[at][kind] = action_ms[at].value(kind, 0.) + duration;
-                ++quanta[at];
-                preemptions += assignment.at("reason") == "block_preempt";
-                if (!row.contains("start_ms")) row["start_ms"] = now;
-                if (std::find(row["degrees"].begin(), row["degrees"].end(), degree) == row["degrees"].end()) row["degrees"].push_back(degree);
-                if (kind == "step" || kind == "blocks") {
-                    const auto name = form_name(form);
-                    if (std::find(row["forms"].begin(), row["forms"].end(), name) == row["forms"].end()) row["forms"].push_back(name);
+                std::vector<std::size_t> members = {at};
+                if (assignment.contains("pair")) members.push_back(index.at(assignment.at("pair").get<std::string>()));
+                for (std::size_t member : members) {
+                    auto& item = rows[member];
+                    action_ms[member][kind] = action_ms[member].value(kind, 0.) + duration;
+                    ++quanta[member];
+                    if (!item.contains("start_ms")) item["start_ms"] = now;
+                    if (std::find(item["degrees"].begin(), item["degrees"].end(), degree) == item["degrees"].end()) item["degrees"].push_back(degree);
+                    if (kind == "step" || kind == "blocks") {
+                        const auto name = form_name(form);
+                        if (std::find(item["forms"].begin(), item["forms"].end(), name) == item["forms"].end()) item["forms"].push_back(name);
+                    }
+                    item["status"] = "running";
                 }
+                preemptions += assignment.at("reason") == "block_preempt";
+                pairs += assignment.contains("pair");
                 for (const auto& gpu : assignment.at("group")) busy[gpu.get<int>()] = true;
-                row["status"] = "running";
                 busy_ms += duration * degree;
-                running.push_back({index.at(row.at("request_id").get<std::string>()), assignment, now + duration, blocks});
+                running.push_back({at, assignment, now + duration, blocks, members.size() > 1 ? members[1] : SIZE_MAX});
             }
         }
 
@@ -159,10 +175,19 @@ Json simulate_cluster(const Json& config) {
             } else if (quantum == "atomic" || quantum == "finish") {
                 row["status"] = "completed"; row["finish_ms"] = it->end; row["group"] = Json::array(); row.erase("form"); ++completed;
             } else {
-                int blocks = row.at("blocks_done").get<int>() + it->blocks;
-                if (blocks >= cost.blocks_per_step(klass)) { blocks = 0; row["steps_done"] = row.at("steps_done").get<int>() + 1; }
-                row["blocks_done"] = blocks; row["prepared"] = true;
-                row["group"] = it->assignment.at("group"); row["form"] = form_name(form_of(it->assignment)); row["status"] = "suspended";
+                std::vector<std::size_t> members = {it->row};
+                if (it->partner != SIZE_MAX) members.push_back(it->partner);
+                for (std::size_t member : members) {
+                    auto& item = rows[member];
+                    const auto iklass = item.at("class").get<std::string>();
+                    int blocks = item.at("blocks_done").get<int>() + it->blocks;
+                    if (blocks >= cost.blocks_per_step(iklass)) { blocks = 0; item["steps_done"] = item.at("steps_done").get<int>() + 1; }
+                    item["blocks_done"] = blocks; item["prepared"] = true;
+                    item["group"] = it->assignment.at("group"); item["form"] = form_name(form_of(it->assignment)); item["status"] = "suspended";
+                    // A pair stopped inside a step resumes together; at a step boundary it dissolves.
+                    if (members.size() > 1 && blocks > 0) item["pair"] = rows[members[member == members[0] ? 1 : 0]].at("request_id");
+                    else item.erase("pair");
+                }
             }
             it = running.erase(it);
         }
@@ -176,7 +201,7 @@ Json simulate_cluster(const Json& config) {
     return {{"policy", policy}, {"gpus", gpus}, {"metrics", request_summary(rows)},
             {"by_kind", {{"video", kind_summary(rows, "video")}, {"image", kind_summary(rows, "image")}}},
             {"makespan_ms", makespan}, {"gpu_utilization", makespan > 0 ? busy_ms / (gpus * makespan) : 0.},
-            {"block_preemptions", preemptions}, {"resizes", resizes}, {"plans", plans},
+            {"block_preemptions", preemptions}, {"resizes", resizes}, {"plans", plans}, {"pairs", pairs},
             {"provenance", cost.profile().at("provenance")}, {"requests", rows},
             {"notice", "Cost-model simulation; durations come from the profile, not from executing models."}};
 }

@@ -55,6 +55,12 @@ public:
     double block_ms(const std::string& klass, const Form& form, int sp_groups = 1, const std::vector<int>* group = nullptr) const;
     // Remaining GPU time on `form` from the request's current progress.
     double remaining_ms(const Json& request, const Form& form, int sp_groups = 1, const std::vector<int>* group = nullptr) const;
+    // One step of two requests advancing in lockstep on `form` (request-level interleaving):
+    // the sum of both steps less pair_overlap of the shorter of their compute and
+    // communication sums; neither request interleaves its own branches.
+    double pair_ms(const std::string& first, const std::string& second, const Form& form, int sp_groups = 1,
+                   const std::vector<int>* group = nullptr) const;
+    double pair_overlap() const { return pair_overlap_; }
     // Plain sequence parallelism of `degree` GPUs.
     double step_ms(const std::string& klass, int degree, int sp_groups = 1) const { return step_ms(klass, Form{1, degree}, sp_groups); }
     double block_ms(const std::string& klass, int degree, int sp_groups = 1) const { return block_ms(klass, Form{1, degree}, sp_groups); }
@@ -66,8 +72,10 @@ public:
     double resize_ms() const { return resize_ms_; }
     double quantum_overhead_ms() const { return overhead_ms_; }
 private:
+    struct Terms { double compute = 0, comm = 0, latency = 0, exchange = 0, overlap = 0; };
+    Terms terms(const std::string& klass, const Form& form, int sp_groups, const std::vector<int>* group) const;
     Json profile_;
-    double efficiency_ = 1, resize_ms_ = 0, overhead_ms_ = 0, overlap_ = 0;
+    double efficiency_ = 1, resize_ms_ = 0, overhead_ms_ = 0, overlap_ = 0, pair_overlap_ = 0;
 };
 
 // state: {now_ms, gpus, busy:[bool], requests:[...], sp_groups_running (SP
@@ -77,14 +85,18 @@ private:
 //   blocks_done (inside the current step), group ([] when unplaced), form (the
 //   group's parallel form, default sp<group size>), optional steps_total
 //   (overrides the class), affinity (GPU that must host prepare) and
-//   decode_done (latent-frame chunks already decoded).
+//   decode_done (latent-frame chunks already decoded), pair (the request this
+//   one is inside a step with, in lockstep on the same group).
+// options.pairing lets an elastic policy advance two videos in lockstep on one
+// group when the profile's pair_overlap makes that cheaper than their steps
+// in sequence; the assignment then names the partner in `pair`.
 // Policies: static_sp1|static_sp2|static_sp4|static_sp8, static_cfg2,
 // static_cfg2sp2, static_cfg2sp4, step_elastic, block_elastic, round_elastic
 // (regroups only every options.round_steps steps). Elastic policies choose
 // among options.forms (default: sp forms of options.degrees, default
 // {1, 2, 4, 8}); for each group size the form with the smallest predicted
 // step time wins. options.order (edf|srtf|fcfs) ranks feasible requests.
-// Returns {assignments:[{request_id, group, degree, form, quantum, resize, reason}]}
+// Returns {assignments:[{request_id, group, degree, form, quantum, resize, reason, pair?, pair_resize?}]}
 // where quantum is "atomic" (image), "finish" (with decode_frames when the
 // decode is chunked), "step" or a block count.
 Json cluster_plan(const Json& state, const std::string& policy, const ClusterCost& cost, const Json& options = Json::object());

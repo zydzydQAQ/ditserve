@@ -235,6 +235,48 @@ int main() {
         near(sim.at("makespan_ms").get<double>(), 4 * 511. + 100);
         require(sim.at("requests")[0].at("degrees") == Json::array({2, 1}), "pair then single-GPU decode");
     });
+    check("lockstep pairs", [] {
+        // Pair step: both computes and both all-to-alls, pair_overlap of the shorter sum hidden, latencies added.
+        Json prof = profile(); prof["pair_overlap"] = 1;
+        const ClusterCost cost(prof);
+        near(cost.pair_ms("video", "video", parse_form("sp2")), 1000 + 20 - 20 + 2);
+        near(cost.pair_ms("video", "video", parse_form("sp4")), 500 + 30 - 30 + 2);
+        near(ClusterCost(profile()).pair_ms("video", "video", parse_form("sp2")), 2 * 511);
+        Json half = profile(); half["pair_overlap"] = 0.5;
+        near(ClusterCost(half).pair_ms("video", "video", parse_form("sp2")), 1022 - 10);
+        half["pair_overlap"] = 2;
+        rejects([&] { ClusterCost{half}; });
+        // Two waiting videos on one pair of GPUs: with pairing on they advance in lockstep (1002 ms a
+        // step for both, against 511 each in sequence); off, the second waits.
+        auto plan2 = [&](const Json& options, const Json& costs = Json()) {
+            return cluster_plan({{"now_ms", 0}, {"gpus", 2}, {"busy", Json::array()}, {"requests", {video("a", 1e9), video("b", 1e9)}}},
+                                "block_elastic", ClusterCost(costs.is_null() ? prof : costs), options).at("assignments");
+        };
+        const Json options = {{"degrees", {2}}, {"quantum_ms", 300}, {"pairing", true}};
+        auto paired = plan2(options);
+        require(paired.size() == 1 && paired[0].at("pair") == "b" && paired[0].at("group") == Json::array({0, 1}), "pair formed");
+        require(paired[0].at("quantum") == 2 && paired[0].at("pair_resize") == false, "quantum from the pair's block time (100.2 ms)");
+        require(plan2({{"degrees", {2}}, {"quantum_ms", 300}}).size() == 1 && !plan2({{"degrees", {2}}, {"quantum_ms", 300}})[0].contains("pair"), "no pairing by default");
+        require(!plan2(options, profile())[0].contains("pair"), "no overlap, no pair");
+        // Inside a step the pair resumes together, and a diverged state is rejected.
+        const Json mid = {video("a", 1e9, {{"status", "suspended"}, {"prepared", true}, {"group", {0, 1}}, {"form", "sp2"}, {"blocks_done", 4}, {"pair", "b"}}),
+                          video("b", 1e9, {{"status", "suspended"}, {"prepared", true}, {"group", {0, 1}}, {"form", "sp2"}, {"blocks_done", 4}, {"pair", "a"}})};
+        auto resumed = cluster_plan({{"now_ms", 0}, {"gpus", 2}, {"busy", Json::array()}, {"requests", mid}}, "block_elastic", cost, options).at("assignments");
+        require(resumed.size() == 1 && resumed[0].at("reason") == "resume" && resumed[0].at("pair") == "b", "mid-step pair resumes together");
+        Json diverged = mid; diverged[1]["blocks_done"] = 3;
+        rejects([&] { cluster_plan({{"now_ms", 0}, {"gpus", 2}, {"busy", Json::array()}, {"requests", diverged}}, "block_elastic", cost, options); });
+        // Simulated: two videos on two GPUs finish sooner paired than in sequence, and the record counts the pairs.
+        const Json trace = Json::array({trace_row("a", "video", 0, 1e9), trace_row("b", "video", 0, 1e9)});
+        const auto together = simulate_cluster({{"workload", trace}, {"profile", prof}, {"policy", "block_elastic"}, {"gpus", 2}, {"options", options}});
+        const auto apart = simulate_cluster({{"workload", trace}, {"profile", prof}, {"policy", "block_elastic"}, {"gpus", 2}, {"options", {{"degrees", {2}}, {"quantum_ms", 300}}}});
+        require(together.at("pairs").get<int>() > 0 && apart.at("pairs") == 0, "pairs counted");
+        require(together.at("makespan_ms").get<double>() < apart.at("makespan_ms").get<double>(), "pairing shortens the makespan");
+        require(together.at("metrics").at("completed") == 2, "both complete");
+        // Images still preempt a paired step at a block boundary.
+        const Json mixed = Json::array({trace_row("a", "video", 0, 1e9), trace_row("b", "video", 0, 1e9), trace_row("i", "image", 500, 700)});
+        const auto preempted = simulate_cluster({{"workload", mixed}, {"profile", prof}, {"policy", "block_elastic"}, {"gpus", 2}, {"options", options}});
+        require(preempted.at("by_kind").at("image").at("ontime") == 1 && preempted.at("metrics").at("completed") == 3, "image on time beside the pair");
+    });
     check("queue order and round-based regrouping", [] {
         // "b" is due later but arrived earlier and has less work left (3 steps of 4): edf takes "a",
         // srtf and fcfs take "b".
