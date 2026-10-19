@@ -78,6 +78,52 @@ int main() {
         rejects([&] { ClusterCost(missing).step_ms("video", 8); });
         rejects([] { ClusterCost(profile()).step_ms("image", 1); });
     });
+    check("host-bridge contention and per-quantum overhead", [] {
+        Json shared = profile(); shared["links"]["2"]["concurrent_gbps"] = {{"2", 10}};
+        const ClusterCost cost(shared);
+        near(cost.step_ms("video", 2), 511);
+        near(cost.step_ms("video", 2, 2), 500 + 800. / 4 / 10 + 1);
+        near(cost.step_ms("video", 2, 3), 521);                       // largest listed count <= 3
+        near(ClusterCost(profile()).step_ms("video", 2, 2), 511);      // no table: the isolated rate
+        near(cost.step_ms("video", 4, 2), 250 + 800. * 3 / 16 / 10 + 1);
+        for (const Json& bad : {Json{{"1", 10}}, Json{{"x", 10}}, Json{{"2", 0}}, Json::array({10})}) {
+            Json broken = profile(); broken["links"]["2"]["concurrent_gbps"] = bad;
+            rejects([&] { ClusterCost{broken}; });
+        }
+        Json negative = profile(); negative["quantum_overhead_ms"] = -1;
+        rejects([&] { ClusterCost{negative}; });
+
+        // Two static SP2 videos share the bridge for every step; a lone one does not.
+        const Json pair = Json::array({trace_row("a", "video", 0, 1e9), trace_row("b", "video", 0, 1e9)});
+        auto sim = [&](const Json& trace, const std::string& policy, int gpus, const Json& prof, Json options = Json::object()) {
+            return simulate_cluster({{"workload", trace}, {"profile", prof}, {"policy", policy}, {"gpus", gpus}, {"options", options}});
+        };
+        near(sim(pair, "static_sp2", 4, shared).at("makespan_ms").get<double>(), 4 * 521. + 100);
+        near(sim(Json::array({trace_row("a", "video", 0, 1e9)}), "static_sp2", 4, shared).at("makespan_ms").get<double>(), 4 * 511. + 100);
+        // 4 steps of 10 blocks in 4-block quanta (4+4+2) plus one decode: 13 quanta.
+        Json overhead = profile(); overhead["quantum_overhead_ms"] = 7;
+        const auto one = sim(Json::array({trace_row("v", "video", 0, 1e9)}), "block_elastic", 1, overhead);
+        near(one.at("makespan_ms").get<double>(), 4100 + 13 * 7.);
+        require(one.at("requests")[0].at("quanta") == 13, "quanta counted");
+        near(one.at("requests")[0].at("action_ms").at("blocks").get<double>(), 4000 + 12 * 7.);
+        // The planner believes `planner_profile`; durations follow `profile`.
+        const auto believed = simulate_cluster({{"workload", pair}, {"profile", profile()}, {"planner_profile", shared},
+                                                {"policy", "static_sp2"}, {"gpus", 4}});
+        near(believed.at("makespan_ms").get<double>(), 4 * 511. + 100);
+
+        // Planner: "a" meets 2.16 s on an isolated pair (2.144 s) but not while another
+        // SP group runs (2.184 s), so it takes the quad; a fixed overhead per quantum
+        // (4 steps + 1 decode) has the same effect.
+        const Json rows = {video("a", 2160), image("i", 1e9)};
+        auto degree = [&](const Json& prof, int running) {
+            return cluster_plan({{"now_ms", 0}, {"gpus", 4}, {"busy", Json::array()}, {"requests", rows}, {"sp_groups_running", running}},
+                                "step_elastic", ClusterCost(prof)).at("assignments")[0].at("degree").get<int>();
+        };
+        require(degree(shared, 0) == 2 && degree(shared, 1) == 4, "contention widens the group");
+        require(degree(profile(), 1) == 2, "no table: running groups change nothing");
+        Json slow = profile(); slow["quantum_overhead_ms"] = 10;
+        require(degree(slow, 0) == 4, "overhead counts every remaining quantum");
+    });
     check("edf images first and videos share remaining GPUs", [] {
         const auto result = plan({video("v", 1e9), image("i", 100)}, "static_sp1", 2);
         require(result.size() == 2 && result[0].at("request_id") == "i" && result[0].at("quantum") == "atomic", "image first");

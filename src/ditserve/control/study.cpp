@@ -827,7 +827,9 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             }
             if(!requests.empty()){
                 Json flags=Json::array();for(bool flag:busy)flags.push_back(flag);
-                const auto plan=cluster_plan({{"now_ms",now()},{"gpus",gpus},{"busy",flags},{"requests",requests}},policy,cost,options);
+                int sp_running=0;   // SP advances in flight contend for the host bridge
+                for(const auto& task:tasks){const auto& a=task.assignment;sp_running+=a.at("degree").get<int>()>=2&&a.at("quantum")!="atomic"&&a.at("quantum")!="finish";}
+                const auto plan=cluster_plan({{"now_ms",now()},{"gpus",gpus},{"busy",flags},{"requests",requests},{"sp_groups_running",sp_running}},policy,cost,options);
                 for(const auto& assignment:plan.at("assignments")){launch(assignment);progressed=true;}
             }
         }
@@ -1339,9 +1341,10 @@ Json simulate_study(const Json& request){
             Json input={{"workload",rows},{"profile",cell.at("profile")},{"policy",policy},{"gpus",gpus},
                 {"options",cell.value("options",Json::object())},{"dispatch_ms",cell.value("dispatch_ms",0.)}};
             if(cell.contains("encode_slots"))input["encode_slots"]=cell.at("encode_slots");
+            if(cell.contains("planner_profile"))input["planner_profile"]=cell.at("planner_profile");
             auto result=simulate_cluster(input);
             if(!cell.value("keep_requests",false))result.erase("requests");
-            Json settings=cell;settings.erase("workload");settings.erase("matrix");settings.erase("profile");settings.erase("policies");
+            Json settings=cell;settings.erase("workload");settings.erase("matrix");settings.erase("profile");settings.erase("planner_profile");settings.erase("policies");
             record["phases"].push_back({{"id",policy.get<std::string>()+"-c"+std::to_string(index)},{"status","completed"},
                 {"policy",policy},{"cell",index},{"config",settings},{"result",result}});
         }

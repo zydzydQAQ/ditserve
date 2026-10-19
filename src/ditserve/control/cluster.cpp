@@ -75,6 +75,18 @@ ClusterCost::ClusterCost(const Json& profile) : profile_(profile) {
     efficiency_ = number_field(profile, "sp_efficiency", 1, true);
     if (efficiency_ > 1) throw std::invalid_argument("sp_efficiency must be in (0, 1]");
     resize_ms_ = number_field(profile, "resize_ms");
+    overhead_ms_ = number_field(profile, "quantum_overhead_ms");
+    for (const auto& link : profile.value("links", Json::object())) {
+        if (!link.is_object() || !link.contains("concurrent_gbps")) continue;
+        const auto& rates = link.at("concurrent_gbps");
+        if (!rates.is_object()) throw std::invalid_argument("concurrent_gbps must map a number of concurrent SP groups to a rate");
+        for (auto it = rates.begin(); it != rates.end(); ++it) {
+            const auto& key = it.key();
+            if (key.empty() || key.size() > 3 || !std::all_of(key.begin(), key.end(), [](char c) { return c >= '0' && c <= '9'; }) || std::stoi(key) < 2)
+                throw std::invalid_argument("concurrent_gbps keys must count at least 2 SP groups");
+            number(it.value(), "concurrent_gbps", true);
+        }
+    }
 }
 
 const Json& ClusterCost::klass(const std::string& name) const {
@@ -83,7 +95,7 @@ const Json& ClusterCost::klass(const std::string& name) const {
     return classes.at(name);
 }
 
-double ClusterCost::step_ms(const std::string& name, int degree) const {
+double ClusterCost::step_ms(const std::string& name, int degree, int sp_groups) const {
     const auto& row = klass(name);
     if (row.at("kind") != "video") throw std::invalid_argument("image classes have no solver steps");
     const double compute = number_field(row, "step_compute_ms", 0, true);
@@ -91,9 +103,17 @@ double ClusterCost::step_ms(const std::string& name, int degree) const {
     const auto& links = profile_.value("links", Json::object());
     if (!links.contains(degree_key(degree))) throw std::invalid_argument("cost profile has no link model for SP degree " + degree_key(degree));
     const auto& link = links.at(degree_key(degree));
+    double gbps = number_field(link, "gbps", 0, true);
+    if (sp_groups >= 2 && link.contains("concurrent_gbps")) {
+        int matched = 1;
+        for (auto it = link.at("concurrent_gbps").begin(); it != link.at("concurrent_gbps").end(); ++it) {
+            const int groups = std::stoi(it.key());
+            if (groups <= sp_groups && groups > matched) { matched = groups; gbps = it.value().get<double>(); }
+        }
+    }
     const double d = degree;
     return compute / (d * efficiency_)
-        + number_field(row, "comm_mb_per_step") * (d - 1) / (d * d) / number_field(link, "gbps", 0, true)
+        + number_field(row, "comm_mb_per_step") * (d - 1) / (d * d) / gbps
         + number_field(row, "collectives_per_step") * number_field(link, "latency_ms");
 }
 
@@ -103,16 +123,18 @@ int ClusterCost::decode_chunks(const std::string& name) const { return int_field
 
 double ClusterCost::chunk_ms(const std::string& name) const { return number_field(klass(name), "finish_ms") / decode_chunks(name); }
 
-double ClusterCost::block_ms(const std::string& name, int degree) const { return step_ms(name, degree) / blocks_per_step(name); }
+double ClusterCost::block_ms(const std::string& name, int degree, int sp_groups) const {
+    return step_ms(name, degree, sp_groups) / blocks_per_step(name);
+}
 
-double ClusterCost::remaining_ms(const Json& request, int degree) const {
+double ClusterCost::remaining_ms(const Json& request, int degree, int sp_groups) const {
     const auto name = request.at("class").get<std::string>();
     const auto& row = klass(name);
     if (row.at("kind") == "image") return number_field(row, "service_ms");
     const int steps = int_field(request, "steps_total", int_field(row, "steps", 0), 1), done = int_field(request, "steps_done", 0, 0);
     const int blocks = int_field(request, "blocks_done", 0, 0);
     double total = request.value("prepared", false) ? 0 : number_field(row, "prepare_ms");
-    total += std::max(0, steps - done) * step_ms(name, degree) - blocks * block_ms(name, degree);
+    total += std::max(0, steps - done) * step_ms(name, degree, sp_groups) - blocks * block_ms(name, degree, sp_groups);
     return total + (decode_chunks(name) - std::min(int_field(request, "decode_done", 0, 0), decode_chunks(name))) * chunk_ms(name);
 }
 
@@ -130,11 +152,45 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     // Optional time target: blocks per quantum follow the class and SP degree,
     // so a preemption check happens about every quantum_ms of GPU work.
     const double quantum_ms = number_field(options, "quantum_ms", 0);
-    auto video_quantum = [&](const std::string& klass, int degree) -> Json {
+    auto video_quantum = [&](const std::string& klass, int degree, int n) -> Json {
         if (!policy.blocks) return "step";
         if (quantum_ms <= 0) return quantum_blocks;
-        const int blocks = static_cast<int>(std::floor(quantum_ms / cost.block_ms(klass, degree)));
+        const int blocks = static_cast<int>(std::floor(quantum_ms / cost.block_ms(klass, degree, n)));
         return std::max(1, std::min(blocks, cost.blocks_per_step(klass)));
+    };
+    // SP advances already running plus those this plan hands out: with
+    // concurrent link rates in the profile they slow each other down.
+    const int sp_running = int_field(state, "sp_groups_running", 0, 0);
+    int sp_assigned = 0;
+    auto sp_groups = [&](int degree) { return degree >= 2 ? sp_running + sp_assigned + 1 : 1; };
+    auto ceil_div = [](int a, int b) { return (a + b - 1) / b; };
+    // Latent-frame chunks per decode quantum (0: the decode is one quantum).
+    auto decode_frames = [&](const std::string& klass) {
+        int frames = int_field(options, "decode_chunk_frames", 0, 0);
+        if (cost.decode_chunks(klass) > 1 && quantum_ms > 0 && bool_field(options, "chunked_decode", true))
+            frames = std::max(1, static_cast<int>(std::floor(quantum_ms / cost.chunk_ms(klass))));
+        return cost.decode_chunks(klass) > 1 ? frames : 0;
+    };
+    // Quanta a video still needs on `degree` GPUs, from its current progress.
+    auto quanta_left = [&](const Json& r, int degree, int n) {
+        const auto klass = r.at("class").get<std::string>();
+        const int steps = int_field(r, "steps_total", int_field(cost.klass(klass), "steps", 0), 1);
+        const int left = std::max(0, steps - int_field(r, "steps_done", 0, 0)), done = int_field(r, "blocks_done", 0, 0);
+        int quanta = left;
+        const auto quantum = video_quantum(klass, degree, n);
+        if (quantum.is_number_integer() && left > 0) {
+            const int per = quantum.get<int>(), bps = cost.blocks_per_step(klass);
+            quanta = ceil_div(bps - done, per) + (left - 1) * ceil_div(bps, per);
+        }
+        const int chunks = cost.decode_chunks(klass) - std::min(int_field(r, "decode_done", 0, 0), cost.decode_chunks(klass));
+        const int frames = decode_frames(klass);
+        return quanta + (chunks <= 0 ? 0 : frames > 0 ? ceil_div(chunks, frames) : 1);
+    };
+    // Remaining GPU time plus the fixed dispatch cost of every quantum still to come.
+    auto estimate = [&](const Json& r, int degree, int n) {
+        const double remaining = cost.remaining_ms(r, degree, n);
+        if (cost.quantum_overhead_ms() <= 0) return remaining;
+        return remaining + cost.quantum_overhead_ms() * (r.at("kind") == "image" ? 1 : quanta_left(r, degree, n));
     };
     const bool lazy = bool_field(options, "lazy_preemption", true);
     // Real backends without state migration keep a started request on its group.
@@ -202,7 +258,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         while (degree > 1 && !power_of_two(degree)) --degree;
         const auto group = group_of(*r);
         if (r->value("prepared", false) && int_field(*r, "blocks_done", 0, 0) > 0) degree = static_cast<int>(group.size());
-        const double remaining = cost.remaining_ms(*r, degree);
+        const double remaining = estimate(*r, degree, sp_groups(degree));
         late[r] = demote_late && remaining > late_short_ms && now + remaining > number_field(*r, "deadline_ms");
     }
     auto edf = [&](const Json* r) {
@@ -213,9 +269,16 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     auto time_to_boundary = [&](const Json* r) {
         const auto group = group_of(*r);
         const auto klass = r->at("class").get<std::string>();
-        if (int_field(*r, "decode_done", 0, 0) > 0)
-            return (cost.decode_chunks(klass) - int_field(*r, "decode_done", 0, 0)) * cost.chunk_ms(klass);
-        return (cost.blocks_per_step(klass) - int_field(*r, "blocks_done", 0, 0)) * cost.block_ms(klass, static_cast<int>(group.size()));
+        const double overhead = cost.quantum_overhead_ms();
+        if (int_field(*r, "decode_done", 0, 0) > 0) {
+            const int chunks = cost.decode_chunks(klass) - int_field(*r, "decode_done", 0, 0), frames = decode_frames(klass);
+            return chunks * cost.chunk_ms(klass) + (overhead > 0 ? overhead * (frames > 0 ? ceil_div(chunks, frames) : 1) : 0.);
+        }
+        const int degree = static_cast<int>(group.size()), blocks = cost.blocks_per_step(klass) - int_field(*r, "blocks_done", 0, 0);
+        const double work = blocks * cost.block_ms(klass, degree, sp_groups(degree));
+        if (overhead <= 0) return work;
+        const auto quantum = video_quantum(klass, degree, sp_groups(degree));
+        return work + overhead * (quantum.is_number_integer() ? ceil_div(blocks, quantum.get<int>()) : 1);
     };
     auto all_free = [&](const std::vector<int>& group) {
         return std::all_of(group.begin(), group.end(), [&](int gpu) { return free[gpu]; });
@@ -232,7 +295,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         const auto id = r.at("request_id").get<std::string>();
         const auto klass = r.at("class").get<std::string>();
         if (r.at("kind") == "image") {
-            const double slack = number_field(r, "deadline_ms") - now - cost.remaining_ms(r, 1);
+            const double slack = number_field(r, "deadline_ms") - now - estimate(r, 1, 1);
             int chosen = -1, rank = 3;  // -1 reserved, 0 idle, 1 step-boundary video group, 2 mid-step group
             for (int gpu = 0; gpu < gpus; ++gpu) {
                 if (!free[gpu]) continue;
@@ -262,11 +325,8 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                 Json assignment = {{"request_id", id}, {"group", Json::array({current.front()})}, {"degree", 1}, {"quantum", "finish"},
                                    {"resize", false}, {"reason", "decode"}};
                 // Chunked decode: frames per quantum follow quantum_ms, else decode_chunk_frames.
-                const int chunks = cost.decode_chunks(klass), done = int_field(r, "decode_done", 0, 0);
-                int frames = int_field(options, "decode_chunk_frames", 0, 0);
-                if (chunks > 1 && quantum_ms > 0 && bool_field(options, "chunked_decode", true))
-                    frames = std::max(1, static_cast<int>(std::floor(quantum_ms / cost.chunk_ms(klass))));
-                if (chunks > 1 && frames > 0) assignment["decode_frames"] = std::min(frames, chunks - done);
+                const int frames = decode_frames(klass);
+                if (frames > 0) assignment["decode_frames"] = std::min(frames, cost.decode_chunks(klass) - int_field(r, "decode_done", 0, 0));
                 assignments.push_back(assignment);
             }
             continue;
@@ -275,9 +335,11 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         if (fixed) {
             if (all_free(current)) {
                 take(current);
-                assignments.push_back({{"request_id", id}, {"group", current}, {"degree", current.size()},
-                                       {"quantum", video_quantum(klass, static_cast<int>(current.size()))},
+                const int degree = static_cast<int>(current.size());
+                assignments.push_back({{"request_id", id}, {"group", current}, {"degree", degree},
+                                       {"quantum", video_quantum(klass, degree, sp_groups(degree))},
                                        {"resize", false}, {"reason", "resume"}});
+                sp_assigned += degree >= 2;
             }
             continue;
         }
@@ -296,7 +358,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         if (others_waiting) {
             for (int d : order) {
                 const double extra = prepared && static_cast<int>(current.size()) != d ? cost.resize_ms() : 0;
-                if (now + cost.remaining_ms(r, d) + extra <= number_field(r, "deadline_ms")) { target = d; break; }
+                if (now + estimate(r, d, sp_groups(d)) + extra <= number_field(r, "deadline_ms")) { target = d; break; }
             }
         }
         // A prompt encoded on one worker must be prepared on that GPU.
@@ -320,9 +382,11 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         }
         if (chosen.empty()) continue;
         take(chosen);
-        assignments.push_back({{"request_id", id}, {"group", chosen}, {"degree", chosen.size()},
-                               {"quantum", video_quantum(klass, static_cast<int>(chosen.size()))},
+        const int degree = static_cast<int>(chosen.size());
+        assignments.push_back({{"request_id", id}, {"group", chosen}, {"degree", degree},
+                               {"quantum", video_quantum(klass, degree, sp_groups(degree))},
                                {"resize", prepared && chosen != current}, {"reason", prepared ? "regroup" : "admit"}});
+        sp_assigned += degree >= 2;
     }
     // Shared by the executor and the simulator, so a planner bug fails here with
     // both request IDs instead of inside an SP worker. Pinned workers have no

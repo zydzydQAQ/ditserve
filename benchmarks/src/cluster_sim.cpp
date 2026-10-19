@@ -20,7 +20,9 @@ struct Running {
 }
 
 Json simulate_cluster(const Json& config) {
+    // `profile` gives the durations; the planner may believe another one.
     const ClusterCost cost(config.at("profile"));
+    const ClusterCost planner(config.contains("planner_profile") ? config.at("planner_profile") : config.at("profile"));
     const auto policy = config.at("policy").get<std::string>();
     const int gpus = int_field(config, "gpus", 1);
     const Json options = config.value("options", Json::object());
@@ -45,6 +47,12 @@ Json simulate_cluster(const Json& config) {
     std::vector<double> encoder_free(encode_slots, 0);
     std::vector<bool> busy(gpus, false);
     std::vector<Running> running;
+    // Per-request action time by quantum kind, like the executor's action_ms.
+    std::vector<Json> action_ms(rows.size(), Json::object());
+    std::vector<int> quanta(rows.size(), 0);
+    auto sp_advance = [](const Json& assignment) {
+        return assignment.at("degree").get<int>() >= 2 && assignment.at("quantum") != "atomic" && assignment.at("quantum") != "finish";
+    };
     double now = 0, busy_ms = 0;
     std::size_t completed = 0, preemptions = 0, resizes = 0, plans = 0;
     std::vector<std::size_t> arrival_order(rows.size());
@@ -75,13 +83,21 @@ Json simulate_cluster(const Json& config) {
         for (const auto& row : rows) if (row.at("status") == "waiting" || row.at("status") == "suspended") requests.push_back(row);
         if (!requests.empty() && std::find(busy.begin(), busy.end(), false) != busy.end()) {
             ++plans;
-            const auto plan = cluster_plan({{"now_ms", now}, {"gpus", gpus}, {"busy", busy_flags}, {"requests", requests}}, policy, cost, options);
+            int sp_running = 0;
+            for (const auto& item : running) sp_running += sp_advance(item.assignment);
+            const auto plan = cluster_plan({{"now_ms", now}, {"gpus", gpus}, {"busy", busy_flags}, {"requests", requests}, {"sp_groups_running", sp_running}},
+                                           policy, planner, options);
+            // SP quanta of this plan run alongside the running ones. Each is priced at
+            // dispatch; a later change in concurrency does not re-time it.
+            int sp_groups = sp_running;
+            for (const auto& assignment : plan.at("assignments")) sp_groups += sp_advance(assignment);
             for (const auto& assignment : plan.at("assignments")) {
-                auto& row = rows[index.at(assignment.at("request_id").get<std::string>())];
+                const std::size_t at = index.at(assignment.at("request_id").get<std::string>());
+                auto& row = rows[at];
                 const auto klass = row.at("class").get<std::string>();
                 const int degree = assignment.at("degree").get<int>();
                 const auto quantum = assignment.at("quantum");
-                double duration = dispatch;
+                double duration = dispatch + cost.quantum_overhead_ms();
                 int blocks = 0;
                 if (quantum == "atomic") duration += number_field(cost.klass(klass), "service_ms");
                 else if (quantum == "finish") {
@@ -93,8 +109,11 @@ Json simulate_cluster(const Json& config) {
                     blocks = quantum == "step" ? remaining : std::min(quantum.get<int>(), remaining);
                     if (!row.at("prepared").get<bool>()) duration += number_field(cost.klass(klass), "prepare_ms");
                     if (assignment.at("resize").get<bool>()) { duration += cost.resize_ms(); ++resizes; }
-                    duration += blocks * cost.block_ms(klass, degree);
+                    duration += blocks * cost.block_ms(klass, degree, degree >= 2 ? sp_groups : 1);
                 }
+                const auto kind = quantum.is_string() ? quantum.get<std::string>() : std::string("blocks");
+                action_ms[at][kind] = action_ms[at].value(kind, 0.) + duration;
+                ++quanta[at];
                 preemptions += assignment.at("reason") == "block_preempt";
                 if (!row.contains("start_ms")) row["start_ms"] = now;
                 if (std::find(row["degrees"].begin(), row["degrees"].end(), degree) == row["degrees"].end()) row["degrees"].push_back(degree);
@@ -137,7 +156,11 @@ Json simulate_cluster(const Json& config) {
         }
     }
     const double makespan = now;
-    for (auto& row : rows) { row["observation_ms"] = makespan; row.erase("spec"); row.erase("ready"); }
+    for (std::size_t i = 0; i < rows.size(); ++i) {
+        auto& row = rows[i];
+        row["observation_ms"] = makespan; row.erase("spec"); row.erase("ready");
+        row["action_ms"] = action_ms[i]; row["quanta"] = quanta[i];
+    }
     return {{"policy", policy}, {"gpus", gpus}, {"metrics", request_summary(rows)},
             {"by_kind", {{"video", kind_summary(rows, "video")}, {"image", kind_summary(rows, "image")}}},
             {"makespan_ms", makespan}, {"gpu_utilization", makespan > 0 ? busy_ms / (gpus * makespan) : 0.},
