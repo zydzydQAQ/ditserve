@@ -10,6 +10,7 @@
   - `8a100-2edc0a8`：K6 中的 sp4x，以及 K8 的 2 卡；
   - `8a100-face7c1`：K6 中的 sp2r，以及 K7、K8 的 4 卡；
   - `8a100-224099f`：K11。
+  - 2026-10-19 起只保留 `8a100-224099f` 一个镜像（其余标签已删除，可按提交号用 `.local/ditserve-kairos-rewrite-runtime/tools/Dockerfile.kairos-update` 重建）。代码改为按提交发布到 `/shared/code/DITSERVE/builds/<commit>/`，作业用 `DITSERVE_BUILD=<commit>` 选择版本。K11′ 用的是 `f2e89d4`。
 - 脚本：`.local/ditserve-kairos-rewrite-runtime/scripts/`。
 - 结果：`/shared/output/DITSERVE/results/<experiment>/<run>/results.xlsx`。作业日志、生成的配置和预算账本在 `acceptance/<run>/`。
 
@@ -29,8 +30,11 @@
 | K7 SP 扩展曲线 | SP 的实际加速与代价模型拟合 | 见下表。在 SP 效率不超过 1 的约束下拟合规划器模型：η=1.0、gbps[2]=4.81、gbps[4]=2.72，留一形状交叉验证每步误差最大 4.7% | `kairos-sp-scaling-{2,4}gpu/scale*` |
 | K8 cluster（真实 SP>1） | 真实后端上 SP 组内 block 执行与 step 边界换组 | 2 卡：block_elastic 50/50，static_sp1 32、static_sp2 20、step_elastic 30。4 卡：block_elastic 100/100（12 个视频用过 SP2、5 个用过 SP4，换组 29 次、1.0 GiB），static_sp1 94、static_sp2 61、static_sp4 32、step_elastic 68。每次换组约 16 MiB，导出 70–150 ms | `kairos-cluster-sp-2gpu/sp2x-*`、`kairos-cluster-sp-4gpu/sp4c-*` |
 | K9 模拟器校准 | 用 K7 的参数复现 K8 | 按时数：4 卡 static_sp2 原 profile 36，校准后 57，真机 61；static_sp4 30/34/32；step_elastic 62/68/68；block_elastic 三者都是 100。剩下的偏差来自两个 SP2 组并发争用（实际约 3.8 GB/s）和每个 quantum 约 10 ms 的端到端开销 | 本地 `simulate`，配置来自 K8 |
+| K9b 模拟器校准（修复后） | 加入争用与固定开销后能否复现 K8 | 在 f2e89d4 上重放 K8。规划用 K8 当时的 probe 画像（`planner_profile`），实际耗时用拟合画像加 `concurrent_gbps {"2": 3.9}` 和 `quantum_overhead_ms` 12（两者都从 K8 工作簿实测得到），每张卡一个编码器。4 卡每步时间相对真机：SP1 4.17/4.25 s（−2.0%）、并发 SP2 3.65/3.69 s（−1.1%，不加争用时 −8.4%）、SP4 2.78/2.82 s（−1.4%）、step_elastic 混合 3.92/3.98 s（−1.5%）。按时数：static_sp1 92/94、static_sp2 59/61、static_sp4 32/32、step_elastic 68/68、block_elastic 100/100。2 卡 SP2 每步 3.39 s 与真机相同，加入争用后不变（2 卡上只可能有一个 SP2 组）。没对上的是 4 卡 static_sp2 的视频 p95（330 s 对 417 s） | `results/kairos-k9b-replay/f2e89d4`（本地） |
 | K10 负载扫描（模拟） | 弹性 SP 在负载下的价值 | 见"主要发现" 2、3 | 本地 `simulate`，3–10 个 seed |
-| K11 迟到判断（真机） | 验证 K10 的预测 | 失败，没有结论：4 卡、2× 负载、seed 108，比较 block_elastic 的 widest、free 与 SP1 三种设置。r39 处报 `layout can change only at a healthy step boundary`，整个单元终止，200 个请求中 111 个失败。原因是规划器的漏洞：处在 step 边界的视频会直接回到原来的组，但原组的卡可能正被另一个视频占在 step 中途，而 export 下每个 worker 同一时刻只允许一个请求停在 step 中途。已修复，`cluster_plan` 末尾新增契约检查，模拟器和执行器都会执行它。待重跑 | `kairos-cluster-sp-4gpu-fit-custom-l2-s108-matrix/feas4-20261019t000743z` |
+| K10b 负载扫描（修复后） | 修复漏洞并校准成本后 K10 的结论是否还成立 | 4 卡，10 个 seed × 1/1.5/2× 负载，f2e89d4。原设置（K10 的画像，1 个编码器）下 2× 负载视频按时率：480p widest 0.915、free 0.957、只用 SP1 0.954；720p 0.834/0.912/0.909，与修复前基本一致。校准设置（K9b 的画像，每卡一个编码器）下：480p 0.891/0.931/0.929，720p 0.776/0.881/0.878；step_elastic(free) 视频 0.947/0.912，但图像按时率只有 0.43/0.18，block_elastic 的图像始终为 1.00。720p 视频 p95：widest 2710 s、free 2458 s、只用 SP1 2688 s、step_elastic 2069 s | `results/kairos-k10-sweep/f2e89d4`（本地） |
+| K11 迟到判断（真机） | 验证 K10 的预测 | 失败，没有结论：4 卡、2× 负载、seed 108，比较 block_elastic 的 widest、free 与 SP1 三种设置。r39 处报 `layout can change only at a healthy step boundary`，整个单元终止，200 个请求中 111 个失败。原因是规划器的漏洞：处在 step 边界的视频会直接回到原来的组，但原组的卡可能正被另一个视频占在 step 中途，而 export 下每个 worker 同一时刻只允许一个请求停在 step 中途。已修复，`cluster_plan` 末尾新增契约检查，模拟器和执行器都会执行它。见 K11′ | `kairos-cluster-sp-4gpu-fit-custom-l2-s108-matrix/feas4-20261019t000743z` |
+| K11′ 迟到判断（真机，修复后） | 修复后在真机上验证 free，并检验 K9b 的成本模型（样本外） | 与 K11 相同的 trace（4 卡、2× 负载、seed 108，200 个请求），build f2e89d4，`CLUSTER_PROFILE=fit2`。两个 1×4 作业，800 个请求全部完成，没有失败，也没有契约错误。按时（总/视频/图像）：block_elastic widest 183/30/153，free 189/36/153，只用 SP1 189/35/154；step_elastic(free) 104/36/68。free 不低于只用 SP1，但只多 1 个视频（单 seed，在随机波动范围内）；widest 比两者少 5–6 个视频。事先记录的模拟预测为 190/36、193/39、192/38、94/39：排序一致，但每个单元都多估了约 3 个按时视频。每步时间（视频 action 时间 / 32 步，中位数）模拟比真机短 2.1–2.5%，单元用时短 1–4% | `kairos-cluster-sp-4gpu-fit2-custom-l2-s108-matrix/k11b-20261019t033804z`、`k11s-20261019t033804z`；预测见 `results/kairos-k11p-predictions/f2e89d4`（本地） |
 
 K7 每步耗时（整步，去掉首步后的中位数）：
 
@@ -53,14 +57,16 @@ K7 每步耗时（整步，去掉首步后的中位数）：
    - `feasibility_degree="free"`（224099f）改用规划时刻空闲的最宽组判断迟到，按时率变为 0.957/0.912，不低于只用 SP1。视频 p95 也低于只用 SP1：480p 为 356 s 对 369 s，720p 为 1654 s 对 2092 s。
    - 低负载时弹性 SP 的收益主要在尾延迟：720p 1× 负载下 p95 为 620 s 对 718 s。
    - step_elastic 改用 free 后也同样改善，基线应当一并启用。
-   - 现已把 free 设为两种弹性策略的默认值，并且不再把留给图像的卡和被其他视频占着的卡算作空闲。以上数字是改动前用显式 free 得到的，要在新版本上重新模拟。
+   - 现已把 free 设为两种弹性策略的默认值，并且不再把留给图像的卡和被其他视频占着的卡算作空闲。以上数字是改动前用显式 free 得到的。在修复后的版本上重跑（K10b），原设置下结论不变。
+   - 但成本校准后，block_elastic(free) 对只用 SP1 的视频优势缩小到 0.002–0.003，收益主要剩下 720p 的视频长尾（p95 2458 s 对 2688 s）。step_elastic(free) 的视频按时率反而最高，代价是图像大面积超时。在这类 PCIe 机器上，block 级抢占的价值主要在保护短的图像请求；弹性 SP 对 1.3B 视频的按时率帮助有限。5B 的计算与通信之比更高，需要用实测成本重新评估。
 4. **block 抢占的开销很小。** worker 侧每个 quantum 只多 1–4 ms；端到端约 10 ms，按 300 ms 的 quantum 计约 3%。这不是弹性 SP 收益有限的原因。
-5. **SP 组之间会争用 host bridge。** 两个 SP2 组并发时，有效带宽从 4.8 降到约 3.8 GB/s，与 K3 的探测结果一致。目前每个 SP 度只有一个带宽值，规划器和模拟器都还没有建模这种争用。
+5. **SP 组之间会争用 host bridge。** 两个 SP2 组并发时，有效带宽从 4.8 降到约 3.8 GB/s，与 K3 的探测结果一致。f2e89d4 起成本画像可以用 `links.<d>.concurrent_gbps` 描述这种争用，用 `quantum_overhead_ms` 描述每个 quantum 的固定开销，规划器和模拟器都会计入（见 K9b）。
 
 ## 局限与待办
 
-- 真机只跑了一个 seed（K11 的 seed 是按模拟预测挑的）；多 seed 结论只来自模拟器。
-- K9、K10 是在修复 K11 漏洞之前模拟的，其中可能包含真实 SP worker 会拒绝的交错执行（新的契约测试在紧期限、2–3× 负载、free 下能复现），需要在修复后的版本上重跑。
+- 真机只跑了一个 seed（K11/K11′ 的 seed 108 是按修复前的模拟预测挑的）；多 seed 结论只来自模拟器。K11′ 中 free 与只用 SP1 只差 1 个视频，单 seed 不足以区分两者。
+- 模拟器在 K11′ 的每个单元都多估了约 3 个按时视频（共 46 个），按时率的绝对值要按这个偏差来看待，排序可以参考。
+- K9、K10 是在修复 K11 漏洞之前模拟的，已在修复后的版本上重跑（K9b、K10b）。
 - 720p 的解码时间按 token 数外推，没有在 serving 路径上实测。
-- 模拟器没有计入 SP 组并发争用和每个 quantum 的固定开销。
+- 争用带宽 3.9 GB/s 和固定开销 12 ms 都是从 K8 的 4 卡数据拟合出来的，属于样本内参数；K11′ 是第一个样本外检验。模拟器按发出时刻的并发数给 SP quantum 计价，之后并发数变化时不重新计时；4 卡 static_sp2 的视频长尾仍被低估（p95 330 s 对 417 s）。
 - 尚未完成：图像批处理、slack-based victim 选择、TetriServe 式 round-based 基线；Wan2.2-5B 的下载与移植；8 卡验收与主实验。
