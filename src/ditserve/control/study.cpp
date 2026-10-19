@@ -590,7 +590,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         if(!error.empty())throw std::runtime_error("SP process group initialization failed: "+error);
     }
     auto check=[&](){if(cancelled())throw std::runtime_error("run cancelled");budget.check(number_field(phase,"cleanup_reserve_seconds",0));};
-    struct Live{std::string status="pending";bool prepared=false;int steps=0,blocks=0,total=0,encode_gpu=-1,decode_done=0,epoch=0;std::vector<int> group;std::string form="sp1",ticket;std::set<int> resident;};
+    struct Live{std::string status="pending";bool prepared=false;int steps=0,blocks=0,total=0,encode_gpu=-1,decode_done=0,epoch=0;std::vector<int> group;std::string form="sp1",ticket,pair;std::set<int> resident;};
     int epochs=0,transfers=0;   // export transport: placement epochs and transfer file names
     struct Task{std::size_t row;Json assignment;std::future<Json> result;double started;};
     std::vector<Live> live(rows.size());
@@ -628,6 +628,17 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         if(assignment.at("quantum")!="atomic"&&assignment.at("quantum")!="finish"&&std::find(row["forms"].begin(),row["forms"].end(),form_label)==row["forms"].end())row["forms"].push_back(form_label);
         if(assignment.at("reason")=="block_preempt")row["preempting"]=true;
         const auto quantum=assignment.at("quantum");const double deadline=budget.deadline();
+        // Request-level interleaving: the partner advances in lockstep on the same group.
+        const std::string pair=assignment.value("pair",std::string());
+        const std::size_t j=pair.empty()?rows.size():index.at(pair);
+        if(j<rows.size()){
+            auto& prow=rows[j];auto& pstate=live[j];
+            if(!prow.contains("start_ms"))prow["start_ms"]=now();
+            if(std::find(prow["degrees"].begin(),prow["degrees"].end(),degree)==prow["degrees"].end())prow["degrees"].push_back(degree);
+            if(std::find(prow["forms"].begin(),prow["forms"].end(),form_label)==prow["forms"].end())prow["forms"].push_back(form_label);
+            prow["paired_quanta"]=prow.value("paired_quanta",0)+1;row["paired_quanta"]=row.value("paired_quanta",0)+1;
+            pstate.status="running";pstate.group=group;pstate.form=form_label;
+        }
         std::function<Json()> work_unit;
         if(quantum=="atomic"){
             const auto name=image(group.front());const auto spec=spec_of(row);
@@ -662,50 +673,61 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             // step-boundary state); ranks entering the group import its host-staged export
             // before any rank advances. Placement changes only here, at step boundaries,
             // and every rank of a placement receives the same epoch.
+            struct Staging{Json prepare;std::string id,source_name,transfer;std::vector<std::string> targets;bool release_source=false;};
             auto in_group=[&](int gpu){return std::find(group.begin(),group.end(),gpu)!=group.end();};
-            if(group!=state.group)state.epoch=++epochs;
-            int source=-1;Json prepare;
-            if(!state.prepared){
-                const bool ticket=!state.ticket.empty()&&in_group(state.encode_gpu);
-                source=ticket?state.encode_gpu:group.front();
-                prepare={{"op","prepare"},{"state_id",id},{"spec",spec_of(row)},{"sp_degree",degree}};
-                if(form.cfg>1)prepare["cfg"]=form.cfg;
-                if(ticket)prepare["encode_ticket"]=state.ticket;
-            }else{
-                for(int gpu:state.resident)if(in_group(gpu)){source=gpu;break;}
-                if(source<0&&!state.resident.empty())source=*state.resident.begin();
-            }
-            std::vector<std::string> targets;
-            for(int gpu:group)if(gpu!=source&&!state.resident.count(gpu))targets.push_back(video(gpu));
-            // A source leaving the group releases with its export, never through the
-            // stale list, which the controller may drain before the export runs.
-            const bool release_source=source>=0&&!in_group(source);
-            for(int gpu:state.resident)if(gpu!=source&&!in_group(gpu))stale[gpu].push_back(id);
-            const auto source_name=source>=0?video(source):std::string();
-            const auto transfer=(transfer_dir/(id+"-"+std::to_string(++transfers)+".pt")).string();
+            auto stage=[&](const std::string& rid,const Json& arow,Live& astate){
+                Staging st;st.id=rid;
+                if(group!=astate.group)astate.epoch=++epochs;
+                int source=-1;
+                if(!astate.prepared){
+                    const bool ticket=!astate.ticket.empty()&&in_group(astate.encode_gpu);
+                    source=ticket?astate.encode_gpu:group.front();
+                    st.prepare={{"op","prepare"},{"state_id",rid},{"spec",spec_of(arow)},{"sp_degree",degree}};
+                    if(form.cfg>1)st.prepare["cfg"]=form.cfg;
+                    if(ticket)st.prepare["encode_ticket"]=astate.ticket;
+                }else{
+                    for(int gpu:astate.resident)if(in_group(gpu)){source=gpu;break;}
+                    if(source<0&&!astate.resident.empty())source=*astate.resident.begin();
+                }
+                for(int gpu:group)if(gpu!=source&&!astate.resident.count(gpu))st.targets.push_back(video(gpu));
+                // A source leaving the group releases with its export, never through the
+                // stale list, which the controller may drain before the export runs.
+                st.release_source=source>=0&&!in_group(source);
+                for(int gpu:astate.resident)if(gpu!=source&&!in_group(gpu))stale[gpu].push_back(rid);
+                st.source_name=source>=0?video(source):std::string();
+                st.transfer=(transfer_dir/(rid+"-"+std::to_string(++transfers)+".pt")).string();
+                astate.resident=std::set<int>(group.begin(),group.end());astate.ticket.clear();
+                return st;
+            };
+            std::vector<Staging> stagings={stage(id,row,state)};
+            if(j<rows.size())stagings.push_back(stage(pair,rows[j],live[j]));
             std::vector<std::pair<std::string,Json>> advances;
             for(int gpu:group){
                 Json advance={{"op","advance"},{"state_id",id},{"sp_degree",degree},{"group",group},{"epoch",state.epoch}};
                 if(form.cfg>1)advance["cfg"]=form.cfg;
+                if(!pair.empty())advance["pair_state_id"]=pair;
                 if(quantum=="step")advance["quantum"]="step";else advance["blocks"]=quantum;
                 advances.emplace_back(video(gpu),advance);
             }
-            state.resident=std::set<int>(group.begin(),group.end());state.ticket.clear();
-            work_unit=[&workers,id,prepare,source_name,targets,release_source,transfer,advances,deadline]{
+            work_unit=[&workers,stagings,advances,deadline]{
                 Json out={{"ranks",Json::array()}};
-                if(!prepare.is_null())out["prepare"]=workers.get(source_name).call(prepare,deadline);
-                if(!targets.empty()){
-                    const auto exported=workers.get(source_name).call({{"op","block_export"},{"state_id",id},{"path",transfer},{"release",release_source}},deadline);
-                    std::vector<std::future<Json>> imports;
-                    for(const auto& name:targets)imports.push_back(std::async(std::launch::async,[&workers,name,id,transfer,exported,deadline]{
-                        return workers.get(name).call({{"op","block_import"},{"state_id",id},{"path",transfer},{"sha256",exported.at("sha256")}},deadline);
-                    }));
-                    Json imported=Json::array();std::string error;
-                    for(auto& rank:imports){try{imported.push_back(rank.get());}catch(const std::exception& failure){error=failure.what();}}
-                    std::error_code ignored;fs::remove(transfer,ignored);
-                    if(!error.empty())throw std::runtime_error(error);
-                    out["transfer"]={{"bytes",exported.value("bytes",0)},{"export_ms",number_field(exported,"export_ms")},
-                                     {"write_ms",number_field(exported,"write_ms")},{"targets",targets.size()},{"imports",imported}};
+                for(std::size_t k=0;k<stagings.size();++k){
+                    const auto& st=stagings[k];const auto& rid=st.id;
+                    const char* prepare_key=k?"pair_prepare":"prepare";const char* transfer_key=k?"pair_transfer":"transfer";
+                    if(!st.prepare.is_null())out[prepare_key]=workers.get(st.source_name).call(st.prepare,deadline);
+                    if(!st.targets.empty()){
+                        const auto exported=workers.get(st.source_name).call({{"op","block_export"},{"state_id",rid},{"path",st.transfer},{"release",st.release_source}},deadline);
+                        std::vector<std::future<Json>> imports;
+                        for(const auto& name:st.targets)imports.push_back(std::async(std::launch::async,[&workers,name,rid,st,exported,deadline]{
+                            return workers.get(name).call({{"op","block_import"},{"state_id",rid},{"path",st.transfer},{"sha256",exported.at("sha256")}},deadline);
+                        }));
+                        Json imported=Json::array();std::string error;
+                        for(auto& rank:imports){try{imported.push_back(rank.get());}catch(const std::exception& failure){error=failure.what();}}
+                        std::error_code ignored;fs::remove(st.transfer,ignored);
+                        if(!error.empty())throw std::runtime_error(error);
+                        out[transfer_key]={{"bytes",exported.value("bytes",0)},{"export_ms",number_field(exported,"export_ms")},
+                                           {"write_ms",number_field(exported,"write_ms")},{"targets",st.targets.size()},{"imports",imported}};
+                    }
                 }
                 std::vector<std::future<Json>> ranks;
                 for(const auto& item:advances)ranks.push_back(std::async(std::launch::async,[&workers,item,deadline]{
@@ -720,24 +742,28 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             // Ranks entering the group (first quantum or a regroup) prepare;
             // ranks leaving it release once their GPU is idle.
             std::vector<std::pair<std::string,Json>> calls;
-            for(int gpu:state.resident)if(std::find(group.begin(),group.end(),gpu)==group.end())stale[gpu].push_back(id);
-            Json resume={{"step",state.steps},{"block",state.blocks}};
+            std::vector<std::pair<std::string,Live*>> members={{id,&state}};
+            if(j<rows.size())members.emplace_back(pair,&live[j]);
+            for(const auto& member:members)for(int gpu:member.second->resident)if(std::find(group.begin(),group.end(),gpu)==group.end())stale[gpu].push_back(member.first);
             for(int gpu:group){
                 Json actions=Json::array();
-                if(!state.resident.count(gpu)){
-                    Json prepare={{"op","prepare"},{"state_id",id},{"spec",spec_of(row)},{"sp_degree",degree}};
+                for(const auto& member:members){
+                    const auto& mid=member.first;Live& mstate=*member.second;
+                    if(mstate.resident.count(gpu))continue;
+                    Json prepare={{"op","prepare"},{"state_id",mid},{"spec",spec_of(rows[index.at(mid)])},{"sp_degree",degree}};
                     if(form.cfg>1)prepare["cfg"]=form.cfg;
-                    if(state.prepared)prepare["resume"]=resume;
-                    else if(gpu==state.encode_gpu&&!state.ticket.empty())prepare["encode_ticket"]=state.ticket;
+                    if(mstate.prepared)prepare["resume"]={{"step",mstate.steps},{"block",mstate.blocks}};
+                    else if(gpu==mstate.encode_gpu&&!mstate.ticket.empty())prepare["encode_ticket"]=mstate.ticket;
                     actions.push_back(prepare);
                 }
                 Json advance={{"op","advance"},{"state_id",id},{"sp_degree",degree},{"quantum",quantum}};
                 if(form.cfg>1)advance["cfg"]=form.cfg;
+                if(!pair.empty())advance["pair_state_id"]=pair;
                 if(quantum!="step"){advance["blocks"]=quantum;advance["quantum"]=nullptr;}
                 actions.push_back(advance);
                 calls.emplace_back(video(gpu),actions);
             }
-            state.resident=std::set<int>(group.begin(),group.end());state.ticket.clear();
+            for(const auto& member:members){member.second->resident=std::set<int>(group.begin(),group.end());member.second->ticket.clear();}
             work_unit=[&workers,calls,deadline]{
                 std::vector<std::future<Json>> ranks;
                 for(const auto& item:calls)ranks.push_back(std::async(std::launch::async,[&workers,item,deadline]{
@@ -781,16 +807,35 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             row["transfer_export_ms"]=number_field(row,"transfer_export_ms")+number_field(transfer,"export_ms")+number_field(transfer,"write_ms");
         }
         const auto& ranks=out.at("ranks");
-        const auto progress=ranks.at(0).at("progress");
-        for(const auto& rank:ranks)if(rank.at("progress").value("step",-1)!=progress.value("step",-2))throw std::runtime_error("SP ranks disagree on solver progress");
         double model=0;for(const auto& rank:ranks)model=std::max(model,number_field(rank,"model_ms"));
-        row["model_ms"]=number_field(row,"model_ms")+model;
-        const int executed=quantum=="step"?cost.blocks_per_step(row.at("class").get<std::string>())-state.blocks:quantum.get<int>();
-        const int previous_step=state.steps;
-        state.steps=progress.value("step",0);state.total=progress.value("steps",0);state.prepared=true;
-        if(progress.value("transfer_ready",true)||state.steps>previous_step)state.blocks=0;
-        else state.blocks=progress.contains("block")?progress.value("block",0):state.blocks+executed;
-        state.status="suspended";
+        auto settle=[&](Json& arow,Live& astate,const char* progress_key){
+            const auto progress=ranks.at(0).at(progress_key);
+            for(const auto& rank:ranks)if(rank.at(progress_key).value("step",-1)!=progress.value("step",-2))throw std::runtime_error("SP ranks disagree on solver progress");
+            arow["model_ms"]=number_field(arow,"model_ms")+model;
+            const int executed=quantum=="step"?cost.blocks_per_step(arow.at("class").get<std::string>())-astate.blocks:quantum.get<int>();
+            const int previous_step=astate.steps;
+            astate.steps=progress.value("step",0);astate.total=progress.value("steps",0);astate.prepared=true;
+            if(progress.value("transfer_ready",true)||astate.steps>previous_step)astate.blocks=0;
+            else astate.blocks=progress.contains("block")?progress.value("block",0):astate.blocks+executed;
+            astate.status="suspended";
+        };
+        settle(row,state,"progress");
+        const std::string pair=task.assignment.value("pair",std::string());
+        if(!pair.empty()){
+            const std::size_t j=index.at(pair);auto& prow=rows[j];auto& pstate=live[j];
+            if(out.contains("pair_transfer")){
+                const auto& transfer=out.at("pair_transfer");
+                prow["transfers"]=prow.value("transfers",0)+1;
+                prow["transfer_bytes"]=number_field(prow,"transfer_bytes")+number_field(transfer,"bytes");
+                prow["transfer_export_ms"]=number_field(prow,"transfer_export_ms")+number_field(transfer,"export_ms")+number_field(transfer,"write_ms");
+            }
+            prow["action_ms"][key]=prow.value("action_ms",Json::object()).value(key,0.)+elapsed;
+            prow["quanta"]=prow.value("quanta",0)+1;
+            settle(prow,pstate,"pair_progress");
+            // Inside a step the pair must resume together; at a step boundary it dissolves.
+            const bool inside=state.blocks>0&&pstate.blocks>0;
+            state.pair=inside?pair:std::string();pstate.pair=inside?row.at("request_id").get<std::string>():std::string();
+        }else state.pair.clear();
     };
     try{while(terminal<rows.size()){
         check();
@@ -833,6 +878,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                     {"prepared",state.prepared},{"steps_done",state.steps},{"blocks_done",state.blocks},{"group",state.group},{"decode_done",state.decode_done}};
                 if(state.total>0)view["steps_total"]=state.total;
                 if(!state.group.empty())view["form"]=state.form;
+                if(!state.pair.empty())view["pair"]=state.pair;
                 if(!state.prepared&&!state.ticket.empty())view["affinity"]=state.encode_gpu;
                 requests.push_back(view);
             }

@@ -127,6 +127,17 @@ class MockBackend(Backend):
                     transfer_ready=state["unit"] % blocks == 0)
 
     def advance(self, request):
+        pair = request.get("pair_state_id")
+        if pair is not None:
+            # Lockstep pair, like Wan's advance_pair: both requests advance the same block count.
+            if pair == request["state_id"] or pair not in self.states:
+                raise ValueError("unknown pair_state_id")
+            first = self._advance_one(dict(request, pair_state_id=None), partner=pair)
+            second = self._advance_one(dict(request, state_id=pair, pair_state_id=None), partner=request["state_id"])
+            return dict(first, pair_state_id=pair, pair_progress=second["progress"], pair_events=[second])
+        return self._advance_one(request)
+
+    def _advance_one(self, request, partner=None):
         self._inject("advance", request)
         state = self.state(request)
         if state["paused"]:
@@ -137,7 +148,7 @@ class MockBackend(Backend):
         if request.get("group") is not None and len(request["group"]) != degree:
             raise ValueError("advance group size differs from sp_degree")
         grouped = "epoch" in request and state["blocks"] > 1
-        if grouped and self.mid_step not in (None, request["state_id"]):
+        if grouped and self.mid_step not in (None, request["state_id"], partner):
             raise ValueError("another request is inside a solver step on this worker")
         # Like Wan's _adopt: a request inside a step keeps its group and epoch.
         # A list, so the value survives the JSON round trip of exports and snapshots.

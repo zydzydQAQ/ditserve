@@ -470,6 +470,20 @@ class NativeStudyTest(unittest.TestCase):
             self.assertEqual([form for form in row["forms"] if form != "sp1"], ["cfg2"])
         self.assertTrue(all(row["forms"] == [] for name, row in rows.items() if name.startswith("i")))
 
+    def test_cluster_export_transport_runs_lockstep_pairs(self):
+        # Two videos on a pair of GPUs: with pairing on and a profile that hides communication
+        # when two requests advance together, they take the group in lockstep.
+        phase = self.cluster_phase("block_elastic", gpus=2, options=dict(sp_transport="export", pairing=True, degrees=[2]))
+        phase["profile"]["pair_overlap"] = 1
+        phase["profile"]["classes"]["video"]["comm_mb_per_step"] = 4000
+        value = self.run_study(self.config([phase], workers=self.cluster_workers(2)), name="pairs")
+        self.assert_completed(value)
+        cell = value["phases"][0]["cells"][0]
+        self.assertEqual(cell["metrics"]["completed"], 6)
+        rows = {row["request_id"]: row for row in cell["requests"]}
+        self.assertTrue(all(rows[v].get("paired_quanta", 0) > 0 for v in ("v0", "v1")))
+        self.assertTrue(all("paired_quanta" not in row for name, row in rows.items() if name.startswith("i")))
+
     def test_cluster_export_transport_failure_stops_the_cell(self):
         workers = self.cluster_workers()
         for name in ("v1", "v3"):

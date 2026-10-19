@@ -84,7 +84,7 @@ FLUX 可设置 `workers.<name>.config.options.profile:true`，记录 text/DiT/sc
 
 视频组的**并行形态**（`Form`）由 cfg ∈ {1, 2} 和 SP 度 sp 组成，占 cfg × sp 张卡，名字为 `sp1`、`sp2`、`sp4`、`sp8`、`cfg2`、`cfg2sp2`、`cfg2sp4`。弹性策略在 `options.forms`（默认为 `options.degrees` 对应的纯 SP 形态，即 `{1, 2, 4, 8}` → `sp1/sp2/sp4/sp8`，两者不能同时给出）中选择：组的大小按原来的最小可行度数规则决定，同一大小的形态取成本模型预测每步时间最小的。规划结果的每条 assignment 带 `form`，状态里停在 step 中途的请求带 `form`（缺省为 `sp<组大小>`），step 内不换形态。模拟器与执行器按形态计价并记录每个请求用过的 `forms`；`sp_groups_running` 只计 sp ≥ 2 的组（CFG 对每步只交换一个 latent，不争用 host bridge）。
 
-`options.pairing`（默认 false）：弹性策略给一个视频选好组和形态后，若还有视频在等，且画像的 `pair_overlap`（两请求锁步时藏起来的"较短项"比例）使两者锁步一步的时间 `pair_ms` 小于两者各自一步之和，并且两者按锁步的速度仍能赶上期限（或两者本来就都迟到），就把队列里下一个处于 step 边界的视频拉上同一组一起推进：assignment 带 `pair`（伙伴）和 `pair_resize`，quantum 按 `pair_ms` 换算。锁步在 step 内被抢占后，两个请求的状态都带 `pair`，下次必须一起恢复（规划器检查两者在同组同 block）。模拟器按 `pair_ms` 计价、同时推进两者，并统计 `pairs`。
+`options.pairing`（默认 false）：弹性策略给一个视频选好组和形态后，若还有视频在等，且画像的 `pair_overlap`（两请求锁步时藏起来的"较短项"比例）使两者锁步一步的时间 `pair_ms` 小于两者各自一步之和，并且两者按锁步的速度仍能赶上期限（或两者本来就都迟到），就把队列里下一个处于 step 边界的视频拉上同一组一起推进：assignment 带 `pair`（伙伴）和 `pair_resize`，quantum 按 `pair_ms` 换算。锁步在 step 内被抢占后，两个请求的状态都带 `pair`，下次必须一起恢复（规划器检查两者在同组同 block）。模拟器按 `pair_ms` 计价、同时推进两者，并统计 `pairs`。执行器（`export` 与 `resume` 传输）把伙伴的 prepare/导入一并做完再让各 rank 以 `pair_state_id` 推进，按 `pair_progress` 结算伙伴，请求记录 `paired_quanta`、伙伴的传输记在 `transfers`；mock 后端也支持锁步对。
 
 `options.prefer_exact`（默认 0）：同一组大小里，输出与单卡逐位一致的形态（sp1、CFG 对；SP 形态会改变 GEMM 的 token 分片，K13/K18）优先，除非近似形态快的比例超过该值（如 0.1）。把"不改输出"当成调度目标时用。
 
