@@ -18,6 +18,7 @@ struct Policy {
     Form fixed_form;         // and how they run it
     bool elastic = false;    // regroup at step boundaries
     bool blocks = false;     // advance in block quanta, lazy intra-step preemption
+    bool rounds = false;     // regroup only every options.round_steps steps (TetriServe-like)
 };
 Policy parse(const std::string& name) {
     Policy policy;
@@ -27,6 +28,7 @@ Policy parse(const std::string& name) {
         policy.fixed_degree = policy.fixed_form.degree();
     } else if (name == "step_elastic") policy.elastic = true;
     else if (name == "block_elastic") policy.elastic = policy.blocks = true;
+    else if (name == "round_elastic") policy.elastic = policy.rounds = true;
     else throw std::invalid_argument("unknown cluster policy: " + name);
     return policy;
 }
@@ -322,9 +324,14 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     // delay feasible work, and demoting them behind a long video only turns a
     // small miss into a very long tail.
     const double late_short_ms = number_field(options, "late_short_ms", 2000);
+    // Queue order among feasible requests: deadline (edf, the default), estimated remaining
+    // single-GPU work (srtf) or arrival (fcfs); the lateness demotion applies to all three.
+    const auto order_rule = options.value("order", std::string("edf"));
+    if (order_rule != "edf" && order_rule != "srtf" && order_rule != "fcfs") throw std::invalid_argument("order must be edf, srtf or fcfs");
     const int widest = policy.fixed_degree ? policy.fixed_degree
                        : feasibility == "free" ? free_widest : *std::max_element(degrees.begin(), degrees.end());
     std::map<const Json*, bool> late;
+    std::map<const Json*, double> rank_key;
     for (const Json* r : rows) {
         const auto klass = r->at("class").get<std::string>();
         const int best = r->at("kind") == "image" ? 1 : std::min(std::max(widest, int_field(cost.klass(klass), "min_degree", 1)), gpus);
@@ -335,11 +342,16 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         const Form form = r->at("kind") == "image" ? Form{} : mid_step ? form_of(*r, group) : form_for(klass, degree);
         const double remaining = estimate(*r, form, sp_groups(form));
         late[r] = demote_late && remaining > late_short_ms && now + remaining > number_field(*r, "deadline_ms");
+        rank_key[r] = order_rule == "edf" ? number_field(*r, "deadline_ms")
+                    : order_rule == "srtf" ? estimate(*r, Form{}, 1) : number_field(*r, "arrival_ms");
     }
     auto edf = [&](const Json* r) {
-        return std::make_tuple(late.at(r), number_field(*r, "deadline_ms"), number_field(*r, "arrival_ms"), r->at("request_id").get<std::string>());
+        return std::make_tuple(late.at(r), rank_key.at(r), number_field(*r, "arrival_ms"), r->at("request_id").get<std::string>());
     };
     std::sort(rows.begin(), rows.end(), [&](const Json* a, const Json* b) { return edf(a) < edf(b); });
+    // Round-based regrouping: a placed video keeps its group until it has completed a multiple of
+    // round_steps steps, like TetriServe's rounds; other elastic policies regroup at every step.
+    const int round_steps = int_field(options, "round_steps", 5);
 
     auto time_to_boundary = [&](const Json* r) {
         const auto group = group_of(*r);
@@ -407,7 +419,8 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             }
             continue;
         }
-        const bool fixed = prepared && (int_field(r, "blocks_done", 0, 0) > 0 || !policy.elastic || pin_started);
+        const bool fixed = prepared && (int_field(r, "blocks_done", 0, 0) > 0 || !policy.elastic || pin_started
+                                        || (policy.rounds && int_field(r, "steps_done", 0, 0) % round_steps != 0));
         if (fixed) {
             if (all_free(current)) {
                 take(current);

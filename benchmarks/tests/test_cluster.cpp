@@ -198,6 +198,35 @@ int main() {
         require(quad.at("requests")[0].at("forms") == Json::array({"cfg2sp2"}), "elastic picks CFG2 x SP2");
         near(quad.at("makespan_ms").get<double>(), 4 * 256.6 + 100, 1e-6);
     });
+    check("queue order and round-based regrouping", [] {
+        // "b" is due later but arrived earlier and has less work left (3 steps of 4): edf takes "a",
+        // srtf and fcfs take "b".
+        const Json rows = {video("a", 5000, {{"arrival_ms", 20}}),
+                           video("b", 9000, {{"status", "suspended"}, {"prepared", true}, {"group", {0}}, {"steps_done", 1}, {"arrival_ms", 10}})};
+        auto first = [&](const Json& options) {
+            return cluster_plan({{"now_ms", 100}, {"gpus", 1}, {"busy", Json::array()}, {"requests", rows}}, "static_sp1", ClusterCost(profile()), options)
+                .at("assignments")[0].at("request_id");
+        };
+        require(first(Json::object()) == "a", "edf by deadline");
+        require(first({{"order", "srtf"}}) == "b", "srtf by remaining work");
+        require(first({{"order", "fcfs"}}) == "b", "fcfs by arrival");
+        rejects([&] { first({{"order", "lifo"}}); });
+        // A video after 2 of 4 steps on GPU 3 keeps its group under rounds of 2 steps... only when
+        // the count is not a multiple: after 1 step it stays, after 2 it may regroup to the free pair.
+        auto placed = [](int steps) {
+            return Json::array({video("v", 1e9, {{"status", "suspended"}, {"prepared", true}, {"group", {3}}, {"steps_done", steps}, {"steps_total", 10}})});
+        };
+        const Json busy = Json::array({false, false, true, false});
+        auto stays = plan(placed(1), "round_elastic", 4, busy, {{"round_steps", 2}});
+        require(stays.size() == 1 && stays[0].at("group") == Json::array({3}) && stays[0].at("reason") == "resume", "inside a round the group holds");
+        auto moves = plan(placed(2), "round_elastic", 4, busy, {{"round_steps", 2}});
+        require(moves.size() == 1 && moves[0].at("group") == Json::array({0, 1}) && moves[0].at("resize") == true, "at a round boundary it regroups");
+        require(plan(placed(1), "step_elastic", 4, busy)[0].at("group") == Json::array({0, 1}), "step_elastic regroups every step");
+        require(plan(placed(1), "round_elastic", 4, busy)[0].at("group") == Json::array({3}), "default round of 5 steps");
+        require(plan(placed(5), "round_elastic", 4, busy)[0].at("group") == Json::array({0, 1}), "fifth step ends the round");
+        const auto sim = simulate(Json::array({trace_row("v", "video", 0, 1e9)}), "round_elastic", 4);
+        require(sim.at("metrics").at("completed") == 1 && sim.at("requests")[0].at("degrees") == Json::array({4, 1}), "lone video still takes the node");
+    });
     check("edf images first and videos share remaining GPUs", [] {
         const auto result = plan({video("v", 1e9), image("i", 100)}, "static_sp1", 2);
         require(result.size() == 2 && result[0].at("request_id") == "i" && result[0].at("quantum") == "atomic", "image first");

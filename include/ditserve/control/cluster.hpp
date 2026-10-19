@@ -73,10 +73,11 @@ private:
 //   (overrides the class), affinity (GPU that must host prepare) and
 //   decode_done (latent-frame chunks already decoded).
 // Policies: static_sp1|static_sp2|static_sp4|static_sp8, static_cfg2,
-// static_cfg2sp2, static_cfg2sp4, step_elastic, block_elastic. Elastic
-// policies choose among options.forms (default: sp forms of options.degrees,
-// default {1, 2, 4, 8}); for each group size the form with the smallest
-// predicted step time wins.
+// static_cfg2sp2, static_cfg2sp4, step_elastic, block_elastic, round_elastic
+// (regroups only every options.round_steps steps). Elastic policies choose
+// among options.forms (default: sp forms of options.degrees, default
+// {1, 2, 4, 8}); for each group size the form with the smallest predicted
+// step time wins. options.order (edf|srtf|fcfs) ranks feasible requests.
 // Returns {assignments:[{request_id, group, degree, form, quantum, resize, reason}]}
 // where quantum is "atomic" (image), "finish" (with decode_frames when the
 // decode is chunked), "step" or a block count.

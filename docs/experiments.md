@@ -78,6 +78,9 @@ FLUX 可设置 `workers.<name>.config.options.profile:true`，记录 text/DiT/sc
 | `step_elastic` | EDF；按期限选最小可行 SP 度，无其他等待请求时占用最大空闲组；只在 step 边界换组（近似 GENSERVE/TetriServe 的 step 级弹性 SP） |
 | `block_elastic` | 同上，但视频以 `options.quantum_blocks`（默认 4）个 block 推进，或按 `options.quantum_ms` 由当前类别与 SP 度换算 block 数；图像只有在等不到该视频 step 边界时才在 block 边界抢占（`lazy_preemption`，默认开启） |
 | `static_cfg2`、`static_cfg2sp2`、`static_cfg2sp4` | 固定并行形态：组的两半各跑一个 CFG 分支，每步交换一次预测（与 SP1 逐位一致），半组内再做 SP；其余同 static_spK |
+| `round_elastic` | 同 `step_elastic`，但已放置的视频只在完成的步数是 `options.round_steps`（默认 5）的整数倍时才可换组（近似 TetriServe 的轮次分配） |
+
+`options.order`（默认 `edf`）决定可行请求之间的排队顺序：`edf` 按期限，`srtf` 按估计的单卡剩余工作量，`fcfs` 按到达时间；feasible-first 的迟到降级对三者都生效（基线要纯排序时把 `demote_late` 设为 false）。
 
 视频组的**并行形态**（`Form`）由 cfg ∈ {1, 2} 和 SP 度 sp 组成，占 cfg × sp 张卡，名字为 `sp1`、`sp2`、`sp4`、`sp8`、`cfg2`、`cfg2sp2`、`cfg2sp4`。弹性策略在 `options.forms`（默认为 `options.degrees` 对应的纯 SP 形态，即 `{1, 2, 4, 8}` → `sp1/sp2/sp4/sp8`，两者不能同时给出）中选择：组的大小按原来的最小可行度数规则决定，同一大小的形态取成本模型预测每步时间最小的。规划结果的每条 assignment 带 `form`，状态里停在 step 中途的请求带 `form`（缺省为 `sp<组大小>`），step 内不换形态。模拟器与执行器按形态计价并记录每个请求用过的 `forms`；`sp_groups_running` 只计 sp ≥ 2 的组（CFG 对每步只交换一个 latent，不争用 host bridge）。
 
