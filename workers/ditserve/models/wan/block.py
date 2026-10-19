@@ -64,6 +64,20 @@ class WanBlockExecutor:
             self._side = torch.cuda.Stream(device=self.worker.device)
         return self._side
 
+    @staticmethod
+    def _record(packet, stream):
+        """Mark the packet's tensors as in use by `stream`.
+
+        The caching allocator returns a freed block to the pool of the stream that
+        allocated it, so a tensor the main stream made and dropped (the first
+        hidden state, once the conditional branch moved past it) could be reused
+        by the main stream while the side stream still reads it.
+        """
+        for value in packet.values():
+            for tensor in (value if isinstance(value, (tuple, list)) else (value,)):
+                if hasattr(tensor, "record_stream"):
+                    tensor.record_stream(stream)
+
     def _validate_model(self):
         from diffusers.models.transformers.transformer_wan import WanTransformer3DModel, WanTransformerBlock
         model = self.model
@@ -238,6 +252,7 @@ class WanBlockExecutor:
                     if other is not None:
                         # The unconditional branch's block i, on the side stream when there is one.
                         if side is not None:
+                            self._record(other, side)
                             with torch.cuda.stream(side):
                                 other["hidden"] = self.model.blocks[index](other["hidden"], other["encoder"],
                                                                             other["projected"], other["rotary"])
@@ -249,12 +264,13 @@ class WanBlockExecutor:
                     if state.next_block == len(self.model.blocks):
                         if side is not None and state.packet_uncond is not None:
                             torch.cuda.current_stream().wait_stream(side)
-                            state.packet_uncond["hidden"].record_stream(torch.cuda.current_stream())
+                            self._record(state.packet_uncond, torch.cuda.current_stream())
                         completed = self._finish_branch(state)
                         if completed:
                             break
                 if side is not None and state.packet_uncond is not None:
                     torch.cuda.current_stream().wait_stream(side)
+                    self._record(state.packet_uncond, torch.cuda.current_stream())
                 worker._sync()
                 if self.parallel is not None:
                     if completed:
