@@ -561,6 +561,9 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     if(transport!="pinned"&&transport!="resume"&&transport!="export")throw std::invalid_argument("sp_transport must be pinned, resume or export");
     if(transport=="resume"&&!fixtures)throw std::invalid_argument("resume transport re-prepares from counters and is mock only");
     if(transport=="export"&&gpus!=2&&gpus!=4&&gpus!=8)throw std::invalid_argument("export transport needs 2, 4 or 8 GPUs");
+    // Pinning lets a started request resume while another is inside a step on the
+    // same worker; SP workers hold one request inside a solver step at a time.
+    if(transport!="pinned"&&bool_field(options,"pin_started",false))throw std::invalid_argument("pin_started needs pinned transport");
     if(transport=="pinned"){
         if(policy.rfind("static_sp",0)==0&&policy!="static_sp1")throw std::invalid_argument("pinned cluster workers support SP1 only");
         options["degrees"]=Json::array({1});options["pin_started"]=true;

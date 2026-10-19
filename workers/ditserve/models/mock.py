@@ -17,6 +17,8 @@ class MockBackend(Backend):
         super().__init__(config)
         self.migrations = {}
         self.tickets, self.decodes = {}, {}
+        # Like Wan's layout handle under SP groups: one request inside a solver step per worker.
+        self.mid_step = None
 
     def encode_start(self, request):
         ticket = "encode-%d" % request["id"]
@@ -134,6 +136,14 @@ class MockBackend(Backend):
         degree = positive_int(request.get("sp_degree", 1), "sp_degree")
         if request.get("group") is not None and len(request["group"]) != degree:
             raise ValueError("advance group size differs from sp_degree")
+        grouped = "epoch" in request and state["blocks"] > 1
+        if grouped and self.mid_step not in (None, request["state_id"]):
+            raise ValueError("another request is inside a solver step on this worker")
+        # Like Wan's _adopt: a request inside a step keeps its group and epoch.
+        # A list, so the value survives the JSON round trip of exports and snapshots.
+        placement = [list(request.get("group") or []), request.get("epoch")]
+        if grouped and state["unit"] % state["blocks"] and state.get("placement") not in (None, placement):
+            raise ValueError("SP group changes only at a solver-step boundary")
         if state["blocks"] == 1:
             count = positive_int(request.get("steps", request.get("blocks", 1)))
             executed = min(count, state["steps"] - state["step"])
@@ -150,6 +160,9 @@ class MockBackend(Backend):
             if state["unit"] % state["blocks"] == 0:
                 state["value"] = hashlib.sha256(state["value"].encode()).hexdigest()
             state["step"] = state["unit"] // state["blocks"]
+            if grouped:
+                self.mid_step = request["state_id"] if state["unit"] % state["blocks"] else None
+                state["placement"] = placement
             self._sleep("step_ms", executed / state["blocks"] / degree)
         return dict(state_id=request["state_id"], completed_steps=state["step"], executed_units=executed,
                     remaining_steps=state["steps"] - state["step"],

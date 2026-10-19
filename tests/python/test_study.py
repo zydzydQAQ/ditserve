@@ -417,6 +417,28 @@ class NativeStudyTest(unittest.TestCase):
         self.assertEqual(cell["by_kind"]["image"]["completed"], 4)
         self.assertFalse(cell["real_backends_pinned_sp1"])
 
+    def test_mock_worker_holds_one_grouped_request_inside_a_solver_step(self):
+        from ditserve.models.mock import MockBackend
+        backend = MockBackend({"options": {}})
+        for key in ("a", "b"):
+            backend.prepare({"state_id": key, "spec": {"steps": 2, "blocks_per_step": 4}})
+        quantum = dict(group=[0], sp_degree=1, blocks=2)
+        backend.advance(dict(quantum, state_id="a", epoch=1))
+        with self.assertRaisesRegex(ValueError, "inside a solver step"):
+            backend.advance(dict(quantum, state_id="b", epoch=2))
+        backend.advance(dict(quantum, state_id="a", epoch=1))
+        self.assertEqual(backend.advance(dict(quantum, state_id="b", epoch=2))["executed_units"], 2)
+
+    def test_mock_worker_keeps_the_group_of_a_request_inside_a_solver_step(self):
+        from ditserve.models.mock import MockBackend
+        backend = MockBackend({"options": {}})
+        backend.prepare({"state_id": "a", "spec": {"steps": 2, "blocks_per_step": 4}})
+        backend.advance(dict(state_id="a", group=[0], sp_degree=1, blocks=2, epoch=1))
+        with self.assertRaisesRegex(ValueError, "solver-step boundary"):
+            backend.advance(dict(state_id="a", group=[0, 1], sp_degree=2, blocks=2, epoch=2))
+        backend.advance(dict(state_id="a", group=[0], sp_degree=1, blocks=2, epoch=1))
+        self.assertEqual(backend.advance(dict(state_id="a", group=[0, 1], sp_degree=2, blocks=2, epoch=2))["executed_units"], 2)
+
     def test_cluster_export_transport_moves_state_into_sp_groups(self):
         phase = self.cluster_phase("block_elastic", options=dict(sp_transport="export"))
         value = self.run_study(self.config([phase], workers=self.cluster_workers()), name="export")

@@ -94,6 +94,55 @@ int main() {
         auto busy = plan(Json::array({video("v", 1e9)}), "step_elastic", 4, Json::array({true, false, false, false}));
         require(busy.size() == 1 && busy[0].at("group") == Json::array({2, 3}), "aligned free pair when GPU 0 is busy");
     });
+    check("a video at a step boundary does not return to a GPU another video holds mid-step", [] {
+        // Both are late, so EDF puts "a" first; its old GPU 0 is free only between "b"'s quanta.
+        const Json rows = {video("a", 100, {{"status", "suspended"}, {"prepared", true}, {"group", {0}}, {"steps_done", 1}}),
+                           video("b", 200, {{"status", "suspended"}, {"prepared", true}, {"group", {0}}, {"blocks_done", 4}})};
+        const auto result = plan(rows, "block_elastic", 1);
+        require(result.size() == 1 && result[0].at("request_id") == "b" && result[0].at("reason") == "resume",
+                "the mid-step owner resumes; the other video waits");
+        auto suspended = [](const std::string& id, double deadline, Json group, Json extra) {
+            Json row = video(id, deadline, {{"status", "suspended"}, {"prepared", true}, {"group", group}});
+            row.merge_patch(extra);
+            return row;
+        };
+        // "b" is inside a step on the pair; "a" last ran on GPU 1 alone.
+        const auto pair = plan({suspended("a", 100, {1}, {{"steps_done", 1}}), suspended("b", 200, {0, 1}, {{"blocks_done", 4}})}, "block_elastic", 2);
+        require(pair.size() == 1 && pair[0].at("request_id") == "b", "a GPU of a mid-step pair is not free for another video");
+        // "a" last ran on the pair; "c" is inside a step on GPU 1, so "a" moves to GPU 0.
+        const auto moved = plan({suspended("a", 100, {0, 1}, {{"steps_done", 1}}), suspended("c", 200, {1}, {{"blocks_done", 4}})}, "block_elastic", 2);
+        require(moved.size() == 2 && moved[0].at("group") == Json::array({0}) && moved[0].at("resize") == true, "regroup around the mid-step GPU");
+        // A chunked decode holds its GPU too, as a scheduling choice.
+        Json chunked = profile(); chunked["classes"]["video"]["decode_chunks"] = 10;
+        // "a" is planned first (earlier deadline, neither late).
+        const Json decoding = {suspended("a", 1e5, {0}, {{"steps_done", 1}}), suspended("d", 1e9, {0}, {{"steps_done", 4}, {"decode_done", 3}})};
+        const auto decode = cluster_plan({{"now_ms", 0}, {"gpus", 1}, {"busy", Json::array()}, {"requests", decoding}}, "block_elastic",
+                                         ClusterCost(chunked), Json::object()).at("assignments");
+        require(decode.size() == 1 && decode[0].at("quantum") == "finish", "no advance onto a decoding GPU");
+    });
+    check("the plan never advances onto another request's solver step", [] {
+        // An inconsistent queue: two videos claim to be inside a step on GPU 0.
+        const Json rows = {video("a", 100, {{"status", "suspended"}, {"prepared", true}, {"group", {0}}, {"blocks_done", 2}}),
+                           video("b", 200, {{"status", "suspended"}, {"prepared", true}, {"group", {0}}, {"blocks_done", 4}})};
+        bool contract = false;
+        try { plan(rows, "block_elastic", 1); } catch (const std::logic_error&) { contract = true; }
+        require(contract, "the post-condition names the conflict");
+        require(plan(rows, "block_elastic", 1, Json::array(), {{"pin_started", true}}).size() == 1, "pinned workers may interleave");
+        // K11 shape: 4 GPUs, SP1/2/4, ~300 ms quanta, overloaded mixed traffic with
+        // tight video deadlines. Any interleaving the SP workers reject throws from the
+        // post-condition; without the step-boundary resume check 5 of the 6 "free" runs do.
+        for (const auto* feasibility : {"widest", "free"})
+            for (int load = 2; load <= 3; ++load)
+                for (int seed = 1; seed <= 3; ++seed) {
+                    Json generator = {{"count", 120}, {"seed", seed}, {"pattern", "poisson"}, {"rate_rps", 3 * load},
+                        {"classes", {{{"class", "video"}, {"kind", "video"}, {"weight", 1}, {"service_ms", 4000}, {"slo_scale", 1.25}},
+                                     {{"class", "image"}, {"kind", "image"}, {"weight", 3}, {"service_ms", 50}, {"slo_ms", 400}}}}};
+                    const auto result = simulate_cluster({{"workload", study_workload({{"generator", generator}})}, {"profile", profile()},
+                        {"policy", "block_elastic"}, {"gpus", 4},
+                        {"options", {{"degrees", {1, 2, 4}}, {"quantum_ms", 250}, {"feasibility_degree", feasibility}}}});
+                    require(result.at("metrics").at("completed") == 120, "every request completes");
+                }
+    });
     check("lateness test degree", [] {
         // One free GPU. "a" needs SP4 (1.16 s) to meet 3 s, SP1 takes 4.1 s; "b" meets 5 s on SP1.
         const Json rows = {video("a", 3000), video("b", 5000)};

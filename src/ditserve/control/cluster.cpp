@@ -196,11 +196,14 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     // GPUs of a video suspended inside a solver step. Its state is resident on
     // exactly that group, so taking one of them blocks the whole group.
     std::vector<const Json*> mid_owner(gpus, nullptr);
+    // The worker contract behind that hold: an SP video worker keeps one request
+    // inside a solver step at a time. The decode hold is scheduling policy only.
+    std::vector<const Json*> step_owner(gpus, nullptr);
     // A chunked decode in progress holds only its decoding GPU.
     for (const Json* r : rows) {
         if (r->at("kind") != "video") continue;
         if (int_field(*r, "decode_done", 0, 0) > 0) mid_owner[group_of(*r).front()] = r;
-        else if (int_field(*r, "blocks_done", 0, 0) > 0) for (int gpu : group_of(*r)) mid_owner[gpu] = r;
+        else if (int_field(*r, "blocks_done", 0, 0) > 0) for (int gpu : group_of(*r)) mid_owner[gpu] = step_owner[gpu] = r;
     }
     auto time_to_boundary = [&](const Json* r) {
         const auto group = group_of(*r);
@@ -213,6 +216,10 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         return std::all_of(group.begin(), group.end(), [&](int gpu) { return free[gpu]; });
     };
     auto take = [&](const std::vector<int>& group) { for (int gpu : group) free[gpu] = false; };
+    // Another video suspended inside a step holds these GPUs even between its quanta.
+    auto held_by_other = [&](const std::vector<int>& group, const Json* r) {
+        return std::any_of(group.begin(), group.end(), [&](int gpu) { return mid_owner[gpu] && mid_owner[gpu] != r; });
+    };
 
     Json assignments = Json::array();
     for (std::size_t index = 0; index < rows.size(); ++index) {
@@ -292,13 +299,13 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         std::vector<int> chosen;
         for (auto d = order.rbegin(); d != order.rend() && chosen.empty(); ++d) {
             if (*d > target) continue;
-            if (prepared && static_cast<int>(current.size()) == *d && all_free(current)) { chosen = current; break; }
+            if (prepared && static_cast<int>(current.size()) == *d && all_free(current) && !held_by_other(current, &r)) { chosen = current; break; }
             int best_busy = -1;
             for (const auto& group : groups) {
                 if (static_cast<int>(group.size()) != *d || !all_free(group)) continue;
                 if (std::any_of(group.begin(), group.end(), reserved)) continue;
                 if (affinity >= 0 && std::find(group.begin(), group.end(), affinity) == group.end()) continue;
-                if (std::any_of(group.begin(), group.end(), [&](int gpu) { return mid_owner[gpu] && mid_owner[gpu] != &r; })) continue;
+                if (held_by_other(group, &r)) continue;
                 // Best fit: prefer the group whose aligned parent is most occupied.
                 const int parent = std::min(gpus, *d * 2), start = group.front() / parent * parent;
                 int occupied = 0;
@@ -311,6 +318,24 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         assignments.push_back({{"request_id", id}, {"group", chosen}, {"degree", chosen.size()},
                                {"quantum", video_quantum(klass, static_cast<int>(chosen.size()))},
                                {"resize", prepared && chosen != current}, {"reason", prepared ? "regroup" : "admit"}});
+    }
+    // Shared by the executor and the simulator, so a planner bug fails here with
+    // both request IDs instead of inside an SP worker. Pinned workers have no
+    // group layout, and requests may interleave inside steps there.
+    if (!pin_started) {
+        std::map<std::string, const Json*> by_id;
+        for (const Json* r : rows) by_id[r->at("request_id").get<std::string>()] = r;
+        for (const auto& assignment : assignments) {
+            const auto& quantum = assignment.at("quantum");
+            if (quantum == "atomic" || quantum == "finish") continue;
+            const auto id = assignment.at("request_id").get<std::string>();
+            for (const auto& gpu : assignment.at("group")) {
+                const Json* owner = step_owner[gpu.get<int>()];
+                if (owner && owner != by_id.at(id))
+                    throw std::logic_error("cluster plan advances " + id + " on GPU " + std::to_string(gpu.get<int>()) + " while " +
+                                           owner->at("request_id").get<std::string>() + " is inside a solver step there");
+            }
+        }
     }
     return {{"assignments", assignments}, {"policy", name}};
 }
