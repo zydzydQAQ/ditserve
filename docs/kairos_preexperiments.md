@@ -42,7 +42,7 @@
 
 | 编号 | 问题 | 结论 | 证据 |
 | --- | --- | --- | --- |
-| K12 5B 数值验收 | 逐 token 时间步的步进路径能否在 GPU 上复现官方 pipeline | 1 张卡：64×64×5、3 步，经热/冷快照往返后，latent 和视频都与官方 `WanPipeline` 逐位一致；block worker 与 Sana 同卡混合回放 4/4 完成 | `results/target-acceptance-5b-te21/q5b-20261019t0943z-gpu0` |
+| K12 5B 数值验收 | 逐 token 时间步的步进路径能否在 GPU 上复现官方 pipeline | 1 张卡：64×64×5、3 步，经热/冷快照往返后，latent 和视频都与官方 `WanPipeline` 逐位一致；block worker 与 Sana 同卡混合回放 4/4 完成。5B 自己的文本编码器到位后，用完整的 `wan2.2-ti2v-5b`（22 个文件全部按官方 SHA256 校验，清单在 `models/.provisioning/wan22-ti2v-5b.json`）重做，同样通过 | `results/target-acceptance-5b-te21/q5b-20261019t0943z-gpu0`、`results/target-acceptance-5b/e05b-20261019t1038z-gpu0` |
 | K13 5B SP4 等价性 | 逐 token 时间步按序列切分后，SP 是否成立 | 512×896×17、8 步：SP4 组内 13-block quanta 与整步 SP4 逐位一致。相对 SP1：latent max_abs 1.51、rmse 0.0508，视频 rmse 0.0105（约 39.6 dB），1.3B 的 K6 为 0.511/0.0235/49.2 dB。最初用 480×832×17 时失败，原因是 5B 每帧只有 390 个 token，不能被 4 整除 | `kairos-sp4-equivalence-5b-te21/q5b2-20261019t0952z` |
 | K14 5B SP 扩展曲线 | 5B 的 SP 加速，以及成本模型能否迁移 | 见下表。704×1280×121（官方 720p、5 秒）SP1 每步 8.26 s，SP4 为 1.71×；同为 720p，1.3B 是 2.09×。直接用 K7 在 1.3B 上拟合的链路参数（η=1、4.81/2.72 GB/s），只换成 5B 的解析通信量，16 个形状×度数的每步时间误差都在 3.7% 以内 | `kairos-sp-scaling-4gpu-5b-te21/q5b2-20261019t0952z` |
 
@@ -94,5 +94,5 @@ K7 每步耗时（整步，去掉首步后的中位数）：
 - 争用带宽 3.9 GB/s 和固定开销 12 ms 都是从 K8 的 4 卡数据拟合出来的，属于样本内参数；K11′ 是第一个样本外检验。模拟器按发出时刻的并发数给 SP quantum 计价，之后并发数变化时不重新计时；4 卡 static_sp2 的视频长尾仍被低估（p95 330 s 对 417 s）。
 - Wan2.2-5B 的 Ulysses SP 要求 token 数能被 SP 度整除：480×832 每帧 390 个 token，不能用于 SP4/SP8。可用 512×896（448）或 704×1280（880），否则需要在切分时补齐 token。
 - 5B 在 FP16 下 SP4 相对 SP1 的偏差（视频约 39.6 dB）明显大于 1.3B（49.2 dB）。官方通常用 BF16；SP 输出质量要用语义或盲评确认，不能只看数值。
-- K12–K14 用的是 Wan2.1 的文本编码器；5B 自己的编码器到位后，要重做 K12，并补测 5B 的成本画像（解码、prepare）。
+- K13、K14 用的是 Wan2.1 的文本编码器，它只影响 CPU 上的提示词编码，不影响 DiT 的 SP 结果；K12 已用完整 5B 模型重做并通过。5B 的成本画像（解码、prepare）还要补测。
 - 尚未完成：图像批处理、slack-based victim 选择、TetriServe 式 round-based 基线；用 5B 成本画像做集群回放与负载扫描；8 卡验收与主实验。
