@@ -410,13 +410,17 @@ class WanBackend(Backend):
             output, info = self.runtime.decode_chunks(state, positive_int(request["decode_frames"], "decode_frames"))
             if output is None:
                 return dict(state_id=request["state_id"], progress=self._progress(state), decode=info, model_ms=info["ms"])
-            return dict(state_id=request["state_id"], output=self.persist(output, request), decode=info,
-                        progress=self._progress(state), model_ms=info["ms"],
-                        **self._evidence(request, state.spec, state.latents, self._paths(state)))
+            result = dict(state_id=request["state_id"], output=self.persist(output, request), decode=info,
+                          progress=self._progress(state), model_ms=info["ms"],
+                          **self._evidence(request, state.spec, state.latents, self._paths(state)))
+            self.release_cache()
+            return result
         output = self.runtime.finish(state)
-        return dict(state_id=request["state_id"], output=self.persist(output, request),
-                    progress=self._progress(state), model_ms=state.events[-1]["ms"],
-                    **self._evidence(request, state.spec, state.latents, self._paths(state)))
+        result = dict(state_id=request["state_id"], output=self.persist(output, request),
+                      progress=self._progress(state), model_ms=state.events[-1]["ms"],
+                      **self._evidence(request, state.spec, state.latents, self._paths(state)))
+        self.release_cache()
+        return result
 
     @staticmethod
     def _paths(state):

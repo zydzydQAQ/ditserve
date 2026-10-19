@@ -76,9 +76,11 @@ class SessionBackend(Backend):
             raise ValueError("finish requires completed model work")
         value = state["output"] if self.pipeline_mode else self.runtime.finish(state)
         suffix = ".txt" if self.kind == "mistral" else ".npy"
-        return dict(state_id=request["state_id"], progress=self._progress(state),
-                    output=self.persist(value, request, suffix),
-                    model_ms=getattr(state, "decode_ms", 0.))
+        result = dict(state_id=request["state_id"], progress=self._progress(state),
+                      output=self.persist(value, request, suffix),
+                      model_ms=getattr(state, "decode_ms", 0.))
+        self.release_cache()
+        return result
 
     def snapshot(self, request):
         if self.pipeline_mode:

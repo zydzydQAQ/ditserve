@@ -91,6 +91,19 @@ class Backend:
             raise ValueError("unknown state_id")
         return self.states[key]
 
+    def release_cache(self):
+        """Return the CUDA allocator's cached blocks once a request's output exists.
+
+        The Wan2.2 VAE decode of a 720p video leaves about 20 GB reserved that the
+        image worker sharing the GPU cannot use (K20); options.release_cache
+        (default true) hands it back after every decode and image.
+        """
+        if not self.config.get("options", {}).get("release_cache", True):
+            return
+        torch = getattr(getattr(self, "runtime", None), "torch", None)
+        if torch is not None and torch.cuda.is_available() and torch.cuda.is_initialized():
+            torch.cuda.empty_cache()
+
     def output_path(self, request, suffix=".npy"):
         key = hashlib.sha256(str(request.get("state_id", "batch")).encode()).hexdigest()[:16]
         return request.get("output_path") or str(Path(self.config.get("work_dir", ".")) /

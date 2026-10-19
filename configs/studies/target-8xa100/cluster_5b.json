@@ -10,7 +10,8 @@
       "environment": {
         "OMP_NUM_THREADS": "8",
         "MKL_NUM_THREADS": "8",
-        "OPENBLAS_NUM_THREADS": "8"
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
       },
       "config": {
         "model_path": "/models/wan2.2-ti2v-5b",
@@ -28,7 +29,8 @@
       "environment": {
         "OMP_NUM_THREADS": "8",
         "MKL_NUM_THREADS": "8",
-        "OPENBLAS_NUM_THREADS": "8"
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
       },
       "config": {
         "model_path": "/models/sana-sprint-0.6b",
@@ -46,7 +48,8 @@
       "environment": {
         "OMP_NUM_THREADS": "8",
         "MKL_NUM_THREADS": "8",
-        "OPENBLAS_NUM_THREADS": "8"
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
       },
       "config": {
         "model_path": "/models/wan2.2-ti2v-5b",
@@ -64,7 +67,8 @@
       "environment": {
         "OMP_NUM_THREADS": "8",
         "MKL_NUM_THREADS": "8",
-        "OPENBLAS_NUM_THREADS": "8"
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
       },
       "config": {
         "model_path": "/models/sana-sprint-0.6b",
@@ -82,7 +86,8 @@
       "environment": {
         "OMP_NUM_THREADS": "8",
         "MKL_NUM_THREADS": "8",
-        "OPENBLAS_NUM_THREADS": "8"
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
       },
       "config": {
         "model_path": "/models/wan2.2-ti2v-5b",
@@ -100,7 +105,8 @@
       "environment": {
         "OMP_NUM_THREADS": "8",
         "MKL_NUM_THREADS": "8",
-        "OPENBLAS_NUM_THREADS": "8"
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
       },
       "config": {
         "model_path": "/models/sana-sprint-0.6b",
@@ -118,7 +124,8 @@
       "environment": {
         "OMP_NUM_THREADS": "8",
         "MKL_NUM_THREADS": "8",
-        "OPENBLAS_NUM_THREADS": "8"
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
       },
       "config": {
         "model_path": "/models/wan2.2-ti2v-5b",
@@ -136,7 +143,8 @@
       "environment": {
         "OMP_NUM_THREADS": "8",
         "MKL_NUM_THREADS": "8",
-        "OPENBLAS_NUM_THREADS": "8"
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
       },
       "config": {
         "model_path": "/models/sana-sprint-0.6b",
@@ -154,7 +162,8 @@
       "environment": {
         "OMP_NUM_THREADS": "8",
         "MKL_NUM_THREADS": "8",
-        "OPENBLAS_NUM_THREADS": "8"
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
       },
       "config": {
         "model_path": "/models/wan2.2-ti2v-5b",
@@ -172,7 +181,8 @@
       "environment": {
         "OMP_NUM_THREADS": "8",
         "MKL_NUM_THREADS": "8",
-        "OPENBLAS_NUM_THREADS": "8"
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
       },
       "config": {
         "model_path": "/models/sana-sprint-0.6b",
@@ -190,7 +200,8 @@
       "environment": {
         "OMP_NUM_THREADS": "8",
         "MKL_NUM_THREADS": "8",
-        "OPENBLAS_NUM_THREADS": "8"
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
       },
       "config": {
         "model_path": "/models/wan2.2-ti2v-5b",
@@ -208,7 +219,8 @@
       "environment": {
         "OMP_NUM_THREADS": "8",
         "MKL_NUM_THREADS": "8",
-        "OPENBLAS_NUM_THREADS": "8"
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
       },
       "config": {
         "model_path": "/models/sana-sprint-0.6b",
@@ -226,7 +238,8 @@
       "environment": {
         "OMP_NUM_THREADS": "8",
         "MKL_NUM_THREADS": "8",
-        "OPENBLAS_NUM_THREADS": "8"
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
       },
       "config": {
         "model_path": "/models/wan2.2-ti2v-5b",
@@ -244,7 +257,8 @@
       "environment": {
         "OMP_NUM_THREADS": "8",
         "MKL_NUM_THREADS": "8",
-        "OPENBLAS_NUM_THREADS": "8"
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
       },
       "config": {
         "model_path": "/models/sana-sprint-0.6b",
@@ -262,7 +276,8 @@
       "environment": {
         "OMP_NUM_THREADS": "8",
         "MKL_NUM_THREADS": "8",
-        "OPENBLAS_NUM_THREADS": "8"
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
       },
       "config": {
         "model_path": "/models/wan2.2-ti2v-5b",
@@ -280,7 +295,8 @@
       "environment": {
         "OMP_NUM_THREADS": "8",
         "MKL_NUM_THREADS": "8",
-        "OPENBLAS_NUM_THREADS": "8"
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
       },
       "config": {
         "model_path": "/models/sana-sprint-0.6b",
