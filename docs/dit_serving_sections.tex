@@ -325,12 +325,12 @@ A cost-model study of an $8\times$A100 PCIe server illustrates the trade-off.
 It uses the measured 1.3B and image costs, the extrapolated 14B classes,
 assumed PCIe all-to-all bandwidths, and deadlines of $\sigma\times1.5$ times
 standalone latency. When elastic step-level SP gives every idle GPU to a
-video, images wait for step boundaries: overall deadline attainment is
-0.49--0.72. Reserving one GPU for images restores image attainment and
-yields 0.78--0.99. Block-level suspension with step-boundary regrouping
-reaches 0.84--0.998 without a reservation, improving video attainment by
-5--17 percentage points over the reserved
-baseline.\evidence{results/a100-e4-whatif}
+video, images wait for step boundaries: across the 16 load and mix cells,
+overall deadline attainment is 0.46--0.73. Reserving one GPU for images
+restores image attainment and yields 0.78--1.00. Block-level suspension with
+step-boundary regrouping reaches 0.82--1.00 without a reservation, and its
+video attainment is 0--23 percentage points higher than the reserved
+baseline's, never lower.\evidence{results/a100-e4-whatif}
 These are simulator outcomes, not system measurements; they identify the
 regime (tight video deadlines, high load, video-heavy mixes) in which the
 evaluation must demonstrate the effect.
