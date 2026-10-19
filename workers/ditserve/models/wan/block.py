@@ -21,6 +21,7 @@ class BlockState:
     branch: str = "cond"
     next_block: int = 0
     packet: object = None
+    packet_uncond: object = None   # interleaved execution: the unconditional branch's packet
     conditional: object = None
     cancelled: bool = False
     failed: bool = False
@@ -39,12 +40,29 @@ class WanBlockExecutor:
     is a collective safe point, and the solver commit closes the step.
     """
 
-    def __init__(self, worker, parallel=None):
+    def __init__(self, worker, parallel=None, interleave=False):
         self.worker, self.model, self.parallel = worker, worker.pipe.transformer, parallel
         # Wan2.2 TI2V conditions every patch token on its own timestep.
         self.expand_timesteps = bool(getattr(worker, "expand_timesteps", False))
+        # Interleaved execution runs block i of both CFG branches back to back, the
+        # unconditional one on a second CUDA stream, so one branch's all-to-all
+        # overlaps the other's compute under SP. Same kernels, same inputs, same
+        # results; under a CFG-parallel layout each rank has one branch and it is moot.
+        self.interleave = bool(interleave)
+        self._side = None
         self._validate_model()
         self._owner, self._states, self._advancing = object(), {}, False
+
+    def _interleaving(self, state):
+        if not self.interleave or state.base.spec["guidance_scale"] <= 1:
+            return False
+        return self.parallel is None or self.parallel.handle.current.cfg == 1
+
+    def _side_stream(self):
+        torch = self.worker.torch
+        if self._side is None and torch.cuda.is_available() and self.worker.device.startswith("cuda"):
+            self._side = torch.cuda.Stream(device=self.worker.device)
+        return self._side
 
     def _validate_model(self):
         from diffusers.models.transformers.transformer_wan import WanTransformer3DModel, WanTransformerBlock
@@ -119,6 +137,11 @@ class WanBlockExecutor:
         state.packet = dict(hidden=hidden, encoder=encoder, temb=temb,
                             projected=projected.unflatten(2 if tokens else 1, (6, -1)), rotary=rotary,
                             shape=(batch, frames // pt, height // ph, width // pw, pt, ph, pw))
+        if self._interleaving(state):
+            # Timestep terms are the same for both branches; only the text part differs.
+            encoder_uncond = model.condition_embedder(
+                timestep.flatten() if tokens else timestep, base.negative_prompt_embeds, None, timestep_seq_len=tokens)[2]
+            state.packet_uncond = dict(state.packet, encoder=encoder_uncond)
 
     def _prediction(self, packet):
         model, hidden, temb = self.model, packet["hidden"], packet["temb"]
@@ -139,7 +162,13 @@ class WanBlockExecutor:
         prediction = self._prediction(state.packet)
         state.packet, state.next_block = None, 0
         layout = self.parallel.handle.current if self.parallel is not None else None
-        if layout is not None and layout.cfg == 2:
+        if state.packet_uncond is not None:
+            # Interleaved: both branches ended this block; combine in the sequential order.
+            state.conditional = prediction
+            prediction = self._prediction(state.packet_uncond)
+            state.packet_uncond = None
+            prediction = prediction + base.spec["guidance_scale"] * (state.conditional - prediction)
+        elif layout is not None and layout.cfg == 2:
             # Each half ran one branch; the group exchanges the two predictions once.
             conditional, unconditional = self.parallel.exchange_predictions(prediction)
             prediction = unconditional + base.spec["guidance_scale"] * (conditional - unconditional)
@@ -183,12 +212,18 @@ class WanBlockExecutor:
             started = time.perf_counter()
             self._advancing = True
             try:
-                for _ in range(blocks):
+                side = None
+                while executed < blocks:
                     check_budget()
                     if state.packet is None:
                         if self.parallel is not None and state.branch == "cond":
                             self.parallel.begin_step(state.base)
                         self._begin(state)
+                    if state.packet_uncond is not None and side is None:
+                        # Once per quantum: the side stream must see everything the main stream produced.
+                        side = self._side_stream()
+                        if side is not None:
+                            side.wait_stream(torch.cuda.current_stream())
                     packet, index, branch = state.packet, state.next_block, state.branch
                     if observe:
                         start, end = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
@@ -198,12 +233,28 @@ class WanBlockExecutor:
                     if observe:
                         end.record()
                         events.append((branch, index, start, end))
-                    state.next_block += 1
                     executed += 1
+                    other = state.packet_uncond
+                    if other is not None:
+                        # The unconditional branch's block i, on the side stream when there is one.
+                        if side is not None:
+                            with torch.cuda.stream(side):
+                                other["hidden"] = self.model.blocks[index](other["hidden"], other["encoder"],
+                                                                            other["projected"], other["rotary"])
+                        else:
+                            other["hidden"] = self.model.blocks[index](other["hidden"], other["encoder"],
+                                                                        other["projected"], other["rotary"])
+                        executed += 1
+                    state.next_block += 1
                     if state.next_block == len(self.model.blocks):
+                        if side is not None and state.packet_uncond is not None:
+                            torch.cuda.current_stream().wait_stream(side)
+                            state.packet_uncond["hidden"].record_stream(torch.cuda.current_stream())
                         completed = self._finish_branch(state)
                         if completed:
                             break
+                if side is not None and state.packet_uncond is not None:
+                    torch.cuda.current_stream().wait_stream(side)
                 worker._sync()
                 if self.parallel is not None:
                     if completed:
@@ -245,7 +296,7 @@ class WanBlockExecutor:
                 return sum(visit(v, count) for v in value)
             return 0
         visit(self.worker._payload(state.base), False)
-        return int(visit((state.packet, state.conditional), True))
+        return int(visit((state.packet, state.packet_uncond, state.conditional), True))
 
     def native_step(self, state, *, check_budget=lambda: None):
         """The unmodified worker baseline, admitted only at a solver boundary."""
@@ -273,14 +324,14 @@ class WanBlockExecutor:
         with self.worker._lock:
             self._check(state)
             state.cancelled = True
-            state.packet = state.conditional = None
+            state.packet = state.packet_uncond = state.conditional = None
 
     def close(self, state):
         with self.worker._lock:
             if state.owner is not self._owner or self._states.get(id(state.base)) is not state:
                 raise ValueError("foreign or already closed continuation")
             self.worker._sync()
-            state.packet = state.conditional = None
+            state.packet = state.packet_uncond = state.conditional = None
             state.closed = True
             del self._states[id(state.base)]
 
@@ -321,6 +372,8 @@ def export_block_state(executor, state):
         if executor.parallel is not None and (state.packet is not None or state.conditional is not None
                                               or state.branch != "cond" or state.next_block):
             raise ValueError("SP block export is limited to solver-step boundaries")
+        if state.packet_uncond is not None:
+            raise ValueError("interleaved block export is limited to solver-step boundaries")
         worker._sync()
         started = time.perf_counter()
         base, tensors = pack_cache_off_request(worker, state.base)

@@ -48,6 +48,8 @@
 
 | K15 8 卡探测与 5B SP8 | 整机 all-to-all 带宽与 SP8 扩展 | 1×8（gpu 节点，build e2de3e4）。collectives：pair 单独 3.80–3.96 GB/s，4 对并发 2.17–2.32；quad 与 octet 不论并发还是单独都是 2.26–2.43 GB/s——**host bridge 聚合约 19 GB/s 是上限**，≥4 卡同时通信时每卡只有约 2.4 GB/s。SP 扩展（5B，8 种形状，SP1/2/4/8）：704×1280×121 每步 8.29/6.09/4.72/2.70 s，即 SP2 1.36×、SP4 1.76×、**SP8 3.07×**；512×896×81 为 2.09×（SP8）。SP8 比 SP4 快只因每卡通信量更少（7/64 对 3/16），带宽相同。拟合 `links.8`：4.81/2.72/2.72 GB/s（SP2/4/8 等效带宽）、延迟 0.18/0.28/0.48 ms，所有度数在 6 个非 17 帧形状上的最大误差：SP2 3.3%、SP4 4.1%、SP8 2.6%；4 对并发时 `concurrent_gbps` 约 2.8 | `acceptance/p12-20261019t1210z/collectives.json`、`kairos-sp-scaling-8gpu-5b/p12-20261019t1210z`；本地 `results/kairos-8gpu-probe` |
 
+| K16 CFG 并行（Stage A 微基准） | 把两个 CFG 分支分到两张卡上（`FixedLayout.cfg=2`），每步只交换一次预测，能否无损且接近 2× | 1×2（build bac8ea8，5B，Flash，cache off，block 执行器）。逐位一致：512×896×17、8 步，整步 CFG2 与 13-block quanta 的 CFG2，latent 和视频都与单卡 SP1 `exact`（两个 rank）。每步时间（4 步，去首步中位数）：704×1280×121 SP1 8.26 s、SP2 6.04 s（1.37×）、**CFG2 4.11 s（2.01×）**；512×896×81 SP1 1.97、SP2 1.74（1.13×）、CFG2 0.99（1.99×）。成本模型（compute/2 + 一次 latent 交换）预测 4.13/0.99 s，误差 ≤0.5%。1×4（gpu06）：704×1280×121 **CFG2×SP2 3.06 s（2.70×）**，预测 3.14（2.6%）；512×896×81 0.89 s（2.22×）。同一作业里 block 执行器上的 SP4 为 3.38 s（2.44×），而 K14/K15 用整步 worker 测的 SP4 是 4.72–4.82 s（gpu05、gpu06），SP2 两种 worker 一致（6.04 对 6.09）——差异待同节点 A/B 核实（下一轮 P5 已加 `sp2-step`/`sp4-step` 对照）。Gate A 的 CFG2 部分通过（门槛 ≥1.85×） | `kairos-cfg2gpu-5b/p5a-20261019t1250z`、`kairos-cfg4gpu-5b/p5b-20261019t1250z`；本地 `results/kairos-5b-cfg/` |
+
 K15 每步耗时（5B，8 卡，整步，去掉首步后的中位数）：
 
 | 形状 | token 数 | SP1 | SP2 | SP4 | SP8 |

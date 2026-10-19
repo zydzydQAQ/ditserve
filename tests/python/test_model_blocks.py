@@ -10,7 +10,7 @@ from unittest.mock import Mock, patch
 from ditserve.models.wan.block import WanBlockExecutor
 
 
-def fixture(steps=4, expand=False):
+def fixture(steps=4, expand=False, interleave=False):
     import torch
     from diffusers import WanTransformer3DModel, UniPCMultistepScheduler
     torch.manual_seed(731)
@@ -44,7 +44,7 @@ def fixture(steps=4, expand=False):
         worker._states[name] = state
         return state
     with patch.object(WanBlockExecutor, "_validate_model"):
-        executor = WanBlockExecutor(worker)
+        executor = WanBlockExecutor(worker, interleave=interleave)
     return worker, executor, prepare
 
 
@@ -182,6 +182,25 @@ class BlockExecutorTests(unittest.TestCase):
             while state.step_index <= step:
                 executor.advance(continuation, 11)
             self.assertTrue(self.torch.equal(state.latents, reference.latents))
+
+    def test_interleaved_branches_match_sequential_execution_bit_exactly(self):
+        worker, executor, prepare = fixture(interleave=True)
+        state, reference = prepare("a"), prepare("reference")
+        continuation = executor.attach(state)
+        for step, quanta in enumerate(([60], [7, 9, 44], [1] * 30, [13, 13, 13, 13, 13])):
+            native_step(worker, reference)
+            for blocks in quanta:
+                if state.step_index <= step:
+                    row = executor.advance(continuation, blocks)
+                    self.assertEqual(row["blocks"] % 2, 0)   # a pair per block index
+            self.assertEqual(state.step_index, step + 1)
+            self.assertTrue(self.torch.equal(state.latents, reference.latents))
+        self.assertIsNone(continuation.packet_uncond)
+        # Without CFG there is no second branch to interleave.
+        plain, plain_reference = prepare("p", guidance=1.), prepare("pr", guidance=1.)
+        native_step(worker, plain_reference)
+        executor.advance(executor.attach(plain), 30)
+        self.assertTrue(self.torch.equal(plain.latents, plain_reference.latents))
 
     def test_no_cfg_completes_after_one_forward(self):
         worker, executor, prepare = fixture()

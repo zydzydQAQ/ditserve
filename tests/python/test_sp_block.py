@@ -38,7 +38,7 @@ def plain_executor(torch, *, empty=False, expand=False):
     return worker, state, WanBlockExecutor(worker)
 
 
-def sp_executor(torch, rank, ranks, *, empty=False, expand=False, cfg=1):
+def sp_executor(torch, rank, ranks, *, empty=False, expand=False, cfg=1, interleave=False):
     """One rank's worker with the Ulysses attachment over the Gloo world."""
     from ditserve.models.wan.block import WanBlockExecutor
     from ditserve.models.wan.parallel import LayoutHandle, build_fixed_groups
@@ -51,7 +51,7 @@ def sp_executor(torch, rank, ranks, *, empty=False, expand=False, cfg=1):
     worker.expand_timesteps = expand   # Wan2.2 TI2V per-token timesteps
     groups = build_fixed_groups(backend="gloo")
     parallel = PinnedWanUlyssesBackend(LayoutHandle(rank, ranks, cfg=cfg), groups).attach(worker)
-    return worker, state, parallel, WanBlockExecutor(worker, parallel=parallel)
+    return worker, state, parallel, WanBlockExecutor(worker, parallel=parallel, interleave=interleave)
 
 
 def run_quanta(executor, continuation, quanta, until):
@@ -73,10 +73,10 @@ def load_payload(torch, executor, path):
     return base, continuation
 
 
-def scenario_quanta(torch, rank, world, directory, quanta, expand=False):
+def scenario_quanta(torch, rank, world, directory, quanta, expand=False, interleave=False):
     """All ranks in one group; the quanta pattern varies, the result must not."""
     ranks = tuple(range(world))
-    worker, state, parallel, executor = sp_executor(torch, rank, ranks, expand=expand)
+    worker, state, parallel, executor = sp_executor(torch, rank, ranks, expand=expand, interleave=interleave)
     continuation = executor.attach(state)
     executor.advance(continuation, blocks=1)
     tokens = continuation.packet["hidden"].shape[1]  # this rank's shard of the 8 patch tokens
@@ -170,6 +170,7 @@ SCENARIOS = dict(quanta_whole=lambda t, r, w, d: scenario_quanta(t, r, w, d, [ST
                  quanta_ragged=lambda t, r, w, d: scenario_quanta(t, r, w, d, [1, 4, 2, 5]),
                  expand_whole=lambda t, r, w, d: scenario_quanta(t, r, w, d, [STEP_BLOCKS], expand=True),
                  expand_ragged=lambda t, r, w, d: scenario_quanta(t, r, w, d, [1, 4, 2, 5], expand=True),
+                 interleaved=lambda t, r, w, d: scenario_quanta(t, r, w, d, [2, 4], interleave=True),
                  cfg_whole=lambda t, r, w, d: scenario_cfg(t, r, w, d, [STEP_BLOCKS]),
                  cfg_ragged=lambda t, r, w, d: scenario_cfg(t, r, w, d, [1, 2]),
                  grow=scenario_grow, move=scenario_move, shrink=scenario_shrink, guards=scenario_guards)
@@ -244,6 +245,14 @@ class SpBlockTests(unittest.TestCase):
                 self.assert_replicated(ragged)
                 self.assertTrue(self.torch.equal(whole[0]["latents"], ragged[0]["latents"]))
                 self.assert_sp1(whole[0]["latents"], self.reference_expand)
+
+    def test_interleaved_branches_inside_sp_groups_match_sp1(self):
+        for world in (2, 4):
+            with self.subTest(degree=world):
+                results, unused = self.spawn("interleaved", world)
+                self.assertEqual({result["tokens"] for result in results}, {8 // world})
+                self.assert_replicated(results)
+                self.assert_sp1(results[0]["latents"])
 
     def test_cfg_parallel_halves_match_sp1(self):
         for world in (2, 4):

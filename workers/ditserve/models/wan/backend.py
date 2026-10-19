@@ -19,8 +19,10 @@ class WanBackend(Backend):
             model_path=config.get("model_path"), attention=config.get("attention", "math"))
         self.options = config.get("options", {})
         self.execution = self.options.get("execution", "step")
-        if self.execution not in ("step", "block"):
-            raise ValueError("Wan execution must be step or block")
+        if self.execution not in ("step", "block", "block_interleaved"):
+            raise ValueError("Wan execution must be step, block or block_interleaved")
+        # block_interleaved runs the two CFG branches block by block on two CUDA streams.
+        self.interleave = self.execution == "block_interleaved"
         self.executor = self.parallel = None
         self.continuations, self.pending = {}, {}
         self.encoder = ThreadPoolExecutor(max_workers=1, thread_name_prefix="prompt-encoder")
@@ -119,10 +121,10 @@ class WanBackend(Backend):
         else:
             state = self.runtime.prepare(spec)
         try:
-            if self.execution == "block":
+            if self.execution.startswith("block"):
                 if self.executor is None:
                     from .block import WanBlockExecutor
-                    self.executor = WanBlockExecutor(self.runtime)
+                    self.executor = WanBlockExecutor(self.runtime, interleave=self.interleave)
                 self.continuations[key] = self.executor.attach(state)
             self.states[key] = state
         except BaseException:
@@ -271,7 +273,7 @@ class WanBackend(Backend):
                     artifacts=[dict(path=str(destination), sha256=digest, bytes=size, kind="raw")])
 
     def block_import(self, request):
-        if self.execution != "block":
+        if not self.execution.startswith("block"):
             raise ValueError("block import requires a block-execution worker")
         key = self.new_id(request)
         path = Path(request["path"])
@@ -285,7 +287,7 @@ class WanBackend(Backend):
         read_ms = (time.perf_counter() - started) * 1000
         if self.executor is None:
             from .block import WanBlockExecutor
-            self.executor = WanBlockExecutor(self.runtime)
+            self.executor = WanBlockExecutor(self.runtime, interleave=self.interleave)
         from .block import import_block_state
         state, continuation, timing = import_block_state(self.executor, payload)
         self.states[key], self.continuations[key] = state, continuation
@@ -359,10 +361,10 @@ class WanBackend(Backend):
             groups = build_fixed_groups(backend=backend, timeout_seconds=request.get("timeout_seconds", 30))
             handle = LayoutHandle(torch.distributed.get_rank(), request.get("ranks"), cfg=request.get("cfg", 1))
             self.parallel = PinnedWanUlyssesBackend(handle, groups).attach(self.runtime)
-            if self.execution == "block":
+            if self.execution.startswith("block"):
                 # A warmup may have built a single-GPU executor; block quanta now need SP safe points.
                 from .block import WanBlockExecutor
-                self.executor = WanBlockExecutor(self.runtime, parallel=self.parallel)
+                self.executor = WanBlockExecutor(self.runtime, parallel=self.parallel, interleave=self.interleave)
             return dict(self.parallel.capabilities, initialized=True, execution=self.execution)
         if self.parallel is None:
             raise ValueError("distributed init must complete first on every rank")
