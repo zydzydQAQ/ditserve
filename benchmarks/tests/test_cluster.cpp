@@ -94,6 +94,17 @@ int main() {
         auto busy = plan(Json::array({video("v", 1e9)}), "step_elastic", 4, Json::array({true, false, false, false}));
         require(busy.size() == 1 && busy[0].at("group") == Json::array({2, 3}), "aligned free pair when GPU 0 is busy");
     });
+    check("lateness test degree", [] {
+        // One free GPU. "a" needs SP4 (1.16 s) to meet 3 s, SP1 takes 4.1 s; "b" meets 5 s on SP1.
+        const Json rows = {video("a", 3000), video("b", 5000)};
+        const Json busy = {true, true, true, false};
+        require(plan(rows, "step_elastic", 4, busy)[0].at("request_id") == "a", "widest: SP4 feasibility keeps EDF order");
+        require(plan(rows, "step_elastic", 4, busy, {{"feasibility_degree", "free"}})[0].at("request_id") == "b",
+                "free: the request late on the free GPU yields");
+        require(plan(rows, "step_elastic", 4, Json::array(), {{"feasibility_degree", "free"}})[0].at("request_id") == "a",
+                "free: an idle node still saves it");
+        rejects([] { plan(Json::array({video("v", 1)}), "step_elastic", 4, Json::array(), {{"feasibility_degree", "any"}}); });
+    });
     check("lazy block preemption", [] {
         // Mid-step video on GPU 0: 6 blocks (600 ms) to the step boundary.
         const auto mid = video("v", 1e9, {{"status", "suspended"}, {"prepared", true}, {"group", {0}}, {"blocks_done", 4}, {"steps_done", 1}});

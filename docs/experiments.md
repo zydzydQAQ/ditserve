@@ -82,6 +82,8 @@ FLUX 可设置 `workers.<name>.config.options.profile:true`，记录 text/DiT/sc
 
 所有策略默认采用 feasible-first EDF（`options.demote_late`，默认开启）：即使占用最大组也赶不上期限的请求排在仍可按时完成的请求之后，避免过载时迟到的长视频饿死新到的短请求；剩余工作不超过 `options.late_short_ms`（默认 2000 ms）的迟到请求保留 EDF 位置，避免小的超时被放大成长尾。
 
+迟到判断（feasible-first 降级）假设的 SP 度由 `options.feasibility_degree` 决定：`widest`（默认）用策略的最大度，在负载下偏乐观——整组空闲很少见，只有空闲整机才能救的请求保留 EDF 优先级、以窄组运行并迟到，拖累其后的可行请求；`free` 用规划时刻空闲的最宽对齐组。
+
 成本画像 `profile` 的 `provenance` 必须为 measured、extrapolated、synthetic 或 mixed。视频类别给出 steps、blocks_per_step、可选 min_degree（单卡放不下时的最小 SP 度，固定 SP 策略也会提升到该值）、prepare/encode/finish、SP1 每步计算时间、每步 Ulysses all-to-all 全序列字节数与集合通信次数；`links` 按 SP 度给出每 rank 带宽和延迟；`sp_efficiency` 与 `resize_ms` 描述并行效率与 step 边界换组成本。模拟结果只描述成本模型，不是模型执行。
 
 `options.sp_transport` 决定请求如何到达新组的 rank：`pinned`（真实后端默认）固定 SP1 且不换组（`real_backends_pinned_sp1`）；`resume`（仅 mock）按 step/block 计数在新 rank 重新 prepare；`export` 让各卡视频 worker 组成一个进程组（`options.sp_port`，默认 29600），由一个 rank prepare，进入组的 rank 在任何 rank 推进前导入其 step 边界状态的 host-staged 副本（`block_export`/`block_import`，目录 `options.transfer_dir`，默认工作目录下 `transfer/`）。`export` 需要 2/4/8 张卡；请求记录 `transfers`、`transfer_bytes`、`transfer_export_ms`。mock 后端可按 `options.costs` 和 `sp_degree` 模拟耗时以测试并发与换组。`simulate` 配置包括 `profile`、`generator`/`workload`、`gpus`、`policies`、`options`、`matrix`；未给出时使用内置 synthetic 示例（`configs/simulation.json` 为完整样例）。

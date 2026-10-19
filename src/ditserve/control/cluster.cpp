@@ -148,6 +148,16 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     const auto busy = state.value("busy", Json::array());
     if (!busy.is_array() || static_cast<int>(busy.size()) > gpus) throw std::invalid_argument("busy must list at most one flag per GPU");
     for (std::size_t g = 0; g < busy.size(); ++g) free[g] = !busy[g].get<bool>();
+    // Degree assumed by the lateness test. "widest": the largest policy degree, optimistic under
+    // load, where a full group is rarely free: a request only an idle node could save keeps its EDF
+    // priority, runs narrow and misses, delaying feasible work behind it. "free": the widest aligned
+    // group free when this plan starts.
+    const auto feasibility = options.value("feasibility_degree", std::string("widest"));
+    if (feasibility != "widest" && feasibility != "free") throw std::invalid_argument("feasibility_degree must be widest or free");
+    int free_widest = 1;
+    for (int d : degrees)
+        for (const auto& group : cluster_groups(gpus, {d}))
+            if (d > free_widest && std::all_of(group.begin(), group.end(), [&](int gpu) { return free[gpu]; })) free_widest = d;
 
     std::vector<const Json*> rows;
     std::set<std::string> ids;
@@ -167,7 +177,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     // delay feasible work, and demoting them behind a long video only turns a
     // small miss into a very long tail.
     const double late_short_ms = number_field(options, "late_short_ms", 2000);
-    const int widest = *std::max_element(degrees.begin(), degrees.end());
+    const int widest = feasibility == "free" ? free_widest : *std::max_element(degrees.begin(), degrees.end());
     std::map<const Json*, bool> late;
     for (const Json* r : rows) {
         const int best = r->at("kind") == "image" ? 1 : std::min(std::max(widest, int_field(cost.klass(r->at("class").get<std::string>()), "min_degree", 1)), gpus);
