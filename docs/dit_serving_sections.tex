@@ -267,11 +267,19 @@ step consists of 60 Transformer-block evaluations of almost equal cost
 On the target machine, an $8\times$A100 PCIe 40\,GB node without NVLink
 (every GPU pair crosses a host bridge), Wan2.2-TI2V-5B takes 8.15\,s per
 step at its official $704\times1280$, 121-frame output and 1.93\,s at
-$512\times896$ with 81 frames, and its VAE decode takes 32.9\,s and
+$512\times896$ with 81 frames, and its FP32 VAE decode takes 32.9\,s and
 10.3\,s respectively; a Sana-Sprint image takes
 0.32\,s.\evidence{docs/kairos\_preexperiments.md (K17)}
 A 50-step 720p request therefore occupies one GPU for about 440\,s, during
 which roughly 1,400 image requests could have been served.
+Memory is the second constraint of a 40\,GB card: the FP32 decode of the
+720p request peaks at 32\,GB inside the video worker, which cannot coexist
+with the 8\,GB image worker on one GPU even when both return their
+allocator caches after every request; decoding in BF16 halves the peak to
+21\,GB and the time to 17\,s, and changes the decoded video by a mean LPIPS
+of 0.00025 (57\,dB) relative to FP32 from identical latents, so the 5B
+serving experiments decode in
+BF16.\evidence{docs/kairos\_preexperiments.md (K20, K21)}
 Sequence parallelism shortens a step, but the request then holds several
 GPUs, so a step-boundary scheduler must either wait for the whole group or
 keep GPUs idle for short requests.
