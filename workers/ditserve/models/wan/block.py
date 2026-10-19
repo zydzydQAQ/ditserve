@@ -127,7 +127,7 @@ class WanBlockExecutor:
             raise ValueError("cache policy changed during block execution")
         self.worker._update_policy(state.base)
 
-    def _begin(self, state):
+    def _begin(self, state, interleave=True):
         base, model = state.base, self.model
         latent = base.latents.to(model.dtype)
         batch, _, frames, height, width = latent.shape
@@ -151,7 +151,7 @@ class WanBlockExecutor:
         state.packet = dict(hidden=hidden, encoder=encoder, temb=temb,
                             projected=projected.unflatten(2 if tokens else 1, (6, -1)), rotary=rotary,
                             shape=(batch, frames // pt, height // ph, width // pw, pt, ph, pw))
-        if self._interleaving(state):
+        if interleave and self._interleaving(state):
             # Timestep terms are the same for both branches; only the text part differs.
             encoder_uncond = model.condition_embedder(
                 timestep.flatten() if tokens else timestep, base.negative_prompt_embeds, None, timestep_seq_len=tokens)[2]
@@ -290,6 +290,122 @@ class WanBlockExecutor:
                 return row
             except BaseException:
                 state.failed = True
+                if self.parallel is not None:
+                    self.parallel.handle.fail()
+                raise
+            finally:
+                self._advancing = False
+
+    def advance_pair(self, first, second, blocks=1, *, observe=False, check_budget=lambda: None):
+        """Advance two requests of one layout in lockstep: block i of each back to back, the
+        second on the side stream, so one request's all-to-all overlaps the other's compute.
+
+        Both must stand at the same block of the same branch (a pair forms at a step boundary)
+        and both run their CFG branches in sequence; they stop at the same block and commit
+        their steps together. Returns one quantum record per request.
+        """
+        if type(blocks) is not int or blocks < 1:
+            raise ValueError("blocks must be a positive integer")
+        if first is second:
+            raise ValueError("a pair needs two different requests")
+        worker, torch = self.worker, self.worker.torch
+        with worker._lock, torch.inference_mode(), worker._dit_attention_context():
+            self._check(first)
+            self._check(second)
+            if self._advancing:
+                raise RuntimeError("overlapping/reentrant GPU block execution")
+            for state in (first, second):
+                if state.base.step_index >= state.base.spec["steps"]:
+                    raise ValueError("request has no remaining solver steps")
+                if state.packet_uncond is not None:
+                    raise ValueError("a request with interleaved branches cannot join a pair")
+            if (first.next_block, first.branch) != (second.next_block, second.branch):
+                raise ValueError("paired requests must stand at the same block")
+            if (first.base.spec["guidance_scale"] > 1) != (second.base.spec["guidance_scale"] > 1):
+                raise ValueError("paired requests must agree on guidance")
+            check_budget()
+            starts = [(state.committed_step, state.branch, state.next_block) for state in (first, second)]
+            events, completed, executed = ([], []), False, 0
+            worker._sync()
+            started = time.perf_counter()
+            self._advancing = True
+            try:
+                side = self._side_stream()
+                while executed < blocks:
+                    check_budget()
+                    fresh = False
+                    for state, pair in ((first, False), (second, True)):
+                        if state.packet is None:
+                            if self.parallel is not None and state.branch == "cond":
+                                self.parallel.begin_step(state.base, pair=pair)
+                            self._begin(state, interleave=False)
+                            fresh = True
+                    if side is not None and (fresh or executed == 0):
+                        side.wait_stream(torch.cuda.current_stream())
+                    index = first.next_block
+                    for position, state in enumerate((first, second)):
+                        packet = state.packet
+                        if observe:
+                            start, end = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
+                        if position == 1 and side is not None:
+                            self._record(packet, side)
+                            with torch.cuda.stream(side):
+                                if observe:
+                                    start.record()
+                                packet["hidden"] = self.model.blocks[index](packet["hidden"], packet["encoder"],
+                                                                             packet["projected"], packet["rotary"])
+                                if observe:
+                                    end.record()
+                        else:
+                            if observe:
+                                start.record()
+                            packet["hidden"] = self.model.blocks[index](packet["hidden"], packet["encoder"],
+                                                                         packet["projected"], packet["rotary"])
+                            if observe:
+                                end.record()
+                        if observe:
+                            events[position].append((state.branch, index, start, end))
+                        state.next_block += 1
+                    executed += 1
+                    if first.next_block == len(self.model.blocks):
+                        if side is not None:
+                            torch.cuda.current_stream().wait_stream(side)
+                            self._record(second.packet, torch.cuda.current_stream())
+                        # Each request's collectives (prediction exchange) run in the same order on every rank.
+                        done = [self._finish_branch(state) for state in (first, second)]
+                        if done[0] != done[1]:
+                            raise RuntimeError("paired requests diverged at a branch boundary")
+                        completed = done[0]
+                        if completed:
+                            break
+                if side is not None:
+                    torch.cuda.current_stream().wait_stream(side)
+                    if second.packet is not None:
+                        self._record(second.packet, torch.cuda.current_stream())
+                worker._sync()
+                if self.parallel is not None:
+                    if completed:
+                        for state in (first, second):
+                            self.parallel.end_step(state.base.request_id)
+                    else:
+                        self.parallel.quantum_point(dict(request_id=[first.base.request_id, second.base.request_id],
+                                                         step=[first.committed_step, second.committed_step],
+                                                         branch=first.branch, next_block=first.next_block, blocks=executed))
+                wall_ms = (time.perf_counter() - started) * 1000
+                rows = []
+                for position, state in enumerate((first, second)):
+                    step, initial_branch, initial_block = starts[position]
+                    row = dict(kind="block_quantum", step_index=step, branch=initial_branch,
+                               start_block=initial_block, next_block=state.next_block, next_branch=state.branch,
+                               blocks=executed, step_completed=completed, ms=wall_ms, paired=True,
+                               block_cuda_ms=[dict(branch=b, block=i, ms=float(a.elapsed_time(z)))
+                                              for b, i, a, z in events[position]],
+                               extra_state_bytes=self.extra_state_bytes(state))
+                    state.events.append(row)
+                    rows.append(row)
+                return rows
+            except BaseException:
+                first.failed = second.failed = True
                 if self.parallel is not None:
                     self.parallel.handle.fail()
                 raise

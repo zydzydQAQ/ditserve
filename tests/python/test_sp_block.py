@@ -11,9 +11,9 @@ import unittest
 from types import SimpleNamespace
 
 try:  # discover puts tests/python on sys.path; module-path runs do not
-    from test_model_state import empty_target, fixture
+    from test_model_state import advance as advance_state, empty_target, fixture
 except ImportError:
-    from tests.python.test_model_state import empty_target, fixture
+    from tests.python.test_model_state import advance as advance_state, empty_target, fixture
 
 PINNED = all(importlib.util.find_spec(name) for name in ("torch", "diffusers", "cache_dit"))
 STEP_BLOCKS = 6  # three blocks per CFG branch
@@ -52,6 +52,32 @@ def sp_executor(torch, rank, ranks, *, empty=False, expand=False, cfg=1, interle
     groups = build_fixed_groups(backend="gloo")
     parallel = PinnedWanUlyssesBackend(LayoutHandle(rank, ranks, cfg=cfg), groups).attach(worker)
     return worker, state, parallel, WanBlockExecutor(worker, parallel=parallel, interleave=interleave)
+
+
+def second_state(worker, torch, request_id="request-b", seed=202):
+    """Another request on the fixture worker at the same step boundary, with its own inputs."""
+    from diffusers import UniPCMultistepScheduler
+    from ditserve.models.wan.runtime import RequestState, normalize_spec
+    spec = normalize_spec(dict(request_id=request_id, prompt="a teapot", seed=seed, height=32, width=32, frames=5,
+                               steps=32, guidance_scale=5., cache=False, threshold=0., max_continuous=1))
+    scheduler = UniPCMultistepScheduler(num_train_timesteps=1000)
+    scheduler.set_timesteps(32, device="cpu")
+    state = RequestState(spec["request_id"], spec, scheduler=scheduler, cache_enabled=False,
+                         latents=(511 - torch.arange(512, dtype=torch.float32)).reshape(1, 16, 2, 4, 4) / 512,
+                         prompt_embeds=torch.full((1, 512, 4096), .5, dtype=torch.float16),
+                         negative_prompt_embeds=torch.full((1, 512, 4096), -.25, dtype=torch.float16),
+                         generator=torch.Generator().manual_seed(spec["seed"]), owner=worker._owner, contexts={})
+    state.immutable_spec = {key: value for key, value in spec.items() if key not in ("cache", "threshold", "max_continuous")}
+    worker._states[state.request_id] = state
+    advance_state(state, 2)
+    return state
+
+
+def run_pair_quanta(executor, first, second, quanta, until):
+    position = 0
+    while first.base.step_index < until:
+        executor.advance_pair(first, second, blocks=quanta[position % len(quanta)])
+        position += 1
 
 
 def run_quanta(executor, continuation, quanta, until):
@@ -94,6 +120,21 @@ def scenario_cfg(torch, rank, world, directory, quanta):
     run_quanta(executor, continuation, quanta, until=4)
     return dict(latents=state.latents.clone(), tokens=tokens, role=parallel.handle.current.cfg_role(rank),
                 steps=state.step_index)
+
+
+def scenario_pair(torch, rank, world, directory, cfg, quanta):
+    """Two requests advance in lockstep on one layout; each must equal its own sequential run."""
+    ranks = tuple(range(world))
+    worker, state, parallel, executor = sp_executor(torch, rank, ranks, cfg=cfg)
+    other = second_state(worker, torch)
+    first, second = executor.attach(state), executor.attach(other)
+    run_pair_quanta(executor, first, second, quanta, until=4)
+    paired = dict(a=state.latents.clone(), b=other.latents.clone())
+    # The sequential reference for request-b on the same layout.
+    alone = second_state(worker, torch, request_id="request-b2")
+    run_quanta(executor, executor.attach(alone), [STEP_BLOCKS], until=4)
+    return dict(latents=paired["a"], latents_b=paired["b"], reference_b=alone.latents.clone(),
+                tokens=first.packet["hidden"].shape[1] if first.packet is not None else None)
 
 
 def scenario_grow(torch, rank, world, directory):
@@ -173,6 +214,8 @@ SCENARIOS = dict(quanta_whole=lambda t, r, w, d: scenario_quanta(t, r, w, d, [ST
                  interleaved=lambda t, r, w, d: scenario_quanta(t, r, w, d, [2, 4], interleave=True),
                  cfg_whole=lambda t, r, w, d: scenario_cfg(t, r, w, d, [STEP_BLOCKS]),
                  cfg_ragged=lambda t, r, w, d: scenario_cfg(t, r, w, d, [1, 2]),
+                 pair_sp=lambda t, r, w, d: scenario_pair(t, r, w, d, 1, [2, 1, 3]),
+                 pair_cfg=lambda t, r, w, d: scenario_pair(t, r, w, d, 2, [1, 2]),
                  grow=scenario_grow, move=scenario_move, shrink=scenario_shrink, guards=scenario_guards)
 
 
@@ -253,6 +296,17 @@ class SpBlockTests(unittest.TestCase):
                 self.assertEqual({result["tokens"] for result in results}, {8 // world})
                 self.assert_replicated(results)
                 self.assert_sp1(results[0]["latents"])
+
+    def test_paired_requests_match_their_sequential_runs(self):
+        # Request a's lockstep result equals SP1 (the CPU contract); request b's equals its own
+        # sequential run on the same layout, under plain SP and under CFG parallelism.
+        for name, world in (("pair_sp", 2), ("pair_sp", 4), ("pair_cfg", 2), ("pair_cfg", 4)):
+            with self.subTest(scenario=name, world=world):
+                results, unused = self.spawn(name, world)
+                self.assert_replicated(results)
+                self.assert_sp1(results[0]["latents"])
+                self.assertTrue(self.torch.equal(results[0]["latents_b"], results[0]["reference_b"]))
+                self.assertFalse(self.torch.equal(results[0]["latents_b"], results[0]["latents"]))
 
     def test_cfg_parallel_halves_match_sp1(self):
         for world in (2, 4):

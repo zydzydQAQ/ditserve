@@ -33,11 +33,11 @@ def fixture(steps=4, expand=False, interleave=False):
         native_step(worker, state)
         return dict(kind="step", ms=1., step_index=state.step_index - 1)
     worker.step = worker_step
-    def prepare(name, guidance=5.):
+    def prepare(name, guidance=5., seed=0):
         scheduler = UniPCMultistepScheduler()
         scheduler.set_timesteps(steps, device="cpu")
         state = SimpleNamespace(spec=dict(request_id=name, steps=steps, guidance_scale=guidance, cache=False),
-            latents=torch.linspace(-.1, .1, 32).reshape(1, 2, 1, 4, 4),
+            latents=torch.linspace(-.1, .1, 32).reshape(1, 2, 1, 4, 4) * (1 + .1 * seed),
             prompt_embeds=torch.ones(1, 3, 4), negative_prompt_embeds=torch.zeros(1, 3, 4),
             scheduler=scheduler, step_index=0, finished=False, residency="gpu", cache_enabled=False,
             contexts={}, needs_anchor=False, events=[])
@@ -201,6 +201,34 @@ class BlockExecutorTests(unittest.TestCase):
         native_step(worker, plain_reference)
         executor.advance(executor.attach(plain), 30)
         self.assertTrue(self.torch.equal(plain.latents, plain_reference.latents))
+
+    def test_paired_requests_match_sequential_execution_bit_exactly(self):
+        # Two requests advanced in lockstep (block i of each back to back) equal their own
+        # sequential runs, through ragged quanta and across step commits.
+        worker, executor, prepare = fixture()
+        a, b = prepare("a"), prepare("b", seed=5)
+        ra, rb = prepare("ra"), prepare("rb", seed=5)
+        first, second = executor.attach(a), executor.attach(b)
+        # A pair quantum counts block indices; with sequential CFG branches a step is 60 of them.
+        for step, quanta in enumerate(([60], [7, 9, 44], [1] * 60, [13, 13, 34])):
+            native_step(worker, ra)
+            native_step(worker, rb)
+            for blocks in quanta:
+                if a.step_index <= step:
+                    rows = executor.advance_pair(first, second, blocks)
+                    self.assertEqual([row["paired"] for row in rows], [True, True])
+                    self.assertEqual(rows[0]["blocks"], rows[1]["blocks"])
+            self.assertEqual((a.step_index, b.step_index), (step + 1, step + 1))
+            self.assertTrue(self.torch.equal(a.latents, ra.latents))
+            self.assertTrue(self.torch.equal(b.latents, rb.latents))
+        self.assertFalse(self.torch.equal(a.latents, b.latents))
+        with self.assertRaisesRegex(ValueError, "two different requests"):
+            executor.advance_pair(first, first, 1)
+        # A pair forms only at matching positions.
+        c, d = executor.attach(prepare("c")), executor.attach(prepare("d", seed=2))
+        executor.advance(c, 3)
+        with self.assertRaisesRegex(ValueError, "same block"):
+            executor.advance_pair(c, d, 1)
 
     def test_no_cfg_completes_after_one_forward(self):
         worker, executor, prepare = fixture()

@@ -139,6 +139,7 @@ class LayoutHandle:
         if rank not in self.current.ranks:
             raise ParallelContractError("local rank is not in its execution group")
         self.active = None
+        self.paired = None   # a second request advancing in lockstep with the active one
         self.failed = False
 
     def commit(self, ranks, *, expected_epoch, cfg=1):
@@ -168,8 +169,9 @@ class LayoutHandle:
         self.current = candidate
         return candidate
 
-    def begin_step(self, request_id, step_index, *, cfg="paired", expected_epoch=None):
-        if self.active is not None or self.failed:
+    def begin_step(self, request_id, step_index, *, cfg="paired", expected_epoch=None, pair=False):
+        """Open a request's step; with ``pair`` a second request joins the active one in lockstep."""
+        if self.failed or (self.active is not None and not (pair and self.paired is None)):
             raise ParallelContractError("a step is already active or the handle failed")
         if expected_epoch is not None and expected_epoch != self.current.epoch:
             raise ParallelContractError("stale step layout epoch")
@@ -179,14 +181,26 @@ class LayoutHandle:
             raise ParallelContractError("step_index must be nonnegative")
         if cfg not in ("paired", "cond", "uncond", "none"):
             raise ParallelContractError("unsupported CFG phase")
-        self.active = dict(request_id=request_id, step_index=step_index, cfg=cfg,
-                           ranks=list(self.current.ranks), epoch=self.current.epoch)
-        return dict(self.active)
+        entry = dict(request_id=request_id, step_index=step_index, cfg=cfg,
+                     ranks=list(self.current.ranks), epoch=self.current.epoch)
+        if self.active is None:
+            self.active = entry
+        else:
+            if request_id == self.active["request_id"]:
+                raise ParallelContractError("request already has an active step")
+            self.paired = entry
+        return dict(entry)
 
-    def end_step(self):
+    def end_step(self, request_id=None):
+        """Close the active step, or the named one when two requests run in lockstep."""
         if self.active is None or self.failed:
             raise ParallelContractError("no healthy active step")
-        self.active = None
+        if self.paired is not None and request_id == self.paired["request_id"]:
+            self.paired = None
+            return
+        if request_id is not None and request_id != self.active["request_id"]:
+            raise ParallelContractError("no active step for " + request_id)
+        self.active, self.paired = self.paired, None
 
     def fail(self):
         self.failed = True

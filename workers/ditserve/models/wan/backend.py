@@ -146,6 +146,19 @@ class WanBackend(Backend):
         if key in self.continuations:
             blocks = (2 * len(self.runtime.pipe.transformer.blocks) if request.get("quantum") == "step"
                       else positive_int(request.get("blocks", request.get("steps", 1))))
+            pair = request.get("pair_state_id")
+            if pair is not None:
+                # Two requests of this group advance in lockstep (request-level interleaving); the
+                # quantum counts block indices, so each request advances `blocks` blocks.
+                if pair not in self.continuations:
+                    raise ValueError("unknown pair_state_id")
+                paired = self.states[pair]
+                pair_blocks = (self.executor.quantum(self.continuations[key], "step") if request.get("quantum") == "step"
+                               else positive_int(request.get("blocks", 1)))
+                mine, theirs = self.executor.advance_pair(self.continuations[key], self.continuations[pair], blocks=pair_blocks,
+                                                          observe=bool(request.get("observe", False)))
+                return dict(state_id=key, pair_state_id=pair, progress=self._progress(state), pair_progress=self._progress(paired),
+                            events=[mine], pair_events=[theirs], model_ms=mine["ms"])
             records.append(self.executor.advance(self.continuations[key],
                 blocks=blocks,
                 observe=bool(request.get("observe", False))))

@@ -223,11 +223,11 @@ class PinnedWanUlyssesBackend:
         torch.distributed.all_gather(chunks, prediction.contiguous(), group=self.groups.group(layout.ranks))
         return chunks[0], chunks[layout.sp_degree]
 
-    def begin_step(self, state):
+    def begin_step(self, state, *, pair=False):
         if self.worker is None:
             raise ParallelContractError("attach a worker first")
         self.handle.begin_step(state.request_id, state.step_index,
-                               cfg="paired" if state.spec["guidance_scale"] > 1 else "cond")
+                               cfg="paired" if state.spec["guidance_scale"] > 1 else "cond", pair=pair)
         self._bound_epoch = self.handle.current.epoch
         self._active_config = self._configs.get(self.handle.current.sp_ranks(self.handle.rank))
         try:
@@ -245,12 +245,13 @@ class PinnedWanUlyssesBackend:
             self.handle.fail()
             raise
 
-    def end_step(self):
+    def end_step(self, request_id=None):
         self._require_active()
         self.worker._sync()
-        self.gate.consensus(dict(kind="step_complete"))
-        self.handle.end_step()
-        self._active_config = self._bound_epoch = None
+        self.gate.consensus(dict(kind="step_complete") if request_id is None else dict(kind="step_complete", request_id=request_id))
+        self.handle.end_step(request_id)
+        if self.handle.active is None:
+            self._active_config = self._bound_epoch = None
 
     def quantum_point(self, position):
         """Collective safe point after a block quantum that stops inside a solver step.
