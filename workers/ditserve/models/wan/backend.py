@@ -156,18 +156,18 @@ class WanBackend(Backend):
 
     def _adopt(self, request, state, key):
         """Run this quantum on the controller's group; layouts change only at step boundaries."""
-        group = tuple(request["group"])
+        group, cfg = tuple(request["group"]), positive_int(request.get("cfg", 1), "cfg")
         if self.parallel is None:
-            if len(group) != 1:
-                raise ValueError("an SP group requires distributed init on every rank")
+            if len(group) != 1 or cfg != 1:
+                raise ValueError("an SP or CFG group requires distributed init on every rank")
             return
         layout = self.parallel.handle.current
         epoch = request.get("epoch", layout.epoch)
-        if (group, epoch) == (layout.ranks, layout.epoch):
+        if (group, epoch, cfg) == (layout.ranks, layout.epoch, layout.cfg):
             return
         if not self._transfer_ready(state, self.continuations.get(key)):
             raise ValueError("SP group changes only at a solver-step boundary")
-        self.parallel.handle.adopt(group, epoch=epoch)
+        self.parallel.handle.adopt(group, epoch=epoch, cfg=cfg)
 
     def _boundary(self, request):
         state = self.state(request)
@@ -357,7 +357,7 @@ class WanBackend(Backend):
             from .parallel import LayoutHandle, build_fixed_groups
             from .sp import PinnedWanUlyssesBackend
             groups = build_fixed_groups(backend=backend, timeout_seconds=request.get("timeout_seconds", 30))
-            handle = LayoutHandle(torch.distributed.get_rank(), request.get("ranks"))
+            handle = LayoutHandle(torch.distributed.get_rank(), request.get("ranks"), cfg=request.get("cfg", 1))
             self.parallel = PinnedWanUlyssesBackend(handle, groups).attach(self.runtime)
             if self.execution == "block":
                 # A warmup may have built a single-GPU executor; block quanta now need SP safe points.
@@ -371,8 +371,9 @@ class WanBackend(Backend):
         if action == "step":
             return self.advance(request)
         if action == "commit":
-            layout = self.parallel.handle.commit(request["ranks"], expected_epoch=request["expected_epoch"])
-            return dict(ranks=list(layout.ranks), epoch=layout.epoch, gpu_validated=False)
+            layout = self.parallel.handle.commit(request["ranks"], expected_epoch=request["expected_epoch"],
+                                                 cfg=request.get("cfg", 1))
+            return dict(ranks=list(layout.ranks), epoch=layout.epoch, cfg=layout.cfg, gpu_validated=False)
         if action == "cache_off_migrate":
             key = request["state_id"]
             state, event = self.parallel.migrate_cache_off(self.states.get(key), request["source_ranks"],

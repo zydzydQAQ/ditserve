@@ -106,7 +106,12 @@ class WanBlockExecutor:
         timestep = model_timestep(self.worker.torch, base.latents, base.scheduler.timesteps[base.step_index],
                                   self.expand_timesteps)
         tokens = timestep.shape[1] if timestep.ndim == 2 else None
-        embedding = base.prompt_embeds if state.branch == "cond" else base.negative_prompt_embeds
+        # Under CFG parallelism each half of the group runs one branch for the whole step.
+        role = self.parallel.handle.current.cfg_role(self.parallel.handle.rank) if self.parallel is not None else None
+        if role is not None and base.spec["guidance_scale"] <= 1:
+            raise ValueError("CFG parallelism requires guidance_scale > 1")
+        branch = state.branch if role is None else ("cond", "uncond")[role]
+        embedding = base.prompt_embeds if branch == "cond" else base.negative_prompt_embeds
         temb, projected, encoder, image = model.condition_embedder(
             timestep.flatten() if tokens else timestep, embedding, None, timestep_seq_len=tokens)
         if image is not None or temb.ndim != (3 if tokens else 2):
@@ -133,10 +138,15 @@ class WanBlockExecutor:
         base = state.base
         prediction = self._prediction(state.packet)
         state.packet, state.next_block = None, 0
-        if state.branch == "cond" and base.spec["guidance_scale"] > 1:
+        layout = self.parallel.handle.current if self.parallel is not None else None
+        if layout is not None and layout.cfg == 2:
+            # Each half ran one branch; the group exchanges the two predictions once.
+            conditional, unconditional = self.parallel.exchange_predictions(prediction)
+            prediction = unconditional + base.spec["guidance_scale"] * (conditional - unconditional)
+        elif state.branch == "cond" and base.spec["guidance_scale"] > 1:
             state.conditional, state.branch = prediction, "uncond"
             return False
-        if state.branch == "uncond":
+        elif state.branch == "uncond":
             prediction = prediction + base.spec["guidance_scale"] * (state.conditional - prediction)
         # The solver is touched exactly once, after both predictions exist.
         base.latents = base.scheduler.step(
@@ -275,8 +285,11 @@ class WanBlockExecutor:
             del self._states[id(state.base)]
 
     def quantum(self, state, policy):
+        branches = 2 if state.base.spec["guidance_scale"] > 1 else 1
+        if self.parallel is not None and self.parallel.handle.current.cfg == 2:
+            branches = 1   # each rank runs one branch
         if policy == "step":
-            return len(self.model.blocks) * (2 if state.base.spec["guidance_scale"] > 1 else 1)
+            return len(self.model.blocks) * branches
         if policy == "cfg":
             return len(self.model.blocks) - state.next_block
         if policy.startswith("block-"):

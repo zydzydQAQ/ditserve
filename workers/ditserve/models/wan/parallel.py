@@ -79,17 +79,48 @@ def _json(value):
 
 @dataclasses.dataclass(frozen=True)
 class FixedLayout:
+    """An aligned rank group and how its ranks split the work.
+
+    cfg=1: every rank runs both CFG branches over its token shard (Ulysses SP on
+    the whole group). cfg=2: the first half of the group runs the conditional
+    branch and the second half the unconditional one, each half an aligned SP
+    subgroup; the halves exchange their predictions once per solver step.
+    """
+
     ranks: tuple
     epoch: int = 0
+    cfg: int = 1
 
     def __post_init__(self):
         object.__setattr__(self, "ranks", _ranks(self.ranks))
         if type(self.epoch) is not int or self.epoch < 0:
             raise ParallelContractError("layout epoch must be a nonnegative integer")
+        if self.cfg not in (1, 2):
+            raise ParallelContractError("cfg must be 1 or 2")
+        if self.cfg == 2 and len(self.ranks) < 2:
+            raise ParallelContractError("CFG parallelism needs an aligned group of at least two ranks")
 
     @property
     def degree(self):
         return len(self.ranks)
+
+    @property
+    def sp_degree(self):
+        """Ranks that share one token sequence."""
+        return len(self.ranks) // self.cfg
+
+    def cfg_role(self, rank):
+        """0 for the conditional half, 1 for the unconditional half; None without CFG parallelism."""
+        if self.cfg == 1:
+            return None
+        return self.ranks.index(rank) // self.sp_degree
+
+    def sp_ranks(self, rank):
+        """The aligned SP subgroup this rank shards tokens with."""
+        if self.cfg == 1:
+            return self.ranks
+        role = self.cfg_role(rank)
+        return self.ranks[role * self.sp_degree:(role + 1) * self.sp_degree]
 
 
 class LayoutHandle:
@@ -100,28 +131,28 @@ class LayoutHandle:
     A live step is never silently ended on failure.
     """
 
-    def __init__(self, rank, initial_ranks=None):
+    def __init__(self, rank, initial_ranks=None, cfg=1):
         if type(rank) is not int or not 0 <= rank < max(WORLD_SIZES):
             raise ParallelContractError("rank must be in [0, %d)" % max(WORLD_SIZES))
         self.rank = rank
-        self.current = FixedLayout((rank,) if initial_ranks is None else initial_ranks)
+        self.current = FixedLayout((rank,) if initial_ranks is None else initial_ranks, cfg=cfg)
         if rank not in self.current.ranks:
             raise ParallelContractError("local rank is not in its execution group")
         self.active = None
         self.failed = False
 
-    def commit(self, ranks, *, expected_epoch):
+    def commit(self, ranks, *, expected_epoch, cfg=1):
         if self.active is not None or self.failed:
             raise ParallelContractError("layout can change only at a healthy step boundary")
         if expected_epoch != self.current.epoch:
             raise ParallelContractError("stale layout epoch")
-        candidate = FixedLayout(ranks, self.current.epoch + 1)
+        candidate = FixedLayout(ranks, self.current.epoch + 1, cfg)
         if self.rank not in candidate.ranks:
             raise ParallelContractError("local rank is not in the new group")
         self.current = candidate
         return candidate
 
-    def adopt(self, ranks, *, epoch):
+    def adopt(self, ranks, *, epoch, cfg=1):
         """Take a controller placement at a step boundary.
 
         A cluster worker serves requests on different groups, so epochs are
@@ -131,7 +162,7 @@ class LayoutHandle:
         """
         if self.active is not None or self.failed:
             raise ParallelContractError("layout can change only at a healthy step boundary")
-        candidate = FixedLayout(ranks, epoch)
+        candidate = FixedLayout(ranks, epoch, cfg)
         if self.rank not in candidate.ranks:
             raise ParallelContractError("local rank is not in the new group")
         self.current = candidate

@@ -38,7 +38,7 @@ def plain_executor(torch, *, empty=False, expand=False):
     return worker, state, WanBlockExecutor(worker)
 
 
-def sp_executor(torch, rank, ranks, *, empty=False, expand=False):
+def sp_executor(torch, rank, ranks, *, empty=False, expand=False, cfg=1):
     """One rank's worker with the Ulysses attachment over the Gloo world."""
     from ditserve.models.wan.block import WanBlockExecutor
     from ditserve.models.wan.parallel import LayoutHandle, build_fixed_groups
@@ -50,7 +50,7 @@ def sp_executor(torch, rank, ranks, *, empty=False, expand=False):
     worker.pipe, worker.attention = SimpleNamespace(transformer=tiny_model(torch)), "math"
     worker.expand_timesteps = expand   # Wan2.2 TI2V per-token timesteps
     groups = build_fixed_groups(backend="gloo")
-    parallel = PinnedWanUlyssesBackend(LayoutHandle(rank, ranks), groups).attach(worker)
+    parallel = PinnedWanUlyssesBackend(LayoutHandle(rank, ranks, cfg=cfg), groups).attach(worker)
     return worker, state, parallel, WanBlockExecutor(worker, parallel=parallel)
 
 
@@ -82,6 +82,18 @@ def scenario_quanta(torch, rank, world, directory, quanta, expand=False):
     tokens = continuation.packet["hidden"].shape[1]  # this rank's shard of the 8 patch tokens
     run_quanta(executor, continuation, quanta, until=4)
     return dict(latents=state.latents.clone(), tokens=tokens)
+
+
+def scenario_cfg(torch, rank, world, directory, quanta):
+    """CFG parallelism: each half of the group runs one branch; the result must match SP1."""
+    ranks = tuple(range(world))
+    worker, state, parallel, executor = sp_executor(torch, rank, ranks, cfg=2)
+    continuation = executor.attach(state)
+    executor.advance(continuation, blocks=1)
+    tokens = continuation.packet["hidden"].shape[1]  # this rank's shard within its half
+    run_quanta(executor, continuation, quanta, until=4)
+    return dict(latents=state.latents.clone(), tokens=tokens, role=parallel.handle.current.cfg_role(rank),
+                steps=state.step_index)
 
 
 def scenario_grow(torch, rank, world, directory):
@@ -158,6 +170,8 @@ SCENARIOS = dict(quanta_whole=lambda t, r, w, d: scenario_quanta(t, r, w, d, [ST
                  quanta_ragged=lambda t, r, w, d: scenario_quanta(t, r, w, d, [1, 4, 2, 5]),
                  expand_whole=lambda t, r, w, d: scenario_quanta(t, r, w, d, [STEP_BLOCKS], expand=True),
                  expand_ragged=lambda t, r, w, d: scenario_quanta(t, r, w, d, [1, 4, 2, 5], expand=True),
+                 cfg_whole=lambda t, r, w, d: scenario_cfg(t, r, w, d, [STEP_BLOCKS]),
+                 cfg_ragged=lambda t, r, w, d: scenario_cfg(t, r, w, d, [1, 2]),
                  grow=scenario_grow, move=scenario_move, shrink=scenario_shrink, guards=scenario_guards)
 
 
@@ -231,6 +245,20 @@ class SpBlockTests(unittest.TestCase):
                 self.assertTrue(self.torch.equal(whole[0]["latents"], ragged[0]["latents"]))
                 self.assert_sp1(whole[0]["latents"], self.reference_expand)
 
+    def test_cfg_parallel_halves_match_sp1(self):
+        for world in (2, 4):
+            with self.subTest(world=world):
+                whole, unused = self.spawn("cfg_whole", world)
+                ragged, unused = self.spawn("cfg_ragged", world)
+                half = world // 2
+                self.assertEqual({result["tokens"] for result in whole + ragged}, {8 // half})
+                self.assertEqual([result["role"] for result in whole], [0] * half + [1] * half)
+                self.assertEqual({result["steps"] for result in whole + ragged}, {4})
+                self.assert_replicated(whole)
+                self.assert_replicated(ragged)
+                self.assertTrue(self.torch.equal(whole[0]["latents"], ragged[0]["latents"]))
+                self.assert_sp1(whole[0]["latents"])
+
     def test_growing_a_group_gives_imported_ranks_the_resident_state(self):
         results, payload = self.spawn("grow", 4)
         self.assertEqual([result["imported"] for result in results], [False, False, True, True])
@@ -280,6 +308,15 @@ class LayoutTests(unittest.TestCase):
             handle.adopt((7,), epoch=12)
         with self.assertRaisesRegex(ParallelContractError, r"rank must be in \[0, 8\)"):
             LayoutHandle(8)
+        from ditserve.models.wan.parallel import FixedLayout
+        quad = FixedLayout((0, 1, 2, 3), cfg=2)
+        self.assertEqual((quad.sp_degree, quad.cfg_role(2), quad.sp_ranks(2), quad.sp_ranks(0)), (2, 1, (2, 3), (0, 1)))
+        self.assertEqual((FixedLayout((0, 1)).cfg_role(1), FixedLayout((0, 1)).sp_ranks(1)), (None, (0, 1)))
+        with self.assertRaisesRegex(ParallelContractError, "at least two ranks"):
+            FixedLayout((0,), cfg=2)
+        with self.assertRaisesRegex(ParallelContractError, "cfg must be"):
+            FixedLayout((0, 1), cfg=3)
+        self.assertEqual(LayoutHandle(5).adopt((0, 1, 2, 3, 4, 5, 6, 7), epoch=20, cfg=2).sp_degree, 4)
 
     def test_backend_adopts_controller_groups_only_at_step_boundaries(self):
         from ditserve.models.wan.backend import WanBackend

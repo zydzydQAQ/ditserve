@@ -81,6 +81,7 @@ class PinnedWanUlyssesBackend:
         cache_off_group01_transport=True, cached_feature_transport=False,
         elastic_model_equivalence_validated=False,
         block_quantum_safe_points=True, step_boundary_regroup="host_staged_file",
+        cfg_parallel=True,
     )
 
     def __init__(self, handle, groups):
@@ -175,32 +176,52 @@ class PinnedWanUlyssesBackend:
                 or self._bound_epoch != self.handle.current.epoch):
             raise ParallelContractError("Wan execution is outside its committed step")
 
+    def _shard(self):
+        """This rank's position in the SP subgroup that shares its token sequence."""
+        layout = self.handle.current
+        ranks = layout.sp_ranks(self.handle.rank)
+        return ranks.index(self.handle.rank), layout.sp_degree
+
     def _patch_hook(self, module, args, output):
         self._require_active()
-        layout = self.handle.current
-        return shard_patch_output(output, layout.ranks.index(self.handle.rank), layout.degree)
+        return shard_patch_output(output, *self._shard())
 
     def _rope_hook(self, module, args, output):
         self._require_active()
-        layout = self.handle.current
-        return shard_rope_output(output, layout.ranks.index(self.handle.rank), layout.degree)
+        return shard_rope_output(output, *self._shard())
 
     def _condition_hook(self, module, args, output):
         self._require_active()
-        layout = self.handle.current
-        return shard_condition_output(output, layout.ranks.index(self.handle.rank), layout.degree)
+        return shard_condition_output(output, *self._shard())
 
     def _gather_hook(self, module, args, output):
         self._require_active()
         layout = self.handle.current
         if output.ndim != 3:
             raise ParallelContractError("Wan projected tokens must have three dimensions")
-        if layout.degree == 1:
+        if layout.sp_degree == 1:
             return output
         torch = importlib.import_module("torch")
-        chunks = [torch.empty_like(output) for _ in layout.ranks]
-        torch.distributed.all_gather(chunks, output.contiguous(), group=self.groups.group(layout.ranks))
+        ranks = layout.sp_ranks(self.handle.rank)
+        chunks = [torch.empty_like(output) for _ in ranks]
+        torch.distributed.all_gather(chunks, output.contiguous(), group=self.groups.group(ranks))
         return torch.cat(chunks, dim=1)
+
+    def exchange_predictions(self, prediction):
+        """CFG parallelism: both halves' predictions, gathered over the whole group.
+
+        Every rank of a half holds the full (token-gathered) prediction of its
+        branch, so the first rank of each half stands for it. Returns
+        (conditional, unconditional).
+        """
+        self._require_active()
+        layout = self.handle.current
+        if layout.cfg != 2:
+            raise ParallelContractError("prediction exchange needs a CFG-parallel layout")
+        torch = importlib.import_module("torch")
+        chunks = [torch.empty_like(prediction) for _ in layout.ranks]
+        torch.distributed.all_gather(chunks, prediction.contiguous(), group=self.groups.group(layout.ranks))
+        return chunks[0], chunks[layout.sp_degree]
 
     def begin_step(self, state):
         if self.worker is None:
@@ -208,7 +229,7 @@ class PinnedWanUlyssesBackend:
         self.handle.begin_step(state.request_id, state.step_index,
                                cfg="paired" if state.spec["guidance_scale"] > 1 else "cond")
         self._bound_epoch = self.handle.current.epoch
-        self._active_config = self._configs.get(self.handle.current.ranks)
+        self._active_config = self._configs.get(self.handle.current.sp_ranks(self.handle.rank))
         try:
             context_manifest = {}
             for name, context in state.contexts.items():
@@ -244,6 +265,8 @@ class PinnedWanUlyssesBackend:
         """One real worker step, with group agreement before and after execution."""
         if self.worker is None:
             raise ParallelContractError("attach a worker first")
+        if self.handle.current.cfg == 2:
+            raise ParallelContractError("CFG-parallel layouts run through the block executor")
         with self.worker._lock:
             self.begin_step(state)
             try:
