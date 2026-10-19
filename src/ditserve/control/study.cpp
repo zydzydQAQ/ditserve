@@ -566,7 +566,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     if(transport!="pinned"&&bool_field(options,"pin_started",false))throw std::invalid_argument("pin_started needs pinned transport");
     if(transport=="pinned"){
         if(policy.rfind("static_sp",0)==0&&policy!="static_sp1")throw std::invalid_argument("pinned cluster workers support SP1 only");
-        options["degrees"]=Json::array({1});options["pin_started"]=true;
+        options.erase("forms");options["degrees"]=Json::array({1});options["pin_started"]=true;
     }
     const fs::path transfer_dir=options.contains("transfer_dir")?fs::path(string_field(options,"transfer_dir","")):work/"transfer";
     const bool prefetch=phase.value("text_prefetch",0)>0;
@@ -590,7 +590,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         if(!error.empty())throw std::runtime_error("SP process group initialization failed: "+error);
     }
     auto check=[&](){if(cancelled())throw std::runtime_error("run cancelled");budget.check(number_field(phase,"cleanup_reserve_seconds",0));};
-    struct Live{std::string status="pending";bool prepared=false;int steps=0,blocks=0,total=0,encode_gpu=-1,decode_done=0,epoch=0;std::vector<int> group;std::string ticket;std::set<int> resident;};
+    struct Live{std::string status="pending";bool prepared=false;int steps=0,blocks=0,total=0,encode_gpu=-1,decode_done=0,epoch=0;std::vector<int> group;std::string form="sp1",ticket;std::set<int> resident;};
     int epochs=0,transfers=0;   // export transport: placement epochs and transfer file names
     struct Task{std::size_t row;Json assignment;std::future<Json> result;double started;};
     std::vector<Live> live(rows.size());
@@ -602,7 +602,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         auto& row=rows[i];
         if(!row.contains("class"))throw std::invalid_argument("cluster requests require a cost class");
         if(cost.klass(row.at("class").get<std::string>()).at("kind")!=row.at("kind"))throw std::invalid_argument("request kind differs from its cost class");
-        row["quality"]={{"status","unverified"},{"passed",false}};row["degrees"]=Json::array();
+        row["quality"]={{"status","unverified"},{"passed",false}};row["degrees"]=Json::array();row["forms"]=Json::array();
         row["observation_id"]=phase.at("_observation_id");row["phase"]=phase.at("id");row["attempt"]=phase.at("_attempt");row["cell"]=phase.at("_cell");row["order"]=phase.at("_order");
         index[row.at("request_id").get<std::string>()]=i;
     }
@@ -619,7 +619,13 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         for(int gpu:group)busy[gpu]=true;
         if(!row.contains("start_ms"))row["start_ms"]=now();
         const int degree=static_cast<int>(group.size());
+        // The group's parallel form: CFG branches on separate halves (cfg) and SP inside each.
+        const Form form=parse_form(assignment.value("form","sp"+std::to_string(degree)));
+        if(form.degree()!=degree)throw std::logic_error("assignment form does not match its group");
+        if(form.cfg>1&&transport=="pinned")throw std::invalid_argument("pinned cluster workers run SP1 only");
+        const auto form_label=form_name(form);
         if(std::find(row["degrees"].begin(),row["degrees"].end(),degree)==row["degrees"].end())row["degrees"].push_back(degree);
+        if(assignment.at("quantum")!="atomic"&&assignment.at("quantum")!="finish"&&std::find(row["forms"].begin(),row["forms"].end(),form_label)==row["forms"].end())row["forms"].push_back(form_label);
         if(assignment.at("reason")=="block_preempt")row["preempting"]=true;
         const auto quantum=assignment.at("quantum");const double deadline=budget.deadline();
         std::function<Json()> work_unit;
@@ -663,6 +669,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 const bool ticket=!state.ticket.empty()&&in_group(state.encode_gpu);
                 source=ticket?state.encode_gpu:group.front();
                 prepare={{"op","prepare"},{"state_id",id},{"spec",spec_of(row)},{"sp_degree",degree}};
+                if(form.cfg>1)prepare["cfg"]=form.cfg;
                 if(ticket)prepare["encode_ticket"]=state.ticket;
             }else{
                 for(int gpu:state.resident)if(in_group(gpu)){source=gpu;break;}
@@ -679,6 +686,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             std::vector<std::pair<std::string,Json>> advances;
             for(int gpu:group){
                 Json advance={{"op","advance"},{"state_id",id},{"sp_degree",degree},{"group",group},{"epoch",state.epoch}};
+                if(form.cfg>1)advance["cfg"]=form.cfg;
                 if(quantum=="step")advance["quantum"]="step";else advance["blocks"]=quantum;
                 advances.emplace_back(video(gpu),advance);
             }
@@ -718,11 +726,13 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 Json actions=Json::array();
                 if(!state.resident.count(gpu)){
                     Json prepare={{"op","prepare"},{"state_id",id},{"spec",spec_of(row)},{"sp_degree",degree}};
+                    if(form.cfg>1)prepare["cfg"]=form.cfg;
                     if(state.prepared)prepare["resume"]=resume;
                     else if(gpu==state.encode_gpu&&!state.ticket.empty())prepare["encode_ticket"]=state.ticket;
                     actions.push_back(prepare);
                 }
                 Json advance={{"op","advance"},{"state_id",id},{"sp_degree",degree},{"quantum",quantum}};
+                if(form.cfg>1)advance["cfg"]=form.cfg;
                 if(quantum!="step"){advance["blocks"]=quantum;advance["quantum"]=nullptr;}
                 actions.push_back(advance);
                 calls.emplace_back(video(gpu),actions);
@@ -742,7 +752,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 return out;
             };
         }
-        state.status="running";state.group=group;
+        state.status="running";state.group=group;state.form=form_label;
         tasks.push_back({i,assignment,std::async(std::launch::async,work_unit),now()});
     };
     auto finish_task=[&](Task& task,const Json& out){
@@ -822,13 +832,14 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                     {"arrival_ms",row.at("arrival_ms")},{"deadline_ms",row.at("deadline_ms")},{"status",state.status},{"ready",true},
                     {"prepared",state.prepared},{"steps_done",state.steps},{"blocks_done",state.blocks},{"group",state.group},{"decode_done",state.decode_done}};
                 if(state.total>0)view["steps_total"]=state.total;
+                if(!state.group.empty())view["form"]=state.form;
                 if(!state.prepared&&!state.ticket.empty())view["affinity"]=state.encode_gpu;
                 requests.push_back(view);
             }
             if(!requests.empty()){
                 Json flags=Json::array();for(bool flag:busy)flags.push_back(flag);
                 int sp_running=0;   // SP advances in flight contend for the host bridge
-                for(const auto& task:tasks){const auto& a=task.assignment;sp_running+=a.at("degree").get<int>()>=2&&a.at("quantum")!="atomic"&&a.at("quantum")!="finish";}
+                for(const auto& task:tasks){const auto& a=task.assignment;sp_running+=parse_form(a.value("form","sp"+std::to_string(a.at("degree").get<int>()))).sp>=2&&a.at("quantum")!="atomic"&&a.at("quantum")!="finish";}
                 const auto plan=cluster_plan({{"now_ms",now()},{"gpus",gpus},{"busy",flags},{"requests",requests},{"sp_groups_running",sp_running}},policy,cost,options);
                 for(const auto& assignment:plan.at("assignments")){launch(assignment);progressed=true;}
             }

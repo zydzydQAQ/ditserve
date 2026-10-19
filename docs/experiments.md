@@ -77,6 +77,9 @@ FLUX 可设置 `workers.<name>.config.options.profile:true`，记录 text/DiT/sc
 | `static_sp1/2/4/8` | 固定 SP 度，整步 quantum，已开始的视频留在原组（近似 xDiT 固定并行） |
 | `step_elastic` | EDF；按期限选最小可行 SP 度，无其他等待请求时占用最大空闲组；只在 step 边界换组（近似 GENSERVE/TetriServe 的 step 级弹性 SP） |
 | `block_elastic` | 同上，但视频以 `options.quantum_blocks`（默认 4）个 block 推进，或按 `options.quantum_ms` 由当前类别与 SP 度换算 block 数；图像只有在等不到该视频 step 边界时才在 block 边界抢占（`lazy_preemption`，默认开启） |
+| `static_cfg2`、`static_cfg2sp2`、`static_cfg2sp4` | 固定并行形态：组的两半各跑一个 CFG 分支，每步交换一次预测（与 SP1 逐位一致），半组内再做 SP；其余同 static_spK |
+
+视频组的**并行形态**（`Form`）由 cfg ∈ {1, 2} 和 SP 度 sp 组成，占 cfg × sp 张卡，名字为 `sp1`、`sp2`、`sp4`、`sp8`、`cfg2`、`cfg2sp2`、`cfg2sp4`。弹性策略在 `options.forms`（默认为 `options.degrees` 对应的纯 SP 形态，即 `{1, 2, 4, 8}` → `sp1/sp2/sp4/sp8`，两者不能同时给出）中选择：组的大小按原来的最小可行度数规则决定，同一大小的形态取成本模型预测每步时间最小的。规划结果的每条 assignment 带 `form`，状态里停在 step 中途的请求带 `form`（缺省为 `sp<组大小>`），step 内不换形态。模拟器与执行器按形态计价并记录每个请求用过的 `forms`；`sp_groups_running` 只计 sp ≥ 2 的组（CFG 对每步只交换一个 latent，不争用 host bridge）。
 
 `options.reserve_image_gpus` 给出静态分区基线：最后 R 张卡只服务图像。视频类别的 `decode_chunks` 把 VAE 解码拆成按 latent 帧推进的可抢占 chunk（`options.chunked_decode`，按 `quantum_ms` 换算每次推进的帧数）；真实 Wan worker 用 `finish` 的 `decode_frames` 执行，结果与整段解码逐位一致（CPU 契约测试）。Wan 的 `block_export`/`block_import` 可在 step 内任意 block 边界导出续算状态（未变动的求解器状态 + 运行中的 packet）并在另一进程恢复。
 
@@ -87,9 +90,13 @@ FLUX 可设置 `workers.<name>.config.options.profile:true`，记录 text/DiT/sc
 - `widest`：用策略的最大度，在负载下偏乐观。整组空闲很少见，只有空闲整机才能救的请求仍保留 EDF 优先级，以窄组运行后迟到，拖累其后本可按时完成的请求。`configs/studies/local-a100/e4*.json` 显式使用 `widest`，以复现原来的 E4 结果。
 - static_spK 始终按固定度数（再提升到该类别的 `min_degree`）判断，忽略这个选项，因此覆盖所有策略的 `/options` 矩阵仍然可用。
 
-成本画像 `profile` 的 `provenance` 必须为 measured、extrapolated、synthetic 或 mixed。视频类别给出 steps、blocks_per_step、可选 min_degree（单卡放不下时的最小 SP 度，固定 SP 策略也会提升到该值）、prepare/encode/finish、SP1 每步计算时间、每步 Ulysses all-to-all 全序列字节数与集合通信次数；`links` 按 SP 度给出每 rank 带宽和延迟；`sp_efficiency` 与 `resize_ms` 描述并行效率与 step 边界换组成本。还有两个可选字段，不填时结果与以前完全相同：
+成本画像 `profile` 的 `provenance` 必须为 measured、extrapolated、synthetic 或 mixed。视频类别给出 steps、blocks_per_step、可选 min_degree（单卡放不下时的最小 SP 度，固定 SP 策略也会提升到该值）、prepare/encode/finish、SP1 每步计算时间、每步 Ulysses all-to-all 全序列字节数与集合通信次数；`links` 按 SP 度给出每 rank 带宽和延迟；`sp_efficiency` 与 `resize_ms` 描述并行效率与 step 边界换组成本。还有几个可选字段，不填时结果与以前完全相同：
 - `links.<d>.concurrent_gbps`（如 `{"2": 3.9}`）：n 个 SP 组（度数 ≥ 2）同时推进时的每 rank 带宽，取不大于 n 的最大键。用来描述多个组争用 host bridge 的情况。
 - `quantum_overhead_ms`：每发出一个 quantum 的固定端到端开销。
+- 类别的 `cfg_exchange_mb`：CFG 并行时两半每步交换的预测大小（一个 latent，`cost_profile.py` 按架构算出；5B 720p×121 约 10.5 MB），按 `links.2` 的带宽和延迟计价。
+- `sp_overlap` ∈ [0, 1]（可在 `links.<d>.sp_overlap` 按度数覆盖）：worker 以 `block_interleaved` 交错两个 CFG 分支时，SP 形态（cfg = 1）每步被另一分支的计算藏起来的通信比例，取计算项与通信项中较小者乘以该比例；cfg = 2 的形态每个 rank 只有一个分支，不受影响。
+
+每步时间：`compute/(cfg·sp·η) + (comm/cfg)·(sp−1)/sp²/gbps(sp, n) − 隐藏量 + (collectives/cfg)·latency(sp) + [cfg=2] exchange/gbps(2) + latency(2)`。
 
 规划器在迟到判断、度数选择、quantum 大小和图像 slack 中都会计入这两项。执行器和模拟器把正在运行的 SP 推进数作为 `sp_groups_running` 传给规划器。模拟器按发出时刻的并发组数给每个 SP quantum 计价，之后并发数变化时不重新计时。`simulate` 配置可另给 `planner_profile`：规划器按它估算，实际耗时仍按 `profile`。这样可以复现"用一套画像规划、按真实耗时执行"的真机运行。模拟结果每个请求记录 `action_ms`（按 quantum 类型分）和 `quanta`，与真机工作簿对应。模拟结果只描述成本模型，不是模型执行。
 

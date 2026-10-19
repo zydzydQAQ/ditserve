@@ -14,16 +14,17 @@ bool power_of_two(int value) { return value > 0 && (value & (value - 1)) == 0; }
 std::string degree_key(int degree) { return std::to_string(degree); }
 
 struct Policy {
-    int fixed_degree = 0;    // static_spK
+    int fixed_degree = 0;    // static_<form>: GPUs per video
+    Form fixed_form;         // and how they run it
     bool elastic = false;    // regroup at step boundaries
     bool blocks = false;     // advance in block quanta, lazy intra-step preemption
 };
 Policy parse(const std::string& name) {
     Policy policy;
-    if (name.rfind("static_sp", 0) == 0) {
-        const auto suffix = name.substr(9);
-        if (suffix != "1" && suffix != "2" && suffix != "4" && suffix != "8") throw std::invalid_argument("unknown cluster policy: " + name);
-        policy.fixed_degree = std::stoi(suffix);
+    if (name.rfind("static_", 0) == 0) {
+        try { policy.fixed_form = parse_form(name.substr(7)); }
+        catch (const std::invalid_argument&) { throw std::invalid_argument("unknown cluster policy: " + name); }
+        policy.fixed_degree = policy.fixed_form.degree();
     } else if (name == "step_elastic") policy.elastic = true;
     else if (name == "block_elastic") policy.elastic = policy.blocks = true;
     else throw std::invalid_argument("unknown cluster policy: " + name);
@@ -34,6 +35,31 @@ std::vector<int> group_of(const Json& request) {
     for (const auto& gpu : request.value("group", Json::array())) group.push_back(static_cast<int>(integer(gpu, "group GPU")));
     return group;
 }
+// The form a placed request runs; older states name only the group.
+Form form_of(const Json& request, const std::vector<int>& group) {
+    if (!request.contains("form")) return Form{1, static_cast<int>(group.size())};
+    const Form form = parse_form(request.at("form").get<std::string>());
+    if (form.degree() != static_cast<int>(group.size())) throw std::invalid_argument("request form does not match its group size");
+    return form;
+}
+}
+
+Form parse_form(const std::string& name) {
+    Form form;
+    std::string rest = name;
+    if (rest.rfind("cfg2", 0) == 0) { form.cfg = 2; rest = rest.substr(4); }
+    if (rest.empty() && form.cfg == 2) return form;
+    if (rest.size() < 3 || rest.rfind("sp", 0) != 0 || rest.size() > 3 || rest[2] < '1' || rest[2] > '8')
+        throw std::invalid_argument("unknown parallel form: " + name);
+    form.sp = rest[2] - '0';
+    if (!power_of_two(form.sp)) throw std::invalid_argument("unknown parallel form: " + name);
+    return form;
+}
+
+std::string form_name(const Form& form) {
+    if (form.cfg != 1 && form.cfg != 2) throw std::invalid_argument("cfg must be 1 or 2");
+    if (!power_of_two(form.sp)) throw std::invalid_argument("SP degree must be a power of two");
+    return (form.cfg == 2 ? "cfg2" : "") + (form.sp == 1 && form.cfg == 2 ? std::string() : "sp" + std::to_string(form.sp));
 }
 
 bool cluster_policy(const std::string& policy) {
@@ -71,11 +97,14 @@ ClusterCost::ClusterCost(const Json& profile) : profile_(profile) {
         if (!power_of_two(int_field(row, "min_degree", 1))) throw std::invalid_argument("min_degree must be a power of two");
         number_field(row, "step_compute_ms", 0, true); number_field(row, "finish_ms");
         number_field(row, "prepare_ms"); number_field(row, "comm_mb_per_step"); number_field(row, "collectives_per_step");
+        number_field(row, "cfg_exchange_mb");
     }
     efficiency_ = number_field(profile, "sp_efficiency", 1, true);
     if (efficiency_ > 1) throw std::invalid_argument("sp_efficiency must be in (0, 1]");
     resize_ms_ = number_field(profile, "resize_ms");
     overhead_ms_ = number_field(profile, "quantum_overhead_ms");
+    overlap_ = number_field(profile, "sp_overlap");
+    if (overlap_ > 1) throw std::invalid_argument("sp_overlap must be in [0, 1]");
     for (const auto& link : profile.value("links", Json::object())) {
         if (!link.is_object() || !link.contains("concurrent_gbps")) continue;
         const auto& rates = link.at("concurrent_gbps");
@@ -95,26 +124,41 @@ const Json& ClusterCost::klass(const std::string& name) const {
     return classes.at(name);
 }
 
-double ClusterCost::step_ms(const std::string& name, int degree, int sp_groups) const {
+double ClusterCost::step_ms(const std::string& name, const Form& form, int sp_groups) const {
     const auto& row = klass(name);
     if (row.at("kind") != "video") throw std::invalid_argument("image classes have no solver steps");
-    const double compute = number_field(row, "step_compute_ms", 0, true);
-    if (degree == 1) return compute;
+    form_name(form);   // validates
     const auto& links = profile_.value("links", Json::object());
-    if (!links.contains(degree_key(degree))) throw std::invalid_argument("cost profile has no link model for SP degree " + degree_key(degree));
-    const auto& link = links.at(degree_key(degree));
-    double gbps = number_field(link, "gbps", 0, true);
-    if (sp_groups >= 2 && link.contains("concurrent_gbps")) {
-        int matched = 1;
-        for (auto it = link.at("concurrent_gbps").begin(); it != link.at("concurrent_gbps").end(); ++it) {
-            const int groups = std::stoi(it.key());
-            if (groups <= sp_groups && groups > matched) { matched = groups; gbps = it.value().get<double>(); }
+    auto link_of = [&](int sp) -> const Json& {
+        if (!links.contains(degree_key(sp))) throw std::invalid_argument("cost profile has no link model for SP degree " + degree_key(sp));
+        return links.at(degree_key(sp));
+    };
+    const double cfg = form.cfg, sp = form.sp;
+    double step = number_field(row, "step_compute_ms", 0, true) / (cfg * sp * efficiency_);
+    if (form.sp > 1) {
+        const auto& link = link_of(form.sp);
+        double gbps = number_field(link, "gbps", 0, true);
+        if (sp_groups >= 2 && link.contains("concurrent_gbps")) {
+            int matched = 1;
+            for (auto it = link.at("concurrent_gbps").begin(); it != link.at("concurrent_gbps").end(); ++it) {
+                const int groups = std::stoi(it.key());
+                if (groups <= sp_groups && groups > matched) { matched = groups; gbps = it.value().get<double>(); }
+            }
         }
+        const double comm = number_field(row, "comm_mb_per_step") / cfg * (sp - 1) / (sp * sp) / gbps;
+        // Branch interleaving hides part of the shorter term behind the other branch;
+        // with the branches on separate halves (cfg = 2) each rank has one branch.
+        // The hidden fraction falls as communication approaches compute, so a link may name its own.
+        const double overlap = link.contains("sp_overlap") ? number_field(link, "sp_overlap") : overlap_;
+        if (overlap > 1) throw std::invalid_argument("sp_overlap must be in [0, 1]");
+        const double hidden = form.cfg == 1 ? overlap * std::min(step, comm) : 0;
+        step += comm - hidden + number_field(row, "collectives_per_step") / cfg * number_field(link, "latency_ms");
     }
-    const double d = degree;
-    return compute / (d * efficiency_)
-        + number_field(row, "comm_mb_per_step") * (d - 1) / (d * d) / gbps
-        + number_field(row, "collectives_per_step") * number_field(link, "latency_ms");
+    if (form.cfg == 2) {
+        const auto& pair = link_of(2);
+        step += number_field(row, "cfg_exchange_mb") / number_field(pair, "gbps", 0, true) + number_field(pair, "latency_ms");
+    }
+    return step;
 }
 
 int ClusterCost::blocks_per_step(const std::string& name) const { return int_field(klass(name), "blocks_per_step", 1); }
@@ -123,18 +167,18 @@ int ClusterCost::decode_chunks(const std::string& name) const { return int_field
 
 double ClusterCost::chunk_ms(const std::string& name) const { return number_field(klass(name), "finish_ms") / decode_chunks(name); }
 
-double ClusterCost::block_ms(const std::string& name, int degree, int sp_groups) const {
-    return step_ms(name, degree, sp_groups) / blocks_per_step(name);
+double ClusterCost::block_ms(const std::string& name, const Form& form, int sp_groups) const {
+    return step_ms(name, form, sp_groups) / blocks_per_step(name);
 }
 
-double ClusterCost::remaining_ms(const Json& request, int degree, int sp_groups) const {
+double ClusterCost::remaining_ms(const Json& request, const Form& form, int sp_groups) const {
     const auto name = request.at("class").get<std::string>();
     const auto& row = klass(name);
     if (row.at("kind") == "image") return number_field(row, "service_ms");
     const int steps = int_field(request, "steps_total", int_field(row, "steps", 0), 1), done = int_field(request, "steps_done", 0, 0);
     const int blocks = int_field(request, "blocks_done", 0, 0);
     double total = request.value("prepared", false) ? 0 : number_field(row, "prepare_ms");
-    total += std::max(0, steps - done) * step_ms(name, degree, sp_groups) - blocks * block_ms(name, degree, sp_groups);
+    total += std::max(0, steps - done) * step_ms(name, form, sp_groups) - blocks * block_ms(name, form, sp_groups);
     return total + (decode_chunks(name) - std::min(int_field(request, "decode_done", 0, 0), decode_chunks(name))) * chunk_ms(name);
 }
 
@@ -142,27 +186,52 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     const Policy policy = parse(name);
     const double now = number(state.at("now_ms"), "now_ms");
     const int gpus = static_cast<int>(integer(state.at("gpus"), "gpus"));
+    // Parallel forms the policy may choose; the group sizes follow from them.
+    std::vector<Form> forms;
+    if (policy.fixed_degree) forms = {policy.fixed_form};
+    else if (options.contains("forms")) {
+        if (options.contains("degrees")) throw std::invalid_argument("options.forms replaces options.degrees");
+        for (const auto& item : options.at("forms")) {
+            if (!item.is_string()) throw std::invalid_argument("options.forms lists form names");
+            forms.push_back(parse_form(item.get<std::string>()));
+        }
+    } else {
+        for (const auto& d : options.value("degrees", Json::array({1, 2, 4, 8}))) forms.push_back(Form{1, static_cast<int>(integer(d, "degree"))});
+    }
+    if (forms.empty()) throw std::invalid_argument("cluster policy needs at least one parallel form");
     std::vector<int> degrees;
-    for (const auto& d : options.value("degrees", Json::array({1, 2, 4, 8}))) degrees.push_back(static_cast<int>(integer(d, "degree")));
-    if (policy.fixed_degree) degrees = {policy.fixed_degree};
+    for (const auto& form : forms) if (std::find(degrees.begin(), degrees.end(), form.degree()) == degrees.end()) degrees.push_back(form.degree());
     if (cluster_groups(gpus, degrees).empty()) throw std::invalid_argument("no SP group fits the cluster");
     // Every aligned group stays addressable: a class minimum can exceed the policy's degrees.
     const auto groups = cluster_groups(gpus, {1, 2, 4, 8});
     const int quantum_blocks = int_field(options, "quantum_blocks", 4);
-    // Optional time target: blocks per quantum follow the class and SP degree,
+    // Optional time target: blocks per quantum follow the class and parallel form,
     // so a preemption check happens about every quantum_ms of GPU work.
     const double quantum_ms = number_field(options, "quantum_ms", 0);
-    auto video_quantum = [&](const std::string& klass, int degree, int n) -> Json {
+    auto video_quantum = [&](const std::string& klass, const Form& form, int n) -> Json {
         if (!policy.blocks) return "step";
         if (quantum_ms <= 0) return quantum_blocks;
-        const int blocks = static_cast<int>(std::floor(quantum_ms / cost.block_ms(klass, degree, n)));
+        const int blocks = static_cast<int>(std::floor(quantum_ms / cost.block_ms(klass, form, n)));
         return std::max(1, std::min(blocks, cost.blocks_per_step(klass)));
     };
     // SP advances already running plus those this plan hands out: with
     // concurrent link rates in the profile they slow each other down.
     const int sp_running = int_field(state, "sp_groups_running", 0, 0);
     int sp_assigned = 0;
-    auto sp_groups = [&](int degree) { return degree >= 2 ? sp_running + sp_assigned + 1 : 1; };
+    auto sp_groups = [&](const Form& form) { return form.sp >= 2 ? sp_running + sp_assigned + 1 : 1; };
+    // The cheapest listed form of a group size. A size no form names (a class
+    // minimum above the policy's sizes) runs plain sequence parallelism.
+    auto form_for = [&](const std::string& klass, int degree) {
+        Form best{1, degree};
+        double best_ms = 0;
+        bool found = false;
+        for (const auto& form : forms) {
+            if (form.degree() != degree) continue;
+            const double ms = cost.step_ms(klass, form, sp_groups(form));
+            if (!found || ms < best_ms) { best = form; best_ms = ms; found = true; }
+        }
+        return best;
+    };
     auto ceil_div = [](int a, int b) { return (a + b - 1) / b; };
     // Latent-frame chunks per decode quantum (0: the decode is one quantum).
     auto decode_frames = [&](const std::string& klass) {
@@ -171,13 +240,13 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             frames = std::max(1, static_cast<int>(std::floor(quantum_ms / cost.chunk_ms(klass))));
         return cost.decode_chunks(klass) > 1 ? frames : 0;
     };
-    // Quanta a video still needs on `degree` GPUs, from its current progress.
-    auto quanta_left = [&](const Json& r, int degree, int n) {
+    // Quanta a video still needs on `form`, from its current progress.
+    auto quanta_left = [&](const Json& r, const Form& form, int n) {
         const auto klass = r.at("class").get<std::string>();
         const int steps = int_field(r, "steps_total", int_field(cost.klass(klass), "steps", 0), 1);
         const int left = std::max(0, steps - int_field(r, "steps_done", 0, 0)), done = int_field(r, "blocks_done", 0, 0);
         int quanta = left;
-        const auto quantum = video_quantum(klass, degree, n);
+        const auto quantum = video_quantum(klass, form, n);
         if (quantum.is_number_integer() && left > 0) {
             const int per = quantum.get<int>(), bps = cost.blocks_per_step(klass);
             quanta = ceil_div(bps - done, per) + (left - 1) * ceil_div(bps, per);
@@ -187,10 +256,10 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         return quanta + (chunks <= 0 ? 0 : frames > 0 ? ceil_div(chunks, frames) : 1);
     };
     // Remaining GPU time plus the fixed dispatch cost of every quantum still to come.
-    auto estimate = [&](const Json& r, int degree, int n) {
-        const double remaining = cost.remaining_ms(r, degree, n);
+    auto estimate = [&](const Json& r, const Form& form, int n) {
+        const double remaining = cost.remaining_ms(r, form, n);
         if (cost.quantum_overhead_ms() <= 0) return remaining;
-        return remaining + cost.quantum_overhead_ms() * (r.at("kind") == "image" ? 1 : quanta_left(r, degree, n));
+        return remaining + cost.quantum_overhead_ms() * (r.at("kind") == "image" ? 1 : quanta_left(r, form, n));
     };
     const bool lazy = bool_field(options, "lazy_preemption", true);
     // Real backends without state migration keep a started request on its group.
@@ -253,12 +322,14 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                        : feasibility == "free" ? free_widest : *std::max_element(degrees.begin(), degrees.end());
     std::map<const Json*, bool> late;
     for (const Json* r : rows) {
-        const int best = r->at("kind") == "image" ? 1 : std::min(std::max(widest, int_field(cost.klass(r->at("class").get<std::string>()), "min_degree", 1)), gpus);
+        const auto klass = r->at("class").get<std::string>();
+        const int best = r->at("kind") == "image" ? 1 : std::min(std::max(widest, int_field(cost.klass(klass), "min_degree", 1)), gpus);
         int degree = best;
         while (degree > 1 && !power_of_two(degree)) --degree;
         const auto group = group_of(*r);
-        if (r->value("prepared", false) && int_field(*r, "blocks_done", 0, 0) > 0) degree = static_cast<int>(group.size());
-        const double remaining = estimate(*r, degree, sp_groups(degree));
+        const bool mid_step = r->value("prepared", false) && int_field(*r, "blocks_done", 0, 0) > 0;
+        const Form form = r->at("kind") == "image" ? Form{} : mid_step ? form_of(*r, group) : form_for(klass, degree);
+        const double remaining = estimate(*r, form, sp_groups(form));
         late[r] = demote_late && remaining > late_short_ms && now + remaining > number_field(*r, "deadline_ms");
     }
     auto edf = [&](const Json* r) {
@@ -274,10 +345,11 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             const int chunks = cost.decode_chunks(klass) - int_field(*r, "decode_done", 0, 0), frames = decode_frames(klass);
             return chunks * cost.chunk_ms(klass) + (overhead > 0 ? overhead * (frames > 0 ? ceil_div(chunks, frames) : 1) : 0.);
         }
-        const int degree = static_cast<int>(group.size()), blocks = cost.blocks_per_step(klass) - int_field(*r, "blocks_done", 0, 0);
-        const double work = blocks * cost.block_ms(klass, degree, sp_groups(degree));
+        const Form form = form_of(*r, group);
+        const int blocks = cost.blocks_per_step(klass) - int_field(*r, "blocks_done", 0, 0);
+        const double work = blocks * cost.block_ms(klass, form, sp_groups(form));
         if (overhead <= 0) return work;
-        const auto quantum = video_quantum(klass, degree, sp_groups(degree));
+        const auto quantum = video_quantum(klass, form, sp_groups(form));
         return work + overhead * (quantum.is_number_integer() ? ceil_div(blocks, quantum.get<int>()) : 1);
     };
     auto all_free = [&](const std::vector<int>& group) {
@@ -295,7 +367,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         const auto id = r.at("request_id").get<std::string>();
         const auto klass = r.at("class").get<std::string>();
         if (r.at("kind") == "image") {
-            const double slack = number_field(r, "deadline_ms") - now - estimate(r, 1, 1);
+            const double slack = number_field(r, "deadline_ms") - now - estimate(r, Form{}, 1);
             int chosen = -1, rank = 3;  // -1 reserved, 0 idle, 1 step-boundary video group, 2 mid-step group
             for (int gpu = 0; gpu < gpus; ++gpu) {
                 if (!free[gpu]) continue;
@@ -335,11 +407,11 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         if (fixed) {
             if (all_free(current)) {
                 take(current);
-                const int degree = static_cast<int>(current.size());
-                assignments.push_back({{"request_id", id}, {"group", current}, {"degree", degree},
-                                       {"quantum", video_quantum(klass, degree, sp_groups(degree))},
+                const Form form = form_of(r, current);
+                assignments.push_back({{"request_id", id}, {"group", current}, {"degree", form.degree()}, {"form", form_name(form)},
+                                       {"quantum", video_quantum(klass, form, sp_groups(form))},
                                        {"resize", false}, {"reason", "resume"}});
-                sp_assigned += degree >= 2;
+                sp_assigned += form.sp >= 2;
             }
             continue;
         }
@@ -358,7 +430,8 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         if (others_waiting) {
             for (int d : order) {
                 const double extra = prepared && static_cast<int>(current.size()) != d ? cost.resize_ms() : 0;
-                if (now + estimate(r, d, sp_groups(d)) + extra <= number_field(r, "deadline_ms")) { target = d; break; }
+                const Form form = form_for(klass, d);
+                if (now + estimate(r, form, sp_groups(form)) + extra <= number_field(r, "deadline_ms")) { target = d; break; }
             }
         }
         // A prompt encoded on one worker must be prepared on that GPU.
@@ -382,11 +455,11 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         }
         if (chosen.empty()) continue;
         take(chosen);
-        const int degree = static_cast<int>(chosen.size());
-        assignments.push_back({{"request_id", id}, {"group", chosen}, {"degree", degree},
-                               {"quantum", video_quantum(klass, degree, sp_groups(degree))},
+        const Form form = form_for(klass, static_cast<int>(chosen.size()));
+        assignments.push_back({{"request_id", id}, {"group", chosen}, {"degree", form.degree()}, {"form", form_name(form)},
+                               {"quantum", video_quantum(klass, form, sp_groups(form))},
                                {"resize", prepared && chosen != current}, {"reason", prepared ? "regroup" : "admit"}});
-        sp_assigned += degree >= 2;
+        sp_assigned += form.sp >= 2;
     }
     // Shared by the executor and the simulator, so a planner bug fails here with
     // both request IDs instead of inside an SP worker. Pinned workers have no

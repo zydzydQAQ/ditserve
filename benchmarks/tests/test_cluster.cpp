@@ -124,6 +124,71 @@ int main() {
         Json slow = profile(); slow["quantum_overhead_ms"] = 10;
         require(degree(slow, 0) == 4, "overhead counts every remaining quantum");
     });
+    check("parallel forms", [] {
+        require(form_name(parse_form("cfg2sp2")) == "cfg2sp2" && parse_form("cfg2").degree() == 2 && parse_form("sp8").sp == 8, "form names round-trip");
+        require(form_name(Form{}) == "sp1" && form_name(Form{2, 1}) == "cfg2", "default form is sp1");
+        for (const auto* bad : {"", "sp3", "cfg3", "cfg2sp3", "cfg", "sp", "sp16"}) rejects([bad] { parse_form(bad); });
+        Json prof = profile(); prof["classes"]["video"]["cfg_exchange_mb"] = 20;
+        const ClusterCost cost(prof);
+        // Each half runs one branch: half the compute, one 20 MB exchange on the pair link plus its latency.
+        near(cost.step_ms("video", parse_form("cfg2")), 500 + 1 + 0.1);
+        // CFG2 x SP2: a quarter of the compute, half the all-to-all volume and collectives, plus the exchange.
+        near(cost.step_ms("video", parse_form("cfg2sp2")), 250 + 400. / 4 / 20 + 5 * 0.1 + 1.1);
+        near(cost.step_ms("video", parse_form("sp2")), cost.step_ms("video", 2));
+        near(cost.remaining_ms(video("v", 1e9), parse_form("cfg2")), 4 * 501.1 + 100);
+        rejects([&] { cost.step_ms("video", Form{3, 1}); });
+        // Interleaved branches hide part of the shorter term; a CFG half has no partner branch.
+        Json overlapped = prof; overlapped["sp_overlap"] = 1;
+        near(ClusterCost(overlapped).step_ms("video", 2), 500 + 1);
+        near(ClusterCost(overlapped).step_ms("video", 4), 250 + 1);
+        near(ClusterCost(overlapped).step_ms("video", parse_form("cfg2sp2")), 250 + 5 + 0.5 + 1.1);
+        overlapped["sp_overlap"] = 0.5;
+        near(ClusterCost(overlapped).step_ms("video", 2), 500 + 5 + 1);
+        overlapped["links"]["4"]["sp_overlap"] = 0.2;   // per-link value wins
+        near(ClusterCost(overlapped).step_ms("video", 4), 250 + 15 - 3 + 1);
+        near(ClusterCost(overlapped).step_ms("video", 2), 500 + 5 + 1);
+        overlapped["sp_overlap"] = 2;
+        rejects([&] { ClusterCost{overlapped}; });
+        overlapped["sp_overlap"] = 0; overlapped["links"]["4"]["sp_overlap"] = 1.5;
+        rejects([&] { ClusterCost(overlapped).step_ms("video", 4); });
+
+        auto run = [&](const Json& requests, const std::string& policy, int gpus, const Json& options, const Json& costs = Json()) {
+            return cluster_plan({{"now_ms", 0}, {"gpus", gpus}, {"busy", Json::array()}, {"requests", requests}}, policy,
+                                ClusterCost(costs.is_null() ? profile() : costs), options).at("assignments");
+        };
+        // The planner takes the cheapest listed form of a group size: cfg2 (501.1 ms) over sp2 (511 ms).
+        const Json lone = Json::array({video("v", 1e9)});
+        const Json forms = {{"forms", {"sp1", "sp2", "cfg2"}}};
+        auto chosen = run(lone, "step_elastic", 2, forms, prof);
+        require(chosen.size() == 1 && chosen[0].at("form") == "cfg2" && chosen[0].at("degree") == 2, "cheapest form of the pair");
+        Json dear = prof; dear["classes"]["video"]["cfg_exchange_mb"] = 400;   // 520.1 ms: SP2 wins
+        require(run(lone, "step_elastic", 2, forms, dear)[0].at("form") == "sp2", "the exchange cost counts");
+        require(run(lone, "step_elastic", 2, Json::object())[0].at("form") == "sp2", "default forms are plain SP");
+        require(run(lone, "static_cfg2", 4, Json::object(), prof)[0].at("form") == "cfg2", "static CFG2 takes a pair");
+        require(run(lone, "static_cfg2sp2", 4, Json::object(), prof)[0].at("degree") == 4, "static CFG2 x SP2 takes a quad");
+        rejects([&] { run(lone, "static_cfg2", 1, Json::object(), prof); });
+        rejects([&] { run(lone, "static_cfg3", 4, Json::object(), prof); });
+        rejects([&] { run(lone, "step_elastic", 4, {{"forms", {"sp1"}}, {"degrees", {1}}}); });
+        rejects([&] { run(lone, "step_elastic", 4, {{"forms", {"sp1", "cfgx"}}}); });
+        // A request inside a step keeps its form; the state names it and it must fit the group.
+        const auto mid = video("m", 1e9, {{"status", "suspended"}, {"prepared", true}, {"group", {0, 1}}, {"form", "cfg2"}, {"blocks_done", 4}});
+        auto resumed = run(Json::array({mid}), "block_elastic", 2, forms, prof);
+        require(resumed.size() == 1 && resumed[0].at("form") == "cfg2" && resumed[0].at("reason") == "resume", "form kept inside a step");
+        rejects([&] { run(Json::array({video("x", 1e9, {{"status", "suspended"}, {"prepared", true}, {"group", {0}}, {"form", "cfg2"}, {"blocks_done", 4}})}),
+                           "block_elastic", 2, Json::object(), prof); });
+        // CFG pairs exchange one prediction per step and do not share the host bridge like SP groups.
+        Json shared = prof; shared["links"]["2"]["concurrent_gbps"] = {{"2", 10}};
+        const Json pair = Json::array({trace_row("a", "video", 0, 1e9), trace_row("b", "video", 0, 1e9)});
+        const auto twin = simulate_cluster({{"workload", pair}, {"profile", shared}, {"policy", "static_cfg2"}, {"gpus", 4}});
+        near(twin.at("makespan_ms").get<double>(), 4 * 501.1 + 100, 1e-6);
+        require(twin.at("requests")[0].at("forms") == Json::array({"cfg2"}) && twin.at("requests")[0].at("degrees") == Json::array({2, 1}), "forms recorded");
+        near(simulate_cluster({{"workload", pair}, {"profile", shared}, {"policy", "static_sp2"}, {"gpus", 4}}).at("makespan_ms").get<double>(), 4 * 521. + 100);
+        // Elastic with forms: the lone video on 4 GPUs takes the cheapest quad form, CFG2 x SP2 (256.6 ms) over SP4 (266 ms).
+        const auto quad = simulate_cluster({{"workload", Json::array({trace_row("v", "video", 0, 1e9)})}, {"profile", prof}, {"policy", "step_elastic"}, {"gpus", 4},
+                                            {"options", {{"forms", {"sp1", "cfg2", "sp2", "cfg2sp2", "sp4"}}}}});
+        require(quad.at("requests")[0].at("forms") == Json::array({"cfg2sp2"}), "elastic picks CFG2 x SP2");
+        near(quad.at("makespan_ms").get<double>(), 4 * 256.6 + 100, 1e-6);
+    });
     check("edf images first and videos share remaining GPUs", [] {
         const auto result = plan({video("v", 1e9), image("i", 100)}, "static_sp1", 2);
         require(result.size() == 2 && result[0].at("request_id") == "i" && result[0].at("quantum") == "atomic", "image first");

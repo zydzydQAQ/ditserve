@@ -41,7 +41,7 @@ Json simulate_cluster(const Json& config) {
             if (row.contains(key)) light[key] = row.at(key);
         row = light;
         row["status"] = "pending"; row["steps_done"] = 0; row["blocks_done"] = 0; row["prepared"] = false;
-        row["group"] = Json::array(); row["ready"] = false; row["degrees"] = Json::array();
+        row["group"] = Json::array(); row["ready"] = false; row["degrees"] = Json::array(); row["forms"] = Json::array();
         index[row.at("request_id").get<std::string>()] = i;
     }
     std::vector<double> encoder_free(encode_slots, 0);
@@ -50,8 +50,12 @@ Json simulate_cluster(const Json& config) {
     // Per-request action time by quantum kind, like the executor's action_ms.
     std::vector<Json> action_ms(rows.size(), Json::object());
     std::vector<int> quanta(rows.size(), 0);
-    auto sp_advance = [](const Json& assignment) {
-        return assignment.at("degree").get<int>() >= 2 && assignment.at("quantum") != "atomic" && assignment.at("quantum") != "finish";
+    auto form_of = [](const Json& assignment) {
+        return parse_form(assignment.value("form", "sp" + std::to_string(assignment.at("degree").get<int>())));
+    };
+    // Only sequence-parallel advances share the host bridge; a CFG pair exchanges one prediction per step.
+    auto sp_advance = [&](const Json& assignment) {
+        return form_of(assignment).sp >= 2 && assignment.at("quantum") != "atomic" && assignment.at("quantum") != "finish";
     };
     double now = 0, busy_ms = 0;
     std::size_t completed = 0, preemptions = 0, resizes = 0, plans = 0;
@@ -96,6 +100,8 @@ Json simulate_cluster(const Json& config) {
                 auto& row = rows[at];
                 const auto klass = row.at("class").get<std::string>();
                 const int degree = assignment.at("degree").get<int>();
+                const Form form = form_of(assignment);
+                if (form.degree() != degree || degree != static_cast<int>(assignment.at("group").size())) throw std::logic_error("assignment form does not match its group");
                 const auto quantum = assignment.at("quantum");
                 double duration = dispatch + cost.quantum_overhead_ms();
                 int blocks = 0;
@@ -109,7 +115,7 @@ Json simulate_cluster(const Json& config) {
                     blocks = quantum == "step" ? remaining : std::min(quantum.get<int>(), remaining);
                     if (!row.at("prepared").get<bool>()) duration += number_field(cost.klass(klass), "prepare_ms");
                     if (assignment.at("resize").get<bool>()) { duration += cost.resize_ms(); ++resizes; }
-                    duration += blocks * cost.block_ms(klass, degree, degree >= 2 ? sp_groups : 1);
+                    duration += blocks * cost.block_ms(klass, form, form.sp >= 2 ? sp_groups : 1);
                 }
                 const auto kind = quantum.is_string() ? quantum.get<std::string>() : std::string("blocks");
                 action_ms[at][kind] = action_ms[at].value(kind, 0.) + duration;
@@ -117,6 +123,10 @@ Json simulate_cluster(const Json& config) {
                 preemptions += assignment.at("reason") == "block_preempt";
                 if (!row.contains("start_ms")) row["start_ms"] = now;
                 if (std::find(row["degrees"].begin(), row["degrees"].end(), degree) == row["degrees"].end()) row["degrees"].push_back(degree);
+                if (kind == "step" || kind == "blocks") {
+                    const auto name = form_name(form);
+                    if (std::find(row["forms"].begin(), row["forms"].end(), name) == row["forms"].end()) row["forms"].push_back(name);
+                }
                 for (const auto& gpu : assignment.at("group")) busy[gpu.get<int>()] = true;
                 row["status"] = "running";
                 busy_ms += duration * degree;
@@ -143,14 +153,14 @@ Json simulate_cluster(const Json& config) {
             const auto klass = row.at("class").get<std::string>();
             if (quantum == "finish" && row.value("decode_done", 0) + it->blocks < cost.decode_chunks(klass)) {
                 row["decode_done"] = row.value("decode_done", 0) + it->blocks; row["status"] = "suspended";
-                row["group"] = it->assignment.at("group");
+                row["group"] = it->assignment.at("group"); row["form"] = "sp1";
             } else if (quantum == "atomic" || quantum == "finish") {
-                row["status"] = "completed"; row["finish_ms"] = it->end; row["group"] = Json::array(); ++completed;
+                row["status"] = "completed"; row["finish_ms"] = it->end; row["group"] = Json::array(); row.erase("form"); ++completed;
             } else {
                 int blocks = row.at("blocks_done").get<int>() + it->blocks;
                 if (blocks >= cost.blocks_per_step(klass)) { blocks = 0; row["steps_done"] = row.at("steps_done").get<int>() + 1; }
                 row["blocks_done"] = blocks; row["prepared"] = true;
-                row["group"] = it->assignment.at("group"); row["status"] = "suspended";
+                row["group"] = it->assignment.at("group"); row["form"] = form_name(form_of(it->assignment)); row["status"] = "suspended";
             }
             it = running.erase(it);
         }
