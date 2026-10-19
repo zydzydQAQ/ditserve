@@ -456,6 +456,20 @@ class NativeStudyTest(unittest.TestCase):
             self.assertGreater(row["transfer_bytes"], 0)
         self.assertEqual(list((self.root / "export").rglob("*.pt")), [])
 
+    def test_cluster_export_transport_runs_cfg_forms(self):
+        # Only CFG pairs beyond SP1: the two videos take a pair each and the ranks receive cfg=2.
+        phase = self.cluster_phase("block_elastic", options=dict(sp_transport="export", forms=["sp1", "cfg2"]))
+        value = self.run_study(self.config([phase], workers=self.cluster_workers()), name="forms")
+        self.assert_completed(value)
+        cell = value["phases"][0]["cells"][0]
+        self.assertEqual(cell["metrics"]["completed"], 6)
+        rows = {row["request_id"]: row for row in cell["requests"]}
+        grouped = [row for name, row in rows.items() if name.startswith("v") and max(row["degrees"]) >= 2]
+        self.assertTrue(grouped)
+        for row in grouped:
+            self.assertEqual([form for form in row["forms"] if form != "sp1"], ["cfg2"])
+        self.assertTrue(all(row["forms"] == [] for name, row in rows.items() if name.startswith("i")))
+
     def test_cluster_export_transport_failure_stops_the_cell(self):
         workers = self.cluster_workers()
         for name in ("v1", "v3"):
