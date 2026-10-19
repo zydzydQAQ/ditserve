@@ -192,6 +192,10 @@ int main() {
         require(widened.size() == 2 && widened[0].at("form") == "cfg2" && widened[1].at("form") == "cfg2", "widened to CFG pairs");
         require(run(two, "step_elastic", 4, {{"forms", {"sp1", "sp2", "cfg2", "sp4"}}, {"widen_efficiency", 0.999}}, prof)[0].at("degree") == 1, "threshold respected");
         rejects([&] { run(two, "step_elastic", 4, {{"widen_efficiency", 1.5}}); });
+        // prefer_exact: the CFG pair (501.1 ms, output-preserving) wins over SP2 at 511 ms either way;
+        // with a dear exchange (520.1 ms) SP2 is 1.7% faster, which a 5% preference forgoes and a 1% one takes.
+        require(run(lone, "step_elastic", 2, {{"forms", {"sp1", "sp2", "cfg2"}}, {"prefer_exact", 0.05}}, dear)[0].at("form") == "cfg2", "exact form within the margin");
+        require(run(lone, "step_elastic", 2, {{"forms", {"sp1", "sp2", "cfg2"}}, {"prefer_exact", 0.01}}, dear)[0].at("form") == "sp2", "margin exceeded");
         // Elastic with forms: the lone video on 4 GPUs takes the cheapest quad form, CFG2 x SP2 (256.6 ms) over SP4 (266 ms).
         const auto quad = simulate_cluster({{"workload", Json::array({trace_row("v", "video", 0, 1e9)})}, {"profile", prof}, {"policy", "step_elastic"}, {"gpus", 4},
                                             {"options", {{"forms", {"sp1", "cfg2", "sp2", "cfg2sp2", "sp4"}}}}});

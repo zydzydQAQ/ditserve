@@ -261,17 +261,24 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     const int sp_running = int_field(state, "sp_groups_running", 0, 0);
     int sp_assigned = 0;
     auto sp_groups = [&](const Form& form) { return form.sp >= 2 ? sp_running + sp_assigned + 1 : 1; };
+    // Output-preserving forms (sp1 and the CFG halves run the same arithmetic as one GPU;
+    // sequence parallelism changes the token shard its GEMMs see) win over an approximate
+    // form of the same size unless that form is faster by more than this fraction.
+    const double prefer_exact = number_field(options, "prefer_exact");
+    auto exact_form = [](const Form& form) { return form.sp == 1; };
     // The cheapest listed form of a group size, on a named group when given. A size
     // no form names (a class minimum above the policy's sizes) runs plain SP.
     auto form_for = [&](const std::string& klass, int degree, const std::vector<int>* group = nullptr) {
-        Form best{1, degree};
-        double best_ms = 0;
-        bool found = false;
+        Form best{1, degree}, best_exact{1, degree};
+        double best_ms = 0, exact_ms = 0;
+        bool found = false, found_exact = false;
         for (const auto& form : forms) {
             if (form.degree() != degree) continue;
             const double ms = cost.step_ms(klass, form, sp_groups(form), group);
             if (!found || ms < best_ms) { best = form; best_ms = ms; found = true; }
+            if (exact_form(form) && (!found_exact || ms < exact_ms)) { best_exact = form; exact_ms = ms; found_exact = true; }
         }
+        if (prefer_exact > 0 && found_exact && !exact_form(best) && best_ms >= exact_ms * (1 - prefer_exact)) return best_exact;
         return best;
     };
     auto ceil_div = [](int a, int b) { return (a + b - 1) / b; };

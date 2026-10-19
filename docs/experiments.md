@@ -84,6 +84,8 @@ FLUX 可设置 `workers.<name>.config.options.profile:true`，记录 text/DiT/sc
 
 视频组的**并行形态**（`Form`）由 cfg ∈ {1, 2} 和 SP 度 sp 组成，占 cfg × sp 张卡，名字为 `sp1`、`sp2`、`sp4`、`sp8`、`cfg2`、`cfg2sp2`、`cfg2sp4`。弹性策略在 `options.forms`（默认为 `options.degrees` 对应的纯 SP 形态，即 `{1, 2, 4, 8}` → `sp1/sp2/sp4/sp8`，两者不能同时给出）中选择：组的大小按原来的最小可行度数规则决定，同一大小的形态取成本模型预测每步时间最小的。规划结果的每条 assignment 带 `form`，状态里停在 step 中途的请求带 `form`（缺省为 `sp<组大小>`），step 内不换形态。模拟器与执行器按形态计价并记录每个请求用过的 `forms`；`sp_groups_running` 只计 sp ≥ 2 的组（CFG 对每步只交换一个 latent，不争用 host bridge）。
 
+`options.prefer_exact`（默认 0）：同一组大小里，输出与单卡逐位一致的形态（sp1、CFG 对；SP 形态会改变 GEMM 的 token 分片，K13/K18）优先，除非近似形态快的比例超过该值（如 0.1）。把"不改输出"当成调度目标时用。
+
 `options.widen_efficiency`（默认 0）：有其他请求等待时，视频默认只取能赶上期限的最小组；设为 e ∈ (0, 1] 后，若某个更宽的形态的每卡效率（SP1 每步时间 ÷ (卡数 × 该形态每步时间)）不低于 e，就扩到该形态。CFG 对的效率接近 1（每步只交换一个 latent），所以 e=0.95 时视频在有空闲对时总以 CFG2 运行，更早完成、更早还卡，对队列没有代价；PCIe 上的 SP 形态效率低于 e，不会被选中。
 
 `options.reserve_image_gpus` 给出静态分区基线：最后 R 张卡只服务图像。视频类别的 `decode_chunks` 把 VAE 解码拆成按 latent 帧推进的可抢占 chunk（`options.chunked_decode`，按 `quantum_ms` 换算每次推进的帧数）；真实 Wan worker 用 `finish` 的 `decode_frames` 执行，结果与整段解码逐位一致（CPU 契约测试）。Wan worker 的 `config.vae_dtype`（默认 `float32`，官方配方）可设为 `bfloat16`：5B 的 FP32 VAE 解 720p 视频在进程内峰值 32 GB，与 Sana 同卡放不下（K20），BF16 把瞬态减半，属于要单独度量的偏差（P10）。Wan 和 Sana worker 在每次解码/出图后调用 `torch.cuda.empty_cache()` 归还 allocator 缓存（`workers.<name>.config.options.release_cache`，默认开启）：5B 的 FP32 VAE 解一段 720p 视频的瞬态约 20 GB，不归还的话同卡的另一个 worker 会 OOM（K20）。Wan 的 `block_export`/`block_import` 可在 step 内任意 block 边界导出续算状态（未变动的求解器状态 + 运行中的 packet）并在另一进程恢复。
