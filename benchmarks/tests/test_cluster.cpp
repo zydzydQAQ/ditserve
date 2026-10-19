@@ -198,6 +198,39 @@ int main() {
         require(quad.at("requests")[0].at("forms") == Json::array({"cfg2sp2"}), "elastic picks CFG2 x SP2");
         near(quad.at("makespan_ms").get<double>(), 4 * 256.6 + 100, 1e-6);
     });
+    check("per-group link rates", [] {
+        Json prof = profile();
+        prof["links"]["groups"] = {{"0-1", {{"gbps", 5}}}, {"2-3", {{"gbps", 20}}}, {"0-3", {{"gbps", 10}, {"sp_overlap", 0.5}}}};
+        const ClusterCost cost(prof);
+        const std::vector<int> slow = {0, 1}, fast = {2, 3}, quad = {0, 1, 2, 3};
+        near(cost.step_ms("video", 2), 511);                                              // no group: the degree's rate
+        near(cost.step_ms("video", parse_form("sp2"), 1, &fast), 511);
+        near(cost.step_ms("video", parse_form("sp2"), 1, &slow), 500 + 800. / 4 / 5 + 1);   // 541
+        // CFG2 x SP2 on the quad runs at its slower half's rate.
+        near(cost.step_ms("video", parse_form("cfg2sp2"), 1, &quad), 250 + 400. / 4 / 5 + 0.5 + 0.1);
+        // The quad entry carries its own overlap; contention scales the per-group rate as the degree's.
+        near(cost.step_ms("video", parse_form("sp4"), 1, &quad), 250 + 15 - 0.5 * 15 + 1);
+        Json shared = prof; shared["links"]["2"]["concurrent_gbps"] = {{"2", 10}};
+        near(ClusterCost(shared).step_ms("video", parse_form("sp2"), 2, &slow), 500 + 800. / 4 / 2.5 + 1);
+        rejects([&] { cost.step_ms("video", parse_form("sp2"), 1, &quad); });
+        for (const auto* bad : {"1-2", "0-2", "x", "3-0"}) {
+            Json broken = profile(); broken["links"]["groups"] = {{bad, {{"gbps", 5}}}};
+            rejects([&] { ClusterCost{broken}; });
+        }
+        // Placement takes the fastest free group of a size: a lone video on the pairs takes {2,3}.
+        auto run = [&](const Json& requests, const Json& options) {
+            return cluster_plan({{"now_ms", 0}, {"gpus", 4}, {"busy", Json::array()}, {"requests", requests}}, "step_elastic", cost, options).at("assignments");
+        };
+        const auto lone = run(Json::array({video("v", 1e9)}), {{"degrees", {1, 2}}});
+        require(lone.size() == 1 && lone[0].at("group") == Json::array({2, 3}), "fastest pair first");
+        // Two videos widened to pairs: the first takes the fast pair, the second the slow one.
+        const auto two = run(Json::array({video("a", 1e9), video("b", 1e9)}), {{"degrees", {1, 2}}, {"widen_efficiency", 0.9}});
+        require(two.size() == 2 && two[0].at("group") == Json::array({2, 3}) && two[1].at("group") == Json::array({0, 1}), "fast pair, then slow pair");
+        // The simulator prices each quantum on the group it ran on.
+        const auto sim = simulate_cluster({{"workload", Json::array({trace_row("v", "video", 0, 1e9)})}, {"profile", prof}, {"policy", "static_sp2"}, {"gpus", 4}});
+        near(sim.at("makespan_ms").get<double>(), 4 * 511. + 100);
+        require(sim.at("requests")[0].at("degrees") == Json::array({2, 1}), "pair then single-GPU decode");
+    });
     check("queue order and round-based regrouping", [] {
         // "b" is due later but arrived earlier and has less work left (3 steps of 4): edf takes "a",
         // srtf and fcfs take "b".

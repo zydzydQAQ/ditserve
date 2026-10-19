@@ -34,21 +34,27 @@ std::string form_name(const Form& form);
 //                    + [cfg = 2] cfg_exchange_mb / links[2].gbps + links[2].latency_ms
 // gbps(sp, n) is links[sp].gbps unless n >= 2 SP groups advance at once and the
 // link names concurrent_gbps {"k": rate}: then the rate of the largest k <= n
-// (groups contend for the host bridge). With cfg = 1 the worker may interleave
-// the two branches so one branch's all-to-all overlaps the other's compute:
-// sp_overlap in [0, 1] is the fraction of the shorter of the compute and
-// communication terms hidden that way (1: max of the two). quantum_overhead_ms
-// is the fixed end-to-end cost of dispatching one quantum.
+// (groups contend for the host bridge). Rates belong to a placement: the pairs
+// of one node differ up to 2x (K16b/K16d), so links.groups may name aligned
+// groups by their first and last GPU ("0-1", "2-3", "0-3", ...) with their own
+// gbps, latency_ms and sp_overlap; a form is then priced on the GPUs it runs
+// on by the slowest of its SP subgroups, contention scaling that rate as it
+// scales the degree's. With cfg = 1 the worker may interleave the two branches
+// so one branch's all-to-all overlaps the other's compute: sp_overlap in [0, 1]
+// is the fraction of the shorter of the compute and communication terms hidden
+// that way (1: max of the two). quantum_overhead_ms is the fixed end-to-end
+// cost of dispatching one quantum.
 class ClusterCost {
 public:
     explicit ClusterCost(const Json& profile);
     const Json& profile() const { return profile_; }
     const Json& klass(const std::string& name) const;
     // sp_groups: SP groups (sp >= 2) advancing concurrently, this one included.
-    double step_ms(const std::string& klass, const Form& form, int sp_groups = 1) const;
-    double block_ms(const std::string& klass, const Form& form, int sp_groups = 1) const;
+    // group: the GPUs the form runs on, for per-group link rates (optional).
+    double step_ms(const std::string& klass, const Form& form, int sp_groups = 1, const std::vector<int>* group = nullptr) const;
+    double block_ms(const std::string& klass, const Form& form, int sp_groups = 1, const std::vector<int>* group = nullptr) const;
     // Remaining GPU time on `form` from the request's current progress.
-    double remaining_ms(const Json& request, const Form& form, int sp_groups = 1) const;
+    double remaining_ms(const Json& request, const Form& form, int sp_groups = 1, const std::vector<int>* group = nullptr) const;
     // Plain sequence parallelism of `degree` GPUs.
     double step_ms(const std::string& klass, int degree, int sp_groups = 1) const { return step_ms(klass, Form{1, degree}, sp_groups); }
     double block_ms(const std::string& klass, int degree, int sp_groups = 1) const { return block_ms(klass, Form{1, degree}, sp_groups); }

@@ -98,6 +98,7 @@ FLUX 可设置 `workers.<name>.config.options.profile:true`，记录 text/DiT/sc
 成本画像 `profile` 的 `provenance` 必须为 measured、extrapolated、synthetic 或 mixed。视频类别给出 steps、blocks_per_step、可选 min_degree（单卡放不下时的最小 SP 度，固定 SP 策略也会提升到该值）、prepare/encode/finish、SP1 每步计算时间、每步 Ulysses all-to-all 全序列字节数与集合通信次数；`links` 按 SP 度给出每 rank 带宽和延迟；`sp_efficiency` 与 `resize_ms` 描述并行效率与 step 边界换组成本。还有几个可选字段，不填时结果与以前完全相同：
 - `links.<d>.concurrent_gbps`（如 `{"2": 3.9}`）：n 个 SP 组（度数 ≥ 2）同时推进时的每 rank 带宽，取不大于 n 的最大键。用来描述多个组争用 host bridge 的情况。
 - `quantum_overhead_ms`：每发出一个 quantum 的固定端到端开销。
+- `links.groups`：按对齐组（键为首尾卡号，如 `"0-1"`、`"2-3"`、`"0-3"`、`"4-7"`）给出该组自己的 `gbps`、`latency_ms`、`sp_overlap`，缺省回到按度数的条目。同一放置里不同 pair 的带宽可差近一倍（K16b/K16d），有了组表后：形态按它实际运行的卡计价（CFG 对的两半各取自己的子组，取最慢者；争用按该度数条目的比例缩放），规划器在同大小的空闲组里先取最快的再按 best-fit，模拟器按 assignment 的组计价；迟到判断和扩宽判断仍用按度数的条目。
 - 类别的 `cfg_exchange_mb`：CFG 并行时两半每步交换的预测大小（一个 latent，`cost_profile.py` 按架构算出；5B 720p×121 约 10.5 MB），按 `links.2` 的带宽和延迟计价。
 - `sp_overlap` ∈ [0, 1]（可在 `links.<d>.sp_overlap` 按度数覆盖）：worker 以 `block_interleaved` 交错两个 CFG 分支时，SP 形态（cfg = 1）每步被另一分支的计算藏起来的通信比例，取计算项与通信项中较小者乘以该比例；cfg = 2 的形态每个 rank 只有一个分支，不受影响。
 

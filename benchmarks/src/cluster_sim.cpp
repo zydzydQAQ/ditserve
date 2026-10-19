@@ -115,7 +115,9 @@ Json simulate_cluster(const Json& config) {
                     blocks = quantum == "step" ? remaining : std::min(quantum.get<int>(), remaining);
                     if (!row.at("prepared").get<bool>()) duration += number_field(cost.klass(klass), "prepare_ms");
                     if (assignment.at("resize").get<bool>()) { duration += cost.resize_ms(); ++resizes; }
-                    duration += blocks * cost.block_ms(klass, form, form.sp >= 2 ? sp_groups : 1);
+                    std::vector<int> group;
+                    for (const auto& gpu : assignment.at("group")) group.push_back(gpu.get<int>());
+                    duration += blocks * cost.block_ms(klass, form, form.sp >= 2 ? sp_groups : 1, &group);
                 }
                 const auto kind = quantum.is_string() ? quantum.get<std::string>() : std::string("blocks");
                 action_ms[at][kind] = action_ms[at].value(kind, 0.) + duration;
