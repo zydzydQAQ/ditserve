@@ -9,7 +9,7 @@
 \usepackage[numbers,sort&compress]{natbib}
 \usepackage[hidelinks]{hyperref}
 
-\hypersetup{pdftitle={DiT Model Serving: Background, Motivation, Design Outline, and Related Work}}
+\hypersetup{pdftitle={Serving Image and Video DiTs on Bandwidth-Constrained PCIe Nodes}}
 \urlstyle{same}
 \setlength{\emergencystretch}{2em}
 \newcommand{\evidence}[1]{\footnote{Experimental record in the accompanying
@@ -18,13 +18,16 @@
 % References use the companion dit_serving_references.bib database.
 % Build from this directory with a LaTeX/BibTeX-capable toolchain.
 % Evidence was checked against the completed reports on 2026-10-14; the
-% 2026-10-18 additions cite results/a100-e* (local A100 PCIe 40GB) and the
-% cluster simulator, whose 14B costs and PCIe links are labeled estimates.
-% Keep two displayed equations: Gaussian noising and a clean-latent estimate.
+% 2026-10-18 additions cite results/a100-e* (local A100 PCIe 40GB). The
+% 2026-10-19 revision replaces the 14B extrapolation and the assumed-link
+% simulator study with measurements on the target 8xA100 PCIe node, whose
+% records are the K-numbered rows of docs/kairos_preexperiments.md.
+% Keep the displayed equations: Gaussian noising, a clean-latent estimate,
+% and the parallel-form cost model.
 % The noise-prediction example does not specify Wan's actual solver update.
 
-\title{DiT Model Serving\\[0.3em]
-\large Background, Motivation, Design Outline, and Related Work}
+\title{Serving Image and Video Diffusion Transformers\\on Bandwidth-Constrained PCIe Nodes\\[0.3em]
+\large Background, Motivation, Design, and Evaluation Plan (working draft)}
 \author{}
 \date{}
 
@@ -197,60 +200,22 @@ overhead.\evidence{results/research-directions/run01/REPORT.md}
 \subsection{Cache State}
 \label{sec:cache-state}
 
-Feature caching changes the computational structure seen by a scheduler.
-An iteration that recomputes features can be substantially more expensive
-than one that reuses them. Earlier profiling of a 17-frame Wan
-configuration observed approximately 2.965 seconds for computation steps
-and 0.790 seconds for reuse steps on A100, a ratio of about 3.75. These
-measurements used a different attention configuration from the later
-experiments, so their absolute times are not directly comparable. They
-nevertheless demonstrate that a single average step cost can conceal
-substantial variation within one generation
-trajectory.\evidence{results/motivation/m1-summary.json}
-
-Caching also provides measurable local acceleration under quality
-constraints. For 81-frame generation, the selected CFG-coordinated cache
-configuration reduces service time by 19.64\% and 19.68\% across the two
-execution orders. Evaluation covers eight development inputs in both
-orders and four held-out inputs, yielding twenty paired quality
-comparisons. All pass the prescribed mean-LPIPS threshold of 0.05 against
-uncached references. The timing includes preparation after text
-preencoding, denoising, and decoding. It therefore measures local
-generation improvement, while the quality threshold represents empirical
-screening rather than exact output
-preservation.\evidence{results/research-directions/run01/direction2/qualify.json}
-
-Once a request is suspended, the system must decide what to do with its
-cached state. Retaining it avoids transfer and reconstruction; moving it
-to CPU memory releases GPU memory while preserving its contents; clearing
-it reduces residency but can change subsequent computation. In a
-single-input experiment paused after step 16, full CPU offloading
-transfers approximately 447.6\,MB, with mean device-to-host and
-host-to-device times of 197.24\,ms and 37.91\,ms. Both resumed outputs
-match the corresponding keep-state outputs exactly. Each action is
-measured twice, in opposite execution orders.
-
-Clearing the feature cache takes only about 0.04\,ms and releases
-approximately 406\,MB of allocated memory. However, the next step
-increases from 1,129.96\,ms to 4,192.90\,ms. The complete remaining suffix,
-including decoding, increases by only 27.14\,ms on average. This
-difference shows why the immediate action cost, next-step cost, and total
-remaining cost must be measured separately. The cleared-cache outputs
-pass the quality threshold but do not exactly match the keep-state
-outputs. With only two observations, the near-equal suffix times cannot
-establish that reconstruction is generally
-free.\evidence{results/research-directions/run01/direction2/state_cost.json}
-
-Memory savings become useful only when they address an actual resource
-constraint. In our pressure experiment, keeping the state of
-$K=1,2,4,8,$ and $16$ paused requests still permits an urgent request to
-execute. The experiment therefore exposes no admission benefit from
-state eviction within this range, and it does not complete every
-background suffix. The resulting research direction is conditional:
-cache-aware state management should respond to demonstrated memory or
-latency pressure and account for future reuse, rather than treating
-released bytes as evidence of serving
-improvement.\evidence{results/research-directions/run01/direction2/pressure.json}
+Feature caching changes the computational structure a scheduler sees and
+trades output for time. A CFG-coordinated cache cut the service time of an
+81-frame Wan2.1-1.3B request by 19.6\% within a mean-LPIPS screen of 0.05,
+with reuse steps about $3.75\times$ cheaper than recompute
+steps.\evidence{results/research-directions/run01/direction2/qualify.json}
+The cached state of a suspended request is then a scheduling object of its
+own: offloading 448\,MB to the CPU takes 197\,ms and restores in 38\,ms
+with identical output, whereas clearing it is free but raises the next
+step from 1.13 to 4.19\,s and changes the output; keeping the state of up
+to 16 paused requests never blocked an urgent one on a 40\,GB
+GPU.\evidence{results/research-directions/run01/direction2/state_cost.json}
+We leave caching out of the serving design that follows: block quanta
+require every block to be computed, cached features do not survive a
+change of parallel form, and every cache configuration would need its own
+quality qualification. The measurements remain as the cost of that choice
+and as future work on cache-aware suspension.
 
 \subsection{Serving Performance}
 \label{sec:local-versus-serving}
@@ -299,12 +264,17 @@ one Wan2.1-1.3B solver step takes 0.58\,s at $480\times832$ with 17 frames,
 4.16\,s with 81 frames, and 16.8\,s at $720\times1280$ with 81 frames; each
 step consists of 60 Transformer-block evaluations of almost equal cost
 (two CFG branches of 30 blocks).\evidence{results/a100-e2-cost-profile/run01}
-Scaling these measurements by the analytic FLOP ratio of
-Wan2.1-14B, at equal utilization, suggests roughly 25\,s per step at 480p and
-88\,s at 720p on one GPU. These 14B numbers are estimates until measured on
-the target machine. Sequence parallelism shortens a step, but the request
-then holds several GPUs, so a step-boundary scheduler must either wait for
-the whole group or keep GPUs idle for short requests.
+On the target machine, an $8\times$A100 PCIe 40\,GB node without NVLink
+(every GPU pair crosses a host bridge), Wan2.2-TI2V-5B takes 8.15\,s per
+step at its official $704\times1280$, 121-frame output and 1.93\,s at
+$512\times896$ with 81 frames, and its VAE decode takes 32.9\,s and
+10.3\,s respectively; a Sana-Sprint image takes
+0.32\,s.\evidence{docs/kairos\_preexperiments.md (K17)}
+A 50-step 720p request therefore occupies one GPU for about 440\,s, during
+which roughly 1,400 image requests could have been served.
+Sequence parallelism shortens a step, but the request then holds several
+GPUs, so a step-boundary scheduler must either wait for the whole group or
+keep GPUs idle for short requests.
 
 The effect survives the full serving path on one GPU. Through the native
 multi-GPU executor with real Wan and Sana workers, a 30-request Poisson mix
@@ -321,19 +291,86 @@ to 27 of 30.\evidence{results/a100-e9-late-short/run01}
 The lazy variant, which lets an image wait for a nearby step boundary,
 gained nothing over eager preemption on one GPU.
 
-A cost-model study of an $8\times$A100 PCIe server illustrates the trade-off.
-It uses the measured 1.3B and image costs, the extrapolated 14B classes,
-assumed PCIe all-to-all bandwidths, and deadlines of $\sigma\times1.5$ times
-standalone latency. When elastic step-level SP gives every idle GPU to a
-video, images wait for step boundaries: across the 16 load and mix cells,
-overall deadline attainment is 0.46--0.73. Reserving one GPU for images
-restores image attainment and yields 0.78--1.00. Block-level suspension with
-step-boundary regrouping reaches 0.82--1.00 without a reservation, and its
-video attainment is 0--23 percentage points higher than the reserved
-baseline's, never lower.\evidence{results/a100-e4-whatif}
-These are simulator outcomes, not system measurements; they identify the
-regime (tight video deadlines, high load, video-heavy mixes) in which the
-evaluation must demonstrate the effect.
+\paragraph{Sequence parallelism on a PCIe node.}
+Ulysses sequence parallelism (SP) exchanges the query, key, value, and
+output projections of every attention layer through all-to-all collectives.
+On the target node these collectives run at 2.3--4.8\,GB/s per rank, and
+the host bridge caps the whole node at about 19\,GB/s: when four or more
+GPUs communicate at once each gets 2.4\,GB/s whether or not other groups are
+active, and two concurrent pairs fall from 4.8 to
+3.9\,GB/s.\evidence{docs/kairos\_preexperiments.md (K3, K15)}
+Measured whole-step speedups are correspondingly small. For Wan2.2-5B at
+$704\times1280\times121$, SP2 gives $1.36\times$, SP4 $1.7$--$1.8\times$, and
+SP8 $3.1\times$; at $512\times896\times81$ the figures are $1.13$, $1.29$, and
+$2.09\times$; for Wan2.1-1.3B at 720p with 81 frames SP4 gives
+$2.09\times$, and 17-frame clips gain nothing at any
+degree.\evidence{docs/kairos\_preexperiments.md (K7, K14, K15)}
+Communication therefore accounts for 32--75\% of an SP step across the
+shapes a service would see. A three-term model,
+$t_{\mathrm{step}}(d)=t_{\mathrm{compute}}/d+V\,(d-1)/(d^2 B_d)+c\,\ell_d$,
+with $V$ the all-to-all volume of one step, $B_d$ and $\ell_d$ the per-rank
+rate and latency of a $d$-GPU group, and $c$ the number of collectives,
+fitted on the 1.3B model ($B_2=4.8$, $B_4=B_8=2.7$\,GB/s) predicts every
+5B shape and degree within 3.7\% (SP8 within 2.6\%) without
+refitting.\evidence{docs/kairos\_preexperiments.md (K14, K15)}
+The rates, however, belong to a placement rather than to the node: two jobs
+that received different GPU quartets of the same node measured SP4 steps
+of 3.38 and 4.02\,s for the same request, and effective pair rates between
+5.1 and 8.7\,GB/s, while \texttt{nvidia-smi} reports every pair as the same
+host-bridge class. In-model rates also exceed those of a raw collectives
+probe, because the attention backend issues the three input all-to-alls
+asynchronously. A serving system therefore has to calibrate its link table
+per placement by timing one step of each parallel form on the groups it
+owns, which takes about a minute, and price a form that spans several
+groups by its slowest
+group.\evidence{docs/kairos\_preexperiments.md (K16b, K16d)}
+
+\paragraph{Where the time can go instead.}
+The two CFG branches of a step are independent until their predictions are
+combined. Placing them on the two halves of a group (\emph{CFG parallel};
+xDiT uses the same split statically) replaces the all-to-all traffic of
+SP2 (about 10\,GB per rank per step for the 720p request) with one 10.5\,MB
+exchange of predictions, and the combination and solver update then run
+identically on both halves. On the target node this form is bit-exact with
+single-GPU execution and reaches $2.00\times$ on two GPUs and, with SP2
+inside each half, $2.56$--$2.70\times$ on four, against $1.33$--$1.55\times$
+and $1.71$--$2.44\times$ for plain SP on the same
+GPUs.\evidence{docs/kairos\_preexperiments.md (K16, K16b, K16c)}
+Within an SP group, the two branches can also be interleaved block by block
+on two CUDA streams so that one branch's all-to-all overlaps the other's
+compute. The interleaved execution hides 33--87\% of the communication of a
+step depending on degree and placement (SP4 reaches $2.4$--$3.0\times$) and
+deviates from single-GPU output by the same deterministic amount as the
+plain SP run of the same degree, whose GEMMs see a different token-shard
+size.\evidence{docs/kairos\_preexperiments.md (K16b, K16c)}
+Plain SP is not exact on GPUs: at 50 steps the 5B model's SP4 output at
+$512\times896\times81$ differs from the single-GPU output by a mean LPIPS of
+0.107 (SP2: 0.041), while at $704\times1280\times121$ both stay at
+0.0002.\evidence{docs/kairos\_preexperiments.md (K18)}
+CFG forms are therefore the only parallel forms that preserve the output,
+and on this hardware they are also the fastest per GPU.
+
+\paragraph{What elasticity buys.}
+With real Wan and Sana workers on four target GPUs, block-level suspension
+with step-boundary regrouping met 100 of 100 deadlines where static SP1 met
+94, static SP2 61, static SP4 32, and step-boundary elastic SP
+68.\evidence{docs/kairos\_preexperiments.md (K8)}
+At twice the capacity, 200 requests per arm, block quanta kept 153 of 154
+images on time against 68 under step quanta with the same planner, while
+video completions were equal (36 and 36); elastic SP completed one more
+video than SP1-only execution.\evidence{docs/kairos\_preexperiments.md (K11$'$)}
+The calibrated simulator reproduces these counts within about three videos
+and shows the same pattern over ten seeds: on this hardware elastic SP
+raises video attainment by at most 0.003 and shortens the 720p tail (p95
+2458 against 2688\,s), whereas block-level preemption is what protects
+images.\evidence{docs/kairos\_preexperiments.md (K9b, K10b)}
+Choosing among parallel forms by the cost model extends the tail benefit
+to the 5B workload: over ten seeds on eight simulated GPUs at the capacity
+load, form selection cuts the video p95 by 18\% relative to SP-only
+elasticity with every image on time, and under 1.5--2$\times$ overload all
+policies are throughput-bound within 0.86--0.90 video attainment, the
+static CFG-pair policy among them at the cost of 18\% of the
+images.\evidence{docs/kairos\_preexperiments.md (K19)}
 
 Suspension inside a step is cheap in state. With caching disabled, the
 step-boundary request state of the measured shapes occupies 16--86\,MB and
@@ -367,47 +404,148 @@ On 40\,GB GPUs, placement of suspended DiT state and LLM KV therefore
 becomes a real constraint once models share a device.
 
 The present evidence therefore supports a multi-GPU design for PCIe servers
-in which requests advance in block quanta, sequence-parallel groups change
-only at step boundaries, and short requests preempt a long request inside a
-step only when they cannot wait for its boundary.
+in which requests advance in block quanta, parallel forms are chosen per
+request from a placement-calibrated cost model and change only at step
+boundaries, communication is hidden or avoided rather than accelerated, and
+short requests preempt a long request inside a step only when they cannot
+wait for its boundary.
 
 \section{Design Outline}
 \label{sec:design}
 
-\emph{Outline; to be completed with target-machine evidence.}
-\begin{itemize}
-  \item \textbf{Aligned SP groups.} GPUs are numbered in PCIe topology order;
-  SP groups are aligned pairs, quads, and the node, matching switch and
-  socket boundaries.
-  \item \textbf{Quanta and boundaries.} Videos advance by a time-targeted
-  number of blocks; SP degree and placement change only at solver-step
-  boundaries; all ranks of a group stop at the same block.
-  \item \textbf{Feasible-first EDF with lazy preemption.} Requests that cannot
-  meet their deadlines yield to feasible ones; an image preempts a mid-step
-  group only if it cannot wait for that group's boundary.
-  \item \textbf{Preemptible tails.} VAE decode advances by latent-frame
-  chunks; prompt encoding is prefetched off the GPU path.
-  \item \textbf{Resumable state.} Block-boundary continuations are exportable;
-  step-boundary state is small enough to offload under memory pressure on
-  40\,GB GPUs, including co-located LLM sessions.
-\end{itemize}
+The system serves image and video requests on one PCIe node. A C++
+controller plans every quantum with a cost model; Python workers, one video
+and one image worker per GPU, execute quanta and keep request state. The
+same planner drives a discrete-event simulator, so a simulated policy and a
+real one differ only in what executes the quanta.
+
+\paragraph{Execution hierarchy and preemption points.}
+A video request is a solver trajectory of $S$ steps; each step evaluates
+$2L$ Transformer blocks (two CFG branches of $L$ blocks), then combines the
+two predictions and advances the solver; the request ends with a VAE
+decode. The worker exposes three kinds of stopping points. A
+\emph{step boundary} holds only the replicated solver state (16--92\,MB for
+the measured shapes). A \emph{block boundary} inside a step additionally
+holds the running packet of the branch in flight; it is reached by
+executing the step as a sequence of quanta of $b$ blocks, and the
+continuation can be exported to another process and resumed with
+bit-identical output. A \emph{decode chunk} boundary falls between latent
+frames of the causal VAE decode. Quanta are time-targeted: the planner
+converts a quantum length (300\,ms in our experiments) into a block count
+for the request's class and parallel form, so a preemption check happens
+about every 300\,ms of GPU work regardless of model or degree.
+
+\paragraph{Parallel forms and the cost model.}
+A video quantum runs on an aligned group of $g=c\cdot d$ GPUs in a
+\emph{form} $(c,d)$: the $c\in\{1,2\}$ CFG branches run on separate halves
+of the group, and sequence parallelism of degree $d$ runs inside each half.
+The forms used here are SP1, SP2, SP4, SP8, CFG2, CFG2$\times$SP2, and
+CFG2$\times$SP4. Under CFG parallelism each half computes one branch for
+the whole step on a replicated state, the halves exchange their predictions
+once, and both apply the same combination and solver update, so the state
+stays replicated and the output equals single-GPU execution. Under SP the
+two branches may be \emph{interleaved}: block $i$ of the conditional branch
+runs on the main CUDA stream while block $i$ of the unconditional branch
+runs on a second stream, so one branch's all-to-all overlaps the other's
+compute; both branches share the rotary and timestep embeddings and stop at
+the same block, so quanta and exports are unchanged. The planner prices a
+form by
+\[
+t_{\mathrm{step}}(c,d,n)=\frac{t_{\mathrm{compute}}}{c\,d}
++\frac{V}{c}\cdot\frac{d-1}{d^2 B_d(n)}\,(1-h_d\,[c{=}1])
++\frac{k}{c}\,\ell_d+[c{=}2]\Big(\frac{E}{B_2}+\ell_2\Big),
+\]
+where $V$ is the all-to-all volume and $k$ the number of collectives of a
+step, $E$ the size of one prediction, $B_d(n)$ the per-rank rate of a
+$d$-GPU group when $n$ SP groups share the host bridge, $\ell_d$ its
+latency, and $h_d$ the fraction of the shorter of the compute and
+communication terms that interleaving hides. A fixed per-quantum overhead
+(12\,ms measured end to end) is added for every quantum a request still
+needs. $B_d(n)$, $\ell_d$, and $h_d$ are calibrated per placement by timing
+one step of each form at start-up; everything else is a class constant
+derived from the model architecture and one single-GPU profile.
+
+\paragraph{Planner.}
+Between quanta no request owns a GPU, and the planner recomputes the
+assignment of waiting and suspended requests to free GPUs. Requests are
+ordered feasible-first by deadline: a request that would miss its deadline
+even on the widest group free at planning time yields to those that can
+still make it, except that requests with less than 2\,s of remaining work
+keep their EDF position, because demoting them only turns a small miss into
+a long tail. A video takes the smallest group whose cheapest form meets its
+deadline, or the widest free group when nobody else waits; with other
+requests waiting it may still widen to a form whose per-GPU efficiency is
+at least a threshold (0.95 here), which admits CFG pairs but not PCIe SP,
+because such a form returns its GPUs as soon as it took them. Within a
+group size the form with the smallest predicted step time wins. Groups and
+forms change only at step boundaries; a request inside a step resumes on its
+group, and the planner never advances another request onto a GPU that holds
+a mid-step continuation, a contract checked after every plan in both the
+executor and the simulator. An image takes an idle GPU if one exists, else
+the GPU of a video at a step boundary, and preempts a mid-step group only if
+waiting for that group's boundary would miss its deadline (lazy
+preemption). Finished videos decode on the first GPU of their group in
+latent-frame chunks of the same time target.
+
+\paragraph{State movement.}
+A video prepared on one GPU joins a wider group at a step boundary through
+a host-staged export of its replicated state (about 16\,MiB per move for
+the 1.3B model, 70--150\,ms), after which every rank of the new group
+holds the same state; a CFG pair needs no further transfer because both
+halves keep the full state. Prompt encoding runs on the CPU ahead of
+admission and is never on the GPU path.
+
+\paragraph{What is deliberately left out.}
+Feature caching is off throughout: block quanta require every block to be
+computed, cached features do not survive a change of group, and caching
+trades output for time, which the SLO evaluation would then have to qualify
+per configuration. Image batching is not used by any policy. Requests never
+span nodes.
 
 \section{Evaluation Plan}
 \label{sec:evaluation-plan}
 
-\emph{Planned for one $8\times$A100 PCIe 40\,GB server.}
-Models: Wan2.2-TI2V-5B as the main video model, for comparability with
-prior work; Wan2.1-1.3B as a short-step video model; Wan2.1-14B optionally,
-for long steps; and Sana-Sprint and FLUX.1-dev for images.
-Workloads follow prior work: Poisson and bursty arrivals, video:image mixes
-from 20/80 to 80/20, deadlines $\sigma\times1.5\times$ standalone latency
-with $\sigma\in[0.8,1.3]$, and foreground bursts over long requests.
-Baselines: static SP, step-level elastic SP with slack-based victims and
-optional image reservation (GenServe-like), round-based allocation
-(TetriServe-like), and EDF/SRTF. Metrics: per-class SLO attainment, goodput,
-and p50/p95/p99 latency over multiple seeds. Ablations: block vs.\ step
-quanta, lazy vs.\ eager preemption, chunked vs.\ atomic decode, and
-topology-aligned vs.\ unaligned groups.
+\emph{One $8\times$A100 PCIe 40\,GB node (no NVLink), the hardware of
+Section~\ref{sec:long-steps}.}
+Models: Wan2.2-TI2V-5B at $704\times1280\times121$ (``long'', 50 steps) and
+$512\times896\times81$ (``medium''), the model GENSERVE and GF-DiT also
+use; Wan2.1-1.3B as a short-step video model with a fully calibrated
+simulator; Sana-Sprint-0.6B for images. Workloads: Poisson arrivals at
+1$\times$ and 1.5$\times$ the single-GPU capacity of the node, video:image
+mixes of 20/80 and 50/50 by request count, deadlines of $1.5\sigma$ times
+the standalone single-GPU service time for videos with
+$\sigma\in\{0.8,1.0,1.3\}$ and $2.5\times$ for images, plus a burst trace
+of images arriving during long videos. Metrics: per-class deadline
+attainment, goodput, p50/p95/p99 latency, and GPU-hours; one seed per real
+cell, a second seed on the headline cells, ten seeds in the simulator.
+
+\paragraph{Baselines.}
+All arms share the planner, workers, quanta, and cost model, so they differ
+in one rule each: static SP1/SP2/SP4, static CFG2 (xDiT-like fixed
+hybrid), step-boundary elastic SP (the GENSERVE/GF-DiT regime, without
+batching), round-based regrouping every $r$ steps (TetriServe-like), and
+EDF/SRTF/FCFS ordering.
+
+\paragraph{Ladder.}
+Each contribution is isolated by adding one mechanism at a time to the
+step-boundary SP-only baseline, on the real node (one seed) and in the
+simulator (ten seeds): (1) block quanta with lazy preemption, (2) chunked
+decode, (3) interleaved branches, (4) form selection with CFG forms,
+(5) contention-aware rates. Component ablations on the full system turn off
+one item each: lazy versus eager preemption, free versus widest lateness
+test, the late-short rule, quantum length (150/300/600\,ms), an image
+reservation, and contention-blind planning.
+
+\paragraph{Simulator validation.}
+The simulator is calibrated once from the 1.3B cluster runs (contended
+pair rate and per-quantum overhead) and then checked out of sample: on the
+4-GPU 2$\times$-load trace it predicted the on-time counts of four
+policies in the measured order, each about three videos too high, with
+per-step times within 2.5\%; on the 5B node it is checked the same way on
+the 4-GPU replay before the sweeps.\evidence{docs/kairos\_preexperiments.md (K9b, K11$'$)}
+Sweeps beyond the real cells (loads up to 2$\times$, mixes to 80/20,
+$\sigma$ from 0.8 to 1.3, and link rates from 4.8 to 20\,GB/s to locate
+where elastic SP starts to pay) are reported with that bias.
 
 \section{Related Work}
 \label{sec:related-work}
@@ -435,15 +573,26 @@ diffusion workloads~\cite{ye2026genserve}.
 FlashDiff, also a preprint, schedules regional computation at patch
 granularity while restricting preemption to denoising-step
 boundaries~\cite{qiao2026flashdiff}.
-GF-DiT schedules per step, re-forms SP groups quickly, and argues that
-points inside a step are not valid stopping points~\cite{gfdit2026}.
-Our study focuses on Transformer-block suspension within a sampling step,
-its interaction with elastic SP on PCIe servers, and the request-local
-state required for resumption. xDiT provides the underlying parallel
-inference strategies and notes that Ulysses all-to-all is sensitive to PCIe
-topology~\cite{fang2024xdit}. In LLM serving, ConServe and FlowPrefill
-preempt at layer or operator granularity within an
-iteration~\cite{qiu2024conserve,flowprefill2026}.
+GF-DiT schedules per step with group-free collectives so that SP groups can
+be re-formed quickly, and argues that points inside a step are not valid
+stopping points~\cite{gfdit2026}; our block-boundary continuations are
+exported and resumed bit-exactly across processes and SP groups on two
+models, which contradicts that premise. GENSERVE evaluates on the same
+Wan2.2-5B model and the same hardware class (a PCIe node without NVLink)
+but preempts only at step boundaries, chooses SP degrees from a profile
+table, and does not model link contention or consider CFG parallelism.
+xDiT provides the parallel inference strategies, including the static CFG
+split and the hybrid of CFG and sequence parallelism, and already notes
+that Ulysses all-to-all is sensitive to PCIe topology~\cite{fang2024xdit};
+a CFG-and-pipeline hybrid for two PCIe GPUs reports $2.1$--$2.3\times$ on
+image models for a single request~\cite{cfgpipeline2026}. We take the CFG
+split into the serving loop as one form among several, choose it per
+request from a placement-calibrated cost model, and hide SP communication
+losslessly by interleaving the branches rather than by reusing stale
+activations as DistriFusion and PipeFusion do. PixelFlow partitions
+image requests at token granularity for throughput~\cite{pixelflow2026}.
+In LLM serving, ConServe and FlowPrefill preempt at layer or operator
+granularity within an iteration~\cite{qiu2024conserve,flowprefill2026}.
 
 \subsection{GPU Sharing and Caching}
 \label{sec:related-state}
