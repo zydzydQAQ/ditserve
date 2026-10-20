@@ -278,34 +278,46 @@ double remaining(const Json& row,const Live* live,const Json& costs) {
 
 // Untimed preparation before the trace clock starts. Model loading, kernel
 // selection and allocator growth must not be charged to the first arrivals;
-// every warmup state is released before the replay begins.
+// every warmup state is released before the replay begins. The items run
+// concurrently, one thread each (calls on one worker serialize on its mutex):
+// every worker loads its own model, and a cell of sixteen workers warmed one
+// after another spent minutes doing what takes seconds side by side.
 Json warmup(const Json& phase,Workers& workers,Budget& budget) {
-    Json results=Json::array();
     const auto items=phase.value("warmup",Json::array());
-    for(std::size_t index=0;index<items.size();++index){
+    // Spawned here, on the calling thread: Workers::get is not thread-safe, and
+    // an unknown worker must fail before anything starts.
+    std::vector<Worker*> targets;
+    for(const auto& item:items)targets.push_back(&workers.get(item.at("worker").get<std::string>()));
+    if(cancelled())throw std::runtime_error("run cancelled");
+    budget.check();
+    const double deadline=budget.deadline();
+    auto run=[&items,&targets,deadline](std::size_t index)->Json{
         const auto& item=items[index];
-        const auto name=item.at("worker").get<std::string>();
-        auto& worker=workers.get(name);
+        auto& worker=*targets[index];
         const double started=monotonic_seconds();
         Json spec=item.value("spec",Json::object());spec["request_id"]="warmup-"+std::to_string(index);
-        if(cancelled())throw std::runtime_error("run cancelled");
-        budget.check();
-        auto prepared=worker.call({{"op","prepare"},{"spec",spec}},budget.deadline());
+        auto prepared=worker.call({{"op","prepare"},{"spec",spec}},deadline);
         const auto state=prepared.at("state_id").get<std::string>();
-        double load=number_field(prepared,"load_ms");
+        const double load=number_field(prepared,"load_ms");
         auto progress=prepared.value("progress",Json::object());
         for(int calls=0;!progress.value("done",false);++calls){
             if(calls>=10000)throw std::runtime_error("warmup did not finish");
             if(cancelled())throw std::runtime_error("run cancelled");
-            budget.check();
             Json action={{"op","advance"},{"state_id",state},{"quantum",item.value("quantum",Json("step"))}};
             if(item.contains("blocks"))action["blocks"]=item.at("blocks");
-            progress=worker.call(action,budget.deadline()).at("progress");
+            progress=worker.call(action,deadline).at("progress");
         }
-        worker.call({{"op","finish"},{"state_id",state},{"output_mode","check"}},budget.deadline());
-        worker.call({{"op","release"},{"state_id",state}},budget.deadline());
-        results.push_back({{"worker",name},{"load_ms",load},{"elapsed_ms",(monotonic_seconds()-started)*1000}});
-    }
+        worker.call({{"op","finish"},{"state_id",state},{"output_mode","check"}},deadline);
+        worker.call({{"op","release"},{"state_id",state}},deadline);
+        return {{"worker",item.at("worker")},{"load_ms",load},{"elapsed_ms",(monotonic_seconds()-started)*1000}};
+    };
+    std::vector<std::future<Json>> pending;
+    for(std::size_t index=0;index<items.size();++index)pending.push_back(std::async(std::launch::async,run,index));
+    Json results=Json::array();
+    std::exception_ptr error;
+    for(auto& call:pending)try{results.push_back(call.get());}catch(...){if(!error)error=std::current_exception();}
+    if(error)std::rethrow_exception(error);
+    budget.check();
     return results;
 }
 
