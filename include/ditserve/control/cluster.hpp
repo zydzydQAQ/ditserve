@@ -73,6 +73,10 @@ public:
     // VAE decode splits into decode_chunks latent-frame chunks (1 = atomic).
     int decode_chunks(const std::string& klass) const;
     double chunk_ms(const std::string& klass) const;
+    // Extra time of the first quantum a video runs after another request used its GPU (cold caches,
+    // allocator growth); 0 unless the profile class carries resume_ms (measured by the executor's
+    // block_ms_resumed - block_ms_steady per request).
+    double resume_ms(const std::string& klass) const;
     double resize_ms() const { return resize_ms_; }
     double quantum_overhead_ms() const { return overhead_ms_; }
 private:

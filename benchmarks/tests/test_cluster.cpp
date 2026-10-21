@@ -472,6 +472,9 @@ int main() {
         Json chunked = profile(); chunked["classes"]["video"]["decode_chunks"] = 10;
         const ClusterCost cost(chunked);
         near(cost.chunk_ms("video"), 10);
+        near(cost.resume_ms("video"), 0);
+        Json resumed = profile(); resumed["classes"]["video"]["resume_ms"] = 250;
+        near(ClusterCost(resumed).resume_ms("video"), 250);
         const auto decoding = video("v", 1e9, {{"status", "suspended"}, {"prepared", true}, {"group", {0}}, {"steps_done", 4}, {"decode_done", 3}});
         near(cost.remaining_ms(decoding, 1), 70);
         auto run = [&](const Json& rows, const Json& options) {

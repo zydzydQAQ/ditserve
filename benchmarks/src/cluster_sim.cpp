@@ -49,6 +49,8 @@ Json simulate_cluster(const Json& config) {
     std::vector<double> encoder_free(encode_slots, 0);
     std::vector<bool> busy(gpus, false);
     std::vector<Running> running;
+    // The request that last ran on each GPU: a video resuming behind another request pays resume_ms.
+    std::vector<std::size_t> last_on_gpu(gpus, SIZE_MAX);
     // Per-request action time by quantum kind, like the executor's action_ms.
     std::vector<Json> action_ms(rows.size(), Json::object());
     std::vector<int> quanta(rows.size(), 0);
@@ -120,6 +122,8 @@ Json simulate_cluster(const Json& config) {
                     if (assignment.at("resize").get<bool>()) { duration += cost.resize_ms(); ++resizes; }
                     std::vector<int> group;
                     for (const auto& gpu : assignment.at("group")) group.push_back(gpu.get<int>());
+                    if (row.at("prepared").get<bool>())
+                        for (int gpu : group) if (last_on_gpu[gpu] != at) { duration += cost.resume_ms(klass); break; }
                     if (assignment.contains("pair")) {
                         // Two requests in lockstep: the pair's block time, plus the partner's prepare/resize.
                         auto& other = rows[index.at(assignment.at("pair").get<std::string>())];
@@ -154,7 +158,7 @@ Json simulate_cluster(const Json& config) {
                 pairs += assignment.contains("pair");
                 batches += assignment.contains("batch");
                 if (assignment.contains("batch")) batched += assignment.at("batch").size();
-                for (const auto& gpu : assignment.at("group")) busy[gpu.get<int>()] = true;
+                for (const auto& gpu : assignment.at("group")) { busy[gpu.get<int>()] = true; last_on_gpu[gpu.get<int>()] = at; }
                 busy_ms += duration * degree;
                 Running item{at, assignment, now + duration, blocks, assignment.contains("pair") ? members[1] : SIZE_MAX};
                 if (assignment.contains("batch")) item.batch.assign(members.begin() + 1, members.end());

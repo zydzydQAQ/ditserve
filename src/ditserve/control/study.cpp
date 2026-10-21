@@ -613,12 +613,15 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         if(!error.empty())throw std::runtime_error("SP process group initialization failed: "+error);
     }
     auto check=[&](){if(cancelled())throw std::runtime_error("run cancelled");budget.check(number_field(phase,"cleanup_reserve_seconds",0));};
-    struct Live{std::string status="pending";bool prepared=false;int steps=0,blocks=0,total=0,encode_gpu=-1,decode_done=0,epoch=0;std::vector<int> group;std::string form="sp1",ticket,pair;std::set<int> resident;};
+    // steady_*: block quanta that followed this request's own previous quantum on the same GPUs;
+    // resumed_*: block quanta that followed another request there (the first quantum and regroups excluded).
+    struct Live{std::string status="pending";bool prepared=false;int steps=0,blocks=0,total=0,encode_gpu=-1,decode_done=0,epoch=0;std::vector<int> group;std::string form="sp1",ticket,pair;std::set<int> resident;double steady_ms=0,resumed_ms=0;int steady_blocks=0,resumed_blocks=0,resumes=0;};
     int epochs=0,transfers=0;   // export transport: placement epochs and transfer file names
-    struct Task{std::size_t row;Json assignment;std::future<Json> result;double started;};
+    struct Task{std::size_t row;Json assignment;std::future<Json> result;double started;bool after_other=false;};
     std::vector<Live> live(rows.size());
     std::vector<Task> tasks;
     std::vector<bool> busy(gpus,false);
+    std::vector<std::string> last_on_gpu(gpus);   // request that last ran on each GPU
     std::vector<std::vector<std::string>> stale(gpus);   // states to release once the GPU is idle
     std::map<std::string,std::size_t> index;
     for(std::size_t i=0;i<rows.size();++i){
@@ -819,7 +822,8 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             };
         }
         state.status="running";state.group=group;state.form=form_label;
-        tasks.push_back({i,assignment,std::async(std::launch::async,work_unit),now()});
+        bool after_other=false;for(int gpu:group){if(last_on_gpu[gpu]!=id)after_other=true;last_on_gpu[gpu]=id;}
+        tasks.push_back({i,assignment,std::async(std::launch::async,work_unit),now(),after_other});
     };
     auto finish_task=[&](Task& task,const Json& out){
         auto& row=rows[task.row];auto& state=live[task.row];
@@ -866,7 +870,13 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             else astate.blocks=progress.contains("block")?progress.value("block",0):astate.blocks+executed;
             astate.status="suspended";
         };
+        const bool first=!state.prepared;
+        const int executed_main=quantum=="step"?cost.blocks_per_step(row.at("class").get<std::string>())-state.blocks:quantum.get<int>();
         settle(row,state,"progress");
+        if(!first&&executed_main>0&&!out.contains("transfer")&&task.assignment.value("pair",std::string()).empty()){
+            if(task.after_other){state.resumed_ms+=model;state.resumed_blocks+=executed_main;++state.resumes;}
+            else{state.steady_ms+=model;state.steady_blocks+=executed_main;}
+        }
         const std::string pair=task.assignment.value("pair",std::string());
         if(!pair.empty()){
             const std::size_t j=index.at(pair);auto& prow=rows[j];auto& pstate=live[j];
@@ -947,7 +957,13 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         for(auto& row:rows){if(!row.contains("status")||row["status"]=="pending")row["status"]="interrupted";if(!row.contains("finish_ms"))row["finish_ms"]=now();row["observation_ms"]=now();}
         record["requests"].insert(record["requests"].end(),rows.begin(),rows.end());throw;
     }
-    for(auto& row:rows)row.erase("preempting");
+    for(std::size_t i=0;i<rows.size();++i){
+        auto& row=rows[i];row.erase("preempting");const auto& st=live[i];
+        if(st.steady_blocks<=0)continue;
+        const double steady=st.steady_ms/st.steady_blocks;
+        row["block_ms_steady"]=steady;row["resumes"]=st.resumes;
+        if(st.resumed_blocks>0){row["block_ms_resumed"]=st.resumed_ms/st.resumed_blocks;row["resume_extra_ms"]=st.resumed_ms-st.resumed_blocks*steady;}
+    }
     return {{"requests",rows},{"metrics",request_summary(rows)},{"elapsed_ms",now()},{"warmup",warmed},
             {"by_kind",{{"video",kind_summary(rows,"video")},{"image",kind_summary(rows,"image")}}},
             {"policy",policy},{"gpus",gpus},{"sp_transport",transport},{"real_backends_pinned_sp1",!fixtures&&transport=="pinned"}};

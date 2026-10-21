@@ -416,6 +416,8 @@ class NativeStudyTest(unittest.TestCase):
         self.assertTrue(all(max(rows[v]["degrees"]) >= 2 for v in ("v0", "v1")))
         self.assertEqual(cell["by_kind"]["image"]["completed"], 4)
         self.assertFalse(cell["real_backends_pinned_sp1"])
+        # Block quanta after the request's own previous quantum are "steady"; those behind another request count as resumes.
+        self.assertTrue(any("block_ms_steady" in rows[v] and rows[v]["resumes"] >= 0 for v in ("v0", "v1")))
 
     def test_mock_worker_holds_one_grouped_request_inside_a_solver_step(self):
         from ditserve.models.mock import MockBackend

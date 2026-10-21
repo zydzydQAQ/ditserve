@@ -111,7 +111,7 @@ ClusterCost::ClusterCost(const Json& profile) : profile_(profile) {
         if (!power_of_two(int_field(row, "min_degree", 1))) throw std::invalid_argument("min_degree must be a power of two");
         number_field(row, "step_compute_ms", 0, true); number_field(row, "finish_ms");
         number_field(row, "prepare_ms"); number_field(row, "comm_mb_per_step"); number_field(row, "collectives_per_step");
-        number_field(row, "cfg_exchange_mb");
+        number_field(row, "cfg_exchange_mb"); number_field(row, "resume_ms");
     }
     efficiency_ = number_field(profile, "sp_efficiency", 1, true);
     if (efficiency_ > 1) throw std::invalid_argument("sp_efficiency must be in (0, 1]");
@@ -252,6 +252,8 @@ int ClusterCost::blocks_per_step(const std::string& name) const { return int_fie
 int ClusterCost::decode_chunks(const std::string& name) const { return int_field(klass(name), "decode_chunks", 1); }
 
 double ClusterCost::chunk_ms(const std::string& name) const { return number_field(klass(name), "finish_ms") / decode_chunks(name); }
+
+double ClusterCost::resume_ms(const std::string& name) const { return number_field(klass(name), "resume_ms"); }
 
 double ClusterCost::block_ms(const std::string& name, const Form& form, int sp_groups, const std::vector<int>* group) const {
     return step_ms(name, form, sp_groups, group) / blocks_per_step(name);
