@@ -138,6 +138,7 @@ class DualStateTests(unittest.TestCase):
         from ditserve.models.wan.backend import WanBackend
         runtime, state = fixture(cached=False, boundary=32)
         runtime.attention, runtime.model_path = "math", Path("/fixed-local-snapshot")
+        runtime.vae_dtype = "float32"
         pixels = np.zeros((1, 5, 32, 32, 3), dtype=np.float32)
         path = dict(step_index=31, cache_contexts=[], reused_forwards=0, path_scope="DBCache", path="compute")
         state.events.append(dict(path, kind="step", ms=3.))
