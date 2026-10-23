@@ -22,7 +22,7 @@ INVENTORIES = {
     "a100-8x40g": [gpu(i, "GPU-%08d-0000-0000-0000-0000000a100f" % i, "NVIDIA A100-PCIE-40GB", 40960) for i in range(8)],
 }
 # Expected refusals: a serving study needs a measured profile, SP needs two GPUs.
-REFUSED = {("serving", "rtx4090-2x24g"): "cost_profile", ("serving", "a100-8x40g"): "cost_profile",
+REFUSED = {("serving", "a100-8x40g"): "cost_profile",
            ("sp_equivalence", "a100-1x40g"): "no phase"}
 
 
@@ -66,6 +66,25 @@ class ShippedConfigTests(unittest.TestCase):
         self.assertEqual(acceptance["phases"][0]["workers"], ["model.0", "model.1"])
         self.assertEqual(len(acceptance["phases"][2]["gpus"]), 2)
         self.assertEqual(acceptance["workers"]["wan.1"]["environment"]["NCCL_P2P_DISABLE"], "1")
+
+    def test_numeric_studies_declare_temporary_videos_without_changing_comparisons(self):
+        for study in ("acceptance", "block_exact", "sp_equivalence"):
+            config = self.bind(study, "rtx4090-2x24g")
+            for phase in config["phases"]:
+                if phase["kind"] != "operations":
+                    continue
+                videos = {action["output_path"] for action in phase["actions"]
+                          if action.get("op") in ("finish", "reference") and
+                          str(action.get("output_path", "")).endswith(".npy")}
+                if not videos:
+                    continue
+                self.assertFalse(phase["save_videos"])
+                self.assertEqual(set(phase["video_outputs"]), videos)
+                evaluations = [action for action in phase["actions"] if action.get("op") == "evaluate"]
+                self.assertTrue(evaluations)
+                self.assertTrue(all("reference" in action and "output" in action for action in evaluations))
+                self.assertTrue(all(action["save_latents"] for action in phase["actions"]
+                                    if action.get("output_path") in videos))
 
 
 if __name__ == "__main__":

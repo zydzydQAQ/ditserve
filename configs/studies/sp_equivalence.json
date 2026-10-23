@@ -178,6 +178,11 @@
           "value": 0.05,
           "scope": "numeric"
         }
+      ],
+      "save_videos": false,
+      "video_outputs": [
+        "@cell/sp1.npy",
+        "sp2.npy"
       ]
     }
   ]

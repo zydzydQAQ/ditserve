@@ -269,7 +269,7 @@ Arguments parse(int argc, char** argv) {
     }
     std::set<std::string> allowed;
     bool path_required = false;
-    if (result.command == "run") allowed = {"config", "env", "run-id", "work-dir", "results-root", "ledger", "phase", "resume", "allow-gpu", "repair", "retry-of"};
+    if (result.command == "run") allowed = {"config", "env", "run-id", "work-dir", "results-root", "ledger", "phase", "resume", "allow-gpu", "repair", "retry-of", "keep-raw"};
     else if (result.command == "simulate") allowed = {"config", "env", "run-id", "work-dir", "results-root", "count", "seed", "keep-raw"};
     else if (result.command == "resolve") allowed = {"config", "env"};
     else if (result.command == "doctor") allowed = {"env", "allow-gpu"};
@@ -332,7 +332,7 @@ void help() {
         "  simulate [--config PATH] [--env NAME|PATH] [--count N] [--seed N] [--keep-raw]\n"
         "           [--run-id ID] [--work-dir PATH] [--results-root PATH]\n"
         "  run --config PATH [--env NAME|PATH] [--run-id ID] [--work-dir PATH] [--results-root PATH]\n"
-        "      [--ledger PATH] [--phase ID] [--resume] [--allow-gpu] [--repair --retry-of ID]\n"
+        "      [--ledger PATH] [--phase ID] [--resume] [--allow-gpu] [--keep-raw] [--repair --retry-of ID]\n"
         "  resolve --config PATH --env NAME|PATH   print the study bound to this machine\n"
         "  report WORK_DIR [--output PATH] [--keep-raw]\n"
         "  results inspect|verify PATH\n"

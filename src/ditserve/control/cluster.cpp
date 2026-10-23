@@ -158,7 +158,7 @@ Json resolve_generator(const Json& generator, const ClusterCost& cost, int gpus)
 }
 
 Json cluster_plan(const Json& state, const std::string& name, const ClusterCost& cost, const Json& options) {
-    check_keys(options, {"degrees", "quantum_ms", "pin_started", "reserve_image_gpus", "demote_late", "late_short_ms", "chunked_decode"});
+    check_keys(options, {"degrees", "quantum_ms", "pin_started", "reserve_image_gpus", "demote_late", "late_short_ms", "chunked_decode", "reserve_transition_union", "adaptive_quantum", "adaptive_hot_quantum_ms", "adaptive_hot_window_ms", "decode_frames"});
     const Policy policy = parse(name);
     const double now = number(state.at("now_ms"), "now_ms");
     const int gpus = static_cast<int>(integer(state.at("gpus"), "gpus"));
@@ -173,13 +173,47 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     // hardware. It also sizes chunked-decode quanta for every policy.
     const double quantum_ms = number_field(options, "quantum_ms", 0);
     if (policy.blocks && quantum_ms <= 0) throw std::invalid_argument("block_elastic requires options.quantum_ms > 0");
+    const bool adaptive = bool_field(options, "adaptive_quantum", false);
+    if (!adaptive && (options.contains("adaptive_hot_quantum_ms") || options.contains("adaptive_hot_window_ms")))
+        throw std::invalid_argument("adaptive parameters require adaptive_quantum=true");
+    const double hot_ms = adaptive ? number_field(options, "adaptive_hot_quantum_ms", 100, true) : quantum_ms;
+    const double hot_window = adaptive ? number_field(options, "adaptive_hot_window_ms", 1000, true) : 0;
+    if (adaptive && (!policy.blocks || hot_ms >= quantum_ms || quantum_ms > 10000 || hot_window > 60000))
+        throw std::invalid_argument("adaptive quantum requires block_elastic, 0 < hot < quantum_ms <= 10000 and window <= 60000 ms");
+    const int decode_frames = options.contains("decode_frames") ? int_field(options, "decode_frames", 1) : 0;
+    if (decode_frames > 64 || (decode_frames && !bool_field(options, "chunked_decode", true)))
+        throw std::invalid_argument("decode_frames must be in [1,64] with chunked_decode enabled");
+    // The executor advances this watermark only when an image is admitted.
+    // No future workload timestamp participates in the feedback decision.
+    Json last_arrival = state.value("last_image_arrival_ms", Json());
+    if (!last_arrival.is_null() && number(last_arrival, "last_image_arrival_ms") > now)
+        throw std::invalid_argument("image feedback cannot contain a future arrival");
+    int waiting_images = 0;
+    double oldest_wait = 0;
+    for (const auto& row : state.at("requests")) {
+        if (row.value("kind", "") != "image" ||
+            (row.value("status", "") != "waiting" && row.value("status", "") != "suspended")) continue;
+        const double arrival = number_field(row, "arrival_ms");
+        if (arrival > now) continue;
+        ++waiting_images;
+        oldest_wait = std::max(oldest_wait, now - arrival);
+        if (last_arrival.is_null() || arrival > last_arrival.get<double>()) last_arrival = arrival;
+    }
+    const bool recent = !last_arrival.is_null() && now - last_arrival.get<double>() < hot_window;
+    const bool hot = adaptive && (waiting_images > 0 || recent);
+    const double chosen_ms = hot ? hot_ms : quantum_ms;
+    const Json feedback = {{"adaptive", adaptive}, {"mode", hot ? "hot" : adaptive ? "cool" : "fixed"},
+        {"trigger", !adaptive ? "fixed" : waiting_images ? "waiting_image" : recent ? "recent_image_arrival" : "quiet"},
+        {"observed_at_ms", now}, {"waiting_images", waiting_images}, {"oldest_image_wait_ms", oldest_wait},
+        {"last_image_arrival_ms", last_arrival}, {"hot_window_ms", hot_window}};
     auto video_quantum = [&](const std::string& klass, int degree) -> Json {
         if (!policy.blocks) return "step";
-        const int blocks = static_cast<int>(std::floor(quantum_ms / cost.block_ms(klass, degree)));
+        const int blocks = static_cast<int>(std::floor(chosen_ms / cost.block_ms(klass, degree)));
         return std::max(1, std::min(blocks, cost.blocks_per_step(klass)));
     };
     // Real backends without state migration keep a started request on its group.
     const bool pin_started = bool_field(options, "pin_started", false);
+    const bool reserve_union = bool_field(options, "reserve_transition_union", false);
     // Static partition baseline: the last R GPUs serve images only.
     const int reserve = int_field(options, "reserve_image_gpus", 0, 0);
     if (reserve >= gpus) throw std::invalid_argument("reserve_image_gpus must leave a GPU for videos");
@@ -267,16 +301,18 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         const int steps = int_field(r, "steps_total", int_field(cost.klass(klass), "steps", 0), 1);
         if (prepared && int_field(r, "steps_done", 0, 0) >= steps) {
             if (current.empty()) throw std::invalid_argument("finished request has no resident group");
-            if (free[current.front()]) {
-                free[current.front()] = false;
+            if (free[current.front()] && (!reserve_union || all_free(current))) {
+                if (reserve_union) take(current);
+                else free[current.front()] = false;
                 Json assignment = {{"request_id", id}, {"group", Json::array({current.front()})}, {"degree", 1}, {"quantum", "finish"},
                                    {"resize", false}, {"reason", "decode"}};
                 // Chunked decode: latent frames per quantum follow quantum_ms.
                 const int chunks = cost.decode_chunks(klass), done = int_field(r, "decode_done", 0, 0);
-                if (chunks > 1 && quantum_ms > 0 && bool_field(options, "chunked_decode", true)) {
-                    const int frames = std::max(1, static_cast<int>(std::floor(quantum_ms / cost.chunk_ms(klass))));
+                if (decode_frames || (chunks > 1 && quantum_ms > 0 && bool_field(options, "chunked_decode", true))) {
+                    const int frames = decode_frames ? decode_frames : std::max(1, static_cast<int>(std::floor(quantum_ms / cost.chunk_ms(klass))));
                     assignment["decode_frames"] = std::min(frames, chunks - done);
                 }
+                if (reserve_union) assignment["reserved_group"] = current;
                 assignments.push_back(assignment);
             }
             continue;
@@ -318,6 +354,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             int best_busy = -1;
             for (const auto& group : groups) {
                 if (static_cast<int>(group.size()) != *d || !all_free(group)) continue;
+                if (reserve_union && prepared && group != current && !all_free(current)) continue;
                 if (std::any_of(group.begin(), group.end(), reserved)) continue;
                 if (affinity >= 0 && std::find(group.begin(), group.end(), affinity) == group.end()) continue;
                 if (std::any_of(group.begin(), group.end(), [&](int gpu) { return mid_owner[gpu] && mid_owner[gpu] != &r; })) continue;
@@ -329,10 +366,24 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             }
         }
         if (chosen.empty()) continue;
-        take(chosen);
-        assignments.push_back({{"request_id", id}, {"group", chosen}, {"degree", chosen.size()},
+        std::vector<int> held = chosen;
+        if (reserve_union && prepared) {
+            for (int gpu : current) if (std::find(held.begin(), held.end(), gpu) == held.end()) held.push_back(gpu);
+            std::sort(held.begin(), held.end());
+        }
+        take(held);
+        Json assignment = {{"request_id", id}, {"group", chosen}, {"degree", chosen.size()},
                                {"quantum", video_quantum(klass, static_cast<int>(chosen.size()))},
-                               {"resize", prepared && chosen != current}, {"reason", prepared ? "regroup" : "admit"}});
+                               {"resize", prepared && chosen != current}, {"reason", prepared ? "regroup" : "admit"}};
+        if (reserve_union) assignment["reserved_group"] = held;
+        assignments.push_back(assignment);
+    }
+    if (adaptive || decode_frames) for (auto& assignment : assignments) {
+        assignment["quantum_feedback"] = feedback;
+        if (assignment.at("quantum").is_number_integer()) {
+            assignment["chosen_quantum_ms"] = chosen_ms;
+            assignment["block_count"] = assignment.at("quantum");
+        }
     }
     return {{"assignments", assignments}, {"policy", name}};
 }

@@ -1,0 +1,19 @@
+version = 3
+root = "/mnt/ssd2/zyd/docker-data/containerd"
+state = "/run/ditserve-containerd"
+temp = "/mnt/ssd2/zyd/docker-data/containerd/tmp"
+imports = []
+disabled_plugins = [
+  "io.containerd.grpc.v1.cri",
+  "io.containerd.cri.v1.images",
+  "io.containerd.cri.v1.runtime",
+  "io.containerd.nri.v1.nri"
+]
+
+[grpc]
+  address = "/run/ditserve-containerd/containerd.sock"
+  uid = 0
+  gid = 0
+
+[plugins."io.containerd.internal.v1.opt"]
+  path = "/mnt/ssd2/zyd/docker-data/containerd/opt"

@@ -1,0 +1,26 @@
+[Unit]
+Description=Dedicated containerd for DiTServe on the data disk
+After=local-fs.target
+RequiresMountsFor=/mnt/ssd2/zyd/docker-data
+ConditionPathIsMountPoint=/mnt/ssd2
+
+[Service]
+Type=notify
+User=root
+Group=root
+RuntimeDirectory=ditserve-containerd
+RuntimeDirectoryMode=0700
+RuntimeDirectoryPreserve=restart
+Environment=TMPDIR=/mnt/ssd2/zyd/docker-data/containerd/tmp
+ExecStart=/usr/bin/containerd --config /etc/ditserve-docker/containerd.toml
+Restart=on-failure
+RestartSec=3
+TimeoutStartSec=120
+TimeoutStopSec=120
+Delegate=yes
+KillMode=process
+TasksMax=infinity
+LimitNOFILE=infinity
+LimitNPROC=infinity
+LimitMEMLOCK=infinity
+UMask=0027

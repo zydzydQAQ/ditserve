@@ -27,7 +27,8 @@ from ..runtime import ROOT
 
 SCHEMA = "ditserve.results.v1"
 JOURNAL = ".finalization.json"
-MAX_JSON_BYTES = 64 * 1024 * 1024
+# Cumulative study metadata can exceed 64 MiB; keep both reads bounded at 128 MiB.
+MAX_JSON_BYTES = 128 * 1024 * 1024
 MAX_SHEET_ROWS = 1048576
 CELL_LIMIT = 32767
 CHUNK_SIZE = 16000
@@ -60,15 +61,19 @@ def _read(path, *, collect=False):
     path = _path(path)
     with os.fdopen(os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)), "rb") as stream:
         before = os.fstat(stream.fileno())
-        if not stat.S_ISREG(before.st_mode) or (collect and before.st_size > MAX_JSON_BYTES):
-            raise ValueError("not a bounded ordinary metadata file: " + str(path))
+        if not stat.S_ISREG(before.st_mode):
+            raise ValueError("not an ordinary metadata file: " + str(path))
+        if collect and before.st_size > MAX_JSON_BYTES:
+            raise ValueError("metadata file size %d exceeds limit %d bytes: %s" %
+                             (before.st_size, MAX_JSON_BYTES, path))
         digest, chunks, size = hashlib.sha256(), [], 0
         for block in iter(lambda: stream.read(1024 * 1024), b""):
             size += len(block)
             digest.update(block)
             if collect:
                 if size > MAX_JSON_BYTES:
-                    raise ValueError("metadata exceeds size limit")
+                    raise ValueError("metadata read size %d exceeds limit %d bytes: %s" %
+                                     (size, MAX_JSON_BYTES, path))
                 chunks.append(block)
         after = os.fstat(stream.fileno())
     if (before.st_ino, before.st_size, before.st_mtime_ns, before.st_ctime_ns) != (
@@ -257,19 +262,26 @@ def _read_book(path):
     try:
         if "manifest" not in book:
             raise ValueError("not a new results workbook")
-        manifest = dict(book["manifest"].values)
+        def checked_rows(sheet):
+            # read_only worksheets stream their XML again on every iteration.
+            # Inspect cell types while restoring values so evidence is still
+            # rejected on formulas without parsing each sheet twice.
+            for row in sheet.iter_rows():
+                if any(cell.data_type == "f" for cell in row):
+                    raise ValueError("formulas are forbidden in archived evidence")
+                yield tuple(cell.value for cell in row)
+
+        manifest = dict(checked_rows(book["manifest"]))
         if manifest.get("schema") != SCHEMA:
             raise ValueError("unsupported workbook schema")
         rows = []
         for sheet in book:
-            for row in sheet:
-                if any(cell.data_type == "f" for cell in row):
-                    raise ValueError("formulas are forbidden in archived evidence")
             if sheet.title == "manifest":
                 continue
-            if tuple(next(sheet.values)) != HEADERS:
+            values = checked_rows(sheet)
+            if next(values, None) != HEADERS:
                 raise ValueError("typed sheet header changed")
-            for row in sheet.iter_rows(min_row=2, values_only=True):
+            for row in values:
                 pointer, kind, part, scalar = row
                 rows.append((json.loads(pointer), kind, int(part), scalar))
         value = _restore(rows)

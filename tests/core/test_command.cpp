@@ -29,6 +29,8 @@ int main() {
         require(first.at("ledger") == (root / ".state/fixture/budget.json").string(), "ledger default");
         require(first.at("prune") == true, "archive cleanup default");
         require(!fs::exists(root / ".state"), "normalization created a ledger");
+        auto retained = run; retained["keep_raw"] = true;
+        require(normalize_request("run", retained).at("prune") == false, "run keep_raw ignored");
 
         run["resume"] = true;
         run["work_dir"] = (root / "existing-run").string() + "/";

@@ -150,6 +150,11 @@
           "value": true,
           "scope": "numeric"
         }
+      ],
+      "save_videos": false,
+      "video_outputs": [
+        "reference.npy",
+        "candidate.npy"
       ]
     },
     {
@@ -318,6 +323,11 @@
           "value": true,
           "scope": "numeric"
         }
+      ],
+      "save_videos": false,
+      "video_outputs": [
+        "ref.npy",
+        "cand.npy"
       ]
     },
     {

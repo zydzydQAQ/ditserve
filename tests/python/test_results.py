@@ -75,6 +75,42 @@ class ResultsTests(unittest.TestCase):
             book.close()
         self.assertEqual(results.verify(self.output)["status"], "verified")
 
+    def test_cumulative_metadata_above_64_mib_is_read_losslessly(self):
+        # Exercise the real byte boundary without exporting a large workbook.
+        path = self.work / "large.json"
+        chunk = b"x" * (1024 * 1024)
+        with path.open("wb") as stream:
+            stream.write(b'{"payload":"')
+            for unused in range(64):
+                stream.write(chunk)
+            stream.write(b'"}')
+        self.assertGreater(path.stat().st_size, 64 * 1024 * 1024)
+        self.assertEqual(results.MAX_JSON_BYTES, 128 * 1024 * 1024)
+        document, bound = results._document(path)
+        self.assertEqual(bound["bytes"], path.stat().st_size)
+        self.assertEqual(len(document["payload"]), 64 * 1024 * 1024)
+        self.assertEqual(document["payload"].count("x"), len(document["payload"]))
+
+    def test_metadata_above_128_mib_defers_without_touching_previous_archive(self):
+        # Sparse oversized input is rejected by fstat before JSON parsing.
+        path = self.work / "run.json"
+        with path.open("wb") as stream:
+            stream.truncate(128 * 1024 * 1024 + 1)
+        self.output.mkdir()
+        previous = {"results.xlsx": b"immutable old workbook", "REPORT.md": b"old report"}
+        for name, value in previous.items():
+            (self.output / name).write_bytes(value)
+        journal = self.work / results.JOURNAL
+        journal.write_bytes(b"immutable previous journal")
+        with patch.object(results.json, "loads") as decode, patch.object(results, "_read_book") as load:
+            outcome = results.finalize(self.work, self.output, prune=False)
+        self.assertEqual(outcome["status"], "deferred")
+        self.assertIn("134217729 exceeds limit 134217728", outcome["reason"])
+        decode.assert_not_called()
+        load.assert_not_called()
+        self.assertEqual({name: (self.output / name).read_bytes() for name in previous}, previous)
+        self.assertEqual(journal.read_bytes(), b"immutable previous journal")
+
     def test_verified_cleanup_and_idempotent_finalization(self):
         raw = self.artifact()
         value = self.final()

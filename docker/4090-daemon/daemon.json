@@ -1,0 +1,33 @@
+{
+  "hosts": ["unix:///run/ditserve-docker/docker.sock"],
+  "group": "ditserve-docker",
+  "data-root": "/mnt/ssd2/zyd/docker-data",
+  "exec-root": "/run/ditserve-docker/exec",
+  "pidfile": "/run/ditserve-docker/dockerd.pid",
+  "storage-driver": "overlay2",
+  "features": {
+    "containerd-snapshotter": false
+  },
+  "containerd": "/run/ditserve-containerd/containerd.sock",
+  "containerd-namespace": "ditserve",
+  "containerd-plugins-namespace": "plugins.ditserve",
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "cgroup-parent": "ditserve-docker.slice",
+  "bridge": "none",
+  "iptables": false,
+  "ip6tables": false,
+  "ip-forward": false,
+  "ip-masq": false,
+  "userland-proxy": false,
+  "runtimes": {
+    "nvidia": {
+      "path": "/usr/bin/nvidia-container-runtime",
+      "runtimeArgs": []
+    }
+  },
+  "log-driver": "local",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "3"
+  }
+}

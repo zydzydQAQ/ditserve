@@ -46,6 +46,7 @@ Json simulate_cluster(const Json& config) {
     std::vector<bool> busy(gpus, false);
     std::vector<Running> running;
     double now = 0, busy_ms = 0;
+    Json last_image_arrival = nullptr;
     std::size_t completed = 0, preemptions = 0, resizes = 0, plans = 0;
     std::vector<std::size_t> arrival_order(rows.size());
     for (std::size_t i = 0; i < rows.size(); ++i) arrival_order[i] = i;
@@ -64,7 +65,7 @@ Json simulate_cluster(const Json& config) {
                 const double start = std::max(number_field(row, "arrival_ms"), *slot);
                 *slot = start + number_field(klass, "encode_ms");
                 row["ready_ms"] = *slot; row["status"] = "encoding";
-            } else { row["status"] = "waiting"; row["ready"] = true; }
+            } else { row["status"] = "waiting"; row["ready"] = true; last_image_arrival = row.at("arrival_ms"); }
         }
         for (auto& row : rows)
             if (row.at("status") == "encoding" && number_field(row, "ready_ms") <= now) { row["status"] = "waiting"; row["ready"] = true; }
@@ -75,7 +76,8 @@ Json simulate_cluster(const Json& config) {
         for (const auto& row : rows) if (row.at("status") == "waiting" || row.at("status") == "suspended") requests.push_back(row);
         if (!requests.empty() && std::find(busy.begin(), busy.end(), false) != busy.end()) {
             ++plans;
-            const auto plan = cluster_plan({{"now_ms", now}, {"gpus", gpus}, {"busy", busy_flags}, {"requests", requests}}, policy, cost, options);
+            const auto plan = cluster_plan({{"now_ms", now}, {"gpus", gpus}, {"busy", busy_flags}, {"requests", requests},
+                {"last_image_arrival_ms", last_image_arrival}}, policy, cost, options);
             for (const auto& assignment : plan.at("assignments")) {
                 auto& row = rows[index.at(assignment.at("request_id").get<std::string>())];
                 const auto klass = row.at("class").get<std::string>();
@@ -102,6 +104,12 @@ Json simulate_cluster(const Json& config) {
                 row["status"] = "running";
                 busy_ms += duration * degree;
                 running.push_back({index.at(row.at("request_id").get<std::string>()), assignment, now + duration, blocks});
+                if (config.value("record_dispatch_timeline", false)) {
+                    Json event = assignment;
+                    event["start_ms"] = now; event["finish_ms"] = now + duration;
+                    if (quantum.is_number_integer()) event["executed_blocks"] = blocks;
+                    row["dispatch_timeline"].push_back(event);
+                }
             }
         }
 

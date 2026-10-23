@@ -160,6 +160,51 @@ class NativeCliTests(unittest.TestCase):
         self.assertEqual({path.name: hashlib.sha256(path.read_bytes()).hexdigest()
                           for path in destination.iterdir()}, before)
 
+    def test_run_keep_raw_completes_archive_with_open_artifact_dependencies(self):
+        study = self.study()
+        dependencies = [dict(consumer="later-quality-check", closed=False)]
+        study["phases"][0]["artifact_dependencies"] = dependencies
+        config = self.write("retain-study.json", study)
+        for keep_raw in (False, True):
+            name = "retained" if keep_raw else "pending"
+            arguments = ["run", "--config", str(config), "--run-id", name, "--json"]
+            if keep_raw:
+                arguments.append("--keep-raw")
+            value = self.structured(arguments, code=0 if keep_raw else 1)
+            self.assertEqual(value["status"], "completed")
+            self.assertEqual(value["archive"]["status"], "completed" if keep_raw else "deferred")
+            work = self.root / ".cache/results-work/cli-fixture" / name
+            journal = json.loads((work / ".finalization.json").read_text())
+            self.assertEqual(journal["prune"], not keep_raw)
+            self.assertEqual(journal["deleted"], [])
+            self.assertTrue(value["artifacts"])
+            for artifact in value["artifacts"]:
+                self.assertEqual(artifact["dependencies"], dependencies)
+                self.assertTrue((work / artifact["path"]).is_file())
+            self.assertIsNone(value["budget"]["active"])
+
+    def test_dispatch_timeline_records_complete_host_windows_only_when_enabled(self):
+        for enabled in (False, True):
+            study = self.study()
+            study["phases"][0]["record_dispatch_timeline"] = enabled
+            config = self.write("timeline-%s.json" % enabled, study)
+            result = self.structured(["run", "--json", "--keep-raw", "--config", str(config),
+                                      "--run-id", "timeline-%s" % enabled])
+            row = result["requests"][0]
+            self.assertEqual(result["status"], "completed")
+            if not enabled:
+                self.assertNotIn("dispatch_timeline", row)
+                continue
+            events = row["dispatch_timeline"]
+            self.assertEqual(len(events), row["quanta"])
+            self.assertEqual(sum(row["dispatch_reason_counts"].values()), len(events))
+            self.assertEqual([event["quantum"] for event in events], ["step", "finish"])
+            for event in events:
+                self.assertGreaterEqual(event["start_ms"], row["start_ms"])
+                self.assertGreaterEqual(event["finish_ms"], event["start_ms"])
+                self.assertLessEqual(event["finish_ms"], row["finish_ms"])
+                self.assertEqual(event["group"], [0])
+
     @unittest.skipUnless(importlib.util.find_spec("ditserve.results.legacy"), "legacy readers ship only in a repository checkout")
     def test_legacy_compact_alias_and_explicit_fixture_cleanup(self):
         for index, prefix in enumerate((["results", "compact"], ["compact-results"])):

@@ -5,6 +5,7 @@ adapters. No model download, CUDA import, or GPU probe is needed.
 """
 
 import copy
+import contextlib
 import importlib.util
 import json
 import os
@@ -162,6 +163,136 @@ class NativeStudyTest(unittest.TestCase):
             self.assertEqual([rank["worker_pid"] for rank in operation["ranks"]], pids)
         self.assertTrue(all(rank["progress"]["done"] and rank["progress"]["step"] == 2 for rank in operations[2]["ranks"]))
 
+    @contextlib.contextmanager
+    def numeric_video_fixture(self):
+        """Only the copied test package emits tiny arrays; real models stay untouched."""
+        path = self.package_root / "ditserve/models/mock.py"
+        original = path.read_text()
+        extension = '''
+
+class MockBackend(MockBackend):
+    def _finish(self, request):
+        from pathlib import Path
+        import numpy as np
+        from .base import artifact
+        result = super()._finish(dict(request, output_mode="digest"))
+        array = np.arange(24, dtype=np.float32).reshape(1, 2, 2, 2, 3)
+        result["output"] = self.persist(array + request.get("video_drift", 0), request)
+        if request.get("save_latents"):
+            destination = request.get("latent_path") or str(Path(self.output_path(request)).with_suffix(".latent.npy"))
+            result["latent"] = artifact(np.arange(4, dtype=np.float32), destination)
+        return result
+'''
+        path.write_text(original + extension)
+        try:
+            yield
+        finally:
+            path.write_text(original)
+
+    def numeric_video_phase(self, *, drift=0, failed=False, **changes):
+        actions = []
+        for state_id in ("reference", "candidate"):
+            actions.extend([dict(op="prepare", state_id=state_id, spec=dict(steps=1)),
+                            dict(op="advance", state_id=state_id, steps=1),
+                            dict(op="finish", state_id=state_id, output_path=state_id + ".npy",
+                                 save_latents=True, video_drift=drift if state_id == "candidate" else 0),
+                            dict(op="release", state_id=state_id)])
+        actions.extend([dict(op="evaluate", reference="reference.npy", output="candidate.npy", atol=0, rtol=0),
+                        dict(op="evaluate", reference="reference.latent.npy", output="candidate.latent.npy", atol=0, rtol=0)])
+        if failed:
+            actions[6]["inject"] = dict(fail_on="finish")
+        phase = dict(id="numeric", kind="operations", workers=["model"], actions=actions,
+                     video_outputs=["reference.npy", "candidate.npy"])
+        phase.update(changes)
+        return phase
+
+    def test_declared_numeric_videos_are_temporary_with_full_comparison_and_retained_latents(self):
+        with self.numeric_video_fixture():
+            for drift in (0, .2):
+                name = "numeric-exact" if drift == 0 else "numeric-drift"
+                value = self.run_study(self.config([self.numeric_video_phase(drift=drift)]), name=name, prune=False)
+                self.assert_completed(value)
+                cell = value["phases"][0]["cells"][0]
+                comparison = cell["operations"][8]["ranks"][0]
+                self.assertEqual(comparison["exact"], drift == 0)
+                self.assertEqual(comparison["passed"], drift == 0)
+                self.assertAlmostEqual(comparison["max_abs"], drift, places=5)
+                self.assertAlmostEqual(comparison["rmse"], drift, places=5)
+                self.assertTrue(comparison["finite"] and comparison["shape_equal"])
+                self.assertTrue(cell["operations"][9]["ranks"][0]["exact"])
+                self.assertEqual(cell["temporary_video_cleanup"]["status"], "removed")
+                self.assertEqual(len(cell["temporary_video_cleanup"]["outputs"]), 2)
+                work = self.root / name
+                self.assertFalse(list(work.rglob("temporary-videos")))
+                self.assertFalse(list(work.rglob("reference.npy")))
+                self.assertFalse(list(work.rglob("candidate.npy")))
+                self.assertEqual(len(list(work.rglob("*.latent.npy"))), 2)
+                self.assertEqual(len(value["artifacts"]), 2)
+                self.assertTrue(all(item["path"].endswith(".latent.npy") and (work / item["path"]).is_file()
+                                    for item in value["artifacts"]))
+                for index in (2, 6):
+                    output = cell["operations"][index]["ranks"][0]["output"]
+                    self.assertFalse(output["retained"])
+                    self.assertNotIn("path", output)
+                    self.assertEqual(len(output["array_sha256"]), 64)
+                self.assert_archive(value, name=name)
+
+    def test_numeric_video_failure_stops_writers_and_removes_temporary_files(self):
+        with self.numeric_video_fixture():
+            value = self.run_study(self.config([self.numeric_video_phase(failed=True)]), prune=False)
+        self.assertEqual(value["status"], "failed")
+        self.assertEqual(value["temporary_video_cleanup"][0]["status"], "removed")
+        self.assertEqual(len(value["temporary_video_cleanup"][0]["outputs"]), 1)
+        self.assertFalse(list((self.root / "run").rglob("temporary-videos")))
+        self.assertFalse(list((self.root / "run").rglob("reference.npy")))
+        self.assertTrue(all(item["path"].endswith(".latent.npy") for item in value["artifacts"]))
+        self.assertTrue(all(item["cleanup_verified"] for item in value["budget"]["sessions"]))
+
+    def test_numeric_video_opt_in_and_undeclared_outputs_keep_original_file_behavior(self):
+        with self.numeric_video_fixture():
+            for save in (True, None):
+                phase = self.numeric_video_phase(save_videos=True) if save else self.numeric_video_phase()
+                if save is None:
+                    del phase["video_outputs"]
+                name = "keep-video" if save else "ordinary-output"
+                value = self.run_study(self.config([phase]), name=name, prune=False)
+                self.assert_completed(value)
+                self.assertEqual(len(value["artifacts"]), 4)
+                self.assertEqual(len(list((self.root / name).rglob("reference.npy"))), 1)
+                self.assertEqual(len(list((self.root / name).rglob("candidate.npy"))), 1)
+                self.assertTrue(value["phases"][0]["cells"][0]["operations"][8]["ranks"][0]["exact"])
+
+    def test_numeric_video_paths_and_save_flag_are_validated_before_execution(self):
+        for paths, save in ((["../video.npy"], False), (["/tmp/video.npy"], False),
+                            (["video.npy", "video.npy"], False), (["video.txt"], False),
+                            (["@cell/../video.npy"], False),
+                            (["video.npy"], "false")):
+            config = self.config([self.numeric_video_phase(video_outputs=paths, save_videos=save)])
+            with self.subTest(paths=paths, save=save), self.assertRaises((ValueError, CoreError)):
+                self.run_study(config)
+
+    def test_shared_numeric_videos_keep_cross_rank_comparisons_and_latents(self):
+        phase = self.numeric_video_phase(workers=["model", "image"])
+        phase["video_outputs"] = ["@cell/" + path for path in phase["video_outputs"]]
+        for index, action in enumerate(phase["actions"]):
+            action["only_ranks"] = [0] if index < 4 else [1]
+            for field in ("output_path", "reference", "output"):
+                if field in action:
+                    action[field] = "@cell/" + action[field]
+        with self.numeric_video_fixture():
+            value = self.run_study(self.config([phase]), prune=False)
+        self.assert_completed(value)
+        cell = value["phases"][0]["cells"][0]
+        self.assertTrue(cell["operations"][8]["ranks"][0]["exact"])
+        self.assertTrue(cell["operations"][9]["ranks"][0]["exact"])
+        outputs = cell["temporary_video_cleanup"]["outputs"]
+        self.assertEqual(len(outputs), 2)
+        self.assertTrue(all("temporary-videos/shared/" in item["path"] for item in outputs))
+        self.assertFalse(list((self.root / "run").rglob("temporary-videos")))
+        self.assertEqual(len(value["artifacts"]), 2)
+        self.assertTrue(all("artifacts/shared/" in item["path"] and item["path"].endswith(".latent.npy")
+                            for item in value["artifacts"]))
+
     def test_failed_resume_appends_attempt_and_rejects_config_changes(self):
         config = self.config([self.phase()], options=dict(fail_on="advance"))
         first = self.run_study(config)
@@ -263,6 +394,98 @@ class NativeStudyTest(unittest.TestCase):
             self.assertEqual(row["operation_counts"]["prepare"], 1)
             self.assertEqual(len(row["outputs"]), 1)
 
+    def test_bounded_prefetch_depth_and_arrival_contract(self):
+        for depth in (0, 1, 2):
+            phase = self.phase(text_prefetch_depth=depth,
+                workload=[self.request("a"), self.request("b"), self.request("c", arrival_ms=15),
+                          self.request("image", kind="image")])
+            value = self.run_study(self.config([phase], options=dict(encode_delay_ms=5)), name="depth-%d" % depth)
+            self.assert_completed(value)
+            cell = value["phases"][0]["cells"][0]
+            self.assertEqual(cell["text_prefetch_depth"], depth)
+            self.assertEqual(cell["peak_encoder_tickets"], [depth])
+            for row in value["requests"]:
+                if row["kind"] == "image" or depth == 0:
+                    self.assertNotIn("encode_start", row["operation_counts"])
+                else:
+                    self.assertGreaterEqual(row["encode_submit_ms"], row["arrival_ms"])
+                    self.assertGreaterEqual(row["start_ms"], row["encode_ready_ms"])
+                    self.assertEqual(row["operation_counts"]["encode_start"], 1)
+
+    def test_bounded_prefetch_rejects_conflicting_or_invalid_depths(self):
+        for index, fields in enumerate((dict(text_prefetch_depth=-1), dict(text_prefetch_depth=3),
+                dict(text_prefetch_depth=True), dict(text_prefetch_depth=1.0),
+                dict(text_prefetch_depth=1, text_prefetch=1))):
+            with self.subTest(fields=fields), self.assertRaisesRegex(CoreError, "prefetch"):
+                self.run_study(self.config([self.phase(**fields)]), name="invalid-depth-%d" % index)
+
+    def test_prefetch_respects_reserved_image_gpu(self):
+        workers = {name: dict(backend="mock", config=dict(options=dict(encode_delay_ms=5)))
+                   for name in ("v0", "i0", "v1", "i1")}
+        for index, knob in enumerate((dict(text_prefetch_depth=1), dict(text_prefetch=1))):
+            phase = self.phase(**knob, options=dict(quantum_ms=20, reserve_image_gpus=1),
+                gpus=[dict(video="v0", image="i0"), dict(video="v1", image="i1")],
+                workload=[self.request("a"), self.request("b"), self.request("c"),
+                          self.request("image", kind="image")])
+            value = self.run_study(self.config([phase], workers=workers), name="reserved-%d" % index)
+            self.assert_completed(value)
+            cell = value["phases"][0]["cells"][0]
+            self.assertEqual(cell["peak_encoder_tickets"][1], 0)
+            for row in value["requests"]:
+                if row["kind"] == "video":
+                    self.assertEqual(row["operation_counts"]["encode_start"], 1)
+                    self.assertTrue(all(item == 1 for item in row["degrees"]))
+
+    def test_per_worker_overrides_apply_without_changing_worker_identity(self):
+        cpu = min(os.sched_getaffinity(0))
+        phase = self.phase(worker_overrides=dict(model=dict(cpu_affinity=[cpu], cpu_threads=1)))
+        value = self.run_study(self.config([phase]))
+        self.assert_completed(value)
+        binding = value["phases"][0]["cells"][0]["worker_runtime"]["model"]["cpu_binding"]
+        self.assertEqual(binding["effective_affinity"], [cpu])
+        self.assertEqual(binding["requested_threads"], 1)
+        for index, overrides in enumerate((dict(missing={}), dict(model=dict(device="cuda:0")), dict(model=None))):
+            with self.subTest(overrides=overrides), self.assertRaises(CoreError):
+                self.run_study(self.config([self.phase(worker_overrides=overrides)]), name="bad-override-%d" % index)
+
+    def test_real_sp_requires_explicit_valid_two_rank_contract(self):
+        cases = [True, dict(enabled=True, degrees=[1, 2], transport="host_file_v1", timeout_seconds=120),
+                 dict(enabled=True, degrees=[1, 2], transport="p2p", timeout_seconds=60),
+                 dict(enabled=True, degrees=[1, 2], transport="host_file_v1", timeout_seconds=60)]
+        for index, sp in enumerate(cases):
+            with self.subTest(sp=sp), self.assertRaisesRegex(CoreError, "real_sp"):
+                self.run_study(self.config([self.phase(real_sp=sp)]), name="bad-sp-%d" % index)
+
+    def test_controller_binding_preserves_worker_masks_and_restores_between_phases(self):
+        cpus = sorted(os.sched_getaffinity(0))
+        if len(cpus) < 2:
+            self.skipTest("two allowed CPUs needed to test independent controller/worker masks")
+        phases = []
+        for index in (0, 1):
+            phases.append(self.phase("bound-%d" % index, controller_cpu_affinity=[cpus[index]],
+                worker_overrides={name: dict(cpu_affinity=[cpus[1-index]], cpu_threads=1)
+                                  for name in ("model", "image")}))
+        phases.append(dict(id="operations-bound", kind="operations", workers=["model"],
+                           controller_cpu_affinity=[cpus[0]], actions=[dict(op="hello")]))
+        value = self.run_study(self.config(phases))
+        self.assert_completed(value)
+        for index in (0, 1):
+            cell = value["phases"][index]["cells"][0]
+            self.assertEqual(cell["controller_cpu_binding"]["effective_affinity"], [cpus[index]])
+            for runtime in cell["worker_runtime"].values():
+                self.assertEqual(runtime["cpu_binding"]["effective_affinity"], [cpus[1-index]])
+        self.assertEqual(value["phases"][2]["cells"][0]["controller_cpu_binding"]["effective_affinity"], [cpus[0]])
+
+    def test_invalid_controller_masks_reject_before_budget_session(self):
+        cpu = min(os.sched_getaffinity(0))
+        for index, mask in enumerate(([], [cpu, cpu], [True], [-1], [100000], "59")):
+            with self.subTest(mask=mask), self.assertRaisesRegex(CoreError, "controller_cpu_affinity"):
+                self.run_study(self.config([self.phase(controller_cpu_affinity=mask)]),
+                               name="invalid-controller-%d" % index)
+            ledger = self.root / ("invalid-controller-%d-budget.json" % index)
+            if ledger.exists():
+                self.assertEqual(json.loads(ledger.read_text())["sessions"], [])
+
     def test_warmup_runs_before_trace_clock_and_images_skip_prefetch(self):
         phase = self.phase(text_prefetch=1,
                            warmup=[dict(worker="model", spec=dict(steps=2)), dict(worker="image", spec=dict(steps=1))],
@@ -319,7 +542,12 @@ class NativeStudyTest(unittest.TestCase):
         return workers
 
     def test_cluster_executor_runs_gpus_concurrently_with_sp_groups(self):
-        value = self.run_study(self.config([self.cluster_phase("block_elastic")], workers=self.cluster_workers()), name="cluster")
+        phase = self.cluster_phase("block_elastic")
+        # Loose deadlines also permit SP1. Require SP2 without encoder affinity
+        # so this exercises two concurrent SP groups independent of startup timing.
+        phase["profile"]["classes"]["video"]["min_degree"] = 2
+        phase["text_prefetch"] = 0
+        value = self.run_study(self.config([phase], workers=self.cluster_workers()), name="cluster")
         self.assert_completed(value)
         cell = value["phases"][0]["cells"][0]
         self.assertEqual(cell["metrics"]["completed"], 6)

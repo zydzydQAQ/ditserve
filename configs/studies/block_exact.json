@@ -1064,6 +1064,18 @@
           "value": true,
           "scope": "numeric"
         }
+      ],
+      "save_videos": false,
+      "video_outputs": [
+        "@cell/ref-480x832x17.npy",
+        "@cell/cand-480x832x17-b13.npy",
+        "@cell/cand-480x832x17-b45.npy",
+        "@cell/ref-480x832x33.npy",
+        "@cell/cand-480x832x33-b13.npy",
+        "@cell/cand-480x832x33-b45.npy",
+        "@cell/ref-480x832x81.npy",
+        "@cell/cand-480x832x81-b13.npy",
+        "@cell/cand-480x832x81-b45.npy"
       ]
     },
     {
@@ -2088,6 +2100,18 @@
           "value": true,
           "scope": "numeric"
         }
+      ],
+      "save_videos": false,
+      "video_outputs": [
+        "@cell/ref-480x832x17.npy",
+        "@cell/cand-480x832x17-b13.npy",
+        "@cell/cand-480x832x17-b45.npy",
+        "@cell/ref-480x832x33.npy",
+        "@cell/cand-480x832x33-b13.npy",
+        "@cell/cand-480x832x33-b45.npy",
+        "@cell/ref-480x832x81.npy",
+        "@cell/cand-480x832x81-b13.npy",
+        "@cell/cand-480x832x81-b45.npy"
       ]
     }
   ]

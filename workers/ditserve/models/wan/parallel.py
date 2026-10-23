@@ -279,7 +279,7 @@ def _validate_values(state, torch):
     check(rng, torch.Generator(device="cpu").get_state().shape, torch.uint8, torch.device("cpu"))
 
 
-def pack_request(worker, state):
+def pack_request(worker, state, *, allow_completed=False):
     """Explicit pinned Wan/UniPC wire schema, including known timestep aliases.
 
     Tensor payloads are CPU storage copies. Views and shared storage outside
@@ -288,7 +288,8 @@ def pack_request(worker, state):
     """
     torch = importlib.import_module("torch")
     worker._check(state, "gpu")
-    if state.finished or not 0 <= state.step_index < state.spec["steps"]:
+    upper = state.spec["steps"] + int(bool(allow_completed))
+    if state.finished or not 0 <= state.step_index < upper:
         raise ParallelContractError("transfer supports only an unfinished request at a step boundary")
     if type(state.scheduler).__name__ != "UniPCMultistepScheduler" or state.scheduler.config.solver_order != 2:
         raise ParallelContractError("migration requires the pinned two-step UniPC scheduler")

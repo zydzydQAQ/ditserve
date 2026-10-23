@@ -48,11 +48,22 @@ Json resolve_generator(const Json& generator, const ClusterCost& cost, int gpus)
 //   status waiting|suspended, ready (encoded), prepared, steps_done,
 //   blocks_done (inside the current step), group ([] when unplaced), optional
 //   steps_total (overrides the class), affinity (GPU that must host prepare) and
-//   decode_done (latent-frame chunks already decoded).
+//   decode_done (latent-frame chunks already decoded). State may also carry
+//   last_image_arrival_ms, updated only on image admission (never a future time).
 // Policies: static_sp1|static_sp2|static_sp4|static_sp8, step_elastic, block_elastic.
 // Options: quantum_ms (required by block_elastic), degrees, pin_started,
-// reserve_image_gpus, demote_late, late_short_ms, chunked_decode.
+// reserve_image_gpus, demote_late, late_short_ms, chunked_decode,
+// reserve_transition_union (reserve the source and target during state handoff).
+// adaptive_quantum (block_elastic only, default false): use
+// adaptive_hot_quantum_ms (default 100, positive and < quantum_ms <= 10000)
+// while an arrived image waits or its last arrival is within
+// adaptive_hot_window_ms (default 1000, in (0,60000]); otherwise quantum_ms.
+// decode_frames (optional integer [1,64]) fixes latent frames independently of
+// DiT quantum; requires chunked_decode. Existing options retain their behavior.
+// Adaptive or explicit decode_frames assignments include quantum_feedback;
+// numeric DiT assignments also carry chosen_quantum_ms and block_count.
 // Returns {assignments:[{request_id, group, degree, quantum, resize, reason}]}
+// with reserved_group when union reservation is requested.
 // where quantum is "atomic" (image), "finish" (with decode_frames when the
 // decode is chunked), "step" or a block count.
 Json cluster_plan(const Json& state, const std::string& policy, const ClusterCost& cost, const Json& options = Json::object());

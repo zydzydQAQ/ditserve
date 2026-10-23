@@ -49,15 +49,20 @@ class WanBlockExecutor:
                 or model.gradient_checkpointing or getattr(model, "_is_parallelized", False)
                 or getattr(model, "peft_config", None) or getattr(model, "_hf_peft_config_loaded", False)):
             raise ValueError("block execution requires the unadapted pinned Wan1.3B model")
-        if self.worker.torch.distributed.is_initialized():
+        parallel = getattr(self, "parallel_backend", None)
+        if self.worker.torch.distributed.is_initialized() and parallel is None:
             raise ValueError("single-GPU block execution does not implement collective safe points")
+        allowed_hooks = {handle.id for handle in parallel._hooks} if parallel else set()
+        if parallel is not None and getattr(parallel, "_linear_repair", None) is not None:
+            allowed_hooks.update(handle.id for handle in parallel._linear_repair.hooks)
         if any(type(block) is not WanTransformerBlock for block in model.blocks):
             raise ValueError("unknown Wan block implementation")
         for module in model.modules():
             if (module.training or getattr(module, "_hf_hook", None) is not None
                     or getattr(module, "_orig_mod", None) is not None
                     or getattr(module, "_compiled_call_impl", None) is not None
-                    or getattr(module, "_forward_hooks", {}) or getattr(module, "_forward_pre_hooks", {})):
+                    or set(getattr(module, "_forward_hooks", {})) - allowed_hooks
+                    or set(getattr(module, "_forward_pre_hooks", {})) - allowed_hooks):
                 raise ValueError("training, module hooks, offload and compilation are unsupported")
 
     def attach(self, base):
@@ -210,6 +215,32 @@ class WanBlockExecutor:
             state.packet = state.conditional = None
             state.closed = True
             del self._states[id(state.base)]
+
+
+class WanParallelBlockExecutor(WanBlockExecutor):
+    """Known Ulysses hooks and request-scoped, synchronous collective safe points."""
+
+    def __init__(self, worker, parallel_backend):
+        from .sp import PinnedWanUlyssesBackend
+        if type(parallel_backend) is not PinnedWanUlyssesBackend or parallel_backend.worker is not worker:
+            raise ValueError("parallel blocks require this worker's pinned Ulysses attachment")
+        self.parallel_backend = parallel_backend
+        super().__init__(worker)
+
+    def advance(self, state, blocks=1, *, layout, quantum_seq, observe=False, check_budget=lambda: None):
+        parallel = self.parallel_backend
+        with self.worker._lock:
+            try:
+                self._check(state)
+                parallel.begin_quantum(state, layout, quantum_seq, blocks)
+                result = super().advance(state, blocks, observe=observe, check_budget=check_budget)
+                result["linear_repair"] = parallel.end_quantum(state, quantum_seq)
+                return result
+            except BaseException:
+                parallel.abort_linear_repair()
+                state.failed = True
+                layout.fail()
+                raise
 
 
 def _digest(torch, value):

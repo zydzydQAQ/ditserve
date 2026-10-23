@@ -1,0 +1,130 @@
+{
+  "provenance": "measured",
+  "classes": {
+    "wan1.3b-480x832x17": {
+      "kind": "video",
+      "steps": 5,
+      "blocks_per_step": 60,
+      "prepare_ms": 33.14433293417096,
+      "encode_ms": 11465.24678170681,
+      "step_compute_ms": 584.2938148416579,
+      "comm_mb_per_step": 5750.784,
+      "collectives_per_step": 240,
+      "finish_ms": 2039.0279488638043,
+      "decode_chunks": 5,
+      "evidence": {
+        "step_samples": [
+          581.2568343244493,
+          600.5697869695723,
+          584.2938148416579
+        ],
+        "block4_samples": [
+          40.89321242645383,
+          38.52164000272751,
+          38.530223071575165
+        ],
+        "block_cuda_ms_median": 9.60102367401123,
+        "block_extra_state_bytes_max": 29549568,
+        "memory": {
+          "peak_allocated_bytes": 11848388608,
+          "peak_reserved_bytes": 13067354112,
+          "device_total_bytes": 25386352640
+        },
+        "shape": [
+          480,
+          832,
+          17
+        ],
+        "tokens": 7800
+      }
+    },
+    "wan1.3b-480x832x33": {
+      "kind": "video",
+      "steps": 5,
+      "blocks_per_step": 60,
+      "prepare_ms": 7.942723110318184,
+      "encode_ms": 11000.24008890614,
+      "step_compute_ms": 1343.6609329655766,
+      "comm_mb_per_step": 10351.4112,
+      "collectives_per_step": 240,
+      "finish_ms": 3840.3679630719125,
+      "decode_chunks": 9,
+      "evidence": {
+        "step_samples": [
+          1343.0910799652338,
+          1343.6609329655766,
+          1344.0082897432148
+        ],
+        "block4_samples": [
+          91.89667319878936,
+          89.35678796842694,
+          89.43912107497454
+        ],
+        "block_cuda_ms_median": 22.28531265258789,
+        "block_extra_state_bytes_max": 51913728,
+        "memory": {
+          "peak_allocated_bytes": 11934650368,
+          "peak_reserved_bytes": 13360955392,
+          "device_total_bytes": 25386352640
+        },
+        "shape": [
+          480,
+          832,
+          33
+        ],
+        "tokens": 14040
+      }
+    },
+    "sana-1024": {
+      "kind": "image",
+      "service_ms": 240.1601867750287,
+      "evidence": {
+        "service_samples": [
+          237.55403887480497,
+          240.1427561417222,
+          240.1601867750287,
+          238.11374930664897,
+          242.0294201001525,
+          240.8122532069683,
+          242.4117219634354
+        ],
+        "finish_samples": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "memory": {
+          "peak_allocated_bytes": 8798950912,
+          "peak_reserved_bytes": 9177137152,
+          "device_total_bytes": 25386352640
+        }
+      }
+    }
+  },
+  "links": {
+    "2": {
+      "gbps": 13.7653313819639,
+      "latency_ms": 0.04156204522587359
+    }
+  },
+  "sp_efficiency": 1.0,
+  "resize_ms": 0.0,
+  "source": {
+    "run": "/data/.cache/results-work/rtx4090-gpu1-smoke-cost-profile-4090-serving/migration01/run.json",
+    "run_json_sha256": "e98bb1cd17a800b76dc55e7ff755cd4fe1de354678f7eb9ad539ea191cfb8b62",
+    "experiment": "rtx4090-gpu1-smoke-cost-profile-4090-serving",
+    "hardware": "RTX4090-24GB-physical-GPU1-SP1",
+    "links": "/data/collectives-rtx4090-2x24g.json",
+    "environment": "rtx4090-gpu1-smoke",
+    "gpu_seconds": 66.07413804717362,
+    "measured_gpu_uuid": "GPU-5c1fadb6-2dcf-99be-374d-0bcbd8230979",
+    "driver": "550.163.01",
+    "image_id": "sha256:ecb1055e440e4cc32c2cca5733852a6c83544c8032fec2a899089dcf6b08d7bc",
+    "scope": "SP1 model costs measured on physical GPU 1, applied to the same-model pair; two-GPU NCCL all-to-all links measured after exclusive dual-GPU acceptance. Video classes are 17 and 33 frames only.",
+    "collectives_sha256": "cafdc8be6331399675d36d203e441317bae36cad8e133d24aa77f3bdfdd0b98d"
+  }
+}

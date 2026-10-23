@@ -8,7 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 from ditserve.runtime.worker import BACKENDS, Worker, occupancy, serve
 
@@ -25,6 +25,48 @@ class ProtocolTests(unittest.TestCase):
     def call(self, op, **fields):
         self.sequence += 1
         return self.worker.dispatch(dict(version=1, id=self.sequence, op=op, **fields))
+
+    def test_cpu_contract_is_applied_before_model_import_and_reported_lazily(self):
+        with patch("os.sched_getaffinity", side_effect=[{2, 3, 4, 5}, {2, 3}]), \
+                patch("os.sched_setaffinity") as bind, patch.dict(os.environ, {}, clear=True):
+            worker = Worker("mock", dict(self.config, cpu_affinity=[2, 3], cpu_threads=2))
+            bind.assert_called_once_with(0, [2, 3])
+            self.assertEqual(os.environ["OMP_NUM_THREADS"], "2")
+            self.assertEqual(os.environ["MKL_NUM_THREADS"], "2")
+            self.assertIsNone(worker.backend)
+            hello = worker.dispatch(dict(version=1, id=0, op="hello"))
+            self.assertEqual(hello["cpu_binding"]["effective_affinity"], [2, 3])
+            self.assertEqual(hello["cpu_binding"]["requested_threads"], 2)
+            self.assertIsNone(hello["cpu_binding"]["torch_threads"])
+            worker.close()
+
+    def test_cpu_contract_rejects_invalid_masks_and_thread_counts_before_binding(self):
+        cases = [dict(cpu_affinity=[]), dict(cpu_affinity=[2, 2]), dict(cpu_affinity=[7]),
+                 dict(cpu_affinity=[True]), dict(cpu_threads=True), dict(cpu_threads=0),
+                 dict(cpu_affinity=[2], cpu_threads=2)]
+        for config in cases:
+            with self.subTest(config=config), patch("os.sched_getaffinity", return_value={2, 3}), \
+                    patch("os.sched_setaffinity") as bind, self.assertRaises(ValueError):
+                Worker("mock", config)
+            bind.assert_not_called()
+
+    def test_explicit_torch_thread_contract_precedes_backend_constructor(self):
+        torch = Mock()
+        torch.get_num_threads.return_value = 2
+        calls = []
+        class Backend:
+            def __init__(self, config):
+                torch.set_num_threads.assert_called_once_with(2)
+                torch.set_num_interop_threads.assert_called_once_with(1)
+                calls.append("constructed")
+            def prepare(self, request):
+                return dict(ok=True)
+        with patch("os.sched_getaffinity", return_value={2, 3}), patch.dict(os.environ), \
+                patch.dict(sys.modules, {"torch": torch}):
+            worker = Worker("wan", dict(cpu_threads=2))
+            worker._model_call(Backend, "prepare", {})
+        self.assertEqual(calls, ["constructed"])
+        self.assertEqual(worker.cpu_binding["torch_threads"], 2)
 
     def test_lifecycle_is_deterministic_across_quantum_sizes(self):
         outputs = []

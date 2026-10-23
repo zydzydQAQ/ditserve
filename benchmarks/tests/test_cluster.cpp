@@ -94,6 +94,24 @@ int main() {
         auto busy = plan(Json::array({video("v", 1e9)}), "step_elastic", 4, Json::array({true, false, false, false}));
         require(busy.size() == 1 && busy[0].at("group") == Json::array({2, 3}), "aligned free pair when GPU 0 is busy");
     });
+    check("transactional SP reserves source and target ranks", [] {
+        const Json options = {{"quantum_ms", 250}, {"degrees", {1, 2}}, {"reserve_transition_union", true}};
+        const auto resident = video("v", 10000, {{"prepared", true}, {"group", {0, 1}}, {"steps_done", 1}});
+        auto blocked = plan(Json::array({resident}), "block_elastic", 2, Json::array({true, false}), options);
+        require(blocked.empty(), "shrinking cannot transfer while a source rank is busy");
+        // A second waiting video makes the first shrink to a singleton. Both
+        // original ranks stay reserved for the transfer; the second cannot launch.
+        auto shrinking = plan(Json::array({resident, video("next", 20000)}), "block_elastic", 2, Json::array(), options);
+        require(shrinking.size() == 1 && shrinking[0].at("group").size() == 1,
+                "one shrinking assignment should own the transition");
+        require(shrinking[0].at("reserved_group") == Json::array({0, 1}), "source union missing");
+        auto complete = resident; complete["steps_done"] = 4;
+        require(plan(Json::array({complete}), "block_elastic", 2, Json::array({false, true}), options).empty(),
+                "leader decode must wait for the source rank before shrinking");
+        auto decode = plan(Json::array({complete}), "block_elastic", 2, Json::array(), options);
+        require(decode.size() == 1 && decode[0].at("quantum") == "finish" &&
+                decode[0].at("reserved_group") == Json::array({0, 1}), "decode union missing");
+    });
     check("block preemption inside a step", [] {
         // Mid-step video on GPU 0: 6 blocks (600 ms) to the step boundary.
         const auto mid = video("v", 1e9, {{"status", "suspended"}, {"prepared", true}, {"group", {0}}, {"blocks_done", 4}, {"steps_done", 1}});
@@ -116,6 +134,58 @@ int main() {
         const auto done = video("v", 1e9, {{"status", "suspended"}, {"prepared", true}, {"group", {2, 3}}, {"steps_done", 4}});
         auto finish = plan(Json::array({done}), "block_elastic", 4, Json::array(), {{"quantum_ms", 250}});
         require(finish.size() == 1 && finish[0].at("quantum") == "finish" && finish[0].at("group") == Json::array({2}), "decode on the first rank");
+    });
+    check("adaptive feedback has hysteresis and cannot inspect future requests", [] {
+        const Json options={{"quantum_ms",300},{"adaptive_quantum",true},{"adaptive_hot_quantum_ms",100},
+            {"adaptive_hot_window_ms",1000},{"decode_frames",1},{"degrees",{1}}};
+        const auto resident=video("v",1e9,{{"prepared",true},{"group",{0}},{"steps_done",1}});
+        auto choose=[&](double now,Json rows,Json last=nullptr){
+            return cluster_plan({{"now_ms",now},{"gpus",1},{"requests",rows},{"last_image_arrival_ms",last}},
+                "block_elastic",ClusterCost(profile()),options).at("assignments");
+        };
+        const auto cool=choose(500,Json::array({resident}));
+        require(cool[0].at("quantum")==3&&cool[0].at("chosen_quantum_ms")==300,"quiet workload uses 300 ms");
+        auto future=image("unknown",1e9,501);
+        require(choose(500,Json::array({resident,future}))==cool,"future image cannot change any assignment or feedback");
+        future["arrival_ms"]=1e9;future["deadline_ms"]=1;
+        require(choose(500,Json::array({future,resident}))==cool,"future timestamp and deadline cannot influence current plan");
+        auto hot=choose(999,Json::array({resident}),0);
+        require(hot[0].at("quantum")==1&&hot[0]["quantum_feedback"]["trigger"]=="recent_image_arrival","completed image retains 1 second hot window");
+        require(choose(1000,Json::array({resident}),0)[0].at("quantum")==3,"quiet feedback expires at frozen boundary");
+        auto queued=image("waiting",1e9,0);
+        const auto pressured=choose(5000,Json::array({resident,queued}),0);
+        require(pressured[0].at("quantum")==1&&pressured[0]["quantum_feedback"]["waiting_images"]==1,
+                "an old waiting image keeps DiT hot after arrival window expires");
+        rejects([&]{choose(500,Json::array({resident}),501);});
+        for(const auto& change:std::vector<Json>{{{"adaptive_hot_window_ms",60001}},{{"adaptive_hot_quantum_ms",300}},
+                {{"adaptive_quantum",false}},{{"decode_frames",65}},{{"chunked_decode",false}}}){
+            Json bad=options;bad.update(change);
+            rejects([&]{cluster_plan({{"now_ms",0},{"gpus",1},{"requests",Json::array({resident})}},"block_elastic",ClusterCost(profile()),bad);});
+        }
+        auto decoded=resident;decoded["steps_done"]=4;
+        auto p=profile();p["classes"]["video"]["decode_chunks"]=5;p["classes"]["video"]["finish_ms"]=100;
+        for(double now:{0.,1000.}){
+            auto a=cluster_plan({{"now_ms",now},{"gpus",1},{"requests",Json::array({decoded})},{"last_image_arrival_ms",0}},
+                "block_elastic",ClusterCost(p),options).at("assignments")[0];
+            require(a.at("decode_frames")==1,"adaptive hot/cool must not alter decode frame granularity");
+        }
+    });
+    check("adaptive CPU replay switches only after observed arrival", [] {
+        const Json options={{"quantum_ms",300},{"adaptive_quantum",true},{"adaptive_hot_quantum_ms",100},
+            {"adaptive_hot_window_ms",1000},{"decode_frames",1},{"degrees",{1}}};
+        const auto result=simulate_cluster({{"workload",Json::array({trace_row("v","video",0,1e9),trace_row("i","image",650,1000)})},
+            {"profile",profile()},{"policy","block_elastic"},{"gpus",1},{"options",options},{"record_dispatch_timeline",true}});
+        const auto& events=result.at("requests")[0].at("dispatch_timeline");
+        bool hot=false,cool_after=false;
+        for(const auto& event:events){
+            if(!event.at("quantum").is_number_integer())continue;
+            const double started=event.at("start_ms");
+            const double chosen=event.at("chosen_quantum_ms");
+            if(started<650)require(chosen==300,"unarrived image cannot shrink quantum");
+            if(chosen==100){hot=true;require(started>=650&&started<1650,"hot choice must have arrived feedback");}
+            if(started>=1650&&chosen==300)cool_after=true;
+        }
+        require(hot&&cool_after,"same CPU replay enters hot mode and returns to cool mode");
     });
     check("minimum SP degree for classes that do not fit one GPU", [] {
         Json big = profile(); big["classes"]["video"]["min_degree"] = 2;

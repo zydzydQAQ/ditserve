@@ -1,0 +1,33 @@
+[Unit]
+Description=Dedicated Docker daemon for DiTServe on the data disk
+Documentation=https://docs.docker.com/reference/cli/dockerd/#run-multiple-daemons
+After=network-online.target ditserve-containerd.service
+Wants=network-online.target
+Requires=ditserve-containerd.service
+RequiresMountsFor=/mnt/ssd2/zyd/docker-data
+ConditionPathIsMountPoint=/mnt/ssd2
+
+[Service]
+Type=notify
+User=root
+Group=ditserve-docker
+RuntimeDirectory=ditserve-docker
+RuntimeDirectoryMode=0750
+RuntimeDirectoryPreserve=restart
+Environment=DOCKER_TMPDIR=/mnt/ssd2/zyd/docker-data/tmp
+Environment=TMPDIR=/mnt/ssd2/zyd/docker-data/tmp
+ExecStart=/usr/bin/dockerd --config-file=/etc/ditserve-docker/daemon.json
+Restart=on-failure
+RestartSec=3
+TimeoutStartSec=120
+TimeoutStopSec=120
+Delegate=yes
+KillMode=process
+TasksMax=infinity
+LimitNOFILE=infinity
+LimitNPROC=infinity
+LimitMEMLOCK=infinity
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target

@@ -38,20 +38,51 @@ def _operation(request):
     return request["op"]
 
 
+def configure_cpu(config):
+    """Apply an explicit CPU contract before importing model/torch modules."""
+    mask = config.get("cpu_affinity")
+    threads = config.get("cpu_threads")
+    available = set(os.sched_getaffinity(0))
+    if mask is not None:
+        if (not isinstance(mask, list) or not mask or any(type(cpu) is not int or cpu < 0 for cpu in mask)
+                or len(set(mask)) != len(mask) or not set(mask) <= available):
+            raise ValueError("cpu_affinity must contain distinct CPUs in the process affinity")
+    effective = set(mask) if mask is not None else available
+    if threads is not None and (type(threads) is not int or not 1 <= threads <= len(effective)):
+        raise ValueError("cpu_threads must be positive and no larger than the effective CPU affinity")
+    if mask is not None:
+        os.sched_setaffinity(0, mask)
+        if set(os.sched_getaffinity(0)) != effective:
+            raise RuntimeError("effective CPU affinity differs from requested mask")
+    if threads is not None:
+        for name in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
+            os.environ[name] = str(threads)
+        os.environ["TOKENIZERS_PARALLELISM"] = "false"
+    return dict(requested_affinity=mask, effective_affinity=sorted(effective), requested_threads=threads,
+                torch_threads=None, configured=mask is not None or threads is not None)
+
+
 class Worker:
     def __init__(self, backend, config):
         if backend not in BACKENDS:
             raise ValueError("unknown backend: " + backend)
         self.name = backend
         self.config = dict(config, backend=backend)
+        self.cpu_binding = configure_cpu(config)
         self.backend = None
         self.closed = False
+        self._occupancy_probe = None
 
     def dispatch(self, request):
         op = _operation(request)
         if self.closed:
             raise ValueError("worker is shut down")
         if op == "occupancy":
+            if request.get("occupancy_backend", "nvidia_smi") == "nvml":
+                if self._occupancy_probe is None:
+                    from .occupancy_nvml import NvmlOccupancy
+                    self._occupancy_probe = NvmlOccupancy()
+                return occupancy(request, mock=self.name == "mock", nvml_probe=self._occupancy_probe)
             return occupancy(request, mock=self.name == "mock")
         if op == "memory":
             return process_memory(reset_peak=bool(request.get("reset_peak", False)))
@@ -70,7 +101,7 @@ class Worker:
                     "loaded": self.backend is not None, "measured": self.name not in ("mock", "results", "environment"),
                     "capabilities": {"operations": list(operations), "persistent_states": cls is not None},
                     "qualification": "fixture_only" if self.name == "mock" else "unverified",
-                    "pid": os.getpid()}
+                    "pid": os.getpid(), "cpu_binding": dict(self.cpu_binding)}
         if op not in operations:
             raise ValueError("unsupported operation for %s: %s" % (self.name, op))
         if cls is None:
@@ -94,6 +125,13 @@ class Worker:
         load_ms = 0.
         if self.backend is None:
             started = time.perf_counter()
+            if self.cpu_binding["requested_threads"] is not None and self.name != "mock":
+                import torch
+                torch.set_num_threads(self.cpu_binding["requested_threads"])
+                torch.set_num_interop_threads(1)
+                self.cpu_binding["torch_threads"] = torch.get_num_threads()
+                if self.cpu_binding["torch_threads"] != self.cpu_binding["requested_threads"]:
+                    raise RuntimeError("torch thread count differs from requested CPU contract")
             fraction = self.config.get("memory_fraction")
             if fraction is not None:
                 # A per-process cap: a co-resident worker on a smaller card
@@ -130,7 +168,11 @@ class Worker:
             if self.backend is not None:
                 self.backend.close()
         finally:
-            self.closed = True
+            try:
+                if self._occupancy_probe is not None:
+                    self._occupancy_probe.close()
+            finally:
+                self.closed = True
 
 
 def process_memory(reset_peak=False):
@@ -153,9 +195,22 @@ def process_memory(reset_peak=False):
     return result
 
 
-def occupancy(request, *, mock=False):
+def occupancy(request, *, mock=False, nvml_probe=None):
+    backend = request.get("occupancy_backend", "nvidia_smi")
+    if backend == "nvml":
+        if nvml_probe is not None:
+            return nvml_probe.observe(request)
+        from .occupancy_nvml import NvmlOccupancy
+        probe = NvmlOccupancy()
+        try:
+            return probe.observe(request)
+        finally:
+            probe.close()
+    if backend != "nvidia_smi":
+        raise ValueError("occupancy_backend must be nvidia_smi or nvml")
     requested = request.get("gpu_uuids", [])
-    empty = dict(status="unknown", owned=[], foreign=[], devices=[], cuda_initialized=False)
+    empty = dict(status="unknown", owned=[], foreign=[], devices=[], cuda_initialized=False,
+                 occupancy_backend="nvidia_smi")
     if not requested:
         return dict(empty, status="exclusive_observed" if mock else "unknown")
     try:
@@ -187,7 +242,8 @@ def occupancy(request, *, mock=False):
             row = dict(pid=pid, pgid=pgid, gpu_uuid=gpu, memory_mib=memory)
             (owned if pid in allowed or pgid in groups else foreign).append(row)
         return dict(status="busy" if foreign else "exclusive_observed", owned=owned, foreign=foreign,
-                    devices=[dict(uuid=value, name=devices[value]) for value in requested], cuda_initialized=False)
+                    devices=[dict(uuid=value, name=devices[value]) for value in requested], cuda_initialized=False,
+                    occupancy_backend="nvidia_smi")
     except (OSError, subprocess.SubprocessError, ValueError, TypeError) as error:
         return dict(empty, reason=str(error))
 
