@@ -1582,7 +1582,9 @@ Json run_study(const Json& original_request){
         const double waiting_limit=number_field(phase,"admission_wait_seconds",0);
         const double waiting_poll=number_field(phase,"admission_poll_seconds",15);
         const double waiting_deadline=waiting_started+waiting_limit;
-        auto observation=gpu_observation(request,attempt_dir,devices,{},waiting_limit>0?std::min(waiting_deadline,waiting_started+15):0);
+        std::vector<int> admission_pids;
+        if(!phase.value("mps",Json::object()).empty())admission_pids.push_back(phase.at("mps").at("server_pid").get<int>());
+        auto observation=gpu_observation(request,attempt_dir,devices,admission_pids,waiting_limit>0?std::min(waiting_deadline,waiting_started+15):0);
         int idle_observations=0;
         while(waiting_limit>0){
             if(cancelled() || monotonic_seconds()>=waiting_deadline)break;
@@ -1597,7 +1599,7 @@ Json run_study(const Json& original_request){
             const double next=std::min(waiting_started+waiting_limit,monotonic_seconds()+waiting_poll);
             while(!cancelled() && monotonic_seconds()<next)wait_until(next);
             if(cancelled())break;
-            observation=gpu_observation(request,attempt_dir,devices,{},std::min(waiting_deadline,monotonic_seconds()+15));
+            observation=gpu_observation(request,attempt_dir,devices,admission_pids,std::min(waiting_deadline,monotonic_seconds()+15));
         }
         if(waiting_limit>0)record["admission_wait_seconds"]=monotonic_seconds()-waiting_started;
         if(cancelled() || (waiting_limit>0 && idle_observations<2)){

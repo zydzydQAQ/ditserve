@@ -129,7 +129,7 @@ Wan worker 的 `config.vae_dtype`（默认 `float32`，官方配方）可设为 
 
 ## MPS 共跑与清理边界
 
-阶段可声明 `mps: {"server_pid": PID, "pipe_directory": "/absolute/pipe", "log_directory": "/absolute/log"}`，用于已由作业脚本启动并验证归属的 MPS 服务。控制器只把该 server PID 加入本 cell 的 occupancy 允许列表，其他进程仍会触发隔离失败；所有模型 worker 停止后，控制器通过同一 pipe 执行 `quit`，确认 server 退出，再做最终 occupancy 清理检查。server 不属于该 pipe、控制命令失败或退出无法确认时，运行失败并保持未验收状态。matrix 不能更改 MPS 控制身份；当前仅支持单阶段 MPS study，避免前一阶段退出服务后影响后续阶段。
+阶段可声明 `mps: {"server_pid": PID, "pipe_directory": "/absolute/pipe", "log_directory": "/absolute/log"}`，用于已由作业脚本启动并验证归属的 MPS 服务。控制器在 phase 准入和 cell 内只把该 server PID 加入 occupancy 允许列表，其他进程仍会触发隔离失败；所有模型 worker 停止后，控制器通过同一 pipe 执行 `quit`，确认 server 退出，再做最终 occupancy 清理检查。server 不属于该 pipe、控制命令失败或退出无法确认时，运行失败并保持未验收状态。matrix 不能更改 MPS 控制身份；当前仅支持单阶段 MPS study，避免前一阶段退出服务后影响后续阶段。
 
 `mps` 只描述控制与清理，不会自动启动 daemon 或证明配额生效。每个 worker 的 `CUDA_MPS_ACTIVE_THREAD_PERCENTAGE` 仍须在 CUDA context 创建前通过 `environment` 设置，并用设备属性或硬件计数验证实际 SM 数；已存在 client 不能用该变量或控制命令原地调额，因此这不是动态 SM 调度接口。MPS 不提供显存隔离，共驻实验仍需单独记录并约束权重、continuation、allocator 与并发峰值。未配置 `mps` 的实验路径不变。
 
