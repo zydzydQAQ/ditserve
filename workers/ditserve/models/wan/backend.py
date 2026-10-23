@@ -166,9 +166,13 @@ class WanBackend(Backend):
                                                           observe=bool(request.get("observe", False)))
                 return dict(state_id=key, pair_state_id=pair, progress=self._progress(state), pair_progress=self._progress(paired),
                             events=[mine], pair_events=[theirs], model_ms=mine["ms"])
+            # Continuous execution: run to the step end unless the controller rings this GPU's doorbell.
+            from ...runtime.doorbell import rung
+            bell = rung(request)
             records.append(self.executor.advance(self.continuations[key],
                 blocks=blocks,
-                observe=bool(request.get("observe", False))))
+                observe=bool(request.get("observe", False)),
+                doorbell=bell, check_every=positive_int(request.get("check_blocks", 1), "check_blocks") if bell else 0))
         else:
             for unused in range(min(positive_int(request.get("steps", 1)), state.spec["steps"] - state.step_index)):
                 records.append((self.parallel or self.runtime).step(state))

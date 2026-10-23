@@ -253,6 +253,24 @@ class PinnedWanUlyssesBackend:
         if self.handle.active is None:
             self._active_config = self._bound_epoch = None
 
+    def reduce_flag(self, flag):
+        """MAX of a one-element flag over the active request group, in stream order.
+
+        Continuous block execution reduces each rank's doorbell at every check point
+        so that all ranks stop at the same block.
+        """
+        self._require_active()
+        layout = self.handle.current
+        if layout.degree > 1:
+            torch = importlib.import_module("torch")
+            try:
+                torch.distributed.all_reduce(flag, op=torch.distributed.ReduceOp.MAX,
+                                             group=self.gate.groups.group(layout.ranks))
+            except Exception as error:
+                self.handle.fail()
+                raise ParallelContractError("request-group doorbell reduction failed: " + str(error)) from error
+        return flag
+
     def quantum_point(self, position):
         """Collective safe point after a block quantum that stops inside a solver step.
 

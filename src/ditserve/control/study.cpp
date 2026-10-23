@@ -595,6 +595,33 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         options.erase("forms");options["degrees"]=Json::array({1});options["pin_started"]=true;
     }
     const fs::path transfer_dir=options.contains("transfer_dir")?fs::path(string_field(options,"transfer_dir","")):work/"transfer";
+    // Continuous execution (options.doorbell): a video block quantum runs to its step end and stops early only when
+    // the controller rings its GPUs' doorbells, 8-byte counters in shared files the workers map. The controller
+    // rings when a decision could change (an image waits), so no-op quantum round trips disappear.
+    const bool doorbell=bool_field(options,"doorbell",false);
+    if(doorbell&&transport!="export")throw std::invalid_argument("doorbell needs the export transport");
+    struct Bells{
+        fs::path dir;std::vector<std::string> path;std::vector<int> fd;std::vector<std::uint64_t> epoch;std::uint64_t rings=0,continuous=0;
+        ~Bells(){for(int f:fd)if(f>=0)::close(f);std::error_code ignored;if(!dir.empty())fs::remove_all(dir,ignored);}
+        void ring(int gpu){
+            const std::uint64_t value=++epoch.at(gpu);unsigned char bytes[8];
+            for(int k=0;k<8;++k)bytes[k]=static_cast<unsigned char>(value>>(8*k));
+            if(::pwrite(fd.at(gpu),bytes,8,0)!=8)throw std::runtime_error("doorbell write failed: "+path.at(gpu));
+            ++rings;
+        }
+    } bells;
+    if(doorbell){
+        bells.dir=transfer_dir/("doorbell-"+std::to_string(::getpid())+"-"+std::to_string(static_cast<long long>(monotonic_seconds()*1e6)));
+        fs::create_directories(bells.dir);
+        for(int gpu=0;gpu<gpus;++gpu){
+            bells.path.push_back((bells.dir/("gpu"+std::to_string(gpu))).string());
+            const int f=::open(bells.path.back().c_str(),O_RDWR|O_CREAT|O_TRUNC|O_CLOEXEC,0644);
+            if(f<0)throw std::runtime_error("cannot create doorbell "+bells.path.back());
+            bells.fd.push_back(f);bells.epoch.push_back(0);
+            const unsigned char zero[8]={0,0,0,0,0,0,0,0};
+            if(::pwrite(f,zero,8,0)!=8)throw std::runtime_error("cannot initialize doorbell "+bells.path.back());
+        }
+    }
     const bool prefetch=phase.value("text_prefetch",0)>0;
     const auto output_mode=phase.value("output_mode",std::string("file"));
     const auto warmed=warmup(phase,workers,budget);
@@ -620,7 +647,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     // resumed_*: block quanta that followed another request there (the first quantum and regroups excluded).
     struct Live{std::string status="pending";bool prepared=false;int steps=0,blocks=0,total=0,encode_gpu=-1,decode_done=0,epoch=0;std::vector<int> group;std::string form="sp1",ticket,pair;std::set<int> resident;double steady_ms=0,resumed_ms=0;int steady_blocks=0,resumed_blocks=0,resumes=0;};
     int epochs=0,transfers=0;   // export transport: placement epochs and transfer file names
-    struct Task{std::size_t row;Json assignment;std::future<Json> result;double started;bool after_other=false;};
+    struct Task{std::size_t row;Json assignment;std::future<Json> result;double started;bool after_other=false,continuous=false,rung=false;};
     std::vector<Live> live(rows.size());
     std::vector<Task> tasks;
     std::vector<bool> busy(gpus,false);
@@ -642,6 +669,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     auto spec_of=[&](const Json& row){Json spec=row.at("spec");spec["request_id"]=row.at("request_id");return spec;};
     std::size_t terminal=0,encoders=0;
     auto launch=[&](const Json& assignment){
+        bool continuous=false;
         const auto id=assignment.at("request_id").get<std::string>();const std::size_t i=index.at(id);
         auto& row=rows[i];auto& state=live[i];
         std::vector<int> group;for(const auto& gpu:assignment.at("group"))group.push_back(gpu.get<int>());
@@ -753,6 +781,13 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 if(form.cfg>1)advance["cfg"]=form.cfg;
                 if(!pair.empty())advance["pair_state_id"]=pair;
                 if(quantum=="step")advance["quantum"]="step";else advance["blocks"]=quantum;
+                if(doorbell&&pair.empty()&&quantum.is_number_integer()){
+                    // Run to the step end, checking this GPU's doorbell about twice per planned quantum.
+                    advance.erase("blocks");advance["quantum"]="step";
+                    advance["check_blocks"]=std::max(1,quantum.get<int>()/2);
+                    advance["doorbell"]=bells.path.at(gpu);advance["doorbell_epoch"]=bells.epoch.at(gpu);
+                    continuous=true;
+                }
                 advances.emplace_back(video(gpu),advance);
             }
             work_unit=[&workers,stagings,advances,deadline]{
@@ -827,6 +862,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         state.status="running";state.group=group;state.form=form_label;
         bool after_other=false;for(int gpu:group){if(last_on_gpu[gpu]!=id)after_other=true;last_on_gpu[gpu]=id;}
         tasks.push_back({i,assignment,std::async(std::launch::async,work_unit),now(),after_other});
+        tasks.back().continuous=continuous;if(continuous)++bells.continuous;
     };
     auto finish_task=[&](Task& task,const Json& out){
         auto& row=rows[task.row];auto& state=live[task.row];
@@ -862,6 +898,14 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         }
         const auto& ranks=out.at("ranks");
         double model=0;for(const auto& rank:ranks)model=std::max(model,number_field(rank,"model_ms"));
+        // A continuous quantum may stop before its step end: count the blocks the worker reports.
+        int reported=-1;
+        if(task.continuous&&!ranks.empty()){
+            const auto& rank=ranks.at(0);
+            if(rank.contains("executed_units"))reported=rank.at("executed_units").get<int>();
+            else if(rank.contains("events")&&!rank.at("events").empty())reported=rank.at("events").at(0).value("blocks",-1);
+            if(reported<0)throw std::runtime_error("continuous quantum without an executed block count");
+        }
         // Time a quantum spends outside its slowest rank's worker operation: dispatch, RPC, queueing and the
         // controller noticing the reply. Regroup quanta (transfers) and lockstep pairs are left out.
         if(!out.contains("transfer")&&task.assignment.value("pair",std::string()).empty()){
@@ -874,7 +918,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             const auto progress=ranks.at(0).at(progress_key);
             for(const auto& rank:ranks)if(rank.at(progress_key).value("step",-1)!=progress.value("step",-2))throw std::runtime_error("SP ranks disagree on solver progress");
             arow["model_ms"]=number_field(arow,"model_ms")+model;
-            const int executed=quantum=="step"?cost.blocks_per_step(arow.at("class").get<std::string>())-astate.blocks:quantum.get<int>();
+            const int executed=reported>=0?reported:quantum=="step"?cost.blocks_per_step(arow.at("class").get<std::string>())-astate.blocks:quantum.get<int>();
             const int previous_step=astate.steps;
             astate.steps=progress.value("step",0);astate.total=progress.value("steps",0);astate.prepared=true;
             if(progress.value("transfer_ready",true)||astate.steps>previous_step)astate.blocks=0;
@@ -882,7 +926,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             astate.status="suspended";
         };
         const bool first=!state.prepared;
-        const int executed_main=quantum=="step"?cost.blocks_per_step(row.at("class").get<std::string>())-state.blocks:quantum.get<int>();
+        const int executed_main=reported>=0?reported:quantum=="step"?cost.blocks_per_step(row.at("class").get<std::string>())-state.blocks:quantum.get<int>();
         settle(row,state,"progress");
         if(!first&&executed_main>0&&!out.contains("transfer")&&task.assignment.value("pair",std::string()).empty()){
             if(task.after_other){state.resumed_ms+=model;state.resumed_blocks+=executed_main;++state.resumes;}
@@ -968,6 +1012,15 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 for(const auto& assignment:plan.at("assignments")){launch(assignment);progressed=true;}
             }
         }
+        if(doorbell){
+            // An image that found no GPU needs a block boundary now: ring every continuous video once.
+            bool image_waiting=false;
+            for(std::size_t k=0;k<rows.size()&&!image_waiting;++k)image_waiting=live[k].status=="waiting"&&rows[k].at("kind")=="image";
+            if(image_waiting)for(auto& task:tasks)if(task.continuous&&!task.rung){
+                for(const auto& gpu:task.assignment.at("group"))bells.ring(gpu.get<int>());
+                task.rung=true;
+            }
+        }
         if(!progressed)wait_until(monotonic_seconds()+.0005);
     }}catch(...){
         for(auto& task:tasks)if(task.result.valid())task.result.wait();
@@ -983,7 +1036,8 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     }
     return {{"requests",rows},{"metrics",request_summary(rows)},{"elapsed_ms",now()},{"warmup",warmed},
             {"by_kind",{{"video",kind_summary(rows,"video")},{"image",kind_summary(rows,"image")}}},
-            {"policy",policy},{"gpus",gpus},{"sp_transport",transport},{"real_backends_pinned_sp1",!fixtures&&transport=="pinned"}};
+            {"policy",policy},{"gpus",gpus},{"sp_transport",transport},{"real_backends_pinned_sp1",!fixtures&&transport=="pinned"},
+            {"doorbell",{{"enabled",doorbell},{"continuous_quanta",bells.continuous},{"rings",bells.rings}}}};
 }
 
 // A real clock consumer independent of the model call. It records dispatch
@@ -1380,6 +1434,8 @@ void validate(const Json& config){
                     const auto transport=string_field(cell.value("options",Json::object()),"sp_transport","default");
                     if(transport!="default"&&transport!="pinned"&&transport!="resume"&&transport!="export")
                         throw std::invalid_argument("sp_transport must be pinned, resume or export");
+                    if(bool_field(cell.value("options",Json::object()),"doorbell",false)&&transport!="export")
+                        throw std::invalid_argument("doorbell needs the export transport");
                     if(transport=="export"&&slots.size()!=2&&slots.size()!=4&&slots.size()!=8)
                         throw std::invalid_argument("export transport needs 2, 4 or 8 GPUs");
                     for(const auto& row:rows)if(cost.klass(row.at("class").get<std::string>()).at("kind")!=row.at("kind"))

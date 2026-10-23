@@ -204,14 +204,23 @@ class WanBlockExecutor:
                                 completed_steps=base.step_index, path="compute", executor="blocks"))
         return True
 
-    def advance(self, state, blocks=1, *, observe=False, check_budget=lambda: None):
+    def advance(self, state, blocks=1, *, observe=False, check_budget=lambda: None, doorbell=None, check_every=0):
         """Execute at most blocks blocks, stopping no later than one solver commit.
 
         All launched GPU work completes before returning. Prelude, output
         projection and solver work belong to their adjacent quantum's latency.
+
+        Continuous execution: with a doorbell (a callable that turns true when the
+        controller wants this GPU back), every check_every block indices the
+        executor may stop at that block boundary instead of returning after each
+        quantum. The CPU never runs more than one check interval ahead of the GPU,
+        and an SP/CFG group stops on the MAX of its ranks' flags reduced at the
+        previous check point, so every rank stops at the same block.
         """
         if type(blocks) is not int or blocks < 1:
             raise ValueError("blocks must be a positive integer")
+        if doorbell is not None and (type(check_every) is not int or check_every < 1):
+            raise ValueError("check_every must be a positive integer with a doorbell")
         worker, torch = self.worker, self.worker.torch
         with worker._lock, torch.inference_mode(), worker._dit_attention_context():
             self._check(state)
@@ -222,6 +231,7 @@ class WanBlockExecutor:
             check_budget()
             step, initial_branch, initial_block = state.committed_step, state.branch, state.next_block
             events, completed, executed = [], False, 0
+            iterations, pending, rung = 0, [None], False
             worker._sync()
             started = time.perf_counter()
             self._advancing = True
@@ -268,6 +278,11 @@ class WanBlockExecutor:
                         completed = self._finish_branch(state)
                         if completed:
                             break
+                    iterations += 1
+                    if doorbell is not None and executed < blocks and iterations % check_every == 0:
+                        if self._doorbell_rung(doorbell, pending):
+                            rung = True
+                            break
                 if side is not None and state.packet_uncond is not None:
                     torch.cuda.current_stream().wait_stream(side)
                     self._record(state.packet_uncond, torch.cuda.current_stream())
@@ -282,7 +297,7 @@ class WanBlockExecutor:
                 wall_ms = (time.perf_counter() - started) * 1000
                 row = dict(kind="block_quantum", step_index=step, branch=initial_branch,
                            start_block=initial_block, next_block=state.next_block, next_branch=state.branch,
-                           blocks=executed, step_completed=completed, ms=wall_ms,
+                           blocks=executed, step_completed=completed, ms=wall_ms, doorbell_stop=rung,
                            block_cuda_ms=[dict(branch=b, block=i, ms=float(a.elapsed_time(z)))
                                           for b, i, a, z in events],
                            extra_state_bytes=self.extra_state_bytes(state))
@@ -295,6 +310,32 @@ class WanBlockExecutor:
                 raise
             finally:
                 self._advancing = False
+
+    def _doorbell_rung(self, doorbell, pending):
+        """One check point: keep the CPU within one interval of the GPU, then decide whether to stop."""
+        torch, worker = self.worker.torch, self.worker
+        device = next(self.model.parameters()).device
+        cuda = device.type == "cuda"
+        group = self.parallel is not None and self.parallel.handle.current.degree > 1
+        flag = None
+        if group:
+            # Every rank reaches the same check points; the reduction runs in stream order.
+            flag = torch.tensor([1 if doorbell() else 0], dtype=torch.int32, device=device)
+            self.parallel.reduce_flag(flag)
+            if cuda:
+                host = torch.empty(1, dtype=torch.int32, pin_memory=True)
+                host.copy_(flag, non_blocking=True)
+                flag = host
+        event = None
+        if cuda:
+            event = torch.cuda.Event()
+            event.record()
+        previous, pending[0] = pending[0], (event, flag)
+        if previous is not None and previous[0] is not None:
+            previous[0].synchronize()
+        if not group:
+            return bool(doorbell())
+        return previous is not None and bool(int(previous[1][0]))
 
     def advance_pair(self, first, second, blocks=1, *, observe=False, check_budget=lambda: None):
         """Advance two requests of one layout in lockstep: block i of each back to back, the

@@ -183,6 +183,26 @@ class BlockExecutorTests(unittest.TestCase):
                 executor.advance(continuation, 11)
             self.assertTrue(self.torch.equal(state.latents, reference.latents))
 
+    def test_doorbell_stops_a_continuous_quantum_at_a_check_point_bit_exactly(self):
+        worker, executor, prepare = fixture()
+        state, reference = prepare("a"), prepare("reference")
+        continuation = executor.attach(state)
+        native_step(worker, reference)
+        checks = []
+        def bell():
+            checks.append(True)
+            return len(checks) >= 3
+        # Checked every 4 blocks: the third check (after 12 blocks) stops the quantum mid-step.
+        row = executor.advance(continuation, 60, doorbell=bell, check_every=4)
+        self.assertTrue(row["doorbell_stop"])
+        self.assertEqual((row["blocks"], row["step_completed"], state.step_index), (12, False, 0))
+        # Without a ring the quantum runs to the step end, and the result equals the native step.
+        row = executor.advance(continuation, 60, doorbell=lambda: False, check_every=4)
+        self.assertEqual((row["blocks"], row["step_completed"], row["doorbell_stop"]), (48, True, False))
+        self.assertTrue(self.torch.equal(state.latents, reference.latents))
+        with self.assertRaises(ValueError):
+            executor.advance(continuation, 60, doorbell=lambda: False, check_every=0)
+
     def test_interleaved_branches_match_sequential_execution_bit_exactly(self):
         worker, executor, prepare = fixture(interleave=True)
         state, reference = prepare("a"), prepare("reference")

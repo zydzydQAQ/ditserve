@@ -502,6 +502,34 @@ class NativeStudyTest(unittest.TestCase):
             self.assertGreater(row["transfer_bytes"], 0)
         self.assertEqual(list((self.root / "export").rglob("*.pt")), [])
 
+    def test_cluster_doorbell_runs_videos_continuously_and_stops_them_for_images(self):
+        with self.assertRaises(CoreError):
+            # Continuous execution needs exported, regroupable state.
+            self.run_study(self.config([self.cluster_phase("block_elastic", options=dict(doorbell=True))],
+                                       workers=self.cluster_workers()), name="doorbell-resume")
+        cells = {}
+        for name, bell in (("blocks", False), ("doorbell", True)):
+            # Two videos fill both GPUs, so every image must wait for a block boundary.
+            phase = self.cluster_phase("block_elastic", gpus=2, options=dict(sp_transport="export", quantum_ms=100, doorbell=bell,
+                                                                             transfer_dir=str(self.root / ("shm-" + name))))
+            value = self.run_study(self.config([phase], workers=self.cluster_workers(gpus=2)), name=name)
+            self.assert_completed(value)
+            cells[name] = value["phases"][0]["cells"][0]
+        bell = cells["doorbell"]["doorbell"]
+        self.assertTrue(bell["enabled"])
+        self.assertGreater(bell["continuous_quanta"], 0)
+        # Images arrive while the videos run, so the controller had to ring at least once.
+        self.assertGreater(bell["rings"], 0)
+        self.assertFalse(cells["blocks"]["doorbell"]["enabled"])
+        for name in cells:
+            rows = {row["request_id"]: row for row in cells[name]["requests"]}
+            self.assertEqual(cells[name]["by_kind"]["image"]["completed"], 4)
+            self.assertTrue(all(rows[v]["status"] == "completed" for v in ("v0", "v1")))
+        quanta = {name: sum(row["quanta"] for row in cells[name]["requests"] if row["kind"] == "video") for name in cells}
+        self.assertLess(quanta["doorbell"], quanta["blocks"])
+        # The doorbell files are removed with the cell.
+        self.assertEqual(list((self.root / "shm-doorbell").glob("doorbell-*")), [])
+
     def test_cluster_export_transport_runs_cfg_forms(self):
         # Only CFG pairs beyond SP1: the two videos take a pair each and the ranks receive cfg=2.
         phase = self.cluster_phase("block_elastic", options=dict(sp_transport="export", forms=["sp1", "cfg2"]))

@@ -167,6 +167,19 @@ class MockBackend(Backend):
             # Block quanta stop at the next solver-step boundary, like Wan.
             boundary = state["blocks"] - state["unit"] % state["blocks"]
             executed = boundary if request.get("quantum") == "step" else min(positive_int(request.get("blocks", 1)), boundary)
+            # Continuous execution: block groups of check_blocks, stopping early once the doorbell rings.
+            from ..runtime.doorbell import rung
+            bell = rung(request)
+            slept = False
+            if bell is not None:
+                check, done = positive_int(request.get("check_blocks", 1), "check_blocks"), 0
+                while done < executed:
+                    chunk = min(check, executed - done)
+                    self._sleep("step_ms", chunk / state["blocks"] / degree)
+                    done += chunk
+                    if done < executed and bell():
+                        break
+                executed, slept = done, True
             state["unit"] += executed
             if state["unit"] % state["blocks"] == 0:
                 state["value"] = hashlib.sha256(state["value"].encode()).hexdigest()
@@ -174,7 +187,8 @@ class MockBackend(Backend):
             if grouped:
                 self.mid_step = request["state_id"] if state["unit"] % state["blocks"] else None
                 state["placement"] = placement
-            self._sleep("step_ms", executed / state["blocks"] / degree)
+            if not slept:
+                self._sleep("step_ms", executed / state["blocks"] / degree)
         return dict(state_id=request["state_id"], completed_steps=state["step"], executed_units=executed,
                     remaining_steps=state["steps"] - state["step"],
                     done=state["step"] == state["steps"], model_ms=0., measured=False,
