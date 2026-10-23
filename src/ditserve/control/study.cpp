@@ -235,6 +235,17 @@ Json gpu_observation(const Json& request,const fs::path& work,const Json& device
     return OccupancyProbe(request,work/"probe").observe(devices,allowed,deadline);
 }
 
+Json control_mps(const Json& request,const fs::path& work,const Json& mps,double deadline=0) {
+    Workers controller(Json{{"control",{{"backend","mock"}}}},request,work);
+    try {
+        Json action=mps;action["op"]="mps_control";action["action"]="quit";
+        auto result=controller.get("control").call(action,deadline>0?deadline:monotonic_seconds()+15);
+        const auto unverified=controller.stop();
+        if(!unverified.empty())throw std::runtime_error("MPS control worker cleanup unverified");
+        return result;
+    } catch(...) { controller.stop(); throw; }
+}
+
 void add_artifacts(Json& record,const Json& result,const fs::path& work,const Json& dependencies) {
     Json artifacts=result.value("artifacts",Json::array());
     if(result.contains("output") && result["output"].is_object() && result["output"].contains("path"))artifacts.push_back(result["output"]);
@@ -1229,6 +1240,12 @@ bool execute_cells(const Json& phase,const Json& request,const Json& devices,
     const auto id=phase.at("id").get<std::string>();
     const int attempt_number=attempt.at("attempt");
     const auto attempt_dir=work/"attempts"/id/("attempt-"+std::to_string(attempt_number));
+    const Json mps=phase.value("mps",Json::object());
+    auto owned_pids=[&](const Workers& workers){
+        auto pids=workers.pids();
+        if(!mps.empty())pids.push_back(mps.at("server_pid").get<int>());
+        return pids;
+    };
     bool cleanup=true;std::string error;std::vector<int> attempt_pids;
     auto cells=expand_matrix(phase);
     std::vector<std::size_t> order;for(std::size_t i=0;i<cells.size();++i)order.push_back(i);
@@ -1304,7 +1321,7 @@ bool execute_cells(const Json& phase,const Json& request,const Json& devices,
                 if(!devices.empty()&&monotonic_seconds()-last_observation>=2){
                     last_observation=monotonic_seconds();
                     const double probe_started=monotonic_seconds();
-                    auto observed=probe.observe(devices,workers.pids(),std::min(budget.deadline(),monotonic_seconds()+3));
+                    auto observed=probe.observe(devices,owned_pids(workers),std::min(budget.deadline(),monotonic_seconds()+3));
                     record_observation(observed,probe_started,(monotonic_seconds()-probe_started)*1000);
                 }
             }else if(!devices.empty()&&isolation_error.empty()&&monotonic_seconds()-last_verdict>10)
@@ -1319,7 +1336,7 @@ bool execute_cells(const Json& phase,const Json& request,const Json& devices,
                 {std::lock_guard<std::mutex> guard(heartbeat_mutex);if(probe_stop)return;}
                 const double probe_started=monotonic_seconds();
                 Json observed;
-                try{observed=probe.observe(devices,workers.pids(),std::min(budget.deadline(),monotonic_seconds()+3));}
+                try{observed=probe.observe(devices,owned_pids(workers),std::min(budget.deadline(),monotonic_seconds()+3));}
                 catch(const std::exception& failure){observed={{"status","unknown"},{"reason",failure.what()}};}
                 const double probe_ms=(monotonic_seconds()-probe_started)*1000;
                 std::unique_lock<std::mutex> lock(heartbeat_mutex);
@@ -1347,10 +1364,16 @@ bool execute_cells(const Json& phase,const Json& request,const Json& devices,
             workers.shutdown(std::min(budget.deadline(),monotonic_seconds()+5));
         }catch(const std::exception& failure){error=failure.what();attempt["cells"].push_back({{"cell",order[position]},{"status","failed"},{"error",error},{"guard_telemetry",telemetry()}});}
         stop_prober();
-        const auto pids=workers.pids();attempt_pids.insert(attempt_pids.end(),pids.begin(),pids.end());
+        const auto pids=owned_pids(workers);attempt_pids.insert(attempt_pids.end(),pids.begin(),pids.end());
         const auto unverified=workers.stop();
         if(!unverified.empty()){cleanup=false;attempt["unverified_workers"].push_back({{"cell",order[position]},{"workers",unverified}});}
         if(!error.empty() || !cleanup)break;
+    }
+    if(!mps.empty())try {
+        attempt["mps_control"]=control_mps(request,attempt_dir/"mps-control",mps);
+    } catch(const std::exception& failure) {
+        cleanup=false;attempt["mps_control"]={{"status","failed"},{"error",failure.what()}};
+        if(error.empty())error="MPS cleanup failed: "+std::string(failure.what());
     }
     const auto final_gpu=gpu_observation(request,attempt_dir,devices,attempt_pids);
     const auto observed_status=final_gpu.value("status","");
@@ -1382,6 +1405,8 @@ void validate(const Json& config){
         }
     }
     const auto phases=config.at("phases");if(!phases.is_array() || phases.empty())throw std::invalid_argument("phases must be a nonempty array");
+    if(phases.size()>1)for(const auto& phase:phases)
+        if(!phase.value("mps",Json::object()).empty())throw std::invalid_argument("mps currently requires a single-phase study");
     std::set<std::string> seen;
     const std::set<std::string> kinds={"profile","online","state","sp","streaming","session","cluster"};
     for(const auto& phase:phases){
@@ -1395,6 +1420,19 @@ void validate(const Json& config){
         }
         seen.insert(id);
         phase.value("paired",false);
+        const auto mps=phase.value("mps",Json::object());
+        if(!mps.is_object())throw std::invalid_argument("mps must be an object");
+        if(!mps.empty()){
+            for(auto it=mps.begin();it!=mps.end();++it)
+                if(it.key()!="server_pid"&&it.key()!="pipe_directory"&&it.key()!="log_directory")
+                    throw std::invalid_argument("unknown mps field: "+it.key());
+            if(!mps.contains("server_pid")||!mps.at("server_pid").is_number_integer()||mps.at("server_pid").get<int>()<=0)
+                throw std::invalid_argument("mps server_pid must be a positive integer");
+            if(!mps.contains("pipe_directory")||!fs::path(mps.at("pipe_directory").get<std::string>()).is_absolute())
+                throw std::invalid_argument("mps pipe_directory must be absolute");
+            if(mps.contains("log_directory")&&!fs::path(mps.at("log_directory").get<std::string>()).is_absolute())
+                throw std::invalid_argument("mps log_directory must be absolute");
+        }
         const double admission_wait=number_field(phase,"admission_wait_seconds",0);
         const double admission_poll=number_field(phase,"admission_poll_seconds",15);
         if(admission_wait>86400 || admission_poll<=0 || admission_poll>60)
@@ -1402,6 +1440,7 @@ void validate(const Json& config){
         evaluate_gates(Json::object(),phase.value("gates",Json::array()));
         for(const auto& cell:expand_matrix(phase)){
             if(cell.at("id")!=id || !kinds.count(cell.value("kind","online")))throw std::invalid_argument("matrix cannot change phase identity or introduce an unknown executor");
+            if(cell.value("mps",Json::object())!=mps)throw std::invalid_argument("matrix cannot change the MPS control identity");
             if(cell.contains("worker_config")&&!cell.at("worker_config").is_object())throw std::invalid_argument("worker_config must be an object");
             if(cell.contains("occupancy_backend")&&(!cell.at("occupancy_backend").is_string()||
                 (cell.at("occupancy_backend")!="nvidia_smi"&&cell.at("occupancy_backend")!="nvml")))

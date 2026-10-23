@@ -419,6 +419,20 @@ class NativeStudyTest(unittest.TestCase):
         # Block quanta after the request's own previous quantum are "steady"; those behind another request count as resumes.
         self.assertTrue(any("block_ms_steady" in rows[v] and rows[v]["resumes"] >= 0 for v in ("v0", "v1")))
 
+    def test_mps_configuration_is_validated_before_execution(self):
+        for mps in ([], dict(server_pid=0, pipe_directory="/tmp"),
+                    dict(server_pid=1, pipe_directory="relative"),
+                    dict(server_pid=1, pipe_directory="/tmp", unexpected=True)):
+            with self.subTest(mps=mps), self.assertRaises(CoreError):
+                self.run_study(self.config([self.phase(mps=mps)]), name="bad-mps")
+        phase = self.phase(mps=dict(server_pid=1, pipe_directory="/tmp"),
+                           matrix={"/mps/server_pid": [1, 2]})
+        with self.assertRaisesRegex(CoreError, "MPS control identity"):
+            self.run_study(self.config([phase]), name="changing-mps")
+        valid = dict(server_pid=1, pipe_directory="/tmp")
+        with self.assertRaisesRegex(CoreError, "single-phase"):
+            self.run_study(self.config([self.phase(mps=valid), self.phase("second")]), name="multi-mps")
+
     def test_cluster_occupancy_backend_is_validated_and_reported(self):
         with self.assertRaises(CoreError):
             self.run_study(self.config([self.cluster_phase("block_elastic", occupancy_backend="smi")],

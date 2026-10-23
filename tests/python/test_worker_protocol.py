@@ -113,6 +113,27 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(result["foreign"][0]["pid"], 11)
         self.assertIsNone(result["owned"][0]["pgid"])
 
+    def test_mps_control_requires_owned_server_and_verifies_exit(self):
+        with self.assertRaises(ValueError):
+            self.call("mps_control", action="start", server_pid=123, pipe_directory=self.directory.name)
+        replies = [subprocess.CompletedProcess([], 0, "123\n", ""),
+                   subprocess.CompletedProcess([], 0, "", "")]
+        with patch("ditserve.runtime.worker.subprocess.run", side_effect=replies) as run, \
+                patch("ditserve.runtime.worker.os.kill", side_effect=ProcessLookupError):
+            result = self.call("mps_control", action="quit", server_pid=123,
+                               pipe_directory=self.directory.name)
+        self.assertEqual(result, dict(action="quit", server_pid=123, shutdown=True, verified=True))
+        self.assertEqual([call.kwargs["input"] for call in run.call_args_list], ["get_server_list\n", "quit\n"])
+        for call in run.call_args_list:
+            self.assertEqual(call.args[0], ["nvidia-cuda-mps-control"])
+            self.assertFalse(call.kwargs.get("shell", False))
+            self.assertEqual(call.kwargs["env"]["CUDA_MPS_PIPE_DIRECTORY"], self.directory.name)
+        with patch("ditserve.runtime.worker.subprocess.run",
+                   return_value=subprocess.CompletedProcess([], 0, "999\n", "")) as run:
+            with self.assertRaisesRegex(RuntimeError, "not owned"):
+                self.call("mps_control", action="quit", server_pid=123, pipe_directory=self.directory.name)
+        self.assertEqual(run.call_count, 1)
+
     def test_parent_eof_closes_live_state(self):
         line = json.dumps(dict(version=1, id=1, op="prepare", state_id="a"))
         serve(self.worker, io.StringIO(line), io.StringIO())

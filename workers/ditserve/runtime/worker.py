@@ -43,6 +43,46 @@ def _operation(request):
     return request["op"]
 
 
+def mps_control(request):
+    if request.get("action") != "quit":
+        raise ValueError("mps_control supports action=quit only")
+    server_pid = request.get("server_pid")
+    if type(server_pid) is not int or server_pid <= 0:
+        raise ValueError("server_pid must be a positive integer")
+    pipe = Path(request.get("pipe_directory", ""))
+    if not pipe.is_absolute() or not pipe.is_dir():
+        raise ValueError("pipe_directory must be an existing absolute directory")
+    environment = dict(os.environ, CUDA_MPS_PIPE_DIRECTORY=str(pipe))
+    if request.get("log_directory"):
+        log = Path(request["log_directory"])
+        if not log.is_absolute() or not log.is_dir():
+            raise ValueError("log_directory must be an existing absolute directory")
+        environment["CUDA_MPS_LOG_DIRECTORY"] = str(log)
+
+    def command(value):
+        return subprocess.run(["nvidia-cuda-mps-control"], input=value + "\n", capture_output=True,
+                              text=True, timeout=10, check=True, env=environment)
+
+    listing = command("get_server_list")
+    servers = {int(line.strip()) for line in listing.stdout.splitlines() if line.strip().isdigit()}
+    if server_pid not in servers:
+        raise RuntimeError("declared MPS server is not owned by this control pipe")
+    command("quit")
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        try:
+            os.kill(server_pid, 0)
+            stat = Path(f"/proc/{server_pid}/stat").read_text(encoding="utf-8")
+            if stat[stat.rfind(")") + 2:].split()[0] == "Z":
+                break
+        except (ProcessLookupError, FileNotFoundError):
+            break
+        time.sleep(0.05)
+    else:
+        raise RuntimeError("MPS server did not exit after quit")
+    return dict(action="quit", server_pid=server_pid, shutdown=True, verified=True)
+
+
 class Worker:
     def __init__(self, backend, config):
         if backend not in BACKENDS:
@@ -57,6 +97,8 @@ class Worker:
         op = _operation(request)
         if self.closed:
             raise ValueError("worker is shut down")
+        if op == "mps_control":
+            return mps_control(request)
         if op == "occupancy":
             if request.get("occupancy_backend", "nvidia_smi") == "nvml":
                 if self._occupancy_probe is None:
@@ -77,7 +119,7 @@ class Worker:
         cls = getattr(importlib.import_module("ditserve.models." + definition[0]), definition[1]) if definition else None
         operations = cls.operations if cls else SERVICE_OPERATIONS[self.name]
         if op == "hello":
-            return {"backend": self.name, "operations": list(dict.fromkeys(["hello", "occupancy", "memory", *operations, "evaluate", "shutdown"])),
+            return {"backend": self.name, "operations": list(dict.fromkeys(["hello", "occupancy", "memory", "mps_control", *operations, "evaluate", "shutdown"])),
                     "loaded": self.backend is not None, "measured": self.name not in ("mock", "results", "environment"),
                     "capabilities": {"operations": list(operations), "persistent_states": cls is not None},
                     "qualification": "fixture_only" if self.name == "mock" else "unverified",
@@ -147,9 +189,13 @@ def process_memory():
     if torch is None or not torch.cuda.is_initialized():
         return dict(cuda_initialized=False)
     free, total = torch.cuda.mem_get_info()
+    device = torch.cuda.current_device()
     return dict(cuda_initialized=True, allocated_bytes=int(torch.cuda.memory_allocated()),
                 reserved_bytes=int(torch.cuda.memory_reserved()), peak_allocated_bytes=int(torch.cuda.max_memory_allocated()),
-                driver_free_bytes=int(free), device_total_bytes=int(total))
+                peak_reserved_bytes=int(torch.cuda.max_memory_reserved()),
+                driver_free_bytes=int(free), device_total_bytes=int(total),
+                sm_count=int(torch.cuda.get_device_properties(device).multi_processor_count),
+                mps_active_thread_percent=os.environ.get("CUDA_MPS_ACTIVE_THREAD_PERCENTAGE"))
 
 
 def occupancy(request, *, mock=False, nvml_probe=None):
