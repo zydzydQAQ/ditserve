@@ -419,6 +419,21 @@ class NativeStudyTest(unittest.TestCase):
         # Block quanta after the request's own previous quantum are "steady"; those behind another request count as resumes.
         self.assertTrue(any("block_ms_steady" in rows[v] and rows[v]["resumes"] >= 0 for v in ("v0", "v1")))
 
+    def test_cluster_occupancy_backend_is_validated_and_reported(self):
+        with self.assertRaises(CoreError):
+            self.run_study(self.config([self.cluster_phase("block_elastic", occupancy_backend="smi")],
+                                       workers=self.cluster_workers()), name="bad-occupancy")
+        value = self.run_study(self.config([self.cluster_phase("block_elastic", occupancy_backend="nvml")],
+                                           workers=self.cluster_workers()), name="nvml")
+        self.assert_completed(value)
+        telemetry = value["phases"][0]["cells"][0]["guard_telemetry"]
+        self.assertEqual(telemetry["schema"], "ditserve.guard-telemetry.v1")
+        self.assertEqual(telemetry["occupancy_backend"], "nvml")
+        self.assertGreater(telemetry["heartbeat_calls"], 0)
+        self.assertGreaterEqual(telemetry["lock_wait_max_ms"], 0)
+        # CPU fixtures own no GPU devices, so the probe never runs.
+        self.assertEqual(telemetry["probe_calls"], 0)
+
     def test_mock_worker_holds_one_grouped_request_inside_a_solver_step(self):
         from ditserve.models.mock import MockBackend
         backend = MockBackend({"options": {}})

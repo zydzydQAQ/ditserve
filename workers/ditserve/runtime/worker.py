@@ -51,12 +51,18 @@ class Worker:
         self.config = dict(config, backend=backend)
         self.backend = None
         self.closed = False
+        self._occupancy_probe = None   # resident NVML owner, opened on the first nvml observation
 
     def dispatch(self, request):
         op = _operation(request)
         if self.closed:
             raise ValueError("worker is shut down")
         if op == "occupancy":
+            if request.get("occupancy_backend", "nvidia_smi") == "nvml":
+                if self._occupancy_probe is None:
+                    from .occupancy_nvml import NvmlOccupancy
+                    self._occupancy_probe = NvmlOccupancy()
+                return occupancy(request, mock=self.name == "mock", nvml_probe=self._occupancy_probe)
             return occupancy(request, mock=self.name == "mock")
         if op == "memory":
             return process_memory()
@@ -128,7 +134,11 @@ class Worker:
             if self.backend is not None:
                 self.backend.close()
         finally:
-            self.closed = True
+            try:
+                if self._occupancy_probe is not None:
+                    self._occupancy_probe.close()
+            finally:
+                self.closed = True
 
 
 def process_memory():
@@ -142,9 +152,26 @@ def process_memory():
                 driver_free_bytes=int(free), device_total_bytes=int(total))
 
 
-def occupancy(request, *, mock=False):
+def occupancy(request, *, mock=False, nvml_probe=None):
+    """Foreign compute processes on the requested GPUs: nvidia-smi (default) or direct NVML.
+
+    Both backends fail closed to status "unknown" and name themselves in the result.
+    """
+    backend = request.get("occupancy_backend", "nvidia_smi")
+    if backend == "nvml":
+        if nvml_probe is not None:
+            return nvml_probe.observe(request)
+        from .occupancy_nvml import NvmlOccupancy
+        probe = NvmlOccupancy()
+        try:
+            return probe.observe(request)
+        finally:
+            probe.close()
+    if backend != "nvidia_smi":
+        raise ValueError("occupancy_backend must be nvidia_smi or nvml")
     requested = request.get("gpu_uuids", [])
-    empty = dict(status="unknown", owned=[], foreign=[], devices=[], cuda_initialized=False)
+    empty = dict(status="unknown", owned=[], foreign=[], devices=[], cuda_initialized=False,
+                 occupancy_backend="nvidia_smi")
     if not requested:
         return dict(empty, status="exclusive_observed" if mock else "unknown")
     try:
@@ -176,7 +203,8 @@ def occupancy(request, *, mock=False):
             row = dict(pid=pid, pgid=pgid, gpu_uuid=gpu, memory_mib=memory)
             (owned if pid in allowed or pgid in groups else foreign).append(row)
         return dict(status="busy" if foreign else "exclusive_observed", owned=owned, foreign=foreign,
-                    devices=[dict(uuid=value, name=devices[value]) for value in requested], cuda_initialized=False)
+                    devices=[dict(uuid=value, name=devices[value]) for value in requested], cuda_initialized=False,
+                    occupancy_backend="nvidia_smi")
     except (OSError, subprocess.SubprocessError, ValueError, TypeError) as error:
         return dict(empty, reason=str(error))
 

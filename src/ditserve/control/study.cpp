@@ -212,20 +212,22 @@ namespace {
 // and recreated on the next check.
 class OccupancyProbe {
 public:
-    OccupancyProbe(const Json& request,fs::path work):request_(request),work_(std::move(work)){}
+    // backend: "nvidia_smi" (two subprocesses per observation) or "nvml" (direct, resident in the probe worker).
+    OccupancyProbe(const Json& request,fs::path work,std::string backend="nvidia_smi")
+        :request_(request),work_(std::move(work)),backend_(std::move(backend)){}
     ~OccupancyProbe(){if(probe_)probe_->stop();}
     Json observe(const Json& devices,const std::vector<int>& allowed,double deadline) {
         if(devices.empty())return {{"status","exclusive_observed"},{"owned",Json::array()},{"foreign",Json::array()}};
         try {
             if(!probe_)probe_=std::make_unique<Workers>(Json{{"probe",{{"backend","mock"}}}},request_,work_);
-            return probe_->get("probe").call({{"op","occupancy"},{"gpu_uuids",devices},{"allowed_pids",allowed},{"allowed_pgids",allowed}},deadline>0?deadline:monotonic_seconds()+15);
+            return probe_->get("probe").call({{"op","occupancy"},{"occupancy_backend",backend_},{"gpu_uuids",devices},{"allowed_pids",allowed},{"allowed_pgids",allowed}},deadline>0?deadline:monotonic_seconds()+15);
         }catch(const std::exception& error){
             if(probe_){probe_->stop();probe_.reset();}
             return {{"status","unknown"},{"reason",error.what()}};
         }
     }
 private:
-    Json request_;fs::path work_;std::unique_ptr<Workers> probe_;
+    Json request_;fs::path work_;std::string backend_;std::unique_ptr<Workers> probe_;
 };
 
 Json gpu_observation(const Json& request,const fs::path& work,const Json& devices,const std::vector<int>& allowed={},double deadline=0) {
@@ -1155,37 +1157,67 @@ bool execute_cells(const Json& phase,const Json& request,const Json& devices,
         Json definitions=request.at("config").at("workers");
         if(cell.contains("worker_config"))definitions[cell.value("worker","model")]["config"].merge_patch(cell.at("worker_config"));
         Workers workers(definitions,request,cell_dir);
-        OccupancyProbe probe(request,cell_dir/"probe");
+        const auto occupancy_backend=cell.value("occupancy_backend",std::string("nvidia_smi"));
+        OccupancyProbe probe(request,cell_dir/"probe",occupancy_backend);
         double last_observation=0;
         int unknown_streak=0;
         Json tolerated=Json::array();
         std::mutex heartbeat_mutex;
+        // Every worker call runs this heartbeat first and then every 0.5 s while it waits, and all of them
+        // share one mutex: while an occupancy observation runs, no rank can send or collect a quantum.
+        // The telemetry measures that cost (lock waits, probe durations) per cell.
+        const double cell_started=monotonic_seconds();
+        Json guard_telemetry={{"schema","ditserve.guard-telemetry.v1"},{"occupancy_backend",occupancy_backend},{"cadence_seconds",2.},
+            {"probe_timeout_seconds",3.},{"heartbeat_calls",0},{"lock_wait_total_ms",0.},{"lock_wait_max_ms",0.},
+            {"heartbeat_total_ms",0.},{"heartbeat_max_ms",0.},{"probe_calls",0},{"probe_total_ms",0.},{"probe_max_ms",0.},
+            {"probe_not_exclusive",0},{"events",Json::array()},{"dropped_events",0}};
+        auto add_duration=[&](const char* total,const char* maximum,double ms){
+            guard_telemetry[total]=guard_telemetry.at(total).get<double>()+ms;
+            guard_telemetry[maximum]=std::max(guard_telemetry.at(maximum).get<double>(),ms);
+        };
         workers.heartbeat([&]{
             // Collective ranks call concurrently. One observation owns the
             // probe paths, and its timestamp must not race with other ranks.
+            const double started=monotonic_seconds();
             std::lock_guard<std::mutex> guard(heartbeat_mutex);
+            guard_telemetry["heartbeat_calls"]=guard_telemetry.at("heartbeat_calls").get<int>()+1;
+            add_duration("lock_wait_total_ms","lock_wait_max_ms",(monotonic_seconds()-started)*1000);
+            struct Finish{std::function<void()> f;~Finish(){f();}} finish{[&]{add_duration("heartbeat_total_ms","heartbeat_max_ms",(monotonic_seconds()-started)*1000);}};
             if(cancelled())throw std::runtime_error("run cancelled");
             budget.check();
             if(!devices.empty()&&monotonic_seconds()-last_observation>=2){
                 last_observation=monotonic_seconds();
+                const double probe_started=monotonic_seconds();
                 auto observed=probe.observe(devices,workers.pids(),std::min(budget.deadline(),monotonic_seconds()+3));
+                const double probe_ms=(monotonic_seconds()-probe_started)*1000;
+                guard_telemetry["probe_calls"]=guard_telemetry.at("probe_calls").get<int>()+1;
+                add_duration("probe_total_ms","probe_max_ms",probe_ms);
+                const auto status=observed.value("status","unknown");
+                if(status!="exclusive_observed")guard_telemetry["probe_not_exclusive"]=guard_telemetry.at("probe_not_exclusive").get<int>()+1;
+                if(guard_telemetry.at("events").size()<1024)guard_telemetry["events"].push_back({{"at_s",probe_started-cell_started},{"probe_ms",probe_ms},{"status",status}});
+                else guard_telemetry["dropped_events"]=guard_telemetry.at("dropped_events").get<int>()+1;
+                // An answer from another backend than the one configured is not evidence for this cell.
+                if(status!="unknown"&&observed.value("occupancy_backend","")!=occupancy_backend)
+                    throw std::runtime_error("GPU occupancy probe answered with another backend: "+observed.dump());
                 // A CPU-bound host can delay nvidia-smi past the probe deadline; that alone
                 // proves nothing about other processes on the GPU.
                 if(!isolation_holds(observed,unknown_streak))throw std::runtime_error("GPU isolation lost: "+observed.dump());
                 if(unknown_streak)tolerated.push_back(observed);
             }
         });
+        auto telemetry=[&]{std::lock_guard<std::mutex> guard(heartbeat_mutex);return guard_telemetry;};
         try{
             const auto kind=cell.value("kind","online");
             Json result=cell.contains("actions")?operations(cell,workers,budget,record,work,cell_dir):kind=="streaming"?stream(cell,workers,budget,record,work):kind=="cluster"?cluster(cell,workers,budget,record,work):replay(cell,workers,budget,record,work,cell_dir);
             result["cell"]=order[position];result["order"]=position<cells.size()?"forward":"reverse";result["status"]="completed";
             if(!tolerated.empty())result["unknown_observations"]=tolerated;
+            result["guard_telemetry"]=telemetry();
             for(auto row:result.value("requests",Json::array())){row["phase"]=id;row["attempt"]=attempt_number;row["cell"]=order[position];row["order"]=result["order"];
                 row["observation_id"]=id+"/"+std::to_string(attempt_number)+"/"+std::to_string(position);
                 row["observation_ms"]=result.value("elapsed_ms",number_field(row,"finish_ms"));record["requests"].push_back(row);}
             attempt["cells"].push_back(result);
             workers.shutdown(std::min(budget.deadline(),monotonic_seconds()+5));
-        }catch(const std::exception& failure){error=failure.what();attempt["cells"].push_back({{"cell",order[position]},{"status","failed"},{"error",error}});}
+        }catch(const std::exception& failure){error=failure.what();attempt["cells"].push_back({{"cell",order[position]},{"status","failed"},{"error",error},{"guard_telemetry",telemetry()}});}
         const auto pids=workers.pids();attempt_pids.insert(attempt_pids.end(),pids.begin(),pids.end());
         const auto unverified=workers.stop();
         if(!unverified.empty()){cleanup=false;attempt["unverified_workers"].push_back({{"cell",order[position]},{"workers",unverified}});}
@@ -1242,6 +1274,9 @@ void validate(const Json& config){
         for(const auto& cell:expand_matrix(phase)){
             if(cell.at("id")!=id || !kinds.count(cell.value("kind","online")))throw std::invalid_argument("matrix cannot change phase identity or introduce an unknown executor");
             if(cell.contains("worker_config")&&!cell.at("worker_config").is_object())throw std::invalid_argument("worker_config must be an object");
+            if(cell.contains("occupancy_backend")&&(!cell.at("occupancy_backend").is_string()||
+                (cell.at("occupancy_backend")!="nvidia_smi"&&cell.at("occupancy_backend")!="nvml")))
+                throw std::invalid_argument("occupancy_backend must be nvidia_smi or nvml");
             auto known=[&](const std::string& worker){if(!config.at("workers").contains(worker))throw std::invalid_argument("unknown worker: "+worker);};
             if(cell.contains("worker_config")){
                 known(cell.value("worker","model"));
