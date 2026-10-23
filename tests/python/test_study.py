@@ -433,6 +433,19 @@ class NativeStudyTest(unittest.TestCase):
         self.assertGreaterEqual(telemetry["lock_wait_max_ms"], 0)
         # CPU fixtures own no GPU devices, so the probe never runs.
         self.assertEqual(telemetry["probe_calls"], 0)
+        self.assertFalse(telemetry["occupancy_thread"])
+        with self.assertRaises(CoreError):
+            self.run_study(self.config([self.cluster_phase("block_elastic", occupancy_thread="yes")],
+                                       workers=self.cluster_workers()), name="bad-thread")
+        value = self.run_study(self.config([self.cluster_phase("block_elastic", occupancy_backend="nvml", occupancy_thread=True)],
+                                           workers=self.cluster_workers()), name="nvml-thread")
+        self.assert_completed(value)
+        cell = value["phases"][0]["cells"][0]
+        self.assertTrue(cell["guard_telemetry"]["occupancy_thread"])
+        # Every untransferred video quantum reports its worker time and the gap around it.
+        videos = [row for row in cell["requests"] if row["kind"] == "video"]
+        self.assertTrue(all(row["timed_quanta"] > 0 and row["dispatch_gap_ms"] >= 0 and row["worker_operation_ms"] > 0
+                            for row in videos))
 
     def test_cluster_video_worker_options_patch_every_video_worker_only(self):
         for bad in ([], "on"):

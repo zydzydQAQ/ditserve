@@ -7,6 +7,7 @@
 #include <openssl/sha.h>
 #include <algorithm>
 #include <chrono>
+#include <condition_variable>
 #include <atomic>
 #include <csignal>
 #include <cmath>
@@ -861,6 +862,14 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         }
         const auto& ranks=out.at("ranks");
         double model=0;for(const auto& rank:ranks)model=std::max(model,number_field(rank,"model_ms"));
+        // Time a quantum spends outside its slowest rank's worker operation: dispatch, RPC, queueing and the
+        // controller noticing the reply. Regroup quanta (transfers) and lockstep pairs are left out.
+        if(!out.contains("transfer")&&task.assignment.value("pair",std::string()).empty()){
+            double operation=0;for(const auto& rank:ranks)operation=std::max(operation,number_field(rank,"worker_operation_ms"));
+            row["worker_operation_ms"]=number_field(row,"worker_operation_ms")+operation;
+            row["dispatch_gap_ms"]=number_field(row,"dispatch_gap_ms")+std::max(0.,elapsed-operation);
+            row["timed_quanta"]=row.value("timed_quanta",0)+1;
+        }
         auto settle=[&](Json& arow,Live& astate,const char* progress_key){
             const auto progress=ranks.at(0).at(progress_key);
             for(const auto& rank:ranks)if(rank.at(progress_key).value("step",-1)!=progress.value("step",-2))throw std::runtime_error("SP ranks disagree on solver progress");
@@ -1173,22 +1182,45 @@ bool execute_cells(const Json& phase,const Json& request,const Json& devices,
             }
         Workers workers(definitions,request,cell_dir);
         const auto occupancy_backend=cell.value("occupancy_backend",std::string("nvidia_smi"));
+        // occupancy_thread: observe on a background thread every 2 s instead of inside a heartbeat. Every worker call
+        // runs the heartbeat first and then every 0.5 s while it waits, all under one mutex, so an inline observation
+        // stalls every rank's sends and replies for its whole duration (K43/K45).
+        const bool probe_thread=cell.value("occupancy_thread",false);
         OccupancyProbe probe(request,cell_dir/"probe",occupancy_backend);
         double last_observation=0;
         int unknown_streak=0;
         Json tolerated=Json::array();
         std::mutex heartbeat_mutex;
-        // Every worker call runs this heartbeat first and then every 0.5 s while it waits, and all of them
-        // share one mutex: while an occupancy observation runs, no rank can send or collect a quantum.
-        // The telemetry measures that cost (lock waits, probe durations) per cell.
+        // The telemetry measures the guard's cost per cell (lock waits, probe durations).
         const double cell_started=monotonic_seconds();
         Json guard_telemetry={{"schema","ditserve.guard-telemetry.v1"},{"occupancy_backend",occupancy_backend},{"cadence_seconds",2.},
+            {"occupancy_thread",probe_thread},
             {"probe_timeout_seconds",3.},{"heartbeat_calls",0},{"lock_wait_total_ms",0.},{"lock_wait_max_ms",0.},
             {"heartbeat_total_ms",0.},{"heartbeat_max_ms",0.},{"probe_calls",0},{"probe_total_ms",0.},{"probe_max_ms",0.},
             {"probe_not_exclusive",0},{"events",Json::array()},{"dropped_events",0}};
         auto add_duration=[&](const char* total,const char* maximum,double ms){
             guard_telemetry[total]=guard_telemetry.at(total).get<double>()+ms;
             guard_telemetry[maximum]=std::max(guard_telemetry.at(maximum).get<double>(),ms);
+        };
+        std::string isolation_error;          // set by an observation; the next heartbeat throws it
+        double last_verdict=monotonic_seconds();
+        // Called with heartbeat_mutex held.
+        auto record_observation=[&](const Json& observed,double probe_started,double probe_ms){
+            guard_telemetry["probe_calls"]=guard_telemetry.at("probe_calls").get<int>()+1;
+            add_duration("probe_total_ms","probe_max_ms",probe_ms);
+            const auto status=observed.value("status","unknown");
+            if(status!="exclusive_observed")guard_telemetry["probe_not_exclusive"]=guard_telemetry.at("probe_not_exclusive").get<int>()+1;
+            if(guard_telemetry.at("events").size()<1024)guard_telemetry["events"].push_back({{"at_s",probe_started-cell_started},{"probe_ms",probe_ms},{"status",status}});
+            else guard_telemetry["dropped_events"]=guard_telemetry.at("dropped_events").get<int>()+1;
+            last_verdict=monotonic_seconds();
+            if(!isolation_error.empty())return;
+            // An answer from another backend than the one configured is not evidence for this cell.
+            if(status!="unknown"&&observed.value("occupancy_backend","")!=occupancy_backend)
+                isolation_error="GPU occupancy probe answered with another backend: "+observed.dump();
+            // A CPU-bound host can delay nvidia-smi past the probe deadline; that alone
+            // proves nothing about other processes on the GPU.
+            else if(!isolation_holds(observed,unknown_streak))isolation_error="GPU isolation lost: "+observed.dump();
+            else if(unknown_streak)tolerated.push_back(observed);
         };
         workers.heartbeat([&]{
             // Collective ranks call concurrently. One observation owns the
@@ -1200,26 +1232,39 @@ bool execute_cells(const Json& phase,const Json& request,const Json& devices,
             struct Finish{std::function<void()> f;~Finish(){f();}} finish{[&]{add_duration("heartbeat_total_ms","heartbeat_max_ms",(monotonic_seconds()-started)*1000);}};
             if(cancelled())throw std::runtime_error("run cancelled");
             budget.check();
-            if(!devices.empty()&&monotonic_seconds()-last_observation>=2){
-                last_observation=monotonic_seconds();
+            if(!probe_thread){
+                if(!devices.empty()&&monotonic_seconds()-last_observation>=2){
+                    last_observation=monotonic_seconds();
+                    const double probe_started=monotonic_seconds();
+                    auto observed=probe.observe(devices,workers.pids(),std::min(budget.deadline(),monotonic_seconds()+3));
+                    record_observation(observed,probe_started,(monotonic_seconds()-probe_started)*1000);
+                }
+            }else if(!devices.empty()&&isolation_error.empty()&&monotonic_seconds()-last_verdict>10)
+                isolation_error="GPU isolation unverified: no occupancy observation for 10 s";
+            if(!isolation_error.empty())throw std::runtime_error(isolation_error);
+        });
+        // The background prober: one observation at a time, outside the heartbeat mutex; stopped before the
+        // cell's workers are counted and stopped.
+        std::condition_variable probe_wakeup;bool probe_stop=false;std::thread prober;
+        if(probe_thread&&!devices.empty())prober=std::thread([&]{
+            for(;;){
+                {std::lock_guard<std::mutex> guard(heartbeat_mutex);if(probe_stop)return;}
                 const double probe_started=monotonic_seconds();
-                auto observed=probe.observe(devices,workers.pids(),std::min(budget.deadline(),monotonic_seconds()+3));
+                Json observed;
+                try{observed=probe.observe(devices,workers.pids(),std::min(budget.deadline(),monotonic_seconds()+3));}
+                catch(const std::exception& failure){observed={{"status","unknown"},{"reason",failure.what()}};}
                 const double probe_ms=(monotonic_seconds()-probe_started)*1000;
-                guard_telemetry["probe_calls"]=guard_telemetry.at("probe_calls").get<int>()+1;
-                add_duration("probe_total_ms","probe_max_ms",probe_ms);
-                const auto status=observed.value("status","unknown");
-                if(status!="exclusive_observed")guard_telemetry["probe_not_exclusive"]=guard_telemetry.at("probe_not_exclusive").get<int>()+1;
-                if(guard_telemetry.at("events").size()<1024)guard_telemetry["events"].push_back({{"at_s",probe_started-cell_started},{"probe_ms",probe_ms},{"status",status}});
-                else guard_telemetry["dropped_events"]=guard_telemetry.at("dropped_events").get<int>()+1;
-                // An answer from another backend than the one configured is not evidence for this cell.
-                if(status!="unknown"&&observed.value("occupancy_backend","")!=occupancy_backend)
-                    throw std::runtime_error("GPU occupancy probe answered with another backend: "+observed.dump());
-                // A CPU-bound host can delay nvidia-smi past the probe deadline; that alone
-                // proves nothing about other processes on the GPU.
-                if(!isolation_holds(observed,unknown_streak))throw std::runtime_error("GPU isolation lost: "+observed.dump());
-                if(unknown_streak)tolerated.push_back(observed);
+                std::unique_lock<std::mutex> lock(heartbeat_mutex);
+                record_observation(observed,probe_started,probe_ms);
+                if(probe_wakeup.wait_for(lock,std::chrono::seconds(2),[&]{return probe_stop;}))return;
             }
         });
+        auto stop_prober=[&]{
+            {std::lock_guard<std::mutex> guard(heartbeat_mutex);probe_stop=true;}
+            probe_wakeup.notify_all();
+            if(prober.joinable())prober.join();
+        };
+        struct StopProber{std::function<void()> f;~StopProber(){f();}} stop_prober_on_exit{stop_prober};
         auto telemetry=[&]{std::lock_guard<std::mutex> guard(heartbeat_mutex);return guard_telemetry;};
         try{
             const auto kind=cell.value("kind","online");
@@ -1233,6 +1278,7 @@ bool execute_cells(const Json& phase,const Json& request,const Json& devices,
             attempt["cells"].push_back(result);
             workers.shutdown(std::min(budget.deadline(),monotonic_seconds()+5));
         }catch(const std::exception& failure){error=failure.what();attempt["cells"].push_back({{"cell",order[position]},{"status","failed"},{"error",error},{"guard_telemetry",telemetry()}});}
+        stop_prober();
         const auto pids=workers.pids();attempt_pids.insert(attempt_pids.end(),pids.begin(),pids.end());
         const auto unverified=workers.stop();
         if(!unverified.empty()){cleanup=false;attempt["unverified_workers"].push_back({{"cell",order[position]},{"workers",unverified}});}
@@ -1292,6 +1338,7 @@ void validate(const Json& config){
             if(cell.contains("occupancy_backend")&&(!cell.at("occupancy_backend").is_string()||
                 (cell.at("occupancy_backend")!="nvidia_smi"&&cell.at("occupancy_backend")!="nvml")))
                 throw std::invalid_argument("occupancy_backend must be nvidia_smi or nvml");
+            if(cell.contains("occupancy_thread")&&!cell.at("occupancy_thread").is_boolean())throw std::invalid_argument("occupancy_thread must be a boolean");
             if(cell.contains("video_worker_options")){
                 if(!cell.at("video_worker_options").is_object())throw std::invalid_argument("video_worker_options must be an object");
                 if(cell.value("kind","online")!="cluster")throw std::invalid_argument("video_worker_options applies to cluster cells only");
