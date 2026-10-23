@@ -747,15 +747,26 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             // step-boundary state); ranks entering the group import its host-staged export
             // before any rank advances. Placement changes only here, at step boundaries,
             // and every rank of a placement receives the same epoch.
-            struct Staging{Json prepare;std::string id,source_name,transfer;std::vector<std::string> targets;bool release_source=false;};
+            struct Staging{Json prepare;std::string id,source_name,transfer;std::vector<std::string> targets;bool release_source=false,reencode=false;};
             auto in_group=[&](int gpu){return std::find(group.begin(),group.end(),gpu)!=group.end();};
             auto stage=[&](const std::string& rid,const Json& arow,Live& astate){
                 Staging st;st.id=rid;
                 if(group!=astate.group)astate.epoch=++epochs;
                 int source=-1;
                 if(!astate.prepared){
-                    const bool ticket=!astate.ticket.empty()&&in_group(astate.encode_gpu);
+                    // Prepare where the prompt was encoded and export the prepared state into the group. Preparing
+                    // on another worker without the ticket re-encodes the prompt on the CPU (8-16 s) while the
+                    // group's GPUs wait (the per-video overhead K45-K47 measured).
+                    const bool ticket=!astate.ticket.empty();
                     source=ticket?astate.encode_gpu:group.front();
+                    st.reencode=!ticket;
+                    // A continuous video on the encoding GPU gives its worker back at the next check point.
+                    if(ticket&&doorbell&&!in_group(source)&&busy[source])for(auto& task:tasks)if(task.continuous&&!task.rung){
+                        const auto& held=task.assignment.at("group");
+                        if(std::find(held.begin(),held.end(),Json(source))==held.end())continue;
+                        for(const auto& gpu:held)bells.ring(gpu.get<int>());
+                        task.rung=true;
+                    }
                     st.prepare={{"op","prepare"},{"state_id",rid},{"spec",spec_of(arow)},{"sp_degree",degree}};
                     if(form.cfg>1)st.prepare["cfg"]=form.cfg;
                     if(ticket)st.prepare["encode_ticket"]=astate.ticket;
@@ -773,8 +784,11 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 astate.resident=std::set<int>(group.begin(),group.end());astate.ticket.clear();
                 return st;
             };
+            const bool unprepared=!state.prepared,pair_unprepared=j<rows.size()&&!live[j].prepared;
             std::vector<Staging> stagings={stage(id,row,state)};
             if(j<rows.size())stagings.push_back(stage(pair,rows[j],live[j]));
+            if(unprepared)row["prompt_reencoded"]=stagings[0].reencode;
+            if(pair_unprepared)rows[j]["prompt_reencoded"]=stagings[1].reencode;
             std::vector<std::pair<std::string,Json>> advances;
             for(int gpu:group){
                 Json advance={{"op","advance"},{"state_id",id},{"sp_degree",degree},{"group",group},{"epoch",state.epoch}};

@@ -501,6 +501,10 @@ class NativeStudyTest(unittest.TestCase):
             self.assertGreaterEqual(row["transfers"], 1)
             self.assertGreater(row["transfer_bytes"], 0)
         self.assertEqual(list((self.root / "export").rglob("*.pt")), [])
+        # Prompts are encoded ahead; every video is prepared from its ticket on the encoding worker and
+        # exported into its group, never re-encoded on a group member.
+        videos = [row for name, row in rows.items() if name.startswith("v")]
+        self.assertTrue(videos and all(row["prompt_reencoded"] is False for row in videos))
 
     def test_cluster_doorbell_runs_videos_continuously_and_stops_them_for_images(self):
         with self.assertRaises(CoreError):
