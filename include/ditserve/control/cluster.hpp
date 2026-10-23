@@ -43,7 +43,9 @@ std::string form_name(const Form& form);
 // so one branch's all-to-all overlaps the other's compute: sp_overlap in [0, 1]
 // is the fraction of the shorter of the compute and communication terms hidden
 // that way (1: max of the two). quantum_overhead_ms is the fixed end-to-end
-// cost of dispatching one quantum.
+// cost of dispatching one quantum; block_overhead_ms is the executor's extra
+// time per executed block (outside the measured model time, K43/K45), so a
+// step costs blocks_per_step / cfg of it on every rank.
 class ClusterCost {
 public:
     explicit ClusterCost(const Json& profile);
@@ -79,11 +81,12 @@ public:
     double resume_ms(const std::string& klass) const;
     double resize_ms() const { return resize_ms_; }
     double quantum_overhead_ms() const { return overhead_ms_; }
+    double block_overhead_ms() const { return block_overhead_ms_; }
 private:
-    struct Terms { double compute = 0, comm = 0, latency = 0, exchange = 0, overlap = 0; };
+    struct Terms { double compute = 0, comm = 0, latency = 0, exchange = 0, overlap = 0, blocks = 0; };
     Terms terms(const std::string& klass, const Form& form, int sp_groups, const std::vector<int>* group) const;
     Json profile_;
-    double efficiency_ = 1, resize_ms_ = 0, overhead_ms_ = 0, overlap_ = 0, pair_overlap_ = 0;
+    double efficiency_ = 1, resize_ms_ = 0, overhead_ms_ = 0, block_overhead_ms_ = 0, overlap_ = 0, pair_overlap_ = 0;
 };
 
 // state: {now_ms, gpus, busy:[bool], requests:[...], sp_groups_running (SP

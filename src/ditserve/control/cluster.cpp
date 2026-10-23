@@ -117,6 +117,7 @@ ClusterCost::ClusterCost(const Json& profile) : profile_(profile) {
     if (efficiency_ > 1) throw std::invalid_argument("sp_efficiency must be in (0, 1]");
     resize_ms_ = number_field(profile, "resize_ms");
     overhead_ms_ = number_field(profile, "quantum_overhead_ms");
+    block_overhead_ms_ = number_field(profile, "block_overhead_ms");
     overlap_ = number_field(profile, "sp_overlap");
     if (overlap_ > 1) throw std::invalid_argument("sp_overlap must be in [0, 1]");
     pair_overlap_ = number_field(profile, "pair_overlap");
@@ -214,19 +215,21 @@ ClusterCost::Terms ClusterCost::terms(const std::string& name, const Form& form,
         const auto& pair = link_of(2);
         t.exchange = number_field(row, "cfg_exchange_mb") / number_field(pair, "gbps", 0, true) + number_field(pair, "latency_ms");
     }
+    // Each rank executes blocks_per_step / cfg blocks of a step (a CFG pair splits the two branches).
+    t.blocks = block_overhead_ms_ * blocks_per_step(name) / form.cfg;
     return t;
 }
 
 double ClusterCost::step_ms(const std::string& name, const Form& form, int sp_groups, const std::vector<int>* group) const {
     const Terms t = terms(name, form, sp_groups, group);
-    return t.compute + t.comm - t.overlap * std::min(t.compute, t.comm) + t.latency + t.exchange;
+    return t.compute + t.comm - t.overlap * std::min(t.compute, t.comm) + t.latency + t.exchange + t.blocks;
 }
 
 double ClusterCost::pair_ms(const std::string& first, const std::string& second, const Form& form, int sp_groups,
                             const std::vector<int>* group) const {
     const Terms a = terms(first, form, sp_groups, group), b = terms(second, form, sp_groups, group);
     const double compute = a.compute + b.compute, comm = a.comm + b.comm;
-    return compute + comm - pair_overlap_ * std::min(compute, comm) + a.latency + b.latency + a.exchange + b.exchange;
+    return compute + comm - pair_overlap_ * std::min(compute, comm) + a.latency + b.latency + a.exchange + b.exchange + a.blocks + b.blocks;
 }
 
 double ClusterCost::batch_ms(const std::string& name, int size) const {

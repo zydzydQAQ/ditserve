@@ -64,6 +64,18 @@ int main() {
         rejects([] { cluster_groups(8, {3}); });
         rejects([] { cluster_groups(0, {1}); });
     });
+    check("per-block overhead", [] {
+        Json slow = profile(); slow["block_overhead_ms"] = 2;
+        const ClusterCost base(profile()), extra(slow);
+        near(base.block_overhead_ms(), 0);
+        near(extra.step_ms("video", 1) - base.step_ms("video", 1), 20);                    // 10 blocks x 2 ms
+        near(extra.step_ms("video", 4) - base.step_ms("video", 4), 20);                    // every SP rank runs all blocks
+        near(extra.step_ms("video", Form{2, 1}) - base.step_ms("video", Form{2, 1}), 10);  // a CFG rank runs half
+        near(extra.block_ms("video", 1) - base.block_ms("video", 1), 2);
+        near(extra.pair_ms("video", "video", Form{1, 2}) - base.pair_ms("video", "video", Form{1, 2}), 40);
+        Json negative = profile(); negative["block_overhead_ms"] = -1;
+        rejects([&] { ClusterCost{negative}; });
+    });
     check("cost model", [] {
         const ClusterCost cost(profile());
         near(cost.step_ms("video", 1), 1000);
