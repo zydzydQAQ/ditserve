@@ -368,6 +368,10 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     const bool pin_started = bool_field(options, "pin_started", false);
     // Static partition baseline: the last R GPUs serve images only.
     const int reserve = int_field(options, "reserve_image_gpus", 0, 0);
+    // Image placement among equally ranked free GPUs: "first" takes the lowest index; "pair_fit" takes the GPU
+    // whose aligned partner (then quad) is already occupied, so free aligned pairs stay whole for CFG2 videos.
+    const auto image_placement = options.value("image_placement", std::string("first"));
+    if (image_placement != "first" && image_placement != "pair_fit") throw std::invalid_argument("image_placement must be first or pair_fit");
     if (reserve >= gpus) throw std::invalid_argument("reserve_image_gpus must leave a GPU for videos");
     auto reserved = [&](int gpu) { return gpu >= gpus - reserve; };
 
@@ -508,7 +512,14 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         const auto klass = r.at("class").get<std::string>();
         if (r.at("kind") == "image") {
             const double slack = number_field(r, "deadline_ms") - now - estimate(r, Form{}, 1);
-            int chosen = -1, rank = 3;  // -1 reserved, 0 idle, 1 step-boundary video group, 2 mid-step group
+            int chosen = -1, rank = 3, chosen_fit = -1;  // rank: -1 reserved, 0 idle, 1 step-boundary video group, 2 mid-step group
+            // Occupied neighbours of a GPU: its aligned partner counts most, then the rest of its aligned quad.
+            auto fit = [&](int gpu) {
+                auto occupied = [&](int g) { return g < gpus && (!free[g] || mid_owner[g]); };
+                int value = occupied(gpu ^ 1) ? 4 : 0;
+                for (int g = gpu / 4 * 4; g < std::min(gpus, gpu / 4 * 4 + 4); ++g) if (g / 2 != gpu / 2) value += occupied(g);
+                return value;
+            };
             for (int gpu = 0; gpu < gpus; ++gpu) {
                 if (!free[gpu]) continue;
                 // Prefer idle GPUs; then GPUs of videos at step boundaries; a
@@ -519,7 +530,8 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                     if (std::find(group.begin(), group.end(), gpu) != group.end()) score = 1;
                 }
                 if (score == 2 && policy.blocks && lazy && slack >= time_to_boundary(mid_owner[gpu])) continue;
-                if (score < rank) { rank = score; chosen = gpu; }
+                if (score < rank) { rank = score; chosen = gpu; chosen_fit = image_placement == "pair_fit" ? fit(gpu) : 0; }
+                else if (image_placement == "pair_fit" && score == rank && fit(gpu) > chosen_fit) { chosen = gpu; chosen_fit = fit(gpu); }
             }
             if (chosen < 0) continue;
             free[chosen] = false;

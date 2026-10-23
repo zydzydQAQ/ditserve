@@ -64,6 +64,18 @@ int main() {
         rejects([] { cluster_groups(8, {3}); });
         rejects([] { cluster_groups(0, {1}); });
     });
+    check("image placement keeps aligned pairs whole", [] {
+        // GPU 3 busy, 0-2 free: "first" breaks the free pair (0,1); "pair_fit" takes 2, whose partner is busy.
+        const Json busy = {false, false, false, true};
+        const auto first = plan(Json::array({image("i", 1e9)}), "block_elastic", 4, busy);
+        require(first.size() == 1 && first[0].at("group") == Json::array({0}), "first takes the lowest free GPU");
+        const auto fitted = plan(Json::array({image("i", 1e9)}), "block_elastic", 4, busy, {{"image_placement", "pair_fit"}});
+        require(fitted.size() == 1 && fitted[0].at("group") == Json::array({2}), "pair_fit keeps the free pair (0,1)");
+        // Nothing busy: every pair is free, the tie stays with the lowest index.
+        const auto idle = plan(Json::array({image("i", 1e9)}), "block_elastic", 4, Json::array(), {{"image_placement", "pair_fit"}});
+        require(idle[0].at("group") == Json::array({0}), "ties keep the lowest index");
+        rejects([] { plan(Json::array({image("i", 1e9)}), "block_elastic", 4, Json::array(), {{"image_placement", "best"}}); });
+    });
     check("per-block overhead", [] {
         Json slow = profile(); slow["block_overhead_ms"] = 2;
         const ClusterCost base(profile()), extra(slow);
