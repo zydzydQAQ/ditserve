@@ -434,6 +434,22 @@ class NativeStudyTest(unittest.TestCase):
         # CPU fixtures own no GPU devices, so the probe never runs.
         self.assertEqual(telemetry["probe_calls"], 0)
 
+    def test_cluster_video_worker_options_patch_every_video_worker_only(self):
+        for bad in ([], "on"):
+            with self.subTest(bad=bad), self.assertRaises(CoreError):
+                self.run_study(self.config([self.cluster_phase("block_elastic", video_worker_options=bad)],
+                                           workers=self.cluster_workers()), name="bad-vwo-%s" % type(bad).__name__)
+        with self.assertRaises(CoreError):
+            self.run_study(self.config([self.phase(video_worker_options=dict(flag=1))]), name="vwo-online")
+        value = self.run_study(self.config([self.cluster_phase("block_elastic", video_worker_options=dict(probe_flag=7))],
+                                           workers=self.cluster_workers()), name="vwo")
+        self.assert_completed(value)
+        written = {path.stem: json.loads(path.read_text()) for path in (self.root / "vwo").rglob("workers/*.json")}
+        for g in range(4):
+            self.assertEqual(written["v%d" % g]["options"]["probe_flag"], 7)
+            self.assertEqual(written["v%d" % g]["options"]["costs"], dict(step_ms=400, finish_ms=20))
+            self.assertNotIn("probe_flag", written["i%d" % g]["options"])
+
     def test_mock_worker_holds_one_grouped_request_inside_a_solver_step(self):
         from ditserve.models.mock import MockBackend
         backend = MockBackend({"options": {}})

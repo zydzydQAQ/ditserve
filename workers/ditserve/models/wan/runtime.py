@@ -220,6 +220,7 @@ class EncodedPrompt:
     cpu_prompt_encode_ms: float
     owner: object = dataclasses.field(repr=False)
     consumed: bool = False
+    negative_prompt_cache: object = None   # receipt of the optional negative-embedding cache
 
 
 @dataclasses.dataclass
@@ -248,7 +249,13 @@ class RequestState:
 class WanStepWorker:
     """One resident model, independent request schedulers/RNG/cache state."""
 
-    def __init__(self, device="cuda:0", model_path=None, attention="math", vae_dtype="float32"):
+    def __init__(self, device="cuda:0", model_path=None, attention="math", vae_dtype="float32", *,
+                 negative_prompt_cache_entries=None, negative_prompt_cache_bytes=None):
+        from .prompt_cache import cache_options
+        # Validated before any weights load: both limits or neither.
+        cache_config = cache_options({name: value for name, value in (
+            ("negative_prompt_cache_entries", negative_prompt_cache_entries),
+            ("negative_prompt_cache_bytes", negative_prompt_cache_bytes)) if value is not None})
         if not isinstance(device, str) or not device.startswith("cuda:") or not device[5:].isdigit():
             raise ValueError("device must be an explicit cuda:N device")
         if attention not in ATTENTION_BACKENDS:
@@ -310,6 +317,16 @@ class WanStepWorker:
         self._encoder_lock = threading.Lock()
         self._owner = object()
         self._states = {}
+        self._negative_prompt_cache = None
+        if cache_config:
+            from .prompt_cache import NegativePromptCache
+            self._negative_prompt_cache = NegativePromptCache(
+                entries=cache_config["negative_prompt_cache_entries"],
+                byte_limit=cache_config["negative_prompt_cache_bytes"],
+                recipe=dict(model_path=str(self.model_path), revision=REVISION,
+                            diffusers=REQUIRED_VERSIONS["diffusers"], text_encoder="UMT5",
+                            device="cpu", dtype="torch.float32", max_sequence_length=512,
+                            num_videos_per_prompt=1))
         self._detach_contexts()
 
     def _cache_config(self, spec):
@@ -444,19 +461,41 @@ class WanStepWorker:
 
         The pinned UMT5 encoder uses explicit matmul/softmax attention. Changing
         global SDPA settings here would race a concurrently executing DiT/VAE.
-        No embedding is reused across requests, including identical prompts.
+        The positive prompt is always encoded. With the optional negative cache, the
+        negative embedding of an exact negative prompt is reused within this worker
+        (the CPU FP32 encoder is deterministic, so a hit equals a fresh encode); every
+        request still receives its own tensors.
         """
         spec = normalize_spec(spec)
         with self._encoder_lock, self.torch.inference_mode():
             started = time.perf_counter()
-            prompt, negative = self.pipe.encode_prompt(
+            arguments = dict(
                 prompt=spec["prompt"], negative_prompt=spec["negative_prompt"],
                 do_classifier_free_guidance=spec["guidance_scale"] > 1,
                 num_videos_per_prompt=1, max_sequence_length=512, device="cpu", dtype=self.torch.float32)
-            self._validate_cpu_embeddings(prompt, negative, spec)
+            cache = getattr(self, "_negative_prompt_cache", None)
+            receipt = None
+            if cache is None:
+                prompt, negative = self.pipe.encode_prompt(**arguments)
+                self._validate_cpu_embeddings(prompt, negative, spec)
+            else:
+                prompt, negative, receipt = cache.encode(self.pipe.encode_prompt, arguments,
+                    request_id=spec["request_id"],
+                    validate=lambda prompt, negative: self._validate_cpu_embeddings(prompt, negative, spec))
+            elapsed_ms = (time.perf_counter() - started) * 1000
+            if receipt is not None:
+                receipt["cpu_prompt_encode_ms"] = elapsed_ms
             return EncodedPrompt(spec=spec, prompt_embeds=prompt, negative_prompt_embeds=negative,
-                                 cpu_prompt_encode_ms=(time.perf_counter() - started) * 1000,
-                                 owner=self._owner)
+                                 cpu_prompt_encode_ms=elapsed_ms, owner=self._owner,
+                                 negative_prompt_cache=receipt)
+
+    def clear_negative_prompt_cache(self):
+        """Release retained CPU tensors after encoder shutdown, including failures."""
+        cache = getattr(self, "_negative_prompt_cache", None)
+        if cache is None:
+            return
+        with self._encoder_lock:
+            cache.clear()
 
     def _validate_cpu_embeddings(self, prompt, negative, spec):
         if prompt is None or (spec["guidance_scale"] > 1 and negative is None):
@@ -516,9 +555,11 @@ class WanStepWorker:
             self._sync()
             gpu_prepare_ms = (time.perf_counter() - started) * 1000
             state.prepare_ms = payload.cpu_prompt_encode_ms + gpu_prepare_ms
-            state.events.append({"kind": "prepare", "ms": state.prepare_ms,
-                                 "cpu_prompt_encode_ms": payload.cpu_prompt_encode_ms,
-                                 "gpu_prepare_ms": gpu_prepare_ms})
+            event = {"kind": "prepare", "ms": state.prepare_ms,
+                     "cpu_prompt_encode_ms": payload.cpu_prompt_encode_ms, "gpu_prepare_ms": gpu_prepare_ms}
+            if payload.negative_prompt_cache is not None:
+                event["negative_prompt_cache"] = copy.deepcopy(payload.negative_prompt_cache)
+            state.events.append(event)
             self._states[state.request_id] = state
             payload.consumed = True
             return state

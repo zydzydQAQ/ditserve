@@ -922,8 +922,14 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             if(state.status!="encoding"||busy[state.encode_gpu])continue;
             auto& w=workers.get(video(state.encode_gpu));
             if(state.ticket.empty()){state.ticket=w.call({{"op","encode_start"},{"spec",spec_of(row)}},budget.deadline()).at("ticket").get<std::string>();row["encode_submit_ms"]=now();}
-            else if(w.call({{"op","encode_poll"},{"ticket",state.ticket}},budget.deadline()).value("ready",false)){
-                state.status="waiting";row["encode_ready_ms"]=now();progressed=true;
+            else{
+                const auto polled=w.call({{"op","encode_poll"},{"ticket",state.ticket}},budget.deadline());
+                if(polled.value("ready",false)){
+                    state.status="waiting";row["encode_ready_ms"]=now();progressed=true;
+                    // CPU encoding time and, with the negative-prompt cache, whether it hit.
+                    if(polled.contains("model_ms"))row["encode_model_ms"]=number_field(polled,"model_ms");
+                    if(polled.contains("negative_prompt_cache"))row["negative_prompt_cache"]=polled.at("negative_prompt_cache").value("outcome",std::string("unknown"));
+                }
             }
         }
         if(std::find(busy.begin(),busy.end(),false)!=busy.end()){
@@ -1156,6 +1162,15 @@ bool execute_cells(const Json& phase,const Json& request,const Json& devices,
         cell["_attempt"]=attempt_number;cell["_cell"]=order[position];cell["_order"]=position<cells.size()?"forward":"reverse";
         Json definitions=request.at("config").at("workers");
         if(cell.contains("worker_config"))definitions[cell.value("worker","model")]["config"].merge_patch(cell.at("worker_config"));
+        // video_worker_options: the same option patch for every slot's video worker of a cluster cell,
+        // so a matrix axis can switch a worker feature (e.g. the negative-prompt cache) per cell.
+        if(cell.value("kind","online")=="cluster"&&cell.contains("video_worker_options"))
+            for(const auto& slot:cell.at("gpus")){
+                auto& config=definitions[slot.at("video").get<std::string>()]["config"];
+                if(!config.is_object())config=Json::object();
+                if(!config.contains("options")||!config.at("options").is_object())config["options"]=Json::object();
+                config["options"].merge_patch(cell.at("video_worker_options"));
+            }
         Workers workers(definitions,request,cell_dir);
         const auto occupancy_backend=cell.value("occupancy_backend",std::string("nvidia_smi"));
         OccupancyProbe probe(request,cell_dir/"probe",occupancy_backend);
@@ -1277,6 +1292,10 @@ void validate(const Json& config){
             if(cell.contains("occupancy_backend")&&(!cell.at("occupancy_backend").is_string()||
                 (cell.at("occupancy_backend")!="nvidia_smi"&&cell.at("occupancy_backend")!="nvml")))
                 throw std::invalid_argument("occupancy_backend must be nvidia_smi or nvml");
+            if(cell.contains("video_worker_options")){
+                if(!cell.at("video_worker_options").is_object())throw std::invalid_argument("video_worker_options must be an object");
+                if(cell.value("kind","online")!="cluster")throw std::invalid_argument("video_worker_options applies to cluster cells only");
+            }
             auto known=[&](const std::string& worker){if(!config.at("workers").contains(worker))throw std::invalid_argument("unknown worker: "+worker);};
             if(cell.contains("worker_config")){
                 known(cell.value("worker","model"));

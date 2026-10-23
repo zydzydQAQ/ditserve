@@ -2,6 +2,7 @@
 
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+import copy
 import time
 
 from ..base import Backend, artifact, file_hash, positive_int, progress
@@ -15,10 +16,13 @@ class WanBackend(Backend):
     def __init__(self, config):
         super().__init__(config)
         from .runtime import WanStepWorker
+        from .prompt_cache import cache_options
+        self.options = config.get("options", {})
+        # Optional worker-owned negative-embedding cache: both limits or neither, checked before loading.
+        cache_config = cache_options(self.options)
         self.runtime = WanStepWorker(device=config.get("device", "cuda:0"),
             model_path=config.get("model_path"), attention=config.get("attention", "math"),
-            vae_dtype=config.get("vae_dtype", "float32"))
-        self.options = config.get("options", {})
+            vae_dtype=config.get("vae_dtype", "float32"), **cache_config)
         self.execution = self.options.get("execution", "step")
         if self.execution not in ("step", "block", "block_interleaved"):
             raise ValueError("Wan execution must be step, block or block_interleaved")
@@ -97,7 +101,9 @@ class WanBackend(Backend):
         if not future.done():
             return dict(ticket=ticket, ready=False)
         payload = future.result()
-        return dict(ticket=ticket, ready=True, model_ms=payload.cpu_prompt_encode_ms)
+        receipt = getattr(payload, "negative_prompt_cache", None)
+        return dict(ticket=ticket, ready=True, model_ms=payload.cpu_prompt_encode_ms,
+                    **({"negative_prompt_cache": copy.deepcopy(receipt)} if receipt is not None else {}))
 
     def _spec(self, request):
         from .runtime import normalize_spec
@@ -135,7 +141,8 @@ class WanBackend(Backend):
             raise
         timing = next((event for event in reversed(state.events) if event.get("kind") == "prepare"), {})
         return dict(state_id=key, progress=self._progress(state), model_ms=state.prepare_ms,
-                    **{name: timing[name] for name in ("cpu_prompt_encode_ms", "gpu_prepare_ms") if name in timing})
+                    **{name: copy.deepcopy(timing[name]) for name in (
+                        "cpu_prompt_encode_ms", "gpu_prepare_ms", "negative_prompt_cache") if name in timing})
 
     def advance(self, request):
         state = self.state(request)
@@ -468,20 +475,26 @@ class WanBackend(Backend):
         return dict(released=key)
 
     def close(self):
-        if self.decoder:
-            self.decoder.close()
-            self.decode_ticket = self.decode_state = None
-        self.encoder.shutdown(wait=True, cancel_futures=True)
-        self.tickets.clear()
-        for migration_id in list(self.pending):
-            self.endpoint.abort(migration_id)
-        self.pending.clear()
-        for migration_id, row in list(self.endpoint._sources.items()):
-            if row["phase"] in ("paused", "acknowledged"):
+        try:
+            if self.decoder:
+                self.decoder.close()
+                self.decode_ticket = self.decode_state = None
+            # Joins a running encode before the cache below is cleared.
+            self.encoder.shutdown(wait=True, cancel_futures=True)
+            self.tickets.clear()
+            for migration_id in list(self.pending):
                 self.endpoint.abort(migration_id)
-        super().close()
-        if self.parallel:
-            self.parallel.close()
-        if self.owns_world:
-            self.runtime.torch.distributed.destroy_process_group()
-        self.runtime._sync()
+            self.pending.clear()
+            for migration_id, row in list(self.endpoint._sources.items()):
+                if row["phase"] in ("paused", "acknowledged"):
+                    self.endpoint.abort(migration_id)
+            super().close()
+            if self.parallel:
+                self.parallel.close()
+            if self.owns_world:
+                self.runtime.torch.distributed.destroy_process_group()
+            self.runtime._sync()
+        finally:
+            clear = getattr(self.runtime, "clear_negative_prompt_cache", None)
+            if clear is not None:
+                clear()
