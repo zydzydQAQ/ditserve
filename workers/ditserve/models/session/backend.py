@@ -4,7 +4,8 @@ from ..base import Backend, artifact, positive_int, progress
 
 
 class SessionBackend(Backend):
-    operations = Backend.operations + ("snapshot", "restore", "inventory", "reference", "optimize", "generate_batch")
+    operations = Backend.operations + ("snapshot", "restore", "inventory", "reference", "optimize",
+                                       "generate_batch", "advance_batch")
 
     def __init__(self, config):
         super().__init__(config)
@@ -24,8 +25,11 @@ class SessionBackend(Backend):
                 self.runtime.set_candidate(candidate)
         else:
             from .runtime import MistralRuntime, SanaRuntime
-            cls = MistralRuntime if self.kind == "mistral" else SanaRuntime
-            self.runtime = cls(path, device)
+            if self.kind == "sana":
+                profile = config.get("options", {}).get("hardware_profile", "v100_fp32")
+                self.runtime = SanaRuntime(path, device, profile=profile)
+            else:
+                self.runtime = MistralRuntime(path, device)
 
     def _progress(self, state):
         if self.pipeline_mode:
@@ -69,6 +73,19 @@ class SessionBackend(Backend):
                 events.append(self.runtime.advance(state))
         return dict(state_id=request["state_id"], progress=self._progress(state), events=events,
                     model_ms=sum(row.get("ms", 0.) for row in events))
+
+    def advance_batch(self, request):
+        if self.kind != "sana" or self.pipeline_mode:
+            raise ValueError("continuous batch requires the explicit-step Sana runtime")
+        keys = request.get("state_ids")
+        if not isinstance(keys, list) or any(not isinstance(key, str) for key in keys):
+            raise ValueError("advance_batch requires a list of state_ids")
+        states = [self.state({"state_id": key}) for key in keys]
+        result = self.runtime.advance_batch(states)
+        rows = [dict(state_id=key, progress=self._progress(state), event=event)
+                for key, state, event in zip(keys, states, result["events"])]
+        return dict(batch_size=result["batch_size"], model_ms=result["ms"], results=rows,
+                    memory_before=result["memory_before"], memory_after=result["memory_after"])
 
     def finish(self, request):
         state = self.state(request)

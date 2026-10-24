@@ -1,9 +1,9 @@
-"""Exact model adapters for the separately qualified V100 session pilot.
+"""Exact model adapters for the session pilot.
 
 Imports do not load models or initialize CUDA.  Mistral uses greedy FP16 SDPA
-with the MATH backend; Sana keeps the existing full-FP32 MATH recipe.  KV is an
-exact autoregressive state, not diffusion approximation caching.  State-only
-offload is explicit and is not used automatically by either adapter.
+with the MATH backend; Sana has explicit V100 FP32 MATH and A100 BF16 profiles.
+KV is an exact autoregressive state, not diffusion approximation caching.
+State-only offload is explicit and is not used automatically by either adapter.
 """
 
 from contextlib import contextmanager
@@ -386,15 +386,21 @@ class SanaRuntime(_Runtime):
     _release_fields = _tensor_fields + ("output", "scheduler", "generator")
     _model_field = "pipe"
 
-    def __init__(self, model_path, device="cuda:0"):
+    def __init__(self, model_path, device="cuda:0", profile="v100_fp32"):
         self._initialize_runtime(device)
-        self._validate_v100()
+        if profile not in ("v100_fp32", "a100_bf16"):
+            raise ValueError("unknown explicit Sana hardware profile")
+        self._validate_v100(allow_a100=profile == "a100_bf16")
         from ..sana.hardware import SchedulingSana
-        self.adapter = SchedulingSana(model_path, device, profile="v100_fp32")
+        self.adapter = SchedulingSana(model_path, device, profile=profile)
         self.pipe = self.adapter.pipe
         self.model_path = str(Path(model_path).resolve())
         self._instruction = self.adapter._instruction
         self._configure()
+
+    def _attention(self):
+        adapter = getattr(self, "adapter", None)
+        return super()._attention() if adapter is None else adapter._attention()
 
     def _configure(self):
         module = importlib.import_module("diffusers.pipelines.sana.pipeline_sana_sprint")
@@ -439,32 +445,80 @@ class SanaRuntime(_Runtime):
             self._states[id(state)] = state
         return state
 
+    def _memory(self):
+        if not self.device.startswith("cuda"):
+            return None
+        return dict(allocated_bytes=int(self.torch.cuda.memory_allocated(self.device)),
+                    reserved_bytes=int(self.torch.cuda.memory_reserved(self.device)),
+                    peak_allocated_bytes=int(self.torch.cuda.max_memory_allocated(self.device)),
+                    peak_reserved_bytes=int(self.torch.cuda.max_memory_reserved(self.device)))
+
     def advance(self, state):
+        return self.advance_batch([state])["events"][0]
+
+    def advance_batch(self, states):
+        states = list(states)
+        if not 1 <= len(states) <= 8:
+            raise ValueError("Sana continuous batch requires 1 to 8 states")
+        if len({id(state) for state in states}) != len(states):
+            raise ValueError("Sana continuous batch contains a duplicate state")
         with self._lock:
-            self._check(state)
-            if state.done or state.finished:
-                raise ValueError("Sana denoising is already complete")
-            if state.scheduler.step_index not in (None, state.step_index):
-                raise ValueError("Sana sampler index differs from request continuation")
-            with self._action(state):
-                torch, pipe = self.torch, self.pipe
-                timestep = state.scheduler.timesteps[state.step_index].expand(state.latents.shape[0])
-                latents_model_input = state.latents / state.scheduler.config.sigma_data
-                scm_timestep = torch.sin(timestep) / (torch.cos(timestep) + torch.sin(timestep))
-                expanded = scm_timestep.view(-1, 1, 1, 1)
-                latent_model_input = latents_model_input * torch.sqrt(expanded**2 + (1 - expanded)**2)
-                noise_pred = pipe.transformer(latent_model_input.to(dtype=pipe.transformer.dtype),
-                    encoder_hidden_states=state.prompt_embeds.to(dtype=pipe.transformer.dtype),
-                    encoder_attention_mask=state.prompt_attention_mask, guidance=state.guidance,
-                    timestep=scm_timestep, return_dict=False, attention_kwargs=None)[0]
-                noise_pred = ((1 - 2 * expanded) * latent_model_input
-                    + (1 - 2 * expanded + 2 * expanded**2) * noise_pred) / torch.sqrt(expanded**2 + (1 - expanded)**2)
-                noise_pred = noise_pred.float() * state.scheduler.config.sigma_data
-                state.latents, state.denoised = state.scheduler.step(noise_pred, timestep,
-                    state.latents, generator=state.generator, return_dict=False)
-                self._finite(state.latents, state.denoised)
-                state.step_index += 1
-            return dict(action="denoise", ms=state.last_ms, step=state.step_index, done=state.done)
+            for state in states:
+                self._check(state)
+                if state.done or state.finished:
+                    raise ValueError("Sana denoising is already complete")
+                if state.scheduler.step_index not in (None, state.step_index):
+                    raise ValueError("Sana sampler index differs from request continuation")
+            first = states[0]
+            sigma_data = first.scheduler.config.sigma_data
+            for state in states[1:]:
+                if state.scheduler.config.sigma_data != sigma_data:
+                    raise ValueError("Sana continuous batch requires one SCM sigma_data")
+                for name in ("latents", "prompt_embeds", "prompt_attention_mask"):
+                    if tuple(getattr(state, name).shape[1:]) != tuple(getattr(first, name).shape[1:]):
+                        raise ValueError("Sana continuous batch requires compatible tensor shapes")
+            for state in states:
+                for name in ("latents", "prompt_embeds", "prompt_attention_mask", "guidance"):
+                    if getattr(state, name).shape[0] != 1:
+                        raise ValueError("Sana continuous batch states must have batch dimension one")
+            if self.device.startswith("cuda"):
+                self.torch.cuda.reset_peak_memory_stats(self.device)
+            memory_before = self._memory()
+            try:
+                with self._action():
+                    torch, pipe = self.torch, self.pipe
+                    timestep = torch.cat([state.scheduler.timesteps[state.step_index].expand(1)
+                                          for state in states])
+                    latents_model_input = torch.cat([state.latents for state in states]) / sigma_data
+                    scm_timestep = torch.sin(timestep) / (torch.cos(timestep) + torch.sin(timestep))
+                    expanded = scm_timestep.view(-1, 1, 1, 1)
+                    latent_model_input = latents_model_input * torch.sqrt(expanded**2 + (1 - expanded)**2)
+                    noise_pred = pipe.transformer(latent_model_input.to(dtype=pipe.transformer.dtype),
+                        encoder_hidden_states=torch.cat([state.prompt_embeds for state in states]).to(
+                            dtype=pipe.transformer.dtype),
+                        encoder_attention_mask=torch.cat([state.prompt_attention_mask for state in states]),
+                        guidance=torch.cat([state.guidance for state in states]),
+                        timestep=scm_timestep, return_dict=False, attention_kwargs=None)[0]
+                    noise_pred = ((1 - 2 * expanded) * latent_model_input
+                        + (1 - 2 * expanded + 2 * expanded**2) * noise_pred) / torch.sqrt(expanded**2 + (1 - expanded)**2)
+                    noise_pred = noise_pred.float() * sigma_data
+                    for index, state in enumerate(states):
+                        state.latents, state.denoised = state.scheduler.step(
+                            noise_pred[index:index + 1], timestep[index:index + 1], state.latents,
+                            generator=state.generator, return_dict=False)
+                        self._finite(state.latents, state.denoised)
+                        state.step_index += 1
+            except BaseException:
+                for state in states:
+                    state.failed = True
+                raise
+            for state in states:
+                state.last_ms = self._last_ms
+            events = [dict(action="denoise", ms=self._last_ms, step=state.step_index,
+                           done=state.done, batch_size=len(states)) for state in states]
+            memory_after = self._memory()
+            return dict(batch_size=len(states), ms=self._last_ms, events=events,
+                        memory_before=memory_before, memory_after=memory_after)
 
     def finish(self, state):
         with self._lock:

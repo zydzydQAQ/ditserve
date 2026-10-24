@@ -40,15 +40,15 @@
 
 `workers.<name>` 包含 `backend`、`python`、`gpu_uuid`、`config` 和可选环境变量；单个进程只绑定自己的完整 GPU UUID，模型使用 `cuda:0`。不能用环境变量覆盖 GPU 绑定、冻结源码或离线加载。SP 实现使用 2/4/8 个独立 rank 的对齐组（rank 按 PCIe/socket 拓扑顺序编号），Flash attention；四卡布局与原固定组相同。block worker 可加入 SP 组：step 在首个 block 前开启，停在 step 内部的每个 quantum 是组内共识安全点，求解器提交时关闭；组只在 step 边界按控制器下发的 `group`/`epoch` 切换。8 卡与 SP 内 block 执行未经 GPU 验证；缓存特征的跨 SP 迁移仍不支持。集体操作必须列出不同 worker，`actions[].per_rank` 可提供每个 rank 的补丁。
 
-显式 `actions` 可用于任意 kind，动作包括 `prepare`、`advance`、`snapshot`、`restore`、`reference`、`finish`、`release`、`evaluate`、`distributed`。动作必须自己声明稳定 state ID，后续通过该 ID 引用；常规回放自动处理状态 ID。这样可以表达校准、独立基线、数值检查和 SP 流程，不增加 Python 编排层。
+显式 `actions` 可用于任意 kind，动作包括 `prepare`、`advance`、`advance_batch`、`snapshot`、`restore`、`reference`、`finish`、`release`、`evaluate`、`distributed`。动作必须自己声明稳定 state ID，后续通过该 ID 引用；常规回放自动处理状态 ID。这样可以表达校准、独立基线、数值检查和 SP 流程，不增加 Python 编排层。`advance_batch` 只用于非 pipeline 的 Sana，接收 1–8 个 `state_ids`，在一次 DiT forward 中允许不同 denoise step，随后分别提交各请求的 SCM/RNG；它不会把完成请求留在下一批，也尚未接入在线 replay/cluster 自动组批。
 
 ## 保留的模型限制
 
 | 模型路径 | 现有限制 |
 | --- | --- |
 | Wan step/block/CFG | 固定 torch 2.10.0+cu126、Diffusers 0.36.0、cache-dit 1.5.0；DiT FP16、VAE FP32、UMT5 CPU FP32，整步求解器状态保持原布局。 |
-| Sana step 与 Mistral | 原生步骤实现沿用 sm70 V100 门槛。Sana 为 1024²、FP32、SCM 2 步、CFG 4.5；Mistral 为 FP16、greedy KV、无量化/滑动窗口。 |
-| Sana pipeline | Ampere 及更新 GPU、BF16，eager/transformer_compile/vae_compile/transformer_graph，固定 batch 1/2；原子调用，不提供步骤快照。 |
+| Sana step 与 Mistral | Sana step 默认 sm70 V100 FP32 MATH；`options.hardware_profile:"a100_bf16"` 显式选择 A100 BF16 试验路径，latent/SCM 仍保持 FP32，数值资格需由真机验收。Sana 固定 1024²、SCM 2 步、CFG 4.5；Mistral 为 FP16、greedy KV、无量化/滑动窗口。 |
+| Sana pipeline | Ampere 及更新 GPU、BF16，eager/transformer_compile/vae_compile/transformer_graph，固定 batch 1/2/4/8；原子调用，不提供步骤快照或 `advance_batch`。 |
 | FLUX | 官方本地管线，默认 BF16，设备须支持；可选固定 cache-dit。调用为完整管线。 |
 | LongLive | A100 BF16、固定来源修订、本地完整权重、独立现有环境；480×832、16 fps、每 chunk 3 个 latent 帧、最多两驻留会话。 |
 

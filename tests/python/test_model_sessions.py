@@ -61,7 +61,8 @@ class Transformer(torch.nn.Module):
     config = SimpleNamespace(sample_size=32, in_channels=2, guidance_embeds_scale=.1)
 
     def forward(self, value, *, encoder_hidden_states, guidance, timestep, **kwargs):
-        return (value * .125 + encoder_hidden_states.mean() * .01
+        prompt = encoder_hidden_states.mean(dim=(1, 2)).view(-1, 1, 1, 1)
+        return (value * .125 + prompt * .01
                 + guidance.view(-1, 1, 1, 1) * .02 + timestep.view(-1, 1, 1, 1) * .03,)
 
 
@@ -242,6 +243,66 @@ class SanaRuntimeTests(unittest.TestCase):
 
 
 
+    def test_continuous_batch_late_join_and_early_exit_match_independent_references(self):
+        references = {prompt: self.adapter.reference(prompt, seed)
+                      for prompt, seed in (("kettle", 301), ("clock", 302))}
+        a = self.adapter.prepare("kettle", 301, request_id="a")
+        self.adapter.advance(a)
+        b = self.adapter.prepare("clock", 302, request_id="b")
+
+        batch = self.adapter.advance_batch([a, b])
+        self.assertEqual(batch["batch_size"], 2)
+        self.assertEqual([(row["step"], row["done"]) for row in batch["events"]], [(2, True), (1, False)])
+        self.assertEqual([row["ms"] for row in batch["events"]], [batch["ms"], batch["ms"]])
+        self.assertIsNone(batch["memory_before"])
+        self.assertEqual((a.scheduler.step_index, b.scheduler.step_index), (2, 1))
+        self.assertTrue(tensor_comparison(a.latents, references["kettle"]["step_latents"][1])["exact"])
+        self.assertTrue(tensor_comparison(b.latents, references["clock"]["step_latents"][0])["exact"])
+
+        np.testing.assert_array_equal(self.adapter.finish(a), references["kettle"]["output"])
+        self.adapter.release(a)
+        with self.assertRaisesRegex(ValueError, "closed"):
+            self.adapter.advance(a)
+        remaining = self.adapter.advance_batch([b])
+        self.assertEqual(remaining["events"][0]["step"], 2)
+        self.assertTrue(remaining["events"][0]["done"])
+        np.testing.assert_array_equal(self.adapter.finish(b), references["clock"]["output"])
+
+    def test_continuous_batch_validates_all_states_before_advancing_any(self):
+        with self.assertRaisesRegex(ValueError, "1 to 8"):
+            self.adapter.advance_batch([])
+        a, b = self.adapter.prepare("kettle", 301), self.adapter.prepare("clock", 302)
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            self.adapter.advance_batch([a, a])
+        other = sana()
+        try:
+            foreign = other.prepare("foreign", 303)
+            with self.assertRaisesRegex(ValueError, "foreign"):
+                self.adapter.advance_batch([a, foreign])
+        finally:
+            other.close()
+        self.adapter._move(b, "cpu:0")
+        with self.assertRaisesRegex(ValueError, "offloaded"):
+            self.adapter.advance_batch([a, b])
+        self.adapter.restore(b)
+        self.assertEqual((a.step_index, b.step_index), (0, 0))
+
+        embeddings = b.prompt_embeds
+        b.prompt_embeds = torch.ones((1, embeddings.shape[1] + 1, embeddings.shape[2]),
+                                     dtype=embeddings.dtype, device=embeddings.device)
+        with self.assertRaisesRegex(ValueError, "compatible"):
+            self.adapter.advance_batch([a, b])
+        b.prompt_embeds = embeddings
+        self.adapter.advance(a)
+        self.adapter.advance(a)
+        before = self.adapter.snapshot(b)
+        with self.assertRaisesRegex(ValueError, "already complete"):
+            self.adapter.advance_batch([a, b])
+        after = self.adapter.snapshot(b)
+        self.assertEqual(after["sampler_step"], before["sampler_step"])
+        for name in ("latents", "denoised", "prompt_embeds", "timesteps", "generator_state"):
+            self.assertTrue(tensor_comparison(after[name], before[name])["exact"])
+
     def test_state_tensor_reconstruction_preserves_rng_and_sampler_index(self):
         state = self.adapter.prepare("kettle", 301)
         self.adapter.advance(state)
@@ -316,6 +377,40 @@ class ComparisonTests(unittest.TestCase):
                         backend.prepare(dict(id=4, state_id="round2", previous_state_id=kind, spec=spec))
                         self.assertNotIn(kind, backend.states)
                     backend.close()
+
+    def test_json_adapter_continuous_batch_has_shared_cost_and_independent_progress(self):
+        from ditserve.models.base import Backend
+        from ditserve.models.session.backend import SessionBackend
+        self.assertIn("advance_batch", SessionBackend.operations)
+        backend = SessionBackend.__new__(SessionBackend)
+        Backend.__init__(backend, dict(work_dir=tempfile.gettempdir()))
+        backend.kind, backend.pipeline_mode, backend.runtime = "sana", False, sana()
+        try:
+            for key, prompt, seed in (("a", "kettle", 301), ("b", "clock", 302)):
+                backend.prepare(dict(id=key, state_id=key, spec=dict(prompt=prompt, seed=seed)))
+            backend.advance(dict(id="a", state_id="a"))
+            result = backend.advance_batch(dict(id="join", state_ids=["a", "b"]))
+            self.assertEqual(result["batch_size"], 2)
+            self.assertEqual([row["state_id"] for row in result["results"]], ["a", "b"])
+            self.assertEqual([row["progress"]["step"] for row in result["results"]], [2, 1])
+            self.assertEqual([row["progress"]["done"] for row in result["results"]], [True, False])
+            self.assertEqual([row["event"]["ms"] for row in result["results"]],
+                             [result["model_ms"], result["model_ms"]])
+            finished = backend.finish(dict(id="a", state_id="a", output_mode="check"))
+            self.assertEqual(finished["output"]["output_mode"], "check")
+            backend.release(dict(state_id="a"))
+            self.assertNotIn("a", backend.states)
+            advanced = backend.advance(dict(id="b", state_id="b"))
+            self.assertTrue(advanced["progress"]["done"])
+            self.assertTrue(backend.finish(dict(id="b", state_id="b", output_mode="check"))["progress"]["done"])
+            backend.kind = "mistral"
+            with self.assertRaisesRegex(ValueError, "explicit-step Sana"):
+                backend.advance_batch(dict(state_ids=[]))
+            backend.kind, backend.pipeline_mode = "sana", True
+            with self.assertRaisesRegex(ValueError, "explicit-step Sana"):
+                backend.advance_batch(dict(state_ids=[]))
+        finally:
+            backend.close()
 
 
 if __name__ == "__main__":
