@@ -250,7 +250,7 @@ class WanStepWorker:
     """One resident model, independent request schedulers/RNG/cache state."""
 
     def __init__(self, device="cuda:0", model_path=None, attention="math", vae_dtype="float32", *,
-                 negative_prompt_cache_entries=None, negative_prompt_cache_bytes=None):
+                 engine="xdit", revision=None, negative_prompt_cache_entries=None, negative_prompt_cache_bytes=None):
         from .prompt_cache import cache_options
         # Validated before any weights load: both limits or neither.
         cache_config = cache_options({name: value for name, value in (
@@ -264,7 +264,9 @@ class WanStepWorker:
         # transient memory (about 20 GB for a 720p Wan2.2 decode, K20) and is a measured deviation.
         if vae_dtype not in ("float32", "bfloat16", "float16"):
             raise ValueError("vae_dtype must be float32, bfloat16 or float16")
-        self.attention, self.vae_dtype = attention, vae_dtype
+        if engine not in ("xdit", "legacy"):
+            raise ValueError("Wan engine must be xdit or legacy")
+        self.attention, self.vae_dtype, self.engine_name = attention, vae_dtype, engine
         for package, expected in REQUIRED_VERSIONS.items():
             actual = importlib.metadata.version(package)
             if actual != expected:
@@ -278,13 +280,16 @@ class WanStepWorker:
         self.model_path = Path(model_path or DEFAULT_MODEL_PATH).resolve()
         if not self.model_path.is_dir() or not (self.model_path / "model_index.json").is_file():
             raise ValueError("fixed local Wan snapshot is missing: " + str(self.model_path))
+        if revision is not None and (not isinstance(revision, str) or not revision):
+            raise ValueError("model revision must be a nonempty local snapshot identifier")
+        self.model_revision = revision or (REVISION if self.model_path == DEFAULT_MODEL_PATH else self.model_path.name)
         self.torch.cuda.set_device(device)
         if not self.torch.cuda.is_available():
             raise RuntimeError("CUDA is unavailable")
         from types import SimpleNamespace
-        args = SimpleNamespace(model="wan", model_id=str(self.model_path), revision=REVISION,
+        args = SimpleNamespace(model="wan", model_id=str(self.model_path), revision=self.model_revision,
                                dtype="float16", vae_dtype=self.vae_dtype, text_encoder_dtype="float32",
-                               text_encoder_device="cpu", local_files_only=True, device=device)
+                               text_encoder_device="cpu", local_files_only=True, device=device, engine=engine)
         self.pipe = p._pipeline(self.torch, self.diffusers, args)
         # One transformer and the UniPC recipe: Wan2.1 T2V, or Wan2.2 TI2V used for
         # text-to-video (per-token timesteps). The two-expert Wan2.2 A14B is not.
@@ -328,6 +333,10 @@ class WanStepWorker:
                             device="cpu", dtype="torch.float32", max_sequence_length=512,
                             num_videos_per_prompt=1))
         self._detach_contexts()
+        self.xdit = None
+        if self.engine_name == "xdit":
+            from ..xdit.wan import XDitWanEngine
+            self.xdit = XDitWanEngine(self)
 
     def _cache_config(self, spec):
         return self.cache_dit.DBCacheConfig(
@@ -411,6 +420,8 @@ class WanStepWorker:
         return attention.sdpa_kernel([getattr(attention.SDPBackend, ATTENTION_BACKENDS[self.attention])])
 
     def _memory(self):
+        if self.torch.device(self.device).type != "cuda":
+            return dict(device=str(self.device), cuda_memory_tracked=False)
         allocated = int(self.torch.cuda.memory_allocated(self.device))
         reserved = int(self.torch.cuda.memory_reserved(self.device))
         free, total = self.torch.cuda.mem_get_info(self.device)
@@ -441,6 +452,8 @@ class WanStepWorker:
             # Scope the override to DiT calls so the official reference loop's
             # FP32 VAE still executes under its surrounding MATH context.
             with self._dit_attention_context():
+                if getattr(self, "xdit", None) is not None:
+                    self.xdit.activate(state)
                 return forward(*args, **kwargs)
         self.pipe.transformer.forward = selected_forward
         try:
@@ -590,16 +603,22 @@ class WanStepWorker:
             anchor = state.needs_anchor
             with self._activate(state):
                 timestep_scalar = state.scheduler.timesteps[index]
-                timestep = model_timestep(self.torch, state.latents, timestep_scalar, self.expand_timesteps)
-                model_input = state.latents.to(self.pipe.transformer.dtype)
-                with self.pipe.transformer.cache_context("cond"):
-                    prediction = self.pipe.transformer(hidden_states=model_input, timestep=timestep,
-                        encoder_hidden_states=state.prompt_embeds, attention_kwargs=None, return_dict=False)[0]
-                if state.spec["guidance_scale"] > 1:
-                    with self.pipe.transformer.cache_context("uncond"):
-                        unconditional = self.pipe.transformer(hidden_states=model_input, timestep=timestep,
-                            encoder_hidden_states=state.negative_prompt_embeds, attention_kwargs=None, return_dict=False)[0]
-                    prediction = unconditional + state.spec["guidance_scale"] * (prediction - unconditional)
+                if getattr(self, "xdit", None) is not None:
+                    prediction = self.xdit.forward(state, "cond")
+                    if state.spec["guidance_scale"] > 1:
+                        unconditional = self.xdit.forward(state, "uncond")
+                        prediction = unconditional + state.spec["guidance_scale"] * (prediction - unconditional)
+                else:
+                    timestep = model_timestep(self.torch, state.latents, timestep_scalar, self.expand_timesteps)
+                    model_input = state.latents.to(self.pipe.transformer.dtype)
+                    with self.pipe.transformer.cache_context("cond"):
+                        prediction = self.pipe.transformer(hidden_states=model_input, timestep=timestep,
+                            encoder_hidden_states=state.prompt_embeds, attention_kwargs=None, return_dict=False)[0]
+                    if state.spec["guidance_scale"] > 1:
+                        with self.pipe.transformer.cache_context("uncond"):
+                            unconditional = self.pipe.transformer(hidden_states=model_input, timestep=timestep,
+                                encoder_hidden_states=state.negative_prompt_embeds, attention_kwargs=None, return_dict=False)[0]
+                        prediction = unconditional + state.spec["guidance_scale"] * (prediction - unconditional)
                 state.latents = state.scheduler.step(prediction, timestep_scalar, state.latents, return_dict=False)[0]
                 state.step_index += 1
                 state.needs_anchor = False
@@ -715,8 +734,9 @@ class WanStepWorker:
                 host_payload = _tree_map(payload, self.torch.is_tensor, offload)
                 self._sync()  # Source storage may be freed only after all D2H copies finish.
                 self._install_payload(state, host_payload)
+                from .parallel import request_engine
                 state.pending_snapshot = {"mode": mode, "placements": placements,
-                                          "rng_state": host_payload["rng_state"]}
+                                          "rng_state": host_payload["rng_state"], "engine": request_engine(self)}
                 state.residency = "cpu"
                 state.needs_anchor = state.needs_anchor or (mode == "cold" and state.cache_enabled)
                 # payload retained old GPU references until this point.
@@ -740,6 +760,8 @@ class WanStepWorker:
                 saved = state.pending_snapshot
                 if saved is None:
                     raise RuntimeError("CPU request has no snapshot placement metadata")
+                from .parallel import validate_request_engine
+                validate_request_engine(self, saved.get("engine"))
                 mode = saved["mode"]
                 placements = saved["placements"]
                 def onload(tensor):

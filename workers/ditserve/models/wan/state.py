@@ -234,27 +234,30 @@ def _freeze(value, torch, *, hash_tensors=True, active=None):
         active.remove(container_id)
 
 
-def _binding(state, torch, layout, dependency_version):
+def _binding(state, torch, layout, dependency_version, engine=None):
     contexts = {}
     for name, context in state.contexts.items():
         contexts[name] = {k: _freeze(v, torch, hash_tensors=(k != "buffers"))
                           for k, v in vars(context).items()}
     rng = state.generator.get_state().cpu().numpy().tobytes()
-    return dict(state_object=id(state), owner_object=id(state.owner), request_id=state.request_id,
-                spec=state.spec, immutable_spec=state.immutable_spec, step_index=state.step_index,
-                cache_enabled=state.cache_enabled, residency=state.residency,
-                needs_anchor=state.needs_anchor, finished=state.finished,
-                current_step_refreshed=state.current_step_refreshed,
-                pending_snapshot=_freeze(state.pending_snapshot, torch),
-                scheduler=_freeze(vars(state.scheduler), torch), latents=_freeze(state.latents, torch),
-                prompt_embeds=_freeze(state.prompt_embeds, torch),
-                negative_prompt_embeds=_freeze(state.negative_prompt_embeds, torch),
-                rng_object=id(state.generator), rng_device=str(state.generator.device),
-                rng_sha256=hashlib.sha256(rng).hexdigest(), contexts=contexts,
-                layout=layout, dependency_version=dependency_version)
+    binding = dict(state_object=id(state), owner_object=id(state.owner), request_id=state.request_id,
+                   spec=state.spec, immutable_spec=state.immutable_spec, step_index=state.step_index,
+                   cache_enabled=state.cache_enabled, residency=state.residency,
+                   needs_anchor=state.needs_anchor, finished=state.finished,
+                   current_step_refreshed=state.current_step_refreshed,
+                   pending_snapshot=_freeze(state.pending_snapshot, torch),
+                   scheduler=_freeze(vars(state.scheduler), torch), latents=_freeze(state.latents, torch),
+                   prompt_embeds=_freeze(state.prompt_embeds, torch),
+                   negative_prompt_embeds=_freeze(state.negative_prompt_embeds, torch),
+                   rng_object=id(state.generator), rng_device=str(state.generator.device),
+                   rng_sha256=hashlib.sha256(rng).hexdigest(), contexts=contexts,
+                   layout=layout, dependency_version=dependency_version)
+    if engine is not None:
+        binding["engine"] = engine
+    return binding
 
 
-def refresh_certificate(state, *, layout=None, dependency_version=DEPENDENCY_VERSION, torch_module=None):
+def refresh_certificate(state, *, layout=None, dependency_version=DEPENDENCY_VERSION, torch_module=None, engine=None):
     """Certify only the next natural m=1 refresh of *both* CFG branches.
 
     Never calls can_cache(): that function mutates counters. Certificates do not
@@ -314,7 +317,7 @@ def refresh_certificate(state, *, layout=None, dependency_version=DEPENDENCY_VER
     certificate = dict(schema_version=CERTIFICATE_SCHEMA, eligible=not reasons, reasons=reasons,
                        request_id=state.request_id, step_index=state.step_index, layout=placement,
                        dependency_version=dependency_version,
-                       binding_sha256=_hash(_binding(state, torch, placement, dependency_version)),
+                       binding_sha256=_hash(_binding(state, torch, placement, dependency_version, engine=engine)),
                        reclaimable_storage_ids=[r["storage_id"] for r in inventory["storages"] if r["feature_only"]],
                        reclaimable_bytes=inventory["feature_only_bytes"],
                        reclaimable_cuda_bytes=inventory["feature_only_cuda_bytes"],
@@ -324,10 +327,11 @@ def refresh_certificate(state, *, layout=None, dependency_version=DEPENDENCY_VER
     return certificate
 
 
-def validate_refresh_certificate(state, certificate, *, layout=None, dependency_version=DEPENDENCY_VERSION, torch_module=None):
+def validate_refresh_certificate(state, certificate, *, layout=None, dependency_version=DEPENDENCY_VERSION, torch_module=None, engine=None):
     if not isinstance(certificate, dict):
         raise ValueError("exact_refresh requires a refresh certificate")
-    current = refresh_certificate(state, layout=layout, dependency_version=dependency_version, torch_module=torch_module)
+    current = refresh_certificate(state, layout=layout, dependency_version=dependency_version,
+                                  torch_module=torch_module, engine=engine)
     if not current["eligible"]:
         raise ValueError("ineligible exact_refresh boundary: " + ",".join(current["reasons"]))
     if certificate != current:
@@ -336,7 +340,7 @@ def validate_refresh_certificate(state, certificate, *, layout=None, dependency_
 
 
 def transition_plan(state, action, *, certificate=None, layout=None, target_layout=None,
-                    dependency_version=DEPENDENCY_VERSION, torch_module=None):
+                    dependency_version=DEPENDENCY_VERSION, torch_module=None, engine=None):
     if action not in ACTION_NAMES:
         raise ValueError("unknown state action")
     current = _layout(state, layout)
@@ -351,7 +355,8 @@ def transition_plan(state, action, *, certificate=None, layout=None, target_layo
     checked = None
     if action == "exact_refresh":
         checked = validate_refresh_certificate(state, certificate, layout=current,
-                                               dependency_version=dependency_version, torch_module=torch_module)
+                                               dependency_version=dependency_version,
+                                               torch_module=torch_module, engine=engine)
     return dict(schema_version="ditserve.research.transition.v1", action=action,
                 request_id=state.request_id, step_index=state.step_index, layout=current, target_layout=target,
                 trajectory_semantics=("approximate_cold_anchor" if action == "cold" else "preserve_cached_trajectory_candidate"),

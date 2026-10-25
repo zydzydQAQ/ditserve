@@ -49,6 +49,7 @@ add_custom_command(TARGET ditserve POST_BUILD
 add_custom_target(ditserve-core DEPENDS ditserve)
 install(TARGETS ditserve RUNTIME DESTINATION bin)
 install(DIRECTORY workers/ditserve DESTINATION share/ditserve/python FILES_MATCHING PATTERN "*.py" PATTERN "__pycache__" EXCLUDE)
+install(DIRECTORY workers/xfuser DESTINATION share/ditserve/python FILES_MATCHING PATTERN "*.py" PATTERN "LICENSE.txt" PATTERN "__pycache__" EXCLUDE)
 install(DIRECTORY include src cmd benchmarks DESTINATION share/ditserve
     FILES_MATCHING PATTERN "*.cpp" PATTERN "*.hpp" PATTERN "CMakeLists.txt" PATTERN "__pycache__" EXCLUDE)
 install(FILES CMakeLists.txt DESTINATION share/ditserve)

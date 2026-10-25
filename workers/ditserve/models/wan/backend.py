@@ -22,7 +22,8 @@ class WanBackend(Backend):
         cache_config = cache_options(self.options)
         self.runtime = WanStepWorker(device=config.get("device", "cuda:0"),
             model_path=config.get("model_path"), attention=config.get("attention", "math"),
-            vae_dtype=config.get("vae_dtype", "float32"), **cache_config)
+            vae_dtype=config.get("vae_dtype", "float32"), engine=self.options.get("engine", "xdit"),
+            revision=config.get("revision"), **cache_config)
         self.execution = self.options.get("execution", "step")
         if self.execution not in ("step", "block", "block_interleaved"):
             raise ValueError("Wan execution must be step, block or block_interleaved")
@@ -382,10 +383,10 @@ class WanBackend(Backend):
                     rank=request["rank"], world_size=world_size, timeout=timedelta(seconds=request.get("timeout_seconds", 30)))
                 self.owns_world = True
             from .parallel import LayoutHandle, build_fixed_groups
-            from .sp import PinnedWanUlyssesBackend
+            from ..xdit.wan import XDitWanParallelBackend
             groups = build_fixed_groups(backend=backend, timeout_seconds=request.get("timeout_seconds", 30))
             handle = LayoutHandle(torch.distributed.get_rank(), request.get("ranks"), cfg=request.get("cfg", 1))
-            self.parallel = PinnedWanUlyssesBackend(handle, groups).attach(self.runtime)
+            self.parallel = XDitWanParallelBackend(handle, groups).attach(self.runtime)
             if self.execution.startswith("block"):
                 # A warmup may have built a single-GPU executor; block quanta now need SP safe points.
                 from .block import WanBlockExecutor
@@ -455,12 +456,19 @@ class WanBackend(Backend):
 
     def _evidence(self, request, spec, latents, paths):
         from .runtime import REVISION
-        generation = dict(spec, model="Wan-AI/Wan2.1-T2V-1.3B-Diffusers", revision=REVISION,
+        generation = dict(spec,
+            model=getattr(getattr(self.runtime, "pipe", None), "config", None)._name_or_path
+                if getattr(getattr(self.runtime, "pipe", None), "config", None) is not None
+                else str(self.runtime.model_path),
+            revision=getattr(self.runtime, "model_revision", REVISION),
             model_path=str(self.runtime.model_path), model_integrity="local_snapshot_not_rehashed",
             dtype="float16", vae_dtype=self.runtime.vae_dtype, text_encoder_dtype="float32", text_encoder_device="cpu",
             fps=self.config.get("fps", 16), attention=self.runtime.attention,
             cache_enabled=spec["cache"], cache_threshold=spec["threshold"],
             approximate=bool(spec["cache"] or any(row.get("reused_forwards", 0) for row in paths)))
+        generation["engine"] = getattr(self.runtime, "engine_name", "legacy")
+        if getattr(self.runtime, "xdit", None) is not None:
+            generation["xdit_revision"] = self.runtime.xdit.revision
         result = dict(backend="wan", measured=True, generation=generation, path_history=paths)
         if request.get("save_latents"):
             destination = request.get("latent_path") or str(Path(self.output_path(request)).with_suffix(".latent.npy"))
@@ -495,6 +503,8 @@ class WanBackend(Backend):
             super().close()
             if self.parallel:
                 self.parallel.close()
+            if getattr(self.runtime, "xdit", None) is not None:
+                self.runtime.xdit.close()
             if self.owns_world:
                 self.runtime.torch.distributed.destroy_process_group()
             self.runtime._sync()

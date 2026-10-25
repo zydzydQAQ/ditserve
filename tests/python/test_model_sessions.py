@@ -1,8 +1,7 @@
-"""CPU numerical references for session ownership and resumable model arithmetic.
+"""CPU numerical references for Sana session ownership and resumable arithmetic.
 
-Mistral uses a real tiny randomly initialized model; Sana uses the installed
-official pipeline loop and SCM with small deterministic model components.  No
-test loads production weights or initializes CUDA.
+Sana uses the installed official pipeline loop and SCM with small deterministic
+model components. No test loads production weights or initializes CUDA.
 """
 
 from contextlib import nullcontext
@@ -10,7 +9,6 @@ from types import SimpleNamespace
 import unittest
 import tempfile
 from pathlib import Path
-from unittest import mock
 
 import importlib.util
 if any(importlib.util.find_spec(name) is None for name in ("torch", "numpy", "diffusers", "transformers")):
@@ -18,42 +16,10 @@ if any(importlib.util.find_spec(name) is None for name in ("torch", "numpy", "di
 
 import numpy as np
 import torch
-from transformers import MistralConfig, MistralForCausalLM
 from diffusers import SCMScheduler
 from diffusers.pipelines.sana.pipeline_sana_sprint import SanaSprintPipeline
 
-from ditserve.models.session.runtime import (
-    MistralRuntime, SanaRuntime, cache_comparison, tensor_comparison,
-)
-
-
-class Tokenizer:
-    eos_token_id = None
-
-    def apply_chat_template(self, messages, **kwargs):
-        ids = [1]
-        for message in messages:
-            tokens = [int(value) for value in message["content"].split()]
-            ids.extend([3, *tokens, 4] if message["role"] == "user" else [*tokens, 2])
-        return ids
-
-    def decode(self, ids, **kwargs):
-        return " ".join(str(value) for value in ids)
-
-
-def llm():
-    torch.manual_seed(71)
-    config = MistralConfig(vocab_size=32, hidden_size=16, intermediate_size=32,
-                          num_hidden_layers=2, num_attention_heads=4, num_key_value_heads=2,
-                          max_position_embeddings=128, sliding_window=None,
-                          attention_dropout=0., eos_token_id=None, pad_token_id=0)
-    config._attn_implementation = "sdpa"
-    adapter = MistralRuntime.__new__(MistralRuntime)
-    adapter._initialize_runtime("cpu")
-    adapter.model = MistralForCausalLM(config).eval()
-    adapter.tokenizer = Tokenizer()
-    adapter._configure()
-    return adapter
+from ditserve.models.session.runtime import SanaRuntime, tensor_comparison
 
 
 class Transformer(torch.nn.Module):
@@ -114,95 +80,26 @@ class Pipeline:
         pass
 
 
+class TransformerEngineDouble:
+    def __init__(self, pipe):
+        self.pipe = pipe
+
+    def forward(self, hidden_states, **kwargs):
+        kwargs.pop("num_inference_steps")
+        return self.pipe.transformer(hidden_states, **kwargs)
+
+    def close(self):
+        pass
+
+
 def sana():
     adapter = SanaRuntime.__new__(SanaRuntime)
     adapter._initialize_runtime("cpu")
     adapter.pipe = Pipeline()
+    adapter.xdit = TransformerEngineDouble(adapter.pipe)
     adapter._instruction = []
     adapter._configure()
     return adapter
-
-
-class MistralRuntimeTests(unittest.TestCase):
-    def setUp(self):
-        self.adapter = llm()
-        self.messages = [dict(role="user", content="6 7 8")]
-
-    def tearDown(self):
-        self.adapter.close()
-
-    def complete(self, state):
-        actions = []
-        while not state.done:
-            actions.append(self.adapter.advance(state))
-        return actions
-
-    def test_tokens_and_kv_match_official_greedy_generate(self):
-        expected = self.adapter.reference(self.messages, max_new_tokens=5)
-        state = self.adapter.prepare(self.messages, max_new_tokens=5, request_id="a")
-        self.assertEqual(state.cached_tokens, 0)
-        actions = self.complete(state)
-        self.assertEqual([row["action"] for row in actions], ["prefill", *(["decode"] * 4)])
-        self.assertEqual(state.generated_ids, expected["token_ids"])
-        self.assertEqual(self.adapter.finish(state), expected["text"])
-        self.assertTrue(cache_comparison(state.cache, expected["cache"])["exact"])
-        self.assertEqual(state.cached_tokens, len(state.prompt_ids) + len(state.generated_ids) - 1)
-        self.assertTrue(all(row["ms"] >= 0 for row in actions))
-
-    def test_interleaved_sessions_do_not_share_kv_or_change_output(self):
-        expected = self.adapter.reference(self.messages, max_new_tokens=4)
-        a = self.adapter.prepare(self.messages, max_new_tokens=4)
-        self.adapter.advance(a)
-        before = self.adapter.snapshot(a)
-        b = self.adapter.prepare([dict(role="user", content="9 10")], max_new_tokens=3)
-        self.complete(b)
-        self.assertTrue(cache_comparison(a.cache, before["cache"])["exact"])
-        self.complete(a)
-        self.assertEqual(a.generated_ids, expected["token_ids"])
-        self.assertTrue(cache_comparison(a.cache, expected["cache"])["exact"])
-
-    def test_second_turn_reuses_exact_prefix_and_transfers_ownership_once(self):
-        first = self.adapter.prepare(self.messages, max_new_tokens=3)
-        self.complete(first)
-        messages = [*self.messages, dict(role="assistant", content=self.adapter.finish(first)),
-                    dict(role="user", content="11 12")]
-        before = self.adapter.snapshot(first)
-        second = self.adapter.prepare(messages, max_new_tokens=3, previous=first)
-        self.assertGreater(second.reused_tokens, 0)
-        self.assertTrue(first.closed)
-        self.assertIsNone(first.cache)
-        cropped = tuple(tuple(t[:, :, :second.reused_tokens] for t in pair) for pair in before["cache"])
-        self.assertTrue(cache_comparison(second.cache, cropped)["exact"])
-        expected = self.adapter.reference(messages, max_new_tokens=3)
-        self.complete(second)
-        self.assertEqual(second.generated_ids, expected["token_ids"])
-        # A full-length prefill is a distinct reduction shape; this comparison is numerical.
-        self.assertTrue(cache_comparison(second.cache, expected["cache"], atol=1e-6, rtol=1e-6)["passed"])
-        self.adapter.release(first)
-        with self.assertRaises(ValueError):
-            self.adapter.advance(first)
-        self.assertEqual(second.messages, messages)
-
-
-    def test_nonfinite_forward_fails_state_and_cleanup_still_works(self):
-        state = self.adapter.prepare(self.messages, max_new_tokens=2)
-        original = self.adapter.model.forward
-
-        def poisoned(*args, **kwargs):
-            result = original(*args, **kwargs)
-            result.logits.fill_(float("nan"))
-            return result
-
-        with mock.patch.object(self.adapter.model, "forward", side_effect=poisoned):
-            with self.assertRaisesRegex(RuntimeError, "nonfinite"):
-                self.adapter.advance(state)
-        self.assertTrue(state.failed)
-        with self.assertRaises(ValueError):
-            self.adapter.advance(state)
-        self.adapter.release(state)
-
-
-
 
 
 class SanaRuntimeTests(unittest.TestCase):
@@ -322,61 +219,49 @@ class SanaRuntimeTests(unittest.TestCase):
 
 class ComparisonTests(unittest.TestCase):
     def test_shared_cleanup_rejects_foreign_owner_and_closes_failed_states(self):
-        for kind, factory in (("mistral", llm), ("sana", sana)):
-            with self.subTest(kind=kind):
-                runtime, other = factory(), factory()
-                prompt = [dict(role="user", content="1 2")] if kind == "mistral" else "kettle"
-                state, foreign = runtime.prepare(prompt), other.prepare(prompt)
-                try:
-                    with self.assertRaisesRegex(ValueError, "foreign"):
-                        runtime.release(foreign)
-                    self.assertFalse(foreign.closed)
-                    state.failed = True
-                    runtime.release(state)
-                    runtime.release(state)
-                    self.assertTrue(state.closed)
-                    self.assertFalse(runtime._states)
-                    if kind == "mistral":
-                        self.assertIsNone(state.cache)
-                    else:
-                        for name in ("latents", "prompt_embeds", "scheduler", "generator", "output"):
-                            self.assertIsNone(getattr(state, name))
-                finally:
-                    runtime.close()
-                    other.close()
-                self.assertIsNone(getattr(runtime, "model" if kind == "mistral" else "pipe"))
-                self.assertTrue(foreign.closed)
+        runtime, other = sana(), sana()
+        state, foreign = runtime.prepare("kettle"), other.prepare("kettle")
+        try:
+            with self.assertRaisesRegex(ValueError, "foreign"):
+                runtime.release(foreign)
+            self.assertFalse(foreign.closed)
+            state.failed = True
+            runtime.release(state)
+            runtime.release(state)
+            self.assertTrue(state.closed)
+            self.assertFalse(runtime._states)
+            for name in ("latents", "prompt_embeds", "scheduler", "generator", "output"):
+                self.assertIsNone(getattr(state, name))
+        finally:
+            runtime.close()
+            other.close()
+        self.assertIsNone(runtime.pipe)
+        self.assertTrue(foreign.closed)
 
-    def test_comparison_rejects_shape_dtype_nonfinite_and_missing_cache_layers(self):
+    def test_tensor_comparison_rejects_shape_dtype_and_nonfinite(self):
         self.assertFalse(tensor_comparison(torch.ones(2), torch.ones(1))["passed"])
         self.assertFalse(tensor_comparison(torch.ones(2), torch.ones(2, dtype=torch.float64))["passed"])
         self.assertFalse(tensor_comparison(torch.tensor([float("nan")]), torch.tensor([float("nan")]))["passed"])
-        self.assertFalse(cache_comparison((), ((torch.ones(1), torch.ones(1)),))["passed"])
         self.assertTrue(tensor_comparison(torch.ones(1), torch.ones(1) + 1e-5, atol=1e-4)["passed"])
 
     def test_cpu_test_suite_has_not_initialized_cuda(self):
         self.assertFalse(torch.cuda.is_initialized())
 
-    def test_json_adapter_progress_and_output_cover_both_runtimes(self):
+    def test_json_adapter_progress_and_output(self):
         from ditserve.models.base import Backend
         from ditserve.models.session.backend import SessionBackend
         with tempfile.TemporaryDirectory() as directory:
-            for kind, runtime in (("mistral", llm()), ("sana", sana())):
-                with self.subTest(kind=kind):
-                    backend = SessionBackend.__new__(SessionBackend)
-                    Backend.__init__(backend, dict(work_dir=directory))
-                    backend.kind, backend.pipeline_mode, backend.runtime = kind, False, runtime
-                    spec = dict(prompt="1 2", max_new_tokens=3, seed=11)
-                    result = backend.prepare(dict(id=1, state_id=kind, spec=spec))
-                    while not result["progress"]["done"]:
-                        result = backend.advance(dict(id=2, state_id=kind))
-                    finished = backend.finish(dict(id=3, state_id=kind))
-                    self.assertTrue(Path(finished["output"]["path"]).is_file())
-                    self.assertTrue(finished["progress"]["done"])
-                    if kind == "mistral":
-                        backend.prepare(dict(id=4, state_id="round2", previous_state_id=kind, spec=spec))
-                        self.assertNotIn(kind, backend.states)
-                    backend.close()
+            backend = SessionBackend.__new__(SessionBackend)
+            Backend.__init__(backend, dict(work_dir=directory))
+            backend.pipeline_mode, backend.runtime = False, sana()
+            spec = dict(prompt="1 2", seed=11)
+            result = backend.prepare(dict(id=1, state_id="sana", spec=spec))
+            while not result["progress"]["done"]:
+                result = backend.advance(dict(id=2, state_id="sana"))
+            finished = backend.finish(dict(id=3, state_id="sana"))
+            self.assertTrue(Path(finished["output"]["path"]).is_file())
+            self.assertTrue(finished["progress"]["done"])
+            backend.close()
 
     def test_json_adapter_continuous_batch_has_shared_cost_and_independent_progress(self):
         from ditserve.models.base import Backend
@@ -384,7 +269,7 @@ class ComparisonTests(unittest.TestCase):
         self.assertIn("advance_batch", SessionBackend.operations)
         backend = SessionBackend.__new__(SessionBackend)
         Backend.__init__(backend, dict(work_dir=tempfile.gettempdir()))
-        backend.kind, backend.pipeline_mode, backend.runtime = "sana", False, sana()
+        backend.pipeline_mode, backend.runtime = False, sana()
         try:
             for key, prompt, seed in (("a", "kettle", 301), ("b", "clock", 302)):
                 backend.prepare(dict(id=key, state_id=key, spec=dict(prompt=prompt, seed=seed)))
@@ -403,10 +288,7 @@ class ComparisonTests(unittest.TestCase):
             advanced = backend.advance(dict(id="b", state_id="b"))
             self.assertTrue(advanced["progress"]["done"])
             self.assertTrue(backend.finish(dict(id="b", state_id="b", output_mode="check"))["progress"]["done"])
-            backend.kind = "mistral"
-            with self.assertRaisesRegex(ValueError, "explicit-step Sana"):
-                backend.advance_batch(dict(state_ids=[]))
-            backend.kind, backend.pipeline_mode = "sana", True
+            backend.pipeline_mode = True
             with self.assertRaisesRegex(ValueError, "explicit-step Sana"):
                 backend.advance_batch(dict(state_ids=[]))
         finally:

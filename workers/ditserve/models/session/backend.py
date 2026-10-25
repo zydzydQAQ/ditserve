@@ -1,6 +1,6 @@
-"""Mistral and Sana request ownership with optional Sana pipeline candidates."""
+"""Sana request ownership with optional full-pipeline candidates."""
 
-from ..base import Backend, artifact, positive_int, progress
+from ..base import Backend, positive_int, progress
 
 
 class SessionBackend(Backend):
@@ -9,8 +9,9 @@ class SessionBackend(Backend):
 
     def __init__(self, config):
         super().__init__(config)
-        self.kind = config["backend"]
-        self.pipeline_mode = self.kind == "sana" and config.get("options", {}).get("execution") == "pipeline"
+        if config.get("backend") != "sana":
+            raise ValueError("SessionBackend requires backend=sana")
+        self.pipeline_mode = config.get("options", {}).get("execution") == "pipeline"
         device, path = config.get("device", "cuda:0"), config["model_path"]
         if self.pipeline_mode:
             from ..sana.graph import NextSanaAdapter
@@ -24,18 +25,13 @@ class SessionBackend(Backend):
             else:
                 self.runtime.set_candidate(candidate)
         else:
-            from .runtime import MistralRuntime, SanaRuntime
-            if self.kind == "sana":
-                profile = config.get("options", {}).get("hardware_profile", "v100_fp32")
-                self.runtime = SanaRuntime(path, device, profile=profile)
-            else:
-                self.runtime = MistralRuntime(path, device)
+            from .runtime import SanaRuntime
+            profile = config.get("options", {}).get("hardware_profile", "v100_fp32")
+            self.runtime = SanaRuntime(path, device, profile=profile)
 
     def _progress(self, state):
         if self.pipeline_mode:
             return progress(int(state["done"]), 1)
-        if self.kind == "mistral":
-            return progress(len(state.generated_ids), state.max_new_tokens, done=state.done)
         return progress(state.step_index, state.num_steps)
 
     def prepare(self, request):
@@ -43,15 +39,6 @@ class SessionBackend(Backend):
         spec = dict(self.config.get("spec", {}), **request.get("spec", {}))
         if self.pipeline_mode:
             state = dict(spec=spec, done=False, output=None)
-        elif self.kind == "mistral":
-            previous = request.get("previous_state_id")
-            if previous and previous not in self.states:
-                raise ValueError("unknown previous_state_id")
-            state = self.runtime.prepare(spec.get("messages", [{"role": "user", "content": spec.get("prompt", "")}]),
-                max_new_tokens=positive_int(spec.get("max_new_tokens", 64)),
-                previous=self.states.get(previous), request_id=key)
-            if previous:
-                del self.states[previous]
         else:
             state = self.runtime.prepare(spec["prompt"], seed=spec.get("seed", 0), request_id=key)
         self.states[key] = state
@@ -75,7 +62,7 @@ class SessionBackend(Backend):
                     model_ms=sum(row.get("ms", 0.) for row in events))
 
     def advance_batch(self, request):
-        if self.kind != "sana" or self.pipeline_mode:
+        if self.pipeline_mode:
             raise ValueError("continuous batch requires the explicit-step Sana runtime")
         keys = request.get("state_ids")
         if not isinstance(keys, list) or any(not isinstance(key, str) for key in keys):
@@ -92,9 +79,8 @@ class SessionBackend(Backend):
         if not self._progress(state)["done"]:
             raise ValueError("finish requires completed model work")
         value = state["output"] if self.pipeline_mode else self.runtime.finish(state)
-        suffix = ".txt" if self.kind == "mistral" else ".npy"
         result = dict(state_id=request["state_id"], progress=self._progress(state),
-                      output=self.persist(value, request, suffix),
+                      output=self.persist(value, request),
                       model_ms=getattr(state, "decode_ms", 0.))
         self.release_cache()
         return result
@@ -104,7 +90,7 @@ class SessionBackend(Backend):
             raise ValueError("Sana full-pipeline candidates do not expose preemptible state")
         mode = request.get("mode", "hot")
         if mode not in ("keep", "hot"):
-            raise ValueError("exact session state supports keep/hot only; cold KV discard is unsupported")
+            raise ValueError("exact Sana state supports keep/hot only; cold state discard is unsupported")
         state = self.state(request)
         result = self.runtime.inventory(state) if mode == "keep" else self.runtime.offload_to_cpu(state)
         return dict(result, snapshot_id=request["state_id"], state_id=request["state_id"], mode=mode)
@@ -125,11 +111,6 @@ class SessionBackend(Backend):
         if self.pipeline_mode:
             raise ValueError("use an independently configured eager worker for pipeline references")
         spec = request.get("spec", {})
-        if self.kind == "mistral":
-            result = self.runtime.reference(spec.get("messages", [{"role": "user", "content": spec.get("prompt", "")}]),
-                max_new_tokens=spec.get("max_new_tokens", 64))
-            result.pop("cache", None)
-            return dict(result, output=self.persist(result["text"], request, ".txt"))
         result = self.runtime.reference(spec["prompt"], seed=spec.get("seed", 0))
         result.pop("step_latents", None)
         output = result.pop("output")

@@ -104,6 +104,21 @@ ClusterCost::ClusterCost(const Json& profile) : profile_(profile) {
                     number(entry.value(), "batch_ms", true);
                 }
             }
+            if (row.contains("steps") && int_field(row, "steps", 0) <= 0) throw std::invalid_argument("image steps must be positive");
+            if (row.contains("prepare_ms")) number_field(row, "prepare_ms");
+            if (row.contains("finish_ms")) number_field(row, "finish_ms");
+            if (row.contains("batch_step_ms")) {
+                if (!row.at("batch_step_ms").is_object() || row.at("batch_step_ms").empty())
+                    throw std::invalid_argument("batch_step_ms maps continuous batch sizes to denoise round times");
+                for (auto entry = row.at("batch_step_ms").begin(); entry != row.at("batch_step_ms").end(); ++entry) {
+                    const auto& key = entry.key();
+                    if (key.empty() || !std::all_of(key.begin(), key.end(), [](char c) { return c >= '0' && c <= '9'; })
+                        || std::stoi(key) < 1 || std::stoi(key) > 8)
+                        throw std::invalid_argument("batch_step_ms keys must be in [1, 8]");
+                    number(entry.value(), "batch_step_ms", true);
+                }
+                if (!row.at("batch_step_ms").contains("1")) throw std::invalid_argument("batch_step_ms requires a batch-1 calibration");
+            }
             continue;
         }
         if (kind != "video") throw std::invalid_argument("cost class kind must be video or image");
@@ -250,6 +265,21 @@ double ClusterCost::batch_ms(const std::string& name, int size) const {
     return lower->second + (upper->second - lower->second) * (size - lower->first) / (upper->first - lower->first);
 }
 
+double ClusterCost::continuous_step_ms(const std::string& name, int size) const {
+    const auto& row = klass(name);
+    if (row.at("kind") != "image") throw std::invalid_argument("only image classes use continuous batching");
+    if (size < 1 || size > 8) throw std::invalid_argument("continuous batch size must be in [1, 8]");
+    if (!row.contains("batch_step_ms")) throw std::invalid_argument("continuous_batch requires measured batch_step_ms");
+    std::map<int, double> table;
+    for (auto entry = row.at("batch_step_ms").begin(); entry != row.at("batch_step_ms").end(); ++entry)
+        table[std::stoi(entry.key())] = entry.value().get<double>();
+    auto upper = table.lower_bound(size);
+    if (upper != table.end() && upper->first == size) return upper->second;
+    if (upper == table.end()) throw std::invalid_argument("continuous batch size exceeds its calibration table");
+    const auto lower = std::prev(upper);
+    return lower->second + (upper->second - lower->second) * (size - lower->first) / (upper->first - lower->first);
+}
+
 int ClusterCost::blocks_per_step(const std::string& name) const { return int_field(klass(name), "blocks_per_step", 1); }
 
 int ClusterCost::decode_chunks(const std::string& name) const { return int_field(klass(name), "decode_chunks", 1); }
@@ -265,7 +295,14 @@ double ClusterCost::block_ms(const std::string& name, const Form& form, int sp_g
 double ClusterCost::remaining_ms(const Json& request, const Form& form, int sp_groups, const std::vector<int>* group) const {
     const auto name = request.at("class").get<std::string>();
     const auto& row = klass(name);
-    if (row.at("kind") == "image") return number_field(row, "service_ms");
+    if (row.at("kind") == "image") {
+        if (!request.value("continuous_batch", false)) return number_field(row, "service_ms");
+        const int steps = int_field(request, "steps_total", int_field(row, "steps", 2), 1);
+        const int done = int_field(request, "steps_done", 0, 0);
+        double total = request.value("prepared", false) ? 0 : number_field(row, "prepare_ms");
+        total += std::max(0, steps - done) * continuous_step_ms(name, 1) + number_field(row, "finish_ms");
+        return total;
+    }
     const int steps = int_field(request, "steps_total", int_field(row, "steps", 0), 1), done = int_field(request, "steps_done", 0, 0);
     const int blocks = int_field(request, "blocks_done", 0, 0);
     double total = request.value("prepared", false) ? 0 : number_field(row, "prepare_ms");
@@ -357,6 +394,11 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     auto estimate = [&](const Json& r, const Form& form, int n, const std::vector<int>* group = nullptr) {
         const double remaining = cost.remaining_ms(r, form, n, group);
         if (cost.quantum_overhead_ms() <= 0) return remaining;
+        if (r.at("kind") == "image" && r.value("continuous_batch", false)) {
+            const int steps = int_field(r, "steps_total", int_field(cost.klass(r.at("class").get<std::string>()), "steps", 2), 1);
+            const int rounds = std::max(0, steps - int_field(r, "steps_done", 0, 0));
+            return remaining + cost.quantum_overhead_ms() * rounds;
+        }
         return remaining + cost.quantum_overhead_ms() * (r.at("kind") == "image" ? 1 : quanta_left(r, form, n, group));
     };
     const bool lazy = bool_field(options, "lazy_preemption", true);
@@ -504,6 +546,9 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         return std::max(1, std::min(static_cast<int>(std::floor(quantum_ms / block)), cost.blocks_per_step(first)));
     };
     const int image_batch = int_field(options, "image_batch", 1);
+    const int continuous_batch = int_field(options, "continuous_batch", 0, 0);
+    if (continuous_batch > 8) throw std::invalid_argument("continuous_batch must be in [0, 8]");
+    if (continuous_batch > 0 && image_batch > 1) throw std::invalid_argument("continuous_batch and atomic image_batch are mutually exclusive");
     Json assignments = Json::array();
     for (std::size_t index = 0; index < rows.size(); ++index) {
         const Json& r = *rows[index];
@@ -511,6 +556,10 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         const auto id = r.at("request_id").get<std::string>();
         const auto klass = r.at("class").get<std::string>();
         if (r.at("kind") == "image") {
+            const auto current = group_of(r);
+            const bool prepared = r.value("prepared", false);
+            if (continuous_batch > 0 && prepared && current.size() != 1)
+                throw std::invalid_argument("a continuous image state must have exactly one resident GPU");
             const double slack = number_field(r, "deadline_ms") - now - estimate(r, Form{}, 1);
             int chosen = -1, rank = 3, chosen_fit = -1;  // rank: -1 reserved, 0 idle, 1 step-boundary video group, 2 mid-step group
             // Occupied neighbours of a GPU: its aligned partner counts most, then the rest of its aligned quad.
@@ -521,7 +570,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                 return value;
             };
             for (int gpu = 0; gpu < gpus; ++gpu) {
-                if (!free[gpu]) continue;
+                if (!free[gpu] || (continuous_batch > 0 && prepared && gpu != current.front())) continue;
                 // Prefer idle GPUs; then GPUs of videos at step boundaries; a
                 // mid-step group only when waiting for its boundary would miss.
                 int score = reserved(gpu) ? -1 : mid_owner[gpu] ? 2 : 0;
@@ -535,11 +584,50 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             }
             if (chosen < 0) continue;
             free[chosen] = false;
-            Json assignment = {{"request_id", id}, {"group", Json::array({chosen})}, {"degree", 1}, {"quantum", "atomic"},
+            Json assignment = {{"request_id", id}, {"group", Json::array({chosen})}, {"degree", 1},
+                               {"quantum", continuous_batch > 0 ? "continuous_batch" : "atomic"},
                                {"resize", false}, {"reason", rank == 2 ? "block_preempt" : "edf"}};
-            // Dynamic batching: further waiting images of this class join while every member of
-            // the batch still meets its deadline at the batch's service time.
-            if (image_batch > 1) {
+            if (continuous_batch > 0) {
+                std::vector<const Json*> members = {&r};
+                auto round_cost = [&](const std::vector<const Json*>& batch) {
+                    double value = cost.continuous_step_ms(klass, static_cast<int>(batch.size())) + cost.quantum_overhead_ms();
+                    for (const Json* m : batch) {
+                        if (!m->value("prepared", false)) value += number_field(cost.klass(klass), "prepare_ms");
+                        const int steps = int_field(*m, "steps_total", int_field(cost.klass(klass), "steps", 2), 1);
+                        if (int_field(*m, "steps_done", 0, 0) + 1 >= steps) value += number_field(cost.klass(klass), "finish_ms");
+                    }
+                    return value;
+                };
+                auto fits = [&](const std::vector<const Json*>& batch) {
+                    const double service = round_cost(batch);
+                    for (const Json* m : batch) {
+                        const int steps = int_field(*m, "steps_total", int_field(cost.klass(klass), "steps", 2), 1);
+                        const int remaining = std::max(0, steps - int_field(*m, "steps_done", 0, 0) - 1);
+                        double complete = service;
+                        if (remaining > 0) complete += remaining * (cost.continuous_step_ms(klass, static_cast<int>(batch.size()))
+                            + cost.quantum_overhead_ms()) + number_field(cost.klass(klass), "finish_ms");
+                        if (now + complete > number_field(*m, "deadline_ms")) return false;
+                    }
+                    return true;
+                };
+                for (std::size_t j = index + 1; j < rows.size() && static_cast<int>(members.size()) < continuous_batch; ++j) {
+                    const Json& q = *rows[j];
+                    if (q.at("kind") != "image" || taken.count(&q) || q.at("class") != r.at("class")) continue;
+                    if (q.value("prepared", false)) {
+                        const auto other = group_of(q);
+                        if (other.size() != 1) throw std::invalid_argument("a continuous image state must have exactly one resident GPU");
+                        if (other.front() != chosen) continue;
+                    }
+                    auto candidate = members;
+                    candidate.push_back(&q);
+                    if (!fits(candidate)) continue;
+                    members = std::move(candidate);
+                }
+                Json batch = Json::array();
+                for (const Json* m : members) batch.push_back(m->at("request_id"));
+                for (std::size_t m = 1; m < members.size(); ++m) taken.insert(members[m]);
+                assignment["batch"] = batch;
+            } else if (image_batch > 1) {
                 std::vector<const Json*> members = {&r};
                 for (std::size_t j = index + 1; j < rows.size() && static_cast<int>(members.size()) < image_batch; ++j) {
                     const Json& q = *rows[j];

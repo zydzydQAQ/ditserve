@@ -35,11 +35,12 @@ class NativeStudyTest(unittest.TestCase):
         cls.package_directory = tempfile.TemporaryDirectory()
         cls.addClassCleanup(cls.package_directory.cleanup)
         cls.package_root = Path(cls.package_directory.name) / "python"
-        source = PACKAGE_ROOT / "ditserve"
-        for path in source.rglob("*.py"):
-            target = cls.package_root / "ditserve" / path.relative_to(source)
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(path, target)
+        for package in ("ditserve", "xfuser"):
+            source = PACKAGE_ROOT / package
+            for path in source.rglob("*.py"):
+                target = cls.package_root / package / path.relative_to(source)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(path, target)
 
     def setUp(self):
         directory = tempfile.TemporaryDirectory()
@@ -184,27 +185,6 @@ class NativeStudyTest(unittest.TestCase):
             self.assertEqual(row["outputs"][1]["output"]["text"], "blue cup")
             self.assertEqual(set(row["worker_pids"]), {"text", "image"})
 
-    def test_streaming_updates_buffers_and_full_playback_drain(self):
-        row = self.request(updates=[dict(arrival_ms=0, version=1, prompt="first"),
-                                    dict(arrival_ms=0, version=2, prompt="second")])
-        phase = self.phase(kind="streaming", workload=[row], chunks=3, fps=1000,
-                           matrix={"/buffer_chunks": [0, 2], "/prompt_policy": ["fifo", "latest_only"]})
-        value = self.run_study(self.config([phase]))
-        self.assert_completed(value)
-        cells = value["phases"][0]["cells"]
-        self.assertEqual(len(cells), 4)
-        for cell in cells:
-            playback = cell["requests"][0]["playback"]
-            self.assertEqual(playback["frames_played"], 12)
-            self.assertEqual(playback["frames_dropped"], 0)
-            events = cell["prompt_events"]
-            self.assertEqual(len(events), 2)
-            self.assertFalse(any(event["status"] == "pending_at_stop" for event in events))
-            applied = [event["version"] for event in events if event["status"] == "applied"]
-            self.assertIn(applied, ([1, 2], [2]))
-            self.assertEqual(playback["samples"][-1]["version"], 2)
-            self.assertEqual(cell["semantic_status"], "unverified")
-
     def test_sp_actions_use_persistent_independent_ranks(self):
         actions = [dict(op="prepare", state_id="sp", spec=dict(steps=2, prompt="rank", seed=0)),
                    dict(op="advance", state_id="sp", steps=2), dict(op="inventory", state_id="sp"),
@@ -274,32 +254,11 @@ class NativeStudyTest(unittest.TestCase):
                 self.assertEqual(ledger.read_bytes(), before)
                 self.assertFalse(replacement.exists())
 
-    def test_stream_failure_keeps_entire_frozen_request_denominator(self):
-        phase = self.phase(kind="streaming", chunks=2, fps=1000,
-                           workload=[self.request("failed"), self.request("waiting", arrival_ms=1000)])
-        value = self.run_study(self.config([phase], options=dict(fail_on="advance")))
-        self.assertEqual(value["status"], "failed")
-        self.assertIsNone(value["budget"]["active"])
-        self.assertEqual(value["metrics"]["requests"], 2)
-        self.assertGreaterEqual(value["metrics"]["failed"], 1)
-        self.assertEqual({row["request_id"] for row in value["requests"]}, {"failed", "waiting"})
-        self.assertTrue(all(row.get("observation_id") for row in value["requests"]))
-
-    def test_stream_drain_timeout_cannot_report_success(self):
-        phase = self.phase(kind="streaming", chunks=1, fps=1, buffer_chunks=2,
-                           playback_drain_seconds=0)
-        value = self.run_study(self.config([phase]))
-        self.assertEqual(value["status"], "failed")
-        self.assertRegex(value["phases"][0]["error"], "drain|playback")
-        self.assertEqual(value["metrics"]["requests"], 1)
-        self.assertIsNone(value["budget"]["active"])
-
     def test_invalid_execution_inputs_leave_no_active_budget(self):
         cases = [self.phase(paired="yes"), self.phase(workload=[]),
                  self.phase(workload=[self.request(stages=[])]), self.phase(worker="missing"),
                  self.phase(worker_config=[]), self.phase(worker_config=dict(device="cuda:0")),
-                 self.phase(workload=[self.request(updates=[dict(arrival_ms=2, version=1, prompt="first"),
-                                                            dict(arrival_ms=1, version=2, prompt="second")])]),
+                 self.phase(kind="streaming"),
                  dict(id="sp", kind="sp", workers=["model", "model"], actions=[dict(op="hello")])]
         for index, phase in enumerate(cases):
             with self.subTest(phase=phase):
@@ -592,6 +551,68 @@ class NativeStudyTest(unittest.TestCase):
         self.assertEqual(cell["metrics"]["completed"], 6)
         rows = {row["request_id"]: row for row in cell["requests"]}
         self.assertTrue(any(row.get("batched", 0) >= 2 for name, row in rows.items() if name.startswith("i")))
+
+    def test_cluster_continuous_batch_late_join_early_exit_and_failure(self):
+        def phase(batch):
+            value = self.cluster_phase("static_sp1", gpus=1, options=dict(continuous_batch=batch))
+            value["output_mode"] = "check"
+            value["artifact_dependencies"] = ["test_quality"]
+            value["warmup"] = [dict(worker="i0", spec=dict(steps=2, prompt="warmup"))]
+            value["profile"]["classes"]["image"].update(steps=2, prepare_ms=0, finish_ms=20,
+                batch_step_ms={"1": 100, "2": 100, "4": 100, "8": 100})
+            value["workload"] = [dict(request_id=name, kind="image", worker="i0", **{"class": "image"},
+                                      arrival_ms=arrival, slo_ms=5000,
+                                      spec=dict(steps=2, prompt=name),
+                                      output_mode="file" if name == "b" else "check")
+                                 for name, arrival in (("a", 0), ("b", 50), ("c", 150))]
+            return value
+
+        workers = self.cluster_workers(1)
+        workers["i0"]["config"]["options"]["costs"]["step_ms"] = 100
+        value = self.run_study(self.config([phase(4)], workers=workers), name="continuous")
+        self.assert_completed(value)
+        cell = value["phases"][0]["cells"][0]
+        self.assertEqual(cell["metrics"]["completed"], 3)
+        stats = cell["continuous_batch"]
+        self.assertEqual((stats["rounds"], stats["late_joins"], stats["early_exits"]), (4, 2, 2))
+        self.assertEqual(stats["batch_sizes"], {"1": 2, "2": 2})
+        self.assertEqual(len(stats["samples"]), 4)
+        rows = {row["request_id"]: row for row in cell["requests"]}
+        self.assertLess(rows["a"]["finish_ms"], rows["b"]["finish_ms"])
+        self.assertLess(rows["b"]["finish_ms"], rows["c"]["finish_ms"])
+        self.assertEqual([rows[name]["continuous_rounds"] for name in ("a", "b", "c")], [2, 2, 2])
+        self.assertEqual([rows[name]["batched"] for name in ("a", "b", "c")], [2, 2, 1])
+        for name, mode in (("a", "check"), ("b", "file"), ("c", "check")):
+            row = rows[name]
+            self.assertEqual(row["generation"]["prompt"], name)
+            self.assertEqual(len(row["outputs"]), 1)
+            self.assertEqual(row["outputs"][0]["output"]["output_mode"], mode)
+            self.assertGreater(row["worker_operation_ms"], 0)
+            if mode == "file":
+                self.assertTrue(Path(row["outputs"][0]["output"]["path"]).is_file())
+            else:
+                self.assertNotIn("path", row["outputs"][0]["output"])
+
+        baseline = self.run_study(self.config([phase(1)], workers=workers), name="continuous-baseline")
+        self.assert_completed(baseline)
+        stats = baseline["phases"][0]["cells"][0]["continuous_batch"]
+        self.assertEqual((stats["rounds"], stats["late_joins"], stats["early_exits"]), (6, 0, 0))
+        self.assertEqual(stats["batch_sizes"], {"1": 6})
+
+        broken_workers = self.cluster_workers(1)
+        broken_workers["i0"]["config"]["options"]["costs"]["step_ms"] = 100
+        broken_workers["i0"]["config"]["options"]["fail_ops"] = ["advance_batch"]
+        broken_phase = phase(4)
+        broken_phase.pop("warmup", None)
+        for row in broken_phase["workload"]:
+            row["arrival_ms"] = 0
+        failed = self.run_study(self.config([broken_phase], workers=broken_workers), name="continuous-failed")
+        self.assertEqual(failed["status"], "failed")
+        errors = [row for row in failed["failures"] if "request_id" in row]
+        self.assertEqual({row["request_id"] for row in errors}, {"a", "b", "c"})
+        rows = failed["requests"]
+        self.assertEqual(len(rows), 3)
+        self.assertTrue(all(row["status"] == "failed" for row in rows))
 
     def test_cluster_export_transport_failure_stops_the_cell(self):
         workers = self.cluster_workers()

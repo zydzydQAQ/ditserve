@@ -7,6 +7,7 @@ from unittest.mock import Mock, patch
 
 from ditserve.models.base import Backend
 from ditserve.models.flux import FluxBackend
+from ditserve.models.sd35 import SD35Backend
 from ditserve.models.wan.pipeline import WanPipelineBackend
 
 
@@ -23,11 +24,14 @@ class PipelineBatchTests(unittest.TestCase):
         backend = cls.__new__(cls)
         Backend.__init__(backend, config)
         backend.torch, backend.device = self.torch, "cpu"
+        from xdit_wan_fixtures import EngineDouble
+        backend.xdit = EngineDouble()
         return backend
 
     def test_offline_batches_repeat_prompts_share_seed_and_reencode_each_call(self):
         torch, np = self.torch, self.np
-        for cls, encoder in ((FluxBackend, "cuda"), (WanPipelineBackend, "cuda"), (WanPipelineBackend, "cpu")):
+        for cls, encoder in ((FluxBackend, "cuda"), (SD35Backend, "cuda"),
+                             (WanPipelineBackend, "cuda"), (WanPipelineBackend, "cpu")):
             with self.subTest(backend=cls.__name__, encoder=encoder), tempfile.TemporaryDirectory() as directory:
                 backend = self.backend(cls, dict(text_encoder_device=encoder, work_dir=directory))
                 calls, encodings, outputs = [], [], {}
@@ -49,7 +53,7 @@ class PipelineBatchTests(unittest.TestCase):
                 backend.pipe = Pipeline()
                 for index, (size, seed) in enumerate(((1, 7), (3, 7), (3, 7), (3, 8))):
                     key = str(index)
-                    negative = "noise" if cls is WanPipelineBackend else ""
+                    negative = "" if cls is FluxBackend else "noise"
                     prepared = backend.prepare(dict(state_id=key, spec=dict(prompt="kettle", negative_prompt=negative,
                         seed=seed, batch_size=size, steps=2)))
                     self.assertEqual(prepared["batch_size"], size)
@@ -66,6 +70,9 @@ class PipelineBatchTests(unittest.TestCase):
                     self.assertEqual(kwargs["generator"].initial_seed(), seed)
                     if cls is WanPipelineBackend:
                         self.assertEqual(kwargs["num_frames"], 81)
+                    if cls is SD35Backend:
+                        self.assertEqual(kwargs["negative_prompt"], ["noise"] * size)
+                        self.assertEqual(kwargs["max_sequence_length"], 256)
                     if encoder == "cpu":
                         self.assertNotIn("prompt", kwargs)
                         self.assertEqual(encodings[-1]["prompt"], ["kettle"] * size)
@@ -89,13 +96,15 @@ class PipelineBatchTests(unittest.TestCase):
         self.assertFalse(torch.cuda.is_initialized())
 
     def test_invalid_batch_shapes_fail_before_state_creation(self):
-        for cls in (FluxBackend, WanPipelineBackend):
+        for cls in (FluxBackend, SD35Backend, WanPipelineBackend):
             backend = self.backend(cls, {})
             bad = [dict(batch_size=0), dict(batch_size=True), dict(batch_size=1.5), dict(prompt=["kettle"]),
                    dict(seed=True), dict(seed=1 << 64), dict(guidance_scale=float("nan")), dict(height=17)]
             bad.append(dict(frames=2))
             if cls is FluxBackend:
                 bad.append(dict(negative_prompt="noise"))
+            if cls is SD35Backend:
+                bad.extend((dict(max_sequence_length=0), dict(max_sequence_length=513)))
             for spec in bad:
                 with self.subTest(backend=cls.__name__, spec=spec), self.assertRaises(ValueError):
                     backend.prepare(dict(state_id="invalid", spec=dict(dict(prompt="kettle"), **spec)))
@@ -139,6 +148,22 @@ class PipelineBatchTests(unittest.TestCase):
         pipe.text_encoder.to.assert_called_once_with(device="cpu", dtype=torch.float32)
         self.assertEqual(pipe._execution_device, "cuda:0")
         self.assertFalse(torch.cuda.is_initialized())
+
+    def test_sd35_loader_uses_the_native_sd3_pipeline(self):
+        from ditserve.models.pipeline import _pipeline
+        pipe = Mock()
+        pipe.to.return_value = pipe
+        loader = Mock(return_value=pipe)
+        diffusers = SimpleNamespace(StableDiffusion3Pipeline=SimpleNamespace(from_pretrained=loader))
+        args = SimpleNamespace(model="sd35", model_id="snapshot", revision="pinned", local_files_only=True,
+            dtype="bfloat16", device="cpu")
+        self.assertIs(_pipeline(self.torch, diffusers, args), pipe)
+        self.assertEqual(loader.call_args.args, ("snapshot",))
+        self.assertEqual(loader.call_args.kwargs,
+                         dict(torch_dtype=self.torch.bfloat16, local_files_only=True, revision="pinned"))
+        pipe.to.assert_called_once_with("cpu")
+        pipe.set_progress_bar_config.assert_called_once_with(disable=True)
+        self.assertFalse(self.torch.cuda.is_initialized())
 
 
 if __name__ == "__main__":

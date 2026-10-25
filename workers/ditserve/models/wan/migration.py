@@ -118,6 +118,11 @@ class _BaseView:
     def pipe(self):   # the latent shape check reads the model's channels and VAE factors
         return getattr(self.worker, "pipe", None)
 
+    def __getattr__(self, name):
+        if name in ("xdit", "engine_name", "attention", "model_path", "model_revision"):
+            return getattr(self.worker, name)
+        raise AttributeError(name)
+
     def _check(self, state, residency):
         if state is not self.shadow:
             raise ParallelContractError("invalid base view")
@@ -192,7 +197,9 @@ def pack_request(worker, state, *, action, target_device, migration_id, epoch=0,
         raise ParallelContractError("feature storage aliases non-feature state")
     checked = None
     if action == "certified_omit":
-        checked = validate_refresh_certificate(state, certificate)
+        from .parallel import request_engine
+        engine = request_engine(worker) if getattr(worker, "xdit", None) is not None else None
+        checked = validate_refresh_certificate(state, certificate, engine=engine)
     elif certificate is not None:
         raise ParallelContractError("certificate supplied for a non-omission action")
     worker._sync()

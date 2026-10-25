@@ -42,6 +42,9 @@ class SanaAdapter:
             raise ValueError("unexpected SANA-Sprint 0.6B scheduler/model configuration")
         self.pipe.to(device)
         self.pipe.set_progress_bar_config(disable=True)
+        from ..xdit.sana import XDitSanaEngine
+        self.xdit = XDitSanaEngine(self.pipe, device, attention="auto")
+        self.pipe = self.xdit.pipe
         self._instruction = inspect.signature(self.pipe.__call__).parameters["complex_human_instruction"].default
         self._owner = object()
         self.model_path = str(path)
@@ -92,4 +95,7 @@ class SanaAdapter:
 
     def close(self):
         self._sync()
+        if getattr(self, "xdit", None) is not None:
+            self.xdit.close()
+            self.xdit = None
         self.pipe = None

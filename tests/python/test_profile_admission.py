@@ -32,11 +32,12 @@ class ProfileAdmissionTests(unittest.TestCase):
         cls.package_directory = tempfile.TemporaryDirectory()
         cls.addClassCleanup(cls.package_directory.cleanup)
         cls.package_root = Path(cls.package_directory.name) / "python"
-        source = PACKAGE_ROOT / "ditserve"
-        for path in source.rglob("*.py"):
-            target = cls.package_root / "ditserve" / path.relative_to(source)
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(path, target)
+        for package in ("ditserve", "xfuser"):
+            source = PACKAGE_ROOT / package
+            for path in source.rglob("*.py"):
+                target = cls.package_root / package / path.relative_to(source)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(path, target)
 
     def setUp(self):
         directory = tempfile.TemporaryDirectory()

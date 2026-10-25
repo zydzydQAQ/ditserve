@@ -61,6 +61,32 @@ class ProtocolTests(unittest.TestCase):
         self.assertFalse(self.call("inventory", state_id="a")["paused"])
         self.assertEqual(self.call("inventory", state_id="a")["step"], 0)
 
+    def test_removed_model_backends_are_rejected(self):
+        for backend in ("mistral", "longlive"):
+            with self.subTest(backend=backend):
+                self.assertNotIn(backend, BACKENDS)
+                with self.assertRaisesRegex(ValueError, "unknown backend"):
+                    Worker(backend, self.config)
+
+    def test_xdit_capabilities_describe_the_actual_execution_contract(self):
+        from ditserve.models.xdit import XDIT_REVISION
+        cases = (("wan", "block", ["step", "block"], ["state", "block"]),
+                 ("wan_pipeline", None, ["atomic"], []),
+                 ("sana", "pipeline", ["atomic"], []),
+                 ("flux", None, ["atomic"], []),
+                 ("sd35", None, ["atomic"], []))
+        for backend, execution, quanta, migration in cases:
+            with self.subTest(backend=backend):
+                worker = Worker(backend, dict(options={} if execution is None else dict(execution=execution)))
+                self.addCleanup(worker.close)
+                result = worker.dispatch(dict(version=1, id=1, op="hello"))
+                capabilities = result["capabilities"]
+                self.assertEqual(capabilities["engine"]["revision"], XDIT_REVISION)
+                self.assertEqual(capabilities["engine_status"], "configured")
+                self.assertEqual((capabilities["quanta"], capabilities["migration"]), (quanta, migration))
+                self.assertTrue(capabilities["model_wrapper"].startswith("xFuser"))
+                self.assertEqual(capabilities["continuous_batch"], backend == "sana" and execution != "pipeline")
+
     def test_framing_errors_stdout_and_recovery(self):
         commands = ["not json", '{"version":1,"id":1,"op":"hello","value":NaN}',
             json.dumps(dict(version=1, id=2, op="prepare", state_id="a",

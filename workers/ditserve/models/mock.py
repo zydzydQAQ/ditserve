@@ -10,7 +10,7 @@ from .base import Backend, artifact, file_hash, positive_int, progress
 
 class MockBackend(Backend):
     operations = Backend.operations + ("snapshot", "restore", "inventory", "update_prompt", "distributed", "generate_batch",
-                                      "migration_release", "migration_abort", "encode_start", "encode_poll",
+                                      "advance_batch", "migration_release", "migration_abort", "encode_start", "encode_poll",
                                       "decode_start", "decode_poll", "block_export", "block_import")
 
     def __init__(self, config):
@@ -275,6 +275,21 @@ class MockBackend(Backend):
 
     def inventory(self, request):
         return dict(self.state(request), measured=False)
+
+    def advance_batch(self, request):
+        self._inject("advance_batch", request)
+        keys = request.get("state_ids")
+        if not isinstance(keys, list) or not 1 <= len(keys) <= 8 or len(set(keys)) != len(keys):
+            raise ValueError("advance_batch requires 1 to 8 distinct state_ids")
+        states = [self.state({"state_id": key}) for key in keys]
+        if any(state["paused"] or state["step"] == state["steps"] for state in states):
+            raise ValueError("continuous batch contains an inactive or completed state")
+        results = []
+        for key in keys:
+            event = self._advance_one({"state_id": key})
+            results.append(dict(state_id=key, progress=event["progress"], event=event))
+        return dict(batch_size=len(keys), model_ms=0., results=results,
+                    memory_before=None, memory_after=None, measured=False)
 
     def generate_batch(self, request):
         """Fixture batching: one call serves every prompt; costs.batch_ms[size] or size x step_ms."""

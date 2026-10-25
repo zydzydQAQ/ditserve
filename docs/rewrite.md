@@ -6,7 +6,7 @@
 
 ## 能力覆盖
 
-表中的 CPU 测试验证协议、数值小模型或本地 fixtures；不能推导真实 GPU 性能、容量、图像质量或语义资格。本次没有启动 GPU 实验、下载模型或重新安装已有模型环境。
+表中的 CPU 测试验证协议、数值小模型或本地 fixtures；不能推导真实 GPU 性能、容量、图像质量或语义资格。当前 DiT 执行底座固定为 xDiT `16c34e7f070de65d9d2c67a6d74e0007dd8b426a`，GPU 证据以 Kairos 实际验收记录为准。
 
 | 旧能力 | 新模块 / 配置与边界 | CPU 验收位置 / GPU 状态 |
 | --- | --- | --- |
@@ -14,17 +14,23 @@
 | 多套预算、监督、phase/next/followup 控制 | `control/budget.cpp`、`runtime/process.cpp`、`control/study.cpp`；独立累计账本、阶段限额、向后结转、修复预留、wall-clock watchdog、失败费用及未结算保护。 | `test_supervision.cpp`、`test_study.py`：锁、超时、进程组、恢复身份、失败重试；GPU 占用与故障清理尚未真实验收。 |
 | 配对 profile、筛选与确认、优化矩阵 | `control/study.cpp` / `control/dispatch.cpp`；`profile.json`、`online.json`；统一矩阵、正反顺序、独立 observation ID、配置门槛。 | `test_control.cpp`、`control-baseline.json`、`test_study.py`；没有新性能提升声明。 |
 | 在线到达、微批策略、步边界调度与准入 | C++ `study_workload`、`select_action`、replay；steady/Poisson/bursty/gamma、FCFS/EDF/SRTF及 guarded/feasible 策略。模型合法步边界仍由 worker 校验。 | 冻结旧 Python oracle、决策边界与 mock 回放；真实吞吐/时延未验证。 |
-| Wan 整步与 block continuation | `models/wan/{runtime,block}.py`；C++ 控制推进量与切换时机。半步 packet 不可作为可迁移整步状态。 | `test_model_blocks.py`：tiny Wan 30 层的 block/整步数值、求解器提交、取消与释放；GPU路径未验证。 |
+| Wan 整步与 block continuation | 固定 xDiT 的 `xFuserWanTransformer3DWrapper` + DITSERVE `models/wan/{runtime,block}.py`；C++ 控制推进量与切换时机，scheduler/RNG、cache-dit 特征缓存和求解器提交仍属 DITSERVE。SP mid-step packet 不允许跨组迁移。 | `test_model_blocks.py`、`test_xdit_wan.py`、`test_xdit_wan_runtime.py`：原生/wrapper/block 数值、缓存与状态恢复；真实 GPU 路径另行验收。 |
 | CFG 协同缓存（paired cache）、CFG 策略适配器、区域编译、exact_refresh 研究适配器 | 2026-10-18 精简删除：主线改为多卡 block 抢占 + 弹性 SP，有损缓存与 Wan 编译（在线无收益）不进主结论，且无任何配置引用。最后包含它们的提交为 `757ee01`；历史结果只读不受影响。 | 无。 |
-| hot/cold、缓存状态库存与跨 worker 迁移 | `state.json`、C++ 状态调度；`models/wan/{state,storage,migration}.py` 保存求解器/RNG/CFG/已知存储别名与两阶段所有权。 | `test_model_state.py`、`test_study.py`：往返、校验失败、ACK/释放/提交；跨 worker 当前仅 SP1 整步。`certified_omit` 必须持有效刷新证明。 |
-| 文本预编码与异步 VAE 解码 | C++ `text_prefetch`、`decode_mode`；Wan 编码线程和 `models/wan/async_decode.py`。异步 VAE 保留 MATH attention、SP1 限制。 | mock 回放及 CUDA stream 替身测试，检查请求身份与同步恢复；未验证真实并发收益。 |
-| SP/Ulysses 对齐进程组与重分片 | `sp.json`、C++ rank 并发 actions、`cluster` 执行器；`models/wan/{parallel,sp}.py`。2/4/8 进程 NCCL world 的对齐组（4 进程时与原固定组相同）；SP 内 block quanta 与 step 边界换组（控制器下发 group/epoch，host-staged 导出/导入，`cluster` 的 `sp_transport=export`）已实现；另有既有 cache-off all4↔group01 迁移；不支持缓存特征跨 SP 组。 | CPU 协议和状态重分片契约；多 GPU 等价性、通信、效率均未验证。 |
-| Sana 与 Mistral 多轮 LLM–DiT session | `session.json`；C++ stage/think-time/依赖与策略，`models/session/runtime.py` 保存 KV、采样器、RNG及精确前缀所有权。Sana step 默认 V100 FP32，可显式选择 A100 BF16；`advance_batch` 只合并 DiT forward，各请求独立提交 SCM/RNG，是在线 replay/cluster 之外的连续批原型。 | `test_model_sessions.py`：实际 tiny Mistral greedy/KV与 tiny Sana SCM2步；交错隔离、late join/early exit 与状态重建。A100 数值和性能需以真机试验验收。 |
-| Sana compiled/graph 候选与 FLUX 管线 | `models/sana/{runtime,compile,graph,hardware}.py`、`models/flux.py`、`profiling.py`。保留候选与失败门；FLUX及 `wan_pipeline` 保留固定离线 batch（重复 prompt、整批单CPU Generator），以完整管线为调用边界，不支持连续batch；Sana 连续批原型位于显式 step runtime。 | JSON协议、惰性导入、FLUX局部hook数值与失败恢复；GPU compiled/graph容量、质量、在线资格和FLUX路径未验证。 |
-| LongLive 在线 prompt 与播放缓冲 | `streaming.json`；C++ FIFO/latest-only/flush、0/1/2 chunk缓冲及独立帧消费；`models/longlive.py` 保留固定来源。 | `test_study.py`：更新、缓冲、drain超时、未完成请求分母；不是浏览器显示时延，LongLive GPU与语义盲评未验证。 |
+| hot/cold、缓存状态库存与跨 worker 迁移 | `state.json`、C++ 状态调度；`models/wan/{state,storage,migration}.py` 保存求解器/RNG/CFG/已知存储别名与两阶段所有权。cache-off wire v2 绑定引擎、xDiT revision、模型与规范 SP/CFG 形态；布局切换由换组事务校验，rank-local 放置不进入数学状态哈希；只允许在 solver-step 边界换组。 | `test_model_state.py`、`test_xdit_wan_runtime.py`、`test_study.py`：往返、校验失败、ACK/释放/提交及真实快照/恢复；`certified_omit` 必须持有效刷新证明。 |
+| 文本预编码与异步 VAE 解码 | C++ `text_prefetch`、`decode_mode`；Wan 编码线程和 `models/wan/async_decode.py`。异步 VAE 保留 MATH attention、SP1 限制。 | mock 回放及 CUDA stream 替身测试，检查请求身份与同步恢复；真实 CUDA stream 路径和并发收益需 GPU 验收。 |
+| SP/Ulysses 对齐进程组与重分片 | xDiT USP + `models/xdit/{groups,runtime,wan}.py`、DITSERVE `models/wan/{parallel,block}.py`；旧 cache-dit CP 执行附件已删除，cache-dit 特征缓存保留。2/4/8 进程 NCCL world 使用预建对齐组；block quantum 是组内安全点，step 边界按控制器 group/epoch 换组，host-staged 导出/导入；Wan2.2-TI2V 的 T2V CFG2 保留 DITSERVE 两半组与 prediction exchange，不套用上游 I2V-only CFG 限制。 | `test_sp_block.py`：CPU/Gloo 数值、padding、grow/move/shrink 与清单一致性；NCCL 数值、通信和效率未验证。 |
+| Sana 显式 step 与连续批 | `models/session/runtime.py` 只把拼接后的 DiT forward 委托给 `xFuserSanaTransformer2DWrapper`；每请求 SCM/RNG、late join/early exit、offload 仍由 DITSERVE 管理。默认 V100 FP32 MATH，可显式选择 A100 BF16；cluster 的 `options.continuous_batch` 保留 active 驻留与逐成员期限检查，普通 replay 尚未自动组批。 | `test_model_sessions.py`、`test_xdit_sana.py`：原生/tiny wrapper 数值、连续批、独立 SCM/RNG 与状态重建；A100 数值和性能需真机验收。 |
+| Sana compiled/graph 候选与原子图像管线 | `models/sana/{runtime,compile,graph,hardware}.py`、`models/xdit/{sana,flux,sd35}.py`、`models/{flux,sd35}.py`。候选与失败门保留；FLUX 使用 `xFuserFluxPipeline`，SD3.5 使用 `xFuserStableDiffusion3Pipeline`，原子 Wan 使用 xDiT pipeline 基类与 xFuser transformer。固定 SD3 源码的单阶段输出与内部阶段返回契约。单卡由原生 pipeline loop 和 cache-dit 上下文驱动；固定离线 batch 与整批单 CPU Generator 不变，不支持连续 batch。 | `test_xdit_sana.py`、`test_xdit_flux.py`、`test_xdit_sd35.py`、`test_xdit_wan_atomic.py`、`test_model_pipeline_batch.py`；GPU compiled/graph、SD3.5/FLUX 与原子 Wan 的性能/质量需另行验收。 |
+| Mistral、LongLive 专用后端 | 按本次确认删除注册、运行时、专属配置和 streaming 执行路径，不保留第二套后端。通用多阶段 session replay、`prompt_from_previous`、think-time 与历史结果 reader 保留。 | `test_worker_protocol.py` 验证明确拒绝；`test_study.py` 保留通用多阶段 replay；历史结果及 fixtures 不改写。 |
 | VBench/VidProM 数据冻结及独立质量评价 | `evaluation/`；完整VBench元数据、VidProM有界流式采样、分组划分、输出证据冻结、latent/video/cache配对、LPIPS、官方VBench。 | `test_evaluation.py`：本地元数据/数组、FFmpeg小视频、官方协议及超时替身；未下载数据，未运行官方权重评价。子集不伪造总分。 |
 | Wan 分解 profile 与硬件采样 | `models/wan/profile.py`、`evaluation/cuda_profile.py`、`evaluation/nsys_metrics.py` 和 `evaluation/wan_profile/`；区分 GPU activity、CPU 注释与外部 Nsight 采样。 | 本地 trace/SQLite 与采集流程 fixtures；缺指标为 null。未接入实际调用链的 NCU 权限探针及专用测试已删除，Nsight 采样与数据读取保留。真实 GPU 采集未验证。 |
 | 多套报告、归档与清理 | `results/` 统一两文件交付和可恢复 finalizer；保留旧 compact/archive/session readers及skill入口。 | `test_results.py`、`test_legacy_results.py`：类型/精度/溢出、只读旧证据、哈希、账本保护、依赖闭合、删除失败/崩溃恢复；所有删除仅临时 fixtures。 |
+
+## xDiT/xFuser 接入边界
+
+xDiT 是并行 DiT 推理引擎项目，xFuser 是该项目的 Python 包，不是与 xDiT 并列的另一套引擎。TetriServe 在其 vendored xFuser 上扩展 serving；GenServe 在本项目中只参考论文的 VideoState、step 抢占与弹性 SP 设计，未声称复制未核实的源码。
+
+本项目固定上游 `16c34e7f070de65d9d2c67a6d74e0007dd8b426a`，将 `workers/xfuser/` 与 `workers/ditserve/` 一并安装、冻结和哈希。Wan 与 Sana 的逐请求 scheduler/RNG、连续批、迁移和 block 状态仍属 DITSERVE，仅把 DiT/USP 执行委托给 xFuser；FLUX、SD3.5 和原子 Wan 使用 xDiT pipeline wrapper。单卡保留原生 pipeline 调用以维持 scheduler/RNG 与 cache-dit 上下文，不让 xDiT runner 接管整次 serving 请求。旧 cache-dit CP 执行附件已删除，cache-dit 特征缓存不是被替换掉的调度能力。
 
 原 `benchmark`、`directions`、`experiments`、`gpu`、`optimizations`、`research`、`scheduling`、`sessions` 八个 Python 包已删除。当前源码和测试没有对这些包的 import 依赖；保留在数据里的旧 schema 名称不等于保留旧控制器。模型加载、张量与缓存的底层算法留在 `models/`，不是把旧 Python runner 换个入口继续调用。
 
@@ -79,7 +85,7 @@ CPU 实跑包含48条请求、6次观测，发布的[工作簿](../results/rewri
 
 - 7 个内置策略类合为一个配置型实现，保留 `Policy/Registry` 扩展能力；合成后端统一走 `Backend/State`，具体状态和数值实现留在模块内部。
 - 实验主流程保留准入、预算开始/结算、门槛与持久化；`execute_cells` 独立管理矩阵执行、worker 监督和清理证明。
-- Mistral/Sana 共用状态迁出、恢复、释放与关闭方法；简单后端复用基础释放实现。LongLive 两文件合并，严格证书哈希共用一个实现。
+- 历史阶段曾让 Mistral/Sana 共用状态迁出、恢复、释放与关闭方法，并合并 LongLive 实现；本次已删除 Mistral/LongLive 专用后端，Sana 状态管理与通用 replay 保留。
 - worker 分离协议校验、模型调用和无状态结果/评测服务，移除两个服务后端类；报告错误汇总独立于展示，重复序列化与文件哈希复用既有工具。
 
 本轮恢复快照为 `.cache/refactor-baseline/20261016T082215Z/source.tar.gz`，同目录保存逐文件哈希和统计；实际结果、累计账本及冻结源码未改动。

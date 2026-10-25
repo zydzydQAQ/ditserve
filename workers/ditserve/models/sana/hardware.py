@@ -35,6 +35,9 @@ class SchedulingSana(SanaAdapter):
         for component in (self.pipe.text_encoder, self.pipe.transformer, self.pipe.vae):
             if any(p.is_floating_point() and p.dtype != self.torch.float32 for p in component.parameters()):
                 raise ValueError("V100 Sana component did not remain FP32")
+        from ..xdit.sana import XDitSanaEngine
+        self.xdit = XDitSanaEngine(self.pipe, device, attention="math")
+        self.pipe = self.xdit.pipe
         self._instruction = inspect.signature(self.pipe.__call__).parameters["complex_human_instruction"].default
         self._owner, self.model_path = object(), str(path)
 

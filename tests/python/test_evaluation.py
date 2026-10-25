@@ -74,6 +74,23 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(sum(s["split"] == "dev" for s in first["samples"]), 2)
         self.assertTrue(all(s["timestamp"] == "2024-01-01" and "video" not in s for s in first["samples"]))
 
+    def test_vidprom_skips_empty_and_nsfw_prompts(self):
+        path = self.root / "filtered.csv"
+        with path.open("w", newline="") as stream:
+            writer = csv.DictWriter(stream, fieldnames=["uuid", "prompt", "time", "toxicity"])
+            writer.writeheader()
+            writer.writerows([
+                dict(uuid="a", prompt="safe a", time="2024-01-01", toxicity=0.1),
+                dict(uuid="empty", prompt="  ", time="2024-01-01", toxicity=0.0),
+                dict(uuid="b", prompt="safe b", time="2024-01-01", toxicity=0.2),
+                dict(uuid="bad", prompt="unsafe", time="2024-01-01", toxicity=0.9),
+                dict(uuid="c", prompt="safe c", time="2024-01-01", toxicity=0.3),
+            ])
+        result = ev.prepare_dataset("vidprom", source=path, dev_count=0, seed=7, sample_count=10)
+        self.assertEqual(result["selection"]["rows_seen"], 5)
+        self.assertEqual(result["selection"]["rows_skipped"], 2)
+        self.assertEqual({sample["prompt"] for sample in result["samples"]}, {"safe a", "safe b", "safe c"})
+
     def test_download_requires_opt_in_and_validates_revision_hash_and_length(self):
         with patch("urllib.request.urlopen", side_effect=AssertionError("unexpected network")):
             with self.assertRaises(ValueError):
@@ -144,13 +161,37 @@ class EvaluationTests(unittest.TestCase):
             atomic_json(output / "fixture_full_info.json", [{"video_list": required}])
             atomic_json(output / "fixture_eval_results.json", {dimension: [0.25, [{} for p in required]]})
             return SimpleNamespace(returncode=0)
-        with patch.object(vbench.time, "monotonic", side_effect=lambda: elapsed[0]), \
+        with patch.object(vbench.shutil, "which", return_value="/usr/bin/git"), \
+                patch.object(vbench.time, "monotonic", side_effect=lambda: elapsed[0]), \
                 patch.object(vbench.subprocess, "run", side_effect=invoke):
             result = ev.run_vbench(path, videos, repo, timeout=10)
         self.assertEqual(timeouts, [10., 4.])
         self.assertEqual(result["status"], "failed")
         self.assertFalse(result["verified"])
         self.assertEqual(list(result["dimensions"]), ["scene"])
+
+    def test_vbench_metadata_relocates_to_pinned_checkout(self):
+        repo, path, manifest = self.manifest(["scene"])
+        videos = self.root / "videos"
+        for row in manifest["requests"]:
+            video = videos / row["video_path"]
+            video.parent.mkdir(parents=True, exist_ok=True)
+            video.write_bytes(b"test-only marker")
+        manifest["full_info_path"] = str(self.root / "missing" / "VBench_full_info.json")
+        def invoke(command, **kwargs):
+            if command[0] == "git":
+                return SimpleNamespace(stdout=vbench.VBENCH_REVISION if "rev-parse" in command else "", returncode=0)
+            dimension = command[command.index("--dimension") + 1]
+            output = Path(command[command.index("--output_path") + 1])
+            required = [str((videos / row["video_path"]).resolve()) for row in manifest["requests"]]
+            atomic_json(output / "fixture_full_info.json", [{"video_list": required}])
+            atomic_json(output / "fixture_eval_results.json", {dimension: [0.25, [{} for p in required]]})
+            return SimpleNamespace(returncode=0)
+        with patch.object(vbench.shutil, "which", return_value="/usr/bin/git"), \
+                patch.object(vbench.subprocess, "run", side_effect=invoke):
+            result = ev.run_vbench(path, videos, repo)
+        self.assertEqual(result["status"], "completed")
+        self.assertTrue(result["verified"])
 
     def artifact(self, stem, *, value=.5, cache=False, seed=0):
         generation = dict(model="fixture", revision="one", prompt="a bird", negative_prompt="", height=2,

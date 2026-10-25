@@ -657,6 +657,69 @@
       "sha256": "8979f52d874162f485ff2981e3891f3a3317b7a3dd43ff1e1775b9304f307a9c",
       "bytes": 10582,
       "origin": "official PyPI"
+    },
+    {
+      "name": "yunchang",
+      "version": "0.6.4",
+      "filename": "yunchang-0.6.4-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/49/77/9395c44f515dbabbd465f71dfd2026d1e523febb2ba2e65e41a32cdaa5e4/yunchang-0.6.4-py3-none-any.whl",
+      "sha256": "cce4295058e9de2c0592d69cfe1e3e679711def5f315fd1b68dbed2d54bc9255",
+      "bytes": 55254,
+      "origin": "official PyPI"
+    },
+    {
+      "name": "distvae",
+      "version": "0.1.0",
+      "filename": "distvae-0.1.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/70/4e/dd5447c0b9ade65e1a48aa1d6a52d7d31da6834f2f18377e41ecdefbd210/distvae-0.1.0-py3-none-any.whl",
+      "sha256": "860d77853873eaa7a1dada5c53069e7691117a385ad4afc4c90b19aa98aa87ec",
+      "bytes": 74801,
+      "origin": "official PyPI"
+    },
+    {
+      "name": "einops",
+      "version": "0.8.2",
+      "filename": "einops-0.8.2-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/2a/09/f8d8f8f31e4483c10a906437b4ce31bdf3d6d417b73fe33f1a8b59e34228/einops-0.8.2-py3-none-any.whl",
+      "sha256": "54058201ac7087911181bfec4af6091bb59380360f069276601256a76af08193",
+      "bytes": 65638,
+      "origin": "official PyPI"
+    },
+    {
+      "name": "beautifulsoup4",
+      "version": "4.15.0",
+      "filename": "beautifulsoup4-4.15.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/88/c6/92fcd42f1ba33e1184263f25bfabf3d27c383410470f169e4b8163bf9c17/beautifulsoup4-4.15.0-py3-none-any.whl",
+      "sha256": "d6f88de62e1d4e38ecb1077eb9724cd0eff29d2a08ca16a401e9b9e93f117cf9",
+      "bytes": 109924,
+      "origin": "official PyPI"
+    },
+    {
+      "name": "soupsieve",
+      "version": "2.10",
+      "filename": "soupsieve-2.10-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/66/87/5ed59e1d0290564e2027ed066c52b059892c4637741337fc0967183c8d4d/soupsieve-2.10-py3-none-any.whl",
+      "sha256": "8596eb8967d744174820280fa62b4542a2e955bfaccca73ed8a13c6eb8e9b502",
+      "bytes": 38019,
+      "origin": "official PyPI"
+    },
+    {
+      "name": "av",
+      "version": "17.1.0",
+      "filename": "av-17.1.0-cp310-cp310-manylinux_2_28_x86_64.whl",
+      "url": "https://files.pythonhosted.org/packages/04/a4/542d4bfd9f4aec5f3265985b9dbc6b259d45c2e668f9714e5f4e05b71e64/av-17.1.0-cp310-cp310-manylinux_2_28_x86_64.whl",
+      "sha256": "90c49bc9608377d01e82e747377505419a229464873341db18202d5dddecce5a",
+      "bytes": 36647600,
+      "origin": "official PyPI"
+    },
+    {
+      "name": "peft",
+      "version": "0.21.2",
+      "filename": "peft-0.21.2-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/70/0b/59441cdbfdd342ed03c08af90a2fe16173f0cd48ab219f523b39ca059a79/peft-0.21.2-py3-none-any.whl",
+      "sha256": "106ab6077ff72c54d21577f9af5970e34bac7582cb14209f7b2b511e322a4eae",
+      "bytes": 835427,
+      "origin": "official PyPI"
     }
   ]
 }

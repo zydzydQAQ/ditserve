@@ -333,6 +333,46 @@ int main() {
         require(together.at("batches") == 1 && together.at("batched_images") == 4 && together.at("metrics").at("completed") == 4, "batch counted");
         near(simulate_cluster({{"workload", trace}, {"profile", prof}, {"policy", "static_sp1"}, {"gpus", 1}}).at("makespan_ms").get<double>(), 200);
     });
+    check("continuous image batches", [] {
+        Json prof = profile();
+        prof["classes"]["image"].merge_patch({{"steps", 2}, {"prepare_ms", 5}, {"finish_ms", 10},
+            {"batch_step_ms", {{"1", 30}, {"2", 40}, {"4", 60}, {"8", 100}}}});
+        const ClusterCost cost(prof);
+        near(cost.continuous_step_ms("image", 1), 30);
+        near(cost.continuous_step_ms("image", 3), 50);
+        near(cost.continuous_step_ms("image", 8), 100);
+        Json active = image("a", 1000);
+        active.merge_patch({{"status", "suspended"}, {"prepared", true}, {"steps_done", 1}, {"steps_total", 2},
+                            {"group", {0}}, {"continuous_batch", true}});
+        Json fresh = image("b", 1000); fresh["continuous_batch"] = true; fresh["steps_total"] = 2;
+        Json other = image("c", 1000);
+        other.merge_patch({{"status", "suspended"}, {"prepared", true}, {"steps_done", 1}, {"steps_total", 2},
+                           {"group", {1}}, {"continuous_batch", true}});
+        near(cost.remaining_ms(active, 1), 40);
+        near(cost.remaining_ms(fresh, 1), 75);
+        near(cost.remaining_ms(image("plain", 1000), 1), 50);
+        const Json requests = {active, fresh, other};
+        const auto assignments = cluster_plan({{"now_ms", 0}, {"gpus", 2}, {"busy", Json::array()}, {"requests", requests}},
+                                               "static_sp1", cost, {{"continuous_batch", 4}}).at("assignments");
+        require(assignments.size() == 2, "each resident GPU gets its own continuous round");
+        require(assignments[0].at("group") == Json::array({0}) && assignments[0].at("batch") == Json::array({"a", "b"}),
+                "active A joins new B on GPU0");
+        require(assignments[0].at("quantum") == "continuous_batch", "explicit-step quantum");
+        require(assignments[1].at("group") == Json::array({1}) && assignments[1].at("batch") == Json::array({"c"}),
+                "active state on another GPU is not concatenated");
+        Json tight = active; tight["deadline_ms"] = 80;
+        Json late = fresh; late["deadline_ms"] = 90;
+        const auto limited = cluster_plan({{"now_ms", 0}, {"gpus", 1}, {"busy", Json::array()}, {"requests", {tight, late}}},
+                                           "static_sp1", cost, {{"continuous_batch", 4}}).at("assignments");
+        require(!limited.empty() && limited[0].at("batch") == Json::array({"a"}), "new member is rejected before it misses A's deadline");
+        rejects([&] { cluster_plan({{"now_ms", 0}, {"gpus", 1}, {"requests", {fresh}}}, "static_sp1", cost,
+                                    {{"continuous_batch", 4}, {"image_batch", 2}}); });
+        rejects([&] { cluster_plan({{"now_ms", 0}, {"gpus", 1}, {"requests", {fresh}}}, "static_sp1", cost,
+                                    {{"continuous_batch", 9}}); });
+        rejects([] { ClusterCost(profile()).continuous_step_ms("image", 1); });
+        Json broken = profile(); broken["classes"]["image"]["steps"] = 0;
+        rejects([&] { ClusterCost{broken}; });
+    });
     check("queue order and round-based regrouping", [] {
         // "b" is due later but arrived earlier and has less work left (3 steps of 4): edf takes "a",
         // srtf and fcfs take "b".

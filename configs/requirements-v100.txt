@@ -10,3 +10,9 @@ protobuf
 ftfy
 imageio
 imageio-ffmpeg
+beautifulsoup4==4.15.0
+distvae==0.1.0
+einops==0.8.2
+av==17.1.0
+peft==0.21.2
+yunchang==0.6.4

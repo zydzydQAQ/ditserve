@@ -1,13 +1,11 @@
-"""Exact model adapters for the session pilot.
+"""Exact Sana session state with explicit-step and resumable execution.
 
-Imports do not load models or initialize CUDA.  Mistral uses greedy FP16 SDPA
-with the MATH backend; Sana has explicit V100 FP32 MATH and A100 BF16 profiles.
-KV is an exact autoregressive state, not diffusion approximation caching.
-State-only offload is explicit and is not used automatically by either adapter.
+Imports do not load models or initialize CUDA. Sana has explicit V100 FP32
+MATH and A100 BF16 profiles. State-only offload is explicit and is never
+automatic.
 """
 
 from contextlib import contextmanager
-import copy
 from dataclasses import dataclass, field
 import importlib
 from pathlib import Path
@@ -46,26 +44,6 @@ def tensor_comparison(actual, expected, *, atol=0., rtol=0.):
                 rmse=float(delta.square().mean().sqrt()) if delta.numel() else 0.)
 
 
-def _legacy(cache):
-    if cache is None:
-        return ()
-    return cache.to_legacy_cache() if hasattr(cache, "to_legacy_cache") else tuple(cache)
-
-
-def cache_snapshot(cache):
-    return tuple(tuple(_cpu_copy(value) for value in pair) for pair in _legacy(cache))
-
-
-def cache_comparison(actual, expected, *, atol=0., rtol=0.):
-    a, b = _legacy(actual), _legacy(expected)
-    if len(a) != len(b) or any(len(x) != len(y) for x, y in zip(a, b)):
-        return dict(passed=False, exact=False, layers=len(a), expected_layers=len(b), tensors=[])
-    checks = [dict(layer=i, component=j, **tensor_comparison(x, y, atol=atol, rtol=rtol))
-              for i, (left, right) in enumerate(zip(a, b)) for j, (x, y) in enumerate(zip(left, right))]
-    return dict(passed=all(row["passed"] for row in checks), exact=all(row["exact"] for row in checks),
-                layers=len(a), expected_layers=len(b), tensors=checks)
-
-
 def _inventory(tensors, **metadata):
     rows, seen, unique_bytes = [], set(), 0
     for name, tensor in tensors:
@@ -83,30 +61,6 @@ def _inventory(tensors, **metadata):
                 unique_storage_bytes=unique_bytes,
                 gpu_bytes=sum(row["bytes"] for row in rows if row["device"].startswith("cuda")),
                 cpu_bytes=sum(row["bytes"] for row in rows if row["device"] == "cpu"))
-
-
-@dataclass(eq=False)
-class LLMState:
-    owner: object = field(repr=False)
-    request_id: str
-    prompt_ids: list
-    max_new_tokens: int
-    cache: object = field(repr=False)
-    messages: list = field(default_factory=list)
-    cached_ids: list = field(default_factory=list)
-    generated_ids: list = field(default_factory=list)
-    action: str = "prefill"
-    done: bool = False
-    failed: bool = False
-    closed: bool = False
-    location: str = "cpu"
-    reused_tokens: int = 0
-    prepare_ms: float = 0.
-    last_ms: float = 0.
-
-    @property
-    def cached_tokens(self):
-        return len(self.cached_ids)
 
 
 @dataclass(eq=False)
@@ -210,170 +164,14 @@ class _Runtime:
             for state in list(self._states.values()):
                 self.release(state)
             self._sync()
+            engine = getattr(self, "xdit", None)
+            if engine is not None:
+                engine.close()
+                self.xdit = None
             setattr(self, self._model_field, None)
             if getattr(self, "adapter", None) is not None:
                 self.adapter.pipe = None
 
-
-class MistralRuntime(_Runtime):
-    """One shared Mistral model and independent, single-owner greedy KV states."""
-
-    _release_fields = ("cache",)
-    _model_field = "model"
-
-    def __init__(self, model_path, device="cuda:0"):
-        self._initialize_runtime(device)
-        # A100 co-location runs are unqualified until compared with references there.
-        self._validate_v100(allow_a100=True)
-        path = Path(model_path).resolve()
-        transformers = importlib.import_module("transformers")
-        self.tokenizer = transformers.AutoTokenizer.from_pretrained(str(path), local_files_only=True)
-        self.model = transformers.AutoModelForCausalLM.from_pretrained(
-            str(path), local_files_only=True, torch_dtype=self.torch.float16,
-            attn_implementation="sdpa", use_safetensors=True).eval().to(self.device)
-        if type(self.model).__name__ != "MistralForCausalLM" or self.model.config.sliding_window is not None:
-            raise ValueError("pilot requires full-context MistralForCausalLM without sliding KV")
-        if getattr(self.model, "is_quantized", False) or getattr(self.model.config, "quantization_config", None):
-            raise ValueError("quantized Mistral execution is outside this pilot")
-        if any(p.is_floating_point() and p.dtype != self.torch.float16 for p in self.model.parameters()):
-            raise ValueError("Mistral must remain unquantized FP16")
-        self.model_path = str(path)
-        self._configure()
-
-    def _configure(self):
-        self.DynamicCache = importlib.import_module("transformers.cache_utils").DynamicCache
-        eos = self.model.generation_config.eos_token_id
-        self.eos_token_ids = set(eos if isinstance(eos, (list, tuple)) else [] if eos is None else [eos])
-
-    def _tokens(self, messages):
-        ids = self.tokenizer.apply_chat_template(messages, tokenize=True, add_generation_prompt=True)
-        if hasattr(ids, "tolist"):
-            ids = ids.tolist()
-        if not isinstance(ids, list) or not ids or any(type(value) is not int for value in ids):
-            raise ValueError("chat template must produce one nonempty unbatched token sequence")
-        return ids
-
-    def prepare(self, messages, *, max_new_tokens=64, previous=None, request_id="llm"):
-        if type(max_new_tokens) is not int or max_new_tokens <= 0:
-            raise ValueError("max_new_tokens must be a positive integer")
-        started = time.perf_counter()
-        ids = self._tokens(messages)
-        if len(ids) + max_new_tokens > self.model.config.max_position_embeddings:
-            raise ValueError("session exceeds the qualified context window")
-        with self._lock:
-            cache, prefix = self.DynamicCache(config=self.model.config), []
-            if previous is not None:
-                self._check(previous)
-                if not previous.done:
-                    raise ValueError("previous turn must finish before KV ownership transfers")
-                if previous.cache.get_seq_length() != previous.cached_tokens:
-                    raise ValueError("previous turn KV differs from its committed token prefix")
-                common = 0
-                # Keep one input token for the first forward even for an identical prompt.
-                for old, new in zip(previous.cached_ids, ids[:-1]):
-                    if old != new:
-                        break
-                    common += 1
-                if common:
-                    cache = previous.cache
-                    cache.crop(common)
-                    prefix = previous.cached_ids[:common]
-                previous.cache = None
-                previous.closed = True
-                self._states.pop(id(previous))
-            state = LLMState(self._owner, request_id, ids, max_new_tokens, cache,
-                             messages=copy.deepcopy(messages), cached_ids=prefix,
-                             location=self.device, reused_tokens=len(prefix),
-                             prepare_ms=(time.perf_counter() - started) * 1000)
-            self._states[id(state)] = state
-            return state
-
-    def advance(self, state):
-        with self._lock:
-            self._check(state)
-            if state.done:
-                raise ValueError("LLM turn is already complete")
-            action = state.action
-            incoming = (state.prompt_ids[state.cached_tokens:] if action == "prefill"
-                        else state.generated_ids[-1:])
-            if not incoming or state.cache.get_seq_length() != state.cached_tokens:
-                raise ValueError("KV sequence length does not match the committed token prefix")
-            with self._action(state):
-                torch = self.torch
-                positions = torch.arange(state.cached_tokens, state.cached_tokens + len(incoming),
-                                         device=self.device, dtype=torch.long)
-                result = self.model(
-                    input_ids=torch.tensor([incoming], device=self.device, dtype=torch.long),
-                    attention_mask=torch.ones((1, state.cached_tokens + len(incoming)),
-                                              device=self.device, dtype=torch.long),
-                    position_ids=positions.unsqueeze(0), cache_position=positions,
-                    past_key_values=state.cache, use_cache=True, logits_to_keep=1, return_dict=True)
-                self._finite(result.logits)
-                token = int(result.logits[0, -1].argmax())
-                state.cache = result.past_key_values
-                state.cached_ids.extend(incoming)
-                if state.cache.get_seq_length() != state.cached_tokens:
-                    raise RuntimeError("Mistral returned an inconsistent KV sequence length")
-                state.generated_ids.append(token)
-                state.done = token in self.eos_token_ids or len(state.generated_ids) >= state.max_new_tokens
-                state.action = "decode"
-            return dict(action=action, ms=state.last_ms, token_id=token, done=state.done,
-                        generated_tokens=len(state.generated_ids), cached_tokens=state.cached_tokens)
-
-    def finish(self, state):
-        self._check(state, resident=False)
-        if not state.done:
-            raise ValueError("LLM turn has not reached its stop condition")
-        return self.tokenizer.decode(state.generated_ids, skip_special_tokens=True,
-                                     clean_up_tokenization_spaces=False)
-
-    def reference(self, messages, *, max_new_tokens=64):
-        ids = self._tokens(messages)
-        if type(max_new_tokens) is not int or max_new_tokens <= 0 or len(ids) + max_new_tokens > self.model.config.max_position_embeddings:
-            raise ValueError("invalid reference generation length")
-        with self._action():
-            inputs = self.torch.tensor([ids], device=self.device, dtype=self.torch.long)
-            config = copy.deepcopy(self.model.generation_config)
-            config.do_sample, config.num_beams, config.use_cache = False, 1, True
-            config.max_new_tokens = max_new_tokens
-            config.pad_token_id = config.pad_token_id if config.pad_token_id is not None else self.tokenizer.eos_token_id
-            result = self.model.generate(input_ids=inputs, attention_mask=self.torch.ones_like(inputs),
-                generation_config=config, return_dict_in_generate=True, output_scores=False,
-                logits_to_keep=1)
-            tokens = result.sequences[0, len(ids):].tolist()
-        ms = self._last_ms
-        return dict(text=self.tokenizer.decode(tokens, skip_special_tokens=True,
-                                              clean_up_tokenization_spaces=False),
-                    token_ids=tokens, input_ids=ids, cache=cache_snapshot(result.past_key_values), ms=ms)
-
-    def snapshot(self, state):
-        self._check(state, resident=False)
-        return dict(prompt_ids=list(state.prompt_ids), generated_ids=list(state.generated_ids),
-                    cached_ids=list(state.cached_ids), done=state.done, cache=cache_snapshot(state.cache))
-
-    def inventory(self, state):
-        self._check(state, resident=False, allow_failed=True)
-        tensors = [("kv.%d.%s" % (i, name), tensor) for i, pair in enumerate(_legacy(state.cache))
-                   for name, tensor in zip(("key", "value"), pair)]
-        return _inventory(tensors, kind="llm", location=state.location, done=state.done,
-                          cached_tokens=state.cached_tokens, generated_tokens=len(state.generated_ids),
-                          reused_tokens=state.reused_tokens, action=state.action)
-
-    def _move(self, state, destination):
-        self._check(state, resident=False)
-        if state.location == destination:
-            return dict(ms=0., bytes=0, location=destination)
-        amount = self.inventory(state)["tensor_bytes"]
-        with self._action(state):
-            if state.cached_tokens:
-                pairs = tuple(tuple(tensor.to(destination) for tensor in pair) for pair in _legacy(state.cache))
-                state.cache = self.DynamicCache.from_legacy_cache(pairs)
-            else:
-                # Configured DynamicCache has lazy layers containing None before
-                # prefill; passing those to from_legacy_cache is not valid.
-                state.cache = self.DynamicCache(config=self.model.config)
-            state.location = destination
-        return dict(ms=state.last_ms, bytes=amount, location=destination)
 
 class SanaRuntime(_Runtime):
     """Official Sana-Sprint arithmetic, with per-request SCM and CPU RNG state.
@@ -394,6 +192,7 @@ class SanaRuntime(_Runtime):
         from ..sana.hardware import SchedulingSana
         self.adapter = SchedulingSana(model_path, device, profile=profile)
         self.pipe = self.adapter.pipe
+        self.xdit = self.adapter.xdit
         self.model_path = str(Path(model_path).resolve())
         self._instruction = self.adapter._instruction
         self._configure()
@@ -404,9 +203,11 @@ class SanaRuntime(_Runtime):
 
     def _configure(self):
         module = importlib.import_module("diffusers.pipelines.sana.pipeline_sana_sprint")
+        from diffusers import SCMScheduler
+        from xfuser.model_executor.schedulers.scheduling_scm import xFuserSCMSchedulerWrapper
         self._retrieve_timesteps = module.retrieve_timesteps
         self._aspect_ratios = module.ASPECT_RATIO_1024_BIN
-        if type(self.pipe.scheduler).__name__ != "SCMScheduler" or self.pipe.transformer.config.sample_size != 32:
+        if type(self.pipe.scheduler) not in (SCMScheduler, xFuserSCMSchedulerWrapper) or self.pipe.transformer.config.sample_size != 32:
             raise ValueError("session Sana requires the pinned 1024px SCM recipe")
 
     def prepare(self, prompt, seed=0, *, request_id="sana"):
@@ -423,7 +224,8 @@ class SanaRuntime(_Runtime):
             embeddings, mask = pipe.encode_prompt(prompt=prompt, device=self.device,
                 num_images_per_prompt=1, clean_caption=False, max_sequence_length=300,
                 complex_human_instruction=self._instruction)
-            scheduler = type(pipe.scheduler).from_config(pipe.scheduler.config)
+            scheduler_source = getattr(pipe.scheduler, "module", pipe.scheduler)
+            scheduler = type(scheduler_source).from_config(scheduler_source.config)
             timesteps, steps = self._retrieve_timesteps(scheduler, 2, self.device, None,
                 sigmas=None, max_timesteps=RECIPE["max_timesteps"],
                 intermediate_timesteps=RECIPE["intermediate_timesteps"])
@@ -493,12 +295,13 @@ class SanaRuntime(_Runtime):
                     scm_timestep = torch.sin(timestep) / (torch.cos(timestep) + torch.sin(timestep))
                     expanded = scm_timestep.view(-1, 1, 1, 1)
                     latent_model_input = latents_model_input * torch.sqrt(expanded**2 + (1 - expanded)**2)
-                    noise_pred = pipe.transformer(latent_model_input.to(dtype=pipe.transformer.dtype),
+                    noise_pred = self.xdit.forward(latent_model_input.to(dtype=pipe.transformer.dtype),
                         encoder_hidden_states=torch.cat([state.prompt_embeds for state in states]).to(
                             dtype=pipe.transformer.dtype),
                         encoder_attention_mask=torch.cat([state.prompt_attention_mask for state in states]),
                         guidance=torch.cat([state.guidance for state in states]),
-                        timestep=scm_timestep, return_dict=False, attention_kwargs=None)[0]
+                        timestep=scm_timestep, return_dict=False, attention_kwargs=None,
+                        num_inference_steps=first.num_steps)[0]
                     noise_pred = ((1 - 2 * expanded) * latent_model_input
                         + (1 - 2 * expanded + 2 * expanded**2) * noise_pred) / torch.sqrt(expanded**2 + (1 - expanded)**2)
                     noise_pred = noise_pred.float() * sigma_data

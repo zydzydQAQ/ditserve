@@ -182,6 +182,7 @@ class LayoutHandle:
         if cfg not in ("paired", "cond", "uncond", "none"):
             raise ParallelContractError("unsupported CFG phase")
         entry = dict(request_id=request_id, step_index=step_index, cfg=cfg,
+                     cfg_degree=self.current.cfg, sp_degree=self.current.sp_degree,
                      ranks=list(self.current.ranks), epoch=self.current.epoch)
         if self.active is None:
             self.active = entry
@@ -610,12 +611,66 @@ def _validate_cache_off_values(state, torch, shape):
     check(rng, torch.Generator(device="cpu").get_state().shape, torch.uint8, torch.device("cpu"))
 
 
+CACHE_OFF_SCHEMA = "ditserve.cache-off-wire.v2"
+LEGACY_CACHE_OFF_SCHEMA = "ditserve.cache-off-wire.v1"
+
+
+def request_engine(worker):
+    engine = getattr(worker, "xdit", None)
+    info = engine.info() if engine is not None else {}
+    model = getattr(getattr(worker, "pipe", None), "transformer", None)
+    ranks = info.get("sp_ranks", [0])
+    if (not isinstance(ranks, (list, tuple)) or not ranks
+            or any(type(rank) is not int or rank < 0 for rank in ranks)):
+        raise ParallelContractError("invalid engine layout in request state")
+    config_hash = None
+    if model is not None and hasattr(model, "config"):
+        config = dict(model.config)
+        if "_use_default_values" in config:
+            config["_use_default_values"] = sorted(config["_use_default_values"])
+        config_hash = hashlib.sha256(_json(config).encode()).hexdigest()
+    return dict(
+        name=getattr(worker, "engine_name", "legacy"),
+        revision=info.get("revision"),
+        model_snapshot=None if getattr(worker, "model_path", None) is None else str(worker.model_path),
+        model_revision=getattr(worker, "model_revision", None),
+        model_class=None if model is None else type(model).__name__,
+        model_config_sha256=config_hash,
+        dtype=None if model is None else str(model.dtype),
+        attention=info.get("attention", getattr(worker, "attention", None)),
+        layout=dict(sp_degree=len(ranks), cfg=getattr(getattr(engine, "_layout", None), "cfg", 1),
+                    boundary="solver_step"),
+    )
+
+
+def validate_request_engine(worker, binding):
+    if binding is None:
+        if getattr(worker, "engine_name", "legacy") == "xdit" or getattr(worker, "xdit", None) is not None:
+            raise ParallelContractError("unlabelled state cannot be imported into xDiT")
+        return
+    expected = request_engine(worker)
+    if type(binding) is not dict or set(binding) != set(expected):
+        raise ParallelContractError("unknown state engine manifest")
+    for key in expected.keys() - {"layout"}:
+        if binding[key] != expected[key]:
+            raise ParallelContractError("state engine mismatch: " + key)
+    layout = binding["layout"]
+    if type(layout) is not dict or set(layout) != {"sp_degree", "cfg", "boundary"}:
+        raise ParallelContractError("unknown engine layout in request state")
+    if (type(layout["sp_degree"]) is not int or layout["sp_degree"] not in (1, 2, 4, 8)
+            or layout["cfg"] not in (1, 2)):
+        raise ParallelContractError("invalid engine layout in request state")
+    if layout["boundary"] != "solver_step":
+        raise ParallelContractError("only solver-step state can change engine layout")
+
+
 def pack_cache_off_request(worker, state):
     """Explicit pinned Wan/UniPC wire schema, including known timestep aliases.
 
     Tensor payloads are CPU storage copies. Cache features and arbitrary views
-    are rejected. Events are transported, but excluded from mathematical-state
-    agreement because timings differ between ranks.
+    are rejected. Events and layout provenance are transported but excluded
+    from mathematical-state agreement because timings and rank-local placements
+    differ. The transfer protocol separately checks each committed source layout.
     """
     torch = importlib.import_module("torch")
     from .state import state_inventory, assert_transfer_supported
@@ -695,13 +750,15 @@ def pack_cache_off_request(worker, state):
     # Reuse the declared-axis codec. Cache-off state is entirely replicated;
     # schema validation must never guess a partition axis from these shapes.
     tensors = merge_known_state(split_known_state(tensors, specs, (0,)), specs, (0,))
-    manifest = json.loads(_json(dict(schema="ditserve.cache-off-wire.v1", metadata=metadata,
+    manifest = json.loads(_json(dict(schema=CACHE_OFF_SCHEMA, metadata=metadata,
                                     scheduler=scheduler_metadata, references=references, devices=devices,
                                     timestep_views=timestep_views, specs=[dataclasses.asdict(s) for s in specs],
                                     tensor_hashes={name: _tensor_digest(value) for name, value in tensors.items()})))
+    manifest["engine"] = request_engine(worker)
     mathematical = copy.deepcopy(manifest)
     mathematical["metadata"].pop("events")
     mathematical["metadata"].pop("prepare_ms")
+    mathematical["engine"].pop("layout")
     manifest["state_sha256"] = hashlib.sha256(_json(mathematical).encode()).hexdigest()
     return manifest, tensors
 
@@ -711,13 +768,20 @@ def unpack_cache_off_request(worker, manifest, tensors):
     torch = importlib.import_module("torch")
     from .runtime import RequestState, UNIPC_REQUIRED_FIELDS, UNIPC_OPTIONAL_FIELDS
     from diffusers.configuration_utils import FrozenDict
-    expected = {"schema", "metadata", "scheduler", "references", "devices", "timestep_views", "specs", "tensor_hashes", "state_sha256"}
-    if set(manifest) != expected or manifest["schema"] != "ditserve.cache-off-wire.v1":
+    schema = manifest.get("schema")
+    if schema not in (CACHE_OFF_SCHEMA, LEGACY_CACHE_OFF_SCHEMA):
         raise ParallelContractError("unknown migration manifest schema")
+    expected = {"schema", "metadata", "scheduler", "references", "devices", "timestep_views", "specs", "tensor_hashes", "state_sha256"}
+    if schema == CACHE_OFF_SCHEMA:
+        expected.add("engine")
+    if set(manifest) != expected:
+        raise ParallelContractError("unknown migration manifest fields")
+    validate_request_engine(worker, manifest.get("engine"))
     mathematical = copy.deepcopy(manifest)
     mathematical.pop("state_sha256")
     mathematical["metadata"].pop("events")
     mathematical["metadata"].pop("prepare_ms")
+    mathematical.get("engine", {}).pop("layout", None)
     if hashlib.sha256(_json(mathematical).encode()).hexdigest() != manifest["state_sha256"]:
         raise ParallelContractError("migration manifest checksum mismatch")
     specs = tuple(KnownTensorSpec(**spec) for spec in manifest["specs"])

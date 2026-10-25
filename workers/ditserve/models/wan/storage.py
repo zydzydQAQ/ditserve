@@ -8,6 +8,7 @@ import copy
 import time
 
 from .runtime import _tree_map
+from .parallel import request_engine, validate_request_engine
 
 
 def snapshot_timestep_views(worker, state, mode, inventory):
@@ -48,7 +49,7 @@ def snapshot_timestep_views(worker, state, mode, inventory):
         worker._sync()
         worker._install_payload(state, host_payload)
         state.pending_snapshot = dict(mode=mode, placements=placements, rng_state=host_payload["rng_state"],
-                                      research_storage_codec=True)
+                                      research_storage_codec=True, engine=request_engine(worker))
         state.residency = "cpu"
         state.needs_anchor = state.needs_anchor or (mode == "cold" and state.cache_enabled)
         del payload, host_payload, storage_copies
@@ -68,6 +69,7 @@ def restore_timestep_views(worker, state):
         started = time.perf_counter()
         before = worker._memory()
         saved = state.pending_snapshot
+        validate_request_engine(worker, saved.get("engine"))
         copies, transfer_bytes = {}, 0
 
         def move(tensor):

@@ -22,6 +22,25 @@ VBENCH_DIMENSIONS = (
 )
 
 
+def _checkout_state(repo, timeout):
+    if shutil.which("git"):
+        commit = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], check=True,
+                                capture_output=True, text=True, timeout=timeout).stdout.strip()
+        dirty = subprocess.run(["git", "-C", str(repo), "status", "--porcelain", "--untracked-files=no"],
+                               check=True, capture_output=True, text=True, timeout=timeout).stdout.strip()
+        return commit, dirty
+    try:
+        from dulwich.repo import Repo
+        from dulwich.porcelain import status as git_status
+    except ImportError as error:
+        raise LookupError("git executable or dulwich is required for VBench revision verification") from error
+    repository = Repo(str(repo))
+    commit = repository.head().decode()
+    status = git_status(repository, untracked_files="no")
+    dirty = any(map(len, status.staged.values())) or bool(status.unstaged)
+    return commit, dirty
+
+
 def export_vbench_manifest(full_info_path, output_path=None, dimensions=None, generation_settings=None):
     """Export a separate generation protocol; no videos or weights are fetched.
 
@@ -192,11 +211,18 @@ def run_vbench(manifest_path, videos_dir, repo_dir, output_dir=None, python_exec
     try:
         if not (repo / "evaluate.py").is_file():
             raise LookupError("pinned official VBench checkout unavailable")
-        commit = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], check=True, capture_output=True, text=True, timeout=remaining()).stdout.strip()
-        dirty = subprocess.run(["git", "-C", str(repo), "status", "--porcelain", "--untracked-files=no"], check=True, capture_output=True, text=True, timeout=remaining()).stdout.strip()
+        commit, dirty = _checkout_state(repo, remaining())
         if commit != VBENCH_REVISION or dirty:
             raise ValueError("VBench checkout is modified or not the pinned revision")
-        official_info = repo / "vbench" / "VBench_full_info.json"
+        official_info = Path(manifest["full_info_path"])
+        if not official_info.is_absolute():
+            official_info = manifest_path.parent / official_info
+        if not official_info.exists():
+            for candidate in (manifest_path.parent / official_info.name, repo / "vbench" / official_info.name):
+                if candidate.exists():
+                    official_info = candidate
+                    break
+        official_info = official_info.resolve()
         if file_hash(official_info) != manifest["full_info_sha256"]:
             raise ValueError("metadata hash does not match pinned official metadata")
         # Reconstruct the expected protocol instead of trusting edited counts.

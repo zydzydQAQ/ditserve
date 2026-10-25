@@ -192,19 +192,37 @@ def _vbench(path):
         prompt = _prompt(row.get("prompt_en", row.get("prompt")), index + 1)
         result.append({"sample_id": "vbench-%06d" % index, "prompt": prompt,
                        "split": "evaluation", "dimensions": row.get("dimension", []), "metadata": row})
-    return result, len(rows)
+    return result, len(rows), 0
+
+
+def _vidprom_nsfw(row):
+    scores = []
+    for name in ("toxicity", "obscene", "identity_attack", "insult", "threat", "sexual_explicit"):
+        value = row.get(name)
+        if value in (None, ""):
+            continue
+        try:
+            scores.append(float(value))
+        except (TypeError, ValueError):
+            raise ValueError("invalid VidProM safety score in " + name)
+    return any(score >= 0.5 for score in scores)
 
 
 def _vidprom(path, seed, sample_count):
     """Keep the lowest stable hash priorities without loading the full CSV."""
     heap = []
-    rows_seen = 0
+    rows_seen, rows_skipped = 0, 0
     with path.open(newline="", encoding="utf-8-sig") as handle:
         reader = csv.DictReader(handle)
         if not reader.fieldnames or "prompt" not in reader.fieldnames:
             raise ValueError("VidProM CSV requires a prompt column")
         for index, row in enumerate(reader):
-            prompt = _prompt(row.get("prompt"), index + 2)
+            rows_seen += 1
+            value = row.get("prompt")
+            if not isinstance(value, str) or not value.strip() or _vidprom_nsfw(row):
+                rows_skipped += 1
+                continue
+            prompt = _prompt(value, index + 2)
             identity = row.get("uuid") or row.get("sample_id") or row.get("id") or "row-%09d" % index
             sample = {"sample_id": "vidprom-" + identity, "prompt": prompt}
             timestamp = row.get("time") or row.get("timestamp")
@@ -216,11 +234,10 @@ def _vidprom(path, seed, sample_count):
                 heapq.heappush(heap, entry)
             elif entry[:2] > heap[0][:2]:
                 heapq.heapreplace(heap, entry)
-            rows_seen += 1
     if not heap:
         raise ValueError("VidProM CSV contains no prompts")
     # Preserve source ordering so collection timestamps and row identity survive.
-    return [item[2] for item in sorted(heap, key=lambda item: -item[1])], rows_seen
+    return [item[2] for item in sorted(heap, key=lambda item: -item[1])], rows_seen, rows_skipped
 
 
 def _assign_roles(samples, kind, dev_count, seed):
@@ -271,7 +288,7 @@ def prepare_dataset(kind, source=None, revision=None, dev_count=32, seed=2026101
     origin.update(OFFICIAL[kind])
     origin["sha256"] = file_hash(path)
     origin["bytes"] = path.stat().st_size
-    samples, rows_seen = _vbench(path) if kind == "vbench" else _vidprom(path, seed, sample_count)
+    samples, rows_seen, rows_skipped = _vbench(path) if kind == "vbench" else _vidprom(path, seed, sample_count)
     if file_hash(path) != origin["sha256"] or path.stat().st_size != origin["bytes"]:
         raise ValueError("dataset source changed while preparing frozen metadata")
     ids = [sample["sample_id"] for sample in samples]
@@ -279,7 +296,8 @@ def prepare_dataset(kind, source=None, revision=None, dev_count=32, seed=2026101
         raise ValueError("duplicate sample IDs in selected dataset")
     _assign_roles(samples, kind, dev_count, seed)
     result = seal({"schema_version": SCHEMA, "kind": kind, "source": origin, "samples": samples,
-                 "selection": {"seed": seed, "rows_seen": rows_seen, "samples_retained": len(samples),
+                 "selection": {"seed": seed, "rows_seen": rows_seen, "rows_skipped": rows_skipped,
+                               "samples_retained": len(samples),
                                "method": "full_official_list" if kind == "vbench" else "lowest_sha256_priority",
                                "sample_count_limit": None if kind == "vbench" else sample_count,
                                "dev_distinct_prompts": dev_count,

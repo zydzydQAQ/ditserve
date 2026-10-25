@@ -65,6 +65,8 @@ class ProfilingTests(unittest.TestCase):
         backend = FluxBackend.__new__(FluxBackend)
         Backend.__init__(backend, dict(options={}))
         backend.pipe, backend.torch, backend.device = Pipeline(), proxy, "cuda:0"
+        from xdit_wan_fixtures import EngineDouble
+        backend.xdit = EngineDouble()
         outputs = []
         for enabled in (False, True):
             backend.config["options"]["profile"] = enabled

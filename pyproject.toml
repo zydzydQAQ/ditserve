@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "ditserve"
 version = "0.4.0"
 description = "C++ experiment controller with resident Python model adapters and verified Excel results"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 dependencies = []
 
 [project.optional-dependencies]
@@ -14,8 +14,11 @@ reports = ["openpyxl==3.1.5"]
 
 [tool.setuptools.packages.find]
 where = ["workers"]
-include = ["ditserve*"]
+include = ["ditserve*", "xfuser*"]
 namespaces = false
+
+[tool.setuptools.package-data]
+xfuser = ["LICENSE.txt"]
 
 [tool.setuptools.data-files]
 "share/ditserve/configs" = ["configs/*.json", "configs/*.txt"]

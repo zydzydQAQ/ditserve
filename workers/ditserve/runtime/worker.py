@@ -11,6 +11,7 @@ import subprocess
 import time
 
 from . import strict_json
+from .green_context import GreenPool
 
 
 BACKENDS = {
@@ -19,15 +20,41 @@ BACKENDS = {
     "wan_pipeline": ("wan.pipeline", "WanPipelineBackend"),
     "wan_profile": ("wan.profile", "WanProfileBackend"),
     "sana": ("session.backend", "SessionBackend"),
-    "mistral": ("session.backend", "SessionBackend"),
     "flux": ("flux", "FluxBackend"),
-    "longlive": ("longlive", "LongLiveBackend"),
+    "sd35": ("sd35", "SD35Backend"),
     "results": None,
     "evaluation": None,
     "environment": None,
 }
 SERVICE_OPERATIONS = {"results": ("finalize", "verify", "inspect", "compact"),
                       "evaluation": ("evaluate",), "environment": ("inspect",)}
+
+
+def _model_capabilities(name, config, backend):
+    if name not in ("wan", "wan_pipeline", "sana", "flux", "sd35"):
+        return {}
+    from ..models.xdit import engine_info
+
+    options = config.get("options", {})
+    atomic = name in ("wan_pipeline", "flux", "sd35") or (name == "sana" and options.get("execution") == "pipeline")
+    execution = ("pipeline" if atomic else options.get("execution", "session" if name == "sana" else "step"))
+    quanta = ["atomic"] if atomic else ["step"] + ([] if execution == "step" else ["block"])
+    capabilities = dict(
+        engine=engine_info(), engine_status="configured", execution=execution,
+        model_wrapper={"wan": "xFuserWanTransformer3DWrapper", "wan_pipeline": "xFuserWanTransformer3DWrapper",
+                       "sana": "xFuserSanaTransformer2DWrapper", "flux": "xFuserFluxTransformer2DWrapper",
+                       "sd35": "xFuserSD3Transformer2DWrapper"}[name],
+        quanta=quanta, atomic_pipeline=atomic,
+        continuous_batch=name == "sana" and not atomic,
+        batch="fixed" if name != "sana" or atomic else "ragged_continuous",
+        migration=[] if name != "wan" else ["state"] + ([] if execution == "step" else ["block"]),
+        parallel=dict(sp_degrees=[1, 2, 4, 8] if name == "wan" else [1], cfg=name == "wan"),
+    )
+    runtime = getattr(backend, "runtime", None)
+    engine = getattr(backend, "xdit", None) or getattr(runtime, "xdit", None)
+    if engine is not None:
+        capabilities.update(engine=engine.info(), engine_status="loaded")
+    return capabilities
 
 
 def _operation(request):
@@ -92,6 +119,28 @@ class Worker:
         self.backend = None
         self.closed = False
         self._occupancy_probe = None   # resident NVML owner, opened on the first nvml observation
+        self._green = None
+
+    def green_status(self):
+        config = self.config.get("options", {}).get("green")
+        if config is None:
+            return dict(enabled=False, initialized=False)
+        if self._green is not None:
+            return self._green.report()
+        return dict(enabled=True, initialized=False, role=config.get("role"),
+                    default=config.get("default", "exclusive"))
+
+    def _green_pool(self):
+        config = self.config.get("options", {}).get("green")
+        if config is None:
+            raise ValueError("green_partition requires options.green in the worker config")
+        if os.environ.get("CUDA_MPS_ACTIVE_THREAD_PERCENTAGE"):
+            raise ValueError("MPS active-thread partitioning and Green Contexts are mutually exclusive")
+        if self._green is None:
+            self._green = GreenPool(config.get("role"), config.get("partitions"),
+                                    config.get("default", "exclusive"))
+        self._green.initialize()
+        return self._green
 
     def dispatch(self, request):
         op = _operation(request)
@@ -119,9 +168,16 @@ class Worker:
         cls = getattr(importlib.import_module("ditserve.models." + definition[0]), definition[1]) if definition else None
         operations = cls.operations if cls else SERVICE_OPERATIONS[self.name]
         if op == "hello":
+            capabilities = {"operations": list(operations), "persistent_states": cls is not None}
+            if self.name == "sana":
+                options = self.config.get("options", {})
+                capabilities.update(execution=options.get("execution", "session"),
+                                    continuous_batch=options.get("execution") != "pipeline",
+                                    hardware_profile=options.get("hardware_profile", "v100_fp32"))
+            capabilities.update(_model_capabilities(self.name, self.config, self.backend))
             return {"backend": self.name, "operations": list(dict.fromkeys(["hello", "occupancy", "memory", "mps_control", *operations, "evaluate", "shutdown"])),
                     "loaded": self.backend is not None, "measured": self.name not in ("mock", "results", "environment"),
-                    "capabilities": {"operations": list(operations), "persistent_states": cls is not None},
+                    "capabilities": capabilities,
                     "qualification": "fixture_only" if self.name == "mock" else "unverified",
                     "pid": os.getpid()}
         if op not in operations:

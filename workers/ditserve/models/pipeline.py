@@ -35,8 +35,9 @@ def _pipeline(torch, diffusers, args):
     load = {"torch_dtype": getattr(torch, args.dtype), "local_files_only": args.local_files_only}
     if args.revision:
         load["revision"] = args.revision
-    if args.model == "flux":
-        pipe = diffusers.FluxPipeline.from_pretrained(args.model_id, **load)
+    if args.model in ("flux", "sd35"):
+        pipeline_class = diffusers.FluxPipeline if args.model == "flux" else diffusers.StableDiffusion3Pipeline
+        pipe = pipeline_class.from_pretrained(args.model_id, **load)
     else:
         vae_args = dict(load, torch_dtype=getattr(torch, args.vae_dtype))
         vae = diffusers.AutoencoderKLWan.from_pretrained(args.model_id, subfolder="vae", **vae_args)
@@ -47,7 +48,12 @@ def _pipeline(torch, diffusers, args):
         encoder = transformers.UMT5EncoderModel.from_pretrained(args.model_id, subfolder="text_encoder", **encoder_args)
         pipeline_class = (_wan_pipeline_class(diffusers.WanPipeline)
                           if args.text_encoder_device == "cpu" else diffusers.WanPipeline)
-        pipe = pipeline_class.from_pretrained(args.model_id, vae=vae, text_encoder=encoder, **load)
+        components = {}
+        if getattr(args, "engine", "legacy") == "xdit":
+            from .xdit.wan import load_wan_transformer
+            components["transformer"] = load_wan_transformer(
+                args.model_id, getattr(torch, args.dtype), local_files_only=args.local_files_only)
+        pipe = pipeline_class.from_pretrained(args.model_id, vae=vae, text_encoder=encoder, **components, **load)
     if args.model == "wan":
         # Never pipe.to(cuda) here: it transiently puts the large CPU encoder on
         # the GPU and can OOM before it is moved back.

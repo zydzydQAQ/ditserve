@@ -19,7 +19,6 @@
 #include <map>
 #include <memory>
 #include <mutex>
-#include <deque>
 #include <set>
 #include <sstream>
 #include <stdexcept>
@@ -174,11 +173,15 @@ Json freeze_sources(const Json& request,const fs::path& work,bool resume) {
     }
     Json manifest={{"core_sha256",file_hash(binary)},{"files",Json::object()}};
     const auto root=fs::path(request.at("package_root").get<std::string>());
-    for(const auto& entry:fs::recursive_directory_iterator(root/"ditserve")) {
-        if(!entry.is_regular_file() || entry.path().extension()!=".py" || entry.is_symlink())continue;
-        const auto relative=fs::relative(entry.path(),root);const auto to=work/"sources"/"python"/relative;
-        fs::create_directories(to.parent_path());fs::copy_file(entry.path(),to,fs::copy_options::none);
-        manifest["files"][relative.generic_string()]=file_hash(to);
+    for(const auto* package:{"ditserve","xfuser"}) {
+        const auto package_root=root/package;
+        if(!fs::is_directory(package_root))throw std::invalid_argument("missing required Python package: "+package_root.string());
+        for(const auto& entry:fs::recursive_directory_iterator(package_root)) {
+            if(!entry.is_regular_file() || entry.path().extension()!=".py" || entry.is_symlink())continue;
+            const auto relative=fs::relative(entry.path(),root);const auto to=work/"sources"/"python"/relative;
+            fs::create_directories(to.parent_path());fs::copy_file(entry.path(),to,fs::copy_options::none);
+            manifest["files"][relative.generic_string()]=file_hash(to);
+        }
     }
     manifest["native_files"]=Json::object();
     const auto project=root.parent_path();
@@ -290,6 +293,24 @@ double remaining(const Json& row,const Live* live,const Json& costs) {
     return total;
 }
 
+Json engine_contract(Worker& worker,const std::string& backend,double deadline) {
+    static const std::set<std::string> targets={"wan","wan_pipeline","sana","flux"};
+    if(!targets.count(backend))return Json::object();
+    auto hello=worker.call({{"op","hello"}},deadline);
+    if(!hello.contains("capabilities")||!hello.at("capabilities").is_object())
+        throw std::runtime_error(backend+" worker omitted engine capabilities");
+    const auto capabilities=hello.at("capabilities");
+    const auto engine=capabilities.value("engine",Json::object());
+    if(engine.value("name","")!="xdit"||engine.value("revision","")!="16c34e7f070de65d9d2c67a6d74e0007dd8b426a")
+        throw std::runtime_error(backend+" worker does not use the pinned xDiT engine");
+    if(capabilities.value("model_wrapper","").empty()||!capabilities.value("quanta",Json()).is_array()
+            ||!capabilities.value("migration",Json()).is_array())
+        throw std::runtime_error(backend+" worker has incomplete xDiT capabilities");
+    if(hello.value("loaded",false)&&capabilities.value("engine_status","")!="loaded")
+        throw std::runtime_error(backend+" worker did not activate its advertised xDiT engine");
+    return capabilities;
+}
+
 // Untimed preparation before the trace clock starts. Model loading, kernel
 // selection and allocator growth must not be charged to the first arrivals;
 // every warmup state is released before the replay begins. The items run
@@ -305,6 +326,13 @@ Json warmup(const Json& phase,Workers& workers,Budget& budget) {
     if(cancelled())throw std::runtime_error("run cancelled");
     budget.check();
     const double deadline=budget.deadline();
+    for(const auto& item:items){
+        const auto name=item.at("worker").get<std::string>();
+        const auto capabilities=engine_contract(workers.get(name),workers.backend(name),deadline);
+        const auto quanta=capabilities.value("quanta",Json::array());
+        if(item.contains("blocks")&&std::find(quanta.begin(),quanta.end(),"block")==quanta.end())
+            throw std::invalid_argument("block warmup requires a block-capable xDiT worker");
+    }
     auto run=[&items,&targets,deadline](std::size_t index)->Json{
         const auto& item=items[index];
         auto& worker=*targets[index];
@@ -343,9 +371,8 @@ Json replay(const Json& phase,Workers& workers,Budget& budget,Json& record,const
     // consumers use "check" (shape/finite only) to keep persistence off the GPU path.
     const auto output_mode=phase.value("output_mode",std::string("file"));
     std::map<std::string,Live> live;
-    std::map<std::string,std::string> previous_llm,encoding;
+    std::map<std::string,std::string> encoding;
     std::map<std::string,std::string> decoding;
-    std::map<std::string,Json> conversation;
     const double origin=monotonic_seconds();
     auto now=[&](){return (monotonic_seconds()-origin)*1000;};
     auto check=[&](){if(cancelled())throw std::runtime_error("run cancelled");budget.check(number_field(phase,"cleanup_reserve_seconds",0));};
@@ -406,19 +433,6 @@ Json replay(const Json& phase,Workers& workers,Budget& budget,Json& record,const
         Json spec=stage.value("spec",row.at("spec"));spec["request_id"]=id+"-s"+std::to_string(state.stage);
         Json action={{"op","prepare"},{"spec",spec}};
         if(state.stage==0 && encoding.count(id))action["encode_ticket"]=encoding[id];
-        if(workers.backend(state.worker)=="mistral"){
-            const auto session=row.value("session_id",id);
-            if(!spec.contains("messages")){
-                auto messages=conversation.count(session)?conversation[session]:Json::array();
-                messages.push_back({{"role","user"},{"content",spec.at("prompt")}});spec["messages"]=messages;action["spec"]=spec;
-            }
-            if(previous_llm.count(session)){
-                invoke(state.worker,{{"op","restore"},{"state_id",previous_llm[session]}},row);
-                action["previous_state_id"]=previous_llm[session];
-                previous_llm.erase(session);
-            }
-            conversation[session]=spec["messages"];
-        }
         auto prepared=invoke(state.worker,action,row);
         if(state.stage==0)encoding.erase(id);
         state.state=prepared.at("state_id").get<std::string>();state.progress=prepared.value("progress",Json::object());
@@ -517,12 +531,7 @@ Json replay(const Json& phase,Workers& workers,Budget& budget,Json& record,const
                         auto quality=invoke(state.worker,{{"op","evaluate"},{"output",result.at("output").at("path")},{"reference",row.at("reference")}},row);
                         row["quality"]=quality;
                     }
-                    if(workers.backend(state.worker)=="mistral"){
-                        const auto session=row.value("session_id",id);
-                        previous_llm[session]=state.state;
-                        conversation[session].push_back({{"role","assistant"},{"content",result.at("output").at("text")}});
-                        invoke(state.worker,{{"op","snapshot"},{"state_id",state.state},{"mode","hot"}},row);
-                    }else invoke(state.worker,{{"op","release"},{"state_id",state.state}},row);
+                    invoke(state.worker,{{"op","release"},{"state_id",state.state}},row);
                     const auto list=stages(row);
                     if(++state.stage<list.size()) {
                         auto stage=list[state.stage];Json spec=stage.value("spec",row.at("spec"));
@@ -590,6 +599,9 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     const ClusterCost cost(phase.at("profile"));
     const auto policy=phase.at("policy").get<std::string>();
     Json options=phase.value("options",Json::object());
+    const int continuous_batch=int_field(options,"continuous_batch",0,0);
+    if(continuous_batch>8)throw std::invalid_argument("continuous_batch must be in [0, 8]");
+    if(continuous_batch>0&&int_field(options,"image_batch",1)>1)throw std::invalid_argument("continuous_batch and atomic image_batch are mutually exclusive");
     const auto slots=phase.at("gpus");
     const int gpus=static_cast<int>(slots.size());
     bool fixtures=true;
@@ -635,8 +647,36 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     }
     const bool prefetch=phase.value("text_prefetch",0)>0;
     const auto output_mode=phase.value("output_mode",std::string("file"));
+    if(continuous_batch>0)for(const auto& slot:slots){
+        const auto name=slot.at("image").get<std::string>();
+        const auto backend=workers.backend(name);
+        if(backend!="sana"&&backend!="mock")throw std::invalid_argument("continuous_batch requires an explicit-step Sana or mock worker");
+        if(backend=="sana"){
+            auto hello=workers.get(name).call({{"op","hello"}},budget.deadline());
+            if(!hello.at("capabilities").value("continuous_batch",false))
+                throw std::invalid_argument("continuous_batch cannot use the atomic Sana pipeline");
+        }
+    }
     const auto warmed=warmup(phase,workers,budget);
-    for(const auto& slot:slots){workers.get(slot.at("video").get<std::string>());workers.get(slot.at("image").get<std::string>());}
+    for(const auto& slot:slots)for(const auto* role:{"video","image"}){
+        const auto name=slot.at(role).get<std::string>();
+        const auto backend=workers.backend(name);
+        const auto capabilities=engine_contract(workers.get(name),backend,budget.deadline());
+        if(std::string(role)=="video"&&backend=="wan"){
+            const auto quanta=capabilities.value("quanta",Json::array());
+            const auto migration=capabilities.value("migration",Json::array());
+            const auto degrees=capabilities.value("parallel",Json::object()).value("sp_degrees",Json::array());
+            if(phase.at("policy").get<std::string>().find("block")!=std::string::npos
+                    &&std::find(quanta.begin(),quanta.end(),"block")==quanta.end())
+                throw std::invalid_argument("block/elastic policy requires block execution on every Wan worker");
+            if(transport=="export"&&std::find(migration.begin(),migration.end(),"state")==migration.end())
+                throw std::invalid_argument("export transport requires xDiT solver-step state migration");
+            if(transport=="export"&&std::find(degrees.begin(),degrees.end(),slots.size())==degrees.end())
+                throw std::invalid_argument("requested Wan SP degree is not enabled on every worker");
+        }
+        if(transport=="export"&&std::string(role)=="video"&&backend!="mock"&&backend!="wan")
+            throw std::invalid_argument("export transport requires the resumable xDiT Wan backend");
+    }
     if(transport=="export"){
         // init_process_group is collective: every video worker joins at once, each starting at SP1 on its GPU.
         static std::atomic<int> worlds{0};
@@ -678,6 +718,8 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     const double origin=monotonic_seconds();
     auto now=[&](){return (monotonic_seconds()-origin)*1000;};
     auto spec_of=[&](const Json& row){Json spec=row.at("spec");spec["request_id"]=row.at("request_id");return spec;};
+    for(auto& row:rows){row["generation"]=spec_of(row);row["output_mode"]=row.value("output_mode",output_mode);}
+    Json cb_stats={{"rounds",0},{"late_joins",0},{"early_exits",0},{"batch_sizes",Json::object()},{"samples",Json::array()}};
     std::size_t terminal=0,encoders=0;
     auto launch=[&](const Json& assignment){
         bool continuous=false;
@@ -708,26 +750,59 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             pstate.status="running";pstate.group=group;pstate.form=form_label;
         }
         std::function<Json()> work_unit;
-        if(quantum=="atomic"&&assignment.contains("batch")){
+        if(quantum=="continuous_batch"){
+            const auto name=image(group.front());
+            Json specs=Json::object(),modes=Json::object(),ids=Json::array();
+            int new_count=0,active_count=0;
+            for(const auto& member:assignment.at("batch")){
+                const auto mid=member.get<std::string>();const auto m=index.at(mid);
+                auto& mrow=rows[m];auto& mstate=live[m];
+                ids.push_back(mid);modes[mid]=mrow.at("output_mode");
+                if(mstate.prepared)++active_count;else{++new_count;specs[mid]=spec_of(mrow);}
+                if(!mrow.contains("start_ms"))mrow["start_ms"]=now();
+                mrow["batched"]=static_cast<int>(assignment.at("batch").size());
+                mstate.status="running";mstate.group=group;mstate.form=form_label;
+            }
+            work_unit=[&workers,name,ids,specs,modes,new_count,active_count,deadline,origin]{
+                auto& w=workers.get(name);
+                Json out={{"prepare",Json::array()},{"finish",Json::array()},
+                          {"new_count",new_count},{"active_count",active_count}};
+                for(const auto& mid:ids)if(specs.contains(mid.get<std::string>())){
+                    auto prepared=w.call({{"op","prepare"},{"state_id",mid},{"spec",specs.at(mid.get<std::string>())}},deadline);
+                    prepared["state_id"]=mid;out["prepare"].push_back(prepared);
+                }
+                const auto advanced=w.call({{"op","advance_batch"},{"state_ids",ids}},deadline);
+                out["advance_batch"]=advanced;
+                for(const auto& result:advanced.at("results"))if(result.at("progress").value("done",false)){
+                    const auto mid=result.at("state_id").get<std::string>();
+                    auto finished=w.call({{"op","finish"},{"state_id",mid},{"output_mode",modes.at(mid)}},deadline);
+                    w.call({{"op","release"},{"state_id",mid}},deadline);
+                    finished["completed_at_ms"]=(monotonic_seconds()-origin)*1000;
+                    finished["state_id"]=mid;out["finish"].push_back(finished);
+                }
+                return out;
+            };
+        }else if(quantum=="atomic"&&assignment.contains("batch")){
             // Dynamic batching: one generate_batch call on the image worker for every member.
             const auto name=image(group.front());
-            Json prompts=Json::array(),seeds=Json::array();
+            Json prompts=Json::array(),seeds=Json::array();auto batch_mode=output_mode;
             for(const auto& member:assignment.at("batch")){
                 auto& mrow=rows[index.at(member.get<std::string>())];const auto mspec=spec_of(mrow);
                 prompts.push_back(mspec.value("prompt",""));seeds.push_back(mspec.value("seed",0));
+                if(mrow.at("output_mode")=="file")batch_mode="file";
                 if(!mrow.contains("start_ms"))mrow["start_ms"]=now();
                 mrow["batched"]=static_cast<int>(assignment.at("batch").size());live[index.at(member.get<std::string>())].status="running";
             }
-            work_unit=[&workers,name,prompts,seeds,deadline,output_mode]{
+            work_unit=[&workers,name,prompts,seeds,deadline,batch_mode]{
                 auto& w=workers.get(name);
                 Json out={{"calls",Json::array()}};
-                out["finish"]=w.call({{"op","generate_batch"},{"prompts",prompts},{"seeds",seeds},{"output_mode",output_mode}},deadline);
+                out["finish"]=w.call({{"op","generate_batch"},{"prompts",prompts},{"seeds",seeds},{"output_mode",batch_mode}},deadline);
                 out["model_ms"]=number_field(out["finish"].value("service",Json::object()),"total_ms",number_field(out["finish"],"model_ms"));
                 return out;
             };
         }else if(quantum=="atomic"){
-            const auto name=image(group.front());const auto spec=spec_of(row);
-            work_unit=[&workers,name,id,spec,deadline,output_mode]{
+            const auto name=image(group.front());const auto spec=spec_of(row);const auto mode=row.at("output_mode");
+            work_unit=[&workers,name,id,spec,deadline,mode]{
                 auto& w=workers.get(name);
                 Json out={{"calls",Json::array()}};
                 auto progress=w.call({{"op","prepare"},{"state_id",id},{"spec",spec}},deadline).at("progress");
@@ -736,13 +811,13 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                     auto advanced=w.call({{"op","advance"},{"state_id",id},{"quantum","step"}},deadline);
                     progress=advanced.at("progress");out["model_ms"]=number_field(out,"model_ms")+number_field(advanced,"model_ms");
                 }
-                out["finish"]=w.call({{"op","finish"},{"state_id",id},{"output_mode",output_mode}},deadline);
+                out["finish"]=w.call({{"op","finish"},{"state_id",id},{"output_mode",mode}},deadline);
                 w.call({{"op","release"},{"state_id",id}},deadline);
                 return out;
             };
         }else if(quantum=="finish"){
             const auto name=video(group.front());
-            Json action={{"op","finish"},{"state_id",id},{"output_mode",output_mode}};
+            Json action={{"op","finish"},{"state_id",id},{"output_mode",row.at("output_mode")}};
             if(assignment.contains("decode_frames"))action["decode_frames"]=assignment.at("decode_frames");
             work_unit=[&workers,name,id,deadline,action]{
                 auto& w=workers.get(name);
@@ -902,13 +977,82 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             state.decode_done=out.at("finish").at("decode").value("frames_done",state.decode_done);state.status="suspended";
             return;
         }
+        if(quantum=="continuous_batch"){
+            const auto& advanced=out.at("advance_batch");
+            const int size=static_cast<int>(task.assignment.at("batch").size());
+            cb_stats["rounds"]=cb_stats.value("rounds",0)+1;
+            const auto batch_key=std::to_string(size);
+            cb_stats["batch_sizes"][batch_key]=cb_stats["batch_sizes"].value(batch_key,0)+1;
+            int completed=0;
+            for(const auto& member:task.assignment.at("batch")){
+                const auto mid=member.get<std::string>();const auto m=index.at(mid);
+                auto& mrow=rows[m];auto& mstate=live[m];
+                if(m!=task.row){
+                    mrow["action_ms"][key]=mrow.value("action_ms",Json::object()).value(key,0.)+elapsed;
+                    mrow["quanta"]=mrow.value("quanta",0)+1;
+                }
+                mrow["batched"]=size;mrow["continuous_rounds"]=mrow.value("continuous_rounds",0)+1;
+                mrow["continuous_ms"]=number_field(mrow,"continuous_ms")+elapsed;
+                mrow["continuous_round_model_ms"]=number_field(mrow,"continuous_round_model_ms")+number_field(advanced,"model_ms");
+                double model=number_field(advanced,"model_ms"),operation=number_field(advanced,"worker_operation_ms");
+                for(const auto& prepared:out.at("prepare"))if(prepared.at("state_id")==mid){
+                    model+=number_field(prepared,"model_ms");operation+=number_field(prepared,"worker_operation_ms");
+                    mrow["prepare_cb_ms"]=number_field(mrow,"prepare_cb_ms")+number_field(prepared,"model_ms");
+                }
+                const auto progress=std::find_if(advanced.at("results").begin(),advanced.at("results").end(),[&](const Json& result){
+                    return result.at("state_id")==mid;
+                });
+                if(progress==advanced.at("results").end())throw std::runtime_error("continuous batch omitted a member's progress");
+                mstate.steps=progress->at("progress").value("step",0);mstate.total=progress->at("progress").value("steps",0);
+                mstate.prepared=true;
+                bool decoded=false;
+                for(const auto& finished:out.at("finish"))if(finished.at("state_id")==mid){
+                    model+=number_field(finished,"model_ms");operation+=number_field(finished,"worker_operation_ms");
+                    mrow["decode_cb_ms"]=number_field(mrow,"decode_cb_ms")+number_field(finished,"model_ms");
+                    add_artifacts(record,finished,work,phase.value("artifact_dependencies",Json::array()));
+                    if(!mrow.contains("outputs"))mrow["outputs"]=Json::array();
+                    mrow["outputs"].push_back(finished);decoded=true;
+                    mrow["finish_ms"]=finished.value("completed_at_ms",now());
+                }
+                if(decoded!=progress->at("progress").value("done",false))
+                    throw std::runtime_error("continuous batch progress and decode completion disagree");
+                mrow["model_ms"]=number_field(mrow,"model_ms")+model;
+                mrow["worker_operation_ms"]=number_field(mrow,"worker_operation_ms")+operation;
+                mrow["timed_quanta"]=mrow.value("timed_quanta",0)+1;
+                if(decoded){
+                    ++completed;mrow["status"]="completed";mstate.status="completed";mstate.group.clear();++terminal;
+                }else mstate.status="suspended";
+            }
+            const int joins=out.value("active_count",0)>0?out.value("new_count",0):0;
+            const int exits=completed<size?completed:0;
+            cb_stats["late_joins"]=cb_stats.value("late_joins",0)+joins;
+            cb_stats["early_exits"]=cb_stats.value("early_exits",0)+exits;
+            Json sample={{"batch_size",size},{"ms",elapsed},{"model_ms",number_field(advanced,"model_ms")},
+                         {"new_count",out.at("new_count")},{"active_count",out.at("active_count")},
+                         {"completed",completed},{"late_joins",joins},{"early_exits",exits}};
+            if(advanced.contains("memory_after")&&!advanced.at("memory_after").is_null()){
+                const auto& memory=advanced.at("memory_after");
+                sample["memory_after"]=memory;
+                for(const auto* field:{"peak_allocated_bytes","peak_reserved_bytes"}){
+                    const auto current=number_field(memory,field);
+                    auto& peak=cb_stats["memory"][batch_key];
+                    peak[field]=std::max(peak.value(field,0.),current);
+                }
+            }
+            if(cb_stats["samples"].size()<256)cb_stats["samples"].push_back(sample);
+            return;
+        }
         if(quantum=="atomic"||quantum=="finish"){
             add_artifacts(record,out.at("finish"),work,phase.value("artifact_dependencies",Json::array()));
+            if(!row.contains("outputs"))row["outputs"]=Json::array();
+            row["outputs"].push_back(out.at("finish"));
             row["model_ms"]=number_field(row,"model_ms")+number_field(out,"model_ms")+number_field(out.at("finish"),"model_ms");
             row["status"]="completed";row["finish_ms"]=now();state.status="completed";state.group.clear();++terminal;
             if(task.assignment.contains("batch"))for(const auto& member:task.assignment.at("batch")){
                 const std::size_t m=index.at(member.get<std::string>());if(m==task.row)continue;
                 auto& mrow=rows[m];auto& mstate=live[m];
+                if(!mrow.contains("outputs"))mrow["outputs"]=Json::array();
+                mrow["outputs"].push_back(out.at("finish"));
                 mrow["action_ms"][key]=mrow.value("action_ms",Json::object()).value(key,0.)+elapsed;
                 mrow["quanta"]=mrow.value("quanta",0)+1;mrow["model_ms"]=number_field(mrow,"model_ms")+number_field(out,"model_ms");
                 mrow["status"]="completed";mrow["finish_ms"]=now();mstate.status="completed";mstate.group.clear();++terminal;
@@ -983,6 +1127,11 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             try{out=it->result.get();}catch(const std::exception& error){
                 auto& row=rows[it->row];row["status"]="failed";row["error"]=error.what();row["finish_ms"]=now();++terminal;
                 record["failures"].push_back({{"request_id",row.at("request_id")},{"error",error.what()}});
+                if(it->assignment.at("quantum")=="continuous_batch")for(const auto& member:it->assignment.at("batch")){
+                    const auto m=index.at(member.get<std::string>());if(m==it->row)continue;
+                    auto& mrow=rows[m];mrow["status"]="failed";mrow["error"]=error.what();mrow["finish_ms"]=now();++terminal;
+                    record["failures"].push_back({{"request_id",mrow.at("request_id")},{"error",error.what()}});
+                }
                 throw;
             }
             finish_task(*it,out);it=tasks.erase(it);progressed=true;
@@ -1019,6 +1168,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 Json view={{"request_id",row.at("request_id")},{"kind",row.at("kind")},{"class",row.at("class")},
                     {"arrival_ms",row.at("arrival_ms")},{"deadline_ms",row.at("deadline_ms")},{"status",state.status},{"ready",true},
                     {"prepared",state.prepared},{"steps_done",state.steps},{"blocks_done",state.blocks},{"group",state.group},{"decode_done",state.decode_done}};
+                if(row.at("kind")=="image")view["continuous_batch"]=continuous_batch>0;
                 if(state.total>0)view["steps_total"]=state.total;
                 if(!state.group.empty())view["form"]=state.form;
                 if(!state.pair.empty())view["pair"]=state.pair;
@@ -1062,126 +1212,8 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     return {{"requests",rows},{"metrics",request_summary(rows)},{"elapsed_ms",now()},{"warmup",warmed},
             {"by_kind",{{"video",kind_summary(rows,"video")},{"image",kind_summary(rows,"image")}}},
             {"policy",policy},{"gpus",gpus},{"sp_transport",transport},{"real_backends_pinned_sp1",!fixtures&&transport=="pinned"},
+            {"continuous_batch",cb_stats},
             {"doorbell",{{"enabled",doorbell},{"continuous_quanta",bells.continuous},{"rings",bells.rings}}}};
-}
-
-// A real clock consumer independent of the model call. It records dispatch
-// timing, not browser/display latency. Only bounded samples are retained.
-class Player {
-public:
-    Player(double fps,int buffer):fps_(fps),limit_(buffer+1),thread_([this]{loop();}){}
-    ~Player(){stop();}
-    bool room(){std::lock_guard<std::mutex> lock(mutex_);return queue_.size()+(current_?1:0)<static_cast<std::size_t>(limit_);}
-    bool empty(){std::lock_guard<std::mutex> lock(mutex_);return queue_.empty()&&!current_;}
-    void accept(int frames,int version,double ready){std::lock_guard<std::mutex> lock(mutex_);if(frames<=0)throw std::invalid_argument("chunk has no frames");queue_.push_back({frames,version,ready});peak_=std::max(peak_,queue_.size()+(current_?1:0));}
-    void flush(){std::lock_guard<std::mutex> lock(mutex_);for(const auto& chunk:queue_)dropped_+=chunk.frames;queue_.clear();}
-    Json result(){std::lock_guard<std::mutex> lock(mutex_);return {{"frames_played",played_},{"frames_dropped",dropped_},{"peak_chunks",peak_},{"late_frames",late_},{"samples",samples_},{"sample_scope","first 128 dispatched frames; all counts retained"},{"measurement_scope","wall-clock frame dispatch; not a browser or physical display"}};}
-    void stop(){{std::lock_guard<std::mutex> lock(mutex_);stopping_=true;}if(thread_.joinable())thread_.join();}
-private:
-    struct Chunk{int frames,version;double ready;};
-    double fps_;int limit_;std::mutex mutex_;std::deque<Chunk> queue_;bool current_=false,stopping_=false;
-    std::uint64_t played_=0,dropped_=0,late_=0;std::size_t peak_=0;Json samples_=Json::array();std::thread thread_;
-    void loop(){
-        double target=0;
-        for(;;){
-            Chunk chunk{};
-            {std::lock_guard<std::mutex> lock(mutex_);if(stopping_)return;if(!queue_.empty()){chunk=queue_.front();queue_.pop_front();current_=true;}}
-            if(!chunk.frames){std::this_thread::sleep_for(std::chrono::milliseconds(1));continue;}
-            target=std::max(target,chunk.ready);
-            for(int i=0;i<chunk.frames;++i){
-                while(monotonic_seconds()<target){{std::lock_guard<std::mutex> lock(mutex_);if(stopping_)return;}wait_until(target);}
-                const double observed=monotonic_seconds();
-                {std::lock_guard<std::mutex> lock(mutex_);++played_;if(observed-target>1/fps_)++late_;if(samples_.size()<128)samples_.push_back({{"version",chunk.version},{"target_monotonic_s",target},{"observed_monotonic_s",observed}});}
-                target+=1/fps_;
-            }
-            while(monotonic_seconds()<target){{std::lock_guard<std::mutex> lock(mutex_);if(stopping_)return;}wait_until(target);}
-            {std::lock_guard<std::mutex> lock(mutex_);current_=false;}
-        }
-    }
-};
-
-Json stream(const Json& phase,Workers& workers,Budget& budget,Json& record,const fs::path& work){
-    auto rows=study_workload(phase);
-    const auto policy=phase.value("prompt_policy","fifo");
-    if(policy!="fifo" && policy!="latest_only" && policy!="latest_only_flush")throw std::invalid_argument("unknown prompt policy");
-    const int buffer=int_field(phase,"buffer_chunks",0,0);if(buffer>2)throw std::invalid_argument("buffer_chunks must be 0, 1 or 2");
-    const double fps=number(phase.value("fps",Json(16)),"fps",true),origin=monotonic_seconds();
-    const int chunks=int_field(phase,"chunks",2,1);
-    std::map<std::string,std::unique_ptr<Player>> players;std::map<std::string,std::string> states;
-    std::map<std::string,std::deque<Json>> pending;std::map<std::string,int> produced,versions;std::map<std::string,std::size_t> cursors;
-    Json events=Json::array();std::size_t cursor=0,finished=0;
-    for(auto& row:rows){row["observation_id"]=phase.at("_observation_id");row["phase"]=phase.at("id");row["attempt"]=phase.at("_attempt");row["cell"]=phase.at("_cell");row["order"]=phase.at("_order");row["quality"]={{"status","unverified"},{"passed",false}};}
-    try{while(finished<rows.size()){
-        if(cancelled())throw std::runtime_error("run cancelled");
-        budget.check();const double now=(monotonic_seconds()-origin)*1000;
-        bool advanced=false;
-        for(std::size_t offset=0;offset<rows.size();++offset){
-            const std::size_t i=(cursor+offset)%rows.size();auto& row=rows[i];
-            if(row["status"]!="pending" || number_field(row,"arrival_ms")>now)continue;
-            const auto id=row.at("request_id").get<std::string>(),worker=row.at("worker").get<std::string>();
-            auto& runtime=workers.get(worker);
-            row["worker_pids"][worker]=runtime.process->pid();
-            if(!states.count(id)){
-                auto spec=row.at("spec");spec["blocks"]=chunks;spec["steps"]=chunks;
-                auto prepared=runtime.call({{"op","prepare"},{"spec",spec}},budget.deadline());
-                states[id]=prepared.at("state_id").get<std::string>();players[id]=std::make_unique<Player>(fps,buffer);row["start_ms"]=now;
-            }
-            const auto updates=row.value("updates",Json::array());
-            while(cursors[id]<updates.size() && number_field(updates[cursors[id]],"arrival_ms")<=now){
-                Json event=updates[cursors[id]++];event["request_id"]=id;event["status"]="pending";
-                if(policy!="fifo")while(!pending[id].empty()){auto old=pending[id].front();pending[id].pop_front();old["status"]="superseded_before_encoding";events.push_back(old);}
-                pending[id].push_back(event);
-            }
-            if(!pending[id].empty()){
-                auto update=pending[id].front();pending[id].pop_front();
-                const int version=update.value("version",versions[id]+1);
-                runtime.call({{"op","update_prompt"},{"state_id",states[id]},{"prompt",update.at("prompt")},{"prompt_version",version}},budget.deadline());
-                versions[id]=version;update["status"]="applied";update["applied_ms"]=(monotonic_seconds()-origin)*1000;update["semantic_status"]="unverified";events.push_back(update);
-                if(policy=="latest_only_flush")players[id]->flush();
-            }
-            if(!players[id]->room())continue;
-            auto result=runtime.call({{"op","advance"},{"state_id",states[id]},{"steps",1}},budget.deadline());
-            const int frames=int_field(result,"frames",1,1);
-            players[id]->accept(frames,versions[id],monotonic_seconds());
-            add_artifacts(record,result,work,phase.value("artifact_dependencies",Json::array({"semantic_blind_review"})));
-            row["model_ms"]=number_field(row,"model_ms")+number_field(result,"model_ms");
-            ++produced[id];cursor=(i+1)%rows.size();advanced=true;
-            if(produced[id]>=chunks){
-                auto output=runtime.call({{"op","finish"},{"state_id",states[id]}},budget.deadline());
-                // LongLive's finish references the last registered chunk.
-                if(output.value("output_scope","")!="last_chunk; controller retains per-chunk artifacts")
-                    add_artifacts(record,output,work,phase.value("artifact_dependencies",Json::array({"semantic_blind_review"})));
-                row["outputs"]=Json::array({output});
-                runtime.call({{"op","release"},{"state_id",states[id]}},budget.deadline());
-                row["status"]="completed";row["finish_ms"]=(monotonic_seconds()-origin)*1000;++finished;
-            }
-            break;
-        }
-        if(!advanced)wait_until(monotonic_seconds()+.001);
-    }
-    const double drain=monotonic_seconds()+number_field(phase,"playback_drain_seconds",chunks/fps*16+1);
-    while(monotonic_seconds()<drain){if(cancelled())throw std::runtime_error("run cancelled");budget.check();bool empty=true;for(auto& item:players)if(!item.second->empty())empty=false;if(empty)break;wait_until(monotonic_seconds()+.005);}
-    bool drained=true;
-    for(auto& row:rows)if(!players.at(row.at("request_id").get<std::string>())->empty()){
-        drained=false;row["status"]="failed";row["error"]="playback drain timed out";
-    }
-    if(!drained)throw std::runtime_error("playback drain timed out");
-    }catch(const std::exception& error){
-        const double elapsed=(monotonic_seconds()-origin)*1000;
-        for(auto& row:rows){
-            const auto id=row.at("request_id").get<std::string>();
-            if(players.count(id)){players[id]->stop();row["playback"]=players[id]->result();}
-            if(row["status"]=="pending")row["status"]="interrupted";
-            row["observation_ms"]=elapsed;if(!row.contains("finish_ms"))row["finish_ms"]=elapsed;
-            row["interruption"]=error.what();
-        }
-        record["requests"].insert(record["requests"].end(),rows.begin(),rows.end());
-        record["prompt_events"]=events;
-        throw;
-    }
-    for(auto& row:rows){const auto id=row.at("request_id").get<std::string>();players[id]->stop();row["playback"]=players[id]->result();row["quality"]={{"status","unverified"},{"passed",false}};}
-    for(auto& item:pending)for(auto event:item.second){event["status"]="pending_at_stop";events.push_back(event);}
-    return {{"requests",rows},{"metrics",request_summary(rows)},{"prompt_events",events},{"semantic_status","unverified"},{"elapsed_ms",(monotonic_seconds()-origin)*1000}};
 }
 
 Json operations(const Json& phase,Workers& workers,Budget& budget,Json& record,const fs::path& work,const fs::path& cell_dir){
@@ -1353,7 +1385,7 @@ bool execute_cells(const Json& phase,const Json& request,const Json& devices,
         auto telemetry=[&]{std::lock_guard<std::mutex> guard(heartbeat_mutex);return guard_telemetry;};
         try{
             const auto kind=cell.value("kind","online");
-            Json result=cell.contains("actions")?operations(cell,workers,budget,record,work,cell_dir):kind=="streaming"?stream(cell,workers,budget,record,work):kind=="cluster"?cluster(cell,workers,budget,record,work):replay(cell,workers,budget,record,work,cell_dir);
+            Json result=cell.contains("actions")?operations(cell,workers,budget,record,work,cell_dir):kind=="cluster"?cluster(cell,workers,budget,record,work):replay(cell,workers,budget,record,work,cell_dir);
             result["cell"]=order[position];result["order"]=position<cells.size()?"forward":"reverse";result["status"]="completed";
             if(!tolerated.empty())result["unknown_observations"]=tolerated;
             result["guard_telemetry"]=telemetry();
@@ -1408,7 +1440,7 @@ void validate(const Json& config){
     if(phases.size()>1)for(const auto& phase:phases)
         if(!phase.value("mps",Json::object()).empty())throw std::invalid_argument("mps currently requires a single-phase study");
     std::set<std::string> seen;
-    const std::set<std::string> kinds={"profile","online","state","sp","streaming","session","cluster"};
+    const std::set<std::string> kinds={"profile","online","state","sp","session","cluster"};
     for(const auto& phase:phases){
         const auto id=segment(phase.at("id").get<std::string>());if(seen.count(id))throw std::invalid_argument("duplicate phase");
         if(!kinds.count(phase.value("kind","online")))throw std::invalid_argument("unknown executor kind");
@@ -1500,12 +1532,6 @@ void validate(const Json& config){
                     const auto list=stages(row);
                     if(!list.is_array()||list.empty())throw std::invalid_argument("request stages must be nonempty");
                     for(const auto& stage:list){known(stage.value("worker",row.at("worker").get<std::string>()));if(stage.contains("spec")&&!stage.at("spec").is_object())throw std::invalid_argument("stage spec must be an object");}
-                    double arrival=-1;int version=0;
-                    for(const auto& update:row.value("updates",Json::array())){
-                        const double next=number_field(update,"arrival_ms");const int next_version=int_field(update,"version",version+1,1);
-                        if(next<arrival||next_version<=version)throw std::invalid_argument("prompt updates must have ordered arrivals and increasing versions");
-                        update.at("prompt").get<std::string>();arrival=next;version=next_version;
-                    }
                 }
             }
         }

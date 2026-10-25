@@ -1,0 +1,601 @@
+import torch
+from typing import Optional
+from diffusers.pipelines.pipeline_utils import DiffusionPipeline
+from xfuser.model_executor.cache import (
+    DBCachePreset,
+    CacheDitAdapterConfig,
+    DBCacheSettings,
+)
+from xfuser.model_executor.models.runner_models.base_model import (
+    xFuserModel,
+    register_model,
+    ModelCapabilities,
+    DefaultInputValues,
+    DiffusionOutput,
+    ModelSettings,
+)
+from xfuser.envs import PACKAGES_CHECKER
+from xfuser.core.utils.runner_utils import (
+    resize_and_crop_image,
+)
+from xfuser.core.distributed import get_runtime_state, get_pipeline_parallel_world_size
+from xfuser import xFuserFluxPipeline
+from xfuser.model_executor.models.runner_models.loading.contracts import (
+    LoadSupport,
+    STANDARD_LOAD_ROUTES,
+)
+
+
+@register_model("black-forest-labs/FLUX.1-dev")
+@register_model("FLUX.1-dev")
+class xFuserFluxModel(xFuserModel):
+    # From the registered checkpoint's transformer config.
+    attention_heads = 24
+
+    min_diffusers_version = "0.35.2"
+
+    load_support = LoadSupport(
+        meta_transformers=("transformer",),
+        meta_text_encoders=("text_encoder_2",),
+        replicated_meta=True,
+        routes=STANDARD_LOAD_ROUTES,
+    )
+    capabilities = ModelCapabilities(
+        ulysses_degree=True,
+        ring_degree=True,
+        pipefusion_parallel_degree=True,
+        use_fp8_gemms=True,
+        use_fp8_text_encoder=True,
+        use_parallel_vae=True,
+        enable_tiling=True,
+        enable_slicing=True,
+        fully_shard_degree=True,
+        use_fp8_comms=True,
+        supports_step_caching=True,
+        supports_lora=True,
+        profile_capture_phase=True,
+    )
+    default_input_values = DefaultInputValues(
+        height=1024,
+        width=1024,
+        num_inference_steps=50,
+        guidance_scale=3.5,
+        max_sequence_length=512,
+    )
+    settings = ModelSettings(
+        model_name="black-forest-labs/FLUX.1-dev",
+        output_name="flux_1_dev",
+        model_output_type="image",
+        fp8_gemm_module_list=[
+            "transformer.transformer_blocks",
+            "transformer.single_transformer_blocks",
+        ],
+        fp8_text_encoder_module_list=[
+            "text_encoder_2.encoder.block",
+        ],
+        fsdp_strategy={
+            "transformer": {
+                "wrap_attrs": ["transformer_blocks", "single_transformer_blocks"],
+            },
+            "text_encoder_2": {
+                "wrap_attrs": ["encoder.block"],
+            },
+        },
+        step_cache_config={
+            "teacache": None,
+            "dbcache": DBCacheSettings(
+                adapter=CacheDitAdapterConfig(
+                    blocks=(("transformer_blocks", "Pattern_1"), ("single_transformer_blocks", "Pattern_1")),
+                ),
+                preset=DBCachePreset(Fn_compute_blocks=2, residual_diff_threshold=0.12, scm_policy="ultra"),
+            ),
+        },
+    )
+
+    def _get_compile_mode(self) -> str:
+        if PACKAGES_CHECKER._on_rdna4() or self.config.cache_method:
+            return "default"
+        return "reduce-overhead"
+
+    def _load_model(self) -> DiffusionPipeline:
+        if self.config.pipefusion_parallel_degree > 1:
+            pipe = xFuserFluxPipeline.from_pretrained(
+                pretrained_model_name_or_path=self.settings.model_name,
+                torch_dtype=torch.float16,
+                engine_config=self.engine_config,
+            )
+        else:
+            from diffusers import FluxPipeline
+            from xfuser.model_executor.models.transformers.transformer_flux import (
+                xFuserFlux1Transformer2DWrapper,
+            )
+
+            transformer = self.loader.load_transformer(xFuserFlux1Transformer2DWrapper)
+            te_kwargs, te_quant = self.loader.plan_text_encoders()
+            pipe = FluxPipeline.from_pretrained(
+                pretrained_model_name_or_path=self.settings.model_name,
+                torch_dtype=torch.bfloat16,
+                transformer=transformer,
+                quantization_config=te_quant,
+                **te_kwargs,
+            )
+
+        if self.config.lora_path:
+            pipe.load_lora_weights(self.config.lora_path, weight_name=self.config.lora_weight_name)
+            pipe.fuse_lora(lora_scale=self.config.lora_scale, safe_fusing=True)
+            pipe.unload_lora_weights()
+        return pipe
+
+    def _run_pipe(self, input_args: dict) -> DiffusionOutput:
+        batch_size = self.config.batch_size if self.config.batch_size else 1
+        # Only the PipeFusion pipeline splits the latents by row; the diffusers
+        # pipeline's transformer pads the token sequence for sequence parallelism.
+        uses_pipefusion = get_pipeline_parallel_world_size() > 1
+        get_runtime_state().set_input_parameters(
+            height=input_args["height"],
+            width=input_args["width"],
+            batch_size=batch_size,
+            num_inference_steps=input_args["num_inference_steps"],
+            max_condition_sequence_length=input_args["max_sequence_length"],
+            split_text_embed_in_sp=not uses_pipefusion,
+            split_latents_by_rows=uses_pipefusion,
+        )
+        output = self.pipe(
+            height=input_args["height"],
+            width=input_args["width"],
+            prompt=input_args["prompt"],
+            num_inference_steps=input_args["num_inference_steps"],
+            guidance_scale=input_args["guidance_scale"],
+            max_sequence_length=input_args["max_sequence_length"],
+            generator=self._make_generator(input_args["seed"]),
+        )
+        images = output.images if output else []  # For legacy pipelines
+        return DiffusionOutput(images=images, pipe_args=input_args)
+
+
+@register_model("black-forest-labs/FLUX.1-Kontext-dev")
+@register_model("FLUX.1-Kontext-dev")
+class xFuserFluxKontextModel(xFuserModel):
+    # From the registered checkpoint's transformer config.
+    attention_heads = 24
+
+    min_diffusers_version = "0.35.2"
+
+    load_support = LoadSupport(
+        meta_transformers=("transformer",),
+        meta_text_encoders=("text_encoder_2",),
+        replicated_meta=True,
+        routes=STANDARD_LOAD_ROUTES,
+    )
+    capabilities = ModelCapabilities(
+        ulysses_degree=True,
+        ring_degree=True,
+        use_fp8_gemms=True,
+        use_fp8_text_encoder=True,
+        enable_tiling=True,
+        enable_slicing=True,
+        use_parallel_vae=True,
+        use_parallel_vae_encoder=True,
+        fully_shard_degree=True,
+        use_fp8_comms=True,
+        supports_step_caching=True,
+    )
+    default_input_values = DefaultInputValues(
+        height=1024,
+        width=1024,
+        num_inference_steps=50,
+        guidance_scale=2.5,
+        max_sequence_length=256,
+    )
+    settings = ModelSettings(
+        model_name="black-forest-labs/FLUX.1-Kontext-dev",
+        output_name="flux_1_kontext_dev",
+        model_output_type="image",
+        mod_value=16,
+        fp8_gemm_module_list=[
+            "transformer.transformer_blocks",
+            "transformer.single_transformer_blocks",
+        ],
+        fp8_text_encoder_module_list=[
+            "text_encoder_2.encoder.block",
+        ],
+        fsdp_strategy={
+            "transformer": {
+                "wrap_attrs": ["transformer_blocks", "single_transformer_blocks"],
+            },
+            "text_encoder_2": {
+                "wrap_attrs": ["encoder.block"],
+            },
+        },
+        step_cache_config={
+            "dbcache": DBCacheSettings(
+                adapter=CacheDitAdapterConfig(
+                    blocks=(("transformer_blocks", "Pattern_1"), ("single_transformer_blocks", "Pattern_1")),
+                ),
+                preset=DBCachePreset(Fn_compute_blocks=2, residual_diff_threshold=0.12, scm_policy="ultra"),
+            )
+        },
+    )
+
+    def _load_model(self) -> DiffusionPipeline:
+        from diffusers import FluxKontextPipeline
+        from xfuser.model_executor.models.transformers.transformer_flux import (
+            xFuserFlux1Transformer2DWrapper,
+        )
+
+        transformer = self.loader.load_transformer(xFuserFlux1Transformer2DWrapper)
+        te_kwargs, te_quant = self.loader.plan_text_encoders()
+        pipe = FluxKontextPipeline.from_pretrained(
+            pretrained_model_name_or_path=self.settings.model_name,
+            torch_dtype=torch.bfloat16,
+            transformer=transformer,
+            quantization_config=te_quant,
+            **te_kwargs,
+        )
+        return pipe
+
+    def _run_pipe(self, input_args: dict) -> DiffusionOutput:
+        batch_size = self.config.batch_size if self.config.batch_size else 1
+        get_runtime_state().set_input_parameters(
+            height=input_args["height"],
+            width=input_args["width"],
+            batch_size=batch_size,
+            num_inference_steps=input_args["num_inference_steps"],
+            max_condition_sequence_length=input_args["max_sequence_length"],
+            split_text_embed_in_sp=get_pipeline_parallel_world_size() == 1,
+            split_latents_by_rows=False,
+        )
+        output = self.pipe(
+            height=input_args["height"],
+            width=input_args["width"],
+            prompt=input_args["prompt"],
+            image=input_args["image"],
+            max_area=input_args["max_area"],
+            num_inference_steps=input_args["num_inference_steps"],
+            guidance_scale=input_args["guidance_scale"],
+            max_sequence_length=input_args["max_sequence_length"],
+            generator=self._make_generator(input_args["seed"]),
+        )
+        images = output.images if output else []  # non-last pp ranks return None
+        return DiffusionOutput(images=images, pipe_args=input_args)
+
+    def _preprocess_args_images(self, input_args: dict) -> dict:
+        """Preprocess input images if necessary based on task and other args"""
+        input_args = super()._preprocess_args_images(input_args)
+        image = input_args["input_images"][0]
+        if input_args.get("resize_input_images", False):
+            image = resize_and_crop_image(
+                image,
+                target_height=input_args["height"],
+                target_width=input_args["width"],
+                mod_value=self.settings.mod_value,
+            )
+            input_args["height"], input_args["width"] = image.height, image.width
+        input_args["image"] = image
+        input_args["max_area"] = input_args["height"] * input_args["width"]
+        return input_args
+
+    def _validate_args(self, input_args: dict) -> None:
+        """Validate input arguments"""
+        super()._validate_args(input_args)
+        images = input_args.get("input_images", [])
+        if len(images) != 1:
+            raise ValueError("Exactly one input image is required for Flux.1-Kontext-dev model.")
+
+
+@register_model("black-forest-labs/FLUX.2-dev")
+@register_model("FLUX.2-dev")
+class xFuserFlux2Model(xFuserModel):
+    # From the registered checkpoint's transformer config.
+    attention_heads = 48
+
+    # Flux2Pipeline and the transformer symbols the wrapper needs, including the
+    # PipeFusion pipeline, all landed in 0.36.
+    min_diffusers_version = "0.36.0"
+
+    load_support = LoadSupport(
+        meta_transformers=("transformer",),
+        meta_text_encoders=("text_encoder",),
+        replicated_meta=True,
+        routes=STANDARD_LOAD_ROUTES,
+    )
+    capabilities = ModelCapabilities(
+        ulysses_degree=True,
+        ring_degree=True,
+        use_fp8_gemms=True,
+        use_fp8_text_encoder=True,
+        use_fp4_gemms=True,
+        fully_shard_degree=True,
+        use_fp8_comms=True,
+        enable_tiling=True,
+        enable_slicing=True,
+        use_parallel_vae=True,
+        use_parallel_vae_encoder=True,
+        pipefusion_parallel_degree=True,
+        supports_step_caching=True,
+        profile_capture_phase=True,
+    )
+    default_input_values = DefaultInputValues(
+        height=1024,
+        width=1024,
+        num_inference_steps=28,
+        guidance_scale=4.0,
+        max_sequence_length=256,
+    )
+    settings = ModelSettings(
+        model_name="black-forest-labs/FLUX.2-dev",
+        output_name="flux_2_dev",
+        model_output_type="image",
+        mod_value=16,
+        fp8_gemm_module_list=[
+            "transformer.transformer_blocks",
+            "transformer.single_transformer_blocks",
+        ],
+        fp8_text_encoder_module_list=[
+            "text_encoder.model.language_model.layers",
+        ],
+        fp4_gemm_module_list=[
+            "transformer.transformer_blocks",
+            "transformer.single_transformer_blocks",
+        ],
+        fsdp_strategy={
+            "transformer": {
+                "wrap_attrs": ["transformer_blocks", "single_transformer_blocks"],
+            },
+            "text_encoder": {
+                "wrap_attrs": ["model.language_model.layers"],
+                "offload_policy": "cpu",
+            },
+        },
+        step_cache_config={
+            "fbcache": None,
+            "dbcache": DBCacheSettings(
+                adapter=CacheDitAdapterConfig(
+                    blocks=(("transformer_blocks", "Pattern_1"), ("single_transformer_blocks", "Pattern_2")),
+                ),
+                preset=DBCachePreset(Fn_compute_blocks=2, residual_diff_threshold=0.12, scm_policy="ultra"),
+            ),
+        },
+    )
+
+    def _post_load_and_state_initialization(self, input_args: dict) -> None:
+        super()._post_load_and_state_initialization(input_args)
+
+    def _get_compile_mode(self) -> str:
+        # CUDA graphs incompatible with cross-step caching, and
+        # cause pathological re-captures on RDNA4.
+        if self.config.cache_method or PACKAGES_CHECKER._on_rdna4():
+            return "default"
+        return "reduce-overhead"
+
+    def _get_compile_dynamic(self) -> Optional[bool]:
+        return False
+
+    def _load_model(self) -> DiffusionPipeline:
+        if self.config.pipefusion_parallel_degree > 1:
+            from xfuser.model_executor.pipelines.pipeline_flux2 import (
+                xFuserFlux2Pipeline,
+            )
+
+            pipe = xFuserFlux2Pipeline.from_pretrained(
+                pretrained_model_name_or_path=self.settings.model_name,
+                torch_dtype=self.engine_config.runtime_config.dtype,
+                engine_config=self.engine_config,
+            )
+        else:
+            from xfuser.model_executor.models.transformers.transformer_flux2 import (
+                xFuserFlux2Transformer2DWrapper,
+            )
+            from diffusers import Flux2Pipeline
+
+            transformer = self.loader.load_transformer(xFuserFlux2Transformer2DWrapper)
+            te_kwargs, te_quant = self.loader.plan_text_encoders()
+            pipe = Flux2Pipeline.from_pretrained(
+                pretrained_model_name_or_path=self.settings.model_name,
+                torch_dtype=torch.bfloat16,
+                transformer=transformer,
+                quantization_config=te_quant,
+                **te_kwargs,
+            )
+        return pipe
+
+    def _preprocess_args_images(self, input_args: dict) -> dict:
+        """Preprocess input images if provided"""
+        input_args = super()._preprocess_args_images(input_args)
+        images = input_args["input_images"]
+        if not images:
+            images = None
+        elif input_args.get("resize_input_images", False):
+            images = [
+                resize_and_crop_image(
+                    image,
+                    target_height=input_args["height"],
+                    target_width=input_args["width"],
+                    mod_value=self.settings.mod_value,
+                )
+                for image in images
+            ]
+        input_args["images"] = images
+        return input_args
+
+    def _run_pipe(self, input_args: dict) -> DiffusionOutput:
+        output = self.pipe(
+            height=input_args["height"],
+            width=input_args["width"],
+            prompt=input_args["prompt"],
+            image=input_args["images"],
+            num_inference_steps=input_args["num_inference_steps"],
+            guidance_scale=input_args["guidance_scale"],
+            max_sequence_length=input_args["max_sequence_length"],
+            generator=self._make_generator(input_args["seed"]),
+        )
+        images = output.images if output else []  # non-last pp ranks return None
+        return DiffusionOutput(images=images, pipe_args=input_args)
+
+
+@register_model("black-forest-labs/FLUX.2-klein-9B")
+@register_model("FLUX.2-klein-9B")
+class xFuserFlux2Klein9BModel(xFuserModel):
+    # From the registered checkpoint's transformer config.
+    attention_heads = 32
+
+    # Flux2KleinPipeline landed in 0.37, one release after Flux2Pipeline.
+    min_diffusers_version = "0.37.0"
+
+    load_support = LoadSupport(
+        meta_transformers=("transformer",),
+        meta_text_encoders=("text_encoder",),
+        replicated_meta=True,
+        routes=STANDARD_LOAD_ROUTES,
+    )
+    capabilities = ModelCapabilities(
+        ulysses_degree=True,
+        ring_degree=True,
+        use_fp8_gemms=True,
+        use_fp8_text_encoder=True,
+        enable_tiling=True,
+        enable_slicing=True,
+        use_parallel_vae=True,
+        use_parallel_vae_encoder=True,
+        fully_shard_degree=True,
+        use_fp8_comms=True,
+        pipefusion_parallel_degree=True,
+        supports_step_caching=True,
+        profile_capture_phase=True,
+    )
+
+    default_input_values = DefaultInputValues(
+        height=2048,
+        width=2048,
+        num_inference_steps=9,
+        guidance_scale=1.0,
+    )
+    settings = ModelSettings(
+        model_name="black-forest-labs/FLUX.2-klein-9B",
+        output_name="flux_2_klein_9b",
+        model_output_type="image",
+        mod_value=16,
+        fp8_gemm_module_list=[
+            "transformer.transformer_blocks",
+            "transformer.single_transformer_blocks",
+        ],
+        fp8_text_encoder_module_list=[
+            "text_encoder.model.layers",
+        ],
+        fsdp_strategy={
+            "transformer": {
+                "wrap_attrs": ["transformer_blocks", "single_transformer_blocks"],
+            },
+            "text_encoder": {
+                "wrap_attrs": ["model.layers"],
+            },
+        },
+        step_cache_config={"fbcache": None},
+    )
+
+    def _get_compile_mode(self) -> str:
+        # CUDA graphs incompatible with cross-step caching, and
+        # cause pathological re-captures on RDNA4.
+        if self.config.cache_method or PACKAGES_CHECKER._on_rdna4():
+            return "default"
+        return "reduce-overhead"
+
+    def _get_compile_dynamic(self) -> Optional[bool]:
+        return False
+
+    def _load_model(self) -> DiffusionPipeline:
+        if self.config.pipefusion_parallel_degree > 1:
+            from xfuser.model_executor.pipelines.pipeline_flux2_klein import (
+                xFuserFlux2KleinPipeline,
+            )
+
+            pipe = xFuserFlux2KleinPipeline.from_pretrained(
+                pretrained_model_name_or_path=self.settings.model_name,
+                torch_dtype=self.engine_config.runtime_config.dtype,
+                engine_config=self.engine_config,
+            )
+        else:
+            from xfuser.model_executor.models.transformers.transformer_flux2 import (
+                xFuserFlux2Transformer2DWrapper,
+            )
+            from diffusers import Flux2KleinPipeline
+
+            transformer = self.loader.load_transformer(xFuserFlux2Transformer2DWrapper)
+            te_kwargs, te_quant = self.loader.plan_text_encoders()
+            pipe = Flux2KleinPipeline.from_pretrained(
+                pretrained_model_name_or_path=self.settings.model_name,
+                torch_dtype=torch.bfloat16,
+                transformer=transformer,
+                quantization_config=te_quant,
+                **te_kwargs,
+            )
+        return pipe
+
+    def _run_pipe(self, input_args: dict) -> DiffusionOutput:
+        output = self.pipe(
+            height=input_args["height"],
+            width=input_args["width"],
+            prompt=input_args["prompt"],
+            image=input_args["images"],
+            num_inference_steps=input_args["num_inference_steps"],
+            guidance_scale=input_args["guidance_scale"],
+            generator=self._make_generator(input_args["seed"]),
+        )
+        images = output.images if output else []  # non-last pp ranks return None
+        return DiffusionOutput(images=images, pipe_args=input_args)
+
+    def _preprocess_args_images(self, input_args: dict) -> dict:
+        """Preprocess input images if provided"""
+        input_args = super()._preprocess_args_images(input_args)
+        images = input_args["input_images"]
+        if not images:
+            images = None
+        elif input_args.get("resize_input_images", False):
+            images = [
+                resize_and_crop_image(
+                    image,
+                    target_height=input_args["height"],
+                    target_width=input_args["width"],
+                    mod_value=self.settings.mod_value,
+                )
+                for image in images
+            ]
+        input_args["images"] = images
+        return input_args
+
+
+@register_model("black-forest-labs/FLUX.2-klein-4B")
+@register_model("FLUX.2-klein-4B")
+class xFuserFlux2Klein4BModel(xFuserFlux2Klein9BModel):
+    # From the registered checkpoint's transformer config.
+    attention_heads = 24
+
+    load_support = LoadSupport(
+        meta_transformers=("transformer",),
+        meta_text_encoders=("text_encoder",),
+        replicated_meta=True,
+        routes=STANDARD_LOAD_ROUTES,
+    )
+
+    settings = ModelSettings(
+        model_name="black-forest-labs/FLUX.2-klein-4B",
+        output_name="flux_2_klein_4b",
+        model_output_type="image",
+        mod_value=16,
+        fp8_gemm_module_list=[
+            "transformer.transformer_blocks",
+            "transformer.single_transformer_blocks",
+        ],
+        fp8_text_encoder_module_list=[
+            "text_encoder.model.layers",
+        ],
+        fsdp_strategy={
+            "transformer": {
+                "wrap_attrs": ["transformer_blocks", "single_transformer_blocks"],
+            },
+            "text_encoder": {
+                "wrap_attrs": ["model.layers"],
+            },
+        },
+        step_cache_config={"fbcache": None},
+    )

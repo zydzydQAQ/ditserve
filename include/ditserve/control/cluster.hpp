@@ -67,6 +67,9 @@ public:
     // batch_ms table ({"1": ms, "2": ms, ...}, interpolated between listed sizes), else
     // size times service_ms (no gain).
     double batch_ms(const std::string& klass, int size) const;
+    // One denoise round for up to 8 resident/new images in continuous mode.
+    // batch_step_ms is a separate measured table, never the atomic pipeline batch_ms.
+    double continuous_step_ms(const std::string& klass, int size) const;
     // Plain sequence parallelism of `degree` GPUs.
     double step_ms(const std::string& klass, int degree, int sp_groups = 1) const { return step_ms(klass, Form{1, degree}, sp_groups); }
     double block_ms(const std::string& klass, int degree, int sp_groups = 1) const { return block_ms(klass, Form{1, degree}, sp_groups); }
@@ -101,6 +104,9 @@ private:
 // options.image_batch (default 1) lets a plan send up to that many waiting
 // images of one class to a GPU as one batch when every member still meets its
 // deadline at the batch's service time; the assignment lists them in `batch`.
+// options.continuous_batch (default 0) uses explicit-step image states instead:
+// 1 is the unbatched baseline, 2-8 admits resident and newly arrived states on
+// one worker, with batch_step_ms pricing and per-member deadline checks.
 // options.pairing lets an elastic policy advance two videos in lockstep on one
 // group when the profile's pair_overlap makes that cheaper than their steps
 // in sequence; the assignment then names the partner in `pair`.
@@ -111,8 +117,8 @@ private:
 // {1, 2, 4, 8}); for each group size the form with the smallest predicted
 // step time wins. options.order (edf|srtf|fcfs) ranks feasible requests.
 // Returns {assignments:[{request_id, group, degree, form, quantum, resize, reason, pair?, pair_resize?}]}
-// where quantum is "atomic" (image), "finish" (with decode_frames when the
-// decode is chunked), "step" or a block count.
+// where quantum is "atomic" (image), "continuous_batch" (explicit-step image),
+// "finish" (with decode_frames when the decode is chunked), "step" or a block count.
 Json cluster_plan(const Json& state, const std::string& policy, const ClusterCost& cost, const Json& options = Json::object());
 bool cluster_policy(const std::string& policy);
 }

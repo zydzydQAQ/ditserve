@@ -28,7 +28,8 @@ class FluxBackend(Backend):
             dtype=config.get("dtype", "float16" if self.model == "wan" else "bfloat16"),
             vae_dtype=config.get("vae_dtype", "float32"),
             text_encoder_dtype=config.get("text_encoder_dtype", "float32"),
-            text_encoder_device=config.get("text_encoder_device", "cpu" if self.model == "wan" else "cuda"))
+            text_encoder_device=config.get("text_encoder_device", "cpu" if self.model == "wan" else "cuda"),
+            engine="xdit")
         for value in (args.dtype, args.vae_dtype, args.text_encoder_dtype):
             if value not in ("float16", "float32", "bfloat16"):
                 raise ValueError("unsupported model/component dtype: " + str(value))
@@ -44,7 +45,18 @@ class FluxBackend(Backend):
             raise ValueError("native bfloat16 requires Ampere or later; emulation is unsupported")
         from .pipeline import _pipeline
         self.pipe = _pipeline(torch, diffusers, args)
+        if self.model == "wan":
+            from .xdit.wan import attach_pipeline
+            self.xdit = attach_pipeline(self.pipe, self.device)
+        else:
+            module = ".xdit.sd35" if self.model == "sd35" else ".xdit.flux"
+            from importlib import import_module
+            self.xdit = import_module(module, __package__).attach(self.pipe, self.device)
+        self.pipe = self.xdit.pipe
         self._cache_recipe = None
+
+    def _cache_target(self):
+        return self.pipe.module
 
     def _enable_cache(self, spec):
         options = self.config.get("options", {})
@@ -58,7 +70,7 @@ class FluxBackend(Backend):
             import cache_dit
             if importlib.metadata.version("cache-dit") != "1.5.0":
                 raise ValueError("full-pipeline cache adapter requires cache-dit 1.5.0")
-            cache_dit.enable_cache(self.pipe, cache_config=cache_dit.DBCacheConfig(
+            cache_dit.enable_cache(self._cache_target(), cache_config=cache_dit.DBCacheConfig(
                 Fn_compute_blocks=options.get("cache_fn", 8), Bn_compute_blocks=options.get("cache_bn", 0),
                 max_warmup_steps=options.get("cache_warmup", 8), warmup_interval=1, max_cached_steps=-1,
                 residual_diff_threshold=options.get("threshold", .08),
@@ -81,8 +93,10 @@ class FluxBackend(Backend):
         guidance = spec["guidance_scale"]
         if isinstance(guidance, bool) or not isinstance(guidance, (int, float)) or not math.isfinite(guidance) or guidance < 0:
             raise ValueError("guidance_scale must be finite and nonnegative")
-        if self.model == "flux" and (spec["frames"] != 1 or spec["negative_prompt"]):
-            raise ValueError("FLUX requires frames=1 and no negative prompt")
+        if self.model in ("flux", "sd35") and spec["frames"] != 1:
+            raise ValueError(self.model + " requires frames=1")
+        if self.model == "flux" and spec["negative_prompt"]:
+            raise ValueError("FLUX does not accept a negative prompt")
         if self.model == "wan" and (spec["frames"] - 1) % 4:
             raise ValueError("Wan frames must be 4*k+1")
         return spec
@@ -128,6 +142,7 @@ class FluxBackend(Backend):
         elapsed = (time.perf_counter() - started) * 1000
         return dict(state_id=request["state_id"], progress=progress(1, 1), model_ms=elapsed,
                     atomic_pipeline=True, batch_size=spec["batch_size"], seed_protocol="single_cpu_generator_for_batch",
+                    engine=self.xdit.info(),
                     **encoding, **(observer.report(spec["steps"]) if observer else {}))
 
     def finish(self, request):
@@ -137,5 +152,9 @@ class FluxBackend(Backend):
         return dict(output=self.persist(state["output"], request), progress=progress(1, 1),
                     generation=dict(state["spec"], model=self.config.get("model_path"),
                         revision=self.config.get("revision"), batch_protocol="fixed_repeated_prompt",
-                        seed_protocol="single_cpu_generator_for_batch",
+                        seed_protocol="single_cpu_generator_for_batch", engine=self.xdit.info(),
                         approximate=bool(self.config.get("options", {}).get("cache"))))
+
+    def close(self):
+        super().close()
+        self.xdit.close()

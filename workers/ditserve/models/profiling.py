@@ -28,7 +28,8 @@ class PipelineProfiler:
     def __init__(self, torch, pipe, device):
         if not str(device).startswith("cuda"):
             raise ValueError("pipeline profiling requires CUDA; CPU timings are not substituted")
-        self.torch, self.pipe, self.device = torch, pipe, device
+        self.torch, self.device = torch, device
+        self.pipe = getattr(pipe, "module", pipe)
         self.handles, self.patches, self.spans, self.forwards, self.steps = [], [], [], [], []
         self.pending, self.finite_checks, self.step_start = [], [], 0
 
@@ -73,9 +74,10 @@ class PipelineProfiler:
             transformer = self.pipe.transformer
             self.handles.append(transformer.register_forward_pre_hook(self._before))
             self.handles.append(transformer.register_forward_hook(self._after))
+            scheduler = getattr(self.pipe.scheduler, "module", self.pipe.scheduler)
             for owner, name, phase in ((self.pipe, "encode_prompt", "text_encode"),
                     (self.pipe, "prepare_latents", "latent_init"),
-                    (self.pipe.scheduler, "step", "scheduler"),
+                    (scheduler, "step", "scheduler"),
                     (self.pipe.vae, "decode", "vae_decode"),
                     (getattr(self.pipe, "image_processor", None), "postprocess", "postprocess"),
                     (getattr(self.pipe, "video_processor", None), "postprocess_video", "postprocess")):
@@ -99,9 +101,10 @@ class PipelineProfiler:
     def callback(self, pipe, index, timestep, values):
         if "latents" not in values:
             raise ValueError("profile callback did not expose latents")
+        scheduler = getattr(pipe.scheduler, "module", pipe.scheduler)
         self.steps.append(dict(step_index=int(index), forward_indices=list(range(self.step_start, len(self.forwards))),
             latents=tensor_inventory(values["latents"], self.torch),
-            sampler=tensor_inventory({key: value for key, value in vars(pipe.scheduler).items()
+            sampler=tensor_inventory({key: value for key, value in vars(scheduler).items()
                                       if key != "_internal_dict"}, self.torch)))
         self.finite_checks.append(self.torch.isfinite(values["latents"]).all())
         self.step_start = len(self.forwards)

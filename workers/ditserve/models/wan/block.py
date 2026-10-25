@@ -10,6 +10,7 @@ import hashlib
 import time
 
 PACKET_SCHEMA = "ditserve.wan-block-packet.v1"
+XDIT_PACKET_SCHEMA = "ditserve.wan-block-packet.v2"
 PACKET_TENSORS = ("hidden", "encoder", "temb", "projected")
 
 
@@ -42,6 +43,7 @@ class WanBlockExecutor:
 
     def __init__(self, worker, parallel=None, interleave=False):
         self.worker, self.model, self.parallel = worker, worker.pipe.transformer, parallel
+        self.xdit = getattr(worker, "xdit", None)
         # Wan2.2 TI2V conditions every patch token on its own timestep.
         self.expand_timesteps = bool(getattr(worker, "expand_timesteps", False))
         # Interleaved execution runs block i of both CFG branches back to back, the
@@ -81,7 +83,11 @@ class WanBlockExecutor:
     def _validate_model(self):
         from diffusers.models.transformers.transformer_wan import WanTransformer3DModel, WanTransformerBlock
         model = self.model
-        if (type(model) is not WanTransformer3DModel or tuple(model.config.patch_size) != (1, 2, 2)
+        expected = WanTransformer3DModel
+        if self.xdit is not None:
+            from ..xdit.wan import wrapper_class
+            expected = wrapper_class()
+        if (type(model) is not expected or tuple(model.config.patch_size) != (1, 2, 2)
                 or model.config.added_kv_proj_dim is not None or model.config.image_dim is not None
                 or model.gradient_checkpointing or getattr(model, "_is_parallelized", False)
                 or getattr(model, "peft_config", None) or getattr(model, "_hf_peft_config_loaded", False)):
@@ -90,16 +96,14 @@ class WanBlockExecutor:
             raise ValueError("block execution in a process group requires the SP attachment's safe points")
         if any(type(block) is not WanTransformerBlock for block in model.blocks):
             raise ValueError("unknown Wan block implementation")
-        # The SP attachment shards at the patch embedding, RoPE and (per-token
-        # timesteps) the condition embedder, and gathers at the output projection;
-        # any other hook would change the arithmetic unseen.
-        sharding = ({id(model.patch_embedding), id(model.rope), id(model.condition_embedder), id(model.proj_out)}
-                    if self.parallel else set())
+        allowed_hooks = {id(block) for block in model.blocks} if self.xdit is not None else (
+            {id(model.patch_embedding), id(model.rope), id(model.condition_embedder), id(model.proj_out)}
+            if self.parallel else set())
         for module in model.modules():
             if (module.training or getattr(module, "_hf_hook", None) is not None
                     or getattr(module, "_orig_mod", None) is not None
                     or getattr(module, "_compiled_call_impl", None) is not None
-                    or (getattr(module, "_forward_hooks", {}) and id(module) not in sharding)
+                    or (getattr(module, "_forward_hooks", {}) and id(module) not in allowed_hooks)
                     or getattr(module, "_forward_pre_hooks", {})):
                 raise ValueError("training, module hooks, offload and compilation are unsupported")
 
@@ -129,37 +133,45 @@ class WanBlockExecutor:
 
     def _begin(self, state, interleave=True):
         base, model = state.base, self.model
-        latent = base.latents.to(model.dtype)
-        batch, _, frames, height, width = latent.shape
-        pt, ph, pw = model.config.patch_size
-        rotary = model.rope(latent)
-        hidden = model.patch_embedding(latent).flatten(2).transpose(1, 2)
         from .runtime import model_timestep
         timestep = model_timestep(self.worker.torch, base.latents, base.scheduler.timesteps[base.step_index],
                                   self.expand_timesteps)
         tokens = timestep.shape[1] if timestep.ndim == 2 else None
-        # Under CFG parallelism each half of the group runs one branch for the whole step.
         role = self.parallel.handle.current.cfg_role(self.parallel.handle.rank) if self.parallel is not None else None
         if role is not None and base.spec["guidance_scale"] <= 1:
             raise ValueError("CFG parallelism requires guidance_scale > 1")
         branch = state.branch if role is None else ("cond", "uncond")[role]
-        embedding = base.prompt_embeds if branch == "cond" else base.negative_prompt_embeds
-        temb, projected, encoder, image = model.condition_embedder(
-            timestep.flatten() if tokens else timestep, embedding, None, timestep_seq_len=tokens)
-        if image is not None or temb.ndim != (3 if tokens else 2):
-            raise ValueError("unexpected timestep embedding or image conditioning")
-        state.packet = dict(hidden=hidden, encoder=encoder, temb=temb,
-                            projected=projected.unflatten(2 if tokens else 1, (6, -1)), rotary=rotary,
-                            shape=(batch, frames // pt, height // ph, width // pw, pt, ph, pw))
+        if self.xdit is not None:
+            state.packet = self.xdit.begin_packet(base, branch)
+        else:
+            latent = base.latents.to(model.dtype)
+            batch, _, frames, height, width = latent.shape
+            pt, ph, pw = model.config.patch_size
+            rotary = model.rope(latent)
+            hidden = model.patch_embedding(latent).flatten(2).transpose(1, 2)
+            embedding = base.prompt_embeds if branch == "cond" else base.negative_prompt_embeds
+            temb, projected, encoder, image = model.condition_embedder(
+                timestep.flatten() if tokens else timestep, embedding, None, timestep_seq_len=tokens)
+            if image is not None or temb.ndim != (3 if tokens else 2):
+                raise ValueError("unexpected timestep embedding or image conditioning")
+            state.packet = dict(hidden=hidden, encoder=encoder, temb=temb,
+                                projected=projected.unflatten(2 if tokens else 1, (6, -1)), rotary=rotary,
+                                shape=(batch, frames // pt, height // ph, width // pw, pt, ph, pw))
         if interleave and self._interleaving(state):
-            # Timestep terms are the same for both branches; only the text part differs.
             encoder_uncond = model.condition_embedder(
                 timestep.flatten() if tokens else timestep, base.negative_prompt_embeds, None, timestep_seq_len=tokens)[2]
             state.packet_uncond = dict(state.packet, encoder=encoder_uncond)
 
+    def _forward_block(self, packet, index, hidden, encoder, projected, rotary):
+        if self.xdit is not None:
+            return self.xdit.forward_block(packet, index)
+        return self.model.blocks[index](hidden, encoder, projected, rotary)
+
     def _prediction(self, packet):
+        if self.xdit is not None:
+            return self.xdit.prediction(packet)
         model, hidden, temb = self.model, packet["hidden"], packet["temb"]
-        if temb.ndim == 3:   # per-token timesteps (Wan2.2 TI2V)
+        if temb.ndim == 3:
             shift, scale = (model.scale_shift_table.unsqueeze(0).to(temb.device) + temb.unsqueeze(2)).chunk(2, dim=2)
             shift, scale = shift.squeeze(2), scale.squeeze(2)
         else:
@@ -252,7 +264,7 @@ class WanBlockExecutor:
                     if observe:
                         start, end = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
                         start.record()
-                    packet["hidden"] = self.model.blocks[index](packet["hidden"], packet["encoder"],
+                    packet["hidden"] = self._forward_block(packet, index, packet["hidden"], packet["encoder"],
                                                                  packet["projected"], packet["rotary"])
                     if observe:
                         end.record()
@@ -264,10 +276,10 @@ class WanBlockExecutor:
                         if side is not None:
                             self._record(other, side)
                             with torch.cuda.stream(side):
-                                other["hidden"] = self.model.blocks[index](other["hidden"], other["encoder"],
+                                other["hidden"] = self._forward_block(other, index, other["hidden"], other["encoder"],
                                                                             other["projected"], other["rotary"])
                         else:
-                            other["hidden"] = self.model.blocks[index](other["hidden"], other["encoder"],
+                            other["hidden"] = self._forward_block(other, index, other["hidden"], other["encoder"],
                                                                         other["projected"], other["rotary"])
                         executed += 1
                     state.next_block += 1
@@ -393,14 +405,14 @@ class WanBlockExecutor:
                             with torch.cuda.stream(side):
                                 if observe:
                                     start.record()
-                                packet["hidden"] = self.model.blocks[index](packet["hidden"], packet["encoder"],
+                                packet["hidden"] = self._forward_block(packet, index, packet["hidden"], packet["encoder"],
                                                                              packet["projected"], packet["rotary"])
                                 if observe:
                                     end.record()
                         else:
                             if observe:
                                 start.record()
-                            packet["hidden"] = self.model.blocks[index](packet["hidden"], packet["encoder"],
+                            packet["hidden"] = self._forward_block(packet, index, packet["hidden"], packet["encoder"],
                                                                          packet["projected"], packet["rotary"])
                             if observe:
                                 end.record()
@@ -552,6 +564,8 @@ def export_block_state(executor, state):
         base, tensors = pack_cache_off_request(worker, state.base)
         layout = dict(committed_step=state.committed_step, branch=state.branch, next_block=state.next_block,
                       packet=state.packet is not None, conditional=state.conditional is not None)
+        if executor.xdit is not None:
+            layout["engine"] = executor.xdit.info()
         extra = {}
         if state.packet is not None:
             for name in PACKET_TENSORS:
@@ -560,13 +574,16 @@ def export_block_state(executor, state):
                 extra["packet.rotary.%d" % index] = value
             layout["shape"] = list(state.packet["shape"])
             layout["rotary"] = len(state.packet["rotary"])
+            if executor.xdit is not None:
+                layout["xdit"] = {name: state.packet[name] for name in ("pad_amount", "local_rows", "valid_kv_len", "thw")}
         if state.conditional is not None:
             extra["conditional"] = state.conditional
         packet_bytes = 0
         for name, value in extra.items():
             tensors[name] = value.detach().cpu().clone()
             packet_bytes += value.numel() * value.element_size()
-        manifest = dict(schema=PACKET_SCHEMA, base=base, layout=layout,
+        schema = XDIT_PACKET_SCHEMA if executor.xdit is not None else PACKET_SCHEMA
+        manifest = dict(schema=schema, base=base, layout=layout,
                         packet_sha256={name: _digest(torch, tensors[name]) for name in extra},
                         strides={name: list(tensors[name].stride()) for name in extra})
         return dict(manifest=manifest, tensors=tensors), dict(
@@ -579,8 +596,21 @@ def import_block_state(executor, payload):
     from .parallel import unpack_cache_off_request
     worker, torch = executor.worker, executor.worker.torch
     manifest, tensors = payload["manifest"], payload["tensors"]
-    if manifest.get("schema") != PACKET_SCHEMA:
+    schema = manifest.get("schema")
+    if schema not in (PACKET_SCHEMA, XDIT_PACKET_SCHEMA):
         raise ValueError("unknown block packet schema")
+    xdit_payload = schema == XDIT_PACKET_SCHEMA
+    if xdit_payload != (executor.xdit is not None):
+        raise ValueError("block packet engine mismatch")
+    layout = manifest["layout"]
+    if xdit_payload and layout.get("engine", {}).get("revision") != executor.xdit.info()["revision"]:
+        raise ValueError("block packet xDiT revision mismatch")
+    if executor.parallel is not None:
+        if executor.parallel.handle.active is not None:
+            raise ValueError("cannot import a request while another step is active")
+        if (layout["packet"] or layout["conditional"] or layout["branch"] != "cond"
+                or layout["next_block"]):
+            raise ValueError("SP block import is limited to solver-step boundaries")
     names = set(manifest["packet_sha256"])
     base_names = set(manifest["base"]["tensor_hashes"])
     if set(tensors) != base_names | names:
@@ -588,7 +618,6 @@ def import_block_state(executor, payload):
     for name in names:
         if _digest(torch, tensors[name]) != manifest["packet_sha256"][name] or list(tensors[name].stride()) != manifest["strides"][name]:
             raise ValueError("block packet tensor checksum or layout mismatch: " + name)
-    layout = manifest["layout"]
     with worker._lock, torch.inference_mode():
         started = time.perf_counter()
         base = unpack_cache_off_request(worker, manifest["base"], {name: tensors[name] for name in base_names})
@@ -605,6 +634,8 @@ def import_block_state(executor, payload):
                 packet = {name: tensors["packet." + name].to(device) for name in PACKET_TENSORS}
                 packet["rotary"] = tuple(tensors["packet.rotary.%d" % index].to(device) for index in range(layout["rotary"]))
                 packet["shape"] = tuple(layout["shape"])
+                if xdit_payload:
+                    packet.update(layout["xdit"])
                 state.packet = packet
             if layout["conditional"]:
                 state.conditional = tensors["conditional"].to(device)

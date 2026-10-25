@@ -1,0 +1,1028 @@
+from abc import ABCMeta
+import random
+from typing import List, Optional, Tuple
+
+import numpy as np
+import torch
+from torch.cuda import manual_seed as device_manual_seed
+from torch.cuda import manual_seed_all as device_manual_seed_all
+from diffusers import DiffusionPipeline
+import torch.distributed
+
+try:
+    import torch_musa  # noqa: F401
+    from torch_musa.core.random import manual_seed as device_manual_seed
+    from torch_musa.core.random import manual_seed_all as device_manual_seed_all
+except ModuleNotFoundError:
+    pass
+
+import xfuser.envs as envs
+from xfuser.envs import PACKAGES_CHECKER
+
+if envs._is_npu():
+    from torch.npu import manual_seed as device_manual_seed
+    from torch.npu import manual_seed_all as device_manual_seed_all
+
+from xfuser.core.attention import registry as attention_registry
+from xfuser.core.attention.spec import AttentionBackendType
+from xfuser.core.distributed.attention_schedule import AttentionSchedule, GemmPrecisionSchedule
+from xfuser.core.distributed.fp8_comms import Fp8CommsState
+from xfuser.config.config import (
+    ParallelConfig,
+    RuntimeConfig,
+    InputConfig,
+    EngineConfig,
+)
+from xfuser.logger import init_logger, warn_once
+from .parallel_state import (
+    destroy_distributed_environment,
+    destroy_model_parallel,
+    get_classifier_free_guidance_world_size,
+    get_data_parallel_world_size,
+    get_dit_world_size,
+    get_fully_shard_world_size,
+    get_pipeline_parallel_world_size,
+    get_pp_group,
+    get_ring_parallel_world_size,
+    get_sequence_parallel_rank,
+    get_sequence_parallel_world_size,
+    get_tensor_model_parallel_world_size,
+    init_distributed_environment,
+    initialize_model_parallel,
+    model_parallel_is_initialized,
+)
+from xfuser.config.args import xFuserArgs
+
+logger = init_logger(__name__)
+
+env_info = PACKAGES_CHECKER.get_packages_info()
+
+
+def set_random_seed(seed: int):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    device_manual_seed(seed)
+    device_manual_seed_all(seed)
+
+
+def _summarise_schedule(backends) -> str:
+    """ "10x AITER_FP8, 60x AITER_MXFP6, 10x AITER_FP8" -- a per-step list is
+    unreadable at 80 steps and hides the boundaries that matter."""
+    runs = []
+    for backend in backends:
+        if runs and runs[-1][0] is backend:
+            runs[-1][1] += 1
+        else:
+            runs.append([backend, 1])
+    return ", ".join(f"{count}x {backend.name}" for backend, count in runs)
+
+
+def select_default_attention_backend() -> AttentionBackendType:
+    """The dense attention backend this platform runs best, for when none is named.
+
+    Also what a sparse backend falls back to on calls it cannot make sparse.
+    """
+    if envs._is_hip():
+        if env_info["has_aiter"] and PACKAGES_CHECKER._on_rdna4():
+            backend = AttentionBackendType.AITER_FLYDSL
+        elif env_info["has_aiter"]:
+            backend = AttentionBackendType.AITER
+        elif env_info["has_flash_attn"]:
+            backend = AttentionBackendType.FLASH
+        else:
+            backend = AttentionBackendType.SDPA
+
+    elif env_info["has_flash_attn_4"]:
+        backend = AttentionBackendType.FLASH_4
+    elif env_info["has_flash_attn_3"]:
+        backend = AttentionBackendType.FLASH_3
+    elif torch.backends.cudnn.is_available():
+        backend = AttentionBackendType.CUDNN
+    elif env_info["has_flash_attn"]:
+        backend = AttentionBackendType.FLASH
+    elif env_info["has_npu_flash_attn"]:
+        backend = AttentionBackendType.NPU
+    else:
+        backend = AttentionBackendType.SDPA
+
+    # The choice above reads what torch and the installed packages were
+    # built with, not what this host can run (a CUDA wheel on a CPU-only
+    # host, say). Fall back to SDPA rather than refuse to start, and say so.
+    unavailable = attention_registry.find(backend).unavailable()
+    if unavailable is not None:
+        logger.warning(
+            f"Automatically selected attention backend {backend.name} is unavailable: {unavailable}. "
+            "Falling back to SDPA; set attention_backend to choose a backend explicitly."
+        )
+        backend = AttentionBackendType.SDPA
+    return backend
+
+
+class RuntimeState(metaclass=ABCMeta):
+    attention_backend: AttentionBackendType = AttentionBackendType.SDPA_FLASH
+    cross_attention_backend: Optional[AttentionBackendType] = None
+    fp8_comms: Optional[Fp8CommsState] = None
+    parallel_config: ParallelConfig
+    runtime_config: RuntimeConfig
+    input_config: InputConfig
+    num_pipeline_patch: int
+    ready: bool = False
+
+    def __init__(self, config: EngineConfig):
+        self.parallel_config = config.parallel_config
+        self.runtime_config = config.runtime_config
+        self.input_config = InputConfig()
+        self.num_pipeline_patch = self.parallel_config.pp_config.num_pipeline_patch
+        self.ready = False
+
+        self._check_distributed_env(config.parallel_config)
+        attention_backend = self._select_attention_backend(config)
+        self.set_attention_backend(attention_backend)
+        cross_attention_backend = self._select_cross_attention_backend(config)
+        self.set_cross_attention_backend(cross_attention_backend)
+        self.fp8_comms = Fp8CommsState.from_config(config)
+
+    def is_ready(self):
+        return self.ready
+
+    def _check_distributed_env(
+        self,
+        parallel_config: ParallelConfig,
+    ):
+        if not model_parallel_is_initialized():
+            warn_once(logger, "Model parallel is not initialized, initializing...")
+            if not torch.distributed.is_initialized():
+                init_distributed_environment()
+            initialize_model_parallel(
+                data_parallel_degree=parallel_config.dp_degree,
+                classifier_free_guidance_degree=parallel_config.cfg_degree,
+                sequence_parallel_degree=parallel_config.sp_degree,
+                ulysses_degree=parallel_config.ulysses_degree,
+                ring_degree=parallel_config.ring_degree,
+                tensor_parallel_degree=parallel_config.tp_degree,
+                pipeline_parallel_degree=parallel_config.pp_degree,
+                fully_shard_degree=parallel_config.fs_degree,
+                vae_parallel_size=parallel_config.vae_parallel_size,
+                use_parallel_vae=parallel_config.use_parallel_vae,
+            )
+
+    def destroy_distributed_env(self):
+        if model_parallel_is_initialized():
+            destroy_model_parallel()
+        destroy_distributed_environment()
+
+    def set_attention_backend(self, attention_backend: str | AttentionBackendType):
+        """
+        Set the attention backend for the current environment.
+        Given attention_backend can be either AttentionBackendType or a string with the name of the backend.
+        """
+        if isinstance(attention_backend, str):
+            try:
+                attention_backend = AttentionBackendType[attention_backend.upper()]
+            except KeyError:
+                pass
+
+        if not isinstance(attention_backend, AttentionBackendType):
+            raise ValueError(f"Value '{attention_backend}' is not a valid attention backend.")
+
+        self._check_if_backend_compatible_with_current_configuration(attention_backend)
+        self.attention_backend = attention_backend
+
+        # A per-step schedule replaces this field before the first attention
+        # call -- increment_step_counter() runs at the top of the forward -- so
+        # under a schedule this backend serves nothing and announcing it would
+        # name a backend that never runs. set_attention_schedule() reports what
+        # will actually be used. Still selected and checked: the value has to be
+        # valid either way, and the schedule may not be configured yet.
+        if self.runtime_config.use_hybrid_attn_schedule:
+            return
+
+        warn_once(logger, "Using {} as attention backend.".format(self.attention_backend.name))
+        self._warn_if_low_precision(attention_backend)
+
+    def _warn_if_low_precision(self, *backends: AttentionBackendType) -> None:
+        """Each backend declares whether it quantises, so this needs no list.
+        Broader than the list it replaces: the Sage family quantises to
+        int8/fp8 and now warns accordingly."""
+        low_precision = attention_registry.types_where(low_precision=True)
+        if any(backend in low_precision for backend in backends):
+            warn_once(
+                logger,
+                "Low-precision attention backend is enabled. This may cause poor quality outputs, consider using hybrid attention if possible.",
+            )
+
+    def set_cross_attention_backend(self, cross_attention_backend: Optional[str | AttentionBackendType]):
+        """
+        Set the cross-attention backend. When None, cross-attention will use the main attention_backend.
+        """
+        if cross_attention_backend is None:
+            self.cross_attention_backend = None
+            return
+
+        if isinstance(cross_attention_backend, str):
+            try:
+                cross_attention_backend = AttentionBackendType[cross_attention_backend.upper()]
+            except KeyError:
+                pass
+
+        if not isinstance(cross_attention_backend, AttentionBackendType):
+            raise ValueError(f"Value '{cross_attention_backend}' is not a valid attention backend.")
+
+        self._check_if_backend_compatible_with_current_configuration(cross_attention_backend)
+        self.cross_attention_backend = cross_attention_backend
+        warn_once(logger, "Using {} as cross-attention backend.".format(self.cross_attention_backend.name))
+
+    def get_cross_attention_backend(self) -> AttentionBackendType:
+        """
+        Returns the backend to use for cross-attention.
+        Falls back to the main attention_backend when no separate cross-attention backend is configured.
+        """
+        if self.cross_attention_backend is not None:
+            return self.cross_attention_backend
+        return self.attention_backend
+
+    def _select_cross_attention_backend(
+        self, engine_config: Optional[EngineConfig] = None
+    ) -> Optional[AttentionBackendType]:
+        """
+        Select the cross-attention backend from config. Returns None if not explicitly set
+        (meaning the main attention_backend will be used).
+        """
+        if engine_config and engine_config.runtime_config.cross_attention_backend:
+            return AttentionBackendType[engine_config.runtime_config.cross_attention_backend.upper()]
+        return None
+
+    def _select_attention_backend(self, engine_config: Optional[EngineConfig] = None):
+        """
+        Select the best attention backend for the current environment.
+        """
+        if engine_config and engine_config.runtime_config.attention_backend:
+            return AttentionBackendType[engine_config.runtime_config.attention_backend.upper()]
+        return select_default_attention_backend()
+
+    def _check_if_backend_compatible_with_current_configuration(self, attention_backend: AttentionBackendType):
+        """Refuse a backend the current machine or configuration cannot serve.
+
+        Backend-specific knowledge lives on the spec: `requires` says what the
+        machine must provide, `ring` whether ring attention can merge its
+        output here. This method therefore stays the same size as backends are
+        added.
+        """
+        if attention_backend == AttentionBackendType.AITER_VSA and self.runtime_config.use_hybrid_attn_schedule:
+            raise RuntimeError(
+                "AITER_VSA manages its own denoising-step schedule and cannot be used with a hybrid attention schedule."
+            )
+
+        spec = attention_registry.find(attention_backend)
+        unavailable = spec.unavailable()
+        if unavailable is not None:
+            raise RuntimeError(f"{attention_backend.value} attention is unavailable: {unavailable}")
+
+        # A backend that hands the shapes it cannot serve to another one needs
+        # that one present too, and a missing fallback would otherwise surface
+        # mid-denoising on whichever block happened to be the wrong width.
+        link = spec._fallback
+        while link is not None:
+            unavailable = link.unavailable()
+            if unavailable is not None:
+                raise RuntimeError(
+                    f"{attention_backend.value} attention serves other shapes "
+                    f"through {link.type.value}, which is unavailable: "
+                    f"{unavailable}"
+                )
+            link = link._fallback
+
+        if self.parallel_config.ring_degree > 1:
+            # Ring merges per-rank partials on a softmax log-sumexp. Whether a
+            # backend has one can depend on the build and the device, so the
+            # spec answers with a predicate and its reason is the message.
+            #
+            # The fallback has to answer too. On a model that mixes head
+            # widths the merge would otherwise receive a partial from the
+            # blocks the selection serves and nothing from the ones it hands
+            # on -- and a missing LSE cannot be seen in the output, because O
+            # never reads it.
+            link = spec
+            while link is not None:
+                no_ring = link.ring.unmet()
+                if no_ring is not None:
+                    through = "" if link is spec else f" serves other shapes through {link.type.value}, which"
+                    raise RuntimeError(
+                        f"{attention_backend.value}{through} cannot be used with ring parallelism: {no_ring}"
+                    )
+                link = link._fallback
+
+        # Import the kernel module now, while we are outside any compiled
+        # region. This is the single choke point: it runs for the attention
+        # backend, the cross-attention backend, and every backend in a hybrid
+        # schedule. Resolving walks the fallback chain, so a call that lands on
+        # a fallback mid-graph finds it already imported.
+        spec.resolved()
+
+
+class UnetRuntimeState(RuntimeState):
+    def __init__(self, pipeline: DiffusionPipeline, config: EngineConfig):
+        super().__init__(config)
+        self.sanity_check()
+
+    def sanity_check(self):
+        if self.parallel_config.world_size > 1:
+            if not (self.parallel_config.cfg_degree == 2 and self.parallel_config.world_size == 2):
+                raise RuntimeError("UnetRuntimeState only supports 2 GPUs with CFG Parallel")
+
+
+class DiTRuntimeState(RuntimeState):
+    patch_mode: bool
+    pipeline_patch_idx: int
+    vae_scale_factor: int
+    vae_scale_factor_spatial: int
+    vae_scale_factor_temporal: int
+    backbone_patch_size: int
+    pp_patches_height: Optional[List[int]]
+    pp_patches_start_idx_local: Optional[List[int]]
+    pp_patches_start_end_idx_global: Optional[List[List[int]]]
+    pp_patches_token_start_idx_local: Optional[List[int]]
+    pp_patches_token_start_end_idx_global: Optional[List[List[int]]]
+    pp_patches_token_num: Optional[List[int]]
+    max_condition_sequence_length: int
+    split_text_embed_in_sp: bool
+    text_embed_sp_pad: int
+    # Class-level default so states built without __init__ (as some tests do) can still
+    # call set_input_parameters.
+    split_latents_by_rows: bool = True
+
+    def __init__(self, pipeline: DiffusionPipeline, config: EngineConfig):
+        self.attention_schedule: Optional[AttentionSchedule] = None
+        self.schedule_total_steps: Optional[int] = None
+        self.gemm_schedule: Optional[GemmPrecisionSchedule] = None
+        self.gemm_schedule_total_steps: Optional[int] = None
+        self.use_high_precision_gemm: bool = True
+        self.step_counter: Optional[int] = None
+        self._vsa_denoising_step = -1
+        self._vsa_last_timestep: Optional[float] = None
+        self._vsa_num_steps: Optional[int] = None
+        super().__init__(config)
+        self.patch_mode = False
+        self.pipeline_patch_idx = 0
+        self._check_model_and_parallel_config(pipeline=pipeline, parallel_config=config.parallel_config)
+        try:
+            self._check_pipeline_class_name(pipeline, config)
+        except Exception:
+            # Keeps backward compatatability with existing pipeline classes.
+            pass
+
+    def _check_pipeline_class_name(self, pipeline: DiffusionPipeline, config: EngineConfig):
+        self.cogvideox = False
+        self.consisid = False
+        self.hunyuan_video = False
+        if pipeline.__class__.__name__.startswith(("CogVideoX", "ConsisID", "HunyuanVideo", "Wan")):
+            if pipeline.__class__.__name__.startswith("CogVideoX"):
+                self.cogvideox = True
+            elif pipeline.__class__.__name__.startswith("ConsisID"):
+                self.consisid = True
+            else:
+                self.hunyuan_video = True
+            self._set_cogvideox_parameters(
+                vae_scale_factor_spatial=pipeline.vae_scale_factor_spatial,
+                vae_scale_factor_temporal=pipeline.vae_scale_factor_temporal,
+                backbone_patch_size=pipeline.transformer.config.patch_size,
+                backbone_in_channel=pipeline.transformer.config.in_channels,
+                backbone_inner_dim=pipeline.transformer.config.num_attention_heads
+                * pipeline.transformer.config.attention_head_dim,
+            )
+        elif pipeline.__class__.__name__.startswith("ZImage"):
+            self._set_model_parameters(
+                vae_scale_factor=pipeline.vae_scale_factor,
+                backbone_patch_size=pipeline.transformer.config.all_patch_size,
+                backbone_in_channel=pipeline.transformer.config.in_channels,
+                backbone_inner_dim=pipeline.transformer.config.n_heads * pipeline.transformer.config.axes_dims[-1],
+            )
+        elif pipeline.__class__.__name__.startswith(("Lumina2", "xFuserLumina2")):
+            self._set_model_parameters(
+                vae_scale_factor=pipeline.vae_scale_factor,
+                backbone_patch_size=pipeline.transformer.config.patch_size,
+                backbone_in_channel=pipeline.transformer.config.in_channels,
+                backbone_inner_dim=pipeline.transformer.config.hidden_size,
+            )
+        else:
+            vae_scale_factor = getattr(pipeline, "vae_scale_factor", 0)
+            if pipeline.__class__.__name__.startswith(("Flux", "xFuserFlux")):
+                vae_scale_factor *= 2
+            self._set_model_parameters(
+                vae_scale_factor=vae_scale_factor,
+                backbone_patch_size=pipeline.transformer.config.patch_size,
+                backbone_in_channel=pipeline.transformer.config.in_channels,
+                backbone_inner_dim=pipeline.transformer.config.num_attention_heads
+                * pipeline.transformer.config.attention_head_dim,
+            )
+
+    def has_attention_schedule(self) -> bool:
+        """True if a per-step attention schedule is active (e.g. for warmup/compile logic)."""
+        return self.attention_schedule is not None
+
+    def has_gemm_schedule(self) -> bool:
+        """True if a per-step GEMM precision schedule is active (e.g. for warmup/compile logic)."""
+        return self.gemm_schedule is not None
+
+    def reset_vsa_schedule_state(self, num_inference_steps: int) -> None:
+        """Reset AITER VSA's denoising schedule at a pipeline-run boundary."""
+        if num_inference_steps <= 0:
+            raise ValueError("VSA num_inference_steps must be positive.")
+        self._vsa_denoising_step = -1
+        self._vsa_last_timestep = None
+        self._vsa_num_steps = int(num_inference_steps)
+
+    def advance_vsa_schedule(self, timestep: float) -> Tuple[int, int]:
+        """Advance AITER VSA once for each distinct denoising timestep."""
+        num_steps = self._vsa_num_steps
+        if num_steps is None:
+            num_steps = int(self.input_config.num_inference_steps)
+        if self._vsa_last_timestep is None or timestep != self._vsa_last_timestep:
+            self._vsa_denoising_step = (self._vsa_denoising_step + 1) % max(num_steps, 1)
+            self._vsa_last_timestep = timestep
+        return self._vsa_denoising_step, num_steps
+
+    def _get_active_total_steps(self) -> Optional[int]:
+        attn_steps = self.schedule_total_steps
+        gemm_steps = self.gemm_schedule_total_steps
+        if attn_steps is not None and gemm_steps is not None and attn_steps != gemm_steps:
+            raise RuntimeError(
+                f"Attention and GEMM schedules must use the same total steps; got {attn_steps} and {gemm_steps}."
+            )
+        return attn_steps or gemm_steps
+
+    def increment_step_counter(self):
+        """
+        Advance the denoising step and set per-step scheduled backends/modes when active.
+        When the entire denoising process is over, the step counter is reset to 0.
+        """
+        if self.step_counter is None:
+            return
+
+        active_total_steps = self._get_active_total_steps()
+        if active_total_steps is None:
+            return
+
+        current_step = self.step_counter
+        if self.attention_schedule is not None:
+            self.attention_backend = self.attention_schedule.get_backend(current_step)
+        if self.gemm_schedule is not None:
+            self.use_high_precision_gemm = self.gemm_schedule.is_high_precision(current_step)
+
+        self.step_counter = self.step_counter + 1
+
+        if self.step_counter >= active_total_steps:
+            self.step_counter = 0
+
+    def set_attention_schedule(
+        self,
+        attention_schedule: AttentionSchedule,
+        total_steps: int,
+    ) -> None:
+        """
+        Set a per-step attention schedule.
+        When set, increment_step_counter() will use the attention_schedule to set attention_backend each step.
+        """
+        for backend in set(attention_schedule.backends):
+            self._check_if_backend_compatible_with_current_configuration(backend)
+        self.attention_schedule = attention_schedule
+        self.schedule_total_steps = torch.tensor(total_steps, dtype=torch.int)
+        self.step_counter = torch.tensor(0, dtype=torch.int)
+        warn_once(
+            logger,
+            "Per-step attention schedule over %d steps: %s.",
+            total_steps,
+            _summarise_schedule(attention_schedule.backends),
+        )
+        self._warn_if_low_precision(*set(attention_schedule.backends))
+
+    def set_gemm_schedule(
+        self,
+        gemm_schedule: GemmPrecisionSchedule,
+        total_steps: int,
+    ) -> None:
+        """
+        Set a per-step GEMM precision schedule.
+        When set, increment_step_counter() will update use_high_precision_gemm each step.
+        """
+        self.gemm_schedule = gemm_schedule
+        self.gemm_schedule_total_steps = torch.tensor(total_steps, dtype=torch.int)
+        self.step_counter = torch.tensor(0, dtype=torch.int)
+        warn_once(logger, "Per-step GEMM schedule enabled (total_steps=%d).", total_steps)
+
+    def set_input_parameters(
+        self,
+        height: Optional[int] = None,
+        width: Optional[int] = None,
+        batch_size: Optional[int] = None,
+        num_inference_steps: Optional[int] = None,
+        seed: Optional[int] = None,
+        max_condition_sequence_length: Optional[int] = None,
+        split_text_embed_in_sp: bool = True,
+        split_latents_by_rows: bool = True,
+    ):
+        """Record the request's input parameters.
+
+        ``split_latents_by_rows`` says whether the caller splits the latents
+        across sequence-parallel ranks (and PipeFusion patches) by latent row,
+        using the patch metadata computed here, as the xFuser pipelines do.
+        That needs the latent row count to be divisible by the sequence
+        parallel degree. Callers whose transformer shards (and pads) the token
+        sequence itself pass ``False``, so any height is accepted.
+        """
+        self.input_config.num_inference_steps = num_inference_steps or self.input_config.num_inference_steps
+        self.max_condition_sequence_length = max_condition_sequence_length
+        self.split_text_embed_in_sp = split_text_embed_in_sp
+        self.text_embed_sp_pad = 0
+        if seed is not None and seed != self.input_config.seed:
+            self.input_config.seed = seed
+            set_random_seed(seed)
+        if (
+            not self.ready
+            or (height and self.input_config.height != height)
+            or (width and self.input_config.width != width)
+            or (batch_size and self.input_config.batch_size != batch_size)
+            or split_latents_by_rows != self.split_latents_by_rows
+        ):
+            self.split_latents_by_rows = split_latents_by_rows
+            self._input_size_change(height, width, batch_size)
+        else:
+            self._reset_recv_buffer()
+
+        self.ready = True
+
+    def set_video_input_parameters(
+        self,
+        height: Optional[int] = None,
+        width: Optional[int] = None,
+        num_frames: Optional[int] = None,
+        batch_size: Optional[int] = None,
+        num_inference_steps: Optional[int] = None,
+        seed: Optional[int] = None,
+        split_text_embed_in_sp: bool = True,
+    ):
+        self.input_config.num_inference_steps = num_inference_steps or self.input_config.num_inference_steps
+        self.split_text_embed_in_sp = split_text_embed_in_sp
+        if seed is not None and seed != self.input_config.seed:
+            self.input_config.seed = seed
+            set_random_seed(seed)
+        if (
+            not self.ready
+            or (height and self.input_config.height != height)
+            or (width and self.input_config.width != width)
+            or (num_frames and self.input_config.num_frames != num_frames)
+            or (batch_size and self.input_config.batch_size != batch_size)
+        ):
+            self._video_input_size_change(height, width, num_frames, batch_size)
+        else:
+            self._reset_recv_buffer()
+
+        self.ready = True
+
+    def _set_cogvideox_parameters(
+        self,
+        vae_scale_factor_spatial: int,
+        vae_scale_factor_temporal: int,
+        backbone_patch_size: int,
+        backbone_inner_dim: int,
+        backbone_in_channel: int,
+    ):
+        self.vae_scale_factor_spatial = vae_scale_factor_spatial
+        self.vae_scale_factor_temporal = vae_scale_factor_temporal
+        self.backbone_patch_size = backbone_patch_size
+        self.backbone_inner_dim = backbone_inner_dim
+        self.backbone_in_channel = backbone_in_channel
+
+    def set_patched_mode(self, patch_mode: bool):
+        self.patch_mode = patch_mode
+        self.pipeline_patch_idx = 0
+
+    def next_patch(self):
+        if self.patch_mode:
+            self.pipeline_patch_idx += 1
+            if self.pipeline_patch_idx == self.num_pipeline_patch:
+                self.pipeline_patch_idx = 0
+        else:
+            self.pipeline_patch_idx = 0
+
+    def _check_model_and_parallel_config(
+        self,
+        pipeline: DiffusionPipeline,
+        parallel_config: ParallelConfig,
+    ):
+        num_heads = self._get_model_attention_heads(pipeline)
+        ulysses_degree = parallel_config.sp_config.ulysses_degree
+        if num_heads % ulysses_degree != 0 or num_heads < ulysses_degree:
+            raise RuntimeError(
+                f"transformer backbone has {num_heads} heads, which is not "
+                f"divisible by or smaller than ulysses_degree "
+                f"{ulysses_degree}."
+            )
+
+    def _get_model_attention_heads(self, pipeline: DiffusionPipeline) -> int:
+        # Allows models to override their number of attention heads, for Ulysses Anything
+        if hasattr(pipeline.transformer.config, "num_attention_heads"):
+            return pipeline.transformer.config.num_attention_heads
+        elif "num_attention_heads" in pipeline.transformer.config:
+            return pipeline.transformer.config.num_attention_heads
+        elif "n_heads" in pipeline.transformer.config:
+            return pipeline.transformer.config.n_heads
+        else:
+            raise RuntimeError(
+                "Cannot find the number of attention heads in transformer config. Model is not supported."
+            )
+
+    def _set_model_parameters(
+        self,
+        vae_scale_factor: int,
+        backbone_patch_size: int,
+        backbone_inner_dim: int,
+        backbone_in_channel: int,
+    ):
+        self.vae_scale_factor = vae_scale_factor
+        self.backbone_patch_size = backbone_patch_size
+        self.backbone_inner_dim = backbone_inner_dim
+        self.backbone_in_channel = backbone_in_channel
+
+    def _input_size_change(
+        self,
+        height: Optional[int] = None,
+        width: Optional[int] = None,
+        batch_size: Optional[int] = None,
+    ):
+        self.input_config.height = height or self.input_config.height
+        self.input_config.width = width or self.input_config.width
+        self.input_config.batch_size = batch_size or self.input_config.batch_size
+        self._calc_patches_metadata(self.split_latents_by_rows)
+        self._reset_recv_buffer()
+
+    def _video_input_size_change(
+        self,
+        height: Optional[int] = None,
+        width: Optional[int] = None,
+        num_frames: Optional[int] = None,
+        batch_size: Optional[int] = None,
+    ):
+        self.input_config.height = height or self.input_config.height
+        self.input_config.width = width or self.input_config.width
+        self.input_config.num_frames = num_frames or self.input_config.num_frames
+        self.input_config.batch_size = batch_size or self.input_config.batch_size
+        if self.cogvideox:
+            self._calc_cogvideox_patches_metadata()
+        elif self.consisid:
+            self._calc_consisid_patches_metadata()
+        elif self.hunyuan_video:
+            # TODO: implement the hunyuan video patches metadata
+            pass
+        else:
+            self._calc_patches_metadata()
+        self._reset_recv_buffer()
+
+    def _calc_patches_metadata(self, split_latents_by_rows: bool = True):
+        num_sp_patches = get_sequence_parallel_world_size()
+        sp_patch_idx = get_sequence_parallel_rank()
+        patch_size = self.backbone_patch_size
+        vae_scale_factor = self.vae_scale_factor
+        latents_height = self.input_config.height // vae_scale_factor
+        latents_width = self.input_config.width // vae_scale_factor
+
+        if latents_height % num_sp_patches != 0:
+            if split_latents_by_rows:
+                raise ValueError("The height of the input is not divisible by the number of sequence parallel devices")
+            # The transformer shards the token sequence itself, so the row
+            # patches below are never read; leave them unset rather than
+            # describe a split that cannot exist.
+            self.num_pipeline_patch = self.parallel_config.pp_config.num_pipeline_patch
+            self.pp_patches_height = None
+            self.pp_patches_start_idx_local = None
+            self.pp_patches_start_end_idx_global = None
+            self.pp_patches_token_start_idx_local = None
+            self.pp_patches_token_start_end_idx_global = None
+            self.pp_patches_token_num = None
+            return
+
+        self.num_pipeline_patch = self.parallel_config.pp_config.num_pipeline_patch
+        # Pipeline patches
+        pipeline_patches_height = (latents_height + self.num_pipeline_patch - 1) // self.num_pipeline_patch
+        # make sure pipeline_patches_height is a multiple of (num_sp_patches * patch_size)
+        pipeline_patches_height = (
+            (pipeline_patches_height + (num_sp_patches * patch_size) - 1) // (patch_size * num_sp_patches)
+        ) * (patch_size * num_sp_patches)
+        # get the number of pipeline that matches patch height requirements
+        num_pipeline_patch = (latents_height + pipeline_patches_height - 1) // pipeline_patches_height
+        if num_pipeline_patch != self.num_pipeline_patch:
+            warn_once(
+                logger,
+                f"Pipeline patches num changed from "
+                f"{self.num_pipeline_patch} to {num_pipeline_patch} due "
+                f"to input size and parallelisation requirements",
+            )
+        pipeline_patches_height_list = [pipeline_patches_height for _ in range(num_pipeline_patch - 1)]
+        the_last_pp_patch_height = latents_height - pipeline_patches_height * (num_pipeline_patch - 1)
+        if the_last_pp_patch_height % (patch_size * num_sp_patches) != 0:
+            raise ValueError(
+                f"The height of the last pipeline patch is {the_last_pp_patch_height}, "
+                f"which is not a multiple of (patch_size * num_sp_patches): "
+                f"{patch_size} * {num_sp_patches}. Please try to adjust 'num_pipeline_patches "
+                f"or sp_degree argument so that the condition are met "
+            )
+        pipeline_patches_height_list.append(the_last_pp_patch_height)
+
+        # Sequence parallel patches
+        # len: sp_degree * num_pipeline_patches
+        flatten_patches_height = [
+            pp_patch_height // num_sp_patches
+            for _ in range(num_sp_patches)
+            for pp_patch_height in pipeline_patches_height_list
+        ]
+        flatten_patches_start_idx = [0] + [
+            sum(flatten_patches_height[:i]) for i in range(1, len(flatten_patches_height) + 1)
+        ]
+        pp_sp_patches_height = [
+            flatten_patches_height[pp_patch_idx * num_sp_patches : (pp_patch_idx + 1) * num_sp_patches]
+            for pp_patch_idx in range(num_pipeline_patch)
+        ]
+        pp_sp_patches_start_idx = [
+            flatten_patches_start_idx[pp_patch_idx * num_sp_patches : (pp_patch_idx + 1) * num_sp_patches + 1]
+            for pp_patch_idx in range(num_pipeline_patch)
+        ]
+
+        pp_patches_height = [sp_patches_height[sp_patch_idx] for sp_patches_height in pp_sp_patches_height]
+        pp_patches_start_idx_local = [0] + [sum(pp_patches_height[:i]) for i in range(1, len(pp_patches_height) + 1)]
+        pp_patches_start_end_idx_global = [
+            sp_patches_start_idx[sp_patch_idx : sp_patch_idx + 2] for sp_patches_start_idx in pp_sp_patches_start_idx
+        ]
+        pp_patches_token_start_end_idx_global = [
+            [
+                (latents_width // patch_size) * (start_idx // patch_size),
+                (latents_width // patch_size) * (end_idx // patch_size),
+            ]
+            for start_idx, end_idx in pp_patches_start_end_idx_global
+        ]
+        pp_patches_token_num = [end - start for start, end in pp_patches_token_start_end_idx_global]
+        pp_patches_token_start_idx_local = [sum(pp_patches_token_num[:i]) for i in range(len(pp_patches_token_num) + 1)]
+        self.num_pipeline_patch = num_pipeline_patch
+        self.pp_patches_height = pp_patches_height
+        self.pp_patches_start_idx_local = pp_patches_start_idx_local
+        self.pp_patches_start_end_idx_global = pp_patches_start_end_idx_global
+        self.pp_patches_token_start_idx_local = pp_patches_token_start_idx_local
+        self.pp_patches_token_start_end_idx_global = pp_patches_token_start_end_idx_global
+        self.pp_patches_token_num = pp_patches_token_num
+
+    def _calc_cogvideox_patches_metadata(self):
+        num_sp_patches = get_sequence_parallel_world_size()
+        sp_patch_idx = get_sequence_parallel_rank()
+        patch_size = self.backbone_patch_size
+        vae_scale_factor_spatial = self.vae_scale_factor_spatial
+        latents_height = self.input_config.height // vae_scale_factor_spatial
+        latents_width = self.input_config.width // vae_scale_factor_spatial
+
+        if latents_height % num_sp_patches != 0:
+            raise ValueError("The height of the input is not divisible by the number of sequence parallel devices")
+
+        self.num_pipeline_patch = self.parallel_config.pp_config.num_pipeline_patch
+        # Pipeline patches
+        pipeline_patches_height = (latents_height + self.num_pipeline_patch - 1) // self.num_pipeline_patch
+        # make sure pipeline_patches_height is a multiple of (num_sp_patches * patch_size)
+        pipeline_patches_height = (
+            (pipeline_patches_height + (num_sp_patches * patch_size) - 1) // (patch_size * num_sp_patches)
+        ) * (patch_size * num_sp_patches)
+        # get the number of pipeline that matches patch height requirements
+        num_pipeline_patch = (latents_height + pipeline_patches_height - 1) // pipeline_patches_height
+        if num_pipeline_patch != self.num_pipeline_patch:
+            warn_once(
+                logger,
+                f"Pipeline patches num changed from "
+                f"{self.num_pipeline_patch} to {num_pipeline_patch} due "
+                f"to input size and parallelisation requirements",
+            )
+        pipeline_patches_height_list = [pipeline_patches_height for _ in range(num_pipeline_patch - 1)]
+        the_last_pp_patch_height = latents_height - pipeline_patches_height * (num_pipeline_patch - 1)
+        if the_last_pp_patch_height % (patch_size * num_sp_patches) != 0:
+            raise ValueError(
+                f"The height of the last pipeline patch is {the_last_pp_patch_height}, "
+                f"which is not a multiple of (patch_size * num_sp_patches): "
+                f"{patch_size} * {num_sp_patches}. Please try to adjust 'num_pipeline_patches "
+                f"or sp_degree argument so that the condition are met "
+            )
+        pipeline_patches_height_list.append(the_last_pp_patch_height)
+
+        # Sequence parallel patches
+        # len: sp_degree * num_pipeline_patches
+        flatten_patches_height = [
+            pp_patch_height // num_sp_patches
+            for _ in range(num_sp_patches)
+            for pp_patch_height in pipeline_patches_height_list
+        ]
+        flatten_patches_start_idx = [0] + [
+            sum(flatten_patches_height[:i]) for i in range(1, len(flatten_patches_height) + 1)
+        ]
+        pp_sp_patches_height = [
+            flatten_patches_height[pp_patch_idx * num_sp_patches : (pp_patch_idx + 1) * num_sp_patches]
+            for pp_patch_idx in range(num_pipeline_patch)
+        ]
+        pp_sp_patches_start_idx = [
+            flatten_patches_start_idx[pp_patch_idx * num_sp_patches : (pp_patch_idx + 1) * num_sp_patches + 1]
+            for pp_patch_idx in range(num_pipeline_patch)
+        ]
+
+        pp_patches_height = [sp_patches_height[sp_patch_idx] for sp_patches_height in pp_sp_patches_height]
+        pp_patches_start_idx_local = [0] + [sum(pp_patches_height[:i]) for i in range(1, len(pp_patches_height) + 1)]
+        pp_patches_start_end_idx_global = [
+            sp_patches_start_idx[sp_patch_idx : sp_patch_idx + 2] for sp_patches_start_idx in pp_sp_patches_start_idx
+        ]
+        pp_patches_token_start_end_idx_global = [
+            [
+                (latents_width // patch_size) * (start_idx // patch_size),
+                (latents_width // patch_size) * (end_idx // patch_size),
+            ]
+            for start_idx, end_idx in pp_patches_start_end_idx_global
+        ]
+        pp_patches_token_num = [end - start for start, end in pp_patches_token_start_end_idx_global]
+        pp_patches_token_start_idx_local = [sum(pp_patches_token_num[:i]) for i in range(len(pp_patches_token_num) + 1)]
+        self.num_pipeline_patch = num_pipeline_patch
+        self.pp_patches_height = pp_patches_height
+        self.pp_patches_start_idx_local = pp_patches_start_idx_local
+        self.pp_patches_start_end_idx_global = pp_patches_start_end_idx_global
+        self.pp_patches_token_start_idx_local = pp_patches_token_start_idx_local
+        self.pp_patches_token_start_end_idx_global = pp_patches_token_start_end_idx_global
+        self.pp_patches_token_num = pp_patches_token_num
+
+    def _calc_consisid_patches_metadata(self):
+        num_sp_patches = get_sequence_parallel_world_size()
+        sp_patch_idx = get_sequence_parallel_rank()
+        patch_size = self.backbone_patch_size
+        vae_scale_factor_spatial = self.vae_scale_factor_spatial
+        latents_height = self.input_config.height // vae_scale_factor_spatial
+        latents_width = self.input_config.width // vae_scale_factor_spatial
+
+        if latents_height % num_sp_patches != 0:
+            raise ValueError("The height of the input is not divisible by the number of sequence parallel devices")
+
+        self.num_pipeline_patch = self.parallel_config.pp_config.num_pipeline_patch
+        # Pipeline patches
+        pipeline_patches_height = (latents_height + self.num_pipeline_patch - 1) // self.num_pipeline_patch
+        # make sure pipeline_patches_height is a multiple of (num_sp_patches * patch_size)
+        pipeline_patches_height = (
+            (pipeline_patches_height + (num_sp_patches * patch_size) - 1) // (patch_size * num_sp_patches)
+        ) * (patch_size * num_sp_patches)
+        # get the number of pipeline that matches patch height requirements
+        num_pipeline_patch = (latents_height + pipeline_patches_height - 1) // pipeline_patches_height
+        if num_pipeline_patch != self.num_pipeline_patch:
+            warn_once(
+                logger,
+                f"Pipeline patches num changed from "
+                f"{self.num_pipeline_patch} to {num_pipeline_patch} due "
+                f"to input size and parallelisation requirements",
+            )
+        pipeline_patches_height_list = [pipeline_patches_height for _ in range(num_pipeline_patch - 1)]
+        the_last_pp_patch_height = latents_height - pipeline_patches_height * (num_pipeline_patch - 1)
+        if the_last_pp_patch_height % (patch_size * num_sp_patches) != 0:
+            raise ValueError(
+                f"The height of the last pipeline patch is {the_last_pp_patch_height}, "
+                f"which is not a multiple of (patch_size * num_sp_patches): "
+                f"{patch_size} * {num_sp_patches}. Please try to adjust 'num_pipeline_patches "
+                f"or sp_degree argument so that the condition are met "
+            )
+        pipeline_patches_height_list.append(the_last_pp_patch_height)
+
+        # Sequence parallel patches
+        # len: sp_degree * num_pipeline_patches
+        flatten_patches_height = [
+            pp_patch_height // num_sp_patches
+            for _ in range(num_sp_patches)
+            for pp_patch_height in pipeline_patches_height_list
+        ]
+        flatten_patches_start_idx = [0] + [
+            sum(flatten_patches_height[:i]) for i in range(1, len(flatten_patches_height) + 1)
+        ]
+        pp_sp_patches_height = [
+            flatten_patches_height[pp_patch_idx * num_sp_patches : (pp_patch_idx + 1) * num_sp_patches]
+            for pp_patch_idx in range(num_pipeline_patch)
+        ]
+        pp_sp_patches_start_idx = [
+            flatten_patches_start_idx[pp_patch_idx * num_sp_patches : (pp_patch_idx + 1) * num_sp_patches + 1]
+            for pp_patch_idx in range(num_pipeline_patch)
+        ]
+
+        pp_patches_height = [sp_patches_height[sp_patch_idx] for sp_patches_height in pp_sp_patches_height]
+        pp_patches_start_idx_local = [0] + [sum(pp_patches_height[:i]) for i in range(1, len(pp_patches_height) + 1)]
+        pp_patches_start_end_idx_global = [
+            sp_patches_start_idx[sp_patch_idx : sp_patch_idx + 2] for sp_patches_start_idx in pp_sp_patches_start_idx
+        ]
+        pp_patches_token_start_end_idx_global = [
+            [
+                (latents_width // patch_size) * (start_idx // patch_size),
+                (latents_width // patch_size) * (end_idx // patch_size),
+            ]
+            for start_idx, end_idx in pp_patches_start_end_idx_global
+        ]
+        pp_patches_token_num = [end - start for start, end in pp_patches_token_start_end_idx_global]
+        pp_patches_token_start_idx_local = [sum(pp_patches_token_num[:i]) for i in range(len(pp_patches_token_num) + 1)]
+        self.num_pipeline_patch = num_pipeline_patch
+        self.pp_patches_height = pp_patches_height
+        self.pp_patches_start_idx_local = pp_patches_start_idx_local
+        self.pp_patches_start_end_idx_global = pp_patches_start_end_idx_global
+        self.pp_patches_token_start_idx_local = pp_patches_token_start_idx_local
+        self.pp_patches_token_start_end_idx_global = pp_patches_token_start_end_idx_global
+        self.pp_patches_token_num = pp_patches_token_num
+
+    def _reset_recv_buffer(self):
+        # Called on every request so stages renegotiate shapes that changed.
+        get_pp_group().reset_buffer()
+        get_pp_group().set_config(dtype=self.runtime_config.dtype)
+
+    def _reset_recv_skip_buffer(self, num_blocks_per_stage, num_images_per_prompt=1, classifier_free_guidance=True):
+        batch_size = self.input_config.batch_size * num_images_per_prompt
+        if classifier_free_guidance:
+            batch_size = batch_size * (2 // self.parallel_config.cfg_degree)
+        hidden_dim = self.backbone_inner_dim
+        num_patches_tokens = [end - start for start, end in self.pp_patches_token_start_end_idx_global]
+        patches_shape = [[num_blocks_per_stage, batch_size, tokens, hidden_dim] for tokens in num_patches_tokens]
+        feature_map_shape = [
+            num_blocks_per_stage,
+            batch_size,
+            sum(num_patches_tokens),
+            hidden_dim,
+        ]
+        # reset pipeline communicator buffer
+        get_pp_group().set_skip_tensor_recv_buffer(
+            patches_shape_list=patches_shape,
+            feature_map_shape=feature_map_shape,
+        )
+
+
+class ExternalRuntimeState(RuntimeState):
+    """
+    Runtime state for running xDiT components outside xDiT.
+    This can be used to test individual components in tests without
+    having to setup a full distributed environment.
+    """
+
+    def __init__(self, config: Optional[EngineConfig] = None):
+        if config is None:
+            config = _default_engine_config()
+        super().__init__(config)
+
+    def _check_distributed_env(self, parallel_config):
+        pass
+
+
+def _default_engine_config() -> EngineConfig:
+    """An engine config whose parallel degrees describe the processes in place.
+
+    The default xFuserArgs describe a single process. On more ranks, take the
+    degrees of the model-parallel groups when they are initialized; otherwise
+    every rank runs the whole model, as one data-parallel replica.
+    """
+    args = xFuserArgs()
+    if model_parallel_is_initialized():
+        args.data_parallel_degree = get_data_parallel_world_size()
+        args.use_cfg_parallel = get_classifier_free_guidance_world_size() > 1
+        # The sequence-parallel group splits into Ulysses and ring subgroups
+        # only where yunchang can build them; its size is the product either way.
+        args.ring_degree = get_ring_parallel_world_size()
+        args.ulysses_degree = get_sequence_parallel_world_size() // args.ring_degree
+        args.pipefusion_parallel_degree = get_pipeline_parallel_world_size()
+        args.tensor_parallel_degree = get_tensor_model_parallel_world_size()
+        args.fully_shard_degree = get_fully_shard_world_size()
+        dit_world_size = get_dit_world_size()
+        vae_ranks = torch.distributed.get_world_size() - dit_world_size
+        if vae_ranks:
+            # Dedicated VAE ranks beyond the DiT ranks.
+            args.dit_parallel_size = dit_world_size
+            args.vae_parallel_size = vae_ranks
+            args.use_parallel_vae = True
+    elif torch.distributed.is_initialized():
+        args.data_parallel_degree = torch.distributed.get_world_size()
+    config, _ = args.create_config()
+    return config
+
+
+# _RUNTIME: Optional[RuntimeState] = None
+# TODO: change to RuntimeState after implementing the unet
+_RUNTIME: Optional[DiTRuntimeState] = None
+
+
+def runtime_state_is_initialized():
+    return _RUNTIME is not None
+
+
+def get_runtime_state():
+    assert _RUNTIME is not None, "Runtime state has not been initialized."
+    return _RUNTIME
+
+
+def initialize_runtime_state(
+    pipeline: Optional[DiffusionPipeline] = None, engine_config: Optional[EngineConfig] = None
+):
+    global _RUNTIME
+    if _RUNTIME is not None:
+        warn_once(logger, "Runtime state is already initialized, reinitializing with pipeline...")
+    if hasattr(pipeline, "transformer"):
+        _RUNTIME = DiTRuntimeState(pipeline=pipeline, config=engine_config)
+    elif hasattr(pipeline, "unet"):
+        _RUNTIME = UnetRuntimeState(pipeline=pipeline, config=engine_config)
+    elif not pipeline:
+        _RUNTIME = ExternalRuntimeState(engine_config)

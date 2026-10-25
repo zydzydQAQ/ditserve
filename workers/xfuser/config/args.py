@@ -1,0 +1,1627 @@
+import argparse
+import dataclasses
+import math
+import os
+import sys
+import warnings
+from dataclasses import dataclass
+from typing import Optional, List, Tuple, Union
+
+import torch
+import torch.distributed
+
+from xfuser.logger import init_logger
+from xfuser.core.distributed import init_distributed_environment
+from xfuser.config.gemm import (
+    GemmQuantizationSpec,
+    load_gemm_config,
+    parse_gemm_quantization,
+)
+from xfuser.config.config import (
+    DEFAULT_FP8_COMMS_SAFETY_FACTOR,
+    EngineConfig,
+    FastAttnConfig,
+    ParallelConfig,
+    TensorParallelConfig,
+    PipeFusionParallelConfig,
+    SequenceParallelConfig,
+    DataParallelConfig,
+    FullyShardConfig,
+    VaeParallelConfig,
+    ModelConfig,
+    InputConfig,
+    RuntimeConfig,
+)
+
+logger = init_logger(__name__)
+
+
+class FlexibleArgumentParser(argparse.ArgumentParser):
+    """ArgumentParser that allows both underscore and dash in names."""
+
+    def _normalize_name(self, name: str) -> str:
+        # First, try the standard normalization (all hyphens to underscores)
+        fully_normalized = "--" + name[len("--") :].replace("-", "_")
+        if fully_normalized in self._option_string_actions:
+            return fully_normalized
+
+        # If not found, check if it's a BooleanOptionalAction (starts with --no-)
+        if name.startswith("--no-"):
+            no_dash_normalized = "--no-" + name[len("--no-") :].replace("-", "_")
+            if no_dash_normalized in self._option_string_actions:
+                return no_dash_normalized
+
+        return fully_normalized
+
+    def parse_args(self, args=None, namespace=None):
+        if args is None:
+            args = sys.argv[1:]
+
+        processed_args = []
+        for arg in args:
+            if arg.startswith("--"):
+                if "=" in arg:
+                    key, value = arg.split("=", 1)
+                    processed_args.append(f"{self._normalize_name(key)}={value}")
+                else:
+                    processed_args.append(self._normalize_name(arg))
+            else:
+                processed_args.append(arg)
+
+        return super().parse_args(processed_args, namespace)
+
+
+def nullable_str(val: str):
+    if not val or val == "None":
+        return None
+    return val
+
+
+_DETERMINISM_CHECK_HELP = (
+    "Set to a positive failure threshold to compare every timed iteration with "
+    "the first using exact equality, not a tolerance. The failure handler is "
+    "called for each rank enabled by --determinism_check_report_ranks on each "
+    "divergence until the threshold is reached. "
+    "Disabled at 0 or below. Enabling retains and compares full output payloads, "
+    "which adds memory, synchronization, and transfer overhead."
+)
+
+_DETERMINISM_CHECK_REPORT_RANKS_DEFAULT = "last"
+
+_DETERMINISM_CHECK_REPORT_RANKS_HELP = (
+    "Ranks on which determinism failures save serialized outputs. Accepts a "
+    "comma-separated list of integers, an empty value, or one of: all, first, "
+    "last, none. Empty and none select no ranks. "
+    f"Defaults to {_DETERMINISM_CHECK_REPORT_RANKS_DEFAULT}. Many failures "
+    "may produce many large output files; restrict output to selected ranks "
+    "based on model specifics. The none value is useful with a positive "
+    "--determinism_check when only log messages, but no files, are needed."
+)
+
+
+def _normalize_determinism_check_report_ranks(value: str) -> frozenset[int]:
+    """Resolve a rank string; ``none`` and empty values select no ranks."""
+    try:
+        world_size = int(os.environ.get("WORLD_SIZE", "1"))
+    except ValueError as exc:
+        raise ValueError("WORLD_SIZE must be a positive integer") from exc
+    if world_size <= 0:
+        raise ValueError("WORLD_SIZE must be a positive integer")
+    if not isinstance(value, str):
+        raise TypeError("determinism_check_report_ranks must be a string")
+
+    value = value.strip()
+    if value == "all":
+        ranks = frozenset(range(world_size))
+    elif value == "first":
+        ranks = frozenset({0})
+    elif value == "last":
+        ranks = frozenset({world_size - 1})
+    elif value in ("none", ""):
+        ranks = frozenset()
+    else:
+        parts = [p.strip() for p in value.split(",")]
+        if any(not part for part in parts):
+            raise ValueError(
+                "determinism_check_report_ranks must be a comma-separated list "
+                "of integers, empty, or one of: all, first, last, none"
+            )
+        try:
+            ranks = frozenset(int(part) for part in parts)
+        except ValueError as exc:
+            raise ValueError(
+                "determinism_check_report_ranks must be a comma-separated list "
+                "of integers, empty, or one of: all, first, last, none"
+            ) from exc
+
+    invalid_ranks = sorted(rank for rank in ranks if rank < 0 or rank >= world_size)
+    if invalid_ranks:
+        raise ValueError(f"determinism_check_report_ranks contains ranks outside 0..{world_size - 1}: {invalid_ranks}")
+    return ranks
+
+
+def _add_gemm_profile_args(parser) -> None:
+    parser.add_argument(
+        "--gemm_quantization",
+        type=parse_gemm_quantization,
+        default=None,
+        help=(
+            "Transformer GEMM precision: none, fp8, fp4, fp6, a6w4, int8, or a supported low=fp4,high=<format> pair."
+        ),
+    )
+    parser.add_argument(
+        "--gemm_config",
+        type=nullable_str,
+        default=None,
+        help="Optional YAML file with advanced GEMM target or schedule settings.",
+    )
+
+
+@dataclass
+class xFuserArgs:
+    """Arguments for xFuser engine."""
+
+    # Model arguments
+    model: str = ""
+    download_dir: Optional[str] = None
+    trust_remote_code: bool = False
+    lora_path: Optional[str] = None
+    lora_weight_name: Optional[str] = None
+    lora_scale: float = 1.0
+    # Runtime arguments
+    warmup_steps: int = 1
+    # use_cuda_graph: bool = True
+    use_parallel_vae: bool = False
+    # use_profiler: bool = False
+    use_torch_compile: bool = False
+    use_onediff: bool = False
+    # Parallel arguments
+    # data parallel
+    data_parallel_degree: int = 1
+    use_cfg_parallel: bool = False
+    # sequence parallel
+    shard_dit: Optional[bool] = False
+    ulysses_degree: Optional[int] = 1
+    ring_degree: Optional[int] = 1
+    # tensor parallel
+    tensor_parallel_degree: int = 1
+    text_encoder_tp_degree: int = 1
+    split_scheme: Optional[str] = "row"
+    # ray arguments
+    use_ray: bool = False
+    ray_world_size: int = 1
+    vae_parallel_size: int = 0
+    dit_parallel_size: int = 0
+    # pipefusion parallel
+    pipefusion_parallel_degree: int = 1
+    num_pipeline_patch: Optional[int] = None
+    attn_layer_num_for_pp: Optional[List[int]] = None
+    # Input arguments
+    height: int = 1024
+    width: int = 1024
+    num_frames: int = 49
+    num_inference_steps: int = 20
+    max_sequence_length: int = 256
+    img_file_path: Optional[str] = None
+    prompt: Union[str, List[str]] = ""
+    negative_prompt: Union[str, List[str]] = ""
+    no_use_resolution_binning: bool = False
+    seed: int = 42
+    output_type: str = "pil"
+    guidance_scale: float = 3.5
+    guidance_scale_2: Optional[float] = None
+    flow_shift: Optional[float] = None
+    enable_model_cpu_offload: bool = False
+    enable_sequential_cpu_offload: bool = False
+    enable_group_cpu_offload: bool = False
+    group_offload_low_cpu_mem: bool = False
+    enable_tiling: bool = False
+    enable_slicing: bool = False
+    vae_tile_size_height: Optional[int] = None
+    vae_tile_size_width: Optional[int] = None
+    vae_tile_overlap_height: Optional[int] = None
+    vae_tile_overlap_width: Optional[int] = None
+    # DiTFastAttn arguments
+    use_fast_attn: bool = False
+    n_calib: int = 8
+    threshold: float = 0.5
+    window_size: int = 64
+    coco_path: Optional[str] = None
+    use_cache: bool = False
+    use_teacache: bool = False
+    use_fbcache: bool = False
+    cache_method: Optional[str] = None
+    cache_config: Optional[str] = None
+    # Other arguments
+    use_fp8_t5_encoder: bool = False
+    shard_t5_encoder: bool = False
+    attention_backend: Optional[str] = None
+    cross_attention_backend: Optional[str] = None
+    gemm_quantization: Union[GemmQuantizationSpec, str, None] = None
+    gemm_config: Optional[str] = None
+    use_int8_gemms: bool = False
+    use_fp8_gemms: bool = False
+    use_fp8_text_encoder: bool = False
+    use_fp4_gemms: bool = False
+    # Internal compatibility bridge derived from gemm_quantization.
+    use_fp6_gemms: bool = False
+    use_a6w4_gemms: bool = False
+    fp8_precision_override_prefix_patterns: Optional[str] = None
+    fp8_precision_override_suffix_patterns: Optional[str] = None
+    use_fp8_comms: bool = False
+    fp8_comms_scale: Optional[float] = None
+    fp8_comms_safety_factor: float = DEFAULT_FP8_COMMS_SAFETY_FACTOR
+    gemm_high_precision_targets: str = "model"
+    gemm_high_precision_module_patterns: Optional[str] = None
+    gemm_high_precision_prefix_patterns: Optional[str] = None
+    gemm_high_precision_suffix_patterns: Optional[str] = None
+    # Model runner specific
+    num_iterations: int = 1
+    determinism_check: int = 0
+    determinism_check_report_ranks: str | frozenset[int] = "all"
+    profile: bool = False
+    profile_capture_phase: bool = False
+    profile_with_stack: bool = False
+    profile_wait: int = 2
+    profile_warmup: int = 2
+    profile_active: int = 1
+    warmup_calls: int = 0
+    output_directory: str = "."
+    input_images: Optional[List[str]] = None
+    resize_input_images: bool = False
+    task: Optional[str] = None
+    batch_size: Optional[int] = None
+    dataset_path: Optional[str] = None
+    use_fsdp: bool = False
+    fully_shard_degree: int = 1
+    fully_shard_components: Optional[List[str]] = None
+    reshard_after_forward: bool = True
+    memory_efficient_sharding: bool = False
+    memory_efficient_replicated_load: bool = False
+    use_vae_channels_last_format: bool = False
+    # Hybrid attention schedule
+    use_hybrid_attn_schedule: bool = False
+    hybrid_attn_low_precision_backend: Optional[str] = None
+    hybrid_attn_high_precision_backend: Optional[str] = None
+    num_hybrid_attn_high_precision_steps: Optional[int] = None
+    hybrid_attn_schedule: Optional[str] = None
+    # Hybrid GEMM schedule (FP8 high precision + FP4 low precision)
+    use_hybrid_gemm_schedule: bool = False
+    num_hybrid_gemm_high_precision_steps: Optional[int] = None
+    hybrid_gemm_schedule: Optional[str] = None
+    # SSTA arguments
+    use_ssta_sparse_text_to_image: Optional[bool] = False
+    # Sparge attention
+    spargeattn_reorder_sequence: bool = True
+    use_spargeattn_static_block_mask: bool = True
+    spargeattn_simthreshold: float = 0.3
+    spargeattn_cdfthreshold: float = 0.92
+    use_spargeattn_head_balance: bool = False
+    # Sol-Attn
+    sol_attn_tau: float = 0.2
+    sol_attn_thresh_type: str = "exact"
+    sol_attn_kv_splits: str = "auto"
+    sol_attn_sink_tokens: int = 0
+    sol_attn_sink_start: Optional[int] = None
+    # AITER CK-Tile VSA attention
+    vsa_block_size: int = 128
+    vsa_top_k: int = 1
+    vsa_top_k_ratio: float = 0.0
+    vsa_drop_rates: Optional[List[float]] = None
+    vsa_prob_threshold: float = 0.9
+    vsa_reorder_sequence: bool = True
+    use_vsa_static_block_mask: bool = True
+    use_vsa_first_frame_mask: bool = True
+    vsa_collect_density: bool = False
+    # Prism block-sparse attention (TRITON_BSA)
+    bsa_sparsity: float = 0.75
+    bsa_cdf_threshold: float = 0.2
+    # Distilled model weight paths
+    distilled_transformer_path: Optional[str] = None
+    distilled_transformer_2_path: Optional[str] = None
+    # Separate prompt for the audio stream of joint video-audio models
+    audio_prompt: Optional[str] = None
+
+    def __post_init__(self):
+        if not math.isfinite(self.lora_scale):
+            raise ValueError("lora_scale must be finite")
+        if not self.lora_path and (self.lora_weight_name or self.lora_scale != 1.0):
+            raise ValueError("lora_weight_name and lora_scale require lora_path")
+        self.determinism_check_report_ranks = _normalize_determinism_check_report_ranks(
+            self.determinism_check_report_ranks
+        )
+        if self.profile_with_stack and not self.profile:
+            logger.warning("--profile_with_stack has no effect without --profile; no profiles will be outputted.")
+        if self.fully_shard_components is not None:
+            self.fully_shard_components = list(dict.fromkeys(self.fully_shard_components))
+            if not self.fully_shard_components:
+                raise ValueError("--fully_shard_components requires at least one component")
+            if self.fully_shard_degree <= 1:
+                raise ValueError("--fully_shard_components requires --fully_shard_degree greater than 1")
+        self._resolve_gemm_quantization()
+        if self.cache_method is None:
+            if self.use_fbcache:
+                warnings.warn(
+                    "--use_fbcache is deprecated, use --cache_method fbcache",
+                    FutureWarning,
+                    stacklevel=2,
+                )
+                self.cache_method = "fbcache"
+            elif self.use_teacache:
+                warnings.warn(
+                    "--use_teacache is deprecated, use --cache_method teacache",
+                    FutureWarning,
+                    stacklevel=2,
+                )
+                self.cache_method = "teacache"
+
+    @property
+    def gemm_quantization_spec(self) -> GemmQuantizationSpec:
+        return self.gemm_quantization
+
+    def _warn_deprecated_gemm_options(
+        self,
+        names: tuple[str, ...],
+        *,
+        ignored: bool = False,
+    ) -> None:
+        if not names:
+            return
+        action = "ignored" if ignored else "used"
+        message = (
+            f"Deprecated GEMM option(s) {action}: "
+            + ", ".join(f"--{name}" for name in names)
+            + "; use --gemm_quantization and --gemm_config"
+        )
+        warnings.warn(message, FutureWarning, stacklevel=2)
+
+    def _resolve_gemm_quantization(self) -> None:
+        explicit_spec = self.gemm_quantization is not None
+        spec = GemmQuantizationSpec.parse(self.gemm_quantization)
+        legacy_formats = tuple(
+            name
+            for name in (
+                "use_fp8_gemms",
+                "use_fp4_gemms",
+                "use_int8_gemms",
+            )
+            if getattr(self, name)
+        )
+        legacy_patterns = tuple(
+            name
+            for name in (
+                "fp8_precision_override_prefix_patterns",
+                "fp8_precision_override_suffix_patterns",
+            )
+            if getattr(self, name) is not None
+        )
+
+        if not explicit_spec and (self.use_fp6_gemms or self.use_a6w4_gemms):
+            raise ValueError("MXFP6 and mixed-MXFP formats must be selected through gemm_quantization.")
+
+        if explicit_spec:
+            self._warn_deprecated_gemm_options(legacy_formats, ignored=True)
+            self.use_fp8_gemms = False
+            self.use_fp4_gemms = False
+            self.use_fp6_gemms = False
+            self.use_a6w4_gemms = False
+            self.use_int8_gemms = False
+            if spec.is_pure("fp8"):
+                self.use_fp8_gemms = True
+            elif spec.is_pure("fp4"):
+                self.use_fp4_gemms = True
+            elif spec.is_pure("fp6"):
+                self.use_fp6_gemms = True
+            elif spec.is_pure("a6w4"):
+                self.use_a6w4_gemms = True
+            elif spec.is_pure("int8"):
+                self.use_int8_gemms = True
+            elif spec.is_tiered:
+                self.use_fp4_gemms = True
+                self.use_fp6_gemms = spec.high == "fp6"
+                self.use_a6w4_gemms = spec.high == "a6w4"
+        else:
+            if self.use_fp4_gemms:
+                spec = GemmQuantizationSpec("fp4", "fp8")
+            elif self.use_fp8_gemms:
+                spec = GemmQuantizationSpec("fp8")
+            elif self.use_int8_gemms:
+                spec = GemmQuantizationSpec("int8")
+            self._warn_deprecated_gemm_options(legacy_formats)
+
+        self._gemm_config_loaded = False
+        if self.gemm_config is not None:
+            advanced = load_gemm_config(self.gemm_config)
+            if advanced.settings.get("hybrid_gemm_schedule") is not None and (
+                self.use_hybrid_gemm_schedule or self.num_hybrid_gemm_high_precision_steps is not None
+            ):
+                raise ValueError(
+                    "YAML hybrid_gemm_schedule cannot be combined with the simple hybrid GEMM schedule flags"
+                )
+            for name, value in advanced.settings.items():
+                setattr(self, name, value)
+            if self.hybrid_gemm_schedule is not None:
+                self.use_hybrid_gemm_schedule = True
+            if legacy_patterns:
+                self.fp8_precision_override_prefix_patterns = None
+                self.fp8_precision_override_suffix_patterns = None
+                self._warn_deprecated_gemm_options(legacy_patterns, ignored=True)
+            self._gemm_config_loaded = True
+            logger.info("Loaded GEMM configuration from %s", advanced.path)
+        else:
+            self._warn_deprecated_gemm_options(legacy_patterns)
+
+        self.gemm_quantization = spec
+
+    @staticmethod
+    def add_cli_args(parser: FlexibleArgumentParser):
+        """Shared CLI arguments for xFuser engine."""
+        # Model arguments
+        model_group = parser.add_argument_group("Model Options")
+        model_group.add_argument(
+            "--model",
+            type=str,
+            default="PixArt-alpha/PixArt-XL-2-1024-MS",
+            help="Name or path of the huggingface model to use.",
+            required=True,
+        )
+        model_group.add_argument(
+            "--download-dir",
+            type=nullable_str,
+            default=xFuserArgs.download_dir,
+            help="Directory to download and load the weights, default to the default cache dir of huggingface.",
+        )
+        model_group.add_argument(
+            "--trust-remote-code",
+            action="store_true",
+            help="Trust remote code from huggingface.",
+        )
+        # Runtime arguments
+        runtime_group = parser.add_argument_group("Runtime Options")
+        runtime_group.add_argument("--warmup_steps", type=int, default=1, help="Warmup steps in generation.")
+        # runtime_group.add_argument("--use_cuda_graph", action="store_true")
+        runtime_group.add_argument("--use_parallel_vae", action="store_true")
+        # runtime_group.add_argument("--use_profiler", action="store_true")
+        runtime_group.add_argument(
+            "--use_torch_compile",
+            action="store_true",
+            help="Enable torch.compile to accelerate inference in a single card",
+        )
+        runtime_group.add_argument(
+            "--use_onediff",
+            action="store_true",
+            help="Enable onediff to accelerate inference in a single card",
+        )
+        runtime_group.add_argument(
+            "--use_teacache",
+            action="store_true",
+            help="[Deprecated] Use --cache_method teacache instead.",
+        )
+        runtime_group.add_argument(
+            "--use_fbcache",
+            action="store_true",
+            help="[Deprecated] Use --cache_method fbcache instead.",
+        )
+        runtime_group.add_argument(
+            "--cache_method",
+            type=str,
+            default=None,
+            choices=["teacache", "fbcache", "dbcache"],
+            help="Step caching method.",
+        )
+        runtime_group.add_argument(
+            "--cache_config",
+            type=str,
+            default=None,
+            help=(
+                "JSON string of advanced config overrides merged on top of preset defaults. "
+                "E.g. '{\"residual_diff_threshold\": 0.5}'."
+            ),
+        )
+        runtime_group.add_argument(
+            "--attention_backend",
+            type=str,
+            default=None,
+            help="Attention backend to use. If not specified, the best available backend will be selected automatically.",
+        )
+        # Parallel arguments
+        parallel_group = parser.add_argument_group("Parallel Processing Options")
+        runtime_group.add_argument(
+            "--use_ray",
+            action="store_true",
+            help="Enable ray to run inference in multi-card",
+        )
+        parallel_group.add_argument(
+            "--ray_world_size",
+            type=int,
+            default=1,
+            help="The number of ray workers (world_size for ray)",
+        )
+        parallel_group.add_argument(
+            "--dit_parallel_size",
+            type=int,
+            default=0,
+            help="The number of processes for DIT parallelization.",
+        )
+        parallel_group.add_argument(
+            "--use_cfg_parallel",
+            action="store_true",
+            help="Use split batch in classifier_free_guidance. cfg_degree will be 2 if set",
+        )
+        parallel_group.add_argument("--data_parallel_degree", type=int, default=1, help="Data parallel degree.")
+        parallel_group.add_argument(
+            "--ulysses_degree",
+            type=int,
+            default=1,
+            help="Ulysses sequence parallel degree. Used in attention layer.",
+        )
+        parallel_group.add_argument(
+            "--ring_degree",
+            type=int,
+            default=1,
+            help="Ring sequence parallel degree. Used in attention layer.",
+        )
+        parallel_group.add_argument(
+            "--shard_dit",
+            action="store_true",
+            help="Enable DiT model sharding. Used together with sequence parallelism.",
+        )
+        parallel_group.add_argument(
+            "--shard_t5_encoder",
+            action="store_true",
+            help="Enable t5 encoder sharding.",
+        )
+        parallel_group.add_argument(
+            "--pipefusion_parallel_degree",
+            type=int,
+            default=1,
+            help="Pipefusion parallel degree. Indicates the number of pipeline stages.",
+        )
+        parallel_group.add_argument(
+            "--num_pipeline_patch",
+            type=int,
+            default=None,
+            help="Number of patches the feature map should be segmented in pipefusion parallel.",
+        )
+        parallel_group.add_argument(
+            "--attn_layer_num_for_pp",
+            default=None,
+            nargs="*",
+            type=int,
+            help="List representing the number of layers per stage of the pipeline in pipefusion parallel",
+        )
+        parallel_group.add_argument(
+            "--tensor_parallel_degree",
+            type=int,
+            default=1,
+            help="Tensor parallel degree.",
+        )
+        parallel_group.add_argument(
+            "--text_encoder_tp_degree",
+            type=int,
+            default=1,
+            help="Tensor parallel degree for supported text encoders, reusing the existing model ranks.",
+        )
+        parallel_group.add_argument(
+            "--split_scheme",
+            type=str,
+            default="row",
+            help="Split scheme for tensor parallel.",
+        )
+        parallel_group.add_argument(
+            "--vae_parallel_size",
+            type=int,
+            default=0,
+            help="Number of processes for VAE parallelization. 0: no seperate process for VAE, 1: run VAE in a separate process, >1: distribute VAE across multiple processes.",
+        )
+
+        # Input arguments
+        input_group = parser.add_argument_group("Input Options")
+        input_group.add_argument("--height", type=int, default=1024, help="The height of image")
+        input_group.add_argument("--width", type=int, default=1024, help="The width of image")
+        input_group.add_argument("--num_frames", type=int, default=49, help="The frames of video")
+        input_group.add_argument("--img_file_path", type=str, default=None, help="Path for the input image.")
+        input_group.add_argument("--prompt", type=str, nargs="*", default="", help="Prompt for the model.")
+        input_group.add_argument("--no_use_resolution_binning", action="store_true")
+        input_group.add_argument(
+            "--negative_prompt",
+            type=str,
+            nargs="*",
+            default="",
+            help="Negative prompt for the model.",
+        )
+        input_group.add_argument(
+            "--num_inference_steps",
+            type=int,
+            default=20,
+            help="Number of inference steps.",
+        )
+        input_group.add_argument(
+            "--max_sequence_length",
+            type=int,
+            default=256,
+            help="Max sequencen length of prompt",
+        )
+        runtime_group.add_argument("--seed", type=int, default=42, help="Random seed for operations.")
+        runtime_group.add_argument(
+            "--output_type",
+            type=str,
+            default="pil",
+            help="Output type of the pipeline.",
+        )
+        input_group.add_argument(
+            "--guidance_scale",
+            type=float,
+            default=3.5,
+            help="Guidance scale for classifier free guidance.",
+        )
+        runtime_group.add_argument(
+            "--enable_sequential_cpu_offload",
+            action="store_true",
+            help="Offloading the weights to the CPU.",
+        )
+        runtime_group.add_argument(
+            "--enable_model_cpu_offload",
+            action="store_true",
+            help="Offloading the weights to the CPU.",
+        )
+        runtime_group.add_argument(
+            "--enable_group_cpu_offload",
+            action="store_true",
+            help="Async leaf-level group CPU offload (streamed, per-group pinned). Overlaps H2D "
+            "transfer with compute; upstream diffusers group offloading.",
+        )
+        runtime_group.add_argument(
+            "--enable_tiling",
+            action="store_true",
+            help="Making VAE decode a tile at a time to save GPU memory.",
+        )
+        runtime_group.add_argument(
+            "--enable_slicing",
+            action="store_true",
+            help="Decode one batch item at a time to reduce GPU memory use. This has no effect "
+            "when the batch size is 1.",
+        )
+        runtime_group.add_argument(
+            "--vae_tile_size_height",
+            type=int,
+            default=None,
+            help="Exact output-pixel height of each VAE tile. Requires --enable_tiling. "
+            "Must be used with --vae_tile_size_width.",
+        )
+        runtime_group.add_argument(
+            "--vae_tile_size_width",
+            type=int,
+            default=None,
+            help="Exact output-pixel width of each VAE tile. Requires --enable_tiling. "
+            "Must be used with --vae_tile_size_height.",
+        )
+        runtime_group.add_argument(
+            "--vae_tile_overlap_height",
+            type=int,
+            default=None,
+            help="Exact VAE tile overlap along the height axis, in output pixels. Requires "
+            "--enable_tiling. Must be used with --vae_tile_overlap_width. Height and width "
+            "may differ; use 0 for an inactive strip axis.",
+        )
+        runtime_group.add_argument(
+            "--vae_tile_overlap_width",
+            type=int,
+            default=None,
+            help="Exact VAE tile overlap along the width axis, in output pixels. Requires "
+            "--enable_tiling. Must be used with --vae_tile_overlap_height. Height and width "
+            "may differ; use 0 for an inactive strip axis.",
+        )
+        runtime_group.add_argument(
+            "--use_fp8_t5_encoder",
+            action="store_true",
+            help="Quantize the T5 text encoder.",
+        )
+        _add_gemm_profile_args(runtime_group)
+        runtime_group.add_argument(
+            "--use_fp8_gemms",
+            action="store_true",
+            help="Quantize the transformer linear layers (selected models only).",
+        )
+        runtime_group.add_argument(
+            "--use_int8_gemms",
+            action="store_true",
+            help="Quantize the transformer linear layers (selected models only).",
+        )
+        runtime_group.add_argument(
+            "--use_fp8_comms",
+            action="store_true",
+            help="Quantize Ulysses all-to-all communication to FP8.",
+        )
+        runtime_group.add_argument(
+            "--fp8_comms_scale",
+            type=float,
+            default=None,
+            help="Override the model-specific FP8 communication scale.",
+        )
+        runtime_group.add_argument(
+            "--fp8_comms_safety_factor",
+            type=float,
+            default=DEFAULT_FP8_COMMS_SAFETY_FACTOR,
+            help="Safety factor for the calibrated FP8 comms scale: scale = amax / "
+            "(FP8_MAX * safety_factor). LOWER it (e.g. 0.4) to enlarge the scale and "
+            "leave more headroom before fp8 saturation. Default 0.85.",
+        )
+
+        # DiTFastAttn arguments
+        fast_attn_group = parser.add_argument_group("DiTFastAttn Options")
+        fast_attn_group.add_argument(
+            "--use_fast_attn",
+            action="store_true",
+            help="Use DiTFastAttn to accelerate single inference. Only data parallelism can be used with DITFastAttn.",
+        )
+        fast_attn_group.add_argument(
+            "--n_calib",
+            type=int,
+            default=8,
+            help="Number of prompts for compression method seletion.",
+        )
+        fast_attn_group.add_argument(
+            "--threshold",
+            type=float,
+            default=0.5,
+            help="Threshold for selecting attention compression method.",
+        )
+        fast_attn_group.add_argument(
+            "--window_size",
+            type=int,
+            default=64,
+            help="Size of window attention.",
+        )
+        fast_attn_group.add_argument(
+            "--coco_path",
+            type=str,
+            default=None,
+            help="Path of MS COCO annotation json file.",
+        )
+        fast_attn_group.add_argument(
+            "--use_cache",
+            action="store_true",
+            help="Use cache config for attention compression.",
+        )
+        runtime_group.add_argument(
+            "--determinism_check",
+            type=int,
+            default=0,
+            help=_DETERMINISM_CHECK_HELP,
+        )
+        runtime_group.add_argument(
+            "--determinism_check_report_ranks",
+            type=str,
+            default=_DETERMINISM_CHECK_REPORT_RANKS_DEFAULT,
+            help=_DETERMINISM_CHECK_REPORT_RANKS_HELP,
+        )
+
+        return parser
+
+    @staticmethod
+    def add_runner_args(parser: FlexibleArgumentParser):
+        parser.add_argument(
+            "--model",
+            type=str,
+            help="Name or path of the huggingface model to use.",
+            required=True,
+        )
+        parser.add_argument(
+            "--lora_path",
+            type=nullable_str,
+            default=None,
+            help="LoRA repository or local path to fuse at startup (supported runners only).",
+        )
+        parser.add_argument("--lora_weight_name", type=nullable_str, default=None)
+        parser.add_argument("--lora_scale", type=float, default=1.0)
+        parser.add_argument("--use_parallel_vae", help="Enable parallel VAE.", action="store_true")
+        parser.add_argument(
+            "--use_torch_compile",
+            action="store_true",
+            help="Enable torch.compile to accelerate inference in a single card",
+        )
+        parser.add_argument(
+            "--attention_backend",
+            type=str,
+            default=None,
+            help="Attention backend to use. If not specified, the best available backend will be selected automatically.",
+        )
+        parser.add_argument(
+            "--cross_attention_backend",
+            type=str,
+            default=None,
+            help="Attention backend to use for cross-attention. If not specified, falls back to --attention_backend.",
+        )
+        parser.add_argument(
+            "--use_cfg_parallel",
+            action="store_true",
+            help="Use split batch in classifier_free_guidance. cfg_degree will be 2 if set",
+        )
+        parser.add_argument("--data_parallel_degree", type=int, default=1, help="Data parallel degree.")
+        parser.add_argument(
+            "--ulysses_degree",
+            type=int,
+            default=1,
+            help="Ulysses sequence parallel degree. Used in attention layer.",
+        )
+        parser.add_argument(
+            "--ring_degree",
+            type=int,
+            default=1,
+            help="Ring sequence parallel degree. Used in attention layer.",
+        )
+        parser.add_argument(
+            "--pipefusion_parallel_degree",
+            type=int,
+            default=1,
+            help="Pipefusion parallel degree. Indicates the number of pipeline stages.",
+        )
+        parser.add_argument(
+            "--tensor_parallel_degree",
+            type=int,
+            default=1,
+            help="Tensor parallel degree.",
+        )
+        parser.add_argument(
+            "--text_encoder_tp_degree",
+            type=int,
+            default=1,
+            help="Tensor parallel degree for supported text encoders, reusing the existing model ranks.",
+        )
+        parser.add_argument("--fully_shard_degree", type=int, default=1, help="Fully sharding (sharding) degree.")
+        parser.add_argument(
+            "--fully_shard_components",
+            nargs="+",
+            default=None,
+            help=(
+                "Only FSDP-wrap these pipeline components (for example "
+                "'text_encoder'). By default every component named by the "
+                "model's FSDP strategy is sharded."
+            ),
+        )
+        parser.add_argument(
+            "--no_reshard_after_forward",
+            dest="reshard_after_forward",
+            action="store_false",
+            help="Keep parameters gathered after each block's forward instead of resharding. "
+            "Trades memory for latency by eliminating repeated all-gathers. "
+            "Only valid with --fully_shard_degree > 1.",
+        )
+        parser.add_argument(
+            "--memory_efficient_sharding",
+            action="store_true",
+            default=False,
+            help="Reduce peak VRAM during load: shard transformer blocks one at a time on GPU "
+            "during init, so the full unsharded component never materializes on device. "
+            "Slightly slower to load - use if the model OOMs on GPU during init. Requires "
+            "--fully_shard_degree > 1.",
+        )
+        parser.add_argument(
+            "--memory_efficient_replicated_load",
+            action="store_true",
+            default=False,
+            help="Reduce peak host RAM when a model that fits one GPU is replicated across ranks "
+            "(pure sequence/CFG/data parallelism): rank0 loads the real weights and peers "
+            "build on meta and receive them over a GPU->GPU broadcast, so host peak is 1x the "
+            "model instead of Nx. Use if the load is OOM-killed on host as rank count grows. "
+            "No effect with weight-splitting parallelism (FSDP/PipeFusion/tensor parallel), "
+            "which loads per-rank weights anyway, or on a single rank.",
+        )
+        parser.add_argument(
+            "--height",
+            type=int,
+            help="The height of image",
+        )
+        parser.add_argument(
+            "--width",
+            type=int,
+            help="The width of image",
+        )
+        parser.add_argument(
+            "--num_frames",
+            type=int,
+            help="The frames of video",
+        )
+        parser.add_argument(
+            "--prompt",
+            type=str,
+            nargs="*",
+            help="Prompt for the model.",
+        )
+        parser.add_argument(
+            "--negative_prompt",
+            type=str,
+            nargs="*",
+            help="Negative prompt for the model.",
+        )
+        parser.add_argument(
+            "--num_inference_steps",
+            type=int,
+            help="Number of inference steps.",
+        )
+        parser.add_argument(
+            "--max_sequence_length",
+            type=int,
+            help="Max sequence length of prompt",
+        )
+        parser.add_argument("--seed", type=int, default=42, help="Random seed for operations.")
+        parser.add_argument(
+            "--guidance_scale",
+            type=float,
+            help="Guidance scale for classifier free guidance.",
+        )
+        parser.add_argument(
+            "--guidance_scale_2",
+            type=float,
+            help="Guidance scale for classifier free guidance (second scale).",
+        )
+        parser.add_argument(
+            "--flow_shift",
+            type=float,
+            help="Flow shift for the scheduler.",
+        )
+        parser.add_argument(
+            "--enable_sequential_cpu_offload",
+            action="store_true",
+            help="Offloading the weights to the CPU.",
+        )
+        parser.add_argument(
+            "--enable_model_cpu_offload",
+            action="store_true",
+            help="Offloading the weights to the CPU.",
+        )
+        parser.add_argument(
+            "--enable_group_cpu_offload",
+            action="store_true",
+            help="Async leaf-level group CPU offload (streamed).",
+        )
+        parser.add_argument(
+            "--group_offload_low_cpu_mem",
+            action="store_true",
+            help="With --enable_group_cpu_offload, pin each tensor as it is offloaded instead of "
+            "pre-pinning whole components. Keeps host RAM flat on hosts where it is the "
+            "binding constraint, at some of the streaming speedup.",
+        )
+        parser.add_argument(
+            "--enable_tiling",
+            action="store_true",
+            help="Enable VAE tiling to save GPU memory.",
+        )
+        parser.add_argument(
+            "--enable_slicing",
+            action="store_true",
+            help="Decode one batch item at a time to reduce GPU memory use. This has no effect "
+            "when the batch size is 1.",
+        )
+        parser.add_argument(
+            "--vae_tile_size_height",
+            type=int,
+            default=None,
+            help="Exact output-pixel height of each VAE tile. Requires --enable_tiling. "
+            "Must be used with --vae_tile_size_width.",
+        )
+        parser.add_argument(
+            "--vae_tile_size_width",
+            type=int,
+            default=None,
+            help="Exact output-pixel width of each VAE tile. Requires --enable_tiling. "
+            "Must be used with --vae_tile_size_height.",
+        )
+        parser.add_argument(
+            "--vae_tile_overlap_height",
+            type=int,
+            default=None,
+            help="Exact VAE tile overlap along the height axis, in output pixels. Requires "
+            "--enable_tiling. Must be used with --vae_tile_overlap_width. Height and width "
+            "may differ; use 0 for an inactive strip axis.",
+        )
+        parser.add_argument(
+            "--vae_tile_overlap_width",
+            type=int,
+            default=None,
+            help="Exact VAE tile overlap along the width axis, in output pixels. Requires "
+            "--enable_tiling. Must be used with --vae_tile_overlap_height. Height and width "
+            "may differ; use 0 for an inactive strip axis.",
+        )
+        _add_gemm_profile_args(parser)
+        parser.add_argument(
+            "--use_int8_gemms",
+            action="store_true",
+            help="Quantize the transformer linear layers (selected models only).",
+        )
+        parser.add_argument(
+            "--use_fp8_gemms",
+            action="store_true",
+            help="Quantize the transformer linear layers (selected models only).",
+        )
+        parser.add_argument(
+            "--use_fp8_text_encoder",
+            action="store_true",
+            help="Also quantize the text encoder's linear layers to FP8 (selected models only). "
+            "Requires a GEMM profile containing FP8. Frees several GB "
+            "for large bf16 text encoders, at whatever output-quality cost FP8 carries for "
+            "the encoder; off by default because that is a quality trade-off, not a free win.",
+        )
+        parser.add_argument(
+            "--use_fp4_gemms",
+            action="store_true",
+            help="Quantize the transformer linear layers (selected models only).",
+        )
+        parser.add_argument(
+            "--fp8_precision_override_prefix_patterns",
+            type=nullable_str,
+            default=None,
+            help="Comma-delimited FQN prefix patterns to keep in FP8 during FP4 GEMMs.",
+        )
+        parser.add_argument(
+            "--fp8_precision_override_suffix_patterns",
+            type=nullable_str,
+            default=None,
+            help="Comma-delimited FQN suffix patterns to keep in FP8 during FP4 GEMMs.",
+        )
+        parser.add_argument(
+            "--use_fp8_comms",
+            action="store_true",
+            help="Quantize Ulysses all-to-all communication to FP8.",
+        )
+        parser.add_argument(
+            "--fp8_comms_scale",
+            type=float,
+            default=None,
+            help="Override the model-specific FP8 communication scale.",
+        )
+        parser.add_argument(
+            "--fp8_comms_safety_factor",
+            type=float,
+            default=DEFAULT_FP8_COMMS_SAFETY_FACTOR,
+            help="Safety factor for the calibrated FP8 comms scale: scale = amax / "
+            "(FP8_MAX * safety_factor). LOWER it (e.g. 0.4) to enlarge the scale and "
+            "leave more headroom before fp8 saturation. Default 0.85.",
+        )
+        parser.add_argument("--num_iterations", type=int, default=1, help="Number of iterations to run the model.")
+        parser.add_argument(
+            "--determinism_check",
+            type=int,
+            default=0,
+            help=_DETERMINISM_CHECK_HELP,
+        )
+        parser.add_argument(
+            "--determinism_check_report_ranks",
+            type=str,
+            default=_DETERMINISM_CHECK_REPORT_RANKS_DEFAULT,
+            help=_DETERMINISM_CHECK_REPORT_RANKS_HELP,
+        )
+        parser.add_argument(
+            "--profile",
+            default=False,
+            action="store_true",
+            help="Whether to run Pytorch profiler. See --profile_wait, --profile_warmup and --profile_active for profiler specific warmup.",
+        )
+        parser.add_argument(
+            "--profile_wait",
+            type=int,
+            default=2,
+            help="wait argument for torch.profiler.schedule. Only used with --profile.",
+        )
+        parser.add_argument(
+            "--profile_warmup",
+            type=int,
+            default=2,
+            help="warmup argument for torch.profiler.schedule. Only used with --profile.",
+        )
+        parser.add_argument(
+            "--profile_active",
+            type=int,
+            default=1,
+            help="active argument for torch.profiler.schedule. Only used with --profile.",
+        )
+        parser.add_argument(
+            "--profile_capture_phase",
+            action="store_true",
+            help="Profile the CUDA graph recording phase and save the capture trace.",
+        )
+        parser.add_argument(
+            "--profile_with_stack",
+            action="store_true",
+            help="Record call stack info in the profiler. Only used with --profile.",
+        )
+        parser.add_argument(
+            "--warmup_calls",
+            help="The number of full pipe calls to warmup the model.",
+            default=0,
+            type=int,
+        )
+        parser.add_argument(
+            "--output_directory",
+            type=str,
+            default=".",
+            help="Directory where to save outputs, profiles and timings.",
+        )
+        parser.add_argument(
+            "--input_images",
+            default=[],
+            nargs="+",
+            help="Path(s)/URL(s) to input image(s).",
+        )
+        parser.add_argument(
+            "--resize_input_images",
+            default=False,
+            action="store_true",
+            help="Whether to resize and crop the input image(s) to the specified width and height.",
+        )
+        parser.add_argument(
+            "--task", default=None, help="Task to perform. Only applicable if the model supports multiple tasks."
+        )
+        parser.add_argument(
+            "--batch_size",
+            default=None,
+            type=int,
+            help="Batch size for inference. If not specified, defaults to 1.",
+        )
+        parser.add_argument(
+            "--dataset_path",
+            default=None,
+            help="Path to a csv dataset file containing prompts. If specified, prompts will be loaded from the dataset. Consider using --batch_size accordingly.",
+        )
+        parser.add_argument(
+            "--use_hybrid_attn_schedule",
+            action="store_true",
+            default=False,
+            help="Enable hybrid attention schedule for faster inference and improved quality.",
+        )
+        parser.add_argument(
+            "--hybrid_attn_low_precision_backend",
+            type=nullable_str,
+            default=None,
+            help="Low-precision attention backend for hybrid schedule. If set, high-precision backend must also be set.",
+        )
+        parser.add_argument(
+            "--hybrid_attn_high_precision_backend",
+            type=nullable_str,
+            default=None,
+            help="High-precision attention backend for hybrid schedule. If set, low-precision backend must also be set.",
+        )
+        parser.add_argument(
+            "--num_hybrid_attn_high_precision_steps",
+            type=int,
+            default=None,
+            help="Number of high-precision attention steps in hybrid schedule.",
+        )
+        parser.add_argument(
+            "--hybrid_attn_schedule",
+            type=str,
+            default=None,
+            help="An explicit comma-delimited string of attention backend names for the hybrid schedule. Example: 'FLASH_3,FLASH_3_FP8,FLASH_3_FP8,FLASH_3'. Use only if both low-precision and high-precision backends are not set.",
+        )
+        parser.add_argument(
+            "--use_hybrid_gemm_schedule",
+            action="store_true",
+            default=False,
+            help="Use the profile's high format at denoising endpoints and FP4 in the middle.",
+        )
+        parser.add_argument(
+            "--num_hybrid_gemm_high_precision_steps",
+            type=int,
+            default=None,
+            help="Number of high-precision GEMM steps at both the start and end of denoising.",
+        )
+        parser.add_argument(
+            "--use_vae_channels_last_format",
+            action="store_true",
+            default=False,
+            help="Use channels last memory format for the VAE.",
+        )
+        parser.add_argument(
+            "--use_ssta_sparse_text_to_image",
+            action="store_true",
+            default=False,
+            help="Use sparse attention for text-to-image attention path in SSTA.",
+        )
+        parser.add_argument(
+            "--spargeattn_simthreshold",
+            type=float,
+            default=0.3,
+            help="Similarity threshold for sparge attention.",
+        )
+        parser.add_argument(
+            "--spargeattn_cdfthreshold",
+            type=float,
+            default=0.92,
+            help="CDF threshold for sparge attention.",
+        )
+        parser.add_argument(
+            "--spargeattn_reorder_sequence",
+            action=argparse.BooleanOptionalAction,
+            default=True,
+            help="Reorder image tokens via the gilbert space-filling curve "
+            "before Sparge attention. Use --no-spargeattn_reorder_sequence to disable.",
+        )
+        parser.add_argument(
+            "--use_spargeattn_static_block_mask",
+            action=argparse.BooleanOptionalAction,
+            default=True,
+            help="OR a static gilbert block-neighbor mask into the dynamic "
+            "Sparge block mask. Only meaningful when "
+            "--spargeattn_reorder_sequence is set. Use --no-use_spargeattn_static_block_mask to disable.",
+        )
+        parser.add_argument(
+            "--use_spargeattn_head_balance",
+            action="store_true",
+            help="Balance per-rank attention work across Ulysses ranks by "
+            "permuting heads (block-sparse load balancing). Only has an "
+            "effect with ulysses_degree>1 and a Sparge attention backend.",
+        )
+        parser.add_argument(
+            "--sol_attn_tau",
+            type=float,
+            default=0.2,
+            help="Sol-Attn routing temperature. Higher values keep fewer KV blocks exact.",
+        )
+        parser.add_argument(
+            "--sol_attn_thresh_type",
+            type=str,
+            default="exact",
+            choices=["diag", "exact"],
+            help="Sol-Attn routing threshold. 'diag' uses the diagonal covariance; 'exact' uses the full covariance.",
+        )
+        parser.add_argument(
+            "--sol_attn_kv_splits",
+            type=str,
+            default="auto",
+            choices=["auto", "1", "2", "4"],
+            help="KV splits for the SM90 Sol-Attn kernel. 'auto' uses 4 on SM90 CuTe when the sequence is at least 65536 tokens.",
+        )
+        parser.add_argument(
+            "--sol_attn_sink_tokens",
+            type=int,
+            default=0,
+            help="Number of tokens whose KV blocks stay exact for every query. 0 disables the sink.",
+        )
+        parser.add_argument(
+            "--sol_attn_sink_start",
+            type=int,
+            default=None,
+            help="First token of the exact KV sink. Omit to place the sink on the token suffix.",
+        )
+        parser.add_argument(
+            "--vsa_block_size",
+            type=int,
+            default=128,
+            help="Query/KV block size for the AITER CK-Tile VSA backend.",
+        )
+        parser.add_argument(
+            "--vsa_top_k",
+            type=int,
+            default=1,
+            help="Minimum KV blocks selected per query block by AITER VSA.",
+        )
+        parser.add_argument(
+            "--vsa_top_k_ratio",
+            type=float,
+            default=0.0,
+            help="Minimum selected KV-block fraction for AITER VSA. For Jenga drop rate r, set this to 1-r.",
+        )
+        parser.add_argument(
+            "--vsa_drop_rates",
+            type=float,
+            nargs="+",
+            default=None,
+            help="Enable Jenga's per-step sparse schedule. One value applies "
+            "to all steps; two values switch after the midpoint. "
+            "Drop rates <=0.25 use dense AITER attention.",
+        )
+        parser.add_argument(
+            "--vsa_prob_threshold",
+            type=float,
+            default=0.9,
+            help="Jenga cumulative probability threshold for AITER VSA.",
+        )
+        parser.add_argument(
+            "--bsa_sparsity",
+            type=float,
+            default=0.75,
+            help="TRITON_BSA: fraction of key blocks each query block skips (top-k).",
+        )
+        parser.add_argument(
+            "--bsa_cdf_threshold",
+            type=float,
+            default=0.2,
+            help="TRITON_BSA: also keep the key blocks holding this much attention weight (top-p); 0 disables.",
+        )
+        parser.add_argument(
+            "--vsa_reorder_sequence",
+            action=argparse.BooleanOptionalAction,
+            default=True,
+            help="Reorder Wan video tokens with the sliced Gilbert curve before VSA.",
+        )
+        parser.add_argument(
+            "--use_vsa_static_block_mask",
+            action=argparse.BooleanOptionalAction,
+            default=True,
+            help="Union Gilbert physical-neighbor blocks into the dynamic VSA mask.",
+        )
+        parser.add_argument(
+            "--use_vsa_first_frame_mask",
+            action=argparse.BooleanOptionalAction,
+            default=True,
+            help="Preserve first-frame block relations in the VSA mask.",
+        )
+        parser.add_argument(
+            "--vsa_collect_density",
+            action="store_true",
+            help="Record the selected VSA block density for profiling.",
+        )
+        parser.add_argument(
+            "--distilled_transformer_path",
+            type=nullable_str,
+            default=None,
+            help="Path to the high-noise distilled transformer safetensors file.",
+        )
+        parser.add_argument(
+            "--distilled_transformer_2_path",
+            type=nullable_str,
+            default=None,
+            help="Path to the low-noise distilled transformer_2 safetensors file.",
+        )
+        parser.add_argument(
+            "--audio_prompt",
+            type=nullable_str,
+            default=None,
+            help="Prompt for the audio stream of a joint video-audio model (Prism). Defaults to --prompt.",
+        )
+        parser.add_argument(
+            "--use_teacache",
+            action="store_true",
+            help="[Deprecated] Use --cache_method teacache instead.",
+        )
+        parser.add_argument(
+            "--use_fbcache",
+            action="store_true",
+            help="[Deprecated] Use --cache_method fbcache instead.",
+        )
+        parser.add_argument(
+            "--cache_method",
+            type=str,
+            default=None,
+            choices=["teacache", "fbcache", "dbcache"],
+            help="Step caching method.",
+        )
+        parser.add_argument(
+            "--cache_config",
+            type=str,
+            default=None,
+            help=(
+                "JSON string of advanced config overrides merged on top of preset defaults. "
+                'E.g. \'{"residual_diff_threshold": 0.5, "max_warmup_steps": 6}\'. '
+                "Keys must match DBCacheConfig fields (cache-dit)."
+            ),
+        )
+        return parser
+
+    @classmethod
+    def from_cli_args(cls, args: argparse.Namespace):
+        # Get the list of attributes of this dataclass.
+        attrs = [attr.name for attr in dataclasses.fields(cls)]
+        # Set the attributes from the parsed arguments.
+        engine_args = cls(**{attr: getattr(args, attr) for attr in attrs if hasattr(args, attr)})
+        return engine_args
+
+    @classmethod
+    def from_runner_args(cls, args: dict):
+        attrs = [attr.name for attr in dataclasses.fields(cls)]
+        engine_args = cls(**{arg_name: arg_value for arg_name, arg_value in args.items() if arg_name in attrs})
+        return engine_args
+
+    def _validate_gemm_quantization_flags(self) -> None:
+        """Validate ownership of mutually exclusive generic GEMM quantizers."""
+        spec = self.gemm_quantization_spec
+        uses_mixed_mxfp = self.use_a6w4_gemms
+        if uses_mixed_mxfp and (
+            self.enable_model_cpu_offload or self.enable_sequential_cpu_offload or self.enable_group_cpu_offload
+        ):
+            raise ValueError("A6W4 GEMMs do not support CPU offload.")
+        if uses_mixed_mxfp and (
+            self.fully_shard_degree > 1 or self.memory_efficient_sharding or self.memory_efficient_replicated_load
+        ):
+            raise ValueError("A6W4 GEMMs currently support eager loading only.")
+        if not spec.is_tiered and (
+            self.fp8_precision_override_prefix_patterns is not None
+            or self.fp8_precision_override_suffix_patterns is not None
+        ):
+            raise ValueError(
+                "Precision override patterns require a tiered GEMM quantization profile, "
+                "such as --gemm_quantization low=fp4,high=fp8. "
+                "Use a tiered profile or drop the patterns."
+            )
+        if self.use_fp8_text_encoder and "fp8" not in spec.formats:
+            raise ValueError("--use_fp8_text_encoder requires a gemm_quantization profile containing FP8.")
+        has_advanced_targets = (
+            self.gemm_high_precision_targets != "model"
+            or self.gemm_high_precision_module_patterns is not None
+            or self.gemm_high_precision_prefix_patterns is not None
+            or self.gemm_high_precision_suffix_patterns is not None
+        )
+        if has_advanced_targets and not spec.is_tiered:
+            raise ValueError("Advanced GEMM target settings require a low/high --gemm_quantization profile.")
+        if self.use_hybrid_gemm_schedule and not spec.is_tiered:
+            raise ValueError("Hybrid GEMM scheduling requires a low/high --gemm_quantization profile.")
+        if self.hybrid_gemm_schedule is not None and self.num_hybrid_gemm_high_precision_steps is not None:
+            raise ValueError(
+                "YAML hybrid_gemm_schedule cannot be combined with --num_hybrid_gemm_high_precision_steps."
+            )
+        if self.hybrid_gemm_schedule is not None:
+            scheduled_formats = {token.strip().lower() for token in self.hybrid_gemm_schedule.split(",")}
+            if scheduled_formats - spec.formats:
+                raise ValueError(f"YAML hybrid_gemm_schedule entries must match --gemm_quantization {spec}.")
+        if self.use_fp6_gemms and self.use_fp8_gemms:
+            raise ValueError(
+                "--use_fp8_gemms cannot be combined with --use_fp6_gemms; MXFP6 already owns every declared FP8 target."
+            )
+        if self.use_fp6_gemms and self.use_int8_gemms:
+            raise ValueError("--use_int8_gemms cannot be combined with --use_fp6_gemms.")
+        if self.use_int8_gemms and (self.use_fp8_gemms or self.use_fp4_gemms):
+            raise ValueError(
+                "--use_int8_gemms cannot be combined with --use_fp8_gemms or "
+                "--use_fp4_gemms, including explicit hybrid FP8/FP4 mode."
+            )
+        if self.use_fp8_gemms and self.use_fp4_gemms and not self.use_hybrid_gemm_schedule:
+            raise ValueError(
+                "--use_fp8_gemms and --use_fp4_gemms cannot both be enabled unless "
+                "--use_hybrid_gemm_schedule explicitly owns the mixed FP8/FP4 mode."
+            )
+        if self.use_hybrid_gemm_schedule and not self.use_fp4_gemms:
+            raise ValueError("When use_hybrid_gemm_schedule is True, use_fp4_gemms must be set.")
+
+    def create_config(
+        self,
+    ) -> Tuple[EngineConfig, InputConfig]:
+        self._validate_gemm_quantization_flags()
+        if not self.use_ray and not torch.distributed.is_initialized():
+            logger.warning("Distributed environment is not initialized. Initializing...")
+            init_distributed_environment()
+        if self.use_ray:
+            self.world_size = self.ray_world_size
+        else:
+            self.world_size = torch.distributed.get_world_size()
+
+        if self.dit_parallel_size == 0 and (not self.use_parallel_vae or self.vae_parallel_size == 0):
+            self.dit_parallel_size = self.world_size
+        assert self.dit_parallel_size + self.vae_parallel_size == self.world_size, (
+            f"DIT parallel size {self.dit_parallel_size} and VAE parallel size {self.vae_parallel_size} must sum to world size {self.world_size}"
+        )
+
+        # Hybrid attention schedule validation
+        if self.use_hybrid_attn_schedule:
+            if self.attention_backend is not None:
+                raise ValueError("When use_hybrid_attn_schedule is True, attention_backend must not be set.")
+            if self.hybrid_attn_schedule is not None:
+                if (
+                    self.hybrid_attn_low_precision_backend is not None
+                    or self.hybrid_attn_high_precision_backend is not None
+                ):
+                    raise ValueError(
+                        "When an explicit hybrid attention schedule is provided, neither hybrid_attn_low_precision_backend nor hybrid_attn_high_precision_backend may be set."
+                    )
+            elif self.hybrid_attn_low_precision_backend is None or self.hybrid_attn_high_precision_backend is None:
+                raise ValueError(
+                    "When use_hybrid_attn_schedule is True, both hybrid_attn_low_precision_backend and "
+                    "hybrid_attn_high_precision_backend must be set."
+                )
+
+        if self.group_offload_low_cpu_mem and not self.enable_group_cpu_offload:
+            raise ValueError(
+                "--group_offload_low_cpu_mem only affects group CPU offload; pass --enable_group_cpu_offload too."
+            )
+
+        model_config = ModelConfig(
+            model=self.model,
+            download_dir=self.download_dir,
+            trust_remote_code=self.trust_remote_code,
+        )
+
+        runtime_config = RuntimeConfig(
+            warmup_steps=self.warmup_steps,
+            # use_cuda_graph=self.use_cuda_graph,
+            use_hybrid_attn_schedule=self.use_hybrid_attn_schedule,
+            use_parallel_vae=self.use_parallel_vae,
+            use_torch_compile=self.use_torch_compile,
+            use_onediff=self.use_onediff,
+            # use_profiler=self.use_profiler,
+            use_fp8_t5_encoder=self.use_fp8_t5_encoder,
+            attention_backend=self.attention_backend,
+            cross_attention_backend=self.cross_attention_backend,
+            spargeattn_reorder_sequence=self.spargeattn_reorder_sequence,
+            use_spargeattn_static_block_mask=self.use_spargeattn_static_block_mask,
+            spargeattn_simthreshold=self.spargeattn_simthreshold,
+            spargeattn_cdfthreshold=self.spargeattn_cdfthreshold,
+            use_spargeattn_head_balance=self.use_spargeattn_head_balance,
+            sol_attn_tau=self.sol_attn_tau,
+            sol_attn_thresh_type=self.sol_attn_thresh_type,
+            sol_attn_kv_splits=self.sol_attn_kv_splits,
+            sol_attn_sink_tokens=self.sol_attn_sink_tokens,
+            sol_attn_sink_start=self.sol_attn_sink_start,
+            vsa_block_size=self.vsa_block_size,
+            vsa_top_k=self.vsa_top_k,
+            vsa_top_k_ratio=self.vsa_top_k_ratio,
+            vsa_drop_rates=self.vsa_drop_rates,
+            vsa_prob_threshold=self.vsa_prob_threshold,
+            vsa_reorder_sequence=self.vsa_reorder_sequence,
+            use_vsa_static_block_mask=self.use_vsa_static_block_mask,
+            use_vsa_first_frame_mask=self.use_vsa_first_frame_mask,
+            vsa_collect_density=self.vsa_collect_density,
+            use_fp8_comms=self.use_fp8_comms,
+            fp8_comms_scale=self.fp8_comms_scale,
+            fp8_comms_safety_factor=self.fp8_comms_safety_factor,
+        )
+
+        parallel_config = ParallelConfig(
+            dp_config=DataParallelConfig(
+                dp_degree=self.data_parallel_degree,
+                use_cfg_parallel=self.use_cfg_parallel,
+                dit_parallel_size=self.dit_parallel_size,
+            ),
+            sp_config=SequenceParallelConfig(
+                ulysses_degree=self.ulysses_degree,
+                ring_degree=self.ring_degree,
+                shard_dit=self.shard_dit,
+                dit_parallel_size=self.dit_parallel_size,
+            ),
+            tp_config=TensorParallelConfig(
+                tp_degree=self.tensor_parallel_degree,
+                split_scheme=self.split_scheme,
+                dit_parallel_size=self.dit_parallel_size,
+            ),
+            pp_config=PipeFusionParallelConfig(
+                pp_degree=self.pipefusion_parallel_degree,
+                num_pipeline_patch=self.num_pipeline_patch,
+                attn_layer_num_for_pp=self.attn_layer_num_for_pp,
+                dit_parallel_size=self.dit_parallel_size,
+            ),
+            fs_config=FullyShardConfig(
+                fs_degree=self.fully_shard_degree,
+                dit_parallel_size=self.dit_parallel_size,
+            ),
+            vae_config=VaeParallelConfig(
+                use_parallel_vae=self.use_parallel_vae,
+            ),
+            world_size=self.world_size,
+            dit_parallel_size=self.dit_parallel_size,
+            vae_parallel_size=self.vae_parallel_size,
+            shard_t5_encoder=self.shard_t5_encoder,
+        )
+
+        fast_attn_config = FastAttnConfig(
+            use_fast_attn=self.use_fast_attn,
+            n_step=self.num_inference_steps,
+            n_calib=self.n_calib,
+            threshold=self.threshold,
+            window_size=self.window_size,
+            coco_path=self.coco_path,
+            use_cache=self.use_cache,
+        )
+
+        engine_config = EngineConfig(
+            model_config=model_config,
+            runtime_config=runtime_config,
+            parallel_config=parallel_config,
+            fast_attn_config=fast_attn_config,
+        )
+
+        input_config = InputConfig(
+            height=self.height,
+            width=self.width,
+            num_frames=self.num_frames,
+            use_resolution_binning=not self.no_use_resolution_binning,
+            batch_size=len(self.prompt) if isinstance(self.prompt, list) else 1,
+            img_file_path=self.img_file_path,
+            prompt=self.prompt,
+            negative_prompt=self.negative_prompt,
+            num_inference_steps=self.num_inference_steps,
+            max_sequence_length=self.max_sequence_length,
+            seed=self.seed,
+            output_type=self.output_type,
+            guidance_scale=self.guidance_scale,
+        )
+
+        return engine_config, input_config

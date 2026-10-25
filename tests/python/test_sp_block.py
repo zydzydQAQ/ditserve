@@ -15,8 +15,16 @@ try:  # discover puts tests/python on sys.path; module-path runs do not
 except ImportError:
     from tests.python.test_model_state import advance as advance_state, empty_target, fixture
 
-PINNED = all(importlib.util.find_spec(name) for name in ("torch", "diffusers", "cache_dit"))
+PINNED = all(importlib.util.find_spec(name) for name in ("torch", "diffusers", "cache_dit", "xfuser", "yunchang"))
 STEP_BLOCKS = 6  # three blocks per CFG branch
+
+
+class WanPipelineStub:
+    def __init__(self, transformer):
+        self.transformer = transformer
+        self.vae_scale_factor = 8
+        self.vae_scale_factor_spatial = 8
+        self.vae_scale_factor_temporal = 4
 
 
 def tiny_model(torch):
@@ -39,18 +47,20 @@ def plain_executor(torch, *, empty=False, expand=False):
 
 
 def sp_executor(torch, rank, ranks, *, empty=False, expand=False, cfg=1, interleave=False):
-    """One rank's worker with the Ulysses attachment over the Gloo world."""
+    """One rank's worker with the xDiT USP attachment over the Gloo world."""
     from ditserve.models.wan.block import WanBlockExecutor
     from ditserve.models.wan.parallel import LayoutHandle, build_fixed_groups
-    from ditserve.models.wan.sp import PinnedWanUlyssesBackend
+    from ditserve.models.xdit.wan import XDitWanEngine, XDitWanParallelBackend
     if empty:
         worker, state = empty_target(), None
     else:
         worker, state = fixture(cached=False, boundary=2)
-    worker.pipe, worker.attention = SimpleNamespace(transformer=tiny_model(torch)), "math"
-    worker.expand_timesteps = expand   # Wan2.2 TI2V per-token timesteps
+    worker.pipe, worker.attention = WanPipelineStub(tiny_model(torch)), "math"
+    worker.engine_name = "xdit"
+    worker.expand_timesteps = expand
     groups = build_fixed_groups(backend="gloo")
-    parallel = PinnedWanUlyssesBackend(LayoutHandle(rank, ranks, cfg=cfg), groups).attach(worker)
+    worker.xdit = XDitWanEngine(worker, groups=groups)
+    parallel = XDitWanParallelBackend(LayoutHandle(rank, ranks, cfg=cfg), groups).attach(worker)
     return worker, state, parallel, WanBlockExecutor(worker, parallel=parallel, interleave=interleave)
 
 
@@ -187,6 +197,24 @@ def scenario_shrink(torch, rank, world, directory):
     return dict(latents=state.latents.clone())
 
 
+def non_divisible_state(state, torch):
+    state.latents = (torch.arange(384, dtype=torch.float32) / 384).reshape(1, 16, 1, 6, 4)
+    for metadata in (state.spec, state.immutable_spec):
+        metadata.update(height=48, width=32, frames=1)
+    # A different latent shape cannot reuse the fixture's old UniPC history.
+    state.scheduler = type(state.scheduler)(num_train_timesteps=1000)
+    state.scheduler.set_timesteps(state.spec["steps"], device="cpu")
+    state.step_index = 0
+    return state
+
+
+def scenario_padding(torch, rank, world, directory):
+    worker, state, parallel, executor = sp_executor(torch, rank, tuple(range(world)))
+    continuation = executor.attach(non_divisible_state(state, torch))
+    run_quanta(executor, continuation, [1, 2, 3], until=3)
+    return dict(latents=state.latents.clone())
+
+
 def scenario_guards(torch, rank, world, directory):
     """A layout change or an export inside an SP step is refused before any collective."""
     from ditserve.models.wan.block import export_block_state
@@ -207,7 +235,81 @@ def scenario_guards(torch, rank, world, directory):
     return dict(errors=errors, step=state.step_index, active=parallel.handle.active is not None)
 
 
-SCENARIOS = dict(quanta_whole=lambda t, r, w, d: scenario_quanta(t, r, w, d, [STEP_BLOCKS]),
+def scenario_sync_failure(torch, rank, world, directory):
+    worker, state, parallel, executor = sp_executor(torch, rank, (0, 1))
+    continuation = executor.attach(state)
+    original_end_step = parallel.end_step
+
+    def end_step(request_id=None):
+        if rank == 1:
+            def fail():
+                raise RuntimeError("sync failure")
+            worker._sync = fail
+        return original_end_step(request_id)
+
+    parallel.end_step = end_step
+    error = None
+    try:
+        executor.advance(continuation, blocks=STEP_BLOCKS)
+    except BaseException as exception:
+        error = type(exception).__name__ + ": " + str(exception)
+    return dict(error=error, failed=parallel.handle.failed)
+
+
+def scenario_binding(torch, rank, world, directory, cfg=1):
+    from ditserve.models.wan.parallel import pack_cache_off_request, request_engine
+    worker, state, parallel, executor = sp_executor(torch, rank, tuple(range(world)), cfg=cfg)
+    worker.xdit.activate(state, parallel.handle.current)
+    manifest, unused = pack_cache_off_request(worker, state)
+    return dict(engine=request_engine(worker), config=dict(worker.pipe.transformer.config),
+                state_sha256=manifest["state_sha256"])
+
+
+def scenario_layout_mismatch(torch, rank, world, directory):
+    from ditserve.models.wan.parallel import ParallelContractError
+    ranks = tuple(range(world))
+    worker, state, parallel, executor = sp_executor(torch, rank, ranks)
+    if rank == 1:
+        parallel.handle.adopt(ranks, epoch=0, cfg=2)
+    continuation = executor.attach(state)
+    calls = []
+    original_forward = worker.xdit.forward_block
+
+    def counted_forward(*args):
+        calls.append(args[1])
+        return original_forward(*args)
+
+    worker.xdit.forward_block = counted_forward
+    error = None
+    try:
+        executor.advance(continuation, blocks=STEP_BLOCKS)
+    except ParallelContractError as exception:
+        error = str(exception)
+    return dict(error=error, failed=parallel.handle.failed, forwards=len(calls),
+                packet=continuation.packet is not None)
+
+
+def scenario_cache_migration(torch, rank, world, directory):
+    worker, state, parallel, executor = sp_executor(torch, rank, tuple(range(world)))
+    request_id = state.request_id
+    continuation = executor.attach(state)
+    run_quanta(executor, continuation, [STEP_BLOCKS], until=2)
+    executor.close(continuation)
+    state, unused = parallel.migrate_cache_off(
+        state, (0, 1, 2, 3), (0, 1), request_id=request_id, step_index=2, expected_epoch=0)
+    continuation = executor.attach(state) if state is not None else None
+    if continuation is not None:
+        executor.close(continuation)
+    state, unused = parallel.migrate_cache_off(
+        state, (0, 1), (0, 1, 2, 3), request_id=request_id, step_index=2, expected_epoch=1)
+    continuation = executor.attach(state)
+    run_quanta(executor, continuation, [1, 2, 3], until=4)
+    return dict(latents=state.latents.clone(), epoch=parallel.handle.current.epoch)
+
+
+SCENARIOS = dict(binding=scenario_binding, sync_failure=scenario_sync_failure,
+                 binding_cfg=lambda t, r, w, d: scenario_binding(t, r, w, d, cfg=2),
+                 quanta_whole=lambda t, r, w, d: scenario_quanta(t, r, w, d, [STEP_BLOCKS]),
                  quanta_ragged=lambda t, r, w, d: scenario_quanta(t, r, w, d, [1, 4, 2, 5]),
                  expand_whole=lambda t, r, w, d: scenario_quanta(t, r, w, d, [STEP_BLOCKS], expand=True),
                  expand_ragged=lambda t, r, w, d: scenario_quanta(t, r, w, d, [1, 4, 2, 5], expand=True),
@@ -216,7 +318,9 @@ SCENARIOS = dict(quanta_whole=lambda t, r, w, d: scenario_quanta(t, r, w, d, [ST
                  cfg_ragged=lambda t, r, w, d: scenario_cfg(t, r, w, d, [1, 2]),
                  pair_sp=lambda t, r, w, d: scenario_pair(t, r, w, d, 1, [2, 1, 3]),
                  pair_cfg=lambda t, r, w, d: scenario_pair(t, r, w, d, 2, [1, 2]),
-                 grow=scenario_grow, move=scenario_move, shrink=scenario_shrink, guards=scenario_guards)
+                 grow=scenario_grow, move=scenario_move, shrink=scenario_shrink,
+                 cache_migration=scenario_cache_migration, layout_mismatch=scenario_layout_mismatch,
+                 padding=scenario_padding, guards=scenario_guards)
 
 
 def _rank(rank, world, port, directory, name):
@@ -338,12 +442,24 @@ class SpBlockTests(unittest.TestCase):
         results, payload = self.spawn("shrink", 4)
         self.assert_replicated(results)
         self.assert_sp1(results[0]["latents"])
-        # A plain single-GPU executor resumed from the SP4 boundary agrees with the SP1 bypass.
-        worker, unused, executor = plain_executor(self.torch, empty=True)
-        from ditserve.models.wan.block import import_block_state
+        worker, unused, unused_executor = plain_executor(self.torch, empty=True)
+        from ditserve.models.wan.block import WanBlockExecutor, import_block_state
+        from ditserve.models.xdit.wan import XDitWanEngine
+        worker.pipe = WanPipelineStub(worker.pipe.transformer)
+        engine = XDitWanEngine(worker)
+        self.addCleanup(engine.close)
+        worker.xdit, worker.engine_name = engine, "xdit"
+        executor = WanBlockExecutor(worker)
         state, continuation, unused = import_block_state(executor, payload)
         run_quanta(executor, continuation, [STEP_BLOCKS], until=4)
         self.assertTrue(self.torch.equal(state.latents, results[0]["latents"]))
+
+    def test_non_divisible_tokens_are_padded_without_changing_output(self):
+        results, unused = self.spawn("padding", 4)
+        self.assert_replicated(results)
+        worker, state, executor = plain_executor(self.torch)
+        run_quanta(executor, executor.attach(non_divisible_state(state, self.torch)), [6], until=3)
+        self.assertTrue(self.torch.equal(results[0]["latents"], state.latents))
 
     def test_layout_and_export_wait_for_the_step_boundary(self):
         results, unused = self.spawn("guards", 2)
@@ -352,6 +468,33 @@ class SpBlockTests(unittest.TestCase):
             self.assertIn("solver-step boundaries", result["errors"]["export"])
             self.assertEqual(result["step"], 3)
             self.assertFalse(result["active"])
+
+    def test_engine_metadata_is_stable_across_processes(self):
+        for name, cfg, sp in (("binding", 1, 4), ("binding_cfg", 2, 2)):
+            results, unused = self.spawn(name, 4)
+            self.assertEqual([row["engine"] for row in results], [results[0]["engine"]] * 4,
+                             msg=repr(results))
+            self.assertEqual([row["state_sha256"] for row in results], [results[0]["state_sha256"]] * 4)
+            self.assertEqual(results[0]["engine"]["layout"],
+                             {"sp_degree": sp, "cfg": cfg, "boundary": "solver_step"})
+
+    def test_cache_off_group_migration_matches_uninterrupted_execution(self):
+        results, unused = self.spawn("cache_migration", 4)
+        self.assertEqual([result["epoch"] for result in results], [2] * 4)
+        self.assert_replicated(results)
+        self.assert_sp1(results[0]["latents"])
+
+    def test_inconsistent_cfg_layout_aborts_before_model_execution(self):
+        results, unused = self.spawn("layout_mismatch", 2)
+        self.assertTrue(all(result["failed"] for result in results), msg=repr(results))
+        self.assertEqual([result["forwards"] for result in results], [0, 0], msg=repr(results))
+        self.assertTrue(all("metadata mismatch" in result["error"] for result in results), msg=repr(results))
+
+    def test_synchronizing_failure_aborts_every_rank(self):
+        results, unused = self.spawn("sync_failure", 2)
+        self.assertTrue(all(result["failed"] for result in results))
+        self.assertIn("metadata mismatch", results[0]["error"])
+        self.assertIn("sync failure", results[1]["error"])
 
 
 class LayoutTests(unittest.TestCase):
@@ -401,6 +544,22 @@ class LayoutTests(unittest.TestCase):
         backend._adopt(dict(group=[0], epoch=1), state, "r")  # SP1 needs no process group
         with self.assertRaisesRegex(ValueError, "distributed init"):
             backend._adopt(dict(group=[0, 1], epoch=1), state, "r")
+
+    @unittest.skipUnless(PINNED, "pinned CPU dependencies required")
+    def test_nccl_is_rejected_before_activation_without_a_real_gpu(self):
+        import torch
+        from ditserve.models.wan.parallel import LayoutHandle, ParallelContractError
+        from ditserve.models.xdit.wan import XDitWanEngine, XDitWanParallelBackend
+
+        worker, unused, unused_executor = plain_executor(torch, empty=True)
+        worker.pipe = WanPipelineStub(worker.pipe.transformer)
+        worker.engine_name = "xdit"
+        worker.xdit = XDitWanEngine(worker)
+        self.addCleanup(worker.xdit.close)
+        backend = XDitWanParallelBackend(LayoutHandle(0, (0, 1)), SimpleNamespace(rank=0, backend="nccl"))
+        with self.assertRaisesRegex(ParallelContractError, "NCCL.*GPU"):
+            backend.attach(worker)
+        self.assertIsNone(backend.worker)
 
 
 if __name__ == "__main__":
