@@ -22,7 +22,15 @@ class WanTestVAE:
         self.dtype = torch.float32
         self.config = SimpleNamespace(
             z_dim=16, latents_mean=[0.] * 16, latents_std=[1.] * 16, patch_size=None)
-        self._conv_num = 1
+        self._cached_conv_counts = {"decoder": 1, "encoder": 1}
+
+    def clear_cache(self):
+        self._conv_num = self._cached_conv_counts["decoder"]
+        self._conv_idx = [0]
+        self._feat_map = [None] * self._conv_num
+        self._enc_conv_num = self._cached_conv_counts["encoder"]
+        self._enc_conv_idx = [0]
+        self._enc_feat_map = [None] * self._enc_conv_num
 
     def post_quant_conv(self, value):
         return value
@@ -35,10 +43,13 @@ class WanTestVAE:
             chunk[:, :3], size=(frames, chunk.shape[-2] * 8, chunk.shape[-1] * 8), mode="nearest")
 
     def decode(self, latents, return_dict=False):
+        self.clear_cache()
         cache = [None] * self._conv_num
         chunks = [self.decoder(latents[:, :, index:index + 1], cache, [0], index == 0)
                   for index in range(latents.shape[2])]
-        return (self.torch.cat(chunks, dim=2).clamp(-1, 1),)
+        output = self.torch.cat(chunks, dim=2).clamp(-1, 1)
+        self.clear_cache()
+        return (output,)
 
 
 def native_pipeline(torch, layers=3):

@@ -100,7 +100,7 @@ class Backend:
         """
         if not self.config.get("options", {}).get("release_cache", True):
             return
-        torch = getattr(getattr(self, "runtime", None), "torch", None)
+        torch = getattr(getattr(self, "runtime", None), "torch", None) or getattr(self, "torch", None)
         if torch is not None and torch.cuda.is_available() and torch.cuda.is_initialized():
             torch.cuda.empty_cache()
 

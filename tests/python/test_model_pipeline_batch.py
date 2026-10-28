@@ -95,6 +95,24 @@ class PipelineBatchTests(unittest.TestCase):
                     self.assertEqual(len(encodings), 4)
         self.assertFalse(torch.cuda.is_initialized())
 
+    def test_finish_releases_allocator_cache_without_changing_output(self):
+        for cls in (FluxBackend, SD35Backend):
+            backend = self.backend(cls, {"options": {"release_cache": True}, "model_path": "fixture"})
+            backend.device = "cuda:0"
+            backend.torch = SimpleNamespace(cuda=Mock())
+            backend.torch.cuda.is_available.return_value = True
+            backend.torch.cuda.is_initialized.return_value = True
+            image = self.np.ones((1, 2, 2, 3), dtype=self.np.float32)
+            backend.states["image"] = {"spec": {"prompt": "kettle"}, "output": image}
+            result = backend.finish(dict(id=1, state_id="image", output_mode="check"))
+            self.assertEqual(result["output"]["output_mode"], "check")
+            self.assertEqual(result["generation"]["model"], "fixture")
+            backend.torch.cuda.empty_cache.assert_called_once_with()
+            backend.config["options"]["release_cache"] = False
+            backend.finish(dict(id=2, state_id="image", output_mode="check"))
+            backend.torch.cuda.empty_cache.assert_called_once_with()
+            self.assertIs(backend.states["image"]["output"], image)
+
     def test_invalid_batch_shapes_fail_before_state_creation(self):
         for cls in (FluxBackend, SD35Backend, WanPipelineBackend):
             backend = self.backend(cls, {})

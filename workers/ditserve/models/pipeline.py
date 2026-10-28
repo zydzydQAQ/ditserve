@@ -101,6 +101,7 @@ class ChunkedDecode:
         if getattr(vae, "use_tiling", False) or latent.shape[0] != 1:
             raise ValueError("chunked decode supports the untiled single-video Wan VAE")
         self.torch, self.pipe = torch, pipe
+        vae.clear_cache()
         latent = latent.to(vae.dtype)
         mean = torch.tensor(vae.config.latents_mean).view(1, vae.config.z_dim, 1, 1, 1).to(latent.device, latent.dtype)
         inverse_std = 1.0 / torch.tensor(vae.config.latents_std).view(1, vae.config.z_dim, 1, 1, 1).to(latent.device, latent.dtype)

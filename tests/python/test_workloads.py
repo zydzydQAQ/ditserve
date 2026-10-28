@@ -54,6 +54,15 @@ class MixedWorkloadTests(unittest.TestCase):
                 arrivals = [row["arrival_ms"] for row in trace["workload"]]
                 self.assertEqual(arrivals, sorted(arrivals))
 
+    def test_conditional_poisson_uses_independent_arrival_draws(self):
+        trace = make(pattern="poisson")
+        duration = trace["manifest"]["total_duration_ms"]
+        for kind in ("image", "video"):
+            arrivals = [row["arrival_ms"] for row in trace["workload"] if row["kind"] == kind]
+            self.assertGreater(len(arrivals), 1)
+            self.assertEqual(len(arrivals), len(set(arrivals)))
+            self.assertTrue(all(0 <= arrival < duration for arrival in arrivals))
+
     def test_seed_reuse_and_independent_prompt_changes(self):
         first, second = make(seed=201), make(seed=201)
         self.assertEqual(first, second)

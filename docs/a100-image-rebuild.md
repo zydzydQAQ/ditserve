@@ -37,7 +37,7 @@ nvidia-smi
 
 - 固定 digest 的 `python:3.10.20-slim-bookworm`。
 - C++ 构建：C++17、CMake 3.16+、Make、GCC/G++、Threads、OpenSSL（`libssl-dev`）。
-- 运行系统库：`ca-certificates`、`gcc`、`g++`、`libgomp1`、`libssl3`。保留编译器和 Python 头文件是因为 `torch.compile`/Triton 在运行时仍需要它们。
+- 运行系统库：`ca-certificates`、`gcc`、`g++`、`libgomp1`、`libssl3`。保留编译器和 Python 头文件是因为 `torch.compile`/Triton 在运行时仍需要它们。精简 `runtime` 不含 CMake 和 OpenSSL 开发头文件；需要在容器内重新编译 C++ 时，用第 8 节的 `development` target 额外安装 `cmake`、`make`、`libssl-dev`、`pkg-config`。
 - `nlohmann/json 3.11.3` 单头文件，SHA256 固定为 `9bea4c8066ef4a1c206b2be5a36302f8926f7fdc6087af5d20b417d0cf103ea6`。全新克隆首次构建时由 CMake 下载并校验。
 - 不需要 CUDA Toolkit、`nvcc` 或单独的 NCCL 安装；CUDA 运行库和 NCCL 来自锁定的 PyTorch/NVIDIA wheel。
 
@@ -149,3 +149,30 @@ docker run --rm --gpus all --pid=host --user "$(id -u):$(id -g)" \
 3. 若构建环境不能访问 `raw.githubusercontent.com`，预置 `.cache/deps/nlohmann3.11.3/nlohmann/json.hpp`，其 SHA256 必须与上文一致。
 
 wheelhouse 服务及旧版 Docker builder 的命令见 [通用容器说明](container.md)。不要用未锁定的 `pip install -U`、重新解析最新版依赖或删除 NVIDIA wheel 来绕过网络/空间问题。
+
+## 8. 带 C++ 工具链的持久开发镜像
+
+默认 `runtime` 保持精简，不含 CMake 和 OpenSSL 开发头文件。需要在容器内修改并重新编译 C++ 时，在这台允许构建镜像的 Linux 服务器上使用 `development` target；它会额外安装 `cmake`、`make`、`libssl-dev` 和 `pkg-config`，并保留完整 Python 运行环境。不要用临时容器里的 `pip install` 代替该构建。
+
+```bash
+REV="$(git rev-parse HEAD)"
+DEV_IMAGE="ditserve:xdit-dev-$(git rev-parse --short=7 "$REV")"
+docker build --target development \
+  --build-arg GIT_REVISION="$REV" \
+  -t "$DEV_IMAGE" .
+
+docker run --rm "$DEV_IMAGE" bash -lc \
+  'cmake --version && g++ --version && pkg-config --modversion openssl && ditserve --version'
+```
+
+开发时把源码挂载到 `/src`，构建目录放到已持久化的 `/data`。CMake 还会在源码的 `.cache/deps` 下载并校验 nlohmann/json，因此这里不把源码挂成只读；离线构建需按第 7 节预置该依赖。把 `/host/ditserve-data` 换为实际数据目录：
+
+```bash
+docker run --rm -v "$PWD":/src -v /host/ditserve-data:/data \
+  "$DEV_IMAGE" bash -lc \
+  'cmake -S /src -B /data/core-build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON &&
+   cmake --build /data/core-build --parallel 4 &&
+   ctest --test-dir /data/core-build --output-on-failure'
+```
+
+`development` 是源码构建出的持久镜像，不依赖对运行中容器执行 `docker commit`。该镜像包含工具链，不等于已经验证新的模型、调度策略或 GPU 结果。需要转移到 Kairos 时，仍按项目规定在控制台上传已准备好的 `.tar` 并核验 manifest digest；不要在 Kairos 作业容器内构建或 commit。

@@ -19,6 +19,15 @@ class ChunkedDecodeTests(unittest.TestCase):
         self.pipe = SimpleNamespace(vae=vae, video_processor=VideoProcessor(vae_scale_factor=8))
         self.latent = torch.randn(1, 16, 4, 4, 4)
 
+    def test_fresh_vae_chunked_decode_initializes_decoder_cache(self):
+        from ditserve.models.pipeline import ChunkedDecode, decode_final_latent
+        with self.torch.inference_mode():
+            decode = ChunkedDecode(self.torch, self.pipe, self.latent.clone())
+            decode.advance(1)
+            decode.advance(3)
+            reference = decode_final_latent(self.torch, self.pipe, self.latent.clone())
+            self.assertTrue((decode.finish() == reference).all())
+
     def test_chunks_in_any_grouping_match_the_whole_decode_bit_exactly(self):
         from ditserve.models.pipeline import ChunkedDecode, decode_final_latent
         torch = self.torch

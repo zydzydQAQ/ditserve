@@ -1,0 +1,794 @@
+{
+  "schema": "ditserve.study.v1",
+  "experiment": "kairos-wan21-sd35-mainline",
+  "note": "Canonical Wan2.1-T2V-1.3B + SD3.5-medium mainline on A100-PCIE-40GB: Wan 480x832x121/50 steps and SD3.5 1024x1024/28 steps; measured SP1 costs, 20/80 request mix, public prompt traces, no production-trace or quality claim.",
+  "workers": {
+    "wan0": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-REPLACE-WITH-TARGET-UUID-0",
+      "environment": {
+        "OMP_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/models/wan2.1-t2v-1.3b",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "block"
+        },
+        "vae_dtype": "bfloat16"
+      }
+    },
+    "image0": {
+      "backend": "sd35",
+      "python": "python3",
+      "gpu_uuid": "GPU-REPLACE-WITH-TARGET-UUID-0",
+      "environment": {
+        "OMP_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/models/sd3.5-medium",
+        "device": "cuda:0",
+        "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+        "dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "options": {
+          "profile": false,
+          "cache": false
+        }
+      }
+    },
+    "wan1": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-REPLACE-WITH-TARGET-UUID-1",
+      "environment": {
+        "OMP_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/models/wan2.1-t2v-1.3b",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "block"
+        },
+        "vae_dtype": "bfloat16"
+      }
+    },
+    "image1": {
+      "backend": "sd35",
+      "python": "python3",
+      "gpu_uuid": "GPU-REPLACE-WITH-TARGET-UUID-1",
+      "environment": {
+        "OMP_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/models/sd3.5-medium",
+        "device": "cuda:0",
+        "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+        "dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "options": {
+          "profile": false,
+          "cache": false
+        }
+      }
+    },
+    "wan2": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-REPLACE-WITH-TARGET-UUID-2",
+      "environment": {
+        "OMP_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/models/wan2.1-t2v-1.3b",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "block"
+        },
+        "vae_dtype": "bfloat16"
+      }
+    },
+    "image2": {
+      "backend": "sd35",
+      "python": "python3",
+      "gpu_uuid": "GPU-REPLACE-WITH-TARGET-UUID-2",
+      "environment": {
+        "OMP_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/models/sd3.5-medium",
+        "device": "cuda:0",
+        "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+        "dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "options": {
+          "profile": false,
+          "cache": false
+        }
+      }
+    },
+    "wan3": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-REPLACE-WITH-TARGET-UUID-3",
+      "environment": {
+        "OMP_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/models/wan2.1-t2v-1.3b",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "block"
+        },
+        "vae_dtype": "bfloat16"
+      }
+    },
+    "image3": {
+      "backend": "sd35",
+      "python": "python3",
+      "gpu_uuid": "GPU-REPLACE-WITH-TARGET-UUID-3",
+      "environment": {
+        "OMP_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/models/sd3.5-medium",
+        "device": "cuda:0",
+        "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+        "dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "options": {
+          "profile": false,
+          "cache": false
+        }
+      }
+    },
+    "wan4": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-REPLACE-WITH-TARGET-UUID-4",
+      "environment": {
+        "OMP_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/models/wan2.1-t2v-1.3b",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "block"
+        },
+        "vae_dtype": "bfloat16"
+      }
+    },
+    "image4": {
+      "backend": "sd35",
+      "python": "python3",
+      "gpu_uuid": "GPU-REPLACE-WITH-TARGET-UUID-4",
+      "environment": {
+        "OMP_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/models/sd3.5-medium",
+        "device": "cuda:0",
+        "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+        "dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "options": {
+          "profile": false,
+          "cache": false
+        }
+      }
+    },
+    "wan5": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-REPLACE-WITH-TARGET-UUID-5",
+      "environment": {
+        "OMP_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/models/wan2.1-t2v-1.3b",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "block"
+        },
+        "vae_dtype": "bfloat16"
+      }
+    },
+    "image5": {
+      "backend": "sd35",
+      "python": "python3",
+      "gpu_uuid": "GPU-REPLACE-WITH-TARGET-UUID-5",
+      "environment": {
+        "OMP_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/models/sd3.5-medium",
+        "device": "cuda:0",
+        "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+        "dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "options": {
+          "profile": false,
+          "cache": false
+        }
+      }
+    },
+    "wan6": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-REPLACE-WITH-TARGET-UUID-6",
+      "environment": {
+        "OMP_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/models/wan2.1-t2v-1.3b",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "block"
+        },
+        "vae_dtype": "bfloat16"
+      }
+    },
+    "image6": {
+      "backend": "sd35",
+      "python": "python3",
+      "gpu_uuid": "GPU-REPLACE-WITH-TARGET-UUID-6",
+      "environment": {
+        "OMP_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/models/sd3.5-medium",
+        "device": "cuda:0",
+        "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+        "dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "options": {
+          "profile": false,
+          "cache": false
+        }
+      }
+    },
+    "wan7": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-REPLACE-WITH-TARGET-UUID-7",
+      "environment": {
+        "OMP_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/models/wan2.1-t2v-1.3b",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "block"
+        },
+        "vae_dtype": "bfloat16"
+      }
+    },
+    "image7": {
+      "backend": "sd35",
+      "python": "python3",
+      "gpu_uuid": "GPU-REPLACE-WITH-TARGET-UUID-7",
+      "environment": {
+        "OMP_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/models/sd3.5-medium",
+        "device": "cuda:0",
+        "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+        "dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "options": {
+          "profile": false,
+          "cache": false
+        }
+      }
+    }
+  },
+  "budget": {
+    "limit_gpu_seconds": 28800,
+    "watchdog_seconds": 43200,
+    "repair_reserve_gpu_seconds": 0,
+    "carry": "none"
+  },
+  "phases": [
+    {
+      "id": "cluster",
+      "kind": "cluster",
+      "policy": "static_sp1",
+      "profile": {
+        "provenance": "mixed",
+        "classes": {
+          "wan21-480x832x121": {
+            "kind": "video",
+            "blocks_per_step": 60,
+            "prepare_ms": 24.018739350140095,
+            "encode_ms": 15433.868852443993,
+            "step_compute_ms": 7543.5565784573555,
+            "finish_ms": 8564.036610536277,
+            "steps": 50,
+            "decode_chunks": 31
+          },
+          "sd35-1024": {
+            "kind": "image",
+            "service_ms": 48403.946929611266
+          }
+        },
+        "links": {},
+        "sp_efficiency": 1.0,
+        "resize_ms": 200.0,
+        "quantum_overhead_ms": 7.0,
+        "block_overhead_ms": 4.45,
+        "source": {
+          "baseline": {
+            "path": "/data/share/jjjkairos/output/DITSERVE/reports/wan21-sd35-mainline-20261028t070646z/baseline-bf16-summary.json",
+            "bytes": 12319,
+            "sha256": "a6afb58b6d0bad018a20d12d06edd3a5a628da79979e2fe76fd58f152f4aef9a"
+          },
+          "sd35_cost": {
+            "path": "/data/share/jjjkairos/output/DITSERVE/reports/wan21-sd35-mainline-20261028t070646z/sd35-cost-summary.json",
+            "bytes": 1806,
+            "sha256": "5d4076f4d190430c763a0248a89b5a15e6bc215611d677515207448d6f400880"
+          },
+          "template": {
+            "path": "/data/share/jjjkairos/code/DITSERVE/builds/1917afe/share/ditserve/configs/studies/target-8xa100/cluster_sp1.json",
+            "bytes": 15894,
+            "sha256": "bdf65a1d8c1c3ab7f67c45dea0e2dda40b66db44e7244f32c10f58e9a18767e8"
+          },
+          "code_commit": "1917afe6bc24d91637050a26dd731ccfaf025e7a",
+          "wan_revision": "0fad780a534b6463e45facd96134c9f345acfa5b",
+          "sd35_revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+          "settings": "Wan FP16 DiT, UMT5 CPU FP32, Flash, cache off, xDiT; SD3.5 BF16 MATH, cache off",
+          "parallel_scope": "Only SP1 costs measured. Links, resize and controller overheads require new-engine calibration."
+        }
+      },
+      "gpus": [
+        {
+          "video": "wan0",
+          "image": "image0"
+        },
+        {
+          "video": "wan1",
+          "image": "image1"
+        },
+        {
+          "video": "wan2",
+          "image": "image2"
+        },
+        {
+          "video": "wan3",
+          "image": "image3"
+        },
+        {
+          "video": "wan4",
+          "image": "image4"
+        },
+        {
+          "video": "wan5",
+          "image": "image5"
+        },
+        {
+          "video": "wan6",
+          "image": "image6"
+        },
+        {
+          "video": "wan7",
+          "image": "image7"
+        }
+      ],
+      "text_prefetch": 1,
+      "output_mode": "check",
+      "warmup": [
+        {
+          "worker": "wan0",
+          "spec": {
+            "steps": 2,
+            "height": 480,
+            "width": 832,
+            "frames": 121,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "warmup",
+            "seed": 7
+          },
+          "quantum": "step"
+        },
+        {
+          "worker": "image0",
+          "spec": {
+            "height": 1024,
+            "width": 1024,
+            "steps": 28,
+            "frames": 1,
+            "batch_size": 1,
+            "guidance_scale": 4.5,
+            "negative_prompt": "blurry, low quality",
+            "max_sequence_length": 256,
+            "prompt": "warmup",
+            "seed": 7
+          }
+        },
+        {
+          "worker": "wan1",
+          "spec": {
+            "steps": 2,
+            "height": 480,
+            "width": 832,
+            "frames": 121,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "warmup",
+            "seed": 7
+          },
+          "quantum": "step"
+        },
+        {
+          "worker": "image1",
+          "spec": {
+            "height": 1024,
+            "width": 1024,
+            "steps": 28,
+            "frames": 1,
+            "batch_size": 1,
+            "guidance_scale": 4.5,
+            "negative_prompt": "blurry, low quality",
+            "max_sequence_length": 256,
+            "prompt": "warmup",
+            "seed": 7
+          }
+        },
+        {
+          "worker": "wan2",
+          "spec": {
+            "steps": 2,
+            "height": 480,
+            "width": 832,
+            "frames": 121,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "warmup",
+            "seed": 7
+          },
+          "quantum": "step"
+        },
+        {
+          "worker": "image2",
+          "spec": {
+            "height": 1024,
+            "width": 1024,
+            "steps": 28,
+            "frames": 1,
+            "batch_size": 1,
+            "guidance_scale": 4.5,
+            "negative_prompt": "blurry, low quality",
+            "max_sequence_length": 256,
+            "prompt": "warmup",
+            "seed": 7
+          }
+        },
+        {
+          "worker": "wan3",
+          "spec": {
+            "steps": 2,
+            "height": 480,
+            "width": 832,
+            "frames": 121,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "warmup",
+            "seed": 7
+          },
+          "quantum": "step"
+        },
+        {
+          "worker": "image3",
+          "spec": {
+            "height": 1024,
+            "width": 1024,
+            "steps": 28,
+            "frames": 1,
+            "batch_size": 1,
+            "guidance_scale": 4.5,
+            "negative_prompt": "blurry, low quality",
+            "max_sequence_length": 256,
+            "prompt": "warmup",
+            "seed": 7
+          }
+        },
+        {
+          "worker": "wan4",
+          "spec": {
+            "steps": 2,
+            "height": 480,
+            "width": 832,
+            "frames": 121,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "warmup",
+            "seed": 7
+          },
+          "quantum": "step"
+        },
+        {
+          "worker": "image4",
+          "spec": {
+            "height": 1024,
+            "width": 1024,
+            "steps": 28,
+            "frames": 1,
+            "batch_size": 1,
+            "guidance_scale": 4.5,
+            "negative_prompt": "blurry, low quality",
+            "max_sequence_length": 256,
+            "prompt": "warmup",
+            "seed": 7
+          }
+        },
+        {
+          "worker": "wan5",
+          "spec": {
+            "steps": 2,
+            "height": 480,
+            "width": 832,
+            "frames": 121,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "warmup",
+            "seed": 7
+          },
+          "quantum": "step"
+        },
+        {
+          "worker": "image5",
+          "spec": {
+            "height": 1024,
+            "width": 1024,
+            "steps": 28,
+            "frames": 1,
+            "batch_size": 1,
+            "guidance_scale": 4.5,
+            "negative_prompt": "blurry, low quality",
+            "max_sequence_length": 256,
+            "prompt": "warmup",
+            "seed": 7
+          }
+        },
+        {
+          "worker": "wan6",
+          "spec": {
+            "steps": 2,
+            "height": 480,
+            "width": 832,
+            "frames": 121,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "warmup",
+            "seed": 7
+          },
+          "quantum": "step"
+        },
+        {
+          "worker": "image6",
+          "spec": {
+            "height": 1024,
+            "width": 1024,
+            "steps": 28,
+            "frames": 1,
+            "batch_size": 1,
+            "guidance_scale": 4.5,
+            "negative_prompt": "blurry, low quality",
+            "max_sequence_length": 256,
+            "prompt": "warmup",
+            "seed": 7
+          }
+        },
+        {
+          "worker": "wan7",
+          "spec": {
+            "steps": 2,
+            "height": 480,
+            "width": 832,
+            "frames": 121,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "warmup",
+            "seed": 7
+          },
+          "quantum": "step"
+        },
+        {
+          "worker": "image7",
+          "spec": {
+            "height": 1024,
+            "width": 1024,
+            "steps": 28,
+            "frames": 1,
+            "batch_size": 1,
+            "guidance_scale": 4.5,
+            "negative_prompt": "blurry, low quality",
+            "max_sequence_length": 256,
+            "prompt": "warmup",
+            "seed": 7
+          }
+        }
+      ],
+      "generator": {
+        "count": 80,
+        "seed": 201,
+        "pattern": "poisson",
+        "rate_rps": 0.06724773859012981,
+        "prompts": [
+          "A red ceramic kettle on a wooden table.",
+          "A lighthouse at dusk."
+        ],
+        "classes": [
+          {
+            "kind": "video",
+            "blocks_per_step": 60,
+            "prepare_ms": 24.018739350140095,
+            "encode_ms": 15433.868852443993,
+            "step_compute_ms": 7543.5565784573555,
+            "finish_ms": 8564.036610536277,
+            "steps": 50,
+            "decode_chunks": 31,
+            "class": "wan21-480x832x121",
+            "weight": 1,
+            "service_ms": 401199.7531251982,
+            "slo_scale": 1.5,
+            "spec": {
+              "steps": 50,
+              "height": 480,
+              "width": 832,
+              "frames": 121,
+              "guidance_scale": 5.0,
+              "cache": false,
+              "threshold": 0.0,
+              "max_continuous": 1,
+              "negative_prompt": ""
+            }
+          },
+          {
+            "class": "sd35-1024",
+            "kind": "image",
+            "weight": 4,
+            "service_ms": 48403.946929611266,
+            "slo_scale": 2.5,
+            "spec": {
+              "height": 1024,
+              "width": 1024,
+              "steps": 28,
+              "frames": 1,
+              "batch_size": 1,
+              "guidance_scale": 4.5,
+              "negative_prompt": "blurry, low quality",
+              "max_sequence_length": 256
+            }
+          }
+        ]
+      },
+      "options": {
+        "quantum_ms": 300,
+        "forms": [
+          "sp1"
+        ],
+        "chunked_decode": true,
+        "decode_chunk_frames": 8,
+        "lazy_preemption": true
+      },
+      "matrix": {
+        "/policy": [
+          "static_sp1",
+          "block_elastic"
+        ]
+      },
+      "artifact_dependencies": []
+    }
+  ],
+  "benchmark": {
+    "mainline": true,
+    "models": [
+      "Wan2.1-T2V-1.3B",
+      "SD3.5-medium"
+    ],
+    "video_request_fraction": 0.2,
+    "load": 1.0,
+    "seed": 201,
+    "prompt_pools": {
+      "image": "diffusiondb",
+      "video": "vidprom"
+    },
+    "production_trace": false,
+    "quality_qualified": false,
+    "source_summaries": [
+      {
+        "path": "/data/share/jjjkairos/output/DITSERVE/reports/wan21-sd35-mainline-20261028t070646z/baseline-bf16-summary.json",
+        "bytes": 12319,
+        "sha256": "a6afb58b6d0bad018a20d12d06edd3a5a628da79979e2fe76fd58f152f4aef9a"
+      },
+      {
+        "path": "/data/share/jjjkairos/output/DITSERVE/reports/wan21-sd35-mainline-20261028t070646z/sd35-cost-summary.json",
+        "bytes": 1806,
+        "sha256": "5d4076f4d190430c763a0248a89b5a15e6bc215611d677515207448d6f400880"
+      }
+    ]
+  }
+}

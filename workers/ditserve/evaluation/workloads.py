@@ -163,8 +163,8 @@ def build_trace(classes, prompt_pools, windows, *, slots, seed, quality_per_kind
                 timestamps = [0.0] * amount
             else:
                 active_start, active_length = active_windows[period_index]
-                timestamps = sorted(_rng(seed, window_index, period_index, "arrival", kind).random() * active_length
-                                    for unused in range(amount))
+                arrival_rng = _rng(seed, window_index, period_index, "arrival", kind)
+                timestamps = sorted(arrival_rng.random() * active_length for unused in range(amount))
             for name, timestamp in zip(selected, timestamps):
                 klass = classes[name]
                 sample = prompts[kind][prompt_index[kind]]

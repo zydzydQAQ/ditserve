@@ -11,7 +11,7 @@
 
 ## 构建
 
-在只有一张 A100 40GB 的 Linux x86_64 服务器上从 GitHub `xdit` 分支重建，见 [A100 单卡镜像重建与最简依赖](a100-image-rebuild.md)。
+在只有一张 A100 40GB 的 Linux x86_64 服务器上从 GitHub `xdit` 分支重建，见 [A100 单卡镜像重建与最简依赖](a100-image-rebuild.md)。默认 `runtime` 不含 CMake 和 OpenSSL 开发头文件；需要带完整 Python 环境的持久 C++ 开发镜像时，使用该文的 `development` target，不在本机 WSL 或 Kairos 节点构建。
 
 依赖网络不可用时，用本机 wheelhouse 离线构建（文件名须与锁文件一致）：
 

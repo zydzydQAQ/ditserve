@@ -1,19 +1,64 @@
-# Kairos 预实验汇总（2026-10-18 至 10-20）
+# Kairos 预实验汇总（2026-10-18 至 10-28）
 
 ## 实验环境
 
 - 硬件：Kairos 集群（`jjjkairos`），A100-PCIE-40GB，无 NVLink，拓扑为 PHB：所有卡经 CPU host bridge 互连。驱动 570.133.20，低于清单要求的 570.181。2026-10-19 用 1×8 作业整机确认（gpu03，`acceptance/nvlink-20261019t1105z/interconnect.txt`）：8 卡两两之间都是 PHB，`nvidia-smi nvlink --status` 对每张卡报告 "all links are inActive"；P2P 读写可用但走 PCIe；PCI 地址为同一总线上连续的 `00:06.0`–`00:0D.0`，是虚拟机直通布局。
 - 作业规模：1×1、1×2、1×4、1×8 容器作业。每张卡配 8 个 CPU、64 GiB 内存上限、32 GB `/dev/shm`；`/shared` 为 NFS 4.2。
-- 镜像：在 `ditserve:rewrite-runtime`（`3a5e738`）上增量替换 `/opt/ditserve`，venv 不变。使用过的标签：
-  - `rewrite-runtime`：K0–K2 首轮；
-  - `8a100-1c6282a`：K0–K2 复测，以及 K3–K5；
-  - `8a100-2edc0a8`：K6 中的 sp4x，以及 K8 的 2 卡；
-  - `8a100-face7c1`：K6 中的 sp2r，以及 K7、K8 的 4 卡；
-  - 2026-10-19 起只保留 `8a100-224099f` 一个镜像（其余标签已删除，可按提交号用 `.local/ditserve-kairos-rewrite-runtime/tools/Dockerfile.kairos-update` 重建）。代码改为按提交发布到 `/shared/code/DITSERVE/builds/<commit>/`，作业用 `DITSERVE_BUILD=<commit>` 选择版本。K11′ 用的是 `f2e89d4`。
+- 镜像：历史实验使用过 `rewrite-runtime`、`8a100-1c6282a`、`8a100-2edc0a8`、`8a100-face7c1` 和 `8a100-224099f`；K11′ 的代码为 `f2e89d4`。当时只保留一个镜像，并按提交发布到 `/shared/code/DITSERVE/builds/<commit>/`，作业用 `DITSERVE_BUILD=<commit>` 选择版本。旧的 `Dockerfile.kairos-update` 增量重建流程现已停用。
+- 当前运行镜像固定为 `192.168.1.114:30500/jjjkairos/ditserve:xdit-016e1ca`，manifest digest 为 `sha256:710a583e664c08c8606a931127684b28e3f89442b62eaa5c3d1b4e611f530017`。代码仍通过上述 write-once build 选择，不能省略 `DITSERVE_BUILD` 后误用镜像内置源码。
 - 脚本：`.local/ditserve-kairos-rewrite-runtime/scripts/`。
 - 结果：`/shared/output/DITSERVE/results/<experiment>/<run>/results.xlsx`。作业日志、生成的配置和预算账本在 `acceptance/<run>/`。
 
-真机结果除 m1f 给 block_elastic 补的第二个 seed（202）外，都是单 seed 的描述性数据。多 seed 的结论只来自校准后的模拟器。
+真机结果除 m1f 给 block_elastic 补的第二个 seed（202）外，都是单 seed 的描述性数据。多 seed 的结论只来自校准后的模拟器。2026-10-28 发现负载生成器把同一模态的在线到达错误地抽成同一时刻，见 W6；历史 Poisson/Bursty 记录应按实际冻结到达时间重解释，不能只凭名称把它们当作独立到达证据。
+
+## Wan2.1 + SD3.5 主线（2026-10-28）
+
+新主线使用 `configs/studies/target-8xa100/cluster_wan21_sd35.json`，当前镜像 `xdit-016e1ca`，第一阶段 build `1917afe`。主形状为 Wan2.1 `480x832x121`、50 步，SD3.5-medium `1024x1024`、28 步；Wan cache off、UMT5 CPU FP32，SD3.5 BF16 MATH。以下均为真实 A100-PCIE-40GB 结果，不与旧 Wan2.2 + Sana 的成本或 SLO 混用。
+
+### W0 当前后端的完整共置
+
+两次作业分别完整执行 Wan 50 步、SD3.5 28 步和 31 个 latent 帧的分段解码，包含首次解码与 SD3.5 出图并发。整卡采样间隔 100 ms；时间单位为 ms，显存为 MiB。
+
+| Wan VAE | 完整动作 | 整卡最大 used / 最小 free | Wan 每步中位 | 分段解码合计 | 并发 SD3.5 完整调用 |
+| --- | --- | ---: | ---: | ---: | ---: |
+| BF16 | 完成，无 OOM | 33847 / 6596 | 7543.1 | 8564.0 | 50652.4 |
+| FP32 | 完成，无 OOM | 38781 / 1662 | 7581.8 | 13130.9 | 51919.1 |
+
+证据：`results/kairos-wan-sd35-mem/wan21-sd35-mainline-20261028t070646z`、`.../wan21-sd35-mainline-fp32-20261028t072056z`，以及 `reports/wan21-sd35-mainline-20261028t070646z/{baseline-bf16-summary,baseline-fp32-summary}.json`。两次工作簿均通过 `results verify`。FP32 虽完成，但最小 free 只有 1662 MiB，不能写成稳定余量；不同作业的 SD3.5 时间差不用于声称 VAE 精度会改变 SD3.5 速度。
+
+### W1 SD3.5 原生一致性与成本
+
+`sd35-mainline-native-20261028t071047z` 在完整 28 步、1024²、cache off 下，原生 Diffusers 与 xDiT 输出逐位一致，最终 `results verify` 通过。完整原子调用约 48.93 s，不能当成稳定成本。另一个作业做一次同形状预热后，三次未插桩调用分别为 48.358、48.404、48.511 s，中位 **48.404 s**，整卡最大 used 24667 MiB。证据：`results/kairos-sd35/sd35-mainline-native-20261028t071047z`、`results/kairos-sd35-cost/sd35-mainline-cost-20261028t072056z`。
+
+`sd35-mainline-stage-20261028t082607z` 的插桩进一步分解了这 28 步：Transformer CUDA 占阶段合计的 **99.30%**，每步中位 **1.713 s**；VAE decode 约 **194 ms**。因此当前不应先假设 VAE 或文本编码是主要时延瓶颈。此 run 的 `peak_reserved - initial_allocated` 为 **9.04 GB（约 8.42 GiB）**，说明 allocator 驻留值得做显存对照，但不等于这些字节都可无代价回收。插桩不作为未插桩时延或 kernel 归因，证据见 `reports/wan21-sd35-mainline-20261028t070646z/sd35-stage-summary.json`。
+
+主线先用独立服务时间的 2.5 倍作为图像 SLO，即约 **121.010 s**；不再使用 Sana 的约 0.32 s 成本或 0.86 s 期限。Wan 编码、GPU 准备、50 步与分段解码合计约 **401.200 s**，视频 SLO 先取其 1.5 倍，约 **601.800 s**。它们是当前实验的期限选择，不是生产承诺。
+
+### W2 Wan VAE 精度的质量边界
+
+两组 `wan21-sd35-vae-q1-20261028t072546z` 与 `wan21-sd35-vae-q2-20261028t074634z` 在不同 prompt/seed、完整 50 步后，FP32 与 BF16 的 latent 均**逐位一致**。BF16 相对 FP32 解码视频：第一组 **PSNR 52.368 dB、平均 LPIPS 0.000493、p95 LPIPS 0.000548**；第二组 **PSNR 59.225 dB、平均 LPIPS 0.000431、p95 LPIPS 0.000563**。两组各 121 帧的 LPIPS 均实际计算成功。这是支持 BF16 候选配置的小样本数值/质量筛查，不是完整 VBench 或普遍质量证明。原始视频和 latent 在评价完成后由 finalizer 删除，每组回收 1184502272 字节；指标保存在已验证工作簿与 `vae-quality-q1-summary.json`、`vae-quality-q2-summary.json` 中。
+
+### W3 固定负向提示词缓存
+
+`wan21-prompt-cache-20261028t074207z` 顺序比较缓存关闭/开启，正提示词每次重新编码，固定空负向提示词。三次 CPU 编码的中位数从 **14.567 s** 降为 **7.041 s**；开启组先有一次约 14.951 s 的冷 miss，随后三次均命中且不再调用负向编码器。缓存项为 8 MiB，证据见 `acceptance/wan21-prompt-cache-20261028t074207z/prompt-cache-summary.json`。这是 CPU 编码收益，尚不能替代在线端到端收益。
+
+### W4 Wan 当前后端的数值与状态恢复
+
+独立的 numeric 单阶段作业 `target-acceptance-vae-bfloat16/wan21-xdit-numeric-r3-20261028t075204z-gpu0` 已完成且数值门通过：官方循环、逐步执行和热/冷恢复保持逐位一致，最终工作簿通过 `results verify`。此前的混合阶段因旧 Sana 快照缺失失败，另一次 `--phase` 运行只完成 numeric、整体为 incomplete；这些保留为不同范围的历史记录，不冒充完整主线通过。`ACCEPTANCE_PHASE=numeric` 现在直接生成单阶段配置，而不是使用续跑选择器。
+
+### W5 第一轮调度 pilot：有效单元与 watchdog 失败
+
+`wan21-sd35-pilot-r2-20261028t073930z` 使用 2 视频 + 8 图像、NVML 后台探测、300 ms block quantum，两个策略按正反序执行。前两个单元完成：静态 step 与 block 的图像按时均为 2/8、视频均为 1/2；图像 p95 分别约 374.5/374.9 s，视频 p95 约 776.0/781.8 s。视频的 `action_ms - model_ms` 在 step 下约 0.35 s/请求（81 quanta），block 下约 2.30–2.36 s/请求（1531 quanta），即约 1.5 ms/quantum；这些只是两个完成单元的描述，不是共置调度收益。
+
+第三阶段在 8 张图像完成后中断两个视频，错误为 `phase watchdog cannot admit the next complete work unit`，不是 OOM。整个 run 的状态为 failed、性能资格 unverified；已保存 30 条请求（28 completed、2 interrupted），工作簿 SHA256 为 `1666e64c4b061f1afc83ebe5c20102f80fb822665c9a559b0af480b757a1e9aa`，`results verify` 通过。不能把两个完成单元或整个失败 run 称为完整配对矩阵。后续时间预算须覆盖正反序的全部单元，而不只覆盖策略数。
+
+### W6 新 VAE 直接分段解码与在线到达修复
+
+`wan-vae-inspect-r2-20261028t085924z` 证实：Wan2.1 VAE 新加载后 `_conv_num` 不存在，首次 `ChunkedDecode` 报 `AttributeError`；调用官方 `vae.clear_cache()` 后 `_conv_num=33`，小尺寸 FP32 VAE 的分段与整段输出逐位一致。已加入初始化修复及冷启动回归测试，CPU 定向测试通过；发布后的真实 worker 验证仍需单独记录，不能以手工诊断代替生产路径通过。
+
+负载生成器此前在每个样本的生成表达式中重新构造同一种子的 RNG，导致同一模态、同一活跃窗口的到达时间完全相同。已改为每个窗口/模态持有一个 RNG 并连续抽样，保留确定性、窗口长度、负载和提示词。旧 pilot 的轨迹 SHA256 `1c0451b8de54c0db226f3e034ff89017d44334fdd8fdb788d01884fddfcced0c` 中 8 张图像都在 88.144 s、两个视频都在 917.328 s 到达，未形成图像—视频重叠；因此 W5 只是串行基线。修正后的 seed 201 Poisson 轨迹 SHA256 为 `e8ecc3107777ce52e7af3085ce1a35207b55a8d53c9968573853459dbc73d1a3`，两个视频仍不与图像服务区间重叠。它不是根据性能结果挑出的轨迹，应予保留，并补充 SHA256 为 `fe1f7151cf52e220cb9e31dc61836008b3e1379f0f302919c3d44e3cd256e851` 的 2 视频 + 8 图像同到压力轨迹。
+
+当前源码的完整固定环境 CPU 测试为 **323 项通过、1 项跳过**。复用 `1917afe` 原生核心调用当前 Python 的真实 mock study 也已完成 24 个请求，工作簿 SHA256 `e3a8d3fb7cea7c8317f65091168c5717b3eddb7d6567fb895446966d2e322754`，`results verify` 通过；这只证明 CPU 控制与结果路径，不证明 GPU 性能。完整调度对照、缓存归还的 GPU 效果和新方法另行记录；没有这些结果时不提前写性能提升。
 
 ## 当前 xDiT 迁移边界
 

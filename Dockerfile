@@ -29,7 +29,7 @@ RUN cmake -S . -B /build/core -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON \
     && ctest --test-dir /build/core --output-on-failure \
     && cmake --install /build/core --prefix /opt/ditserve --strip
 
-FROM runtime-system AS runtime
+FROM runtime-system AS runtime-base
 ARG GIT_REVISION=unknown
 LABEL org.opencontainers.image.title=ditserve org.opencontainers.image.revision=${GIT_REVISION}
 COPY --from=dependencies /opt/venv /opt/venv
@@ -48,3 +48,13 @@ RUN ditserve --version && ditserve doctor \
     && mkdir -p /data/results /data/cache /models && chmod -R a+rwX /data
 WORKDIR /data
 CMD ["ditserve", "--help"]
+
+FROM runtime-base AS development
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        cmake make libssl-dev pkg-config \
+    && rm -rf /var/lib/apt/lists/* \
+    && cmake --version && g++ --version && pkg-config --modversion openssl
+WORKDIR /src
+CMD ["bash"]
+
+FROM runtime-base AS runtime
