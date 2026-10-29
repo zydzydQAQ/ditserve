@@ -40,8 +40,12 @@ from ditserve.models.sd35 import SD35Backend  # noqa: E402
 
 def compute_psnr_ssim(ref_frames: np.ndarray, test_frames: np.ndarray) -> tuple[float, float]:
     """Compute mean PSNR (dB) and SSIM across video frames in [0, 1] float32 [F, H, W, C]."""
-    ref = ref_frames.astype(np.float32)
-    tst = test_frames.astype(np.float32)
+    ref = np.clip(ref_frames.astype(np.float32), 0.0, 1.0)
+    tst = np.clip(test_frames.astype(np.float32), 0.0, 1.0)
+    if ref.ndim == 5:
+        ref = ref[0]
+    if tst.ndim == 5:
+        tst = tst[0]
     mse = float(np.mean((ref - tst) ** 2))
     psnr = 99.99 if mse < 1e-10 else float(10.0 * math.log10(1.0 / mse))
 
@@ -100,7 +104,7 @@ def run_quality_pareto(wan: WanBackend, out_dir: Path) -> list[dict]:
         wan.prepare({"state_id": sid, "spec": spec})
         torch.cuda.synchronize()
         t0 = time.perf_counter()
-        adv = wan.advance({"state_id": sid, "steps": 20})
+        wan.advance({"state_id": sid, "steps": 20})
         torch.cuda.synchronize()
         denoise_ms = (time.perf_counter() - t0) * 1000.0
 
@@ -109,25 +113,19 @@ def run_quality_pareto(wan: WanBackend, out_dir: Path) -> list[dict]:
         reused = sum(int(ev.get("reused_forwards", 0)) for ev in state.events if ev.get("kind") == "step")
         total_passes = 20 * 2  # 20 steps x 2 CFG branches
 
-        # Decode video frames via chunked 3D-VAE
+        # Decode video frames via chunked 3D-VAE directly in memory (float32 [1, F, H, W, C])
         t_dec = time.perf_counter()
+        decoded_arr = None
         while True:
-            fin = wan.finish({
-                "state_id": sid,
-                "decode_frames": 5,
-                "output_path": str(out_dir / f"{sid}.mp4"),
-            })
-            if fin["progress"]["finished"]:
+            arr, info = wan.runtime.decode_chunks(state, 5)
+            if info["done"]:
+                decoded_arr = arr
                 break
         torch.cuda.synchronize()
         decode_ms = (time.perf_counter() - t_dec) * 1000.0
-
-        # Load decoded frames via imageio for exact pixel-level PSNR & SSIM
-        import imageio.v3 as iio
-        frames_uint8 = iio.imread(str(out_dir / f"{sid}.mp4"))  # [F, H, W, C]
-        frames_f32 = frames_uint8.astype(np.float32) / 255.0
-        # Remove temporary mp4 after computing metrics to obey output retention rules
-        (out_dir / f"{sid}.mp4").unlink(missing_ok=True)
+        frames_f32 = np.asarray(decoded_arr, dtype=np.float32)
+        wan.release({"state_id": sid})
+        wan.release_cache()
 
         if tau == 0.0:
             ref_latents = latents.clone()
@@ -327,7 +325,8 @@ def run_real_mixed_trace_replay(
     img_latencies_hda = [max(0.0, t_i01_hda - img_arrivals[0]), max(0.0, t_i01_hda - img_arrivals[1])]
 
     # Laxity gate triggers tau=0.12 after preemption delay
-    wan_step.advance({"state_id": "hda-v0", "steps": 2, "cache_threshold": 0.12})
+    wan_step.set_cache({"state_id": "hda-v0", "cache": True, "threshold": 0.12, "max_continuous": 3})
+    wan_step.advance({"state_id": "hda-v0", "steps": 2})
     wan_step.tiered_offload({"state_id": "hda-v0", "non_blocking": True})
     sd35.prepare({"state_id": "hda-i2", "spec": dict(i_spec, request_id="hda-i2", seed=204)})
     wan_step.tiered_prefetch({"state_id": "hda-v0"})
@@ -338,7 +337,7 @@ def run_real_mixed_trace_replay(
     img_latencies_hda.append(max(0.0, t_i2_hda - img_arrivals[2]))
 
     # Finish remaining 9 steps with laxity-gated DBCache tau=0.12
-    wan_step.advance({"state_id": "hda-v0", "steps": 9, "cache_threshold": 0.12})
+    wan_step.advance({"state_id": "hda-v0", "steps": 9})
     wan_step.release({"state_id": "hda-v0"})
     torch.cuda.synchronize()
     v_finish_hda = (time.perf_counter() - t_start) * 1000.0
