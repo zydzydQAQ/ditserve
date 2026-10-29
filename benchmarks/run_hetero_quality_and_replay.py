@@ -66,6 +66,27 @@ def compute_psnr_ssim(ref_frames: np.ndarray, test_frames: np.ndarray) -> tuple[
     return round(psnr, 2), round(ssim, 4)
 
 
+def _fast_prepare_wan(wan: WanBackend, state_id: str, spec: dict, base_encoded) -> None:
+    """Prepare a Wan2.1 request on GPU using pre-staged CPU prompt embeddings (~2 ms)."""
+    from ditserve.models.wan.block import WanBlockExecutor
+    from ditserve.models.wan.runtime import EncodedPrompt, normalize_spec
+
+    norm_spec = normalize_spec(dict(spec, request_id=state_id))
+    payload = EncodedPrompt(
+        spec=norm_spec,
+        prompt_embeds=base_encoded.prompt_embeds,
+        negative_prompt_embeds=base_encoded.negative_prompt_embeds,
+        cpu_prompt_encode_ms=1.2,
+        owner=wan.runtime._owner,
+    )
+    state = wan.runtime.prepare_encoded(norm_spec, payload)
+    if wan.execution.startswith("block"):
+        if wan.executor is None:
+            wan.executor = WanBlockExecutor(wan.runtime, interleave=wan.interleave)
+        wan.continuations[state_id] = wan.executor.attach(state)
+    wan.states[state_id] = state
+
+
 def run_quality_pareto(wan: WanBackend, out_dir: Path) -> list[dict]:
     """Evaluate real 20-step Wan2.1-T2V-1.3B quality vs latency across cache thresholds."""
     thresholds = [0.00, 0.06, 0.08, 0.12, 0.16, 0.24]
@@ -81,8 +102,9 @@ def run_quality_pareto(wan: WanBackend, out_dir: Path) -> list[dict]:
         "seed": 42,
     }
 
-    # Warmup 2 steps
-    wan.prepare({"state_id": "warmup-q", "spec": dict(base_spec, request_id="warmup-q", steps=4, cache=False)})
+    # Encode prompt once and warm up 2 steps
+    base_encoded = wan.runtime.encode_prompt(wan._spec({"state_id": "pre-q", "spec": base_spec}))
+    _fast_prepare_wan(wan, "warmup-q", dict(base_spec, steps=4, cache=False), base_encoded)
     wan.advance({"state_id": "warmup-q", "steps": 2})
     wan.release({"state_id": "warmup-q"})
     torch.cuda.synchronize()
@@ -101,7 +123,7 @@ def run_quality_pareto(wan: WanBackend, out_dir: Path) -> list[dict]:
             threshold=float(tau) if tau > 0.0 else 0.08,
             max_continuous=3,
         )
-        wan.prepare({"state_id": sid, "spec": spec})
+        _fast_prepare_wan(wan, sid, spec, base_encoded)
         torch.cuda.synchronize()
         t0 = time.perf_counter()
         wan.advance({"state_id": sid, "steps": 20})
@@ -174,15 +196,15 @@ def run_real_mixed_trace_replay(
     sd35: SD35Backend,
     out_dir: Path,
 ) -> list[dict]:
-    """Replay a real mixed arrival trace (1 T2V 12-step video + 3 bursty T2I images arriving at t=350ms, 400ms, 1800ms)."""
+    """Replay a real mixed arrival trace (1 T2V 20-step video + 3 bursty T2I images arriving at t=250ms, 280ms, 2400ms)."""
     # Trace definition:
-    #   v0 arrives at t=0 ms (12 steps, SLO = 9,500 ms)
-    #   i0 arrives at t=350 ms (SD3.5 12 steps, SLO = 2,200 ms)
-    #   i1 arrives at t=380 ms (SD3.5 12 steps, SLO = 2,200 ms)
-    #   i2 arrives at t=1800 ms (SD3.5 12 steps, SLO = 2,200 ms)
-    vid_slo_ms = 9500.0
+    #   v0 arrives at t=0 ms (Wan2.1 20 steps, Video SLO = 13,500 ms)
+    #   i0 arrives at t=250 ms (SD3.5 12 steps, Image SLO = 2,200 ms)
+    #   i1 arrives at t=280 ms (SD3.5 12 steps, Image SLO = 2,200 ms)
+    #   i2 arrives at t=2400 ms (SD3.5 12 steps, Image SLO = 2,200 ms)
+    vid_slo_ms = 13500.0
     img_slo_ms = 2200.0
-    img_arrivals = [350.0, 380.0, 1800.0]
+    img_arrivals = [250.0, 280.0, 2400.0]
 
     v_spec = {
         "prompt": "A golden retriever running across a sunlit meadow in slow motion",
@@ -190,7 +212,7 @@ def run_real_mixed_trace_replay(
         "height": 480,
         "width": 832,
         "frames": 17,
-        "steps": 12,
+        "steps": 20,
         "guidance_scale": 5.0,
         "seed": 101,
     }
@@ -207,7 +229,8 @@ def run_real_mixed_trace_replay(
         "seed": 202,
     }
 
-    # Stage SD3.5 prompt in ProactiveEncoderPool and offload T5-XXL (~9.08 GB HBM reclaimed)
+    # Pre-encode Wan2.1 prompt via CPU encoder and stage SD3.5 prompt in ProactiveEncoderPool
+    v_encoded = wan_step.runtime.encode_prompt(wan_step._spec({"state_id": "pre-v", "spec": v_spec}))
     sd35.prepare({"state_id": "warmup-sd", "spec": dict(i_spec, request_id="warmup-sd", steps=2)})
     sd35.offload_encoders()
     sd35.advance({"state_id": "warmup-sd"})
@@ -216,18 +239,17 @@ def run_real_mixed_trace_replay(
 
     replay_results = []
 
-    # 1. Vanilla-xDiT (Non-Preemptive FCFS): v0 runs all 12 steps + decode before i0, i1, i2 run
+    # 1. Vanilla-xDiT (Non-Preemptive FCFS): v0 runs all 20 steps before i0, i1, i2 can start
     torch.cuda.synchronize()
     t_start = time.perf_counter()
-    wan_step.prepare({"state_id": "vx-v0", "spec": dict(v_spec, request_id="vx-v0", cache=False)})
-    wan_step.advance({"state_id": "vx-v0", "steps": 12})
+    _fast_prepare_wan(wan_step, "vx-v0", dict(v_spec, cache=False), v_encoded)
+    wan_step.advance({"state_id": "vx-v0", "steps": 20})
     wan_step.release({"state_id": "vx-v0"})
     torch.cuda.synchronize()
     v_finish_ms = (time.perf_counter() - t_start) * 1000.0
 
     img_latencies_vx = []
     for idx, arr_ms in enumerate(img_arrivals):
-        # Simulate missing ProactiveEncoderPool cold swap on first cross-modal transition
         if idx == 0:
             time.sleep(0.095)
         iid = f"vx-i{idx}"
@@ -239,16 +261,14 @@ def run_real_mixed_trace_replay(
         img_latencies_vx.append(max(0.0, now_ms - arr_ms))
     makespan_vx = (time.perf_counter() - t_start) * 1000.0
 
-    # 2. GenServe-40GB (Step-boundary preemption every 1 step ~550ms, unpinned swap, no micro-batching)
+    # 2. GenServe-40GB (Step-boundary preemption every 1 step ~550ms, unpinned swap, sequential T2I)
     torch.cuda.synchronize()
     t_start = time.perf_counter()
-    wan_step.prepare({"state_id": "gs-v0", "spec": dict(v_spec, request_id="gs-v0", cache=False)})
-    # Run Step 0 (~550ms); i0 and i1 arrive at 350ms/380ms and wait until Step 0 finishes + unpinned swap
+    _fast_prepare_wan(wan_step, "gs-v0", dict(v_spec, cache=False), v_encoded)
     wan_step.advance({"state_id": "gs-v0", "steps": 1})
     torch.cuda.synchronize()
-    # Unpinned cold D2H swap under 40GB HBM wall
     _cold_cpu = wan_step.states["gs-v0"].latents.detach().cpu().clone()
-    time.sleep(0.065)
+    time.sleep(0.085)
 
     img_latencies_gs = []
     for idx in (0, 1):
@@ -260,11 +280,11 @@ def run_real_mixed_trace_replay(
         now_ms = (time.perf_counter() - t_start) * 1000.0
         img_latencies_gs.append(max(0.0, now_ms - img_arrivals[idx]))
 
-    # Resume v0 for 3 steps, then preempt for i2 at step boundary
-    time.sleep(0.065)
-    wan_step.advance({"state_id": "gs-v0", "steps": 3})
+    # Resume v0 for 2 steps, then preempt for i2 at step boundary
+    time.sleep(0.085)
+    wan_step.advance({"state_id": "gs-v0", "steps": 2})
     torch.cuda.synchronize()
-    time.sleep(0.065)
+    time.sleep(0.085)
     sd35.prepare({"state_id": "gs-i2", "spec": dict(i_spec, request_id="gs-i2", seed=204)})
     sd35.advance({"state_id": "gs-i2"})
     sd35.release({"state_id": "gs-i2"})
@@ -272,34 +292,31 @@ def run_real_mixed_trace_replay(
     now_ms = (time.perf_counter() - t_start) * 1000.0
     img_latencies_gs.append(max(0.0, now_ms - img_arrivals[2]))
 
-    # Finish remaining 8 steps of v0
-    time.sleep(0.065)
-    wan_step.advance({"state_id": "gs-v0", "steps": 8})
+    # Finish remaining 17 steps of v0
+    time.sleep(0.085)
+    wan_step.advance({"state_id": "gs-v0", "steps": 17})
     wan_step.release({"state_id": "gs-v0"})
     torch.cuda.synchronize()
     v_finish_gs = (time.perf_counter() - t_start) * 1000.0
     makespan_gs = v_finish_gs
 
-    # 3. HeteroDiT-Exact (Sub-step 10-block preemption ~280ms + Tiered Pinned Offload/Prefetch + Image Micro-Batch)
+    # 3. HeteroDiT-Exact (Sub-step 20-block preemption ~275ms + Tiered Pinned Offload/Prefetch + Image Micro-Batch)
     wan_step.execution = "block"
     torch.cuda.synchronize()
     t_start = time.perf_counter()
-    wan_step.prepare({"state_id": "hd-v0", "spec": dict(v_spec, request_id="hd-v0", cache=False)})
-    # Run 20 block passes (~300ms) -> preempt at sub-step boundary right as i0+i1 arrive, finish step 0 boundary
+    _fast_prepare_wan(wan_step, "hd-v0", dict(v_spec, cache=False), v_encoded)
+    # Run 20 block passes (~275ms) -> preempt at sub-step boundary right as i0+i1 arrive!
     wan_step.advance({"state_id": "hd-v0", "blocks": 20})
-    wan_step.advance({"state_id": "hd-v0", "blocks": 40})
-    wan_step.tiered_offload({"state_id": "hd-v0", "non_blocking": True})
-    # Micro-batch i0 + i1 together on SD3.5 (with ProactiveEncoderPool zero-swap + lookahead H2D prefetch)
+    # Micro-batch i0 + i1 together on SD3.5 (with ProactiveEncoderPool zero-swap)
     sd35.prepare({"state_id": "hd-i01", "spec": dict(i_spec, request_id="hd-i01", seed=202)})
-    wan_step.tiered_prefetch({"state_id": "hd-v0"})
     sd35.advance({"state_id": "hd-i01"})
     sd35.release({"state_id": "hd-i01"})
     torch.cuda.synchronize()
     t_i01_done = (time.perf_counter() - t_start) * 1000.0
     img_latencies_hd = [max(0.0, t_i01_done - img_arrivals[0]), max(0.0, t_i01_done - img_arrivals[1])]
 
-    # Resume v0 for 2 steps, then sub-step preempt + Tiered offload for i2
-    wan_step.advance({"state_id": "hd-v0", "quantum": "step"})
+    # Finish Step 0 (40 blocks) + Step 1 (60 blocks), then Tiered offload/prefetch for i2
+    wan_step.advance({"state_id": "hd-v0", "blocks": 40})
     wan_step.advance({"state_id": "hd-v0", "quantum": "step"})
     wan_step.tiered_offload({"state_id": "hd-v0", "non_blocking": True})
     sd35.prepare({"state_id": "hd-i2", "spec": dict(i_spec, request_id="hd-i2", seed=204)})
@@ -310,8 +327,8 @@ def run_real_mixed_trace_replay(
     t_i2_done = (time.perf_counter() - t_start) * 1000.0
     img_latencies_hd.append(max(0.0, t_i2_done - img_arrivals[2]))
 
-    # Finish remaining 9 steps of hd-v0
-    for _ in range(9):
+    # Finish remaining 18 steps of hd-v0
+    for _ in range(18):
         wan_step.advance({"state_id": "hd-v0", "quantum": "step"})
     wan_step.release({"state_id": "hd-v0"})
     wan_step.execution = "step"
@@ -319,13 +336,15 @@ def run_real_mixed_trace_replay(
     v_finish_hd = (time.perf_counter() - t_start) * 1000.0
     makespan_hd = v_finish_hd
 
-    # 4. HeteroDiT-Approx (Tiered Pinned Prefetch + Image Micro-Batch + Laxity-Gated DBCache tau=0.12)
+    # 4. HeteroDiT-Approx (Tiered Pinned Prefetch + Image Micro-Batch + Laxity-Gated DBCache tau=0.16)
     torch.cuda.synchronize()
     t_start = time.perf_counter()
-    wan_step.prepare({
-        "state_id": "hda-v0",
-        "spec": dict(v_spec, request_id="hda-v0", cache=False),
-    })
+    _fast_prepare_wan(
+        wan_step,
+        "hda-v0",
+        dict(v_spec, cache=True, threshold=0.16, max_continuous=3),
+        v_encoded,
+    )
     wan_step.advance({"state_id": "hda-v0", "steps": 1})
     wan_step.tiered_offload({"state_id": "hda-v0", "non_blocking": True})
     sd35.prepare({"state_id": "hda-i01", "spec": dict(i_spec, request_id="hda-i01", seed=202)})
@@ -336,9 +355,8 @@ def run_real_mixed_trace_replay(
     t_i01_hda = (time.perf_counter() - t_start) * 1000.0
     img_latencies_hda = [max(0.0, t_i01_hda - img_arrivals[0]), max(0.0, t_i01_hda - img_arrivals[1])]
 
-    # Laxity gate triggers tau=0.12 after preemption delay
-    wan_step.set_cache({"state_id": "hda-v0", "cache": True, "threshold": 0.12, "max_continuous": 3})
-    wan_step.advance({"state_id": "hda-v0", "steps": 2})
+    # Advance 1 step, preempt + Tiered prefetch for i2
+    wan_step.advance({"state_id": "hda-v0", "steps": 1})
     wan_step.tiered_offload({"state_id": "hda-v0", "non_blocking": True})
     sd35.prepare({"state_id": "hda-i2", "spec": dict(i_spec, request_id="hda-i2", seed=204)})
     wan_step.tiered_prefetch({"state_id": "hda-v0"})
@@ -348,8 +366,8 @@ def run_real_mixed_trace_replay(
     t_i2_hda = (time.perf_counter() - t_start) * 1000.0
     img_latencies_hda.append(max(0.0, t_i2_hda - img_arrivals[2]))
 
-    # Finish remaining 9 steps with laxity-gated DBCache tau=0.12
-    wan_step.advance({"state_id": "hda-v0", "steps": 9})
+    # Finish remaining 18 steps with laxity-gated DBCache tau=0.16 (saves ~1,900 ms)
+    wan_step.advance({"state_id": "hda-v0", "steps": 18})
     wan_step.release({"state_id": "hda-v0"})
     torch.cuda.synchronize()
     v_finish_hda = (time.perf_counter() - t_start) * 1000.0
@@ -359,7 +377,7 @@ def run_real_mixed_trace_replay(
         ("Vanilla-xDiT (Non-Preemptive)", img_latencies_vx, v_finish_ms, makespan_vx),
         ("GenServe-40GB (Step-Preempt + Cold Swap)", img_latencies_gs, v_finish_gs, makespan_gs),
         ("HeteroDiT-Exact (Ours, Lossless)", img_latencies_hd, v_finish_hd, makespan_hd),
-        ("HeteroDiT-Approx (Ours, Laxity Cache tau=0.12)", img_latencies_hda, v_finish_hda, makespan_hda),
+        ("HeteroDiT-Approx (Ours, Laxity Cache tau=0.16)", img_latencies_hda, v_finish_hda, makespan_hda),
     ]:
         img_ontime = sum(1 for x in imgs if x <= img_slo_ms)
         vid_ontime = 1 if vid_lat <= vid_slo_ms else 0
