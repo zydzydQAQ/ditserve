@@ -1,0 +1,271 @@
+{
+  "scenarios": {
+    "gamma_cv2.5_load0.95": {
+      "description": "Bursty Gamma (CV=2.5, Load=0.95, Dual-Tier Video SLO)",
+      "policies": {
+        "static_sp1": {
+          "label": "Static-SP1 (FCFS/EDF No-Preempt)",
+          "total_slo_pct": 95.31,
+          "image_slo_pct": 100.0,
+          "video_slo_pct": 81.25,
+          "image_p99_ms": 1163.7,
+          "video_p99_ms": 23508.7,
+          "makespan_ms": 36107.1,
+          "preemptions": 0.0,
+          "batches": 0.0,
+          "approx_quanta": 0.0
+        },
+        "static_cfg2": {
+          "label": "Static-CFG2 (2-GPU Fixed)",
+          "total_slo_pct": 98.96,
+          "image_slo_pct": 100.0,
+          "video_slo_pct": 95.83,
+          "image_p99_ms": 1068.8,
+          "video_p99_ms": 13769.2,
+          "makespan_ms": 32575.7,
+          "preemptions": 0.0,
+          "batches": 0.0,
+          "approx_quanta": 0.0
+        },
+        "round_elastic": {
+          "label": "TetriServe-Round (5-Step Round)",
+          "total_slo_pct": 95.31,
+          "image_slo_pct": 100.0,
+          "video_slo_pct": 81.25,
+          "image_p99_ms": 1105.8,
+          "video_p99_ms": 25679.4,
+          "makespan_ms": 34779.5,
+          "preemptions": 0.0,
+          "batches": 0.0,
+          "approx_quanta": 0.0
+        },
+        "step_elastic": {
+          "label": "GenServe-Step (Step-Boundary SP)",
+          "total_slo_pct": 99.48,
+          "image_slo_pct": 100.0,
+          "video_slo_pct": 97.92,
+          "image_p99_ms": 1125.0,
+          "video_p99_ms": 11911.7,
+          "makespan_ms": 30897.7,
+          "preemptions": 0.0,
+          "batches": 0.0,
+          "approx_quanta": 0.0
+        },
+        "block_elastic": {
+          "label": "DitServe-Baseline (Block-Elastic)",
+          "total_slo_pct": 99.48,
+          "image_slo_pct": 100.0,
+          "video_slo_pct": 97.92,
+          "image_p99_ms": 1096.7,
+          "video_p99_ms": 11487.1,
+          "makespan_ms": 30794.7,
+          "preemptions": 0.0,
+          "batches": 0.0,
+          "approx_quanta": 0.0
+        },
+        "heterodit_exact": {
+          "label": "HeteroDiT-Exact (Knapsack+2D-USP+Tiered)",
+          "total_slo_pct": 100.0,
+          "image_slo_pct": 100.0,
+          "video_slo_pct": 100.0,
+          "image_p99_ms": 1573.9,
+          "video_p99_ms": 11046.7,
+          "makespan_ms": 30610.2,
+          "preemptions": 0.0,
+          "batches": 4.0,
+          "approx_quanta": 0.0
+        },
+        "heterodit_approx": {
+          "label": "HeteroDiT-Approx (Laxity Cache+2D-USP)",
+          "total_slo_pct": 100.0,
+          "image_slo_pct": 100.0,
+          "video_slo_pct": 100.0,
+          "image_p99_ms": 1520.2,
+          "video_p99_ms": 9160.6,
+          "makespan_ms": 29143.9,
+          "preemptions": 0.0,
+          "batches": 3.3,
+          "approx_quanta": 139.0
+        }
+      }
+    },
+    "bursty_load1.10": {
+      "description": "Heavy Burst (Bursty Pattern, Load=1.10, Tight SLO)",
+      "policies": {
+        "static_sp1": {
+          "label": "Static-SP1 (FCFS/EDF No-Preempt)",
+          "total_slo_pct": 90.62,
+          "image_slo_pct": 100.0,
+          "video_slo_pct": 62.5,
+          "image_p99_ms": 964.0,
+          "video_p99_ms": 17311.0,
+          "makespan_ms": 64789.6,
+          "preemptions": 0.0,
+          "batches": 0.0,
+          "approx_quanta": 0.0
+        },
+        "static_cfg2": {
+          "label": "Static-CFG2 (2-GPU Fixed)",
+          "total_slo_pct": 100.0,
+          "image_slo_pct": 100.0,
+          "video_slo_pct": 100.0,
+          "image_p99_ms": 900.0,
+          "video_p99_ms": 11483.0,
+          "makespan_ms": 56707.3,
+          "preemptions": 0.0,
+          "batches": 0.0,
+          "approx_quanta": 0.0
+        },
+        "round_elastic": {
+          "label": "TetriServe-Round (5-Step Round)",
+          "total_slo_pct": 94.27,
+          "image_slo_pct": 100.0,
+          "video_slo_pct": 77.08,
+          "image_p99_ms": 939.4,
+          "video_p99_ms": 19735.7,
+          "makespan_ms": 58155.9,
+          "preemptions": 0.0,
+          "batches": 0.0,
+          "approx_quanta": 0.0
+        },
+        "step_elastic": {
+          "label": "GenServe-Step (Step-Boundary SP)",
+          "total_slo_pct": 99.48,
+          "image_slo_pct": 100.0,
+          "video_slo_pct": 97.92,
+          "image_p99_ms": 972.6,
+          "video_p99_ms": 8309.7,
+          "makespan_ms": 54636.5,
+          "preemptions": 0.0,
+          "batches": 0.0,
+          "approx_quanta": 0.0
+        },
+        "block_elastic": {
+          "label": "DitServe-Baseline (Block-Elastic)",
+          "total_slo_pct": 99.48,
+          "image_slo_pct": 100.0,
+          "video_slo_pct": 97.92,
+          "image_p99_ms": 962.2,
+          "video_p99_ms": 8294.5,
+          "makespan_ms": 54932.2,
+          "preemptions": 0.0,
+          "batches": 0.0,
+          "approx_quanta": 0.0
+        },
+        "heterodit_exact": {
+          "label": "HeteroDiT-Exact (Knapsack+2D-USP+Tiered)",
+          "total_slo_pct": 99.48,
+          "image_slo_pct": 100.0,
+          "video_slo_pct": 97.92,
+          "image_p99_ms": 1210.8,
+          "video_p99_ms": 8526.7,
+          "makespan_ms": 54664.8,
+          "preemptions": 0.0,
+          "batches": 0.7,
+          "approx_quanta": 0.0
+        },
+        "heterodit_approx": {
+          "label": "HeteroDiT-Approx (Laxity Cache+2D-USP)",
+          "total_slo_pct": 100.0,
+          "image_slo_pct": 100.0,
+          "video_slo_pct": 100.0,
+          "image_p99_ms": 960.6,
+          "video_p99_ms": 7978.9,
+          "makespan_ms": 54459.9,
+          "preemptions": 0.0,
+          "batches": 0.0,
+          "approx_quanta": 42.3
+        }
+      }
+    },
+    "gamma_cv3.0_load1.25_hol": {
+      "description": "Extreme HoL Contention (Gamma CV=3.0, Load=1.25, Tight Dual-Tier SLO)",
+      "policies": {
+        "static_sp1": {
+          "label": "Static-SP1 (FCFS/EDF No-Preempt)",
+          "total_slo_pct": 82.81,
+          "image_slo_pct": 96.21,
+          "video_slo_pct": 53.33,
+          "image_p99_ms": 1841.7,
+          "video_p99_ms": 26072.9,
+          "makespan_ms": 37716.7,
+          "preemptions": 0.0,
+          "batches": 0.0,
+          "approx_quanta": 0.0
+        },
+        "static_cfg2": {
+          "label": "Static-CFG2 (2-GPU Fixed)",
+          "total_slo_pct": 92.71,
+          "image_slo_pct": 97.73,
+          "video_slo_pct": 81.67,
+          "image_p99_ms": 1740.7,
+          "video_p99_ms": 22722.6,
+          "makespan_ms": 35576.8,
+          "preemptions": 0.0,
+          "batches": 0.0,
+          "approx_quanta": 0.0
+        },
+        "round_elastic": {
+          "label": "TetriServe-Round (5-Step Round)",
+          "total_slo_pct": 85.94,
+          "image_slo_pct": 97.73,
+          "video_slo_pct": 60.0,
+          "image_p99_ms": 1754.3,
+          "video_p99_ms": 27098.0,
+          "makespan_ms": 35312.9,
+          "preemptions": 0.0,
+          "batches": 0.0,
+          "approx_quanta": 0.0
+        },
+        "step_elastic": {
+          "label": "GenServe-Step (Step-Boundary SP)",
+          "total_slo_pct": 88.54,
+          "image_slo_pct": 97.73,
+          "video_slo_pct": 68.33,
+          "image_p99_ms": 1745.8,
+          "video_p99_ms": 15905.5,
+          "makespan_ms": 32068.3,
+          "preemptions": 0.0,
+          "batches": 0.0,
+          "approx_quanta": 0.0
+        },
+        "block_elastic": {
+          "label": "DitServe-Baseline (Block-Elastic)",
+          "total_slo_pct": 88.54,
+          "image_slo_pct": 97.73,
+          "video_slo_pct": 68.33,
+          "image_p99_ms": 1746.4,
+          "video_p99_ms": 16232.8,
+          "makespan_ms": 32401.2,
+          "preemptions": 0.0,
+          "batches": 0.0,
+          "approx_quanta": 0.0
+        },
+        "heterodit_exact": {
+          "label": "HeteroDiT-Exact (Knapsack+2D-USP+Tiered)",
+          "total_slo_pct": 90.1,
+          "image_slo_pct": 100.0,
+          "video_slo_pct": 68.33,
+          "image_p99_ms": 1648.9,
+          "video_p99_ms": 15025.9,
+          "makespan_ms": 31441.4,
+          "preemptions": 0.0,
+          "batches": 8.7,
+          "approx_quanta": 0.0
+        },
+        "heterodit_approx": {
+          "label": "HeteroDiT-Approx (Laxity Cache+2D-USP)",
+          "total_slo_pct": 94.79,
+          "image_slo_pct": 100.0,
+          "video_slo_pct": 83.33,
+          "image_p99_ms": 1636.9,
+          "video_p99_ms": 9495.9,
+          "makespan_ms": 27999.6,
+          "preemptions": 0.0,
+          "batches": 8.0,
+          "approx_quanta": 209.7
+        }
+      }
+    }
+  }
+}
