@@ -213,6 +213,76 @@ class HeteroModulesTest(unittest.TestCase):
         handle = LayoutHandle(0, (0, 1, 2, 3), cfg=1, ring=2)
         self.assertEqual(handle.current.ring, 2)
 
+    def test_asymmetric_ring_int8_quantizer_roundtrip(self) -> None:
+        if _real_torch is None:
+            self.skipTest("torch required for tensor roundtrip test")
+        from ditserve.models.wan.ring_quant import AsymmetricRingQuantizer
+
+        q = AsymmetricRingQuantizer(_real_torch, warmup_steps=2, tail_anchor_steps=2, enabled=True)
+        self.assertFalse(q.should_quantize(0, 20))
+        self.assertFalse(q.should_quantize(1, 20))
+        self.assertTrue(q.should_quantize(2, 20))
+        self.assertTrue(q.should_quantize(17, 20))
+        self.assertFalse(q.should_quantize(18, 20))
+
+        _real_torch.manual_seed(42)
+        kv = _real_torch.randn(2, 1, 3, 256, 128, dtype=_real_torch.float16)
+        packed = q.pack_packet(kv)
+        self.assertEqual(packed.dtype, _real_torch.uint8)
+        self.assertEqual(tuple(packed.shape), (2, 1, 3, 256, 130))
+        recon = q.unpack_packet(packed, target_dtype=_real_torch.float16)
+        self.assertEqual(tuple(recon.shape), tuple(kv.shape))
+        cos = float(
+            _real_torch.nn.functional.cosine_similarity(
+                kv.flatten().float().unsqueeze(0),
+                recon.flatten().float().unsqueeze(0),
+            ).item()
+        )
+        self.assertGreater(cos, 0.9999)
+        summary = q.summary()
+        self.assertAlmostEqual(summary["compression_ratio"], 256.0 / 130.0, places=3)
+
+    def test_taylor_residual_compensator_lifecycle(self) -> None:
+        if _real_torch is None:
+            self.skipTest("torch required for Taylor compensator test")
+        from types import SimpleNamespace
+        from ditserve.models.wan.taylor_cache import TaylorResidualCompensator
+
+        comp = TaylorResidualCompensator(_real_torch, alpha=0.30, max_norm_ratio=0.12, enabled=True)
+        b0 = _real_torch.ones(1, 16, 64, dtype=_real_torch.float16) * 2.0
+        b1 = _real_torch.ones(1, 16, 64, dtype=_real_torch.float16) * 2.4
+        ctx = SimpleNamespace(
+            buffers={
+                "blocks_Bn_residual_buffer": b0.clone(),
+                "blocks_Bn_residual_buffer_cfg": b0.clone(),
+            }
+        )
+        state = SimpleNamespace(cache_enabled=True, step_index=0, contexts={"default": ctx})
+
+        # Step 0: computed anchor
+        comp.pre_step(state)
+        state.step_index = 1
+        comp.post_step(state, {"step_index": 0, "cache_contexts": [{"cond_reused": False, "uncond_reused": False}]})
+        self.assertEqual(comp.stats["anchor_updates"], 2)
+
+        # Step 1: second computed anchor -> velocity established
+        ctx.buffers["blocks_Bn_residual_buffer"] = b1.clone()
+        ctx.buffers["blocks_Bn_residual_buffer_cfg"] = b1.clone()
+        comp.pre_step(state)
+        state.step_index = 2
+        comp.post_step(state, {"step_index": 1, "cache_contexts": [{"cond_reused": False, "uncond_reused": False}]})
+        self.assertEqual(comp.stats["anchor_updates"], 4)
+
+        # Step 2: cached step -> pre_step extrapolates above 2.4, post_step restores clean 2.4 anchor
+        comp.pre_step(state)
+        extrap_val = float(ctx.buffers["blocks_Bn_residual_buffer"].mean().item())
+        self.assertGreater(extrap_val, 2.405)
+        state.step_index = 3
+        rec = comp.post_step(state, {"step_index": 2, "cache_contexts": [{"cond_reused": True, "uncond_reused": True}]})
+        self.assertEqual(rec["taylor_compensated_forwards"], 2)
+        restored_val = float(ctx.buffers["blocks_Bn_residual_buffer"].mean().item())
+        self.assertAlmostEqual(restored_val, float(b1.mean().item()), places=3)
+
 
 if __name__ == "__main__":
     unittest.main()

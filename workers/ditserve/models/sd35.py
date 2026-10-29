@@ -7,12 +7,18 @@ from .flux import FluxBackend
 
 class SD35Backend(FluxBackend):
     model = "sd35"
-    operations = FluxBackend.operations + ("encode_pool_stats", "offload_encoders", "restore_encoders")
+    operations = FluxBackend.operations + (
+        "encode_pool_stats",
+        "offload_encoders",
+        "restore_encoders",
+        "run_micro_batch",
+    )
     defaults = dict(FluxBackend.defaults, steps=28, guidance_scale=4.5, max_sequence_length=256)
 
     def __init__(self, config):
         super().__init__(config)
         options = config.get("options", {})
+        self.attention = str(config.get("attention", options.get("attention", "math")))
         self.encoder_pool = ProactiveEncoderPool(options.get("encoder_pool", {}))
         self.encoders_offloaded = False
         if options.get("offload_text_encoders_after_warmup", False):
@@ -108,22 +114,180 @@ class SD35Backend(FluxBackend):
         neg_prompts = arguments.get("negative_prompt")
         max_seq_len = int(arguments.get("max_sequence_length", 256))
         guidance_scale = float(arguments.get("guidance_scale", 4.5))
-        prompt_str = prompts[0] if isinstance(prompts, list) else str(prompts)
-        neg_str = neg_prompts[0] if isinstance(neg_prompts, list) else str(neg_prompts or "")
-        batch_size = len(prompts) if isinstance(prompts, list) else 1
+        prompt_list = [str(p) for p in prompts] if isinstance(prompts, list) else [str(prompts)]
+        batch_size = len(prompt_list)
+        if isinstance(neg_prompts, list):
+            neg_list = [str(n) for n in neg_prompts]
+            if len(neg_list) == 1 and batch_size > 1:
+                neg_list = neg_list * batch_size
+        else:
+            neg_list = [str(neg_prompts or "")] * batch_size
 
-        stage_info = self._ensure_staged(prompt_str, neg_str, max_seq_len, guidance_scale > 1.0)
-        fetched = self.encoder_pool.fetch_to_device(stage_info["key"], self.device)
-        tensors = fetched["tensors"]
-        for name in ("prompt_embeds", "negative_prompt_embeds", "pooled_prompt_embeds", "negative_pooled_prompt_embeds"):
-            tensor = tensors.get(name)
-            if tensor is not None:
-                if batch_size > 1 and tensor.shape[0] == 1:
-                    tensor = tensor.repeat(batch_size, *([1] * (tensor.ndim - 1)))
-                arguments[name] = tensor
+        # Fast path when all prompts in the batch are identical
+        if len(set(zip(prompt_list, neg_list))) == 1:
+            stage_info = self._ensure_staged(prompt_list[0], neg_list[0], max_seq_len, guidance_scale > 1.0)
+            fetched = self.encoder_pool.fetch_to_device(stage_info["key"], self.device)
+            tensors = fetched["tensors"]
+            for name in ("prompt_embeds", "negative_prompt_embeds", "pooled_prompt_embeds", "negative_pooled_prompt_embeds"):
+                tensor = tensors.get(name)
+                if tensor is not None:
+                    if batch_size > 1 and tensor.shape[0] == 1:
+                        tensor = tensor.repeat(batch_size, *([1] * (tensor.ndim - 1)))
+                    arguments[name] = tensor
+            arguments.pop("prompt", None)
+            arguments.pop("negative_prompt", None)
+            return dict(encoder_pool_hit=fetched["hit"], encoder_pool_push_ms=fetched["push_ms"], distinct_prompts=1)
+
+        # Heterogeneous multi-prompt micro-batch path: fetch each prompt and concatenate along dim=0
+        per_field = {
+            "prompt_embeds": [],
+            "negative_prompt_embeds": [],
+            "pooled_prompt_embeds": [],
+            "negative_pooled_prompt_embeds": [],
+        }
+        hits = 0
+        total_push_ms = 0.0
+        for p_str, n_str in zip(prompt_list, neg_list):
+            stage_info = self._ensure_staged(p_str, n_str, max_seq_len, guidance_scale > 1.0)
+            fetched = self.encoder_pool.fetch_to_device(stage_info["key"], self.device)
+            hits += int(bool(fetched["hit"]))
+            total_push_ms += float(fetched["push_ms"])
+            for name, bucket in per_field.items():
+                t = fetched["tensors"].get(name)
+                if t is not None:
+                    bucket.append(t)
+        for name, bucket in per_field.items():
+            if len(bucket) == batch_size:
+                arguments[name] = self.torch.cat(bucket, dim=0)
         arguments.pop("prompt", None)
         arguments.pop("negative_prompt", None)
-        return dict(encoder_pool_hit=fetched["hit"], encoder_pool_push_ms=fetched["push_ms"])
+        return dict(
+            encoder_pool_hit=(hits == batch_size),
+            encoder_pool_hits=hits,
+            encoder_pool_push_ms=round(total_push_ms, 4),
+            distinct_prompts=len(set(zip(prompt_list, neg_list))),
+        )
+
+    def advance(self, request):
+        import time
+        from contextlib import nullcontext
+        from .base import progress
+        from .pipeline import _sdpa_context
+
+        state = self.state(request)
+        if state["output"] is not None:
+            raise ValueError("pipeline has already completed")
+        spec = state["spec"]
+        self._enable_cache(spec)
+        attn_mode = str(request.get("attention", self.attention))
+        if self.device.startswith("cuda"):
+            self.torch.cuda.synchronize(self.device)
+        started = time.perf_counter()
+        observer = None
+        if self.config.get("options", {}).get("profile", False):
+            from .profiling import PipelineProfiler
+            observer = PipelineProfiler(self.torch, self.pipe, self.device)
+        with self.torch.inference_mode(), _sdpa_context(self.torch, attn_mode):
+            self.xdit.bind_global()
+            arguments = self._arguments(spec)
+            encoding = self._encode(arguments)
+            with observer or nullcontext():
+                if observer:
+                    arguments.update(
+                        callback_on_step_end=observer.callback,
+                        callback_on_step_end_tensor_inputs=["latents"],
+                    )
+                state["output"] = getattr(self.pipe(**arguments), self.output_field)
+        if self.device.startswith("cuda"):
+            self.torch.cuda.synchronize(self.device)
+        elapsed = (time.perf_counter() - started) * 1000
+        return dict(
+            state_id=request["state_id"],
+            progress=progress(1, 1),
+            model_ms=elapsed,
+            attention=attn_mode,
+            atomic_pipeline=True,
+            batch_size=spec["batch_size"],
+            seed_protocol="single_cpu_generator_for_batch",
+            engine=self.xdit.info(),
+            **encoding,
+            **(observer.report(spec["steps"]) if observer else {}),
+        )
+
+    def run_micro_batch(self, request):
+        """Execute a dynamic micro-batch of distinct prompts with per-request seeds and Flash/Math SDPA."""
+        import time
+        from .pipeline import _sdpa_context
+
+        prompts = list(request.get("prompts") or [])
+        if not prompts:
+            raise ValueError("run_micro_batch requires a non-empty prompts list")
+        batch_size = len(prompts)
+        neg_prompts = request.get("negative_prompts", request.get("negative_prompt", ""))
+        if isinstance(neg_prompts, list):
+            neg_list = [str(n) for n in neg_prompts]
+            if len(neg_list) != batch_size:
+                raise ValueError("negative_prompts length must match prompts length")
+        else:
+            neg_list = [str(neg_prompts or "")] * batch_size
+
+        seeds = request.get("seeds")
+        if seeds is None:
+            base_seed = int(request.get("seed", 0))
+            seeds = [base_seed + i for i in range(batch_size)]
+        else:
+            seeds = [int(s) for s in seeds]
+            if len(seeds) != batch_size:
+                raise ValueError("seeds length must match prompts length")
+
+        height = positive_int(request.get("height", self.defaults["height"]), "height")
+        width = positive_int(request.get("width", self.defaults["width"]), "width")
+        steps = positive_int(request.get("steps", self.defaults["steps"]), "steps")
+        guidance_scale = float(request.get("guidance_scale", self.defaults["guidance_scale"]))
+        max_seq_len = positive_int(request.get("max_sequence_length", self.defaults["max_sequence_length"]), "max_sequence_length")
+        attn_mode = str(request.get("attention", self.attention))
+
+        # Optionally pre-stage all prompts before starting the GPU denoising timer
+        if request.get("prestage_pool", True):
+            for p_str, n_str in zip(prompts, neg_list):
+                self._ensure_staged(p_str, n_str, max_seq_len, guidance_scale > 1.0)
+
+        if self.device.startswith("cuda"):
+            self.torch.cuda.synchronize(self.device)
+        started = time.perf_counter()
+        generators = [self.torch.Generator(device="cpu").manual_seed(s) for s in seeds]
+        arguments = dict(
+            prompt=prompts,
+            negative_prompt=neg_list,
+            height=height,
+            width=width,
+            num_inference_steps=steps,
+            guidance_scale=guidance_scale,
+            max_sequence_length=max_seq_len,
+            output_type="np",
+            generator=generators,
+        )
+        with self.torch.inference_mode(), _sdpa_context(self.torch, attn_mode):
+            self.xdit.bind_global()
+            encoding = self._encode(arguments)
+            images = getattr(self.pipe(**arguments), self.output_field)
+        if self.device.startswith("cuda"):
+            self.torch.cuda.synchronize(self.device)
+        elapsed_ms = (time.perf_counter() - started) * 1000.0
+        result = dict(
+            batch_size=batch_size,
+            attention=attn_mode,
+            steps=steps,
+            height=height,
+            width=width,
+            model_ms=round(elapsed_ms, 3),
+            per_image_ms=round(elapsed_ms / batch_size, 3),
+            throughput_img_per_s=round(batch_size / (elapsed_ms / 1000.0), 4),
+            **encoding,
+        )
+        if request.get("return_images", False):
+            result["images"] = images
+        return result
 
     def _cache_target(self):
         from cache_dit.caching.block_adapters.block_registers import BlockAdapterRegister

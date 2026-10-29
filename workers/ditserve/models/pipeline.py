@@ -12,6 +12,24 @@ def _sdpa_math_context(torch):
     except TypeError:
         return torch.backends.cuda.sdp_kernel(**options)
 
+
+def _sdpa_context(torch, mode="math"):
+    """Select SDPA kernel backend ('math' for strict bit-exact or 'flash' for Ampere Flash/Efficient SDPA)."""
+    if mode == "math":
+        return _sdpa_math_context(torch)
+    attention = getattr(getattr(torch, "nn", None), "attention", None)
+    if attention is not None and hasattr(attention, "sdpa_kernel"):
+        return attention.sdpa_kernel([
+            attention.SDPBackend.FLASH_ATTENTION,
+            attention.SDPBackend.EFFICIENT_ATTENTION,
+            attention.SDPBackend.MATH,
+        ])
+    options = dict(enable_flash=True, enable_math=True, enable_mem_efficient=True)
+    try:
+        return torch.backends.cuda.sdp_kernel(enable_cudnn=True, **options)
+    except TypeError:
+        return torch.backends.cuda.sdp_kernel(**options)
+
 def _wan_pipeline_class(base_class):
     """Keep denoising on the DiT device with an explicitly resident CPU encoder.
 
