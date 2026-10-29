@@ -110,6 +110,17 @@ Json simulate_cluster(const Json& config) {
                 if (form.degree() != degree || degree != static_cast<int>(assignment.at("group").size())) throw std::logic_error("assignment form does not match its group");
                 const auto quantum = assignment.at("quantum");
                 double duration = dispatch + cost.quantum_overhead_ms();
+                const double resume_scale = number_field(options, "resume_scale", 1.0);
+                const double cross_modal_swap_ms = number_field(options, "cross_modal_swap_ms", 0.0);
+                if (cross_modal_swap_ms > 0.0) {
+                    for (const auto& gpu : assignment.at("group")) {
+                        const int g = gpu.get<int>();
+                        if (last_on_gpu[g] != SIZE_MAX && rows[last_on_gpu[g]].at("kind") != row.at("kind")) {
+                            duration += cross_modal_swap_ms;
+                            break;
+                        }
+                    }
+                }
                 int blocks = 0;
                 if (quantum == "atomic") duration += assignment.contains("batch") ? cost.batch_ms(klass, static_cast<int>(assignment.at("batch").size()))
                                                                                : number_field(cost.klass(klass), "service_ms");
@@ -128,7 +139,7 @@ Json simulate_cluster(const Json& config) {
                     if (cache_threshold > 0.0) ++approx_quanta;
                     if (row.at("prepared").get<bool>()) {
                         for (int gpu : group) if (last_on_gpu[gpu] != at) {
-                            duration += cost.resume_ms(klass) * (prefetched[at] ? 0.25 : 1.0);
+                            duration += cost.resume_ms(klass) * (prefetched[at] ? 0.25 : resume_scale);
                             prefetched[at] = false;
                             break;
                         }

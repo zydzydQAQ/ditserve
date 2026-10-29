@@ -24,11 +24,19 @@ struct Policy {
 };
 Policy parse(const std::string& name) {
     Policy policy;
-    if (name.rfind("static_", 0) == 0) {
+    if (name.rfind("static_", 0) == 0 && name != "static_partition") {
         try { policy.fixed_form = parse_form(name.substr(7)); }
         catch (const std::invalid_argument&) { throw std::invalid_argument("unknown cluster policy: " + name); }
         policy.fixed_degree = policy.fixed_form.degree();
-    } else if (name == "step_elastic") policy.elastic = true;
+    } else if (name == "vanilla_xdit") {
+        policy.fixed_form = parse_form("sp4");
+        policy.fixed_degree = 4;
+    } else if (name == "static_partition") policy.elastic = true;
+    else if (name == "tridentserve_stage") policy.elastic = policy.rounds = true;
+    else if (name == "vllm_omni" || name == "gf_dit") policy.elastic = true;
+    else if (name == "genserve_40gb") policy.elastic = policy.knapsack = true;
+    else if (name == "ablation_tiered" || name == "ablation_2d_usp") policy.elastic = policy.blocks = true;
+    else if (name == "step_elastic") policy.elastic = true;
     else if (name == "block_elastic") policy.elastic = policy.blocks = true;
     else if (name == "round_elastic") policy.elastic = policy.rounds = true;
     else if (name == "knapsack_dp" || name == "heterodit_exact") policy.elastic = policy.blocks = policy.knapsack = true;
@@ -381,7 +389,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             if (!item.is_string()) throw std::invalid_argument("options.forms lists form names");
             forms.push_back(parse_form(item.get<std::string>()));
         }
-    } else if (policy.knapsack && !options.contains("degrees")) {
+    } else if ((policy.knapsack || name == "ablation_2d_usp") && !options.contains("degrees")) {
         const auto& links = cost.profile().value("links", Json::object());
         forms.push_back(parse_form("sp1"));
         if (links.contains("2")) { forms.push_back(parse_form("cfg2")); forms.push_back(parse_form("sp2")); }
@@ -479,9 +487,11 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     const double widen = options.contains("widen_efficiency") ? number_field(options, "widen_efficiency") : (policy.knapsack ? 0.90 : 0.0);
     if (widen > 1) throw std::invalid_argument("widen_efficiency must be in [0, 1]");
     // Real backends without state migration keep a started request on its group.
-    const bool pin_started = bool_field(options, "pin_started", false);
+    const bool pin_started = bool_field(options, "pin_started", name == "vanilla_xdit" || name == "tridentserve_stage");
     // Static partition baseline: the last R GPUs serve images only.
-    const int reserve = int_field(options, "reserve_image_gpus", 0, 0);
+    const int reserve = int_field(options, "reserve_image_gpus", name == "static_partition" ? std::max(1, gpus / 4) : 0, 0);
+    const bool strict_partition = bool_field(options, "strict_partition", name == "static_partition");
+    const bool hold_diffuse = bool_field(options, "hold_diffuse", name == "vanilla_xdit" || name == "tridentserve_stage");
     // Image placement among equally ranked free GPUs: "first" takes the lowest index; "pair_fit" takes the GPU
     // whose aligned partner (then quad) is already occupied, so free aligned pairs stay whole for CFG2 videos.
     const auto image_placement = options.value("image_placement", std::string(policy.knapsack ? "pair_fit" : "first"));
@@ -520,8 +530,12 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     // A chunked decode in progress holds only its decoding GPU.
     for (const Json* r : rows) {
         if (r->at("kind") != "video") continue;
+        const auto rklass = r->at("class").get<std::string>();
+        const int rsteps = int_field(*r, "steps_total", int_field(cost.klass(rklass), "steps", 0), 1);
         if (int_field(*r, "decode_done", 0, 0) > 0) mid_owner[group_of(*r).front()] = r;
         else if (int_field(*r, "blocks_done", 0, 0) > 0) for (int gpu : group_of(*r)) mid_owner[gpu] = step_owner[gpu] = r;
+        else if (hold_diffuse && r->value("prepared", false) && int_field(*r, "steps_done", 0, 0) < rsteps)
+            for (int gpu : group_of(*r)) mid_owner[gpu] = r;
     }
     // Two videos inside a step in lockstep (request-level interleaving) resume together; the
     // state names the partner on both rows.
@@ -584,7 +598,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     std::sort(rows.begin(), rows.end(), [&](const Json* a, const Json* b) { return edf(a) < edf(b); });
     // Round-based regrouping: a placed video keeps its group until it has completed a multiple of
     // round_steps steps, like TetriServe's rounds; other elastic policies regroup at every step.
-    const int round_steps = int_field(options, "round_steps", 5);
+    const int round_steps = int_field(options, "round_steps", name == "tridentserve_stage" ? 1000 : 5);
 
     auto time_to_boundary = [&](const Json* r) {
         const auto group = group_of(*r);
@@ -592,7 +606,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         const double overhead = cost.quantum_overhead_ms();
         if (int_field(*r, "decode_done", 0, 0) > 0) {
             const int chunks = cost.decode_chunks(klass) - int_field(*r, "decode_done", 0, 0), frames = decode_frames(klass);
-            return chunks * cost.chunk_ms(klass) + (overhead > 0 ? overhead * (frames > 0 ? ceil_div(chunks, frames) : 1) : 0.);
+            return chunks * cost.chunk_ms(klass) + (overhead > 0 ? overhead * (frames > 0 ? ceil_div(chunks, frames) : 0) : 0.);
         }
         const Form form = form_of(*r, group);
         const int blocks = cost.blocks_per_step(klass) - int_field(*r, "blocks_done", 0, 0);
@@ -654,6 +668,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             };
             for (int gpu = 0; gpu < gpus; ++gpu) {
                 if (!free[gpu] || (continuous_batch > 0 && prepared && gpu != current.front())) continue;
+                if (strict_partition && reserve > 0 && !reserved(gpu)) continue;
                 // Prefer idle GPUs; then GPUs of videos at step boundaries; a
                 // mid-step group only when waiting for its boundary would miss.
                 int score = reserved(gpu) ? -1 : mid_owner[gpu] ? 2 : 0;
@@ -661,6 +676,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                     const auto group = group_of(*other);
                     if (std::find(group.begin(), group.end(), gpu) != group.end()) score = 1;
                 }
+                if (score == 2 && hold_diffuse) continue;
                 if (score == 2 && policy.blocks && lazy && slack >= time_to_boundary(mid_owner[gpu])) continue;
                 if (score < rank) { rank = score; chosen = gpu; chosen_fit = image_placement == "pair_fit" ? fit(gpu) : 0; }
                 else if (image_placement == "pair_fit" && score == rank && fit(gpu) > chosen_fit) { chosen = gpu; chosen_fit = fit(gpu); }
@@ -848,10 +864,10 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                                 const double eff = single_ms / (d * step_t);
                                 const double qual_pen = 120.0 * tau;
                                 const double res_pen = extra > 0 ? 5.0 : 0.0;
-                                const double widen_bonus = (widen > 0 && eff >= widen) ? 12.0 * d : 0.0;
+                                const double widen_bonus = (widen > 0 && eff >= widen) ? 10.0 * d : 0.0;
                                 const double u = meets
-                                    ? (w_edf * 1000.0 + 80.0 * eff - 8.0 * d + widen_bonus - qual_pen - res_pen)
-                                    : (w_edf * 100.0 + (single_ms / step_t) * 20.0 - 4.0 * d - qual_pen - res_pen);
+                                    ? (w_edf * 1000.0 + 80.0 * eff - 14.0 * d + widen_bonus - qual_pen - res_pen)
+                                    : (w_edf * 60.0 + 25.0 * eff - 12.0 * d - qual_pen - res_pen);
                                 if (dp[m][g] + u > dp[m + 1][g + d]) {
                                     dp[m + 1][g + d] = dp[m][g] + u;
                                     back[m + 1][g + d] = Choice{g, d, tau};
@@ -862,23 +878,31 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                 }
                 int best_g = 0;
                 for (int g = 1; g <= g_avail; ++g) if (dp[K][g] > dp[K][best_g]) best_g = g;
-                int cur_g = best_g, active_count = 0;
-                const Json* last_active = nullptr;
+                int cur_g = best_g;
                 for (int m = K; m >= 1; --m) {
                     const Choice ch = back[m][cur_g];
                     knapsack_target[cands[m - 1]] = ch.d;
                     knapsack_tau[cands[m - 1]] = ch.tau;
-                    if (ch.d > 0) { ++active_count; if (!last_active) last_active = cands[m - 1]; }
                     cur_g = ch.prev_g;
                 }
-                // Work-conservation: if leftover GPUs remain when no images wait behind, widen the last active video
-                if (best_g < g_avail && !images_after && last_active) {
-                    const auto lklass = last_active->at("class").get<std::string>();
-                    const int lmin = int_field(cost.klass(lklass), "min_degree", 1);
-                    const int cur_d = knapsack_target[last_active];
-                    for (int d : degrees) {
-                        if (d > cur_d && d >= lmin && best_g - cur_d + d <= g_avail) {
-                            knapsack_target[last_active] = std::max(knapsack_target[last_active], d);
+                // Work-conservation: if leftover GPUs remain when no images wait behind, widen active videos in EDF order
+                if (best_g < g_avail && !images_after) {
+                    int used_g = best_g;
+                    for (int m = 0; m < K && used_g < g_avail; ++m) {
+                        const Json* act = cands[m];
+                        const int cur_d = knapsack_target[act];
+                        if (cur_d <= 0) continue;
+                        const auto lklass = act->at("class").get<std::string>();
+                        const int lmin = int_field(cost.klass(lklass), "min_degree", 1);
+                        int new_d = cur_d;
+                        for (int d : degrees) {
+                            if (d > new_d && d >= lmin && used_g - cur_d + d <= g_avail) {
+                                new_d = d;
+                            }
+                        }
+                        if (new_d > cur_d) {
+                            used_g = used_g - cur_d + new_d;
+                            knapsack_target[act] = new_d;
                         }
                     }
                 }
@@ -1014,7 +1038,10 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         }
     }
     Json result = {{"assignments", assignments}, {"policy", name}};
-    if (policy.knapsack) {
+    const bool tiered_memory = bool_field(options, "tiered_memory",
+        name == "knapsack_dp" || name == "heterodit_exact" || name == "heterodit_approx"
+        || name == "ablation_tiered" || name == "ablation_2d_usp");
+    if (tiered_memory) {
         std::set<std::string> scheduled;
         for (const auto& a : assignments) {
             scheduled.insert(a.at("request_id").get<std::string>());
