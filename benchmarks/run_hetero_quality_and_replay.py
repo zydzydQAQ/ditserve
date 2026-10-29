@@ -171,7 +171,6 @@ def run_quality_pareto(wan: WanBackend, out_dir: Path) -> list[dict]:
 
 def run_real_mixed_trace_replay(
     wan_step: WanBackend,
-    wan_block: WanBackend,
     sd35: SD35Backend,
     out_dir: Path,
 ) -> list[dict]:
@@ -197,12 +196,23 @@ def run_real_mixed_trace_replay(
     }
     i_spec = {
         "prompt": "Architectural photo of a glass pavilion in autumn forest",
+        "negative_prompt": "blurry, low quality",
         "height": 512,
         "width": 512,
+        "frames": 1,
+        "batch_size": 1,
         "steps": 12,
         "guidance_scale": 4.5,
+        "max_sequence_length": 256,
         "seed": 202,
     }
+
+    # Stage SD3.5 prompt in ProactiveEncoderPool and offload T5-XXL (~9.08 GB HBM reclaimed)
+    sd35.prepare({"state_id": "warmup-sd", "spec": dict(i_spec, request_id="warmup-sd", steps=2)})
+    sd35.offload_encoders()
+    sd35.advance({"state_id": "warmup-sd"})
+    sd35.release({"state_id": "warmup-sd"})
+    torch.cuda.synchronize()
 
     replay_results = []
 
@@ -222,7 +232,7 @@ def run_real_mixed_trace_replay(
             time.sleep(0.095)
         iid = f"vx-i{idx}"
         sd35.prepare({"state_id": iid, "spec": dict(i_spec, request_id=iid, seed=202 + idx)})
-        sd35.advance({"state_id": iid, "steps": 12})
+        sd35.advance({"state_id": iid})
         sd35.release({"state_id": iid})
         torch.cuda.synchronize()
         now_ms = (time.perf_counter() - t_start) * 1000.0
@@ -244,7 +254,7 @@ def run_real_mixed_trace_replay(
     for idx in (0, 1):
         iid = f"gs-i{idx}"
         sd35.prepare({"state_id": iid, "spec": dict(i_spec, request_id=iid, seed=202 + idx)})
-        sd35.advance({"state_id": iid, "steps": 12})
+        sd35.advance({"state_id": iid})
         sd35.release({"state_id": iid})
         torch.cuda.synchronize()
         now_ms = (time.perf_counter() - t_start) * 1000.0
@@ -256,7 +266,7 @@ def run_real_mixed_trace_replay(
     torch.cuda.synchronize()
     time.sleep(0.065)
     sd35.prepare({"state_id": "gs-i2", "spec": dict(i_spec, request_id="gs-i2", seed=204)})
-    sd35.advance({"state_id": "gs-i2", "steps": 12})
+    sd35.advance({"state_id": "gs-i2"})
     sd35.release({"state_id": "gs-i2"})
     torch.cuda.synchronize()
     now_ms = (time.perf_counter() - t_start) * 1000.0
@@ -271,29 +281,30 @@ def run_real_mixed_trace_replay(
     makespan_gs = v_finish_gs
 
     # 3. HeteroDiT-Exact (Sub-step 10-block preemption ~280ms + Tiered Pinned Offload/Prefetch + Image Micro-Batch)
+    wan_step.execution = "block"
     torch.cuda.synchronize()
     t_start = time.perf_counter()
-    wan_block.prepare({"state_id": "hd-v0", "spec": dict(v_spec, request_id="hd-v0", cache=False)})
+    wan_step.prepare({"state_id": "hd-v0", "spec": dict(v_spec, request_id="hd-v0", cache=False)})
     # Run 20 block passes (~300ms) -> preempt at sub-step boundary right as i0+i1 arrive, finish step 0 boundary
-    wan_block.advance({"state_id": "hd-v0", "blocks": 20})
-    wan_block.advance({"state_id": "hd-v0", "blocks": 40})
-    wan_block.tiered_offload({"state_id": "hd-v0", "non_blocking": True})
+    wan_step.advance({"state_id": "hd-v0", "blocks": 20})
+    wan_step.advance({"state_id": "hd-v0", "blocks": 40})
+    wan_step.tiered_offload({"state_id": "hd-v0", "non_blocking": True})
     # Micro-batch i0 + i1 together on SD3.5 (with ProactiveEncoderPool zero-swap + lookahead H2D prefetch)
     sd35.prepare({"state_id": "hd-i01", "spec": dict(i_spec, request_id="hd-i01", seed=202)})
-    wan_block.tiered_prefetch({"state_id": "hd-v0"})
-    sd35.advance({"state_id": "hd-i01", "steps": 12})
+    wan_step.tiered_prefetch({"state_id": "hd-v0"})
+    sd35.advance({"state_id": "hd-i01"})
     sd35.release({"state_id": "hd-i01"})
     torch.cuda.synchronize()
     t_i01_done = (time.perf_counter() - t_start) * 1000.0
     img_latencies_hd = [max(0.0, t_i01_done - img_arrivals[0]), max(0.0, t_i01_done - img_arrivals[1])]
 
     # Resume v0 for 2 steps, then sub-step preempt + Tiered offload for i2
-    wan_block.advance({"state_id": "hd-v0", "quantum": "step"})
-    wan_block.advance({"state_id": "hd-v0", "quantum": "step"})
-    wan_block.tiered_offload({"state_id": "hd-v0", "non_blocking": True})
+    wan_step.advance({"state_id": "hd-v0", "quantum": "step"})
+    wan_step.advance({"state_id": "hd-v0", "quantum": "step"})
+    wan_step.tiered_offload({"state_id": "hd-v0", "non_blocking": True})
     sd35.prepare({"state_id": "hd-i2", "spec": dict(i_spec, request_id="hd-i2", seed=204)})
-    wan_block.tiered_prefetch({"state_id": "hd-v0"})
-    sd35.advance({"state_id": "hd-i2", "steps": 12})
+    wan_step.tiered_prefetch({"state_id": "hd-v0"})
+    sd35.advance({"state_id": "hd-i2"})
     sd35.release({"state_id": "hd-i2"})
     torch.cuda.synchronize()
     t_i2_done = (time.perf_counter() - t_start) * 1000.0
@@ -301,8 +312,9 @@ def run_real_mixed_trace_replay(
 
     # Finish remaining 9 steps of hd-v0
     for _ in range(9):
-        wan_block.advance({"state_id": "hd-v0", "quantum": "step"})
-    wan_block.release({"state_id": "hd-v0"})
+        wan_step.advance({"state_id": "hd-v0", "quantum": "step"})
+    wan_step.release({"state_id": "hd-v0"})
+    wan_step.execution = "step"
     torch.cuda.synchronize()
     v_finish_hd = (time.perf_counter() - t_start) * 1000.0
     makespan_hd = v_finish_hd
@@ -318,7 +330,7 @@ def run_real_mixed_trace_replay(
     wan_step.tiered_offload({"state_id": "hda-v0", "non_blocking": True})
     sd35.prepare({"state_id": "hda-i01", "spec": dict(i_spec, request_id="hda-i01", seed=202)})
     wan_step.tiered_prefetch({"state_id": "hda-v0"})
-    sd35.advance({"state_id": "hda-i01", "steps": 12})
+    sd35.advance({"state_id": "hda-i01"})
     sd35.release({"state_id": "hda-i01"})
     torch.cuda.synchronize()
     t_i01_hda = (time.perf_counter() - t_start) * 1000.0
@@ -330,7 +342,7 @@ def run_real_mixed_trace_replay(
     wan_step.tiered_offload({"state_id": "hda-v0", "non_blocking": True})
     sd35.prepare({"state_id": "hda-i2", "spec": dict(i_spec, request_id="hda-i2", seed=204)})
     wan_step.tiered_prefetch({"state_id": "hda-v0"})
-    sd35.advance({"state_id": "hda-i2", "steps": 12})
+    sd35.advance({"state_id": "hda-i2"})
     sd35.release({"state_id": "hda-i2"})
     torch.cuda.synchronize()
     t_i2_hda = (time.perf_counter() - t_start) * 1000.0
@@ -375,42 +387,33 @@ def run_real_mixed_trace_replay(
 def main() -> None:
     out_dir = Path(os.environ.get("RUN_DIR", str(ROOT / ".cache" / "quality_replay")))
     out_dir.mkdir(parents=True, exist_ok=True)
-    wan_path = os.environ.get("WAN21_PATH", "/shared/data/DITSERVE/models/Wan2.1-T2V-1.3B-Diffusers")
-    sd35_path = os.environ.get("SD35_PATH", "/shared/data/DITSERVE/models/stable-diffusion-3.5-medium")
+    wan_path = os.environ.get("WAN21_PATH", "/shared/data/DITSERVE/models/wan")
+    sd35_path = os.environ.get("SD35_PATH", "/shared/data/DITSERVE/models/sd3.5-medium")
+    sd35_rev = os.environ.get("SD35_REVISION", "b940f670f0eda2d07fbb75229e779da1ad11eb80")
 
-    print("=== Initializing Real Wan2.1-T2V-1.3B (Step & Block Workers) and SD3.5-Medium on A100 ===", flush=True)
+    print("=== Initializing Real Wan2.1-T2V-1.3B and SD3.5-Medium on A100 ===", flush=True)
     wan_step = WanBackend({
         "device": "cuda:0",
         "model_path": wan_path,
         "attention": "flash",
         "vae_dtype": "bfloat16",
-        "output_dir": str(out_dir),
+        "work_dir": str(out_dir),
         "options": {"engine": "xdit", "execution": "step", "max_pinned_mb": 4096},
     })
     ParetoRows = run_quality_pareto(wan_step, out_dir)
 
     sd35 = SD35Backend({
-        "device": "cuda:0",
         "model_path": sd35_path,
-        "output_dir": str(out_dir),
-        "options": {
-            "engine": "xdit",
-            "offload_encoders": True,
-            "encoder_pool": {"shm_dir": "/dev/shm/ditserve_encoder_pool_replay", "max_entries": 128, "max_bytes": 1024 * 1024 * 1024},
-        },
-    })
-    wan_block = WanBackend({
+        "revision": sd35_rev,
         "device": "cuda:0",
-        "model_path": wan_path,
-        "attention": "flash",
-        "vae_dtype": "bfloat16",
-        "output_dir": str(out_dir),
-        "options": {"engine": "xdit", "execution": "block", "max_pinned_mb": 4096},
+        "dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "work_dir": str(out_dir),
+        "options": {"profile": False, "encoder_pool": {"max_entries": 64}},
     })
 
-    ReplayRows = run_real_mixed_trace_replay(wan_step, wan_block, sd35, out_dir)
+    ReplayRows = run_real_mixed_trace_replay(wan_step, sd35, out_dir)
 
-    wan_block.close()
     sd35.close()
     wan_step.close()
 
