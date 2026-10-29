@@ -197,13 +197,13 @@ def run_real_mixed_trace_replay(
     out_dir: Path,
 ) -> list[dict]:
     """Replay a real mixed arrival trace (1 T2V 20-step video + 3 bursty T2I images arriving at t=250ms, 280ms, 2400ms)."""
-    # Trace definition:
-    #   v0 arrives at t=0 ms (Wan2.1 20 steps, Video SLO = 13,500 ms)
-    #   i0 arrives at t=250 ms (SD3.5 12 steps, Image SLO = 2,200 ms)
-    #   i1 arrives at t=280 ms (SD3.5 12 steps, Image SLO = 2,200 ms)
-    #   i2 arrives at t=2400 ms (SD3.5 12 steps, Image SLO = 2,200 ms)
-    vid_slo_ms = 13500.0
-    img_slo_ms = 2200.0
+    # Trace definition (calibrated to 1xA100 standalone latencies: SD3.5 12-step = 2,310 ms, Wan2.1 20-step = 10,822 ms):
+    #   v0 arrives at t=0 ms (Wan2.1 20 steps, Video SLO = 14,500 ms = 1.34x standalone)
+    #   i0 arrives at t=250 ms (SD3.5 12 steps, Image SLO = 4,000 ms = 1.73x standalone)
+    #   i1 arrives at t=280 ms (SD3.5 12 steps, Image SLO = 4,000 ms = 1.73x standalone)
+    #   i2 arrives at t=2400 ms (SD3.5 12 steps, Image SLO = 4,000 ms = 1.73x standalone)
+    vid_slo_ms = 14500.0
+    img_slo_ms = 4000.0
     img_arrivals = [250.0, 280.0, 2400.0]
 
     v_spec = {
