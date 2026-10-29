@@ -1,0 +1,10 @@
+{
+ "commit": "ce9abfe9d56ad1b2fee54676bd94823823320cb2",
+ "subject": "feat(heterodit-v2): add INT8 Ring KV quantizer, SD3.5 Flash+MicroBatch, Taylor residual cache, and stream-isolated VAE overlap",
+ "built_utc": "2026-10-29T16:00:18+00:00",
+ "builder_image": "local-cmake-install",
+ "tested_runtime_image": "192.168.1.114:30500/jjjkairos/ditserve:xdit-dev-016e1ca-slim",
+ "core_sha256": "6f54332ad72b3dc1b114bbe8969e93fa6b3cc35f0f45c15c49a1a5037c048c07",
+ "files": 418,
+ "bytes": 6382073
+}

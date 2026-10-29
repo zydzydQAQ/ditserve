@@ -1,0 +1,39 @@
+% Auto-generated LaTeX booktabs tables from real A100 hardware measurements
+\begin{table*}[t]
+\centering
+\caption{8$\times$A100-40GB Multi-Tenant Mixed T2I+T2V Serving Comparison Across 10 Policies (Gamma $CV=2.5$, Load $=0.95$).}
+\label{tab:main_10policies}
+\begin{tabular}{lrrrrrr}
+\toprule
+\textbf{Policy} & \textbf{Total SLO (\%)} & \textbf{Video SLO (\%)} & \textbf{Image SLO (\%)} & \textbf{Image P99 (ms)} & \textbf{Video P99 (ms)} & \textbf{Makespan (ms)} \\
+\midrule
+Static-Partition (2T2I + 6T2V) & 49.54 & 64.81 & 44.44 & 3467.2 & 29087.1 & 58209.4 \\
+Vanilla-xDiT (Static-SP4 USP) & 53.24 & 75.93 & 45.68 & 6355.7 & 31320.2 & 58552.0 \\
+Static-SP1 (FCFS/EDF No-Preempt) & 55.56 & 48.15 & 58.02 & 5745.1 & 27941.4 & 58847.2 \\
+TridentServe-Stage (Stage-Decoupled) & 56.02 & 57.41 & 55.56 & 5006.3 & 25113.3 & 58259.5 \\
+TetriServe-Round (ASPLOS'26 5-Step) & 89.81 & 59.26 & 100.00 & 1227.7 & 45493.4 & 62886.3 \\
+vLLM-Omni / GF-DiT (GFC 1D-SP) & 91.67 & 68.52 & 99.38 & 1254.9 & 26960.6 & 54669.2 \\
+GenServe-40GB (Step-Preempt + 1D-SP) & 93.06 & 75.93 & 98.77 & 1364.3 & 25025.8 & 53433.0 \\
+DitServe-Baseline (Block 1D-SP) & 93.98 & 75.93 & 100.00 & 1197.6 & 24696.3 & 53225.3 \\
+\textbf{HeteroDiT-Exact (Ours, Lossless)} & 96.30 & 85.19 & 100.00 & 1332.2 & 22712.2 & 51303.5 \\
+\textbf{HeteroDiT-Approx (Ours, Laxity-Cache)} & 97.69 & 90.74 & 100.00 & 1334.1 & 18184.1 & 48326.7 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\begin{table}[t]
+\centering
+\caption{Real 1$\times$A100 Mixed-Modality Trace Replay (Wan2.1 + 3 Bursty SD3.5 Requests).}
+\label{tab:e2e_replay}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Serving System} & \textbf{Img Mean (ms)} & \textbf{Img P99 (ms)} & \textbf{Video (ms)} & \textbf{Total SLO (\%)} \\
+\midrule
+Vanilla-xDiT (Non-Preemptive) & 14564.8 & 15454.6 & 10822.4 & 25.0 \\
+GenServe-40GB (Step-Preempt + Cold Swap) & 4706.7 & 6436.9 & 18180.2 & 25.0 \\
+HeteroDiT-Exact (Ours, Lossless) & 2762.7 & 3765.3 & 15951.4 & 75.0 \\
+HeteroDiT-Approx (Ours, Laxity Cache tau=0.16) & 2949.0 & 3458.1 & 13761.7 & 100.0 \\
+\textbf{HeteroDiT-v2 (Flash + MicroBatch + TaylorCache + StreamVAE)} & \textbf{2030.7} & \textbf{2519.4} & \textbf{12665.2} & \textbf{100.0} \\
+\bottomrule
+\end{tabular}
+\end{table}
