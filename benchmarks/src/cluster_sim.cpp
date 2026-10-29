@@ -59,10 +59,12 @@ Json simulate_cluster(const Json& config) {
     };
     // Only sequence-parallel advances share the host bridge; a CFG pair exchanges one prediction per step.
     auto sp_advance = [&](const Json& assignment) {
-        return form_of(assignment).sp >= 2 && assignment.at("quantum") != "atomic" && assignment.at("quantum") != "finish";
+        return form_of(assignment).sp_total() >= 2 && assignment.at("quantum") != "atomic" && assignment.at("quantum") != "finish";
     };
     double now = 0, busy_ms = 0;
     std::size_t completed = 0, preemptions = 0, resizes = 0, plans = 0, pairs = 0, batches = 0, batched = 0;
+    std::size_t tiered_offloads = 0, tiered_prefetches = 0, approx_quanta = 0;
+    std::vector<bool> prefetched(rows.size(), false);
     std::vector<std::size_t> arrival_order(rows.size());
     for (std::size_t i = 0; i < rows.size(); ++i) arrival_order[i] = i;
     std::stable_sort(arrival_order.begin(), arrival_order.end(), [&](std::size_t a, std::size_t b) {
@@ -122,17 +124,24 @@ Json simulate_cluster(const Json& config) {
                     if (assignment.at("resize").get<bool>()) { duration += cost.resize_ms(); ++resizes; }
                     std::vector<int> group;
                     for (const auto& gpu : assignment.at("group")) group.push_back(gpu.get<int>());
-                    if (row.at("prepared").get<bool>())
-                        for (int gpu : group) if (last_on_gpu[gpu] != at) { duration += cost.resume_ms(klass); break; }
+                    const double cache_threshold = number_field(assignment, "cache_threshold", 0.0);
+                    if (cache_threshold > 0.0) ++approx_quanta;
+                    if (row.at("prepared").get<bool>()) {
+                        for (int gpu : group) if (last_on_gpu[gpu] != at) {
+                            duration += cost.resume_ms(klass) * (prefetched[at] ? 0.25 : 1.0);
+                            prefetched[at] = false;
+                            break;
+                        }
+                    }
                     if (assignment.contains("pair")) {
                         // Two requests in lockstep: the pair's block time, plus the partner's prepare/resize.
                         auto& other = rows[index.at(assignment.at("pair").get<std::string>())];
                         const auto oklass = other.at("class").get<std::string>();
                         if (!other.at("prepared").get<bool>()) duration += number_field(cost.klass(oklass), "prepare_ms");
                         if (assignment.value("pair_resize", false)) { duration += cost.resize_ms(); ++resizes; }
-                        duration += blocks * cost.pair_ms(klass, oklass, form, form.sp >= 2 ? sp_groups : 1, &group) / cost.blocks_per_step(klass);
+                        duration += blocks * cost.pair_ms(klass, oklass, form, form.sp_total() >= 2 ? sp_groups : 1, &group) / cost.blocks_per_step(klass);
                     } else {
-                        duration += blocks * cost.block_ms(klass, form, form.sp >= 2 ? sp_groups : 1, &group);
+                        duration += blocks * cost.block_ms(klass, form, form.sp_total() >= 2 ? sp_groups : 1, &group, cache_threshold);
                     }
                 }
                 const auto kind = quantum.is_string() ? quantum.get<std::string>() : std::string("blocks");
@@ -163,6 +172,16 @@ Json simulate_cluster(const Json& config) {
                 Running item{at, assignment, now + duration, blocks, assignment.contains("pair") ? members[1] : SIZE_MAX};
                 if (assignment.contains("batch")) item.batch.assign(members.begin() + 1, members.end());
                 running.push_back(item);
+            }
+            if (plan.contains("tiered_hints")) {
+                const auto& hints = plan.at("tiered_hints");
+                if (hints.contains("offload")) tiered_offloads += hints.at("offload").size();
+                if (hints.contains("prefetch")) {
+                    for (const auto& pid : hints.at("prefetch")) {
+                        const auto s = pid.get<std::string>();
+                        if (index.count(s)) { prefetched[index.at(s)] = true; ++tiered_prefetches; }
+                    }
+                }
             }
         }
 
@@ -221,6 +240,7 @@ Json simulate_cluster(const Json& config) {
             {"makespan_ms", makespan}, {"gpu_utilization", makespan > 0 ? busy_ms / (gpus * makespan) : 0.},
             {"block_preemptions", preemptions}, {"resizes", resizes}, {"plans", plans}, {"pairs", pairs},
             {"batches", batches}, {"batched_images", batched},
+            {"tiered_offloads", tiered_offloads}, {"tiered_prefetches", tiered_prefetches}, {"approx_quanta", approx_quanta},
             {"provenance", cost.profile().at("provenance")}, {"requests", rows},
             {"notice", "Cost-model simulation; durations come from the profile, not from executing models."}};
 }

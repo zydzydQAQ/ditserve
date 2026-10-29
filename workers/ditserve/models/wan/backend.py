@@ -11,12 +11,13 @@ from ..base import Backend, artifact, file_hash, positive_int, progress
 class WanBackend(Backend):
     operations = Backend.operations + ("snapshot", "restore", "inventory", "set_cache", "reference",
         "encode_start", "encode_poll", "decode_start", "decode_poll", "migration_release", "migration_abort", "local_roundtrip", "distributed",
-        "block_export", "block_import")
+        "block_export", "block_import", "tiered_offload", "tiered_prefetch", "tiered_summary")
 
     def __init__(self, config):
         super().__init__(config)
         from .runtime import WanStepWorker
         from .prompt_cache import cache_options
+        from .tiered_state import TieredVideoStateManager
         self.options = config.get("options", {})
         # Optional worker-owned negative-embedding cache: both limits or neither, checked before loading.
         cache_config = cache_options(self.options)
@@ -24,6 +25,9 @@ class WanBackend(Backend):
             model_path=config.get("model_path"), attention=config.get("attention", "math"),
             vae_dtype=config.get("vae_dtype", "float32"), engine=self.options.get("engine", "xdit"),
             revision=config.get("revision"), **cache_config)
+        self.tiered_manager = TieredVideoStateManager(
+            self.runtime, max_pinned_mb=int(self.options.get("max_pinned_mb", 8192))
+        )
         self.execution = self.options.get("execution", "step")
         if self.execution not in ("step", "block", "block_interleaved"):
             raise ValueError("Wan execution must be step, block or block_interleaved")
@@ -150,6 +154,14 @@ class WanBackend(Backend):
         key = request["state_id"]
         if request.get("group") is not None:
             self._adopt(request, state, key)
+        if request.get("cache_threshold") is not None and key not in self.continuations:
+            from .runtime import normalize_spec
+            thresh = float(request["cache_threshold"])
+            spec = dict(state.spec, cache=(thresh > 0.0), threshold=thresh)
+            if "max_continuous" in request:
+                spec["max_continuous"] = int(request["max_continuous"])
+            state.spec = normalize_spec(spec)
+            self.runtime._update_policy(state)
         records = []
         if key in self.continuations:
             blocks = (2 * len(self.runtime.pipe.transformer.blocks) if request.get("quantum") == "step"
@@ -337,6 +349,27 @@ class WanBackend(Backend):
     def inventory(self, request):
         from .state import state_inventory
         return state_inventory(self.state(request), torch_module=self.runtime.torch)
+
+    def tiered_offload(self, request):
+        state = self._boundary(request)
+        key = request["state_id"]
+        with self.runtime._lock:
+            event = self.tiered_manager.offload_to_pinned(
+                state, key, non_blocking=bool(request.get("non_blocking", True))
+            )
+        return dict(event, state_id=key, progress=self._progress(state))
+
+    def tiered_prefetch(self, request):
+        state = self.state(request)
+        key = request["state_id"]
+        with self.runtime._lock:
+            event = self.tiered_manager.lookahead_prefetch(
+                state, key, target_device=request.get("target_device")
+            )
+        return dict(event, state_id=key, progress=self._progress(state))
+
+    def tiered_summary(self, _request=None):
+        return self.tiered_manager.summary()
 
     def set_cache(self, request):
         state = self._boundary(request)

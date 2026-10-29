@@ -70,7 +70,16 @@ class XDitRuntime:
         self.pool.activate(self.pool.current_ranks, self.state)
         self.revision = XDIT_REVISION
 
+    def bind_global(self):
+        from xfuser.core.distributed import runtime_state as state
+
+        state._RUNTIME = self.state
+        self.pool.activate(self.pool.current_ranks or (self.pool.rank,), self.state)
+
     def activate(self, layout, *, height, width, num_frames, batch_size=1, num_inference_steps=20):
+        from xfuser.core.distributed import runtime_state as state
+
+        state._RUNTIME = self.state
         sp_ranks = layout.sp_ranks(self.pool.rank)
         self.pool.activate(sp_ranks, self.state)
         self.state.set_video_input_parameters(
@@ -84,6 +93,7 @@ class XDitRuntime:
         return sp_ranks
 
     def activate_image(self, *, height, width, batch_size=1, num_inference_steps=20):
+        self.bind_global()
         self.state.set_input_parameters(
             height=height,
             width=width,

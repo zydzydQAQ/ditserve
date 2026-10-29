@@ -131,6 +131,7 @@ class FluxBackend(Backend):
             from .profiling import PipelineProfiler
             observer = PipelineProfiler(self.torch, self.pipe, self.device)
         with self.torch.inference_mode(), _sdpa_math_context(self.torch):
+            self.xdit.bind_global()
             arguments = self._arguments(spec)
             encoding = self._encode(arguments)
             with observer or nullcontext():

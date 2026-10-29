@@ -53,7 +53,7 @@ class ProcessGroupPool:
             return None
         return self.metadata[tuple(ranks)]
 
-    def _coordinator(self, ranks, *, sequence=False, pipeline=False):
+    def _coordinator(self, ranks, *, sequence=False, pipeline=False, ulysses_degree=None, ring_degree=1):
         ranks = tuple(ranks)
         if self.rank not in ranks:
             raise ValueError("local rank is not in the requested xDiT group")
@@ -70,13 +70,31 @@ class ProcessGroupPool:
         coordinator.shm_broadcaster = None
         coordinator.device = self.device
         if sequence:
-            ring_group = self._device_group((self.rank,))
-            coordinator.ulysses_group = coordinator.device_group
-            coordinator.ring_group = ring_group
-            coordinator.ulysses_world_size = len(ranks)
-            coordinator.ulysses_rank = coordinator.rank_in_group
-            coordinator.ring_world_size = 1
-            coordinator.ring_rank = 0
+            degree = len(ranks)
+            r_deg = int(ring_degree or 1)
+            u_deg = int(ulysses_degree or (degree // r_deg))
+            if u_deg * r_deg != degree:
+                raise ValueError(f"Invalid 2D USP degrees: ulysses={u_deg}, ring={r_deg}, world={degree}")
+            if r_deg == 1:
+                coordinator.ulysses_group = coordinator.device_group
+                coordinator.ring_group = self._device_group((self.rank,))
+                coordinator.ulysses_world_size = degree
+                coordinator.ulysses_rank = coordinator.rank_in_group
+                coordinator.ring_world_size = 1
+                coordinator.ring_rank = 0
+            else:
+                # 2D Hybrid USP for dual-socket PCIe: intra-socket Ulysses (contiguous u_deg ranks)
+                # + inter-socket Ring (strided by u_deg across sockets).
+                u_idx = coordinator.rank_in_group // u_deg
+                u_sub = tuple(ranks[u_idx * u_deg:(u_idx + 1) * u_deg])
+                r_off = coordinator.rank_in_group % u_deg
+                r_sub = tuple(ranks[i * u_deg + r_off] for i in range(r_deg))
+                coordinator.ulysses_group = self._device_group(u_sub) if self.groups and u_sub in getattr(self.groups, "groups", ()) else coordinator.device_group
+                coordinator.ring_group = self._device_group(r_sub) if self.groups and r_sub in getattr(self.groups, "groups", ()) else coordinator.device_group
+                coordinator.ulysses_world_size = u_deg
+                coordinator.ulysses_rank = coordinator.rank_in_group % u_deg
+                coordinator.ring_world_size = r_deg
+                coordinator.ring_rank = u_idx
         if pipeline:
             coordinator.cpu_groups = []
             coordinator.device_groups = []
@@ -99,11 +117,16 @@ class ProcessGroupPool:
         ps._VAE = None
         self.activate((self.rank,))
 
-    def activate(self, sp_ranks, runtime_state=None):
+    def activate(self, sp_ranks, runtime_state=None, *, ulysses_degree=None, ring_degree=1):
         sp_ranks = tuple(sp_ranks)
         if not sp_ranks or self.rank not in sp_ranks:
             raise ValueError("xDiT SP group must contain the local rank")
-        coordinator = self._coordinator(sp_ranks, sequence=True)
+        degree = len(sp_ranks)
+        r_deg = int(ring_degree or 1)
+        u_deg = int(ulysses_degree or (degree // r_deg))
+        coordinator = self._coordinator(
+            sp_ranks, sequence=True, ulysses_degree=u_deg, ring_degree=r_deg
+        )
         ps._SP = coordinator
         ps._MODEL_REPLICA = self._coordinator(sp_ranks)
         ps._DIT = self._device_group(sp_ranks)
@@ -111,21 +134,20 @@ class ProcessGroupPool:
         PROCESS_GROUP.RING_PG = coordinator.ring_group
         self.current_ranks = sp_ranks
         if runtime_state is not None:
-            degree = len(sp_ranks)
             config = runtime_state.parallel_config
             config.dp_config.dp_degree = 1
             config.dp_config.cfg_degree = 1
             config.dp_config.dit_parallel_size = degree
-            config.sp_config.ulysses_degree = degree
-            config.sp_config.ring_degree = 1
+            config.sp_config.ulysses_degree = u_deg
+            config.sp_config.ring_degree = r_deg
             config.sp_config.sp_degree = degree
             config.sp_config.dit_parallel_size = degree
             config.dp_degree = 1
             config.cfg_degree = 1
             config.dit_parallel_size = degree
             config.sp_degree = degree
-            config.ulysses_degree = degree
-            config.ring_degree = 1
+            config.ulysses_degree = u_deg
+            config.ring_degree = r_deg
             runtime_state.ready = False
         return coordinator
 

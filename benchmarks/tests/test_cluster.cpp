@@ -601,6 +601,40 @@ int main() {
         require(study_workload({{"generator", generator}}) == rows, "deterministic");
         simulate_cluster({{"workload", rows}, {"profile", profile()}, {"policy", "block_elastic"}, {"gpus", 8}});
     });
+    check("2D hybrid USP forms and laxity-driven feature caching", [] {
+        const Form u4r2 = parse_form("u4r2"), cfg2u2r2 = parse_form("cfg2u2r2");
+        require(u4r2.cfg == 1 && u4r2.sp == 4 && u4r2.ring == 2 && u4r2.degree() == 8 && form_name(u4r2) == "u4r2", "u4r2 parsed");
+        require(cfg2u2r2.cfg == 2 && cfg2u2r2.sp == 2 && cfg2u2r2.ring == 2 && cfg2u2r2.degree() == 8 && form_name(cfg2u2r2) == "cfg2u2r2", "cfg2u2r2 parsed");
+        const ClusterCost cost(profile());
+        // On 8-GPU dual-socket PCIe (link 4 = 10 GB/s, link 8 = 5 GB/s), u4r2 confines All-to-All to quad links
+        // and overlaps cross-socket Ring P2P, beating flat sp8 All-to-All.
+        require(cost.step_ms("video", u4r2) < cost.step_ms("video", parse_form("sp8")), "u4r2 beats flat sp8 across sockets");
+        require(cost.step_ms("video", u4r2, 1, nullptr, 0.16) < cost.step_ms("video", u4r2, 1, nullptr, 0.0), "feature cache skips compute and comm");
+    });
+    check("knapsack_dp, heterodit_exact and heterodit_approx policies", [] {
+        require(cluster_policy("knapsack_dp") && cluster_policy("heterodit_exact") && cluster_policy("heterodit_approx"), "policies registered");
+        Json prof = profile();
+        prof["classes"]["video"]["cfg_exchange_mb"] = 20;
+        prof["classes"]["video"]["resume_ms"] = 80;
+        prof["classes"]["image"]["batch_ms"] = {{"2", 70}, {"4", 110}};
+        const ClusterCost cost(prof);
+        // Urgent video that cannot meet 1500 ms deadline strictly on 2 GPUs (needs ~2004 ms exact),
+        // but meets it under heterodit_approx via dynamic feature caching.
+        const Json tight = Json::array({video("v1", 1500), video("v2", 2500)});
+        const auto exact_plan = cluster_plan({{"now_ms", 0}, {"gpus", 4}, {"busy", Json::array()}, {"requests", tight}}, "heterodit_exact", cost);
+        const auto approx_plan = cluster_plan({{"now_ms", 0}, {"gpus", 4}, {"busy", Json::array()}, {"requests", tight}}, "heterodit_approx", cost);
+        require(exact_plan.contains("tiered_hints") && approx_plan.contains("tiered_hints"), "tiered state hints emitted");
+        require(approx_plan.at("assignments")[0].value("cache_threshold", 0.0) > 0.0, "approx selects positive cache_threshold for tight video");
+        // Full mixed trace simulation across exact and approx policies.
+        Json generator = {{"count", 80}, {"seed", 7}, {"pattern", "poisson"}, {"rate_rps", 4},
+            {"classes", {{{"class", "video"}, {"kind", "video"}, {"weight", 1}, {"service_ms", 4000}, {"slo_scale", 1.5}},
+                         {{"class", "image"}, {"kind", "image"}, {"weight", 3}, {"service_ms", 50}, {"slo_ms", 300}}}}};
+        const auto trace = study_workload({{"generator", generator}});
+        const auto sim_exact = simulate_cluster({{"workload", trace}, {"profile", prof}, {"policy", "heterodit_exact"}, {"gpus", 8}});
+        const auto sim_approx = simulate_cluster({{"workload", trace}, {"profile", prof}, {"policy", "heterodit_approx"}, {"gpus", 8}});
+        require(sim_exact.at("metrics").at("completed") == 80 && sim_approx.at("metrics").at("completed") == 80, "all requests complete");
+        require(sim_approx.at("approx_quanta").get<int>() > 0, "approx quanta used under load");
+    });
     std::cout << checks - failures << "/" << checks << " cluster checks passed\n";
     return failures ? 1 : 0;
 }

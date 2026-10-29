@@ -13,15 +13,18 @@ namespace ditserve {
 // Aligned groups of each allowed degree that fit in `gpus`.
 std::vector<std::vector<int>> cluster_groups(int gpus, const std::vector<int>& degrees);
 
-// How a video's group of cfg * sp GPUs runs one solver step: the two CFG
-// branches on separate halves (cfg = 2, one prediction exchange per step) and
-// Ulysses sequence parallelism of degree sp inside each branch. Names:
-// sp1, sp2, sp4, sp8, cfg2, cfg2sp2, cfg2sp4.
+// How a video's group of cfg * sp * ring GPUs runs one solver step: the two CFG
+// branches on separate halves (cfg = 2, one prediction exchange per step),
+// Ulysses sequence parallelism of degree sp inside each branch/socket, and
+// optional Ring Attention P2P degree ring across sockets (2D Hybrid USP).
+// Names: sp1, sp2, sp4, sp8, cfg2, cfg2sp2, cfg2sp4, u2r2, u4r2, cfg2u2r2.
 struct Form {
     int cfg = 1;
     int sp = 1;
-    int degree() const { return cfg * sp; }
-    bool operator==(const Form& other) const { return cfg == other.cfg && sp == other.sp; }
+    int ring = 1;
+    int degree() const { return cfg * sp * ring; }
+    int sp_total() const { return sp * ring; }
+    bool operator==(const Form& other) const { return cfg == other.cfg && sp == other.sp && ring == other.ring; }
     bool operator!=(const Form& other) const { return !(*this == other); }
 };
 Form parse_form(const std::string& name);
@@ -53,10 +56,16 @@ public:
     const Json& klass(const std::string& name) const;
     // sp_groups: SP groups (sp >= 2) advancing concurrently, this one included.
     // group: the GPUs the form runs on, for per-group link rates (optional).
-    double step_ms(const std::string& klass, const Form& form, int sp_groups = 1, const std::vector<int>* group = nullptr) const;
-    double block_ms(const std::string& klass, const Form& form, int sp_groups = 1, const std::vector<int>* group = nullptr) const;
+    // cache_threshold: dynamic residual feature cache threshold in [0, 1); >0 skips redundant DiT blocks.
+    double step_ms(const std::string& klass, const Form& form, int sp_groups = 1, const std::vector<int>* group = nullptr,
+                   double cache_threshold = 0.0) const;
+    double block_ms(const std::string& klass, const Form& form, int sp_groups = 1, const std::vector<int>* group = nullptr,
+                    double cache_threshold = 0.0) const;
     // Remaining GPU time on `form` from the request's current progress.
-    double remaining_ms(const Json& request, const Form& form, int sp_groups = 1, const std::vector<int>* group = nullptr) const;
+    double remaining_ms(const Json& request, const Form& form, int sp_groups = 1, const std::vector<int>* group = nullptr,
+                        double cache_threshold = 0.0) const;
+    // Fraction of DiT blocks skipped (compute + communication) at `cache_threshold`.
+    double cache_skip_ratio(const std::string& klass, double cache_threshold) const;
     // One step of two requests advancing in lockstep on `form` (request-level interleaving):
     // the sum of both steps less pair_overlap of the shorter of their compute and
     // communication sums; neither request interleaves its own branches.
@@ -87,7 +96,8 @@ public:
     double block_overhead_ms() const { return block_overhead_ms_; }
 private:
     struct Terms { double compute = 0, comm = 0, latency = 0, exchange = 0, overlap = 0, blocks = 0; };
-    Terms terms(const std::string& klass, const Form& form, int sp_groups, const std::vector<int>* group) const;
+    Terms terms(const std::string& klass, const Form& form, int sp_groups, const std::vector<int>* group,
+                double cache_threshold = 0.0) const;
     Json profile_;
     double efficiency_ = 1, resize_ms_ = 0, overhead_ms_ = 0, block_overhead_ms_ = 0, overlap_ = 0, pair_overlap_ = 0;
 };

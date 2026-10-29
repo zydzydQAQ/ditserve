@@ -112,8 +112,15 @@ def build_trace(classes, prompt_pools, windows, *, slots, seed, quality_per_kind
         video_count = _ratio_count(count, video_fraction)
         image_count = count - video_count
         pattern = window.get("pattern", "poisson")
-        if pattern not in ("offline", "offline_all", "poisson", "bursty"):
+        if pattern not in ("offline", "offline_all", "poisson", "bursty", "gamma"):
             raise ValueError("unknown arrival pattern")
+        cv = float(window.get("cv", 1.0)) if pattern == "gamma" else None
+        if cv is not None and (not math.isfinite(cv) or cv <= 0):
+            raise ValueError("gamma cv must be positive")
+        fast_video_fraction = float(window.get("fast_video_fraction", 0.0))
+        if not 0.0 <= fast_video_fraction <= 1.0:
+            raise ValueError("fast_video_fraction must be in [0, 1]")
+        fast_slo_scale = float(window.get("fast_slo_scale", 1.2))
         load = _positive(window.get("load", 1.0), "load")
         class_counts = {"video": _quota(video_count, len(video_classes)) if video_classes else [],
                         "image": [image_count]}
@@ -161,11 +168,22 @@ def build_trace(classes, prompt_pools, windows, *, slots, seed, quality_per_kind
                 raise RuntimeError("internal class quota mismatch")
             if pattern in ("offline", "offline_all"):
                 timestamps = [0.0] * amount
+            elif pattern == "gamma":
+                active_start, active_length = active_windows[period_index]
+                arrival_rng = _rng(seed, window_index, period_index, "arrival_gamma", kind, cv)
+                shape_k = 1.0 / (cv * cv)
+                raw_gaps = [arrival_rng.gammavariate(shape_k, 1.0 / shape_k) for _ in range(amount)]
+                total_gap = sum(raw_gaps) or 1.0
+                acc = 0.0
+                timestamps = []
+                for g in raw_gaps:
+                    acc += g
+                    timestamps.append((acc / (total_gap + 1e-9)) * active_length)
             else:
                 active_start, active_length = active_windows[period_index]
                 arrival_rng = _rng(seed, window_index, period_index, "arrival", kind)
                 timestamps = sorted(arrival_rng.random() * active_length for unused in range(amount))
-            for name, timestamp in zip(selected, timestamps):
+            for idx_in_period, (name, timestamp) in enumerate(zip(selected, timestamps)):
                 klass = classes[name]
                 sample = prompts[kind][prompt_index[kind]]
                 prompt_index[kind] += 1
@@ -173,6 +191,14 @@ def build_trace(classes, prompt_pools, windows, *, slots, seed, quality_per_kind
                 arrival = 0.0 if pattern in ("offline", "offline_all") else active_windows[period_index][0] + timestamp
                 service = float(klass["service_ms"])
                 slo = float(klass["slo_ms"]) if "slo_ms" in klass else service * float(klass.get("slo_scale", 2.5))
+                tier = None
+                if kind == "video" and fast_video_fraction > 0.0:
+                    tier_rng = _rng(seed, window_index, request_id, "tier")
+                    if tier_rng.random() < fast_video_fraction:
+                        tier = "fast"
+                        slo = service * fast_slo_scale
+                    else:
+                        tier = "standard"
                 spec = copy.deepcopy(klass["spec"])
                 spec.update(prompt=sample["prompt"], seed=int(_digest([seed, window_index, request_id, "content"])[:8], 16),
                             request_id=request_id)
@@ -182,6 +208,8 @@ def build_trace(classes, prompt_pools, windows, *, slots, seed, quality_per_kind
                            deadline_ms=arrival + slo, kind=kind, **{"class": name}, spec=spec,
                            dataset=prompt_pools[kind].get("kind"), dataset_sample_id=sample["sample_id"],
                            output_mode="file" if quality else "check", trace_seed=seed)
+                if tier is not None:
+                    row["tier"] = tier
                 if "worker" in klass:
                     row["worker"] = klass["worker"]
                 window_rows.append(row)

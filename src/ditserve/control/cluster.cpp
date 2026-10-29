@@ -19,6 +19,8 @@ struct Policy {
     bool elastic = false;    // regroup at step boundaries
     bool blocks = false;     // advance in block quanta, lazy intra-step preemption
     bool rounds = false;     // regroup only every options.round_steps steps (TetriServe-like)
+    bool knapsack = false;   // 3-stage multi-granularity Knapsack DP + tiered state hints
+    bool approx = false;     // laxity-driven dynamic feature caching (heterodit_approx)
 };
 Policy parse(const std::string& name) {
     Policy policy;
@@ -29,6 +31,8 @@ Policy parse(const std::string& name) {
     } else if (name == "step_elastic") policy.elastic = true;
     else if (name == "block_elastic") policy.elastic = policy.blocks = true;
     else if (name == "round_elastic") policy.elastic = policy.rounds = true;
+    else if (name == "knapsack_dp" || name == "heterodit_exact") policy.elastic = policy.blocks = policy.knapsack = true;
+    else if (name == "heterodit_approx") policy.elastic = policy.blocks = policy.knapsack = policy.approx = true;
     else throw std::invalid_argument("unknown cluster policy: " + name);
     return policy;
 }
@@ -51,6 +55,20 @@ Form parse_form(const std::string& name) {
     std::string rest = name;
     if (rest.rfind("cfg2", 0) == 0) { form.cfg = 2; rest = rest.substr(4); }
     if (rest.empty() && form.cfg == 2) return form;
+    if (rest.size() == 4 && rest[0] == 'u' && rest[1] >= '1' && rest[1] <= '8' && rest[2] == 'r' && rest[3] >= '2' && rest[3] <= '8') {
+        form.sp = rest[1] - '0';
+        form.ring = rest[3] - '0';
+        if (!power_of_two(form.sp) || !power_of_two(form.ring) || form.degree() > 8)
+            throw std::invalid_argument("unknown parallel form: " + name);
+        return form;
+    }
+    if (rest.size() == 5 && rest.rfind("sp", 0) == 0 && rest[2] >= '1' && rest[2] <= '8' && rest[3] == 'r' && rest[4] >= '2' && rest[4] <= '8') {
+        form.sp = rest[2] - '0';
+        form.ring = rest[4] - '0';
+        if (!power_of_two(form.sp) || !power_of_two(form.ring) || form.degree() > 8)
+            throw std::invalid_argument("unknown parallel form: " + name);
+        return form;
+    }
     if (rest.size() < 3 || rest.rfind("sp", 0) != 0 || rest.size() > 3 || rest[2] < '1' || rest[2] > '8')
         throw std::invalid_argument("unknown parallel form: " + name);
     form.sp = rest[2] - '0';
@@ -60,7 +78,8 @@ Form parse_form(const std::string& name) {
 
 std::string form_name(const Form& form) {
     if (form.cfg != 1 && form.cfg != 2) throw std::invalid_argument("cfg must be 1 or 2");
-    if (!power_of_two(form.sp)) throw std::invalid_argument("SP degree must be a power of two");
+    if (!power_of_two(form.sp) || !power_of_two(form.ring)) throw std::invalid_argument("SP and Ring degrees must be powers of two");
+    if (form.ring > 1) return (form.cfg == 2 ? "cfg2" : "") + std::string("u") + std::to_string(form.sp) + "r" + std::to_string(form.ring);
     return (form.cfg == 2 ? "cfg2" : "") + (form.sp == 1 && form.cfg == 2 ? std::string() : "sp" + std::to_string(form.sp));
 }
 
@@ -173,7 +192,26 @@ const Json& ClusterCost::klass(const std::string& name) const {
     return classes.at(name);
 }
 
-ClusterCost::Terms ClusterCost::terms(const std::string& name, const Form& form, int sp_groups, const std::vector<int>* group) const {
+double ClusterCost::cache_skip_ratio(const std::string& name, double cache_threshold) const {
+    if (cache_threshold < 0.0 || cache_threshold >= 1.0)
+        throw std::invalid_argument("cache_threshold must be in [0, 1)");
+    if (cache_threshold == 0.0) return 0.0;
+    const auto& row = klass(name);
+    if (row.contains("cache_skip_table") && row.at("cache_skip_table").is_object()) {
+        std::map<double, double> table = {{0.0, 0.0}};
+        for (auto it = row.at("cache_skip_table").begin(); it != row.at("cache_skip_table").end(); ++it)
+            table[std::stod(it.key())] = it.value().get<double>();
+        auto upper = table.lower_bound(cache_threshold);
+        if (upper != table.end() && std::abs(upper->first - cache_threshold) <= 1e-9) return upper->second;
+        if (upper == table.end()) return std::prev(table.end())->second;
+        const auto lower = std::prev(upper);
+        return lower->second + (upper->second - lower->second) * (cache_threshold - lower->first) / (upper->first - lower->first);
+    }
+    return std::min(0.55, 2.2 * cache_threshold);
+}
+
+ClusterCost::Terms ClusterCost::terms(const std::string& name, const Form& form, int sp_groups, const std::vector<int>* group,
+                                      double cache_threshold) const {
     const auto& row = klass(name);
     if (row.at("kind") != "video") throw std::invalid_argument("image classes have no solver steps");
     form_name(form);   // validates
@@ -182,21 +220,22 @@ ClusterCost::Terms ClusterCost::terms(const std::string& name, const Form& form,
         if (!links.contains(degree_key(sp))) throw std::invalid_argument("cost profile has no link model for SP degree " + degree_key(sp));
         return links.at(degree_key(sp));
     };
-    const double cfg = form.cfg, sp = form.sp;
+    const double cfg = form.cfg, sp = form.sp, ring = form.ring, sp_tot = form.sp_total();
     Terms t;
-    t.compute = number_field(row, "step_compute_ms", 0, true) / (cfg * sp * efficiency_);
+    t.compute = number_field(row, "step_compute_ms", 0, true) / (cfg * sp_tot * efficiency_);
     if (form.sp > 1) {
         const auto& link = link_of(form.sp);
         double gbps = number_field(link, "gbps", 0, true), latency = number_field(link, "latency_ms");
         double overlap = link.contains("sp_overlap") ? number_field(link, "sp_overlap") : overlap_;
         if (overlap > 1) throw std::invalid_argument("sp_overlap must be in [0, 1]");
         // On a named placement the form runs at its slowest SP subgroup's rate (the halves of a
-        // CFG pair each run SP on their own GPUs).
+        // CFG pair or Ring subgroups each run Ulysses SP on their own GPUs).
         if (group && links.contains("groups")) {
             if (static_cast<int>(group->size()) != form.degree()) throw std::invalid_argument("group size does not match the form");
             bool first = true;
-            for (int half = 0; half < form.cfg; ++half) {
-                const auto key = std::to_string((*group)[half * form.sp]) + "-" + std::to_string((*group)[(half + 1) * form.sp - 1]);
+            const int sub_count = form.cfg * form.ring;
+            for (int sub = 0; sub < sub_count; ++sub) {
+                const auto key = std::to_string((*group)[sub * form.sp]) + "-" + std::to_string((*group)[(sub + 1) * form.sp - 1]);
                 const auto& table = links.at("groups");
                 if (!table.contains(key)) continue;
                 const auto& entry = table.at(key);
@@ -220,23 +259,39 @@ ClusterCost::Terms ClusterCost::terms(const std::string& name, const Form& form,
             }
             gbps *= contended / number_field(link, "gbps", 0, true);
         }
-        t.comm = number_field(row, "comm_mb_per_step") / cfg * (sp - 1) / (sp * sp) / gbps;
+        t.comm = (number_field(row, "comm_mb_per_step") / (cfg * ring)) * (sp - 1) / (sp * sp) / gbps;
         // Branch interleaving hides part of the shorter term behind the other branch;
         // with the branches on separate halves (cfg = 2) each rank has one branch.
         t.overlap = form.cfg == 1 ? overlap : 0;
         t.latency = number_field(row, "collectives_per_step") / cfg * latency;
     }
+    if (form.ring > 1) {
+        const int rkey = links.contains(degree_key(form.sp_total())) ? form.sp_total() : form.ring;
+        const auto& rlink = link_of(rkey);
+        const double ring_gbps = number_field(rlink, "gbps", 0, true), ring_lat = number_field(rlink, "latency_ms");
+        const double ring_ov = std::min(1.0, std::max(0.0, number_field(profile_, "ring_overlap", 0.75)));
+        t.comm += (number_field(row, "comm_mb_per_step") * 0.5 / cfg) * (ring - 1) / (sp_tot * ring) / ring_gbps * (1.0 - ring_ov);
+        t.latency += (ring - 1) * ring_lat * (1.0 - ring_ov);
+    }
     if (form.cfg == 2) {
         const auto& pair = link_of(2);
         t.exchange = number_field(row, "cfg_exchange_mb") / number_field(pair, "gbps", 0, true) + number_field(pair, "latency_ms");
+    }
+    if (cache_threshold > 0.0) {
+        const double keep = 1.0 - cache_skip_ratio(name, cache_threshold);
+        t.compute *= keep;
+        t.comm *= keep;
+        t.latency *= keep;
+        t.exchange *= keep;
     }
     // Each rank executes blocks_per_step / cfg blocks of a step (a CFG pair splits the two branches).
     t.blocks = block_overhead_ms_ * blocks_per_step(name) / form.cfg;
     return t;
 }
 
-double ClusterCost::step_ms(const std::string& name, const Form& form, int sp_groups, const std::vector<int>* group) const {
-    const Terms t = terms(name, form, sp_groups, group);
+double ClusterCost::step_ms(const std::string& name, const Form& form, int sp_groups, const std::vector<int>* group,
+                            double cache_threshold) const {
+    const Terms t = terms(name, form, sp_groups, group, cache_threshold);
     return t.compute + t.comm - t.overlap * std::min(t.compute, t.comm) + t.latency + t.exchange + t.blocks;
 }
 
@@ -288,11 +343,13 @@ double ClusterCost::chunk_ms(const std::string& name) const { return number_fiel
 
 double ClusterCost::resume_ms(const std::string& name) const { return number_field(klass(name), "resume_ms"); }
 
-double ClusterCost::block_ms(const std::string& name, const Form& form, int sp_groups, const std::vector<int>* group) const {
-    return step_ms(name, form, sp_groups, group) / blocks_per_step(name);
+double ClusterCost::block_ms(const std::string& name, const Form& form, int sp_groups, const std::vector<int>* group,
+                             double cache_threshold) const {
+    return step_ms(name, form, sp_groups, group, cache_threshold) / blocks_per_step(name);
 }
 
-double ClusterCost::remaining_ms(const Json& request, const Form& form, int sp_groups, const std::vector<int>* group) const {
+double ClusterCost::remaining_ms(const Json& request, const Form& form, int sp_groups, const std::vector<int>* group,
+                                 double cache_threshold) const {
     const auto name = request.at("class").get<std::string>();
     const auto& row = klass(name);
     if (row.at("kind") == "image") {
@@ -306,7 +363,8 @@ double ClusterCost::remaining_ms(const Json& request, const Form& form, int sp_g
     const int steps = int_field(request, "steps_total", int_field(row, "steps", 0), 1), done = int_field(request, "steps_done", 0, 0);
     const int blocks = int_field(request, "blocks_done", 0, 0);
     double total = request.value("prepared", false) ? 0 : number_field(row, "prepare_ms");
-    total += std::max(0, steps - done) * step_ms(name, form, sp_groups, group) - blocks * block_ms(name, form, sp_groups, group);
+    total += std::max(0, steps - done) * step_ms(name, form, sp_groups, group, cache_threshold)
+           - blocks * block_ms(name, form, sp_groups, group, cache_threshold);
     return total + (decode_chunks(name) - std::min(int_field(request, "decode_done", 0, 0), decode_chunks(name))) * chunk_ms(name);
 }
 
@@ -323,6 +381,19 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             if (!item.is_string()) throw std::invalid_argument("options.forms lists form names");
             forms.push_back(parse_form(item.get<std::string>()));
         }
+    } else if (policy.knapsack && !options.contains("degrees")) {
+        const auto& links = cost.profile().value("links", Json::object());
+        forms.push_back(parse_form("sp1"));
+        if (links.contains("2")) { forms.push_back(parse_form("cfg2")); forms.push_back(parse_form("sp2")); }
+        if (links.contains("4")) {
+            if (links.contains("2")) { forms.push_back(parse_form("cfg2sp2")); forms.push_back(parse_form("u2r2")); }
+            forms.push_back(parse_form("sp4"));
+        }
+        if (links.contains("8")) {
+            if (links.contains("4")) forms.push_back(parse_form("u4r2"));
+            if (links.contains("2") && links.contains("4")) forms.push_back(parse_form("cfg2u2r2"));
+            forms.push_back(parse_form("sp8"));
+        }
     } else {
         for (const auto& d : options.value("degrees", Json::array({1, 2, 4, 8}))) forms.push_back(Form{1, static_cast<int>(integer(d, "degree"))});
     }
@@ -336,17 +407,18 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     // Optional time target: blocks per quantum follow the class and parallel form,
     // so a preemption check happens about every quantum_ms of GPU work.
     const double quantum_ms = number_field(options, "quantum_ms", 0);
-    auto video_quantum = [&](const std::string& klass, const Form& form, int n, const std::vector<int>* group = nullptr) -> Json {
+    auto video_quantum = [&](const std::string& klass, const Form& form, int n, const std::vector<int>* group = nullptr,
+                             double cache_threshold = 0.0) -> Json {
         if (!policy.blocks) return "step";
         if (quantum_ms <= 0) return quantum_blocks;
-        const int blocks = static_cast<int>(std::floor(quantum_ms / cost.block_ms(klass, form, n, group)));
+        const int blocks = static_cast<int>(std::floor(quantum_ms / cost.block_ms(klass, form, n, group, cache_threshold)));
         return std::max(1, std::min(blocks, cost.blocks_per_step(klass)));
     };
     // SP advances already running plus those this plan hands out: with
     // concurrent link rates in the profile they slow each other down.
     const int sp_running = int_field(state, "sp_groups_running", 0, 0);
     int sp_assigned = 0;
-    auto sp_groups = [&](const Form& form) { return form.sp >= 2 ? sp_running + sp_assigned + 1 : 1; };
+    auto sp_groups = [&](const Form& form) { return form.sp_total() >= 2 ? sp_running + sp_assigned + 1 : 1; };
     // Output-preserving forms (sp1 and the CFG halves run the same arithmetic as one GPU;
     // sequence parallelism changes the token shard its GEMMs see) win over an approximate
     // form of the same size unless that form is faster by more than this fraction.
@@ -391,8 +463,8 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         return quanta + (chunks <= 0 ? 0 : frames > 0 ? ceil_div(chunks, frames) : 1);
     };
     // Remaining GPU time plus the fixed dispatch cost of every quantum still to come.
-    auto estimate = [&](const Json& r, const Form& form, int n, const std::vector<int>* group = nullptr) {
-        const double remaining = cost.remaining_ms(r, form, n, group);
+    auto estimate = [&](const Json& r, const Form& form, int n, const std::vector<int>* group = nullptr, double cache_threshold = 0.0) {
+        const double remaining = cost.remaining_ms(r, form, n, group, cache_threshold);
         if (cost.quantum_overhead_ms() <= 0) return remaining;
         if (r.at("kind") == "image" && r.value("continuous_batch", false)) {
             const int steps = int_field(r, "steps_total", int_field(cost.klass(r.at("class").get<std::string>()), "steps", 2), 1);
@@ -404,7 +476,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     const bool lazy = bool_field(options, "lazy_preemption", true);
     // Minimum per-GPU efficiency (SP1 step time / (GPUs x form step time)) at which a video
     // widens beyond its minimal feasible group while others wait; 0 keeps the minimal group.
-    const double widen = number_field(options, "widen_efficiency");
+    const double widen = options.contains("widen_efficiency") ? number_field(options, "widen_efficiency") : (policy.knapsack ? 0.90 : 0.0);
     if (widen > 1) throw std::invalid_argument("widen_efficiency must be in [0, 1]");
     // Real backends without state migration keep a started request on its group.
     const bool pin_started = bool_field(options, "pin_started", false);
@@ -412,7 +484,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     const int reserve = int_field(options, "reserve_image_gpus", 0, 0);
     // Image placement among equally ranked free GPUs: "first" takes the lowest index; "pair_fit" takes the GPU
     // whose aligned partner (then quad) is already occupied, so free aligned pairs stay whole for CFG2 videos.
-    const auto image_placement = options.value("image_placement", std::string("first"));
+    const auto image_placement = options.value("image_placement", std::string(policy.knapsack ? "pair_fit" : "first"));
     if (image_placement != "first" && image_placement != "pair_fit") throw std::invalid_argument("image_placement must be first or pair_fit");
     if (reserve >= gpus) throw std::invalid_argument("reserve_image_gpus must leave a GPU for videos");
     auto reserved = [&](int gpu) { return gpu >= gpus - reserve; };
@@ -549,6 +621,17 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     const int continuous_batch = int_field(options, "continuous_batch", 0, 0);
     if (continuous_batch > 8) throw std::invalid_argument("continuous_batch must be in [0, 8]");
     if (continuous_batch > 0 && image_batch > 1) throw std::invalid_argument("continuous_batch and atomic image_batch are mutually exclusive");
+    std::vector<double> cache_thresholds = {0.0};
+    if (options.contains("cache_thresholds")) {
+        cache_thresholds.clear();
+        for (const auto& item : options.at("cache_thresholds")) cache_thresholds.push_back(number(item, "cache_threshold"));
+        if (cache_thresholds.empty()) cache_thresholds.push_back(0.0);
+    } else if (policy.approx) {
+        cache_thresholds = {0.0, 0.08, 0.16, 0.24};
+    }
+    bool knapsack_solved = false;
+    std::map<const Json*, int> knapsack_target;
+    std::map<const Json*, double> knapsack_tau;
     Json assignments = Json::array();
     for (std::size_t index = 0; index < rows.size(); ++index) {
         const Json& r = *rows[index];
@@ -627,9 +710,11 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                 for (const Json* m : members) batch.push_back(m->at("request_id"));
                 for (std::size_t m = 1; m < members.size(); ++m) taken.insert(members[m]);
                 assignment["batch"] = batch;
-            } else if (image_batch > 1) {
+            } else if (image_batch > 1 || (policy.knapsack && !options.contains("image_batch") && cost.klass(klass).contains("batch_ms")
+                       && std::count(free.begin(), free.end(), true) == 0)) {
+                const int max_batch = image_batch > 1 ? image_batch : 4;
                 std::vector<const Json*> members = {&r};
-                for (std::size_t j = index + 1; j < rows.size() && static_cast<int>(members.size()) < image_batch; ++j) {
+                for (std::size_t j = index + 1; j < rows.size() && static_cast<int>(members.size()) < max_batch; ++j) {
                     const Json& q = *rows[j];
                     if (q.at("kind") != "image" || taken.count(&q) || q.at("class") != r.at("class")) continue;
                     const double service = cost.batch_ms(klass, static_cast<int>(members.size()) + 1) + cost.quantum_overhead_ms();
@@ -696,8 +781,119 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         std::sort(order.begin(), order.end());
         order.erase(std::remove_if(order.begin(), order.end(), [&](int d) { return d > gpus || d < min_degree; }), order.end());
         if (order.empty()) throw std::invalid_argument("request class needs more GPUs than the cluster offers: " + klass);
+        if (policy.knapsack && !knapsack_solved) {
+            knapsack_solved = true;
+            int g_avail = 0;
+            for (int g = 0; g < gpus; ++g) if (free[g] && !reserved(g) && !mid_owner[g]) ++g_avail;
+            std::vector<const Json*> cands;
+            bool images_after = false;
+            for (std::size_t j = index; j < rows.size(); ++j) {
+                const Json& q = *rows[j];
+                if (taken.count(&q)) continue;
+                if (q.at("kind") == "image") { images_after = true; continue; }
+                const auto qklass = q.at("class").get<std::string>();
+                const bool qprep = q.value("prepared", false);
+                const int qsteps = int_field(q, "steps_total", int_field(cost.klass(qklass), "steps", 0), 1);
+                if (qprep && int_field(q, "steps_done", 0, 0) >= qsteps) continue;
+                const bool qfixed = qprep && (int_field(q, "blocks_done", 0, 0) > 0 || !policy.elastic || pin_started
+                                              || (policy.rounds && int_field(q, "steps_done", 0, 0) % round_steps != 0));
+                if (qfixed) continue;
+                if (cands.size() < 8) cands.push_back(&q);
+            }
+            const int K = static_cast<int>(cands.size());
+            if (K == 1 && !images_after && !others_waiting) {
+                const Json& q = *cands[0];
+                const int d = order.back();
+                const Form f = form_for(klass, d);
+                double best_tau = 0.0;
+                bool met = false;
+                for (double tau : cache_thresholds) {
+                    if (now + estimate(q, f, sp_groups(f), nullptr, tau) <= number_field(q, "deadline_ms")) {
+                        best_tau = tau; met = true; break;
+                    }
+                }
+                if (!met && !cache_thresholds.empty()) best_tau = cache_thresholds.back();
+                knapsack_target[&q] = d;
+                knapsack_tau[&q] = best_tau;
+            } else if (K > 0 && g_avail > 0) {
+                struct Choice { int prev_g = 0; int d = 0; double tau = 0.0; };
+                std::vector<std::vector<double>> dp(K + 1, std::vector<double>(g_avail + 1, -1e18));
+                std::vector<std::vector<Choice>> back(K + 1, std::vector<Choice>(g_avail + 1));
+                dp[0][0] = 0.0;
+                for (int m = 0; m < K; ++m) {
+                    const Json& q = *cands[m];
+                    const auto qklass = q.at("class").get<std::string>();
+                    const auto qcur = group_of(q);
+                    const bool qprep = q.value("prepared", false);
+                    const int qmin = int_field(cost.klass(qklass), "min_degree", 1);
+                    std::vector<int> qorder = degrees;
+                    std::sort(qorder.begin(), qorder.end());
+                    qorder.erase(std::remove_if(qorder.begin(), qorder.end(), [&](int d) { return d > gpus || d < qmin; }), qorder.end());
+                    const double single_ms = cost.step_ms(qklass, Form{}, 1, nullptr, 0.0);
+                    const double w_edf = 1.0 + 0.05 * (K - m);
+                    for (int g = 0; g <= g_avail; ++g) {
+                        if (dp[m][g] > dp[m + 1][g]) {
+                            dp[m + 1][g] = dp[m][g];
+                            back[m + 1][g] = Choice{g, 0, 0.0};
+                        }
+                        if (dp[m][g] <= -1e17) continue;
+                        for (int d : qorder) {
+                            if (g + d > g_avail) continue;
+                            const Form f = form_for(qklass, d);
+                            const double extra = (qprep && static_cast<int>(qcur.size()) != d) ? cost.resize_ms() : 0.0;
+                            for (double tau : cache_thresholds) {
+                                const double rem = estimate(q, f, sp_groups(f), nullptr, tau) + extra;
+                                const bool meets = (now + rem <= number_field(q, "deadline_ms"));
+                                const double step_t = cost.step_ms(qklass, f, sp_groups(f), nullptr, tau);
+                                const double eff = single_ms / (d * step_t);
+                                const double qual_pen = 120.0 * tau;
+                                const double res_pen = extra > 0 ? 5.0 : 0.0;
+                                const double widen_bonus = (widen > 0 && eff >= widen) ? 12.0 * d : 0.0;
+                                const double u = meets
+                                    ? (w_edf * 1000.0 + 80.0 * eff - 8.0 * d + widen_bonus - qual_pen - res_pen)
+                                    : (w_edf * 100.0 + (single_ms / step_t) * 20.0 - 4.0 * d - qual_pen - res_pen);
+                                if (dp[m][g] + u > dp[m + 1][g + d]) {
+                                    dp[m + 1][g + d] = dp[m][g] + u;
+                                    back[m + 1][g + d] = Choice{g, d, tau};
+                                }
+                            }
+                        }
+                    }
+                }
+                int best_g = 0;
+                for (int g = 1; g <= g_avail; ++g) if (dp[K][g] > dp[K][best_g]) best_g = g;
+                int cur_g = best_g, active_count = 0;
+                const Json* last_active = nullptr;
+                for (int m = K; m >= 1; --m) {
+                    const Choice ch = back[m][cur_g];
+                    knapsack_target[cands[m - 1]] = ch.d;
+                    knapsack_tau[cands[m - 1]] = ch.tau;
+                    if (ch.d > 0) { ++active_count; if (!last_active) last_active = cands[m - 1]; }
+                    cur_g = ch.prev_g;
+                }
+                // Work-conservation: if leftover GPUs remain when no images wait behind, widen the last active video
+                if (best_g < g_avail && !images_after && last_active) {
+                    const auto lklass = last_active->at("class").get<std::string>();
+                    const int lmin = int_field(cost.klass(lklass), "min_degree", 1);
+                    const int cur_d = knapsack_target[last_active];
+                    for (int d : degrees) {
+                        if (d > cur_d && d >= lmin && best_g - cur_d + d <= g_avail) {
+                            knapsack_target[last_active] = std::max(knapsack_target[last_active], d);
+                        }
+                    }
+                }
+            }
+        }
         int target = order.back();
-        if (others_waiting) {
+        double chosen_tau = 0.0;
+        if (policy.knapsack && knapsack_target.count(&r)) {
+            if (knapsack_target.at(&r) > 0) {
+                target = knapsack_target.at(&r);
+                chosen_tau = knapsack_tau.at(&r);
+            } else {
+                target = order.front();
+            }
+        } else if (others_waiting) {
             for (int d : order) {
                 const double extra = prepared && static_cast<int>(current.size()) != d ? cost.resize_ms() : 0;
                 const Form form = form_for(klass, d);
@@ -754,9 +950,16 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         if (chosen.empty()) continue;
         take(chosen);
         const Form form = form_for(klass, static_cast<int>(chosen.size()), &chosen);
+        if (policy.approx && chosen_tau == 0.0 && now + estimate(r, form, sp_groups(form), &chosen, 0.0) > number_field(r, "deadline_ms")) {
+            for (double tau : cache_thresholds) {
+                chosen_tau = tau;
+                if (now + estimate(r, form, sp_groups(form), &chosen, tau) <= number_field(r, "deadline_ms")) break;
+            }
+        }
         Json assignment = {{"request_id", id}, {"group", chosen}, {"degree", form.degree()}, {"form", form_name(form)},
-                           {"quantum", video_quantum(klass, form, sp_groups(form), &chosen)},
+                           {"quantum", video_quantum(klass, form, sp_groups(form), &chosen, chosen_tau)},
                            {"resize", prepared && chosen != current}, {"reason", prepared ? "regroup" : "admit"}};
+        if (chosen_tau > 0.0) assignment["cache_threshold"] = chosen_tau;
         // Request-level interleaving: a waiting video at a step boundary joins this one on the
         // group when the pair's step is cheaper than the two in sequence and both still make
         // their deadlines at the pair's pace (or neither would alone).
@@ -789,7 +992,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             }
         }
         assignments.push_back(assignment);
-        sp_assigned += form.sp >= 2;
+        sp_assigned += form.sp_total() >= 2;
     }
     // Shared by the executor and the simulator, so a planner bug fails here with
     // both request IDs instead of inside an SP worker. Pinned workers have no
@@ -810,6 +1013,27 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             }
         }
     }
-    return {{"assignments", assignments}, {"policy", name}};
+    Json result = {{"assignments", assignments}, {"policy", name}};
+    if (policy.knapsack) {
+        std::set<std::string> scheduled;
+        for (const auto& a : assignments) {
+            scheduled.insert(a.at("request_id").get<std::string>());
+            if (a.contains("pair")) scheduled.insert(a.at("pair").get<std::string>());
+            if (a.contains("batch")) for (const auto& b : a.at("batch")) scheduled.insert(b.get<std::string>());
+        }
+        Json offload = Json::array(), prefetch = Json::array();
+        for (const Json* r : rows) {
+            if (r->at("kind") != "video") continue;
+            const auto rid = r->at("request_id").get<std::string>();
+            if (scheduled.count(rid)) continue;
+            const auto cur = group_of(*r);
+            if (r->value("prepared", false) && int_field(*r, "blocks_done", 0, 0) == 0 && !cur.empty()) {
+                if (std::any_of(cur.begin(), cur.end(), [&](int g) { return !free[g]; })) offload.push_back(rid);
+            }
+            if (prefetch.size() < 2) prefetch.push_back(rid);
+        }
+        result["tiered_hints"] = {{"offload", offload}, {"prefetch", prefetch}};
+    }
+    return result;
 }
 }
