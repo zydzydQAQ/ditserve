@@ -81,7 +81,9 @@ class XDitRuntime:
 
         state._RUNTIME = self.state
         sp_ranks = layout.sp_ranks(self.pool.rank)
-        self.pool.activate(sp_ranks, self.state)
+        r_deg = getattr(layout, "ring", 1)
+        u_deg = len(sp_ranks) // r_deg
+        self.pool.activate(sp_ranks, self.state, ulysses_degree=u_deg, ring_degree=r_deg)
         self.state.set_video_input_parameters(
             height=height,
             width=width,

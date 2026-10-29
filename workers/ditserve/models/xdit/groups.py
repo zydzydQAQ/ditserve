@@ -89,8 +89,8 @@ class ProcessGroupPool:
                 u_sub = tuple(ranks[u_idx * u_deg:(u_idx + 1) * u_deg])
                 r_off = coordinator.rank_in_group % u_deg
                 r_sub = tuple(ranks[i * u_deg + r_off] for i in range(r_deg))
-                coordinator.ulysses_group = self._device_group(u_sub) if self.groups and u_sub in getattr(self.groups, "groups", ()) else coordinator.device_group
-                coordinator.ring_group = self._device_group(r_sub) if self.groups and r_sub in getattr(self.groups, "groups", ()) else coordinator.device_group
+                coordinator.ulysses_group = self._device_group(u_sub) if self.groups else coordinator.device_group
+                coordinator.ring_group = self._device_group(r_sub) if self.groups else coordinator.device_group
                 coordinator.ulysses_world_size = u_deg
                 coordinator.ulysses_rank = coordinator.rank_in_group % u_deg
                 coordinator.ring_world_size = r_deg

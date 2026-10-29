@@ -196,18 +196,20 @@ class WanBackend(Backend):
 
     def _adopt(self, request, state, key):
         """Run this quantum on the controller's group; layouts change only at step boundaries."""
-        group, cfg = tuple(request["group"]), positive_int(request.get("cfg", 1), "cfg")
+        group = tuple(request["group"])
+        cfg = positive_int(request.get("cfg", 1), "cfg")
+        ring = positive_int(request.get("ring", 1), "ring")
         if self.parallel is None:
-            if len(group) != 1 or cfg != 1:
+            if len(group) != 1 or cfg != 1 or ring != 1:
                 raise ValueError("an SP or CFG group requires distributed init on every rank")
             return
         layout = self.parallel.handle.current
         epoch = request.get("epoch", layout.epoch)
-        if (group, epoch, cfg) == (layout.ranks, layout.epoch, layout.cfg):
+        if (group, epoch, cfg, ring) == (layout.ranks, layout.epoch, layout.cfg, layout.ring):
             return
         if not self._transfer_ready(state, self.continuations.get(key)):
             raise ValueError("SP group changes only at a solver-step boundary")
-        self.parallel.handle.adopt(group, epoch=epoch, cfg=cfg)
+        self.parallel.handle.adopt(group, epoch=epoch, cfg=cfg, ring=ring)
 
     def _boundary(self, request):
         state = self.state(request)
@@ -418,7 +420,8 @@ class WanBackend(Backend):
             from .parallel import LayoutHandle, build_fixed_groups
             from ..xdit.wan import XDitWanParallelBackend
             groups = build_fixed_groups(backend=backend, timeout_seconds=request.get("timeout_seconds", 30))
-            handle = LayoutHandle(torch.distributed.get_rank(), request.get("ranks"), cfg=request.get("cfg", 1))
+            handle = LayoutHandle(torch.distributed.get_rank(), request.get("ranks"),
+                                  cfg=request.get("cfg", 1), ring=request.get("ring", 1))
             self.parallel = XDitWanParallelBackend(handle, groups).attach(self.runtime)
             if self.execution.startswith("block"):
                 # A warmup may have built a single-GPU executor; block quanta now need SP safe points.
@@ -433,8 +436,8 @@ class WanBackend(Backend):
             return self.advance(request)
         if action == "commit":
             layout = self.parallel.handle.commit(request["ranks"], expected_epoch=request["expected_epoch"],
-                                                 cfg=request.get("cfg", 1))
-            return dict(ranks=list(layout.ranks), epoch=layout.epoch, cfg=layout.cfg, gpu_validated=False)
+                                                 cfg=request.get("cfg", 1), ring=request.get("ring", 1))
+            return dict(ranks=list(layout.ranks), epoch=layout.epoch, cfg=layout.cfg, ring=layout.ring, gpu_validated=False)
         if action == "cache_off_migrate":
             key = request["state_id"]
             state, event = self.parallel.migrate_cache_off(self.states.get(key), request["source_ranks"],

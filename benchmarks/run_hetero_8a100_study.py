@@ -4,16 +4,21 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "workers"))
+for candidate in (ROOT / "workers", ROOT / "python"):
+    if candidate.is_dir():
+        sys.path.insert(0, str(candidate))
 
 from ditserve.evaluation.workloads import build_trace  # noqa: E402
 
-BINARY = ROOT / ".cache" / "build" / "ditserve"
+_which_bin = shutil.which("ditserve")
+BINARY = Path(_which_bin) if _which_bin else ROOT / ".cache" / "build" / "ditserve"
 
 
 def calibrated_8a100_profile() -> dict:
@@ -277,7 +282,8 @@ def evaluate_suite() -> dict:
 
 if __name__ == "__main__":
     summary = evaluate_suite()
-    out_path = ROOT / ".cache" / "hetero_8a100_study_summary.json"
+    out_dir = Path(os.environ["RUN_DIR"]) if "RUN_DIR" in os.environ else (ROOT / ".cache")
+    out_path = out_dir / "hetero_8a100_study_summary.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     for sc_name, sc_data in summary["scenarios"].items():

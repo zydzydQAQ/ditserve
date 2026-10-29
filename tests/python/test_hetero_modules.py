@@ -130,7 +130,8 @@ class HeteroModulesTest(unittest.TestCase):
         self.assertEqual(std_slos, {12000.0})
 
     def test_native_cli_heterodit_policies(self) -> None:
-        binary = Path(__file__).resolve().parents[2] / ".cache" / "build" / "ditserve"
+        which_bin = shutil.which("ditserve")
+        binary = Path(which_bin) if which_bin else Path(__file__).resolve().parents[2] / ".cache" / "build" / "ditserve"
         if not binary.is_file():
             self.skipTest("native binary not built")
         config = {
@@ -182,6 +183,35 @@ class HeteroModulesTest(unittest.TestCase):
         out = json.loads(proc.stdout)
         self.assertEqual(out["metrics"]["completed"], 4)
         self.assertEqual(out["by_kind"]["image"]["ontime"], 2)
+
+    def test_2d_hybrid_usp_fixed_layouts_and_strided_ring_groups(self) -> None:
+        from ditserve.models.wan.parallel import FixedLayout, LayoutHandle, ParallelContractError, strided_ring_groups
+
+        rings_4 = strided_ring_groups(4)
+        self.assertIn((0, 2), rings_4)
+        self.assertIn((1, 3), rings_4)
+
+        rings_8 = strided_ring_groups(8)
+        for pair in ((0, 2), (1, 3), (4, 6), (5, 7), (0, 4), (1, 5), (2, 6), (3, 7)):
+            self.assertIn(pair, rings_8)
+
+        layout_u2r2 = FixedLayout((0, 1, 2, 3), epoch=1, cfg=1, ring=2)
+        self.assertEqual(layout_u2r2.sp_degree, 4)
+        self.assertEqual(layout_u2r2.ring, 2)
+
+        layout_u4r2 = FixedLayout((0, 1, 2, 3, 4, 5, 6, 7), epoch=2, cfg=1, ring=2)
+        self.assertEqual(layout_u4r2.sp_degree, 8)
+        self.assertEqual(layout_u4r2.ring, 2)
+
+        layout_cfg2u2r2 = FixedLayout((0, 1, 2, 3, 4, 5, 6, 7), epoch=3, cfg=2, ring=2)
+        self.assertEqual(layout_cfg2u2r2.sp_degree, 4)
+        self.assertEqual(layout_cfg2u2r2.ring, 2)
+
+        with self.assertRaises(ParallelContractError):
+            FixedLayout((0, 1), epoch=1, cfg=1, ring=2)
+
+        handle = LayoutHandle(0, (0, 1, 2, 3), cfg=1, ring=2)
+        self.assertEqual(handle.current.ring, 2)
 
 
 if __name__ == "__main__":

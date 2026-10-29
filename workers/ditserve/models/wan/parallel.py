@@ -30,6 +30,23 @@ def aligned_groups(world_size):
         degree *= 2
     return tuple(groups)
 
+
+def strided_ring_groups(world_size):
+    """Strided 2-rank Ring subgroups for 2D Hybrid USP (u2r2 on 4 GPUs, u4r2 / cfg2u2r2 on 8 GPUs)."""
+    if world_size not in WORLD_SIZES:
+        raise ParallelContractError("SP world size must be 2, 4 or 8")
+    out = []
+    for degree in (4, 8):
+        if degree > world_size:
+            continue
+        u_deg = degree // 2
+        for start in range(0, world_size, degree):
+            for r_off in range(u_deg):
+                pair = (start + r_off, start + u_deg + r_off)
+                if pair not in out:
+                    out.append(pair)
+    return tuple(out)
+
 LATENT_CACHE_BUFFER_NAMES = frozenset(
     "blocks_%s_residual_buffer%s" % (part, suffix)
     for part in ("Fn", "Bn") for suffix in ("", "_cfg"))
@@ -90,6 +107,7 @@ class FixedLayout:
     ranks: tuple
     epoch: int = 0
     cfg: int = 1
+    ring: int = 1
 
     def __post_init__(self):
         object.__setattr__(self, "ranks", _ranks(self.ranks))
@@ -99,6 +117,10 @@ class FixedLayout:
             raise ParallelContractError("cfg must be 1 or 2")
         if self.cfg == 2 and len(self.ranks) < 2:
             raise ParallelContractError("CFG parallelism needs an aligned group of at least two ranks")
+        if self.ring not in (1, 2):
+            raise ParallelContractError("ring must be 1 or 2")
+        if self.ring == 2 and self.sp_degree < 4:
+            raise ParallelContractError("2D Hybrid USP (ring=2) requires sp_degree >= 4")
 
     @property
     def degree(self):
@@ -131,29 +153,29 @@ class LayoutHandle:
     A live step is never silently ended on failure.
     """
 
-    def __init__(self, rank, initial_ranks=None, cfg=1):
+    def __init__(self, rank, initial_ranks=None, cfg=1, ring=1):
         if type(rank) is not int or not 0 <= rank < max(WORLD_SIZES):
             raise ParallelContractError("rank must be in [0, %d)" % max(WORLD_SIZES))
         self.rank = rank
-        self.current = FixedLayout((rank,) if initial_ranks is None else initial_ranks, cfg=cfg)
+        self.current = FixedLayout((rank,) if initial_ranks is None else initial_ranks, cfg=cfg, ring=ring)
         if rank not in self.current.ranks:
             raise ParallelContractError("local rank is not in its execution group")
         self.active = None
         self.paired = None   # a second request advancing in lockstep with the active one
         self.failed = False
 
-    def commit(self, ranks, *, expected_epoch, cfg=1):
+    def commit(self, ranks, *, expected_epoch, cfg=1, ring=1):
         if self.active is not None or self.failed:
             raise ParallelContractError("layout can change only at a healthy step boundary")
         if expected_epoch != self.current.epoch:
             raise ParallelContractError("stale layout epoch")
-        candidate = FixedLayout(ranks, self.current.epoch + 1, cfg)
+        candidate = FixedLayout(ranks, self.current.epoch + 1, cfg, ring)
         if self.rank not in candidate.ranks:
             raise ParallelContractError("local rank is not in the new group")
         self.current = candidate
         return candidate
 
-    def adopt(self, ranks, *, epoch, cfg=1):
+    def adopt(self, ranks, *, epoch, cfg=1, ring=1):
         """Take a controller placement at a step boundary.
 
         A cluster worker serves requests on different groups, so epochs are
@@ -163,7 +185,7 @@ class LayoutHandle:
         """
         if self.active is not None or self.failed:
             raise ParallelContractError("layout can change only at a healthy step boundary")
-        candidate = FixedLayout(ranks, epoch, cfg)
+        candidate = FixedLayout(ranks, epoch, cfg, ring)
         if self.rank not in candidate.ranks:
             raise ParallelContractError("local rank is not in the new group")
         self.current = candidate
@@ -208,11 +230,15 @@ class LayoutHandle:
 
 
 class FixedProcessGroups:
-    def __init__(self, rank, groups, *, backend, timeout_seconds):
+    def __init__(self, rank, groups, *, backend, timeout_seconds, ring_groups=None):
         self.rank, self.groups = rank, groups
+        self.ring_groups = ring_groups or {}
         self.backend, self.timeout_seconds = backend, timeout_seconds
 
     def group(self, ranks):
+        ranks = tuple(ranks)
+        if self.rank in ranks and ranks in self.ring_groups:
+            return self.ring_groups[ranks]
         ranks = _ranks(ranks)
         if self.rank not in ranks or ranks not in self.groups:
             raise ParallelContractError("rank cannot use this process group")
@@ -234,8 +260,12 @@ def build_fixed_groups(*, timeout_seconds=15, backend=None):
     for ranks in aligned_groups(dist.get_world_size()):
         groups[ranks] = dist.new_group(list(ranks), backend=backend,
                                       timeout=datetime.timedelta(seconds=timeout_seconds))
+    ring_groups = {}
+    for ranks in strided_ring_groups(dist.get_world_size()):
+        ring_groups[ranks] = dist.new_group(list(ranks), backend=backend,
+                                            timeout=datetime.timedelta(seconds=timeout_seconds))
     return FixedProcessGroups(dist.get_rank(), groups, backend=backend,
-                              timeout_seconds=timeout_seconds)
+                              timeout_seconds=timeout_seconds, ring_groups=ring_groups)
 
 
 class RequestGroupGate:
