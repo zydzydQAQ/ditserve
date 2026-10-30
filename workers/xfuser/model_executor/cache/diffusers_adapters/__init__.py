@@ -10,11 +10,6 @@ def apply_cache_on_transformer(transformer, *args, **kwargs):
         stacklevel=2,
     )
     use_cache = kwargs.get("use_cache", "Fb")
-    if hasattr(transformer, "single_stream_modulation"):
-        from xfuser.model_executor.cache.adapters.flux2 import apply_fbcache
-
-        return apply_fbcache(transformer, *args, **kwargs)
-
     from xfuser.model_executor.cache.adapters.flux import (
         apply_fbcache,
         apply_teacache,

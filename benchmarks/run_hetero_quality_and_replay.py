@@ -24,8 +24,9 @@ for candidate in (ROOT / "workers", ROOT / "python"):
     if candidate.is_dir():
         sys.path.insert(0, str(candidate))
 
-from ditserve.models.wan.backend import WanBackend  # noqa: E402
+from ditserve.evaluation.hetero_metrics import compute_psnr_ssim, fast_prepare_wan  # noqa: E402
 from ditserve.models.sd35 import SD35Backend  # noqa: E402
+from ditserve.models.wan.backend import WanBackend  # noqa: E402
 
 
 REPLAY_SCOPE = (
@@ -149,53 +150,8 @@ def _replay_summary(requests, image_slo_ms, video_slo_ms):
     )
 
 
-def compute_psnr_ssim(ref_frames: np.ndarray, test_frames: np.ndarray) -> tuple[float, float]:
-    """Compute mean PSNR (dB) and SSIM across video frames in [0, 1] float32 [F, H, W, C]."""
-    ref = np.clip(ref_frames.astype(np.float32), 0.0, 1.0)
-    tst = np.clip(test_frames.astype(np.float32), 0.0, 1.0)
-    if ref.ndim == 5:
-        ref = ref[0]
-    if tst.ndim == 5:
-        tst = tst[0]
-    mse = float(np.mean((ref - tst) ** 2))
-    psnr = 99.99 if mse < 1e-10 else float(10.0 * math.log10(1.0 / mse))
-
-    # Per-frame windowed SSIM via PyTorch 2D average pooling
-    ref_t = torch.from_numpy(ref).permute(0, 3, 1, 2)  # [F, C, H, W]
-    tst_t = torch.from_numpy(tst).permute(0, 3, 1, 2)
-    c1 = 0.01 ** 2
-    c2 = 0.03 ** 2
-    mu_x = F.avg_pool2d(ref_t, kernel_size=11, stride=1, padding=5)
-    mu_y = F.avg_pool2d(tst_t, kernel_size=11, stride=1, padding=5)
-    sigma_x = F.avg_pool2d(ref_t * ref_t, 11, 1, 5) - mu_x * mu_x
-    sigma_y = F.avg_pool2d(tst_t * tst_t, 11, 1, 5) - mu_y * mu_y
-    sigma_xy = F.avg_pool2d(ref_t * tst_t, 11, 1, 5) - mu_x * mu_y
-    ssim_map = ((2.0 * mu_x * mu_y + c1) * (2.0 * sigma_xy + c2)) / (
-        (mu_x * mu_x + mu_y * mu_y + c1) * (sigma_x + sigma_y + c2)
-    )
-    ssim = float(ssim_map.mean().item())
-    return round(psnr, 2), round(ssim, 4)
-
-
 def _fast_prepare_wan(wan: WanBackend, state_id: str, spec: dict, base_encoded) -> None:
-    """Prepare a Wan2.1 request on GPU using pre-staged CPU prompt embeddings (~2 ms)."""
-    from ditserve.models.wan.block import WanBlockExecutor
-    from ditserve.models.wan.runtime import EncodedPrompt, normalize_spec
-
-    norm_spec = normalize_spec(dict(spec, request_id=state_id))
-    payload = EncodedPrompt(
-        spec=norm_spec,
-        prompt_embeds=base_encoded.prompt_embeds,
-        negative_prompt_embeds=base_encoded.negative_prompt_embeds,
-        cpu_prompt_encode_ms=0.0,
-        owner=wan.runtime._owner,
-    )
-    state = wan.runtime.prepare_encoded(norm_spec, payload)
-    if wan.execution.startswith("block"):
-        if wan.executor is None:
-            wan.executor = WanBlockExecutor(wan.runtime, interleave=wan.interleave)
-        wan.continuations[state_id] = wan.executor.attach(state)
-    wan.states[state_id] = state
+    fast_prepare_wan(wan, spec, state_id, base_encoded)
 
 
 def run_quality_pareto(wan: WanBackend, out_dir: Path) -> list[dict]:

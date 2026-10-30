@@ -20,6 +20,12 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+from ditserve.evaluation.hetero_metrics import (
+    compute_psnr,
+    compute_ssim_frame,
+    compute_video_ssim,
+    fast_prepare_wan as _fast_prepare_wan,
+)
 from ditserve.models.sd35 import SD35Backend
 from ditserve.models.wan.backend import WanBackend
 from ditserve.models.wan.ring_quant import AsymmetricRingQuantizer
@@ -45,41 +51,6 @@ SD35_REVISION = os.environ.get(
     "SD35_REVISION",
     os.environ.get("SD35_MODEL_REVISION", "b940f670f0eda2d07fbb75229e779da1ad11eb80"),
 )
-
-
-def compute_psnr(ref: np.ndarray, test: np.ndarray) -> float:
-    ref_f = ref.astype(np.float64)
-    test_f = test.astype(np.float64)
-    mse = float(np.mean((ref_f - test_f) ** 2))
-    if mse <= 1e-12:
-        return 99.99
-    return round(float(10.0 * math.log10(1.0 / mse)), 4)
-
-
-def compute_ssim_frame(x: np.ndarray, y: np.ndarray) -> float:
-    c1 = 0.01 ** 2
-    c2 = 0.03 ** 2
-    t_x = torch.from_numpy(x.astype(np.float32)).permute(2, 0, 1).unsqueeze(0)
-    t_y = torch.from_numpy(y.astype(np.float32)).permute(2, 0, 1).unsqueeze(0)
-    mu_x = F.avg_pool2d(t_x, kernel_size=11, stride=1, padding=5)
-    mu_y = F.avg_pool2d(t_y, kernel_size=11, stride=1, padding=5)
-    mu_x_sq = mu_x.pow(2)
-    mu_y_sq = mu_y.pow(2)
-    mu_xy = mu_x * mu_y
-    sigma_x_sq = F.avg_pool2d(t_x * t_x, kernel_size=11, stride=1, padding=5) - mu_x_sq
-    sigma_y_sq = F.avg_pool2d(t_y * t_y, kernel_size=11, stride=1, padding=5) - mu_y_sq
-    sigma_xy = F.avg_pool2d(t_x * t_y, kernel_size=11, stride=1, padding=5) - mu_xy
-    ssim_map = ((2.0 * mu_xy + c1) * (2.0 * sigma_xy + c2)) / (
-        (mu_x_sq + mu_y_sq + c1) * (sigma_x_sq + sigma_y_sq + c2)
-    )
-    return float(ssim_map.mean().item())
-
-
-def compute_video_ssim(ref_video: np.ndarray, test_video: np.ndarray) -> float:
-    ref_v = ref_video[0] if ref_video.ndim == 5 else ref_video
-    test_v = test_video[0] if test_video.ndim == 5 else test_video
-    scores = [compute_ssim_frame(ref_v[i], test_v[i]) for i in range(ref_v.shape[0])]
-    return round(float(np.mean(scores)), 5)
 
 
 def benchmark_opt1_ring_int8_quant(device: str = "cuda:0") -> Dict[str, Any]:
@@ -181,23 +152,6 @@ def benchmark_opt1_ring_int8_quant(device: str = "cuda:0") -> Dict[str, Any]:
     return {"evidence_type": "measured_microbenchmark_with_estimates",
             "timing_scope": "single-device synthetic codec; communication is estimated, no transfer",
             "configs": results, "summary": quantizer.summary()}
-
-
-def _fast_prepare_wan(wan: WanBackend, spec: dict, req_id: str, cached_payload):
-    from ditserve.models.wan.runtime import EncodedPrompt, normalize_spec
-
-    full_spec = normalize_spec(dict(wan.config.get("spec", {}), **spec, request_id=req_id))
-    payload = EncodedPrompt(
-        spec=full_spec,
-        prompt_embeds=cached_payload.prompt_embeds,
-        negative_prompt_embeds=cached_payload.negative_prompt_embeds,
-        cpu_prompt_encode_ms=0.0,
-        owner=wan.runtime._owner,
-        consumed=False,
-    )
-    state = wan.runtime.prepare_encoded(full_spec, payload)
-    wan.states[req_id] = state
-    return state
 
 
 def benchmark_opt3_taylor_cache(wan: WanBackend, cached_wan_payload) -> List[Dict[str, Any]]:

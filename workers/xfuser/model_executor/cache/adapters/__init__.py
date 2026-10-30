@@ -121,10 +121,7 @@ def apply_cache(
         target = transformer if transformer is not None else getattr(pipe, transformer_attr)
         patch_target = _unwrap_fsdp(target)
         default_threshold = float(XDIT_FBCACHE_THRESH) if XDIT_FBCACHE_THRESH else 0.12
-        if hasattr(patch_target, "single_stream_modulation"):
-            from xfuser.model_executor.cache.adapters.flux2 import apply_fbcache
-        else:
-            from xfuser.model_executor.cache.adapters.flux import apply_fbcache
+        from xfuser.model_executor.cache.adapters.flux import apply_fbcache
         apply_fbcache(
             patch_target,
             use_cache="Fb",
