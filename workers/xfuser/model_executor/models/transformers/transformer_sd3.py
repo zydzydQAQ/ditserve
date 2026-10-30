@@ -129,9 +129,9 @@ class xFuserSD3Transformer2DWrapper(xFuserTransformerBaseWrapper):
             total_steps = int(fast_cache.get("total_steps", 12))
             fn_blocks = min(int(fast_cache.get("fn_blocks", 6)), len(self.transformer_blocks))
             warmup_steps = int(fast_cache.get("warmup_steps", 4))
-            threshold = float(fast_cache.get("threshold", 0.16))
-            max_cont = int(fast_cache.get("max_continuous", 2))
-            taylor_alpha = float(fast_cache.get("taylor_alpha", -0.15))
+            threshold = float(fast_cache.get("threshold", 0.18))
+            max_cont = int(fast_cache.get("max_continuous", 1))
+            taylor_alpha = float(fast_cache.get("taylor_alpha", -0.10))
 
             h_0 = hidden_states
             for i in range(fn_blocks):
@@ -151,19 +151,23 @@ class xFuserSD3Transformer2DWrapper(xFuserTransformerBaseWrapper):
             skip_tail = False
             if can_check:
                 prev_fd = fast_cache["prev_front_delta"]
-                rel_diff = float(
-                    (
-                        torch.mean(torch.abs(front_delta - prev_fd))
-                        / torch.mean(torch.abs(prev_fd)).clamp(min=1e-6)
-                    ).item()
-                )
-                skip_tail = rel_diff < threshold
+                # Scale-invariant cosine distance across AdaLN-Zero gated steps
+                fd_flat = front_delta.flatten(1).float()
+                pfd_flat = prev_fd.flatten(1).float()
+                cos_sim = torch.nn.functional.cosine_similarity(fd_flat, pfd_flat, dim=1).mean()
+                cos_dist = float((1.0 - cos_sim).item())
+                skip_tail = cos_dist < threshold
 
             if skip_tail:
-                tail_est = fast_cache["prev_tail_delta"]
+                prev_fd = fast_cache["prev_front_delta"]
+                # Per-sample AdaLN norm-ratio scaling on cached 18-block tail residual
+                cur_norm = torch.linalg.vector_norm(front_delta.float(), dim=(1, 2), keepdim=True)
+                prev_norm = torch.linalg.vector_norm(prev_fd.float(), dim=(1, 2), keepdim=True).clamp(min=1e-6)
+                norm_scale = torch.clamp(cur_norm / prev_norm, min=0.82, max=1.18).to(hidden_states.dtype)
+                tail_est = fast_cache["prev_tail_delta"] * norm_scale
                 vel = fast_cache.get("tail_velocity")
                 if vel is not None and taylor_alpha != 0.0:
-                    tail_est = tail_est + taylor_alpha * vel
+                    tail_est = tail_est + (taylor_alpha * vel).to(hidden_states.dtype)
                 hidden_states = hidden_states + tail_est
                 fast_cache["consecutive_skips"] = fast_cache.get("consecutive_skips", 0) + 1
                 fast_cache["reused_steps"] = fast_cache.get("reused_steps", 0) + 1

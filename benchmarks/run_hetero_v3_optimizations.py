@@ -444,7 +444,7 @@ def benchmark_opt11_sd35_flash_channels_last_and_cache(sd35: SD35Backend) -> Dic
     })
     img_flash_cl = res_flash_cl.pop("images")
 
-    # 3. SDPA_FLASH + Channels-Last 2D-VAE + MM-DiT Block Cache (tau=0.22, BS=1, 12 steps)
+    # 3. SDPA_FLASH + Channels-Last 2D-VAE + MM-DiT Block Cache (tau=0.25, BS=1, 12 steps)
     res_flash_cache = sd35.run_micro_batch({
         "prompts": [prompts[0]],
         "seeds": [101],
@@ -453,14 +453,14 @@ def benchmark_opt11_sd35_flash_channels_last_and_cache(sd35: SD35Backend) -> Dic
         "steps": 12,
         "attention": "flash",
         "cache": True,
-        "threshold": 0.22,
-        "cache_warmup": 3,
-        "cache_max_continuous": 2,
+        "threshold": 0.25,
+        "cache_warmup": 4,
+        "cache_max_continuous": 1,
         "return_images": True,
     })
     img_flash_cache = res_flash_cache.pop("images")
 
-    # 4. 4-Prompt Burst: BS=4 + SDPA_FLASH + Channels-Last 2D-VAE + MM-DiT Block Cache (tau=0.22)
+    # 4. 4-Prompt Burst: BS=4 + SDPA_FLASH + Channels-Last 2D-VAE + MM-DiT Block Cache (tau=0.25)
     res_mb4_exact = sd35.run_micro_batch({
         "prompts": prompts,
         "seeds": seeds,
@@ -481,9 +481,9 @@ def benchmark_opt11_sd35_flash_channels_last_and_cache(sd35: SD35Backend) -> Dic
         "steps": 12,
         "attention": "flash",
         "cache": True,
-        "threshold": 0.22,
-        "cache_warmup": 3,
-        "cache_max_continuous": 2,
+        "threshold": 0.25,
+        "cache_warmup": 4,
+        "cache_max_continuous": 1,
         "return_images": True,
     })
     imgs_mb4_cache = res_mb4_cache.pop("images")
@@ -614,12 +614,14 @@ def benchmark_e2e_v3_trace_replay(
     comp.monotonic_gate = False
     stepper = AsymmetricCFGStepper(
         torch,
-        folded_steps={17, 18},
+        folded_steps={14, 15, 16, 17, 18},
         cfg_damping=0.97,
         cfg_vel_alpha=0.0,
         final_step_exact_anchor=True,
         enabled=True,
     )
+    stepper.force_exact_cond_on_fold = False
+    stepper.pre_fold_anchor_step = None
 
     torch.cuda.synchronize()
     torch.cuda.reset_peak_memory_stats()
@@ -642,9 +644,9 @@ def benchmark_e2e_v3_trace_replay(
         "steps": 12,
         "attention": "flash",
         "cache": True,
-        "threshold": 0.22,
-        "cache_warmup": 3,
-        "cache_max_continuous": 2,
+        "threshold": 0.25,
+        "cache_warmup": 4,
+        "cache_max_continuous": 1,
     })
     t_img12_done = now_ms()
     img1_lat = t_img12_done - 1200.0
@@ -663,9 +665,9 @@ def benchmark_e2e_v3_trace_replay(
         "steps": 12,
         "attention": "flash",
         "cache": True,
-        "threshold": 0.22,
-        "cache_warmup": 3,
-        "cache_max_continuous": 2,
+        "threshold": 0.25,
+        "cache_warmup": 4,
+        "cache_max_continuous": 1,
     })
     t_img3_done = now_ms()
     img3_lat = t_img3_done - 3500.0
