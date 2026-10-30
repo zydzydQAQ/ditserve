@@ -208,8 +208,13 @@ def benchmark_opt9_asymmetric_cfg_and_taylor(
     )
 
     # 3. Co-Execution: Taylor1stOrder-DBCache + AsymmetricCFGStepper across tau in {0.12, 0.16, 0.24}
-    for tau, folded_set in ((0.12, {15, 16, 17, 18}), (0.16, {15, 16, 17, 18}), (0.24, {14, 15, 16, 17, 18})):
-        co_id = f"wan-opt9-co-{int(tau*100)}"
+    for tau, folded_set, exact_cond in (
+        (0.12, {17, 18}, True),
+        (0.16, {17, 18}, True),
+        (0.16, {14, 15, 16, 17, 18}, False),
+        (0.24, {16, 17, 18}, True),
+    ):
+        co_id = f"wan-opt9-co-{int(tau*100)}-{len(folded_set)}-{int(exact_cond)}"
         co_state = _fast_prepare_wan(
             wan,
             dict(base_spec, cache=True, threshold=tau, max_continuous=2),
@@ -233,6 +238,9 @@ def benchmark_opt9_asymmetric_cfg_and_taylor(
             final_step_exact_anchor=True,
             enabled=True,
         )
+        stepper.force_exact_cond_on_fold = exact_cond
+        if not exact_cond:
+            stepper.pre_fold_anchor_step = None
         torch.cuda.synchronize()
         t0 = time.perf_counter()
         events = []
@@ -252,7 +260,7 @@ def benchmark_opt9_asymmetric_cfg_and_taylor(
         co_ssim = compute_video_ssim(ref_video, co_video)
 
         row = {
-            "mode": "Taylor1stOrder + AsymmetricCFG (HeteroDiT-v3)",
+            "mode": f"Taylor1stOrder + AsymmetricCFG (Fold {min(folded_set)}..{max(folded_set)})",
             "threshold": tau,
             "folded_cfg_steps": folded_steps_cnt,
             "reused_cache_steps": reused_steps,
@@ -358,7 +366,6 @@ def benchmark_opt10_bf16_3dvae_decode(
                 "attention": "flash",
             }),
             chunk_frames=1,
-            vae_dtype="bfloat16",
         )
         ovl_res.pop("video_np", None)
     finally:
@@ -600,7 +607,7 @@ def benchmark_e2e_v3_trace_replay(
     comp.monotonic_gate = False
     stepper = AsymmetricCFGStepper(
         torch,
-        folded_steps={15, 16, 17, 18},
+        folded_steps={17, 18},
         cfg_damping=0.97,
         cfg_vel_alpha=0.0,
         final_step_exact_anchor=True,

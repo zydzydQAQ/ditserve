@@ -40,11 +40,12 @@ class AsymmetricCFGStepper:
     ):
         self.torch = torch_module or importlib.import_module("torch")
         self.folded_steps: Set[int] = (
-            set(folded_steps) if folded_steps is not None else {15, 16, 17, 18}
+            set(folded_steps) if folded_steps is not None else {17, 18}
         )
         self.pre_fold_anchor_step: Optional[int] = (
             min(self.folded_steps) - 1 if self.folded_steps else None
         )
+        self.force_exact_cond_on_fold: bool = True
         self.cfg_damping = float(cfg_damping)
         self.cfg_vel_alpha = float(cfg_vel_alpha)
         self.final_step_exact_anchor = bool(final_step_exact_anchor)
@@ -127,7 +128,7 @@ class AsymmetricCFGStepper:
             # compounding DBCache approximation with CFG branch folding.
             if self.enabled and self.pre_fold_anchor_step is not None and index == self.pre_fold_anchor_step:
                 state.needs_anchor = True
-            elif fold_this_step:
+            elif fold_this_step and self.force_exact_cond_on_fold:
                 state.needs_anchor = True
             elif not fold_this_step and self._had_folded_since_anchor:
                 state.needs_anchor = True
