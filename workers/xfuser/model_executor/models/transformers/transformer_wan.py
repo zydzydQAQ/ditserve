@@ -21,10 +21,8 @@ from xfuser.model_executor.layers.attention_processor import xFuserAttentionProc
 from xfuser.model_executor.models.transformers.transformers_utils import local_sp_pad_rows, zero_sp_pad_rows_hook
 from xfuser.envs import PACKAGES_CHECKER
 from xfuser.core.vsa_attention import jenga_scheduled_drop_rate
-from xfuser.model_executor.layers.fused_qk_norm_rope_wan_flydsl import (
-    fused_qk_norm_rope,
-    _HAS_FLYDSL,
-)
+_HAS_FLYDSL = False
+fused_qk_norm_rope = None
 
 env_info = PACKAGES_CHECKER.get_packages_info()
 HAS_LONG_CTX_ATTN = env_info["has_long_ctx_attn"]

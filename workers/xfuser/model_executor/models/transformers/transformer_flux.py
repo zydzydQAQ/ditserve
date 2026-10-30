@@ -52,10 +52,8 @@ from xfuser.model_executor.layers.attention_processor import (
 )
 from xfuser.model_executor.layers.usp import USP
 from xfuser.core.distributed.fp8_comms import register_fp8_comms_eligible_modules
-from xfuser.model_executor.layers.fused_qk_rope_flydsl import (
-    flydsl_fused_qk_norm_rope,
-    _HAS_FLYDSL,
-)
+_HAS_FLYDSL = False
+flydsl_fused_qk_norm_rope = None
 
 logger = init_logger(__name__)
 

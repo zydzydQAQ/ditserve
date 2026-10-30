@@ -45,10 +45,7 @@ from xfuser.logger import init_logger
 from xfuser.compat import version_at_least
 from xfuser.envs import PACKAGES_CHECKER
 
-if version_at_least(torch.__version__, "2.5.0"):
-    from xfuser.model_executor.layers.usp import USP
-else:
-    from xfuser.model_executor.layers.usp_legacy import USP
+from xfuser.model_executor.layers.usp import USP
 
 logger = init_logger(__name__)
 

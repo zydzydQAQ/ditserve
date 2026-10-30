@@ -309,7 +309,7 @@ class Fp8CommsState:
         ``run_pipe_fn`` / ``split_prompts_fn`` are supplied by the runner so this class
         stays free of runner internals.
         """
-        from xfuser.core.utils.runner_utils import log
+        log = logger.info
 
         log("Calibrating FP8 comms scales (throwaway inference pass)...")
         calib_args = copy.deepcopy(input_args)
