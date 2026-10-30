@@ -255,40 +255,25 @@ class SD35Backend(FluxBackend):
                 vae.to(memory_format=self.torch.channels_last)
                 self._vae_channels_last = True
 
-        if use_cache:
-            import cache_dit
-            cache_recipe = (steps, round(cache_thresh, 4))
-            if getattr(self, "_mb_cache_recipe", None) != cache_recipe:
-                if getattr(self, "_mb_cache_recipe", None) is not None:
-                    try:
-                        cache_dit.disable_cache(self._cache_target())
-                    except Exception:
-                        pass
-                cache_dit.enable_cache(
-                    self._cache_target(),
-                    cache_config=cache_dit.DBCacheConfig(
-                        Fn_compute_blocks=int(request.get("cache_fn", 6)),
-                        Bn_compute_blocks=0,
-                        max_warmup_steps=int(request.get("cache_warmup", 4)),
-                        warmup_interval=1,
-                        max_cached_steps=-1,
-                        residual_diff_threshold=cache_thresh,
-                        max_continuous_cached_steps=int(request.get("cache_max_continuous", 2)),
-                        enable_separate_cfg=False,
-                        cfg_compute_first=False,
-                        cfg_diff_compute_separate=True,
-                        num_inference_steps=steps,
-                    ),
-                    attention_backend="native",
-                )
-                self._mb_cache_recipe = cache_recipe
-        elif getattr(self, "_mb_cache_recipe", None) is not None:
-            import cache_dit
-            try:
-                cache_dit.disable_cache(self._cache_target())
-            except Exception:
-                pass
-            self._mb_cache_recipe = None
+        transformer_wrapper = getattr(self.pipe.module, "transformer", None)
+        if use_cache and transformer_wrapper is not None:
+            transformer_wrapper._fast_cache = {
+                "enabled": True,
+                "step": 0,
+                "total_steps": steps,
+                "fn_blocks": int(request.get("cache_fn", 6)),
+                "warmup_steps": int(request.get("cache_warmup", 3)),
+                "threshold": cache_thresh,
+                "max_continuous": int(request.get("cache_max_continuous", 2)),
+                "taylor_alpha": float(request.get("taylor_alpha", -0.15)),
+                "prev_front_delta": None,
+                "prev_tail_delta": None,
+                "tail_velocity": None,
+                "consecutive_skips": 0,
+                "reused_steps": 0,
+            }
+        elif transformer_wrapper is not None:
+            transformer_wrapper._fast_cache = None
 
         # Optionally pre-stage all prompts before starting the GPU denoising timer
         if request.get("prestage_pool", True):
@@ -317,10 +302,15 @@ class SD35Backend(FluxBackend):
         if self.device.startswith("cuda"):
             self.torch.cuda.synchronize(self.device)
         elapsed_ms = (time.perf_counter() - started) * 1000.0
+        reused_steps = 0
+        if transformer_wrapper is not None and getattr(transformer_wrapper, "_fast_cache", None) is not None:
+            reused_steps = int(transformer_wrapper._fast_cache.get("reused_steps", 0))
+            transformer_wrapper._fast_cache = None
         result = dict(
             batch_size=batch_size,
             attention=attn_mode,
             steps=steps,
+            reused_steps=reused_steps,
             height=height,
             width=width,
             model_ms=round(elapsed_ms, 3),

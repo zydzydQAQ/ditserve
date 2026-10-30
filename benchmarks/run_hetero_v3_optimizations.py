@@ -444,7 +444,7 @@ def benchmark_opt11_sd35_flash_channels_last_and_cache(sd35: SD35Backend) -> Dic
     })
     img_flash_cl = res_flash_cl.pop("images")
 
-    # 3. SDPA_FLASH + Channels-Last 2D-VAE + MM-DiT Block Cache (tau=0.12, BS=1, 12 steps)
+    # 3. SDPA_FLASH + Channels-Last 2D-VAE + MM-DiT Block Cache (tau=0.22, BS=1, 12 steps)
     res_flash_cache = sd35.run_micro_batch({
         "prompts": [prompts[0]],
         "seeds": [101],
@@ -453,13 +453,14 @@ def benchmark_opt11_sd35_flash_channels_last_and_cache(sd35: SD35Backend) -> Dic
         "steps": 12,
         "attention": "flash",
         "cache": True,
-        "threshold": 0.12,
-        "max_continuous": 2,
+        "threshold": 0.22,
+        "cache_warmup": 3,
+        "cache_max_continuous": 2,
         "return_images": True,
     })
     img_flash_cache = res_flash_cache.pop("images")
 
-    # 4. 4-Prompt Burst: BS=4 + SDPA_FLASH + Channels-Last 2D-VAE + MM-DiT Block Cache (tau=0.12)
+    # 4. 4-Prompt Burst: BS=4 + SDPA_FLASH + Channels-Last 2D-VAE + MM-DiT Block Cache (tau=0.22)
     res_mb4_exact = sd35.run_micro_batch({
         "prompts": prompts,
         "seeds": seeds,
@@ -480,8 +481,9 @@ def benchmark_opt11_sd35_flash_channels_last_and_cache(sd35: SD35Backend) -> Dic
         "steps": 12,
         "attention": "flash",
         "cache": True,
-        "threshold": 0.12,
-        "max_continuous": 2,
+        "threshold": 0.22,
+        "cache_warmup": 3,
+        "cache_max_continuous": 2,
         "return_images": True,
     })
     imgs_mb4_cache = res_mb4_cache.pop("images")
@@ -492,6 +494,7 @@ def benchmark_opt11_sd35_flash_channels_last_and_cache(sd35: SD35Backend) -> Dic
             "mode": "SDPA_MATH + Contiguous-VAE (Baseline BS=1)",
             "batch_size": 1,
             "cache": False,
+            "reused_steps": 0,
             "total_ms": res_math["model_ms"],
             "per_image_ms": res_math["per_image_ms"],
             "throughput_img_s": round(1000.0 / res_math["per_image_ms"], 3),
@@ -503,6 +506,7 @@ def benchmark_opt11_sd35_flash_channels_last_and_cache(sd35: SD35Backend) -> Dic
             "mode": "SDPA_FLASH + ChannelsLast-2DVAE (BS=1)",
             "batch_size": 1,
             "cache": False,
+            "reused_steps": 0,
             "total_ms": res_flash_cl["model_ms"],
             "per_image_ms": res_flash_cl["per_image_ms"],
             "throughput_img_s": round(1000.0 / res_flash_cl["per_image_ms"], 3),
@@ -511,9 +515,10 @@ def benchmark_opt11_sd35_flash_channels_last_and_cache(sd35: SD35Backend) -> Dic
             "ssim": round(compute_ssim_frame(img_ref[0], img_flash_cl[0]), 5),
         },
         {
-            "mode": "SDPA_FLASH + ChannelsLast-2DVAE + MM-DiT-DBCache (BS=1, tau=0.12)",
+            "mode": "SDPA_FLASH + ChannelsLast-2DVAE + MM-DiT-DBCache (BS=1, tau=0.22)",
             "batch_size": 1,
             "cache": True,
+            "reused_steps": res_flash_cache.get("reused_steps", 0),
             "total_ms": res_flash_cache["model_ms"],
             "per_image_ms": res_flash_cache["per_image_ms"],
             "throughput_img_s": round(1000.0 / res_flash_cache["per_image_ms"], 3),
@@ -525,6 +530,7 @@ def benchmark_opt11_sd35_flash_channels_last_and_cache(sd35: SD35Backend) -> Dic
             "mode": "MicroBatch-BS4 + SDPA_FLASH + ChannelsLast-2DVAE (4 Prompts)",
             "batch_size": 4,
             "cache": False,
+            "reused_steps": 0,
             "total_ms": res_mb4_exact["model_ms"],
             "per_image_ms": res_mb4_exact["per_image_ms"],
             "throughput_img_s": round(1000.0 / res_mb4_exact["per_image_ms"], 3),
@@ -536,6 +542,7 @@ def benchmark_opt11_sd35_flash_channels_last_and_cache(sd35: SD35Backend) -> Dic
             "mode": "MicroBatch-BS4 + SDPA_FLASH + ChannelsLast-2DVAE + MM-DiT-DBCache (HeteroDiT-v3)",
             "batch_size": 4,
             "cache": True,
+            "reused_steps": res_mb4_cache.get("reused_steps", 0),
             "total_ms": res_mb4_cache["model_ms"],
             "per_image_ms": res_mb4_cache["per_image_ms"],
             "throughput_img_s": round(1000.0 / res_mb4_cache["per_image_ms"], 3),
@@ -551,7 +558,7 @@ def benchmark_opt11_sd35_flash_channels_last_and_cache(sd35: SD35Backend) -> Dic
         print(
             f"  [Opt #11] {m['mode']}: {m['per_image_ms']:.1f} ms/img "
             f"({m['throughput_img_s']:.2f} img/s, {m['speedup_vs_baseline']:.2f}x speedup, "
-            f"PSNR={m['psnr_db']:.2f} dB, SSIM={m['ssim']:.4f})",
+            f"reused={m['reused_steps']}/12, PSNR={m['psnr_db']:.2f} dB, SSIM={m['ssim']:.4f})",
             flush=True,
         )
     return {"modes": modes}
@@ -635,15 +642,16 @@ def benchmark_e2e_v3_trace_replay(
         "steps": 12,
         "attention": "flash",
         "cache": True,
-        "threshold": 0.12,
-        "max_continuous": 2,
+        "threshold": 0.22,
+        "cache_warmup": 3,
+        "cache_max_continuous": 2,
     })
     t_img12_done = now_ms()
     img1_lat = t_img12_done - 1200.0
     img2_lat = t_img12_done - 1350.0
 
-    # Phase 2: Resume Wan2.1 steps 3..7 (~3,650 ms -> img-3 @ 3500ms has arrived!)
-    for _ in range(5):
+    # Phase 2: Resume Wan2.1 steps 3..6 (~3,550 ms -> img-3 @ 3500ms has arrived!)
+    for _ in range(4):
         stepper.step(wan.runtime, v_state, taylor_compensator=comp)
 
     # Preempt Wan2.1 and serve img-3 with SDPA_FLASH + MM-DiT Cache + Channels-Last!
@@ -655,14 +663,15 @@ def benchmark_e2e_v3_trace_replay(
         "steps": 12,
         "attention": "flash",
         "cache": True,
-        "threshold": 0.12,
-        "max_continuous": 2,
+        "threshold": 0.22,
+        "cache_warmup": 3,
+        "cache_max_continuous": 2,
     })
     t_img3_done = now_ms()
     img3_lat = t_img3_done - 3500.0
 
-    # Phase 3: Finish remaining 12 steps of Wan2.1 with Taylor+AsymmetricCFG + BF16 Tensor-Core 3D-VAE decode
-    for _ in range(12):
+    # Phase 3: Finish remaining 13 steps of Wan2.1 with Taylor+AsymmetricCFG + BF16 Tensor-Core 3D-VAE decode
+    for _ in range(13):
         stepper.step(wan.runtime, v_state, taylor_compensator=comp)
     wan.runtime.decode_chunks(v_state, 5, vae_dtype="bfloat16")
     vid_lat = now_ms()
