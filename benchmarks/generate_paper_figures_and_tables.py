@@ -32,7 +32,7 @@ plt.rcParams.update({
 
 
 def plot_fig1_10policy_and_ablation(study: Dict[str, Any], out_dir: Path) -> None:
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13.6, 4.7), gridspec_kw={"width_ratios": [1.55, 1.0]})
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14.4, 4.8), gridspec_kw={"width_ratios": [1.58, 1.0]})
 
     balanced = study["scenarios"]["gamma_cv2.5_load0.95"]["policies"]
     policies = [
@@ -46,6 +46,7 @@ def plot_fig1_10policy_and_ablation(study: Dict[str, Any], out_dir: Path) -> Non
         "block_elastic",
         "heterodit_exact",
         "heterodit_approx",
+        "heterodit_v3",
     ]
     labels = [
         "Static\n(2I+6V)",
@@ -58,6 +59,7 @@ def plot_fig1_10policy_and_ablation(study: Dict[str, Any], out_dir: Path) -> Non
         "DitServe\n(1D-SP)",
         "HeteroDiT\n(Exact)",
         "HeteroDiT\n(Approx)",
+        "HeteroDiT\n(v3 Full)",
     ]
     total_slo = [balanced[p]["total_slo_pct"] for p in policies]
     vid_slo = [balanced[p]["video_slo_pct"] for p in policies]
@@ -72,10 +74,10 @@ def plot_fig1_10policy_and_ablation(study: Dict[str, Any], out_dir: Path) -> Non
     ax1.set_xticklabels(labels, rotation=22, ha="right")
     ax1.set_ylabel("SLO Attainment (%)")
     ax1.set_ylim(0, 112)
-    ax1.set_title("(a) 8xA100 10-Policy Baseline Comparison (Multi-Res Gamma CV=2.5)")
+    ax1.set_title("(a) 8xA100 11-Policy Comparison (Multi-Res Gamma CV=2.5, Load=0.95)")
     ax1.legend(loc="upper left", ncol=3)
 
-    # Panel B: 5-Stage Orthogonal Ablation
+    # Panel B: 6-Stage Orthogonal Ablation
     ablation = study["ablation"]["policies"]
     stage_keys = [
         "A0_baseline_1dsp",
@@ -83,13 +85,15 @@ def plot_fig1_10policy_and_ablation(study: Dict[str, Any], out_dir: Path) -> Non
         "A2_plus_2d_usp",
         "A3_heterodit_exact",
         "A4_heterodit_approx",
+        "A5_heterodit_v3",
     ]
     stage_labels = [
         "A0: Baseline\n(1D-SP)",
         "A1: +EncoderPool\n& Tiered RAM",
         "A2: +2D Hybrid\nUSP (u4r2/cfg)",
         "A3: +Knapsack DP\n& uBatch (Exact)",
-        "A4: +Laxity Cache\n(HeteroDiT-Approx)",
+        "A4: +Laxity Cache\n(HeteroDiT-v1/v2)",
+        "A5: +Taylor-CFG\n& BF16-VAE (v3)",
     ]
     s_total = [ablation[k]["total_slo_pct"] for k in stage_keys]
     s_vid_p99 = [ablation[k]["video_p99_ms"] / 1000.0 for k in stage_keys]
@@ -98,26 +102,26 @@ def plot_fig1_10policy_and_ablation(study: Dict[str, Any], out_dir: Path) -> Non
     bars = ax2.bar(
         sx,
         s_total,
-        width=0.50,
-        color=["#8c8c8c", "#5b9bd5", "#4472c4", "#2f5597", "#c55a11"],
+        width=0.52,
+        color=["#8c8c8c", "#5b9bd5", "#4472c4", "#2f5597", "#ed7d31", "#c55a11"],
         edgecolor="black",
         linewidth=0.6,
     )
     for b, val in zip(bars, s_total):
         ax2.text(
             b.get_x() + b.get_width() / 2.0,
-            val + 1.4,
+            val + 1.2,
             f"{val:.1f}%",
             ha="center",
             va="bottom",
-            fontsize=8.5,
+            fontsize=8.0,
             fontweight="bold",
         )
     ax2.set_xticks(sx)
     ax2.set_xticklabels(stage_labels, rotation=20, ha="right")
     ax2.set_ylabel("Total SLO Attainment (%)")
-    ax2.set_ylim(0, 105)
-    ax2.set_title("(b) 5-Stage Orthogonal Ablation (Extreme Load=1.25)")
+    ax2.set_ylim(0, 108)
+    ax2.set_title("(b) 6-Stage Orthogonal Ablation (Extreme Load=1.25)")
 
     ax2_r = ax2.twinx()
     ax2_r.plot(sx, s_vid_p99, color="#d9534f", marker="o", linewidth=2.0, label="Video P99 (s)")
@@ -205,10 +209,10 @@ def plot_fig2_nccl_and_int8_ring(nccl8: Dict[str, Any], v2: Dict[str, Any], out_
     plt.close(fig)
 
 
-def plot_fig3_taylor_cache_and_sd35_microbatch(v2: Dict[str, Any], out_dir: Path) -> None:
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13.0, 4.5))
+def plot_fig3_taylor_cache_and_sd35_microbatch(v2: Dict[str, Any], v3: Dict[str, Any], out_dir: Path) -> None:
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13.6, 4.6))
 
-    # Panel A: Zero-Order DBCache vs First-Order Taylor-Compensated DBCache
+    # Panel A: Zero-Order DBCache vs First-Order Taylor-Compensated DBCache + Opt #9 Asymmetric CFG Reuse
     rows = v2["opt3_taylor_cache"]
     zero_rows = [r for r in rows if r["mode"] == "ZeroOrder-DBCache"]
     taylor_rows = [r for r in rows if r["mode"] == "Taylor1stOrder-DBCache"]
@@ -224,7 +228,7 @@ def plot_fig3_taylor_cache_and_sd35_microbatch(v2: Dict[str, Any], out_dir: Path
         x + w / 2,
         t_psnr,
         width=w,
-        label="Opt #3: 1st-Order Taylor Extrapolation",
+        label="Opt #7: 1st-Order Taylor Extrapolation",
         color="#2e75b6",
         edgecolor="black",
         linewidth=0.5,
@@ -240,30 +244,44 @@ def plot_fig3_taylor_cache_and_sd35_microbatch(v2: Dict[str, Any], out_dir: Path
             fontsize=8,
             fontweight="bold",
         )
+    ax1.annotate(
+        "Opt #9 Asymmetric CFG + Taylor:\n"
+        "• CFG-Only (14..18): 1.14x (35.86 dB)\n"
+        "• Taylor+CFG (17..18): 1.22x (33.38 dB)\n"
+        "• Taylor+CFG (14..18): 1.33x (32.73 dB)",
+        xy=(1 + w / 2, t_psnr[1]),
+        xytext=(0.82, 30.55),
+        arrowprops=dict(arrowstyle="->", lw=1.0, color="#c55a11"),
+        fontsize=7.8,
+        fontweight="bold",
+        bbox=dict(boxstyle="round,pad=0.3", fc="#fff2cc", ec="#d6b656"),
+    )
     ax1.set_xticks(x)
     ax1.set_xticklabels(taus)
     ax1.set_ylabel("Decoded Video PSNR vs Exact (dB)")
-    ax1.set_ylim(30.0, max(max(z_psnr), max(t_psnr)) + 1.4)
-    ax1.set_title("(a) Opt #3: Video Quality (PSNR) across Cache Thresholds")
-    ax1.legend(loc="lower left")
+    ax1.set_ylim(30.0, max(max(z_psnr), max(t_psnr)) + 1.5)
+    ax1.set_title("(a) Opts #7 & #9: Taylor DBCache + Asymmetric CFG Quality")
+    ax1.legend(loc="upper right")
 
-    # Panel B: Opt #2 SD3.5-Medium SDPA_FLASH + True Multi-Prompt Heterogeneous Micro-Batching
+    # Panel B: Opts #6 & #11 SD3.5-Medium SDPA_FLASH + ChannelsLast-2DVAE + Multi-Prompt uBatching
     mb_rows = v2["opt2_sd35_flash_microbatch"]["four_distinct_prompts_burst"]
+    v3_sd35_bs4 = v3["opt11_sd35_flash_channels_last_cache"]["modes"][-1]
     mb_labels = [
         "Seq 4xB1\n(SDPA_MATH)",
         "Seq 4xB1\n(SDPA_FLASH)",
         "uBatch 2xB2\n(SDPA_FLASH)",
         "uBatch 1xB4\n(SDPA_FLASH)",
+        "Opt #11: 1xB4\n(+ChannelsLast)",
     ]
-    per_img_ms = [r["per_image_ms"] for r in mb_rows]
-    speedups = [r["speedup_vs_seq_math"] for r in mb_rows]
+    per_img_ms = [r["per_image_ms"] for r in mb_rows] + [v3_sd35_bs4["per_image_ms"]]
+    speedups = [r["speedup_vs_seq_math"] for r in mb_rows] + [per_img_ms[0] / v3_sd35_bs4["per_image_ms"]]
 
-    mx = np.arange(len(mb_rows))
+    mx = np.arange(len(mb_labels))
     mb_bars = ax2.bar(
         mx,
         per_img_ms,
-        width=0.5,
-        color=["#d9534f", "#5b9bd5", "#2e75b6", "#70ad47"],
+        width=0.52,
+        color=["#d9534f", "#5b9bd5", "#2e75b6", "#70ad47", "#c55a11"],
         edgecolor="black",
         linewidth=0.6,
     )
@@ -274,14 +292,14 @@ def plot_fig3_taylor_cache_and_sd35_microbatch(v2: Dict[str, Any], out_dir: Path
             f"{ms:.1f} ms\n({sp:.2f}x)",
             ha="center",
             va="bottom",
-            fontsize=8.5,
+            fontsize=8.0,
             fontweight="bold",
         )
     ax2.set_xticks(mx)
     ax2.set_xticklabels(mb_labels)
     ax2.set_ylabel("Amortized Latency per Image (ms)")
-    ax2.set_ylim(0, max(per_img_ms) * 1.22)
-    ax2.set_title("(b) Opt #2: SD3.5 FlashAttention + Multi-Prompt uBatching")
+    ax2.set_ylim(0, max(per_img_ms) * 1.24)
+    ax2.set_title("(b) Opts #6 & #11: SD3.5 FlashAttention + ChannelsLast + uBatch")
 
     fig.tight_layout()
     for ext in ("png", "pdf"):
@@ -289,22 +307,33 @@ def plot_fig3_taylor_cache_and_sd35_microbatch(v2: Dict[str, Any], out_dir: Path
     plt.close(fig)
 
 
-def plot_fig4_e2e_replay_and_vae_overlap(q_replay: Dict[str, Any], v2: Dict[str, Any], out_dir: Path) -> None:
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13.2, 4.6), gridspec_kw={"width_ratios": [1.38, 1.0]})
+def plot_fig4_e2e_replay_and_vae_overlap(q_replay: Dict[str, Any], v2: Dict[str, Any], v3: Dict[str, Any], out_dir: Path) -> None:
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14.0, 4.7), gridspec_kw={"width_ratios": [1.45, 1.0]})
 
-    # Panel A: Real 1xA100 Mixed-Modality Trace Replay (5 Policies including HeteroDiT-v2)
+    # Panel A: Real 1xA100 Mixed-Modality Trace Replay (6 Policies including HeteroDiT-v2 and HeteroDiT-v3)
     base_rows = q_replay["real_mixed_trace_replay"]
     e2e_v2 = v2["e2e_v2_replay"]
+    e2e_v3 = v3["e2e_v3_replay"]
     p_labels = [
         "Vanilla-xDiT\n(Run-to-Comp)",
         "GenServe-40GB\n(Cold Offload)",
         "HeteroDiT-v1\n(Exact)",
         "HeteroDiT-v1\n(Approx)",
-        "HeteroDiT-v2\n(All Opts)",
+        "HeteroDiT-v2\n(Opts #1-#8)",
+        "HeteroDiT-v3\n(All 12 Opts)",
     ]
-    img_p99 = [r["image_p99_ms"] / 1000.0 for r in base_rows] + [e2e_v2["image_p99_latency_ms"] / 1000.0]
-    vid_lat = [r["video_latency_ms"] / 1000.0 for r in base_rows] + [e2e_v2["video_latency_ms"] / 1000.0]
-    slo_pct = [r["total_slo_pct"] for r in base_rows] + [e2e_v2["total_slo_attainment_pct"]]
+    img_p99 = [r["image_p99_ms"] / 1000.0 for r in base_rows] + [
+        e2e_v2["image_p99_latency_ms"] / 1000.0,
+        e2e_v3["image_p99_latency_ms"] / 1000.0,
+    ]
+    vid_lat = [r["video_latency_ms"] / 1000.0 for r in base_rows] + [
+        e2e_v2["video_latency_ms"] / 1000.0,
+        e2e_v3["video_latency_ms"] / 1000.0,
+    ]
+    slo_pct = [r["total_slo_pct"] for r in base_rows] + [
+        e2e_v2["total_slo_attainment_pct"],
+        e2e_v3["total_slo_attainment_pct"],
+    ]
 
     x = np.arange(len(p_labels))
     w = 0.34
@@ -314,19 +343,28 @@ def plot_fig4_e2e_replay_and_vae_overlap(q_replay: Dict[str, Any], v2: Dict[str,
     ax1.axhline(17.0, color="#2e75b6", linestyle="--", linewidth=1.2)
     for i, sp in enumerate(slo_pct):
         top = max(img_p99[i], vid_lat[i])
-        ax1.text(x[i], top + 0.45, f"SLO: {sp:.0f}%", ha="center", va="bottom", fontsize=8.5, fontweight="bold")
+        ax1.text(x[i], top + 0.45, f"SLO: {sp:.0f}%\n({vid_lat[i]:.2f}s)", ha="center", va="bottom", fontsize=7.8, fontweight="bold")
     ax1.set_xticks(x)
-    ax1.set_xticklabels(p_labels, rotation=15, ha="right")
+    ax1.set_xticklabels(p_labels, rotation=16, ha="right")
     ax1.set_ylabel("End-to-End Request Latency (s)")
-    ax1.set_ylim(0, max(vid_lat) * 1.18)
-    ax1.set_title("(a) Real 1xA100 Mixed-Workload Trace Replay")
+    ax1.set_ylim(0, max(vid_lat) * 1.22)
+    ax1.set_title("(a) Real 1xA100 Mixed-Workload Trace Replay (6 Systems)")
     ax1.legend(loc="upper right")
 
-    # Panel B: Opt #4 Stream-Isolated 3D-VAE Chunked Decode Overlap with SD3.5 Denoising
+    # Panel B: Opts #8 & #10 Stream-Isolated 3D-VAE Chunked Decode + BF16 Tensor-Core Acceleration
     ovl = v2["opt4_vae_stream_overlap"]
-    modes = ["Sequential\n(3D-VAE + SD3.5)", "Opt #4: Stream-Isolated\nConcurrent Overlap"]
-    wall_vals = [ovl["sequential_wall_ms"], ovl["overlapped_wall_ms"]]
-    bars_o = ax2.bar([0, 1], wall_vals, width=0.46, color=["#8c8c8c", "#c55a11"], edgecolor="black", linewidth=0.6)
+    bf16_vae = v3["opt10_bf16_3dvae"]
+    modes = [
+        "Sequential\n(FP32 3D-VAE + SD3.5)",
+        "Opt #8: Stream-Overlap\n(FP32 3D-VAE + SD3.5)",
+        "Opt #10: BF16 3D-VAE\n+ Stream-Overlap (v3)",
+    ]
+    wall_vals = [
+        ovl["sequential_wall_ms"],
+        ovl["overlapped_wall_ms"],
+        bf16_vae["bf16_stream_overlapped_with_sd35_wall_ms"],
+    ]
+    bars_o = ax2.bar([0, 1, 2], wall_vals, width=0.48, color=["#8c8c8c", "#ed7d31", "#c55a11"], edgecolor="black", linewidth=0.6)
     for b, v in zip(bars_o, wall_vals):
         ax2.text(
             b.get_x() + b.get_width() / 2.0,
@@ -334,23 +372,26 @@ def plot_fig4_e2e_replay_and_vae_overlap(q_replay: Dict[str, Any], v2: Dict[str,
             f"{v:.1f} ms",
             ha="center",
             va="bottom",
-            fontsize=9,
+            fontsize=8.5,
             fontweight="bold",
         )
     ax2.annotate(
-        f"Saved {ovl['saved_ms']:.1f} ms\n({ovl['speedup']:.2f}x speedup)\nPeak HBM: {ovl['overlapped_peak_hbm_mb']:.0f} MB",
-        xy=(1, ovl["overlapped_wall_ms"]),
-        xytext=(0.12, ovl["sequential_wall_ms"] * 0.72),
+        f"Opt #10 BF16 3D-VAE:\n"
+        f"• VAE: 1485ms -> 967ms (1.54x)\n"
+        f"• PSNR vs FP32: {bf16_vae['bf16_vs_fp32_psnr_db']:.2f} dB\n"
+        f"• Peak HBM Saved: -4,001 MB",
+        xy=(2, wall_vals[2]),
+        xytext=(0.35, wall_vals[0] * 0.72),
         arrowprops=dict(arrowstyle="->", lw=1.2, color="black"),
-        fontsize=8.5,
+        fontsize=8.0,
         fontweight="bold",
         bbox=dict(boxstyle="round,pad=0.3", fc="#fff2cc", ec="#d6b656"),
     )
-    ax2.set_xticks([0, 1])
+    ax2.set_xticks([0, 1, 2])
     ax2.set_xticklabels(modes)
     ax2.set_ylabel("Combined Wall-Clock Latency (ms)")
     ax2.set_ylim(0, max(wall_vals) * 1.24)
-    ax2.set_title("(b) Opt #4: 3D-VAE Decode + SD3.5 Stream Overlap")
+    ax2.set_title("(b) Opts #8 & #10: BF16 3D-VAE + CUDA Stream Overlap")
 
     fig.tight_layout()
     for ext in ("png", "pdf"):
@@ -362,6 +403,7 @@ def generate_latex_tables(
     study: Dict[str, Any],
     q_replay: Dict[str, Any],
     v2: Dict[str, Any],
+    v3: Dict[str, Any],
     out_dir: Path,
 ) -> None:
     bal = study["scenarios"]["gamma_cv2.5_load0.95"]["policies"]
@@ -369,7 +411,7 @@ def generate_latex_tables(
         "% Auto-generated LaTeX booktabs tables from real A100 hardware measurements",
         "\\begin{table*}[t]",
         "\\centering",
-        "\\caption{8$\\times$A100-40GB Multi-Tenant Mixed T2I+T2V Serving Comparison Across 10 Policies (Gamma $CV=2.5$, Load $=0.95$).}",
+        "\\caption{8$\\times$A100-40GB Multi-Tenant Mixed T2I+T2V Serving Comparison Across 11 Policies (Gamma $CV=2.5$, Load $=0.95$).}",
         "\\label{tab:main_10policies}",
         "\\begin{tabular}{lrrrrrr}",
         "\\toprule",
@@ -387,6 +429,7 @@ def generate_latex_tables(
         "block_elastic",
         "heterodit_exact",
         "heterodit_approx",
+        "heterodit_v3",
     ):
         r = bal[key]
         label = r["label"].replace("_", "\\_")
@@ -405,22 +448,28 @@ def generate_latex_tables(
         "\\centering",
         "\\caption{Real 1$\\times$A100 Mixed-Modality Trace Replay (Wan2.1 + 3 Bursty SD3.5 Requests).}",
         "\\label{tab:e2e_replay}",
-        "\\begin{tabular}{lrrrr}",
+        "\\begin{tabular}{lrrrrr}",
         "\\toprule",
-        "\\textbf{Serving System} & \\textbf{Img Mean (ms)} & \\textbf{Img P99 (ms)} & \\textbf{Video (ms)} & \\textbf{Total SLO (\\%)} \\\\",
+        "\\textbf{Serving System} & \\textbf{Img Mean (ms)} & \\textbf{Img P99 (ms)} & \\textbf{Video (ms)} & \\textbf{Peak HBM (MB)} & \\textbf{Total SLO (\\%)} \\\\",
         "\\midrule",
     ])
     for r in q_replay["real_mixed_trace_replay"]:
         pol = r["system"].replace("_", "\\_")
         tex.append(
             f"{pol} & {r['image_mean_ms']:.1f} & {r['image_p99_ms']:.1f} & "
-            f"{r['video_latency_ms']:.1f} & {r['total_slo_pct']:.1f} \\\\"
+            f"{r['video_latency_ms']:.1f} & -- & {r['total_slo_pct']:.1f} \\\\"
         )
     e2e = v2["e2e_v2_replay"]
     tex.append(
-        f"\\textbf{{{e2e['policy'].replace('_', '\\_')}}} & \\textbf{{{e2e['image_mean_latency_ms']:.1f}}} & "
+        f"\\textbf{{HeteroDiT-v2 (Opts \\#1--\\#8)}} & \\textbf{{{e2e['image_mean_latency_ms']:.1f}}} & "
         f"\\textbf{{{e2e['image_p99_latency_ms']:.1f}}} & \\textbf{{{e2e['video_latency_ms']:.1f}}} & "
-        f"\\textbf{{{e2e['total_slo_attainment_pct']:.1f}}} \\\\"
+        f"\\textbf{{{e2e['peak_hbm_mb']:.1f}}} & \\textbf{{{e2e['total_slo_attainment_pct']:.1f}}} \\\\"
+    )
+    e2e3 = v3["e2e_v3_replay"]
+    tex.append(
+        f"\\textbf{{HeteroDiT-v3 (All 12 Opts)}} & \\textbf{{{e2e3['image_mean_latency_ms']:.1f}}} & "
+        f"\\textbf{{{e2e3['image_p99_latency_ms']:.1f}}} & \\textbf{{{e2e3['video_latency_ms']:.1f}}} & "
+        f"\\textbf{{{e2e3['peak_hbm_mb']:.1f}}} & \\textbf{{{e2e3['total_slo_attainment_pct']:.1f}}} \\\\"
     )
     tex.extend([
         "\\bottomrule",
@@ -435,7 +484,7 @@ def main() -> None:
     parser.add_argument(
         "--study-json",
         type=Path,
-        default=Path("/mnt/e/000_code/zyd-2026/ditserve-hetero/results/heterodit-quality-replay-20261029-r4/hetero_8a100_study_summary.json"),
+        default=Path("/mnt/e/000_code/zyd-2026/ditserve-hetero/results/heterodit-v3-opt-20261030-r7/V3_OPTIMIZATIONS.json"),
     )
     parser.add_argument(
         "--quality-json",
@@ -453,6 +502,11 @@ def main() -> None:
         default=Path("/mnt/e/000_code/zyd-2026/ditserve-hetero/results/heterodit-v2-opt-20261029-r1/V2_OPTIMIZATIONS.json"),
     )
     parser.add_argument(
+        "--v3-json",
+        type=Path,
+        default=Path("/mnt/e/000_code/zyd-2026/ditserve-hetero/results/heterodit-v3-opt-20261030-r7/V3_OPTIMIZATIONS.json"),
+    )
+    parser.add_argument(
         "--out-dir",
         type=Path,
         default=Path("/mnt/e/000_code/zyd-2026/ditserve-hetero/results/figures_and_tables"),
@@ -460,16 +514,18 @@ def main() -> None:
     args = parser.parse_args()
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
-    study = json.loads(args.study_json.read_text(encoding="utf-8"))
+    raw_study = json.loads(args.study_json.read_text(encoding="utf-8"))
+    study = raw_study.get("opt12_8a100_study", raw_study)
     q_replay = json.loads(args.quality_json.read_text(encoding="utf-8"))
     nccl8 = json.loads(args.nccl8_json.read_text(encoding="utf-8"))
     v2 = json.loads(args.v2_json.read_text(encoding="utf-8"))
+    v3 = json.loads(args.v3_json.read_text(encoding="utf-8"))
 
     plot_fig1_10policy_and_ablation(study, args.out_dir)
     plot_fig2_nccl_and_int8_ring(nccl8, v2, args.out_dir)
-    plot_fig3_taylor_cache_and_sd35_microbatch(v2, args.out_dir)
-    plot_fig4_e2e_replay_and_vae_overlap(q_replay, v2, args.out_dir)
-    generate_latex_tables(study, q_replay, v2, args.out_dir)
+    plot_fig3_taylor_cache_and_sd35_microbatch(v2, v3, args.out_dir)
+    plot_fig4_e2e_replay_and_vae_overlap(q_replay, v2, v3, args.out_dir)
+    generate_latex_tables(study, q_replay, v2, v3, args.out_dir)
     print(f"Generated 4 figures (.png + .pdf) and PAPER_TABLES.tex in {args.out_dir}")
 
 
