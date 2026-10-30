@@ -46,7 +46,8 @@ class Clock:
         if seconds <= 0:
             raise AssertionError("only a positive arrival wait is allowed")
         self.waits.append(seconds)
-        self.value += seconds
+        # Real sleeps always advance the clock; a sub-ulp fake sleep must too.
+        self.value = max(self.value + seconds, math.nextafter(self.value, math.inf))
 
     def advance(self, seconds=0.001):
         self.value += seconds

@@ -32,7 +32,8 @@ for candidate in (ROOT / "workers", ROOT / "python"):
     if candidate.is_dir():
         sys.path.insert(0, str(candidate))
 
-from ditserve.models.wan.ring_quant import AsymmetricRingQuantizer  # noqa: E402
+from ditserve.evaluation.hetero_metrics import fast_prepare_wan  # noqa: E402
+from ditserve.models.hetero import RingKVQuantizer as AsymmetricRingQuantizer  # noqa: E402
 
 # KV shard shapes [2 (K,V), B, H_local, S_shard, D] for Wan2.1-1.3B (12 heads, D=128).
 SHAPES = [
@@ -220,19 +221,12 @@ def run_real_4gpu_mixed_replay(rank: int, world: int, local: int) -> dict:
     encoded_wan = wan.runtime.encode_prompt(wan._spec({"state_id": "w4-pre", "spec": spec_wan}))
 
     def prep_wan(sid: str, cache: bool = False, thresh: float = 0.0):
-        from ditserve.models.wan.runtime import EncodedPrompt, normalize_spec
-        s = normalize_spec(dict(spec_wan, request_id=sid, cache=cache, threshold=thresh, max_continuous=2))
-        p = EncodedPrompt(
-            spec=s,
-            prompt_embeds=encoded_wan.prompt_embeds,
-            negative_prompt_embeds=encoded_wan.negative_prompt_embeds,
-            cpu_prompt_encode_ms=encoded_wan.cpu_prompt_encode_ms,
-            owner=wan.runtime._owner,
-            consumed=False,
+        return fast_prepare_wan(
+            wan,
+            dict(spec_wan, cache=cache, threshold=thresh, max_continuous=2),
+            sid,
+            encoded_wan,
         )
-        st = wan.runtime.prepare_encoded(s, p)
-        wan.states[sid] = st
-        return st
 
     # Warmup 4-GPU u2r2 and SD3.5
     prep_wan("w4-warm")

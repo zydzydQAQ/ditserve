@@ -118,122 +118,52 @@ class xFuserSD3Transformer2DWrapper(xFuserTransformerBaseWrapper):
             #! ---------------------------------------- ADD ABOVE ----------------------------------------
             encoder_hidden_states = self.context_embedder(encoder_hidden_states)
 
-        fast_cache = getattr(self, "_fast_cache", None)
-        if (
-            fast_cache is not None
-            and fast_cache.get("enabled", False)
-            and not self.training
-            and not get_runtime_state().patch_mode
-        ):
-            step = int(fast_cache.get("step", 0))
-            total_steps = int(fast_cache.get("total_steps", 12))
-            fn_blocks = min(int(fast_cache.get("fn_blocks", 6)), len(self.transformer_blocks))
-            warmup_steps = int(fast_cache.get("warmup_steps", 4))
-            threshold = float(fast_cache.get("threshold", 0.18))
-            max_cont = int(fast_cache.get("max_continuous", 1))
-            taylor_alpha = float(fast_cache.get("taylor_alpha", -0.10))
+        for i, block in enumerate(self.transformer_blocks):
+            if self.training and self.gradient_checkpointing:
 
-            h_0 = hidden_states
-            for i in range(fn_blocks):
-                encoder_hidden_states, hidden_states = self.transformer_blocks[i](
-                    hidden_states=hidden_states,
-                    encoder_hidden_states=encoder_hidden_states,
-                    temb=temb,
+                def create_custom_forward(module, return_dict=None):
+                    def custom_forward(*inputs):
+                        if return_dict is not None:
+                            return module(*inputs, return_dict=return_dict)
+                        else:
+                            return module(*inputs)
+
+                    return custom_forward
+
+                ckpt_kwargs: Dict[str, Any] = (
+                    {"use_reentrant": False} if is_torch_version(">=", "1.11.0") else {}
                 )
-            front_delta = hidden_states - h_0
-            can_check = (
-                step >= warmup_steps
-                and step < total_steps - 1
-                and fast_cache.get("consecutive_skips", 0) < max_cont
-                and fast_cache.get("prev_front_delta") is not None
-                and fast_cache.get("prev_tail_delta") is not None
-            )
-            skip_tail = False
-            if can_check:
-                prev_fd = fast_cache["prev_front_delta"]
-                # Scale-invariant cosine distance across AdaLN-Zero gated steps
-                fd_flat = front_delta.flatten(1).float()
-                pfd_flat = prev_fd.flatten(1).float()
-                cos_sim = torch.nn.functional.cosine_similarity(fd_flat, pfd_flat, dim=1).mean()
-                cos_dist = float((1.0 - cos_sim).item())
-                skip_tail = cos_dist < threshold
+                hidden_states = torch.utils.checkpoint.checkpoint(
+                    create_custom_forward(block),
+                    hidden_states,
+                    encoder_hidden_states,
+                    temb,
+                    **ckpt_kwargs,
+                )
 
-            if skip_tail:
-                prev_fd = fast_cache["prev_front_delta"]
-                # Per-sample AdaLN norm-ratio scaling on cached 18-block tail residual
-                cur_norm = torch.linalg.vector_norm(front_delta.float(), dim=(1, 2), keepdim=True)
-                prev_norm = torch.linalg.vector_norm(prev_fd.float(), dim=(1, 2), keepdim=True).clamp(min=1e-6)
-                norm_scale = torch.clamp(cur_norm / prev_norm, min=0.82, max=1.18).to(hidden_states.dtype)
-                tail_est = fast_cache["prev_tail_delta"] * norm_scale
-                vel = fast_cache.get("tail_velocity")
-                if vel is not None and taylor_alpha != 0.0:
-                    tail_est = tail_est + (taylor_alpha * vel).to(hidden_states.dtype)
-                hidden_states = hidden_states + tail_est
-                fast_cache["consecutive_skips"] = fast_cache.get("consecutive_skips", 0) + 1
-                fast_cache["reused_steps"] = fast_cache.get("reused_steps", 0) + 1
             else:
-                h_fn = hidden_states
-                for i in range(fn_blocks, len(self.transformer_blocks)):
-                    encoder_hidden_states, hidden_states = self.transformer_blocks[i](
+                if (
+                    get_runtime_state().patch_mode
+                    and get_runtime_state().pipeline_patch_idx == 0
+                ):
+                    self.encoder_hidden_states_cache[i] = encoder_hidden_states
+                    encoder_hidden_states, hidden_states = block(
                         hidden_states=hidden_states,
                         encoder_hidden_states=encoder_hidden_states,
                         temb=temb,
                     )
-                tail_delta = hidden_states - h_fn
-                if fast_cache.get("prev_tail_delta") is not None:
-                    fast_cache["tail_velocity"] = (tail_delta - fast_cache["prev_tail_delta"]).detach()
-                fast_cache["prev_front_delta"] = front_delta.detach()
-                fast_cache["prev_tail_delta"] = tail_delta.detach()
-                fast_cache["consecutive_skips"] = 0
-
-            fast_cache["step"] = step + 1
-        else:
-            for i, block in enumerate(self.transformer_blocks):
-                if self.training and self.gradient_checkpointing:
-
-                    def create_custom_forward(module, return_dict=None):
-                        def custom_forward(*inputs):
-                            if return_dict is not None:
-                                return module(*inputs, return_dict=return_dict)
-                            else:
-                                return module(*inputs)
-
-                        return custom_forward
-
-                    ckpt_kwargs: Dict[str, Any] = (
-                        {"use_reentrant": False} if is_torch_version(">=", "1.11.0") else {}
+                elif get_runtime_state().patch_mode:
+                    _, hidden_states = block(
+                        hidden_states=hidden_states,
+                        encoder_hidden_states=self.encoder_hidden_states_cache[i],
+                        temb=temb,
                     )
-                    hidden_states = torch.utils.checkpoint.checkpoint(
-                        create_custom_forward(block),
-                        hidden_states,
-                        encoder_hidden_states,
-                        temb,
-                        **ckpt_kwargs,
-                    )
-
                 else:
-                    if (
-                        get_runtime_state().patch_mode
-                        and get_runtime_state().pipeline_patch_idx == 0
-                    ):
-                        self.encoder_hidden_states_cache[i] = encoder_hidden_states
-                        encoder_hidden_states, hidden_states = block(
-                            hidden_states=hidden_states,
-                            encoder_hidden_states=encoder_hidden_states,
-                            temb=temb,
-                        )
-                    elif get_runtime_state().patch_mode:
-                        _, hidden_states = block(
-                            hidden_states=hidden_states,
-                            encoder_hidden_states=self.encoder_hidden_states_cache[i],
-                            temb=temb,
-                        )
-                    else:
-                        encoder_hidden_states, hidden_states = block(
-                            hidden_states=hidden_states,
-                            encoder_hidden_states=encoder_hidden_states,
-                            temb=temb,
-                        )
+                    encoder_hidden_states, hidden_states = block(
+                        hidden_states=hidden_states,
+                        encoder_hidden_states=encoder_hidden_states,
+                        temb=temb,
+                    )
 
         # * only the last pp rank needs unpatchify
         #! ---------------------------------------- ADD BELOW ----------------------------------------

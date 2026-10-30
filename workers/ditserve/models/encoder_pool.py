@@ -171,9 +171,4 @@ class ProactiveEncoderPool:
         self._bytes = 0
 
 
-class _null_ctx:
-    def __enter__(self):
-        return None
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        return False
+from contextlib import nullcontext as _null_ctx
