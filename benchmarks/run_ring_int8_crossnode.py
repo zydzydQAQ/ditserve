@@ -370,6 +370,88 @@ def run_real_4gpu_mixed_replay(rank: int, world: int, local: int) -> dict:
     vid_p3 = now_ms()
     wan.release({"state_id": "p3-v0"})
 
+    # Policy 4: HeteroDiT-Joint-v4 4-GPU (Topology-Aware USP + Extended Asymmetric CFG [6..18] + Taylor-DBCache + BF16 3D-VAE + SD3.5 Flash+Cache)
+    from ditserve.models.hetero import AsymmetricCFGStepper, TaylorResidualCompensator
+
+    wan.runtime.pipe.vae.to(dtype=torch.bfloat16)
+    torch.cuda.synchronize()
+    dist.barrier()
+    t0 = time.perf_counter()
+
+    st4 = prep_wan("p4-v0", cache=True, thresh=0.18)
+    comp4 = TaylorResidualCompensator(torch, alpha=-0.22, damping=0.70, max_norm_ratio=0.10, adaptive_lsq=False, enabled=True)
+    comp4.monotonic_gate = False
+    stepper4 = AsymmetricCFGStepper(
+        torch,
+        folded_steps=set(range(6, 19)),
+        cfg_damping=0.97,
+        cfg_vel_alpha=0.12,
+        final_step_exact_anchor=True,
+        enabled=True,
+    )
+    stepper4.force_exact_cond_on_fold = False
+    stepper4.pre_fold_anchor_step = None
+
+    wave1_done = False
+    wave2_done = False
+    t_wave1_p4 = 0.0
+    t_wave2_p4 = 0.0
+    ep = 60
+    while st4.step_index < 20:
+        wan.advance({
+            "state_id": "p4-v0",
+            "steps": 1,
+            "group": [0, 1, 2, 3],
+            "epoch": ep,
+            "cfg": 1,
+            "ring": 1,
+            "stepper": stepper4,
+            "taylor_compensator": comp4,
+        })
+        torch.cuda.synchronize()
+        dist.barrier()
+        cur = now_ms()
+        if not wave1_done and cur >= 900.0:
+            sd35.run_micro_batch({
+                "prompts": [img_prompt],
+                "seeds": [200 + rank],
+                "height": 512,
+                "width": 512,
+                "steps": 12,
+                "attention": "flash",
+                "cache": True,
+                "threshold": 0.22,
+                "vae_channels_last": True,
+            })
+            torch.cuda.synchronize()
+            dist.barrier()
+            t_wave1_p4 = now_ms() - 900.0
+            wave1_done = True
+            ep += 1
+        if not wave2_done and now_ms() >= 2200.0:
+            sd35.run_micro_batch({
+                "prompts": [img_prompt],
+                "seeds": [300 + rank],
+                "height": 512,
+                "width": 512,
+                "steps": 12,
+                "attention": "flash",
+                "cache": True,
+                "threshold": 0.22,
+                "vae_channels_last": True,
+            })
+            torch.cuda.synchronize()
+            dist.barrier()
+            t_wave2_p4 = now_ms() - 2200.0
+            wave2_done = True
+            ep += 1
+    if rank == 0:
+        wan.runtime.decode_chunks(st4, 5, vae_dtype="bfloat16")
+    torch.cuda.synchronize()
+    dist.barrier()
+    vid_p4 = now_ms()
+    wan.release({"state_id": "p4-v0"})
+
     sd35.close()
     wan.close()
 
@@ -378,6 +460,7 @@ def run_real_4gpu_mixed_replay(rank: int, world: int, local: int) -> dict:
             ("Vanilla-xDiT (4-GPU Static u4r1, Non-Preemptive)", t_wave1_p1, t_wave2_p1, vid_p1),
             ("DitServe-Baseline (4-GPU u4r1, Step-Preemptive)", t_wave1_p2, t_wave2_p2, vid_p2),
             ("HeteroDiT-v3 (4-GPU 2D-USP u2r2 + Cache + BF16-VAE + Flash)", t_wave1_p3, t_wave2_p3, vid_p3),
+            ("HeteroDiT-Joint-v4 (4-GPU USP + Asymmetric-CFG + Taylor-Cache + BF16-VAE + SD3.5-Cache)", t_wave1_p4, t_wave2_p4, vid_p4),
         ]:
             imgs = [w1] * 4 + [w2] * 4
             img_ok = sum(1 for x in imgs if x <= img_slo)

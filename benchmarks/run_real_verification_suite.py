@@ -833,6 +833,82 @@ def benchmark_unified_1xa100_trace_replay(
         "Adds late-step Asymmetric CFG reuse, BF16 Tensor-Core 3D-VAE decode, and hooked SD3.5 MM-DiT block cache.",
     ))
 
+    # -------------------------------------------------------------------------
+    # System 7: HeteroDiT-Joint-v4 (Slack-Aware Micro-Batch Coalescing + Extended Asymmetric CFG [10..18] + Taylor-Cache + Hooked SD3.5 Cache)
+    # -------------------------------------------------------------------------
+    wan.runtime.pipe.vae.to(dtype=torch.bfloat16)
+    torch.cuda.empty_cache()
+    torch.cuda.synchronize()
+    torch.cuda.reset_peak_memory_stats()
+    t0 = time.perf_counter()
+
+    s7 = _fast_prepare_wan(wan, dict(wan_spec, cache=True, threshold=0.16, max_continuous=2), "u-s7", cached_wan)
+    comp7 = TaylorResidualCompensator(torch, alpha=-0.22, damping=0.70, max_norm_ratio=0.10, adaptive_lsq=False, enabled=True)
+    comp7.monotonic_gate = False
+    stepper7 = AsymmetricCFGStepper(
+        torch,
+        folded_steps={10, 11, 12, 13, 14, 15, 16, 17, 18},
+        cfg_damping=0.97,
+        cfg_vel_alpha=0.12,
+        final_step_exact_anchor=True,
+        enabled=True,
+    )
+    stepper7.force_exact_cond_on_fold = False
+    stepper7.pre_fold_anchor_step = None
+
+    served_s7 = [False, False, False]
+    imgs_s7 = [0.0, 0.0, 0.0]
+    preempt_s7 = []
+    coalesce_wait_budget_ms = 220.0  # Coalesce closely-spaced burst arrivals when SLO slack > 1800 ms
+
+    while s7.step_index < 20:
+        stepper7.step(wan.runtime, s7, taylor_compensator=comp7)
+        torch.cuda.synchronize()
+        cur_t = now_ms()
+        ready = [i for i in range(3) if not served_s7[i] and cur_t >= img_arrivals[i]]
+        if ready:
+            oldest_wait_ms = max(cur_t - img_arrivals[i] for i in ready)
+            unarrived_soon = any(
+                not served_s7[j] and (img_arrivals[j] > cur_t) and (img_arrivals[j] - cur_t <= 100.0)
+                for j in range(3)
+            )
+            if len(ready) == 1 and unarrived_soon and oldest_wait_ms < coalesce_wait_budget_ms and s7.step_index < 19:
+                # Defer preemption by 1 video step to coalesce bursty image arrivals into a BS=2 micro-batch
+                continue
+            preempt_s7.append(f"step={s7.step_index}@{cur_t:.0f}ms(imgs={ready})")
+            sd35.run_micro_batch({
+                "prompts": [img_prompts[i] for i in ready],
+                "seeds": [img_seeds[i] for i in ready],
+                "height": 512,
+                "width": 512,
+                "steps": 12,
+                "attention": "flash",
+                "cache": True,
+                "threshold": 0.22,
+                "cache_warmup": 3,
+                "cache_max_continuous": 1,
+                "vae_channels_last": True,
+            })
+            torch.cuda.synchronize()
+            done_t = now_ms()
+            for i in ready:
+                imgs_s7[i] = max(0.0, done_t - img_arrivals[i])
+                served_s7[i] = True
+
+    wan.runtime.decode_chunks(s7, 5, vae_dtype="bfloat16")
+    torch.cuda.synchronize()
+    vid_s7 = now_ms()
+    peak_s7 = torch.cuda.max_memory_allocated() / (1 << 20)
+    wan.release({"id": "s7", "state_id": "u-s7"})
+    systems_out.append(summarize_run(
+        "HeteroDiT-Joint-v4 (Slack-Coalesced BS2 + Extended-CFG [10..18] + Taylor + SD3.5-Cache)",
+        imgs_s7,
+        vid_s7,
+        peak_s7,
+        preempt_s7,
+        "Combines slack-aware micro-batch coalescing, extended late-step CFG reuse [10..18], Taylor-DBCache, hooked SD3.5 cache, and BF16 3D-VAE.",
+    ))
+
     return {
         "provenance": "measured_on_a100_pcie_40gb_unified_trace_online_clock",
         "trace": {

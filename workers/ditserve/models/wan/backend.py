@@ -192,8 +192,20 @@ class WanBackend(Backend):
                 observe=bool(request.get("observe", False)),
                 doorbell=bell, check_every=positive_int(request.get("check_blocks", 1), "check_blocks") if bell else 0))
         else:
+            stepper = request.get("stepper")
+            taylor_comp = request.get("taylor_compensator")
+            step_fn = (
+                (lambda s: stepper.step(self.runtime, s, taylor_compensator=taylor_comp))
+                if stepper is not None
+                else None
+            )
             for unused in range(min(positive_int(request.get("steps", 1)), state.spec["steps"] - state.step_index)):
-                records.append((self.parallel or self.runtime).step(state))
+                if self.parallel is not None:
+                    records.append(self.parallel.step(state, step_fn=step_fn))
+                elif step_fn is not None:
+                    records.append(step_fn(state))
+                else:
+                    records.append(self.runtime.step(state))
         if not records:
             raise ValueError("request has no remaining work")
         layout = self.parallel.handle.current if self.parallel is not None else None

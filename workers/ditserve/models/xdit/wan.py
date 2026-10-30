@@ -254,7 +254,7 @@ class XDitWanParallelBackend:
         self._require_active()
         self.gate.consensus(dict(kind="block_quantum", position=position))
 
-    def step(self, state):
+    def step(self, state, step_fn=None):
         from ..wan.parallel import ParallelContractError
         if self.worker is None:
             raise ParallelContractError("attach a worker first")
@@ -263,7 +263,7 @@ class XDitWanParallelBackend:
         with self.worker._lock:
             self.begin_step(state)
             try:
-                result = self.worker.step(state)
+                result = self.worker.step(state) if step_fn is None else step_fn(state)
                 self.end_step()
                 return result
             except BaseException as error:
