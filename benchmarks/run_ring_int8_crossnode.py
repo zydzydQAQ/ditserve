@@ -257,7 +257,7 @@ def run_real_4gpu_mixed_replay(rank: int, world: int, local: int) -> dict:
     t0 = time.perf_counter()
 
     def now_ms() -> float:
-        t = torch.tensor([(time.perf_counter() - t0) * 1000.0], device=device, dtype=torch.float64)
+        t = torch.tensor([(time.perf_counter() - t0) * 1000.0], device=device_str, dtype=torch.float64)
         dist.broadcast(t, src=0)
         return float(t.item())
 
