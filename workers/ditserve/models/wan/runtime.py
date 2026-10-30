@@ -805,13 +805,15 @@ class WanStepWorker:
             state.events.append({"kind": "decode", "ms": ms, "shape": list(array.shape), "finite": True})
             return array
 
-    def decode_chunks(self, state, count):
+    def decode_chunks(self, state, count, *, vae_dtype=None):
         """Advance a resumable decode by ``count`` latent frames.
 
         Returns (array or None, info); the array appears with the last chunk.
         Arithmetic and order match ``finish``; other work may run in between.
         """
-        with self._lock, self.torch.inference_mode(), self.p._sdpa_math_context(self.torch):
+        eff_vae_dtype = vae_dtype or self.vae_dtype
+        sdpa_mode = "flash" if eff_vae_dtype in ("bfloat16", "float16") else "math"
+        with self._lock, self.torch.inference_mode(), self.p._sdpa_context(self.torch, sdpa_mode):
             self._check(state, "gpu")
             if state.step_index != state.spec["steps"] or state.finished:
                 raise ValueError("chunked decode requires a complete undecoded request")
@@ -820,9 +822,9 @@ class WanStepWorker:
             started = time.perf_counter()
             from ..pipeline import ChunkedDecode
             decode = decodes.get(state.request_id) or decodes.setdefault(
-                state.request_id, ChunkedDecode(self.torch, self.pipe, state.latents))
+                state.request_id, ChunkedDecode(self.torch, self.pipe, state.latents, vae_dtype=eff_vae_dtype))
             done = decode.advance(count)
-            info = dict(frames_done=decode.index, frames=decode.frames, done=done)
+            info = dict(frames_done=decode.index, frames=decode.frames, done=done, vae_dtype=str(self.pipe.vae.dtype))
             array = None
             if done:
                 array = decode.finish()

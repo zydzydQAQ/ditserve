@@ -184,6 +184,19 @@ class HeteroModulesTest(unittest.TestCase):
         self.assertEqual(out["metrics"]["completed"], 4)
         self.assertEqual(out["by_kind"]["image"]["ontime"], 2)
 
+        config["policy"] = "heterodit_v3"
+        config["profile"]["ring_quant_scale"] = 0.51
+        proc_v3 = subprocess.run(
+            [str(binary), "rpc", "simulate"],
+            input=json.dumps(config),
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        out_v3 = json.loads(proc_v3.stdout)
+        self.assertEqual(out_v3["metrics"]["completed"], 4)
+        self.assertEqual(out_v3["by_kind"]["image"]["ontime"], 2)
+
     def test_2d_hybrid_usp_fixed_layouts_and_strided_ring_groups(self) -> None:
         from ditserve.models.wan.parallel import FixedLayout, LayoutHandle, ParallelContractError, strided_ring_groups
 
@@ -282,6 +295,31 @@ class HeteroModulesTest(unittest.TestCase):
         self.assertEqual(rec["taylor_compensated_forwards"], 2)
         restored_val = float(ctx.buffers["blocks_Bn_residual_buffer"].mean().item())
         self.assertAlmostEqual(restored_val, float(b1.mean().item()), places=3)
+
+    def test_asymmetric_cfg_stepper(self) -> None:
+        from ditserve.models.wan.cfg_reuse import AsymmetricCFGStepper
+
+        torch_mod = _real_torch if _real_torch is not None else _FakeTorch()
+        stepper = AsymmetricCFGStepper(
+            torch_mod,
+            folded_steps={14, 15, 16, 17, 18},
+            cfg_damping=0.96,
+            cfg_vel_alpha=0.15,
+            final_step_exact_anchor=True,
+            enabled=True,
+        )
+        # Before anchor delta_cfg is recorded, should_fold is False
+        self.assertFalse(stepper.should_fold(14, 20))
+        stepper._last_delta_cfg = "dummy_delta"
+        stepper._last_delta_step = 13
+        for s in range(14):
+            self.assertFalse(stepper.should_fold(s, 20))
+        for s in range(14, 19):
+            self.assertTrue(stepper.should_fold(s, 20))
+        # Final step (19) is forced exact anchor
+        self.assertFalse(stepper.should_fold(19, 20))
+        summary = stepper.summary()
+        self.assertEqual(summary["folded_steps"], [14, 15, 16, 17, 18])
 
 
 if __name__ == "__main__":

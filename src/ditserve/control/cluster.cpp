@@ -21,6 +21,7 @@ struct Policy {
     bool rounds = false;     // regroup only every options.round_steps steps (TetriServe-like)
     bool knapsack = false;   // 3-stage multi-granularity Knapsack DP + tiered state hints
     bool approx = false;     // laxity-driven dynamic feature caching (heterodit_approx)
+    bool v3 = false;         // HeteroDiT-v3: INT8 Ring + Taylor+CFG reuse + BF16 3D-VAE + SD3.5 Flash+Cache
 };
 Policy parse(const std::string& name) {
     Policy policy;
@@ -41,6 +42,7 @@ Policy parse(const std::string& name) {
     else if (name == "round_elastic") policy.elastic = policy.rounds = true;
     else if (name == "knapsack_dp" || name == "heterodit_exact") policy.elastic = policy.blocks = policy.knapsack = true;
     else if (name == "heterodit_approx") policy.elastic = policy.blocks = policy.knapsack = policy.approx = true;
+    else if (name == "heterodit_v3") policy.elastic = policy.blocks = policy.knapsack = policy.approx = policy.v3 = true;
     else throw std::invalid_argument("unknown cluster policy: " + name);
     return policy;
 }
@@ -278,7 +280,8 @@ ClusterCost::Terms ClusterCost::terms(const std::string& name, const Form& form,
         const auto& rlink = link_of(rkey);
         const double ring_gbps = number_field(rlink, "gbps", 0, true), ring_lat = number_field(rlink, "latency_ms");
         const double ring_ov = std::min(1.0, std::max(0.0, number_field(profile_, "ring_overlap", 0.75)));
-        t.comm += (number_field(row, "comm_mb_per_step") * 0.5 / cfg) * (ring - 1) / (sp_tot * ring) / ring_gbps * (1.0 - ring_ov);
+        const double ring_quant = std::min(1.0, std::max(0.25, number_field(profile_, "ring_quant_scale", 1.0)));
+        t.comm += (number_field(row, "comm_mb_per_step") * 0.5 * ring_quant / cfg) * (ring - 1) / (sp_tot * ring) / ring_gbps * (1.0 - ring_ov);
         t.latency += (ring - 1) * ring_lat * (1.0 - ring_ov);
     }
     if (form.cfg == 2) {
@@ -640,6 +643,8 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         cache_thresholds.clear();
         for (const auto& item : options.at("cache_thresholds")) cache_thresholds.push_back(number(item, "cache_threshold"));
         if (cache_thresholds.empty()) cache_thresholds.push_back(0.0);
+    } else if (policy.v3) {
+        cache_thresholds = {0.0, 0.12, 0.16, 0.24, 0.30};
     } else if (policy.approx) {
         cache_thresholds = {0.0, 0.08, 0.16, 0.24};
     }
@@ -1039,7 +1044,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     }
     Json result = {{"assignments", assignments}, {"policy", name}};
     const bool tiered_memory = bool_field(options, "tiered_memory",
-        name == "knapsack_dp" || name == "heterodit_exact" || name == "heterodit_approx"
+        name == "knapsack_dp" || name == "heterodit_exact" || name == "heterodit_approx" || name == "heterodit_v3"
         || name == "ablation_tiered" || name == "ablation_2d_usp");
     if (tiered_memory) {
         std::set<std::string> scheduled;

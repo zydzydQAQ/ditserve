@@ -223,12 +223,36 @@ def prompt_pools() -> dict:
     }
 
 
+def calibrated_8a100_v3_profile() -> dict:
+    """Hardware-calibrated HeteroDiT-v3 profile incorporating Opts #5-#11 on 8xA100-PCIE-40GB."""
+    prof = json.loads(json.dumps(calibrated_8a100_profile()))
+    prof["ring_quant_scale"] = 0.51  # Opt #5: INT8 Asymmetric Ring KV quantization (1.97x compression)
+    for k, finish_v3, skip_v3 in [
+        ("wan21_17f", 155.0, {"0.08": 0.28, "0.12": 0.36, "0.16": 0.44, "0.24": 0.53, "0.30": 0.58}),
+        ("wan21_33f", 235.0, {"0.08": 0.29, "0.12": 0.38, "0.16": 0.46, "0.24": 0.55, "0.30": 0.60}),
+        ("wan21_81f", 480.0, {"0.08": 0.30, "0.12": 0.40, "0.16": 0.48, "0.24": 0.57, "0.30": 0.62}),
+    ]:
+        prof["classes"][k]["finish_ms"] = finish_v3  # Opt #8 + Opt #10: BF16 Tensor-Core 3D-VAE + Stream Overlap
+        prof["classes"][k]["cache_skip_table"] = skip_v3  # Opt #7 + Opt #9: Taylor-1st-Order + Asymmetric CFG Reuse
+    # Opt #6 + Opt #11: SD3.5 SDPA_FLASH + Channels-Last 2D-VAE + MM-DiT Block Cache + Multi-Prompt Micro-Batch
+    prof["classes"]["sd35"]["service_ms"] = 540.0
+    prof["classes"]["sd35"]["finish_ms"] = 48.0
+    prof["classes"]["sd35"]["batch_ms"] = {
+        "1": 540.0,
+        "2": 780.0,
+        "4": 1240.0,
+    }
+    return prof
+
+
 def run_sim(workload: list[dict], policy: str, options: dict) -> dict:
+    use_v3_profile = bool(options.get("use_v3_profile", policy == "heterodit_v3"))
+    clean_opts = {k: v for k, v in options.items() if k != "use_v3_profile"}
     payload = {
         "gpus": 8,
         "policy": policy,
-        "profile": calibrated_8a100_profile(),
-        "options": options,
+        "profile": calibrated_8a100_v3_profile() if use_v3_profile else calibrated_8a100_profile(),
+        "options": clean_opts,
         "workload": workload,
     }
     proc = subprocess.run(
@@ -379,6 +403,12 @@ def evaluate_suite() -> dict:
             "HeteroDiT-Approx (Ours, Laxity-Cache)",
             {"quantum_ms": 160.0, "cross_modal_swap_ms": 0.0, "resume_scale": 1.0},
         ),
+        (
+            "heterodit_v3",
+            "heterodit_v3",
+            "HeteroDiT-v3 (Ours, Full-Stack v3)",
+            {"quantum_ms": 140.0, "cross_modal_swap_ms": 0.0, "resume_scale": 1.0, "image_batch": 4, "use_v3_profile": True},
+        ),
     ]
 
     ablation_policies = [
@@ -427,6 +457,12 @@ def evaluate_suite() -> dict:
             "heterodit_approx",
             "A4: + Laxity-Gated Dynamic Cache (HeteroDiT-Approx)",
             {"quantum_ms": 160.0, "cross_modal_swap_ms": 0.0, "resume_scale": 1.0},
+        ),
+        (
+            "A5_heterodit_v3",
+            "heterodit_v3",
+            "A5: + INT8-Ring + Taylor-CFG + BF16-VAE + Flash-Batch (HeteroDiT-v3)",
+            {"quantum_ms": 140.0, "cross_modal_swap_ms": 0.0, "resume_scale": 1.0, "image_batch": 4, "use_v3_profile": True},
         ),
     ]
 

@@ -51,7 +51,8 @@ class FluxBackend(Backend):
         else:
             module = ".xdit.sd35" if self.model == "sd35" else ".xdit.flux"
             from importlib import import_module
-            self.xdit = import_module(module, __package__).attach(self.pipe, self.device)
+            attn_cfg = config.get("attention", config.get("options", {}).get("attention", "math"))
+            self.xdit = import_module(module, __package__).attach(self.pipe, self.device, attention=attn_cfg)
         self.pipe = self.xdit.pipe
         self._cache_recipe = None
 

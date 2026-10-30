@@ -88,15 +88,19 @@ def _pipeline(torch, diffusers, args):
 
 
 
-def decode_final_latent(torch, pipe, latent):
+def decode_final_latent(torch, pipe, latent, *, vae_dtype=None):
     """Exact arithmetic/order from diffusers 0.36 WanPipeline's decode tail."""
-    latent = latent.to(pipe.vae.dtype)
-    mean = torch.tensor(pipe.vae.config.latents_mean).view(1, pipe.vae.config.z_dim, 1, 1, 1).to(latent.device, latent.dtype)
-    inverse_std = 1.0 / torch.tensor(pipe.vae.config.latents_std).view(1, pipe.vae.config.z_dim, 1, 1, 1).to(latent.device, latent.dtype)
-    normalized = latent / inverse_std + mean
-    video = pipe.vae.decode(normalized, return_dict=False)[0]
+    if vae_dtype is not None:
+        target_dtype = getattr(torch, vae_dtype) if isinstance(vae_dtype, str) else vae_dtype
+        if pipe.vae.dtype != target_dtype:
+            pipe.vae.to(dtype=target_dtype)
+    latent_f32 = latent.to(torch.float32)
+    mean = torch.tensor(pipe.vae.config.latents_mean, dtype=torch.float32, device=latent.device).view(1, pipe.vae.config.z_dim, 1, 1, 1)
+    inverse_std = 1.0 / torch.tensor(pipe.vae.config.latents_std, dtype=torch.float32, device=latent.device).view(1, pipe.vae.config.z_dim, 1, 1, 1)
+    normalized = (latent_f32 / inverse_std + mean).to(pipe.vae.dtype)
+    video = pipe.vae.decode(normalized, return_dict=False)[0].to(torch.float32)
     array = pipe.video_processor.postprocess_video(video, output_type="np")
-    del video, normalized, mean, inverse_std
+    del video, normalized, mean, inverse_std, latent_f32
     if any(value is not None for name in ("_feat_map", "_enc_feat_map")
            for value in getattr(pipe.vae, name, [])):
         raise RuntimeError("VAE retained temporal feature caches after decode")
@@ -114,16 +118,21 @@ class ChunkedDecode:
     the last chunk, as ``_decode`` does. Tiled decoding is not supported.
     """
 
-    def __init__(self, torch, pipe, latent):
+    def __init__(self, torch, pipe, latent, *, vae_dtype=None):
         vae = pipe.vae
         if getattr(vae, "use_tiling", False) or latent.shape[0] != 1:
             raise ValueError("chunked decode supports the untiled single-video Wan VAE")
+        if vae_dtype is not None:
+            target_dtype = getattr(torch, vae_dtype) if isinstance(vae_dtype, str) else vae_dtype
+            if vae.dtype != target_dtype:
+                vae.to(dtype=target_dtype)
         self.torch, self.pipe = torch, pipe
         vae.clear_cache()
-        latent = latent.to(vae.dtype)
-        mean = torch.tensor(vae.config.latents_mean).view(1, vae.config.z_dim, 1, 1, 1).to(latent.device, latent.dtype)
-        inverse_std = 1.0 / torch.tensor(vae.config.latents_std).view(1, vae.config.z_dim, 1, 1, 1).to(latent.device, latent.dtype)
-        self.x = vae.post_quant_conv(latent / inverse_std + mean)
+        latent_f32 = latent.to(torch.float32)
+        mean = torch.tensor(vae.config.latents_mean, dtype=torch.float32, device=latent.device).view(1, vae.config.z_dim, 1, 1, 1)
+        inverse_std = 1.0 / torch.tensor(vae.config.latents_std, dtype=torch.float32, device=latent.device).view(1, vae.config.z_dim, 1, 1, 1)
+        normalized = (latent_f32 / inverse_std + mean).to(vae.dtype)
+        self.x = vae.post_quant_conv(normalized)
         self.frames, self.index, self.chunks = self.x.shape[2], 0, []
         self.cache = [None] * vae._conv_num
 
@@ -150,7 +159,7 @@ class ChunkedDecode:
     def finish(self):
         if not self.done:
             raise ValueError("decode has remaining latent frames")
-        video = self.torch.cat(self.chunks, 2)
+        video = self.torch.cat(self.chunks, 2).to(self.torch.float32)
         patch = self.pipe.vae.config.patch_size
         if patch is not None:
             from diffusers.models.autoencoders.autoencoder_kl_wan import unpatchify

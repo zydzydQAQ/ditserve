@@ -246,6 +246,49 @@ class SD35Backend(FluxBackend):
         guidance_scale = float(request.get("guidance_scale", self.defaults["guidance_scale"]))
         max_seq_len = positive_int(request.get("max_sequence_length", self.defaults["max_sequence_length"]), "max_sequence_length")
         attn_mode = str(request.get("attention", self.attention))
+        use_cache = bool(request.get("cache", False))
+        cache_thresh = float(request.get("threshold", 0.10))
+
+        if request.get("vae_channels_last", False):
+            vae = getattr(self.pipe.module, "vae", None)
+            if vae is not None and not getattr(self, "_vae_channels_last", False):
+                vae.to(memory_format=self.torch.channels_last)
+                self._vae_channels_last = True
+
+        if use_cache:
+            import cache_dit
+            cache_recipe = (steps, round(cache_thresh, 4))
+            if getattr(self, "_mb_cache_recipe", None) != cache_recipe:
+                if getattr(self, "_mb_cache_recipe", None) is not None:
+                    try:
+                        cache_dit.disable_cache(self._cache_target())
+                    except Exception:
+                        pass
+                cache_dit.enable_cache(
+                    self._cache_target(),
+                    cache_config=cache_dit.DBCacheConfig(
+                        Fn_compute_blocks=int(request.get("cache_fn", 6)),
+                        Bn_compute_blocks=0,
+                        max_warmup_steps=int(request.get("cache_warmup", 4)),
+                        warmup_interval=1,
+                        max_cached_steps=-1,
+                        residual_diff_threshold=cache_thresh,
+                        max_continuous_cached_steps=int(request.get("cache_max_continuous", 2)),
+                        enable_separate_cfg=False,
+                        cfg_compute_first=False,
+                        cfg_diff_compute_separate=True,
+                        num_inference_steps=steps,
+                    ),
+                    attention_backend="native",
+                )
+                self._mb_cache_recipe = cache_recipe
+        elif getattr(self, "_mb_cache_recipe", None) is not None:
+            import cache_dit
+            try:
+                cache_dit.disable_cache(self._cache_target())
+            except Exception:
+                pass
+            self._mb_cache_recipe = None
 
         # Optionally pre-stage all prompts before starting the GPU denoising timer
         if request.get("prestage_pool", True):

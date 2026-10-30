@@ -25,11 +25,16 @@ from ..pipeline import ChunkedDecode
 class ConcurrentVAEDecodeStreamer:
     """Dedicated CUDA stream executor for overlapping Wan 3D-VAE decode with SD3.5 denoising."""
 
-    def __init__(self, wan_runtime, *, chunk_frames: int = 1):
+    def __init__(self, wan_runtime, *, chunk_frames: int = 1, vae_dtype: str | None = None):
         self.runtime = wan_runtime
         self.torch = wan_runtime.torch
         self.device = wan_runtime.device
         self.chunk_frames = max(1, int(chunk_frames))
+        self.vae_dtype = vae_dtype
+        if vae_dtype is not None:
+            target_dtype = getattr(self.torch, vae_dtype) if isinstance(vae_dtype, str) else vae_dtype
+            if self.runtime.pipe.vae.dtype != target_dtype:
+                self.runtime.pipe.vae.to(dtype=target_dtype)
         self.vae_stream = (
             self.torch.cuda.Stream(device=self.device)
             if str(self.device).startswith("cuda") and self.torch.cuda.is_available()
@@ -45,7 +50,7 @@ class ConcurrentVAEDecodeStreamer:
         with stream_ctx, torch.inference_mode():
             if self.vae_stream is not None and ready_event is not None:
                 self.vae_stream.wait_event(ready_event)
-            decoder = ChunkedDecode(torch, self.runtime.pipe, state.latents)
+            decoder = ChunkedDecode(torch, self.runtime.pipe, state.latents, vae_dtype=self.vae_dtype)
             total_latent_frames = decoder.frames
             while not decoder.done:
                 decoder.advance(chunk_frames)
