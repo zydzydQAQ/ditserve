@@ -154,6 +154,8 @@ class WanBackend(Backend):
         key = request["state_id"]
         if request.get("group") is not None:
             self._adopt(request, state, key)
+        if request.get("cache_threshold") is not None and key in self.continuations and float(request["cache_threshold"]) != 0.0:
+            raise ValueError("block continuations cannot apply a nonzero cache threshold")
         if request.get("cache_threshold") is not None and key not in self.continuations:
             from .runtime import normalize_spec
             thresh = float(request["cache_threshold"])
@@ -177,8 +179,11 @@ class WanBackend(Backend):
                                else positive_int(request.get("blocks", 1)))
                 mine, theirs = self.executor.advance_pair(self.continuations[key], self.continuations[pair], blocks=pair_blocks,
                                                           observe=bool(request.get("observe", False)))
+                layout = self.parallel.handle.current if self.parallel is not None else None
+                applied = dict(cfg=layout.cfg if layout else 1, ring=layout.ring if layout else 1,
+                               degree=layout.degree if layout else 1, cache_threshold=0.0, reused_forwards=0)
                 return dict(state_id=key, pair_state_id=pair, progress=self._progress(state), pair_progress=self._progress(paired),
-                            events=[mine], pair_events=[theirs], model_ms=mine["ms"])
+                            events=[mine], pair_events=[theirs], model_ms=mine["ms"], applied=applied)
             # Continuous execution: run to the step end unless the controller rings this GPU's doorbell.
             from ...runtime.doorbell import rung
             bell = rung(request)
@@ -191,7 +196,12 @@ class WanBackend(Backend):
                 records.append((self.parallel or self.runtime).step(state))
         if not records:
             raise ValueError("request has no remaining work")
-        return dict(state_id=key, progress=self._progress(state), events=records,
+        layout = self.parallel.handle.current if self.parallel is not None else None
+        applied = dict(cfg=layout.cfg if layout else 1, ring=layout.ring if layout else 1,
+                       degree=layout.degree if layout else 1,
+                       cache_threshold=float(state.spec["threshold"]) if state.spec["cache"] else 0.0,
+                       reused_forwards=sum(record.get("reused_forwards", 0) for record in records))
+        return dict(state_id=key, progress=self._progress(state), events=records, applied=applied,
                     model_ms=sum(record.get("ms", 0.) for record in records))
 
     def _adopt(self, request, state, key):
@@ -518,7 +528,9 @@ class WanBackend(Backend):
             raise ValueError("collect asynchronous decode before releasing its state")
         if key in self.continuations:
             self.executor.close(self.continuations.pop(key))
+        snapshot = state.pending_snapshot
         self.runtime.release(state)
+        self.tiered_manager.discard(key, snapshot)
         del self.states[key]
         return dict(released=key)
 

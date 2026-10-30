@@ -11,7 +11,7 @@ from .base import Backend, artifact, file_hash, positive_int, progress
 class MockBackend(Backend):
     operations = Backend.operations + ("snapshot", "restore", "inventory", "update_prompt", "distributed", "generate_batch",
                                       "advance_batch", "migration_release", "migration_abort", "encode_start", "encode_poll",
-                                      "decode_start", "decode_poll", "block_export", "block_import")
+                                      "decode_start", "decode_poll", "block_export", "block_import", "tiered_offload", "tiered_prefetch")
 
     def __init__(self, config):
         super().__init__(config)
@@ -193,7 +193,23 @@ class MockBackend(Backend):
                     remaining_steps=state["steps"] - state["step"],
                     done=state["step"] == state["steps"], model_ms=0., measured=False,
                     frames=4, fps=16., duration_ms=250., prompt_version=state["prompt_version"],
+                    applied=dict(cfg=request.get("cfg", 1), ring=request.get("ring", 1), degree=degree,
+                                 cache_threshold=float(request.get("cache_threshold", 0.0)), reused_forwards=0),
                     progress=self._progress(state))
+
+    def tiered_offload(self, request):
+        state = self.state(request)
+        if state["paused"] or state["unit"] % state["blocks"]:
+            raise ValueError("tiered offload requires a resident solver boundary")
+        state["paused"] = True
+        return dict(state_id=request["state_id"], kind="tiered_offload", ms=0.0, measured=False)
+
+    def tiered_prefetch(self, request):
+        state = self.state(request)
+        if not state["paused"]:
+            raise ValueError("tiered prefetch requires an offloaded state")
+        state["paused"] = False
+        return dict(state_id=request["state_id"], kind="tiered_prefetch", ms=0.0, measured=False)
 
     def block_export(self, request):
         """Fixture transport: the request position as JSON, like Wan's step-boundary packet."""
@@ -303,6 +319,19 @@ class MockBackend(Backend):
         if not 0 <= ms <= 60000:
             raise ValueError("mock costs must be in [0, 60000] ms")
         time.sleep(ms / 1000)
+        if "requests" in request:
+            members = request["requests"]
+            if len(members) != size or len({m["request_id"] for m in members}) != size:
+                raise ValueError("batch request identities differ from prompts")
+            results = []
+            for member, prompt, seed in zip(members, prompts, seeds):
+                if member["spec"].get("prompt", "") != prompt or member["spec"].get("seed", 0) != seed:
+                    raise ValueError("batch specification differs from prompts or seeds")
+                output = self.persist(json.dumps(dict(prompt=prompt, seed=seed)), dict(
+                    id=request["id"], state_id=member["request_id"], output_mode=member["output_mode"]), ".json")
+                results.append(dict(request_id=member["request_id"], output=output, output_count=1,
+                                    generation=dict(member["spec"], seed=seed)))
+            return dict(results=results, service=dict(total_ms=ms, batch_size=size), qualified=False, model_ms=ms)
         digest = hashlib.sha256(json.dumps([prompts, seeds]).encode()).hexdigest()
         return dict(output=dict(sha256=digest, shape=[size, 4, 4, 3], output_mode=request.get("output_mode", "check")),
                     service=dict(total_ms=ms, batch_size=size), qualified=False, model_ms=ms)

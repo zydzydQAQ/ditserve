@@ -31,7 +31,7 @@ class ProactiveEncoderPool:
 
     @staticmethod
     def prompt_key(modality: str, model_id: str, prompt: str, negative_prompt: str = "",
-                   max_sequence_length: int = 256, dtype: str = "bfloat16") -> str:
+                   max_sequence_length: int = 256, dtype: str = "bfloat16", do_cfg: bool = True) -> str:
         payload = json.dumps(
             {
                 "modality": modality,
@@ -40,6 +40,7 @@ class ProactiveEncoderPool:
                 "negative_prompt": negative_prompt,
                 "max_sequence_length": int(max_sequence_length),
                 "dtype": dtype,
+                "do_cfg": do_cfg,
             },
             sort_keys=True,
             ensure_ascii=False,
@@ -73,7 +74,7 @@ class ProactiveEncoderPool:
             if tensor is None:
                 staged_tensors[name] = None
                 continue
-            cpu_tensor = tensor.detach().to(device="cpu", non_blocking=tensor.is_cuda).contiguous()
+            cpu_tensor = tensor.detach().to(device="cpu", non_blocking=False).contiguous()
             if pin_memory and torch.cuda.is_available():
                 pinned = torch.empty_like(cpu_tensor, device="cpu", pin_memory=True)
                 pinned.copy_(cpu_tensor, non_blocking=False)

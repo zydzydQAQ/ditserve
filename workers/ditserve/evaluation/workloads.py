@@ -9,6 +9,12 @@ from collections import Counter
 from pathlib import Path
 
 SCHEMA = "ditserve.benchmark.mixed-workload.v1"
+SLO_PRECEDENCE = {
+    "absolute": "class.slo_ms wins for every tier, including fast video",
+    "standard_video": "window.slo_scale > class.slo_scale > default 2.5",
+    "fast_video": "window.fast_slo_scale > default 1.2",
+    "image": "class.slo_scale > default 2.5; window scales do not apply",
+}
 
 
 def _digest(value):
@@ -31,8 +37,25 @@ def gpu_service_ms(klass):
 def _positive(value, name):
     value = float(value)
     if not math.isfinite(value) or value <= 0:
-        raise ValueError(name + " must be positive")
+        raise ValueError(name + " must be finite and positive")
     return value
+
+
+def _slo_parameters(klass, tier, window_scale, fast_scale):
+    service = float(klass["service_ms"])
+    if "slo_ms" in klass:
+        slo, source = float(klass["slo_ms"]), "class.slo_ms"
+    else:
+        if klass["kind"] == "video" and tier == "fast":
+            scale, source = fast_scale, "window.fast_slo_scale"
+        elif klass["kind"] == "video" and window_scale is not None:
+            scale, source = window_scale, "window.slo_scale"
+        else:
+            scale = float(klass.get("slo_scale", 2.5))
+            source = "class.slo_scale" if "slo_scale" in klass else "default.slo_scale"
+        slo = service * scale
+    return dict(slo_ms=_positive(slo, "effective slo_ms"), source=source,
+                effective_slo_scale=_positive(slo / service, "effective slo_scale"))
 
 
 def _quota(total, parts):
@@ -70,6 +93,13 @@ def _pool_manifest(pool):
 
 
 def build_trace(classes, prompt_pools, windows, *, slots, seed, quality_per_kind=0):
+    """Freeze deadlines without changing the independent arrival/tier RNG streams.
+
+    Absolute class.slo_ms takes precedence even for fast videos. Otherwise the
+    window's slo_scale applies only to standard videos, fast_slo_scale to fast
+    videos, and images retain their class scale. The manifest records effective
+    values and sources, so a fast label does not imply a silently shortened SLO.
+    """
     if type(slots) is not int or slots < 1:
         raise ValueError("slots must be a positive integer")
     if type(seed) is not int or type(quality_per_kind) is not int or quality_per_kind < 0:
@@ -81,6 +111,9 @@ def build_trace(classes, prompt_pools, windows, *, slots, seed, quality_per_kind
             raise ValueError("class identity or kind is invalid")
         _positive(klass["service_ms"], "service_ms")
         _positive(gpu_service_ms(klass), "gpu_service_ms")
+        _positive(klass.get("slo_scale", 2.5), "class.slo_scale")
+        if "slo_ms" in klass:
+            _positive(klass["slo_ms"], "class.slo_ms")
         if not isinstance(klass.get("spec"), dict):
             raise ValueError("class spec must be an object")
     kinds = {klass["kind"] for klass in classes.values()}
@@ -120,7 +153,17 @@ def build_trace(classes, prompt_pools, windows, *, slots, seed, quality_per_kind
         fast_video_fraction = float(window.get("fast_video_fraction", 0.0))
         if not 0.0 <= fast_video_fraction <= 1.0:
             raise ValueError("fast_video_fraction must be in [0, 1]")
-        fast_slo_scale = float(window.get("fast_slo_scale", 1.2))
+        window_slo_scale = _positive(window["slo_scale"], "window.slo_scale") if "slo_scale" in window else None
+        fast_slo_scale = _positive(window.get("fast_slo_scale", 1.2), "window.fast_slo_scale")
+        slo_by_class = {
+            name: {tier: _slo_parameters(klass, tier, window_slo_scale, fast_slo_scale)
+                   for tier in (("standard", "fast") if klass["kind"] == "video" else ("standard",))}
+            for name, klass in classes.items()
+        }
+        if "fast_slo_scale" not in window:
+            for name in video_classes:
+                if slo_by_class[name]["fast"]["source"] == "window.fast_slo_scale":
+                    slo_by_class[name]["fast"]["source"] = "default.fast_slo_scale"
         load = _positive(window.get("load", 1.0), "load")
         class_counts = {"video": _quota(video_count, len(video_classes)) if video_classes else [],
                         "image": [image_count]}
@@ -190,21 +233,20 @@ def build_trace(classes, prompt_pools, windows, *, slots, seed, quality_per_kind
                 request_id = "w%d-%s%04d" % (window_index, "v" if kind == "video" else "i", prompt_index[kind] - 1)
                 arrival = 0.0 if pattern in ("offline", "offline_all") else active_windows[period_index][0] + timestamp
                 service = float(klass["service_ms"])
-                slo = float(klass["slo_ms"]) if "slo_ms" in klass else service * float(klass.get("slo_scale", 2.5))
-                tier = None
+                tier = "standard" if kind == "video" else None
                 if kind == "video" and fast_video_fraction > 0.0:
                     tier_rng = _rng(seed, window_index, request_id, "tier")
                     if tier_rng.random() < fast_video_fraction:
                         tier = "fast"
-                        slo = service * fast_slo_scale
-                    else:
-                        tier = "standard"
+                slo_parameters = slo_by_class[name][tier or "standard"]
+                slo = slo_parameters["slo_ms"]
                 spec = copy.deepcopy(klass["spec"])
                 spec.update(prompt=sample["prompt"], seed=int(_digest([seed, window_index, request_id, "content"])[:8], 16),
                             request_id=request_id)
                 quality = quality_seen[kind] < quality_per_kind
                 quality_seen[kind] += int(quality)
                 row = dict(request_id=request_id, arrival_ms=arrival, service_ms=service, slo_ms=slo,
+                           slo_source=slo_parameters["source"], effective_slo_scale=slo_parameters["effective_slo_scale"],
                            deadline_ms=arrival + slo, kind=kind, **{"class": name}, spec=spec,
                            dataset=prompt_pools[kind].get("kind"), dataset_sample_id=sample["sample_id"],
                            output_mode="file" if quality else "check", trace_seed=seed)
@@ -217,6 +259,9 @@ def build_trace(classes, prompt_pools, windows, *, slots, seed, quality_per_kind
         counts = Counter(row["kind"] for row in window_rows)
         class_totals = Counter(row["class"] for row in window_rows)
         manifest_windows.append(dict(index=window_index, pattern=pattern, start_ms=start, duration_ms=duration,
+                                     parameters=copy.deepcopy(window), cv=cv, bursts=bursts, burst_active_fraction=fraction,
+                                     slo_scale=window_slo_scale, fast_slo_scale=fast_slo_scale,
+                                     fast_video_fraction=fast_video_fraction, slo_by_class=slo_by_class,
                                      load=load, count=count, video_fraction=video_count / count,
                                      counts=dict(counts), class_counts=dict(class_totals),
                                      active_windows=[dict(start_ms=active_start, duration_ms=active_length)
@@ -239,7 +284,7 @@ def build_trace(classes, prompt_pools, windows, *, slots, seed, quality_per_kind
                     gpu_time_fraction={kind: value / gpu_total for kind, value in gpu_counts.items()},
                     normalized_gpu_work=gpu_total / slots / duration if duration else manifest_windows[0]["load"],
                     quality_requests=dict(quality_seen), sources={kind: _pool_manifest(prompt_pools[kind]) for kind in kinds},
-                    windows=manifest_windows)
+                    windows=manifest_windows, slo_precedence=copy.deepcopy(SLO_PRECEDENCE))
     manifest["workload_sha256"] = _digest(rows)
     return dict(manifest=manifest, workload=rows)
 

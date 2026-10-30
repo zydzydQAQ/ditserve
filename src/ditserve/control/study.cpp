@@ -614,9 +614,20 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     // same worker; SP workers hold one request inside a solver step at a time.
     if(transport!="pinned"&&bool_field(options,"pin_started",false))throw std::invalid_argument("pin_started needs pinned transport");
     if(transport=="pinned"){
-        if(policy.rfind("static_sp",0)==0&&policy!="static_sp1")throw std::invalid_argument("pinned cluster workers support SP1 only");
+        if(policy.rfind("static_",0)==0&&policy!="static_sp1"&&policy!="static_partition")throw std::invalid_argument("pinned cluster workers support SP1 only");
+        for(const auto& form:options.value("forms",Json::array()))if(parse_form(form.get<std::string>()).degree()!=1)
+            throw std::invalid_argument("pinned transport cannot execute the requested parallel forms");
+        for(const auto& degree:options.value("degrees",Json::array()))if(degree!=1)
+            throw std::invalid_argument("pinned transport cannot execute the requested parallel degrees");
         options.erase("forms");options["degrees"]=Json::array({1});options["pin_started"]=true;
     }
+    const bool approximate=policy=="heterodit_approx"||policy=="heterodit_v3";
+    const bool tiered=bool_field(options,"tiered_memory",approximate||policy=="heterodit_exact"||policy=="knapsack_dp"
+        ||policy=="ablation_tiered"||policy=="ablation_2d_usp");
+    if(tiered&&transport!="pinned")throw std::invalid_argument("tiered memory currently requires pinned SP1 transport");
+    if(!fixtures&&approximate&&transport!="pinned")throw std::invalid_argument("dynamic cache currently requires SP1 pinned whole-step execution");
+    if(!fixtures&&number_field(phase.at("profile"),"ring_quant_scale",1.)!=1.)
+        throw std::invalid_argument("INT8 Ring cost discounts are not supported by the real executor");
     const fs::path transfer_dir=options.contains("transfer_dir")?fs::path(string_field(options,"transfer_dir","")):work/"transfer";
     // Continuous execution (options.doorbell): a video block quantum runs to its step end and stops early only when
     // the controller rings its GPUs' doorbells, 8-byte counters in shared files the workers map. The controller
@@ -657,18 +668,24 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 throw std::invalid_argument("continuous_batch cannot use the atomic Sana pipeline");
         }
     }
-    const auto warmed=warmup(phase,workers,budget);
     for(const auto& slot:slots)for(const auto* role:{"video","image"}){
         const auto name=slot.at(role).get<std::string>();
         const auto backend=workers.backend(name);
         const auto capabilities=engine_contract(workers.get(name),backend,budget.deadline());
+        const bool batch_requested=int_field(options,"image_batch",1)>1||(!options.contains("image_batch")&&
+            (policy=="genserve_40gb"||policy=="knapsack_dp"||policy=="heterodit_exact"||approximate));
+        if(std::string(role)=="image"&&batch_requested&&backend!="mock"&&!capabilities.value("request_batch",false))
+            throw std::invalid_argument("image batching requires a per-request batch output capability");
         if(std::string(role)=="video"&&backend=="wan"){
             const auto quanta=capabilities.value("quanta",Json::array());
             const auto migration=capabilities.value("migration",Json::array());
             const auto degrees=capabilities.value("parallel",Json::object()).value("sp_degrees",Json::array());
-            if(phase.at("policy").get<std::string>().find("block")!=std::string::npos
-                    &&std::find(quanta.begin(),quanta.end(),"block")==quanta.end())
+            const bool blocks=policy=="block_elastic"||policy=="heterodit_exact"||policy=="knapsack_dp"
+                ||policy=="ablation_tiered"||policy=="ablation_2d_usp";
+            if(blocks&&std::find(quanta.begin(),quanta.end(),"block")==quanta.end())
                 throw std::invalid_argument("block/elastic policy requires block execution on every Wan worker");
+            if(approximate&&capabilities.value("execution",std::string())!="step")
+                throw std::invalid_argument("approximate policies require whole-step Wan execution; block cache is unsupported");
             if(transport=="export"&&std::find(migration.begin(),migration.end(),"state")==migration.end())
                 throw std::invalid_argument("export transport requires xDiT solver-step state migration");
             if(transport=="export"&&std::find(degrees.begin(),degrees.end(),slots.size())==degrees.end())
@@ -677,6 +694,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         if(transport=="export"&&std::string(role)=="video"&&backend!="mock"&&backend!="wan")
             throw std::invalid_argument("export transport requires the resumable xDiT Wan backend");
     }
+    const auto warmed=warmup(phase,workers,budget);
     if(transport=="export"){
         // init_process_group is collective: every video worker joins at once, each starting at SP1 on its GPU.
         static std::atomic<int> worlds{0};
@@ -696,7 +714,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     auto check=[&](){if(cancelled())throw std::runtime_error("run cancelled");budget.check(number_field(phase,"cleanup_reserve_seconds",0));};
     // steady_*: block quanta that followed this request's own previous quantum on the same GPUs;
     // resumed_*: block quanta that followed another request there (the first quantum and regroups excluded).
-    struct Live{std::string status="pending";bool prepared=false;int steps=0,blocks=0,total=0,encode_gpu=-1,decode_done=0,epoch=0;std::vector<int> group;std::string form="sp1",ticket,pair;std::set<int> resident;double steady_ms=0,resumed_ms=0;int steady_blocks=0,resumed_blocks=0,resumes=0;};
+    struct Live{std::string status="pending";bool prepared=false,offloaded=false;int steps=0,blocks=0,total=0,encode_gpu=-1,decode_done=0,epoch=0;std::vector<int> group;std::string form="sp1",ticket,pair;std::set<int> resident;double steady_ms=0,resumed_ms=0;int steady_blocks=0,resumed_blocks=0,resumes=0;};
     int epochs=0,transfers=0;   // export transport: placement epochs and transfer file names
     struct Task{std::size_t row;Json assignment;std::future<Json> result;double started;bool after_other=false,continuous=false,rung=false;};
     std::vector<Live> live(rows.size());
@@ -721,10 +739,22 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     for(auto& row:rows){row["generation"]=spec_of(row);row["output_mode"]=row.value("output_mode",output_mode);}
     Json cb_stats={{"rounds",0},{"late_joins",0},{"early_exits",0},{"batch_sizes",Json::object()},{"samples",Json::array()}};
     std::size_t terminal=0,encoders=0;
+    auto move_state=[&](std::size_t i,bool offload){
+        auto& state=live[i];auto& row=rows[i];
+        if(!state.prepared||state.group.size()!=1||state.blocks!=0||state.decode_done!=0||state.steps>=state.total)
+            throw std::runtime_error("tiered move requires an unfinished SP1 solver boundary");
+        const auto operation=offload?"tiered_offload":"tiered_prefetch";
+        const auto result=workers.get(video(state.group.front())).call({{"op",operation},{"state_id",row.at("request_id")}},budget.deadline());
+        state.offloaded=offload;
+        if(!row.contains("state_moves"))row["state_moves"]=Json::array();
+        row["state_moves"].push_back(result);
+        row["state_move_ms"]=number_field(row,"state_move_ms")+number_field(result,"ms");
+    };
     auto launch=[&](const Json& assignment){
         bool continuous=false;
         const auto id=assignment.at("request_id").get<std::string>();const std::size_t i=index.at(id);
         auto& row=rows[i];auto& state=live[i];
+        if(state.offloaded)move_state(i,false);
         std::vector<int> group;for(const auto& gpu:assignment.at("group"))group.push_back(gpu.get<int>());
         for(int gpu:group)busy[gpu]=true;
         if(!row.contains("start_ms"))row["start_ms"]=now();
@@ -783,20 +813,33 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 return out;
             };
         }else if(quantum=="atomic"&&assignment.contains("batch")){
-            // Dynamic batching: one generate_batch call on the image worker for every member.
             const auto name=image(group.front());
-            Json prompts=Json::array(),seeds=Json::array();auto batch_mode=output_mode;
+            Json prompts=Json::array(),seeds=Json::array(),members=Json::array();auto batch_mode=output_mode;
             for(const auto& member:assignment.at("batch")){
                 auto& mrow=rows[index.at(member.get<std::string>())];const auto mspec=spec_of(mrow);
                 prompts.push_back(mspec.value("prompt",""));seeds.push_back(mspec.value("seed",0));
+                members.push_back({{"request_id",member},{"spec",mspec},{"output_mode",mrow.at("output_mode")}});
                 if(mrow.at("output_mode")=="file")batch_mode="file";
                 if(!mrow.contains("start_ms"))mrow["start_ms"]=now();
                 mrow["batched"]=static_cast<int>(assignment.at("batch").size());live[index.at(member.get<std::string>())].status="running";
             }
-            work_unit=[&workers,name,prompts,seeds,deadline,batch_mode]{
+            work_unit=[&workers,name,prompts,seeds,members,deadline,batch_mode]{
                 auto& w=workers.get(name);
                 Json out={{"calls",Json::array()}};
-                out["finish"]=w.call({{"op","generate_batch"},{"prompts",prompts},{"seeds",seeds},{"output_mode",batch_mode}},deadline);
+                out["finish"]=w.call({{"op","generate_batch"},{"prompts",prompts},{"seeds",seeds},
+                    {"requests",members},{"output_mode",batch_mode}},deadline);
+                const auto& results=out.at("finish").at("results");
+                if(!results.is_array()||results.size()!=members.size())throw std::runtime_error("batch output count differs from requests");
+                std::set<std::string> returned;
+                for(const auto& result:results){
+                    const auto rid=result.at("request_id").get<std::string>();
+                    auto member=std::find_if(members.begin(),members.end(),[&](const Json& m){return m.at("request_id")==rid;});
+                    if(member==members.end()||!returned.insert(rid).second||result.value("output_count",0)!=1||!result.contains("output"))
+                        throw std::runtime_error("batch output identity differs from requests");
+                    for(auto field=member->at("spec").begin();field!=member->at("spec").end();++field)
+                        if(!result.at("generation").contains(field.key())||result.at("generation").at(field.key())!=field.value())
+                            throw std::runtime_error("batch output generation differs from request specification");
+                }
                 out["model_ms"]=number_field(out["finish"].value("service",Json::object()),"total_ms",number_field(out["finish"],"model_ms"));
                 return out;
             };
@@ -854,7 +897,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                         task.rung=true;
                     }
                     st.prepare={{"op","prepare"},{"state_id",rid},{"spec",spec_of(arow)},{"sp_degree",degree}};
-                    if(form.cfg>1)st.prepare["cfg"]=form.cfg;
+                    st.prepare["cfg"]=form.cfg;st.prepare["ring"]=form.ring;
                     if(ticket)st.prepare["encode_ticket"]=astate.ticket;
                 }else{
                     for(int gpu:astate.resident)if(in_group(gpu)){source=gpu;break;}
@@ -878,7 +921,8 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             std::vector<std::pair<std::string,Json>> advances;
             for(int gpu:group){
                 Json advance={{"op","advance"},{"state_id",id},{"sp_degree",degree},{"group",group},{"epoch",state.epoch}};
-                if(form.cfg>1)advance["cfg"]=form.cfg;
+                advance["cfg"]=form.cfg;advance["ring"]=form.ring;
+                if(assignment.contains("cache_threshold"))advance["cache_threshold"]=assignment.at("cache_threshold");
                 if(!pair.empty())advance["pair_state_id"]=pair;
                 if(quantum=="step")advance["quantum"]="step";else advance["blocks"]=quantum;
                 if(doorbell&&pair.empty()&&quantum.is_number_integer()){
@@ -932,13 +976,14 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                     const auto& mid=member.first;Live& mstate=*member.second;
                     if(mstate.resident.count(gpu))continue;
                     Json prepare={{"op","prepare"},{"state_id",mid},{"spec",spec_of(rows[index.at(mid)])},{"sp_degree",degree}};
-                    if(form.cfg>1)prepare["cfg"]=form.cfg;
+                    prepare["cfg"]=form.cfg;prepare["ring"]=form.ring;
                     if(mstate.prepared)prepare["resume"]={{"step",mstate.steps},{"block",mstate.blocks}};
                     else if(gpu==mstate.encode_gpu&&!mstate.ticket.empty())prepare["encode_ticket"]=mstate.ticket;
                     actions.push_back(prepare);
                 }
                 Json advance={{"op","advance"},{"state_id",id},{"sp_degree",degree},{"quantum",quantum}};
-                if(form.cfg>1)advance["cfg"]=form.cfg;
+                advance["cfg"]=form.cfg;advance["ring"]=form.ring;
+                if(assignment.contains("cache_threshold"))advance["cache_threshold"]=assignment.at("cache_threshold");
                 if(!pair.empty())advance["pair_state_id"]=pair;
                 if(quantum!="step"){advance["blocks"]=quantum;advance["quantum"]=nullptr;}
                 actions.push_back(advance);
@@ -1042,21 +1087,32 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             if(cb_stats["samples"].size()<256)cb_stats["samples"].push_back(sample);
             return;
         }
+        if(quantum=="atomic"&&task.assignment.contains("batch")){
+            const auto& finished=out.at("finish");
+            const double finished_at=now();
+            for(const auto& result:finished.at("results")){
+                const auto m=index.at(result.at("request_id").get<std::string>());
+                auto& mrow=rows[m];auto& mstate=live[m];
+                add_artifacts(record,result,work,phase.value("artifact_dependencies",Json::array()));
+                mrow["outputs"]=Json::array({result});
+                if(m!=task.row){
+                    mrow["action_ms"][key]=mrow.value("action_ms",Json::object()).value(key,0.)+elapsed;
+                    mrow["quanta"]=mrow.value("quanta",0)+1;
+                }
+                mrow["batch_model_ms"]=number_field(out,"model_ms");
+                mrow["model_ms"]=number_field(mrow,"model_ms")+number_field(out,"model_ms")/finished.at("results").size();
+                mrow["model_time_scope"]="amortized_batch_cost";
+                mrow["status"]="completed";mrow["finish_ms"]=finished_at;
+                mstate.status="completed";mstate.group.clear();++terminal;
+            }
+            return;
+        }
         if(quantum=="atomic"||quantum=="finish"){
             add_artifacts(record,out.at("finish"),work,phase.value("artifact_dependencies",Json::array()));
             if(!row.contains("outputs"))row["outputs"]=Json::array();
             row["outputs"].push_back(out.at("finish"));
             row["model_ms"]=number_field(row,"model_ms")+number_field(out,"model_ms")+number_field(out.at("finish"),"model_ms");
             row["status"]="completed";row["finish_ms"]=now();state.status="completed";state.group.clear();++terminal;
-            if(task.assignment.contains("batch"))for(const auto& member:task.assignment.at("batch")){
-                const std::size_t m=index.at(member.get<std::string>());if(m==task.row)continue;
-                auto& mrow=rows[m];auto& mstate=live[m];
-                if(!mrow.contains("outputs"))mrow["outputs"]=Json::array();
-                mrow["outputs"].push_back(out.at("finish"));
-                mrow["action_ms"][key]=mrow.value("action_ms",Json::object()).value(key,0.)+elapsed;
-                mrow["quanta"]=mrow.value("quanta",0)+1;mrow["model_ms"]=number_field(mrow,"model_ms")+number_field(out,"model_ms");
-                mrow["status"]="completed";mrow["finish_ms"]=now();mstate.status="completed";mstate.group.clear();++terminal;
-            }
             return;
         }
         if(out.contains("transfer")){
@@ -1066,6 +1122,21 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             row["transfer_export_ms"]=number_field(row,"transfer_export_ms")+number_field(transfer,"export_ms")+number_field(transfer,"write_ms");
         }
         const auto& ranks=out.at("ranks");
+        const auto expected_form=parse_form(task.assignment.value("form",std::string("sp1")));
+        const double expected_threshold=number_field(task.assignment,"cache_threshold",0.);
+        Json applied;
+        for(const auto& rank:ranks){
+            const auto& actual=rank.at("applied");
+            if(actual.at("degree")!=expected_form.degree()||actual.at("cfg")!=expected_form.cfg||actual.at("ring")!=expected_form.ring
+                    ||number_field(actual,"cache_threshold")!=expected_threshold)
+                throw std::runtime_error("worker execution differs from planned form or cache threshold");
+            if(applied.is_null())applied=actual;
+            else if(actual!=applied)throw std::runtime_error("worker ranks disagree on applied execution");
+        }
+        Json trace={{"planned_form",form_name(expected_form)},{"planned_cache_threshold",expected_threshold},{"applied",applied}};
+        if(!row.contains("execution"))row["execution"]=Json::array();
+        if(row["execution"].empty()||row["execution"].back()!=trace)row["execution"].push_back(trace);
+        row["reused_forwards"]=row.value("reused_forwards",0)+applied.value("reused_forwards",0);
         double model=0;for(const auto& rank:ranks)model=std::max(model,number_field(rank,"model_ms"));
         // A continuous quantum may stop before its step end: count the blocks the worker reports.
         int reported=-1;
@@ -1127,7 +1198,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             try{out=it->result.get();}catch(const std::exception& error){
                 auto& row=rows[it->row];row["status"]="failed";row["error"]=error.what();row["finish_ms"]=now();++terminal;
                 record["failures"].push_back({{"request_id",row.at("request_id")},{"error",error.what()}});
-                if(it->assignment.at("quantum")=="continuous_batch")for(const auto& member:it->assignment.at("batch")){
+                if(it->assignment.contains("batch"))for(const auto& member:it->assignment.at("batch")){
                     const auto m=index.at(member.get<std::string>());if(m==it->row)continue;
                     auto& mrow=rows[m];mrow["status"]="failed";mrow["error"]=error.what();mrow["finish_ms"]=now();++terminal;
                     record["failures"].push_back({{"request_id",mrow.at("request_id")},{"error",error.what()}});
@@ -1168,7 +1239,12 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 Json view={{"request_id",row.at("request_id")},{"kind",row.at("kind")},{"class",row.at("class")},
                     {"arrival_ms",row.at("arrival_ms")},{"deadline_ms",row.at("deadline_ms")},{"status",state.status},{"ready",true},
                     {"prepared",state.prepared},{"steps_done",state.steps},{"blocks_done",state.blocks},{"group",state.group},{"decode_done",state.decode_done}};
-                if(row.at("kind")=="image")view["continuous_batch"]=continuous_batch>0;
+                if(row.at("kind")=="image"){
+                    view["continuous_batch"]=continuous_batch>0;
+                    Json batch_spec=spec_of(row);
+                    for(const auto* field:{"request_id","prompt","negative_prompt","seed"})batch_spec.erase(field);
+                    view["batch_spec"]=batch_spec;
+                }
                 if(state.total>0)view["steps_total"]=state.total;
                 if(!state.group.empty())view["form"]=state.form;
                 if(!state.pair.empty())view["pair"]=state.pair;
@@ -1184,6 +1260,23 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 int sp_running=0;   // SP advances in flight contend for the host bridge
                 for(const auto& task:tasks){const auto& a=task.assignment;sp_running+=parse_form(a.value("form","sp"+std::to_string(a.at("degree").get<int>()))).sp>=2&&a.at("quantum")!="atomic"&&a.at("quantum")!="finish";}
                 const auto plan=cluster_plan({{"now_ms",now()},{"gpus",gpus},{"busy",flags},{"requests",requests},{"sp_groups_running",sp_running}},policy,cost,options);
+                if(tiered&&plan.contains("tiered_hints")){
+                    std::set<std::size_t> offloaded;
+                    std::set<int> assigned;
+                    for(const auto& assignment:plan.at("assignments"))for(const auto& gpu:assignment.at("group"))assigned.insert(gpu.get<int>());
+                    for(const auto& rid:plan.at("tiered_hints").at("offload")){
+                        const auto k=index.at(rid.get<std::string>());const auto& state=live[k];
+                        if(!state.offloaded&&state.status=="suspended"&&state.blocks==0&&state.decode_done==0&&state.steps<state.total
+                                &&state.group.size()==1&&!busy[state.group.front()]){
+                            move_state(k,true);offloaded.insert(k);
+                        }
+                    }
+                    for(const auto& rid:plan.at("tiered_hints").at("prefetch")){
+                        const auto k=index.at(rid.get<std::string>());const auto& state=live[k];
+                        if(state.offloaded&&!offloaded.count(k)&&state.group.size()==1&&!busy[state.group.front()]&&!assigned.count(state.group.front()))
+                            move_state(k,false);
+                    }
+                }
                 for(const auto& assignment:plan.at("assignments")){launch(assignment);progressed=true;}
             }
         }

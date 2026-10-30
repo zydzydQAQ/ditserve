@@ -216,5 +216,70 @@ class XDitSD35Tests(unittest.TestCase):
             backend._spec(dict(spec=dict(prompt="kettle", max_sequence_length=513)))
 
 
+class SD35BatchContracts(unittest.TestCase):
+    def backend(self):
+        import numpy as np
+        from unittest.mock import Mock
+        from ditserve.models.base import Backend
+        from ditserve.models.sd35 import SD35Backend
+
+        backend = SD35Backend.__new__(SD35Backend)
+        Backend.__init__(backend, dict(model_path="fixture", revision="test"))
+        backend.xdit = SimpleNamespace(info=lambda: {"revision": "test"})
+        backend.release_cache = Mock()
+        backend.run_micro_batch = Mock(return_value=dict(
+            images=np.arange(24, dtype=np.float32).reshape(2, 2, 2, 3), model_ms=20.0,
+            batch_size=2, reused_steps=0))
+        return backend
+
+    def requests(self):
+        return [dict(request_id=name, spec=dict(prompt=prompt, negative_prompt="blur", seed=seed,
+                     request_id=name, height=32, width=48, steps=4, max_sequence_length=8), output_mode="digest")
+                for name, prompt, seed in (("a", "lake", 17), ("b", "forest", 23))]
+
+    def test_batch_preserves_identity_seed_spec_and_distinct_output(self):
+        backend = self.backend()
+        members = self.requests()
+        result = backend.generate_batch(dict(id=7, requests=members))
+        self.assertEqual([row["request_id"] for row in result["results"]], ["a", "b"])
+        self.assertEqual([row["generation"]["seed"] for row in result["results"]], [17, 23])
+        self.assertNotEqual(result["results"][0]["output"]["array_sha256"], result["results"][1]["output"]["array_sha256"])
+        for row in result["results"]:
+            self.assertEqual(row["output_count"], 1)
+            self.assertEqual(row["output"]["shape"], [1, 2, 2, 3])
+        called = backend.run_micro_batch.call_args.args[0]
+        self.assertEqual(called["prompts"], ["lake", "forest"])
+        self.assertEqual(called["negative_prompts"], ["blur", "blur"])
+        self.assertEqual((called["height"], called["width"], called["steps"], called["max_sequence_length"]), (32, 48, 4, 8))
+        self.assertFalse(called["prestage_pool"])
+        self.assertEqual(backend.states, {})
+
+    def test_batch_rejects_duplicate_identity_incompatible_specs_and_missing_outputs(self):
+        backend = self.backend()
+        members = self.requests()
+        members[1]["request_id"] = "a"
+        with self.assertRaisesRegex(ValueError, "distinct"):
+            backend.generate_batch(dict(id=1, requests=members))
+        members = self.requests()
+        members[1]["spec"]["steps"] = 8
+        with self.assertRaisesRegex(ValueError, "compatible"):
+            backend.generate_batch(dict(id=2, requests=members))
+        backend.run_micro_batch.assert_not_called()
+        backend.run_micro_batch.return_value["images"] = backend.run_micro_batch.return_value["images"][:1]
+        with self.assertRaisesRegex(RuntimeError, "output count"):
+            backend.generate_batch(dict(id=3, requests=self.requests()))
+
+    def test_batch_rejects_multi_image_members_and_unsupported_cache_combination(self):
+        backend = self.backend()
+        members = self.requests()
+        members[0]["spec"]["batch_size"] = 2
+        with self.assertRaisesRegex(ValueError, "one image"):
+            backend.generate_batch(dict(id=1, requests=members))
+        backend.config["options"] = dict(cache=True)
+        with self.assertRaisesRegex(ValueError, "combine"):
+            backend.generate_batch(dict(id=2, requests=self.requests()))
+        backend.run_micro_batch.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

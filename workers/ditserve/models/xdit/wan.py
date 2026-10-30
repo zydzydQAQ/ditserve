@@ -212,7 +212,8 @@ class XDitWanParallelBackend:
             context_manifest = {}
             for name, context in state.contexts.items():
                 with self.worker.manager.enter_context(context):
-                    context_manifest[name] = cache_manager_manifest(self.worker.manager)
+                    norm_name = "blocks" if (str(name).startswith("blocks_") and str(name)[7:].isdigit()) else name
+                    context_manifest[norm_name] = cache_manager_manifest(self.worker.manager)
             descriptor = dict(contexts=context_manifest, cache_enabled=state.cache_enabled,
                               spec=state.spec, latents_shape=list(state.latents.shape),
                               latents_dtype=str(state.latents.dtype), needs_anchor=state.needs_anchor)

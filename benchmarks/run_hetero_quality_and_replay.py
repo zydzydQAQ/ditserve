@@ -1,18 +1,8 @@
 #!/usr/bin/env python3
-"""Real A100 GPU Quality-Latency Pareto & Mixed-Workload Trace Replay Benchmark.
+"""GPU quality microbenchmarks and manually ordered component replay.
 
-Executes on jjjkairos NVIDIA A100-PCIE-40GB:
-  1. Real Wan2.1-T2V-1.3B 20-step Quality-Latency Pareto Curve across dynamic cache
-     thresholds tau in {0.00, 0.06, 0.08, 0.12, 0.16, 0.24}:
-       - Measures actual skipped block passes, denoising latency (ms), speedup,
-         latent cosine similarity / RMSE, and decoded RGB video frame PSNR (dB) & SSIM.
-  2. Real A100 End-to-End Mixed-Modality Trace Replay (Wan2.1-T2V-1.3B + SD3.5-Medium):
-       - Replays a bursty mixed arrival stream (2 T2V + 4 bursty T2I arrivals) on real GPU
-         comparing:
-           * Vanilla-xDiT (Non-preemptive static execution)
-           * GenServe-40GB (Step-boundary preemption + unpinned cold swap under 40GB)
-           * HeteroDiT-Exact (Sub-step block preemption + ProactiveEncoderPool + Pinned lookahead prefetch + micro-batch)
-           * HeteroDiT-Approx (HeteroDiT-Exact + laxity-gated dynamic residual caching tau=0.12)
+The preencoded replay serves one video and three images. It does not exercise
+an online scheduler or reproduce the original Vanilla-xDiT/GenServe systems.
 """
 
 from __future__ import annotations
@@ -36,6 +26,127 @@ for candidate in (ROOT / "workers", ROOT / "python"):
 
 from ditserve.models.wan.backend import WanBackend  # noqa: E402
 from ditserve.models.sd35 import SD35Backend  # noqa: E402
+
+
+REPLAY_SCOPE = (
+    "preencoded: excludes prompt encoding; includes GPU prepare, denoise, complete "
+    "decode and arrival waits; decoded NumPy outputs, excludes file persistence"
+)
+IMAGE_SCOPE = (
+    "preencoded: excludes prompt encoding; includes embedding retrieval/H2D, "
+    "pipeline preparation, denoise and complete decode to NumPy; excludes persistence"
+)
+DENOISE_SCOPE = "denoise only; preencoded, excludes encoding, preparation and decode"
+
+
+def _wait_until_arrival(t_start, arrival_ms, *, clock=time.perf_counter, sleep=time.sleep):
+    if not math.isfinite(arrival_ms) or arrival_ms < 0:
+        raise ValueError("arrival must be finite and nonnegative")
+    while True:
+        now_ms = (clock() - t_start) * 1000.0
+        remaining_ms = arrival_ms - now_ms
+        if remaining_ms <= 0:
+            return now_ms
+        sleep(remaining_ms / 1000.0)
+
+
+def _image_requests(prompts, seeds, arrivals=None, **spec):
+    arrivals = [0.0] * len(prompts) if arrivals is None else arrivals
+    if not prompts or len(prompts) != len(seeds) or len(prompts) != len(arrivals):
+        raise ValueError("each image requires its own prompt, seed and arrival")
+    base = dict(height=512, width=512, frames=1, batch_size=1, steps=12,
+                guidance_scale=4.5, max_sequence_length=256, negative_prompt="")
+    base.update(spec)
+    return [dict(request_id=f"img-{i + 1}", modality="image", arrival_ms=float(arrival),
+                 spec=dict(base, prompt=prompt, seed=seed))
+            for i, (prompt, seed, arrival) in enumerate(zip(prompts, seeds, arrivals))]
+
+
+def _completion_records(requests, outputs, start_ms, finish_ms):
+    """Only decoded outputs, never a declared batch size, can complete requests."""
+    if not requests or len({r["request_id"] for r in requests}) != len(requests):
+        raise ValueError("completion requires unique request identities")
+    kind = requests[0]["modality"]
+    if kind not in ("image", "video") or any(r["modality"] != kind for r in requests):
+        raise ValueError("outputs must have a single known modality")
+    shape = tuple(getattr(outputs, "shape", ()))
+    rank = 4 if kind == "image" else 5
+    if (len(shape) != rank or any(n <= 0 for n in shape) or shape[-1] not in (3, 4)
+            or shape[0] != len(requests)):
+        raise ValueError("decoded output count/shape does not match requests")
+    if not math.isfinite(start_ms) or not math.isfinite(finish_ms) or finish_ms < start_ms:
+        raise ValueError("invalid completion timestamps")
+    for r in requests:
+        arrival = r["arrival_ms"]
+        if not math.isfinite(arrival) or arrival < 0 or start_ms < arrival:
+            raise ValueError("cannot serve a request before arrival")
+        if shape[-3:-1] != (r["spec"]["height"], r["spec"]["width"]):
+            raise ValueError("decoded spatial dimensions do not match request")
+        if kind == "video" and shape[1] != r["spec"]["frames"]:
+            raise ValueError("video decode did not produce all requested frames")
+    return [dict(r, spec=dict(r["spec"]), seed=r["spec"]["seed"],
+                 start_ms=start_ms, finish_ms=finish_ms, output_count=1,
+                 output_index=i, output_mode="decoded_numpy",
+                 latency_ms=finish_ms - r["arrival_ms"],
+                 batch_latency_ms=finish_ms - start_ms)
+            for i, r in enumerate(requests)]
+
+
+def _run_image_batch(sd35, requests, t_start, **options):
+    shared = ("height", "width", "steps", "guidance_scale", "max_sequence_length")
+    spec = requests[0]["spec"]
+    if any(any(r["spec"][key] != spec[key] for key in shared) for r in requests):
+        raise ValueError("incompatible image micro-batch")
+    arguments = dict(options, **{key: spec[key] for key in shared})
+    arguments.update(prompts=[r["spec"]["prompt"] for r in requests],
+                     negative_prompts=[r["spec"]["negative_prompt"] for r in requests],
+                     seeds=[r["spec"]["seed"] for r in requests], return_images=True)
+    _wait_until_arrival(t_start, max(r["arrival_ms"] for r in requests))
+    torch.cuda.synchronize()
+    start_ms = (time.perf_counter() - t_start) * 1000.0
+    result = sd35.run_micro_batch(arguments)
+    torch.cuda.synchronize()
+    finish_ms = (time.perf_counter() - t_start) * 1000.0
+    records = _completion_records(requests, result.get("images"), start_ms, finish_ms)
+    result["requests"] = [dict(r, execution_options=dict(options)) for r in records]
+    result.pop("per_image_ms", None)
+    result["batch_latency_ms"] = finish_ms - start_ms
+    result["amortized_ms_per_image"] = result["batch_latency_ms"] / len(result["requests"])
+    return result
+
+
+def _decode_video(wan, state, **options):
+    while True:
+        video, info = wan.runtime.decode_chunks(state, 5, **options)
+        if info["done"]:
+            if video is None:
+                raise ValueError("decode finished without video output")
+            return video
+
+
+def _replay_summary(requests, image_slo_ms, video_slo_ms):
+    if len({r["request_id"] for r in requests}) != len(requests):
+        raise ValueError("duplicate completion")
+    images = [r for r in requests if r["modality"] == "image"]
+    videos = [r for r in requests if r["modality"] == "video"]
+    if not images or len(videos) != 1 or any(r["output_count"] != 1 for r in requests):
+        raise ValueError("replay requires completed images and one completed video")
+    latencies = [r["latency_ms"] for r in images]
+    image_ontime = sum(x <= image_slo_ms for x in latencies)
+    video_ontime = int(videos[0]["latency_ms"] <= video_slo_ms)
+    return dict(
+        evidence_type="component_replay", timing_scope=REPLAY_SCOPE,
+        scheduler_scope="manual phase order; not evidence of online scheduling",
+        requests=requests, completed_requests=len(requests),
+        image_sample_count=len(images), image_latency_statistic="sample maximum, not p99",
+        image_latencies_ms=latencies,
+        image_mean_latency_ms=sum(latencies) / len(images),
+        image_max_latency_ms=max(latencies), video_latency_ms=videos[0]["latency_ms"],
+        makespan_ms=max(r["finish_ms"] for r in requests),
+        image_slo_attainment_pct=100.0 * image_ontime / len(images),
+        video_slo_attainment_pct=100.0 * video_ontime,
+        total_slo_attainment_pct=100.0 * (image_ontime + video_ontime) / len(requests),
+    )
 
 
 def compute_psnr_ssim(ref_frames: np.ndarray, test_frames: np.ndarray) -> tuple[float, float]:
@@ -76,7 +187,7 @@ def _fast_prepare_wan(wan: WanBackend, state_id: str, spec: dict, base_encoded) 
         spec=norm_spec,
         prompt_embeds=base_encoded.prompt_embeds,
         negative_prompt_embeds=base_encoded.negative_prompt_embeds,
-        cpu_prompt_encode_ms=1.2,
+        cpu_prompt_encode_ms=0.0,
         owner=wan.runtime._owner,
     )
     state = wan.runtime.prepare_encoded(norm_spec, payload)
@@ -167,6 +278,11 @@ def run_quality_pareto(wan: WanBackend, out_dir: Path) -> list[dict]:
 
         speedup = (base_step_ms / denoise_ms) if base_step_ms else 1.0
         rec = {
+            "evidence_type": "measured_microbenchmark",
+            "timing_scope": DENOISE_SCOPE,
+            "decode_timing_scope": "complete chunked decode, excludes denoise",
+            "quality_status": "reference" if tau == 0.0 else "measured_comparison",
+            "spec": spec,
             "tau": tau,
             "mode": "Exact (Lossless)" if tau == 0.0 else f"DBCache (tau={tau:.2f})",
             "denoise_20steps_ms": round(denoise_ms, 2),
@@ -196,12 +312,7 @@ def run_real_mixed_trace_replay(
     sd35: SD35Backend,
     out_dir: Path,
 ) -> list[dict]:
-    """Replay a real mixed arrival trace (1 T2V 20-step video + 3 bursty T2I images arriving at t=250ms, 280ms, 2400ms)."""
-    # Trace definition (calibrated to 1xA100 standalone latencies: SD3.5 12-step = 2,310 ms, Wan2.1 20-step = 10,822 ms):
-    #   v0 arrives at t=0 ms (Wan2.1 20 steps, Video SLO = 14,500 ms = 1.34x standalone)
-    #   i0 arrives at t=250 ms (SD3.5 12 steps, Image SLO = 4,000 ms = 1.73x standalone)
-    #   i1 arrives at t=280 ms (SD3.5 12 steps, Image SLO = 4,000 ms = 1.73x standalone)
-    #   i2 arrives at t=2400 ms (SD3.5 12 steps, Image SLO = 4,000 ms = 1.73x standalone)
+    """Manually ordered component replay; not the original systems or an online scheduler."""
     vid_slo_ms = 14500.0
     img_slo_ms = 4000.0
     img_arrivals = [250.0, 280.0, 2400.0]
@@ -229,172 +340,91 @@ def run_real_mixed_trace_replay(
         "seed": 202,
     }
 
-    # Pre-encode Wan2.1 prompt via CPU encoder and stage SD3.5 prompt in ProactiveEncoderPool
+    images = _image_requests([i_spec["prompt"]] * 3, [202, 203, 204], img_arrivals,
+                             **{k: v for k, v in i_spec.items() if k not in ("prompt", "seed")})
     v_encoded = wan_step.runtime.encode_prompt(wan_step._spec({"state_id": "pre-v", "spec": v_spec}))
-    sd35.prepare({"state_id": "warmup-sd", "spec": dict(i_spec, request_id="warmup-sd", steps=2)})
-    sd35.offload_encoders()
-    sd35.advance({"state_id": "warmup-sd"})
-    sd35.release({"state_id": "warmup-sd"})
+    sd35._ensure_staged(i_spec["prompt"], i_spec["negative_prompt"], 256, True)
+    sd35.offload_encoders({})
+    sd35.run_micro_batch(dict(i_spec, prompts=[i_spec["prompt"]], seeds=[202], steps=2,
+                             attention="flash", cache=False, return_images=True))
     torch.cuda.synchronize()
 
     replay_results = []
-
-    # 1. Vanilla-xDiT (Non-Preemptive FCFS): v0 runs all 20 steps before i0, i1, i2 can start
-    torch.cuda.synchronize()
-    t_start = time.perf_counter()
-    _fast_prepare_wan(wan_step, "vx-v0", dict(v_spec, cache=False), v_encoded)
-    wan_step.advance({"state_id": "vx-v0", "steps": 20})
-    wan_step.release({"state_id": "vx-v0"})
-    torch.cuda.synchronize()
-    v_finish_ms = (time.perf_counter() - t_start) * 1000.0
-
-    img_latencies_vx = []
-    for idx, arr_ms in enumerate(img_arrivals):
-        if idx == 0:
-            time.sleep(0.095)
-        iid = f"vx-i{idx}"
-        sd35.prepare({"state_id": iid, "spec": dict(i_spec, request_id=iid, seed=202 + idx)})
-        sd35.advance({"state_id": iid})
-        sd35.release({"state_id": iid})
+    original_execution = wan_step.execution
+    policies = [
+        ("Non-preemptive FCFS component", "fcfs"),
+        ("Step-preempt + blocking tiered transfer component (not GenServe)", "step"),
+        ("Block-preempt + micro-batch component (exact cache disabled)", "block"),
+        ("Step-preempt + micro-batch + fixed cache tau=0.16 component", "approx"),
+    ]
+    for name, policy in policies:
+        wan_step.execution = "block" if policy == "block" else "step"
+        sid = f"replay-{policy}-v0"
+        run_spec = dict(v_spec, cache=policy == "approx", threshold=0.16, max_continuous=3)
+        video_request = dict(request_id="v0", modality="video", arrival_ms=0.0, spec=run_spec)
+        completions = []
+        transfers = []
         torch.cuda.synchronize()
-        now_ms = (time.perf_counter() - t_start) * 1000.0
-        img_latencies_vx.append(max(0.0, now_ms - arr_ms))
-    makespan_vx = (time.perf_counter() - t_start) * 1000.0
+        t_start = time.perf_counter()
+        v_start_ms = _wait_until_arrival(t_start, video_request["arrival_ms"])
+        _fast_prepare_wan(wan_step, sid, run_spec, v_encoded)
 
-    # 2. GenServe-40GB (Step-boundary preemption every 1 step ~550ms, unpinned swap, sequential T2I)
-    torch.cuda.synchronize()
-    t_start = time.perf_counter()
-    _fast_prepare_wan(wan_step, "gs-v0", dict(v_spec, cache=False), v_encoded)
-    wan_step.advance({"state_id": "gs-v0", "steps": 1})
-    torch.cuda.synchronize()
-    _cold_cpu = wan_step.states["gs-v0"].latents.detach().cpu().clone()
-    time.sleep(0.085)
+        def serve(members, transfer=False):
+            _wait_until_arrival(t_start, max(r["arrival_ms"] for r in members))
+            if transfer:
+                transfers.append(wan_step.tiered_offload({"state_id": sid, "non_blocking": policy != "step"}))
+            batch = _run_image_batch(sd35, members, t_start, attention="flash", cache=False)
+            completions.extend(batch["requests"])
+            if transfer:
+                transfers.append(wan_step.tiered_prefetch({"state_id": sid}))
 
-    img_latencies_gs = []
-    for idx in (0, 1):
-        iid = f"gs-i{idx}"
-        sd35.prepare({"state_id": iid, "spec": dict(i_spec, request_id=iid, seed=202 + idx)})
-        sd35.advance({"state_id": iid})
-        sd35.release({"state_id": iid})
-        torch.cuda.synchronize()
-        now_ms = (time.perf_counter() - t_start) * 1000.0
-        img_latencies_gs.append(max(0.0, now_ms - img_arrivals[idx]))
+        def finish_video():
+            video = _decode_video(wan_step, wan_step.states[sid])
+            torch.cuda.synchronize()
+            finish_ms = (time.perf_counter() - t_start) * 1000.0
+            completions.extend(_completion_records([video_request], video, v_start_ms, finish_ms))
 
-    # Resume v0 for 2 steps, then preempt for i2 at step boundary
-    time.sleep(0.085)
-    wan_step.advance({"state_id": "gs-v0", "steps": 2})
-    torch.cuda.synchronize()
-    time.sleep(0.085)
-    sd35.prepare({"state_id": "gs-i2", "spec": dict(i_spec, request_id="gs-i2", seed=204)})
-    sd35.advance({"state_id": "gs-i2"})
-    sd35.release({"state_id": "gs-i2"})
-    torch.cuda.synchronize()
-    now_ms = (time.perf_counter() - t_start) * 1000.0
-    img_latencies_gs.append(max(0.0, now_ms - img_arrivals[2]))
+        try:
+            if policy == "fcfs":
+                wan_step.advance({"state_id": sid, "steps": 20})
+                finish_video()
+                for request in images:
+                    serve([request])
+            elif policy == "step":
+                wan_step.advance({"state_id": sid, "steps": 1})
+                for request in images[:2]:
+                    serve([request], transfer=True)
+                wan_step.advance({"state_id": sid, "steps": 2})
+                serve(images[2:], transfer=True)
+                wan_step.advance({"state_id": sid, "steps": 17})
+                finish_video()
+            else:
+                if policy == "block":
+                    wan_step.advance({"state_id": sid, "blocks": 20})
+                    serve(images[:2])
+                    while wan_step.states[sid].step_index < 2:
+                        wan_step.advance({"state_id": sid, "quantum": "step"})
+                else:
+                    wan_step.advance({"state_id": sid, "steps": 1})
+                    serve(images[:2], transfer=True)
+                    wan_step.advance({"state_id": sid, "steps": 1})
+                serve(images[2:], transfer=True)
+                while wan_step.states[sid].step_index < run_spec["steps"]:
+                    wan_step.advance({"state_id": sid, "quantum": "step", "steps": 1})
+                finish_video()
+            reused_steps = sum(ev.get("reused_forwards", 0) > 0
+                               for ev in wan_step.states[sid].events if ev.get("kind") == "step")
+        finally:
+            wan_step.release({"state_id": sid})
+            wan_step.execution = original_execution
 
-    # Finish remaining 17 steps of v0
-    time.sleep(0.085)
-    wan_step.advance({"state_id": "gs-v0", "steps": 17})
-    wan_step.release({"state_id": "gs-v0"})
-    torch.cuda.synchronize()
-    v_finish_gs = (time.perf_counter() - t_start) * 1000.0
-    makespan_gs = v_finish_gs
-
-    # 3. HeteroDiT-Exact (Sub-step 20-block preemption ~275ms + Tiered Pinned Offload/Prefetch + Image Micro-Batch)
-    wan_step.execution = "block"
-    torch.cuda.synchronize()
-    t_start = time.perf_counter()
-    _fast_prepare_wan(wan_step, "hd-v0", dict(v_spec, cache=False), v_encoded)
-    # Run 20 block passes (~275ms) -> preempt at sub-step boundary right as i0+i1 arrive!
-    wan_step.advance({"state_id": "hd-v0", "blocks": 20})
-    # Micro-batch i0 + i1 together on SD3.5 (with ProactiveEncoderPool zero-swap)
-    sd35.prepare({"state_id": "hd-i01", "spec": dict(i_spec, request_id="hd-i01", seed=202)})
-    sd35.advance({"state_id": "hd-i01"})
-    sd35.release({"state_id": "hd-i01"})
-    torch.cuda.synchronize()
-    t_i01_done = (time.perf_counter() - t_start) * 1000.0
-    img_latencies_hd = [max(0.0, t_i01_done - img_arrivals[0]), max(0.0, t_i01_done - img_arrivals[1])]
-
-    # Finish Step 0 (40 blocks) + Step 1 (60 blocks), then Tiered offload/prefetch for i2
-    wan_step.advance({"state_id": "hd-v0", "blocks": 40})
-    wan_step.advance({"state_id": "hd-v0", "quantum": "step"})
-    wan_step.tiered_offload({"state_id": "hd-v0", "non_blocking": True})
-    sd35.prepare({"state_id": "hd-i2", "spec": dict(i_spec, request_id="hd-i2", seed=204)})
-    wan_step.tiered_prefetch({"state_id": "hd-v0"})
-    sd35.advance({"state_id": "hd-i2"})
-    sd35.release({"state_id": "hd-i2"})
-    torch.cuda.synchronize()
-    t_i2_done = (time.perf_counter() - t_start) * 1000.0
-    img_latencies_hd.append(max(0.0, t_i2_done - img_arrivals[2]))
-
-    # Finish remaining 18 steps of hd-v0
-    for _ in range(18):
-        wan_step.advance({"state_id": "hd-v0", "quantum": "step"})
-    wan_step.release({"state_id": "hd-v0"})
-    wan_step.execution = "step"
-    torch.cuda.synchronize()
-    v_finish_hd = (time.perf_counter() - t_start) * 1000.0
-    makespan_hd = v_finish_hd
-
-    # 4. HeteroDiT-Approx (Tiered Pinned Prefetch + Image Micro-Batch + Laxity-Gated DBCache tau=0.16)
-    torch.cuda.synchronize()
-    t_start = time.perf_counter()
-    _fast_prepare_wan(
-        wan_step,
-        "hda-v0",
-        dict(v_spec, cache=True, threshold=0.16, max_continuous=3),
-        v_encoded,
-    )
-    wan_step.advance({"state_id": "hda-v0", "steps": 1})
-    wan_step.tiered_offload({"state_id": "hda-v0", "non_blocking": True})
-    sd35.prepare({"state_id": "hda-i01", "spec": dict(i_spec, request_id="hda-i01", seed=202)})
-    wan_step.tiered_prefetch({"state_id": "hda-v0"})
-    sd35.advance({"state_id": "hda-i01"})
-    sd35.release({"state_id": "hda-i01"})
-    torch.cuda.synchronize()
-    t_i01_hda = (time.perf_counter() - t_start) * 1000.0
-    img_latencies_hda = [max(0.0, t_i01_hda - img_arrivals[0]), max(0.0, t_i01_hda - img_arrivals[1])]
-
-    # Advance 1 step, preempt + Tiered prefetch for i2
-    wan_step.advance({"state_id": "hda-v0", "steps": 1})
-    wan_step.tiered_offload({"state_id": "hda-v0", "non_blocking": True})
-    sd35.prepare({"state_id": "hda-i2", "spec": dict(i_spec, request_id="hda-i2", seed=204)})
-    wan_step.tiered_prefetch({"state_id": "hda-v0"})
-    sd35.advance({"state_id": "hda-i2"})
-    sd35.release({"state_id": "hda-i2"})
-    torch.cuda.synchronize()
-    t_i2_hda = (time.perf_counter() - t_start) * 1000.0
-    img_latencies_hda.append(max(0.0, t_i2_hda - img_arrivals[2]))
-
-    # Finish remaining 18 steps with laxity-gated DBCache tau=0.16 (saves ~1,900 ms)
-    wan_step.advance({"state_id": "hda-v0", "steps": 18})
-    wan_step.release({"state_id": "hda-v0"})
-    torch.cuda.synchronize()
-    v_finish_hda = (time.perf_counter() - t_start) * 1000.0
-    makespan_hda = v_finish_hda
-
-    for name, imgs, vid_lat, mk in [
-        ("Vanilla-xDiT (Non-Preemptive)", img_latencies_vx, v_finish_ms, makespan_vx),
-        ("GenServe-40GB (Step-Preempt + Cold Swap)", img_latencies_gs, v_finish_gs, makespan_gs),
-        ("HeteroDiT-Exact (Ours, Lossless)", img_latencies_hd, v_finish_hd, makespan_hd),
-        ("HeteroDiT-Approx (Ours, Laxity Cache tau=0.16)", img_latencies_hda, v_finish_hda, makespan_hda),
-    ]:
-        img_ontime = sum(1 for x in imgs if x <= img_slo_ms)
-        vid_ontime = 1 if vid_lat <= vid_slo_ms else 0
-        total_ontime = img_ontime + vid_ontime
-        rec = {
-            "system": name,
-            "image_mean_ms": round(sum(imgs) / len(imgs), 1),
-            "image_p99_ms": round(max(imgs), 1),
-            "video_latency_ms": round(vid_lat, 1),
-            "makespan_ms": round(mk, 1),
-            "image_slo_pct": round(100.0 * img_ontime / len(imgs), 1),
-            "video_slo_pct": round(100.0 * vid_ontime, 1),
-            "total_slo_pct": round(100.0 * total_ontime / (len(imgs) + 1), 1),
-        }
+        rec = _replay_summary(completions, img_slo_ms, vid_slo_ms)
+        rec.update(system=name, transfer_events=transfers, reused_steps=reused_steps,
+                   transfer_scope="actual tiered offload/prefetch; no unpinned cold-swap emulation",
+                   quality_status="not_evaluated_in_replay")
         print(
-            f"[Real-Replay] {name:46s} | Img P99={rec['image_p99_ms']:7.1f} ms | "
-            f"Vid={rec['video_latency_ms']:7.1f} ms | Total SLO={rec['total_slo_pct']:5.1f}%",
+            f"[Component-Replay] {name} | Img max (n=3)={rec['image_max_latency_ms']:.1f} ms | "
+            f"Vid={rec['video_latency_ms']:.1f} ms | Total SLO={rec['total_slo_attainment_pct']:.1f}%",
             flush=True,
         )
         replay_results.append(rec)
@@ -440,12 +470,19 @@ def main() -> None:
         "timestamp_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "gpu_name": torch.cuda.get_device_name(0),
         "quality_pareto": ParetoRows,
-        "real_mixed_trace_replay": ReplayRows,
+        "evidence_types": ["measured_microbenchmark", "component_replay"],
+        "component_replay": ReplayRows,
     }
     (out_dir / "QUALITY_AND_REPLAY.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
     md = [
-        "# HeteroDiT Real-GPU Quality-Latency Pareto & Mixed-Workload Replay Report",
+        "# HeteroDiT GPU Quality Microbenchmarks & Component Replay",
+        "",
+        "Evidence: measured_microbenchmark / component_replay; not online scheduling evidence.",
+        f"Replay timing: {REPLAY_SCOPE}.",
+        "All policies use the same prompts/seeds, image flash attention and decoded output mode.",
+        "Tiered transfers are real component calls, not the original GenServe cold-swap implementation.",
+        "Quality reference/self rows are not independent quality passes.",
         "",
         f"- **GPU**: `{payload['gpu_name']}`",
         "",
@@ -462,16 +499,18 @@ def main() -> None:
         )
     md.extend([
         "",
-        "## 2. Real A100 End-to-End Mixed-Modality Trace Replay (`Wan2.1` + Bursty `SD3.5`)",
+        "## 2. Manually Ordered Component Replay (`Wan2.1` + Bursty `SD3.5`)",
         "",
-        "| System | Image Mean Latency (ms) | Image P99 Latency (ms) | Video Latency (ms) | Makespan (ms) | Image SLO% | Video SLO% | Total SLO% |",
+        "Image maximum is based on n=3, not a P99 estimate. Video completion includes full decode.",
+        "",
+        "| Component Policy | Image Mean Latency (ms) | Image Max Latency (ms, n=3) | Video Latency (ms) | Makespan (ms) | Image SLO% | Video SLO% | Total SLO% |",
         "| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |",
     ])
     for r in ReplayRows:
         md.append(
-            f"| `{r['system']}` | {r['image_mean_ms']:.1f} | **{r['image_p99_ms']:.1f}** | "
-            f"**{r['video_latency_ms']:.1f}** | {r['makespan_ms']:.1f} | {r['image_slo_pct']:.1f}% | "
-            f"{r['video_slo_pct']:.1f}% | **{r['total_slo_pct']:.1f}%** |"
+            f"| `{r['system']}` | {r['image_mean_latency_ms']:.1f} | **{r['image_max_latency_ms']:.1f}** | "
+            f"**{r['video_latency_ms']:.1f}** | {r['makespan_ms']:.1f} | {r['image_slo_attainment_pct']:.1f}% | "
+            f"{r['video_slo_attainment_pct']:.1f}% | **{r['total_slo_attainment_pct']:.1f}%** |"
         )
     (out_dir / "QUALITY_REPORT.md").write_text("\n".join(md) + "\n", encoding="utf-8")
     print(f"Wrote {out_dir / 'QUALITY_AND_REPLAY.json'} and {out_dir / 'QUALITY_REPORT.md'}", flush=True)

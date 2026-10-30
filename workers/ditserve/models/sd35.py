@@ -173,7 +173,7 @@ class SD35Backend(FluxBackend):
     def encode_pool_stats(self, _request=None):
         return dict(pool=self.encoder_pool.stats(), encoders_offloaded=self.encoders_offloaded)
 
-    def _prompt_key(self, prompt: str, negative_prompt: str, max_sequence_length: int) -> str:
+    def _prompt_key(self, prompt: str, negative_prompt: str, max_sequence_length: int, do_cfg: bool) -> str:
         return self.encoder_pool.prompt_key(
             modality="t2i",
             model_id=str(self.config.get("model_path", "sd35")),
@@ -181,10 +181,11 @@ class SD35Backend(FluxBackend):
             negative_prompt=negative_prompt,
             max_sequence_length=max_sequence_length,
             dtype=str(self.config.get("dtype", "bfloat16")),
+            do_cfg=do_cfg,
         )
 
     def _ensure_staged(self, prompt: str, negative_prompt: str, max_sequence_length: int, do_cfg: bool) -> dict:
-        key = self._prompt_key(prompt, negative_prompt, max_sequence_length)
+        key = self._prompt_key(prompt, negative_prompt, max_sequence_length, do_cfg)
         if key in self.encoder_pool._entries:
             return dict(key=key, staged=False, cached=True)
         was_offloaded = self.encoders_offloaded

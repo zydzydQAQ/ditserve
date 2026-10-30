@@ -330,7 +330,7 @@ def benchmark_tier0_memory_and_cold_hot_switch(
             "hot_pinned_prefetch_ms": round(statistics.median(prefetch_samples), 3),
             "hot_offload_plus_prefetch_ms": round(hot_offload_plus_prefetch_ms, 3),
             "hot_overlapped_resume_wait_ms": round(statistics.median(overlapped_resume_samples), 3),
-            "state_payload_mb": round(off_info.get("bytes", 0) / (1 << 20), 2),
+            "state_payload_mb": round(off_info.get("transfer_bytes", off_info.get("bytes", 0)) / (1 << 20), 2),
             "speedup_roundtrip_vs_hot": round(cold_full_roundtrip_ms / max(hot_offload_plus_prefetch_ms, 1e-3), 1),
             "speedup_oneway_vs_hot": round(cold_oneway_mean_ms / max(hot_offload_plus_prefetch_ms, 1e-3), 1),
         },

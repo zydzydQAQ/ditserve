@@ -255,7 +255,11 @@ def run_real_4gpu_mixed_replay(rank: int, world: int, local: int) -> dict:
     torch.cuda.synchronize()
     dist.barrier()
     t0 = time.perf_counter()
-    now_ms = lambda: (time.perf_counter() - t0) * 1000.0
+
+    def now_ms() -> float:
+        t = torch.tensor([(time.perf_counter() - t0) * 1000.0], device=device, dtype=torch.float64)
+        dist.broadcast(t, src=0)
+        return float(t.item())
 
     st1 = prep_wan("p1-v0", cache=False)
     wan.advance({"state_id": "p1-v0", "steps": 20, "group": [0, 1, 2, 3], "epoch": 10, "cfg": 1, "ring": 1})

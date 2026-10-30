@@ -1,24 +1,8 @@
 #!/usr/bin/env python3
-"""Real-GPU v2 Optimization Suite & End-to-End HeteroDiT-v2 Evaluation.
+"""GPU v2 component microbenchmarks, estimated communication and component replay.
 
-Benchmarks 4 system & algorithmic optimizations on real A100 GPUs:
-  1. Opt #1: Cross-Node / Cross-Socket Asymmetric INT8 Ring KV Compression
-     (packet compression ratio, pack/unpack kernel overhead, SDPA attention
-     output fidelity across 20 steps with step-aware anchor schedule, and
-     effective Ring P2P communication speedup).
-  2. Opt #2: SD3.5-Medium FlashAttention (SDPA_FLASH vs SDPA_MATH) + True
-     Multi-Prompt Heterogeneous Micro-Batching (batch_size = 1, 2, 4 with
-     distinct prompts fetched from ProactiveEncoderPool and per-request seeds).
-  3. Opt #3: First-Order Taylor Velocity-Compensated Residual Extrapolation
-     vs Zero-Order DBCache at tau in {0.12, 0.16, 0.24} (measuring decoded
-     pixel PSNR / SSIM and latent cosine similarity against exact tau=0.00).
-  4. Opt #4: Stream-Isolated Concurrent 3D-VAE Chunked Decode Overlapping
-     with SD3.5 Denoising vs Sequential Execution (wall-clock latency saving
-     and peak HBM footprint).
-  5. End-to-End Mixed-Workload Trace Replay comparing Vanilla-xDiT,
-     GenServe-40GB, HeteroDiT-v1 (Approx), and HeteroDiT-v2 (All Optimizations:
-     SDPA_FLASH + Multi-Prompt Micro-Batching + Taylor Cache + Stream-Isolated
-     VAE Overlap).
+The manually phased, preencoded replay is not an online scheduling evaluation.
+INT8 codec measurements use synthetic tensors on one device, not network traffic.
 """
 
 from __future__ import annotations
@@ -41,6 +25,12 @@ from ditserve.models.wan.backend import WanBackend
 from ditserve.models.wan.ring_quant import AsymmetricRingQuantizer
 from ditserve.models.wan.taylor_cache import TaylorResidualCompensator
 from ditserve.models.wan.vae_overlap import ConcurrentVAEDecodeStreamer
+from run_hetero_quality_and_replay import (
+    DENOISE_SCOPE, IMAGE_SCOPE, REPLAY_SCOPE, _completion_records, _decode_video,
+    _image_requests, _replay_summary, _run_image_batch, _wait_until_arrival,
+)
+
+TAYLOR_CONFIG = dict(alpha=0.22, damping=0.70, max_norm_ratio=0.10, adaptive_lsq=False)
 
 
 WAN_PATH = os.environ.get(
@@ -144,17 +134,18 @@ def benchmark_opt1_ring_int8_quant(device: str = "cuda:0") -> Dict[str, Any]:
         signal_power = float(torch.mean(out_ref.float() ** 2).item())
         sqnr_db = 10.0 * math.log10(signal_power / max(rmse_attn ** 2, 1e-12))
 
-        # Step-aware 20-step schedule (30 blocks/step * 2 CFG branches = 60 Ring steps/denoising step)
-        # Cross-node 10GbE / RoCE effective BW (~1.05 GB/s measured on jjjkairos) and PCIe (~12.1 GB/s)
-        eth_bw_bytes_per_ms = 1.05 * (1024 ** 3) / 1000.0
-        pcie_bw_bytes_per_ms = 12.1 * (1024 ** 3) / 1000.0
-        calls_per_step = 60  # 30 blocks * 2 CFG
-
+        assumptions = dict(cross_node_bandwidth_gib_s=1.05, cross_socket_bandwidth_gib_s=12.1,
+                           codec_cost_fraction=0.25, calls_per_step=60,
+                           network_transfer_measured=False,
+                           model="bytes/bandwidth + codec_roundtrip_ms * codec_cost_fraction")
+        eth_bw_bytes_per_ms = assumptions["cross_node_bandwidth_gib_s"] * (1024 ** 3) / 1000.0
+        pcie_bw_bytes_per_ms = assumptions["cross_socket_bandwidth_gib_s"] * (1024 ** 3) / 1000.0
+        calls_per_step = assumptions["calls_per_step"]
+        codec_cost = codec_ms * assumptions["codec_cost_fraction"]
         fp16_eth_step_ms = calls_per_step * (orig_bytes / eth_bw_bytes_per_ms)
-        int8_eth_step_ms = calls_per_step * (wire_bytes / eth_bw_bytes_per_ms + codec_ms * 0.25)
-
+        int8_eth_step_ms = calls_per_step * (wire_bytes / eth_bw_bytes_per_ms + codec_cost)
         fp16_pcie_step_ms = calls_per_step * (orig_bytes / pcie_bw_bytes_per_ms)
-        int8_pcie_step_ms = calls_per_step * (wire_bytes / pcie_bw_bytes_per_ms + codec_ms * 0.25)
+        int8_pcie_step_ms = calls_per_step * (wire_bytes / pcie_bw_bytes_per_ms + codec_cost)
 
         results.append(
             {
@@ -168,22 +159,28 @@ def benchmark_opt1_ring_int8_quant(device: str = "cuda:0") -> Dict[str, Any]:
                 "attn_output_cos_sim": round(cos_attn, 6),
                 "attn_output_rmse": round(rmse_attn, 6),
                 "attn_output_sqnr_db": round(sqnr_db, 2),
-                "cross_node_ring_comm_step_fp16_ms": round(fp16_eth_step_ms, 2),
-                "cross_node_ring_comm_step_int8_ms": round(int8_eth_step_ms, 2),
-                "cross_node_comm_speedup": round(fp16_eth_step_ms / int8_eth_step_ms, 3),
-                "cross_socket_ring_comm_step_fp16_ms": round(fp16_pcie_step_ms, 2),
-                "cross_socket_ring_comm_step_int8_ms": round(int8_pcie_step_ms, 2),
-                "cross_socket_comm_speedup": round(fp16_pcie_step_ms / int8_pcie_step_ms, 3),
+                "evidence_type": "measured_microbenchmark_with_estimates",
+                "timing_scope": "single-device synthetic tensor pack+unpack, mean of 40 iterations",
+                "communication_evidence_type": "estimated",
+                "communication_assumptions": assumptions,
+                "estimated_cross_node_ring_comm_step_fp16_ms": round(fp16_eth_step_ms, 2),
+                "estimated_cross_node_ring_comm_step_int8_ms": round(int8_eth_step_ms, 2),
+                "estimated_cross_node_comm_speedup": round(fp16_eth_step_ms / int8_eth_step_ms, 3),
+                "estimated_cross_socket_ring_comm_step_fp16_ms": round(fp16_pcie_step_ms, 2),
+                "estimated_cross_socket_ring_comm_step_int8_ms": round(int8_pcie_step_ms, 2),
+                "estimated_cross_socket_comm_speedup": round(fp16_pcie_step_ms / int8_pcie_step_ms, 3),
             }
         )
         print(
             f"  [Opt #1] {cfg['name']}: {orig_bytes/1024:.0f} KB -> {wire_bytes/1024:.0f} KB "
             f"({comp_ratio:.2f}x), codec={codec_ms:.3f} ms, attn_cos={cos_attn:.6f}, "
-            f"SQNR={sqnr_db:.2f} dB, CrossNode Comm Speedup={fp16_eth_step_ms/int8_eth_step_ms:.2f}x",
+            f"SQNR={sqnr_db:.2f} dB, Estimated CrossNode Comm Speedup={fp16_eth_step_ms/int8_eth_step_ms:.2f}x (no transfer)",
             flush=True,
         )
 
-    return {"configs": results, "summary": quantizer.summary()}
+    return {"evidence_type": "measured_microbenchmark_with_estimates",
+            "timing_scope": "single-device synthetic codec; communication is estimated, no transfer",
+            "configs": results, "summary": quantizer.summary()}
 
 
 def _fast_prepare_wan(wan: WanBackend, spec: dict, req_id: str, cached_payload):
@@ -234,7 +231,7 @@ def benchmark_opt3_taylor_cache(wan: WanBackend, cached_wan_payload) -> List[Dic
     torch.cuda.synchronize()
     ref_ms = (time.perf_counter() - t0) * 1000.0
     ref_latents = ref_state.latents.detach().cpu().float().clone()
-    ref_video, _ = wan.runtime.decode_chunks(ref_state, 5)
+    ref_video = _decode_video(wan, ref_state)
     wan.release({"id": "r", "state_id": ref_id})
 
     results = [
@@ -268,7 +265,7 @@ def benchmark_opt3_taylor_cache(wan: WanBackend, cached_wan_payload) -> List[Dic
         torch.cuda.synchronize()
         z_ms = (time.perf_counter() - t0) * 1000.0
         z_latents = z_state.latents.detach().cpu().float().clone()
-        z_video, _ = wan.runtime.decode_chunks(z_state, 5)
+        z_video = _decode_video(wan, z_state)
         wan.release({"id": "z", "state_id": z_id})
 
         z_reused = sum(1 for ev in z_adv["events"] if ev.get("reused_forwards", 0) > 0)
@@ -303,75 +300,59 @@ def benchmark_opt3_taylor_cache(wan: WanBackend, cached_wan_payload) -> List[Dic
             flush=True,
         )
 
-        # B. First-Order Taylor-Compensated DBCache
-        # Test candidate alphas (-0.22, +0.22) and record the best Taylor trajectory compensation
-        best_taylor_row = None
-        for cand_alpha, adaptive in ((-0.22, False), (0.22, False), (0.25, True)):
-            t_id = f"wan-taylor-{int(tau*100)}-{cand_alpha}-{int(adaptive)}"
-            t_state = _fast_prepare_wan(
-                wan,
-                dict(base_spec, cache=True, threshold=tau, max_continuous=2),
-                t_id,
-                cached_wan_payload,
-            )
-            comp = TaylorResidualCompensator(
-                torch,
-                alpha=cand_alpha,
-                damping=0.70,
-                max_norm_ratio=0.10,
-                adaptive_lsq=adaptive,
-                enabled=True,
-            )
-            comp.monotonic_gate = False
-            torch.cuda.synchronize()
-            t0 = time.perf_counter()
-            t_events = []
-            for _ in range(20):
-                t_events.append(comp.step(wan.runtime, t_state))
-            torch.cuda.synchronize()
-            t_ms = (time.perf_counter() - t0) * 1000.0
-            t_latents = t_state.latents.detach().cpu().float().clone()
-            t_video, _ = wan.runtime.decode_chunks(t_state, 5)
-            wan.release({"id": "t", "state_id": t_id})
+        # Fixed before evaluation and shared by all thresholds, never selected by quality.
+        t_id = f"wan-taylor-{int(tau*100)}"
+        t_state = _fast_prepare_wan(
+            wan, dict(base_spec, cache=True, threshold=tau, max_continuous=2),
+            t_id, cached_wan_payload,
+        )
+        comp = TaylorResidualCompensator(torch, **TAYLOR_CONFIG, enabled=True)
+        comp.monotonic_gate = False
+        torch.cuda.synchronize()
+        t0 = time.perf_counter()
+        t_events = [comp.step(wan.runtime, t_state) for _ in range(20)]
+        torch.cuda.synchronize()
+        t_ms = (time.perf_counter() - t0) * 1000.0
+        t_latents = t_state.latents.detach().cpu().float().clone()
+        t_video = _decode_video(wan, t_state)
+        wan.release({"id": "t", "state_id": t_id})
 
-            t_reused = sum(1 for ev in t_events if ev.get("reused_forwards", 0) > 0)
-            t_cos = float(
-                F.cosine_similarity(
-                    ref_latents.flatten().unsqueeze(0),
-                    t_latents.flatten().unsqueeze(0),
-                ).item()
-            )
-            t_rmse = float(torch.sqrt(torch.mean((ref_latents - t_latents) ** 2)).item())
-            t_psnr = compute_psnr(ref_video, t_video)
-            t_ssim = compute_video_ssim(ref_video, t_video)
-            row = {
-                "mode": "Taylor1stOrder-DBCache",
-                "threshold": tau,
-                "taylor_alpha": cand_alpha,
-                "adaptive_lsq": adaptive,
-                "denoise_ms": round(t_ms, 2),
-                "speedup": round(ref_ms / t_ms, 3),
-                "reused_steps": t_reused,
-                "skip_ratio_pct": round(100.0 * t_reused / 20.0, 1),
-                "latent_cos_sim": round(t_cos, 6),
-                "latent_rmse": round(t_rmse, 6),
-                "video_psnr_db": t_psnr,
-                "video_ssim": t_ssim,
-                "psnr_gain_db": round(t_psnr - z_psnr, 4),
-                "ssim_gain": round(t_ssim - z_ssim, 5),
-            }
-            if best_taylor_row is None or row["video_psnr_db"] > best_taylor_row["video_psnr_db"]:
-                best_taylor_row = row
-
-        results.append(best_taylor_row)
+        t_reused = sum(1 for ev in t_events if ev.get("reused_forwards", 0) > 0)
+        t_cos = float(F.cosine_similarity(
+            ref_latents.flatten().unsqueeze(0), t_latents.flatten().unsqueeze(0),
+        ).item())
+        t_rmse = float(torch.sqrt(torch.mean((ref_latents - t_latents) ** 2)).item())
+        t_psnr = compute_psnr(ref_video, t_video)
+        t_ssim = compute_video_ssim(ref_video, t_video)
+        row = {
+            "mode": "Taylor1stOrder-DBCache",
+            "threshold": tau,
+            "taylor_alpha": TAYLOR_CONFIG["alpha"],
+            "adaptive_lsq": TAYLOR_CONFIG["adaptive_lsq"],
+            "taylor_config": dict(TAYLOR_CONFIG, monotonic_gate=False),
+            "parameter_selection": "fixed_before_evaluation; no test-quality selection",
+            "denoise_ms": round(t_ms, 2),
+            "speedup": round(ref_ms / t_ms, 3),
+            "reused_steps": t_reused,
+            "skip_ratio_pct": round(100.0 * t_reused / 20.0, 1),
+            "latent_cos_sim": round(t_cos, 6),
+            "latent_rmse": round(t_rmse, 6),
+            "video_psnr_db": t_psnr,
+            "video_ssim": t_ssim,
+            "psnr_gain_db": round(t_psnr - z_psnr, 4),
+            "ssim_gain": round(t_ssim - z_ssim, 5),
+        }
+        results.append(row)
         print(
-            f"  [Opt #3] Taylor1stOrder tau={tau:.2f} (alpha={best_taylor_row['taylor_alpha']}): "
-            f"{best_taylor_row['denoise_ms']:.1f} ms ({best_taylor_row['speedup']:.2f}x), "
-            f"PSNR={best_taylor_row['video_psnr_db']:.2f} dB (gain {best_taylor_row['psnr_gain_db']:+.2f} dB), "
-            f"SSIM={best_taylor_row['video_ssim']:.4f} (gain {best_taylor_row['ssim_gain']:+.4f})",
+            f"  [Opt #3] Taylor1stOrder tau={tau:.2f} (fixed alpha={row['taylor_alpha']}): "
+            f"{t_ms:.1f} ms, reused={t_reused}/20, PSNR={t_psnr:.2f} dB, SSIM={t_ssim:.4f}",
             flush=True,
         )
 
+    for row in results:
+        row.update(evidence_type="measured_microbenchmark", timing_scope=DENOISE_SCOPE,
+                   quality_status="reference" if row["threshold"] == 0 else "measured_comparison",
+                   workload_spec=base_spec)
     return results
 
 
@@ -397,128 +378,61 @@ def benchmark_opt2_sd35_flash_and_microbatch(sd35: SD35Backend) -> Dict[str, Any
     sd35.run_micro_batch({"prompts": [prompts[0]], "seeds": [101], "height": 512, "width": 512, "steps": 4, "attention": "flash"})
     torch.cuda.synchronize()
 
-    # 1. Compare single-image (batch_size=1, 12 steps) SDPA_MATH vs SDPA_FLASH
-    res_math_1 = sd35.run_micro_batch({
-        "prompts": [prompts[0]],
-        "seeds": [101],
-        "height": 512,
-        "width": 512,
-        "steps": 12,
-        "attention": "math",
-        "return_images": True,
-    })
+    requests = _image_requests(prompts, seeds)
+    res_math_1 = _run_image_batch(sd35, requests[:1], time.perf_counter(), attention="math", cache=False)
     img_math = res_math_1.pop("images")
-
-    res_flash_1 = sd35.run_micro_batch({
-        "prompts": [prompts[0]],
-        "seeds": [101],
-        "height": 512,
-        "width": 512,
-        "steps": 12,
-        "attention": "flash",
-        "return_images": True,
-    })
+    res_flash_1 = _run_image_batch(sd35, requests[:1], time.perf_counter(), attention="flash", cache=False)
     img_flash = res_flash_1.pop("images")
-
     flash_vs_math_psnr = compute_psnr(img_math, img_flash)
     flash_vs_math_ssim = compute_ssim_frame(img_math[0], img_flash[0])
-    flash_speedup_b1 = round(res_math_1["model_ms"] / res_flash_1["model_ms"], 3)
-    print(
-        f"  [Opt #2] Batch=1 (12 steps): SDPA_MATH={res_math_1['model_ms']:.1f} ms -> "
-        f"SDPA_FLASH={res_flash_1['model_ms']:.1f} ms ({flash_speedup_b1:.2f}x speedup, "
-        f"PSNR={flash_vs_math_psnr:.2f} dB, SSIM={flash_vs_math_ssim:.4f})",
-        flush=True,
-    )
 
-    # 2. Multi-Prompt Micro-Batching (serving 4 distinct prompts arriving in a burst)
-    # 2a. Sequential 4x Batch=1 (SDPA_MATH)
-    t0 = time.perf_counter()
-    for p, s in zip(prompts, seeds):
-        sd35.run_micro_batch({"prompts": [p], "seeds": [s], "height": 512, "width": 512, "steps": 12, "attention": "math"})
-    torch.cuda.synchronize()
-    seq4_math_ms = (time.perf_counter() - t0) * 1000.0
-
-    # 2b. Sequential 4x Batch=1 (SDPA_FLASH)
-    t0 = time.perf_counter()
-    for p, s in zip(prompts, seeds):
-        sd35.run_micro_batch({"prompts": [p], "seeds": [s], "height": 512, "width": 512, "steps": 12, "attention": "flash"})
-    torch.cuda.synchronize()
-    seq4_flash_ms = (time.perf_counter() - t0) * 1000.0
-
-    # 2c. 2x Micro-Batch=2 (SDPA_FLASH, distinct prompts)
-    torch.cuda.reset_peak_memory_stats()
-    t0 = time.perf_counter()
-    mb2_a = sd35.run_micro_batch({"prompts": prompts[:2], "seeds": seeds[:2], "height": 512, "width": 512, "steps": 12, "attention": "flash"})
-    mb2_b = sd35.run_micro_batch({"prompts": prompts[2:], "seeds": seeds[2:], "height": 512, "width": 512, "steps": 12, "attention": "flash"})
-    torch.cuda.synchronize()
-    mb2_total_ms = (time.perf_counter() - t0) * 1000.0
-    mb2_peak_hbm = round(torch.cuda.max_memory_allocated() / (1 << 20), 2)
-
-    # 2d. 1x Micro-Batch=4 (SDPA_FLASH, all 4 distinct prompts in one pass)
-    torch.cuda.reset_peak_memory_stats()
-    mb4 = sd35.run_micro_batch({"prompts": prompts, "seeds": seeds, "height": 512, "width": 512, "steps": 12, "attention": "flash"})
-    mb4_total_ms = mb4["model_ms"]
-    mb4_peak_hbm = round(torch.cuda.max_memory_allocated() / (1 << 20), 2)
-
-    print(
-        f"  [Opt #2] 4 Distinct Images Total Latency: "
-        f"Seq-Math={seq4_math_ms:.1f} ms ({seq4_math_ms/4:.1f} ms/img) | "
-        f"Seq-Flash={seq4_flash_ms:.1f} ms ({seq4_flash_ms/4:.1f} ms/img) | "
-        f"2xMicroBatch2-Flash={mb2_total_ms:.1f} ms ({mb2_total_ms/4:.1f} ms/img) | "
-        f"1xMicroBatch4-Flash={mb4_total_ms:.1f} ms ({mb4_total_ms/4:.1f} ms/img, {seq4_math_ms/mb4_total_ms:.2f}x speedup)",
-        flush=True,
-    )
+    rows = []
+    for name, batch_size, attention in (
+        ("Sequential-4xB1-SDPA_MATH", 1, "math"),
+        ("Sequential-4xB1-SDPA_FLASH", 1, "flash"),
+        ("MicroBatch-2xB2-SDPA_FLASH", 2, "flash"),
+        ("MicroBatch-1xB4-SDPA_FLASH", 4, "flash"),
+    ):
+        torch.cuda.synchronize()
+        torch.cuda.reset_peak_memory_stats()
+        t0 = time.perf_counter()
+        completions, batch_latencies = [], []
+        for offset in range(0, len(requests), batch_size):
+            batch = _run_image_batch(sd35, requests[offset:offset + batch_size], t0,
+                                     attention=attention, cache=False)
+            batch.pop("images")
+            completions.extend(batch["requests"])
+            batch_latencies.append(batch["batch_latency_ms"])
+        total_ms = max(r["finish_ms"] for r in completions)
+        baseline_ms = rows[0]["total_4img_ms"] if rows else total_ms
+        row = dict(
+            evidence_type="measured_microbenchmark", timing_scope=IMAGE_SCOPE,
+            mode=name, batch_size=batch_size, attention=attention,
+            requests=completions, output_count=sum(r["output_count"] for r in completions),
+            total_4img_ms=total_ms, batch_latencies_ms=batch_latencies,
+            amortized_ms_per_image=total_ms / len(completions),
+            throughput_img_s=1000.0 * len(completions) / total_ms,
+            speedup_vs_seq_math=baseline_ms / total_ms,
+            peak_hbm_mb=round(torch.cuda.max_memory_allocated() / (1 << 20), 2),
+        )
+        rows.append(row)
+        print(f"  [Opt #2] {name}: completion={total_ms:.1f} ms, "
+              f"amortized={row['amortized_ms_per_image']:.1f} ms/img", flush=True)
 
     return {
+        "evidence_type": "measured_microbenchmark",
+        "timing_scope": IMAGE_SCOPE,
         "single_image_math_vs_flash": {
-            "math_ms": res_math_1["model_ms"],
-            "flash_ms": res_flash_1["model_ms"],
-            "speedup": flash_speedup_b1,
+            "math_ms": res_math_1["batch_latency_ms"],
+            "flash_ms": res_flash_1["batch_latency_ms"],
+            "speedup": res_math_1["batch_latency_ms"] / res_flash_1["batch_latency_ms"],
+            "math_requests": res_math_1["requests"],
+            "flash_requests": res_flash_1["requests"],
+            "quality_status": "measured_comparison",
             "flash_vs_math_psnr_db": flash_vs_math_psnr,
             "flash_vs_math_ssim": flash_vs_math_ssim,
         },
-        "four_distinct_prompts_burst": [
-            {
-                "mode": "Sequential-4xB1-SDPA_MATH",
-                "batch_size": 1,
-                "attention": "math",
-                "total_4img_ms": round(seq4_math_ms, 2),
-                "per_image_ms": round(seq4_math_ms / 4.0, 2),
-                "throughput_img_s": round(4000.0 / seq4_math_ms, 3),
-                "speedup_vs_seq_math": 1.0,
-            },
-            {
-                "mode": "Sequential-4xB1-SDPA_FLASH",
-                "batch_size": 1,
-                "attention": "flash",
-                "total_4img_ms": round(seq4_flash_ms, 2),
-                "per_image_ms": round(seq4_flash_ms / 4.0, 2),
-                "throughput_img_s": round(4000.0 / seq4_flash_ms, 3),
-                "speedup_vs_seq_math": round(seq4_math_ms / seq4_flash_ms, 3),
-            },
-            {
-                "mode": "MicroBatch-2xB2-SDPA_FLASH",
-                "batch_size": 2,
-                "attention": "flash",
-                "total_4img_ms": round(mb2_total_ms, 2),
-                "per_image_ms": round(mb2_total_ms / 4.0, 2),
-                "throughput_img_s": round(4000.0 / mb2_total_ms, 3),
-                "speedup_vs_seq_math": round(seq4_math_ms / mb2_total_ms, 3),
-                "peak_hbm_mb": mb2_peak_hbm,
-                "distinct_prompts_per_batch": mb2_a["distinct_prompts"],
-            },
-            {
-                "mode": "MicroBatch-1xB4-SDPA_FLASH",
-                "batch_size": 4,
-                "attention": "flash",
-                "total_4img_ms": round(mb4_total_ms, 2),
-                "per_image_ms": round(mb4_total_ms / 4.0, 2),
-                "throughput_img_s": round(4000.0 / mb4_total_ms, 3),
-                "speedup_vs_seq_math": round(seq4_math_ms / mb4_total_ms, 3),
-                "peak_hbm_mb": mb4_peak_hbm,
-                "distinct_prompts_per_batch": mb4["distinct_prompts"],
-            },
-        ],
+        "four_distinct_prompts_burst": rows,
     }
 
 
@@ -552,7 +466,7 @@ def benchmark_opt4_vae_stream_overlap(
 
     t0 = time.perf_counter()
     t_vae0 = time.perf_counter()
-    seq_video, seq_vae_info = wan.runtime.decode_chunks(s_seq, 5)
+    seq_video = _decode_video(wan, s_seq)
     torch.cuda.synchronize()
     seq_vae_ms = (time.perf_counter() - t_vae0) * 1000.0
 
@@ -607,6 +521,9 @@ def benchmark_opt4_vae_stream_overlap(
     )
 
     return {
+        "evidence_type": "measured_microbenchmark",
+        "timing_scope": "preencoded: excludes encoding and video denoise; complete video decode + image pipeline to NumPy",
+        "quality_status": "measured_video_comparison",
         "sequential_vae_ms": round(seq_vae_ms, 2),
         "sequential_sd35_ms": round(seq_sd_ms, 2),
         "sequential_wall_ms": round(seq_wall_ms, 2),
@@ -626,8 +543,8 @@ def benchmark_e2e_v2_trace_replay(
     sd35: SD35Backend,
     cached_wan_payload,
 ) -> Dict[str, Any]:
-    """Run End-to-End Mixed-Modality Trace Replay with HeteroDiT-v2 (All Optimizations)."""
-    print("[E2E Replay] Running HeteroDiT-v2 Mixed-Modality Trace Replay...", flush=True)
+    """Preencoded component replay with manual phases, not an online scheduler."""
+    print("[Component Replay] Running v2 manual mixed-modality phases...", flush=True)
     # Workload:
     #   t = 0 ms:     Wan2.1 video request (832x480, 17 frames, 20 steps, SLO = 17,000 ms)
     #   t = 1,200 ms: Burst of 2 SD3.5 image requests (img-1, img-2; arrived within micro-batch window, SLO = 4,500 ms)
@@ -655,148 +572,99 @@ def benchmark_e2e_v2_trace_replay(
     sd35.offload_encoders({})
     torch.cuda.empty_cache()
 
-    v_id = "v2-e2e-wan"
-    v_state = _fast_prepare_wan(wan, wan_spec, v_id, cached_wan_payload)
-    comp = TaylorResidualCompensator(torch, alpha=-0.22, damping=0.70, max_norm_ratio=0.10, adaptive_lsq=False, enabled=True)
+    images = _image_requests(img_prompts, [101, 202, 303], [1200.0, 1350.0, 3500.0])
+    video_request = dict(request_id="v0", modality="video", arrival_ms=0.0, spec=wan_spec)
+    v_id = "v2-replay-wan"
+    comp = TaylorResidualCompensator(torch, **TAYLOR_CONFIG, enabled=True)
     comp.monotonic_gate = False
-
     torch.cuda.synchronize()
     torch.cuda.reset_peak_memory_stats()
     t_start = time.perf_counter()
-
-    def now_ms() -> float:
+    v_start_ms = _wait_until_arrival(t_start, video_request["arrival_ms"])
+    v_state = _fast_prepare_wan(wan, wan_spec, v_id, cached_wan_payload)
+    completions, events = [], []
+    try:
+        for steps, members in ((3, images[:2]), (4, images[2:])):
+            for _ in range(steps):
+                events.append(comp.step(wan.runtime, v_state))
+            batch = _run_image_batch(sd35, members, t_start, attention="flash", cache=False)
+            batch.pop("images")
+            completions.extend(batch["requests"])
+        for _ in range(13):
+            events.append(comp.step(wan.runtime, v_state))
+        video = _decode_video(wan, v_state)
         torch.cuda.synchronize()
-        return (time.perf_counter() - t_start) * 1000.0
+        finish_ms = (time.perf_counter() - t_start) * 1000.0
+        completions.extend(_completion_records([video_request], video, v_start_ms, finish_ms))
+        peak_hbm_mb = round(torch.cuda.max_memory_allocated() / (1 << 20), 2)
+    finally:
+        wan.release({"id": "v2", "state_id": v_id})
 
-    # Phase 1: Run Wan2.1 steps 0..2 (~1,450 ms -> burst of img-1 @ 1200ms and img-2 @ 1350ms has arrived!)
-    for _ in range(3):
-        comp.step(wan.runtime, v_state)
-
-    # Preempt Wan2.1 at step boundary and serve burst [img-1, img-2] in ONE micro-batch with SDPA_FLASH!
-    sd35.run_micro_batch({
-        "prompts": img_prompts[:2],
-        "seeds": [101, 202],
-        "height": 512,
-        "width": 512,
-        "steps": 12,
-        "attention": "flash",
-    })
-    t_img12_done = now_ms()
-    img1_lat = t_img12_done - 1200.0
-    img2_lat = t_img12_done - 1350.0
-
-    # Phase 2: Resume Wan2.1 steps 3..6 (~3,700 ms -> img-3 @ 3500ms has arrived!)
-    for _ in range(4):
-        comp.step(wan.runtime, v_state)
-
-    # Preempt Wan2.1 and serve img-3 with SDPA_FLASH!
-    sd35.run_micro_batch({
-        "prompts": [img_prompts[2]],
-        "seeds": [303],
-        "height": 512,
-        "width": 512,
-        "steps": 12,
-        "attention": "flash",
-    })
-    t_img3_done = now_ms()
-    img3_lat = t_img3_done - 3500.0
-
-    # Phase 3: Finish remaining 13 steps of Wan2.1 with Taylor-compensated DBCache + Chunked 3D-VAE decode
-    for _ in range(13):
-        comp.step(wan.runtime, v_state)
-    wan.runtime.decode_chunks(v_state, 5)
-    vid_lat = now_ms()
-    peak_hbm_mb = round(torch.cuda.max_memory_allocated() / (1 << 20), 2)
-    wan.release({"id": "v2", "state_id": v_id})
-
-    img_lats = [img1_lat, img2_lat, img3_lat]
-    img_slo = 4500.0
-    vid_slo = 17000.0
-    img_ontime = sum(1 for x in img_lats if x <= img_slo)
-    vid_ontime = int(vid_lat <= vid_slo)
-
-    res = {
-        "policy": "HeteroDiT-v2 (Flash + MicroBatch + TaylorCache + StreamVAE)",
-        "video_latency_ms": round(vid_lat, 2),
-        "image_latencies_ms": [round(x, 2) for x in img_lats],
-        "image_mean_latency_ms": round(float(np.mean(img_lats)), 2),
-        "image_p99_latency_ms": round(float(np.max(img_lats)), 2),
-        "image_slo_attainment_pct": round(100.0 * img_ontime / 3.0, 2),
-        "video_slo_attainment_pct": round(100.0 * vid_ontime, 2),
-        "total_slo_attainment_pct": round(100.0 * (img_ontime + vid_ontime) / 4.0, 2),
-        "peak_hbm_mb": peak_hbm_mb,
-    }
-    print(
-        f"  [E2E Replay] HeteroDiT-v2: Image Mean={res['image_mean_latency_ms']:.1f} ms, "
-        f"Image P99={res['image_p99_latency_ms']:.1f} ms, Video={res['video_latency_ms']:.1f} ms, "
-        f"Total SLO={res['total_slo_attainment_pct']:.1f}%, Peak HBM={peak_hbm_mb:.1f} MB",
-        flush=True,
-    )
+    res = _replay_summary(completions, 4500.0, 17000.0)
+    res.update(policy="v2 component replay: Flash + MicroBatch + fixed TaylorCache + sequential decode",
+               peak_hbm_mb=peak_hbm_mb, quality_status="not_evaluated_in_replay",
+               taylor_config=dict(TAYLOR_CONFIG, monotonic_gate=False),
+               reused_steps=sum(ev.get("reused_forwards", 0) > 0 for ev in events))
+    print(f"  [Component Replay] v2: Image max (n=3)={res['image_max_latency_ms']:.1f} ms, "
+          f"Video={res['video_latency_ms']:.1f} ms", flush=True)
     return res
 
 
 def write_markdown_report(out_dir: Path, payload: Dict[str, Any]) -> None:
     lines = [
-        "# HeteroDiT v2 Full-Stack Optimization Report (Real A100 GPU Measurements)",
+        "# HeteroDiT v2 Component Microbenchmarks, Estimates & Replay",
         "",
-        f"- **Device**: `{payload['device_name']}`",
+        f"Device: `{payload['device_name']}`. GPU component evidence is not online scheduling evidence.",
         "",
-        "## 1. Opt #1: Cross-Node / Cross-Socket Asymmetric INT8 Ring KV Compression",
+        "## 1. INT8 codec: measured_microbenchmark_with_estimates",
         "",
-        "| 2D-USP Config | KV Tensor Shape | FP16 Size (KB) | INT8 Packet (KB) | Compression | Codec Overhead (ms) | SDPA Output `cos_sim` | SQNR (dB) | Cross-Node Comm Speedup |",
-        "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+        "Codec and attention fidelity use single-device synthetic tensors. No network transfer was measured.",
+        "Communication is estimated: assumed bandwidth 1.05/12.1 GiB/s (node/socket), 60 calls/step,",
+        "with only 0.25 of measured codec cost charged per call. These are assumptions, not link measurements.",
+        "",
+        "| Config | Compression | Codec roundtrip mean, n=40 (ms) | Attention cosine | Estimated cross-node speedup |",
+        "| --- | ---: | ---: | ---: | ---: |",
     ]
     for r in payload["opt1_ring_int8"]["configs"]:
-        lines.append(
-            f"| `{r['config']}` | `{r['kv_shape']}` | {r['orig_kb']:.1f} | {r['wire_kb']:.1f} | "
-            f"**{r['compression_ratio']:.2f}x** (`-{r['bandwidth_saving_pct']:.1f}%`) | {r['codec_roundtrip_ms']:.3f} | "
-            f"**{r['attn_output_cos_sim']:.6f}** | {r['attn_output_sqnr_db']:.2f} | **{r['cross_node_comm_speedup']:.2f}x** |"
-        )
-
+        lines.append(f"| {r['config']} | {r['compression_ratio']:.2f}x | {r['codec_roundtrip_ms']:.3f} | "
+                     f"{r['attn_output_cos_sim']:.6f} | {r['estimated_cross_node_comm_speedup']:.2f}x |")
     lines.extend([
+        "", "## 2. SD3.5 image microbenchmarks: measured_microbenchmark", "",
+        IMAGE_SCOPE,
+        "Amortized cost is not request latency. JSON retains each batch completion latency and request timestamps.",
         "",
-        "## 2. Opt #2: `SD3.5-Medium` `SDPA_FLASH` + True Multi-Prompt Heterogeneous Micro-Batching",
-        "",
-        "| Execution Mode (4 Distinct Prompts, 12 Steps) | Batch Size | Attention | Total 4-Image Latency (ms) | Per-Image Latency (ms/img) | Throughput (img/s) | Speedup vs Seq-Math |",
-        "| --- | ---: | --- | ---: | ---: | ---: | ---: |",
+        "| Mode | Batch size | Total 4-image completion (ms) | Amortized ms/image | Throughput (img/s) | Speedup vs Seq-Math |",
+        "| --- | ---: | ---: | ---: | ---: | ---: |",
     ])
     for r in payload["opt2_sd35_flash_microbatch"]["four_distinct_prompts_burst"]:
-        lines.append(
-            f"| `{r['mode']}` | {r['batch_size']} | `{r['attention']}` | {r['total_4img_ms']:.1f} | "
-            f"**{r['per_image_ms']:.1f}** | {r['throughput_img_s']:.2f} | **{r['speedup_vs_seq_math']:.2f}x** |"
-        )
-
+        lines.append(f"| {r['mode']} | {r['batch_size']} | {r['total_4img_ms']:.1f} | "
+                     f"{r['amortized_ms_per_image']:.1f} | {r['throughput_img_s']:.2f} | {r['speedup_vs_seq_math']:.2f}x |")
     lines.extend([
+        "", "## 3. Taylor cache: measured_microbenchmark", "", DENOISE_SCOPE,
+        f"Taylor parameters fixed before evaluation across all three thresholds: {TAYLOR_CONFIG}; monotonic_gate=False.",
+        "No selection by test quality. Reference/self rows are not independent quality passes.",
         "",
-        "## 3. Opt #3: First-Order Taylor Velocity-Compensated Residual Extrapolation vs Zero-Order DBCache",
-        "",
-        "| Cache Mode | Threshold ($\\tau$) | Reused Steps | Denoise Latency (ms) | Speedup | Latent `cos_sim` | Video PSNR (dB) | Video SSIM |",
-        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+        "| Mode | Tau | Reused steps | Denoise (ms) | Speedup | PSNR (dB) | SSIM | Quality status |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
     ])
     for r in payload["opt3_taylor_cache"]:
-        lines.append(
-            f"| `{r['mode']}` | `{r['threshold']:.2f}` | {r['reused_steps']}/20 (`{r['skip_ratio_pct']:.0f}%`) | "
-            f"{r['denoise_ms']:.1f} | {r['speedup']:.2f}x | {r['latent_cos_sim']:.6f} | "
-            f"**{r['video_psnr_db']:.2f}** | **{r['video_ssim']:.4f}** |"
-        )
-
+        lines.append(f"| {r['mode']} | {r['threshold']:.2f} | {r['reused_steps']}/20 | "
+                     f"{r['denoise_ms']:.1f} | {r['speedup']:.2f}x | {r['video_psnr_db']:.2f} | "
+                     f"{r['video_ssim']:.4f} | {r['quality_status']} |")
     ovl = payload["opt4_vae_stream_overlap"]
     lines.extend([
-        "",
-        "## 4. Opt #4: Stream-Isolated 3D-VAE Chunked Decode Overlapping with `SD3.5` Denoising",
-        "",
-        f"- **Sequential (`3D-VAE Decode` + `SD3.5 Denoise`)**: `{ovl['sequential_wall_ms']:.1f} ms` (`VAE={ovl['sequential_vae_ms']:.1f} ms` + `SD3.5={ovl['sequential_sd35_ms']:.1f} ms`), Peak HBM `{ovl['sequential_peak_hbm_mb']:.1f} MB`",
-        f"- **Stream-Isolated Concurrent Overlap**: **`{ovl['overlapped_wall_ms']:.1f} ms`** (Saved **`{ovl['saved_ms']:.1f} ms`**, **`{ovl['speedup']:.2f}x`** speedup), Peak HBM `{ovl['overlapped_peak_hbm_mb']:.1f} MB`, Output Max Diff `{ovl['output_max_abs_diff']:.2e}`",
-        "",
-        "## 5. End-to-End Mixed-Modality Trace Replay (`HeteroDiT-v2`)",
-        "",
+        "", "## 4. VAE overlap: measured_microbenchmark", "", ovl["timing_scope"],
+        f"Sequential wall: {ovl['sequential_wall_ms']:.1f} ms; overlapped wall: {ovl['overlapped_wall_ms']:.1f} ms; "
+        f"speedup: {ovl['speedup']:.2f}x; video output max diff: {ovl['output_max_abs_diff']:.2e}.",
+        "", "## 5. Manually Ordered Component Replay: component_replay", "", REPLAY_SCOPE,
+        "Known prompts preencoded before the trace; no online scheduler or stream-overlapped VAE in this replay.",
+        "Image max uses n=3, not a P99 estimate. Replay quality was not evaluated.",
     ])
-    e2e = payload["e2e_v2_replay"]
-    lines.append(
-        f"- **`{e2e['policy']}`**: Image Mean **`{e2e['image_mean_latency_ms']:.1f} ms`**, "
-        f"Image P99 **`{e2e['image_p99_latency_ms']:.1f} ms`**, Video **`{e2e['video_latency_ms']:.1f} ms`**, "
-        f"Total SLO Attainment **`{e2e['total_slo_attainment_pct']:.1f}%`**, Peak HBM **`{e2e['peak_hbm_mb']:.1f} MB`**"
-    )
+    replay = payload["component_replay_v2"]
+    lines.append(f"{replay['policy']}: image mean {replay['image_mean_latency_ms']:.1f} ms, "
+                 f"image max (n=3) {replay['image_max_latency_ms']:.1f} ms, "
+                 f"video {replay['video_latency_ms']:.1f} ms, reused steps {replay['reused_steps']}/20, "
+                 f"total SLO {replay['total_slo_attainment_pct']:.1f}%.")
     (out_dir / "V2_OPTIMIZATION_REPORT.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -873,7 +741,7 @@ def main() -> None:
         "opt2_sd35_flash_microbatch": opt2_res,
         "opt3_taylor_cache": opt3_res,
         "opt4_vae_stream_overlap": opt4_res,
-        "e2e_v2_replay": e2e_res,
+        "component_replay_v2": e2e_res,
     }
     out_json = args.out_dir / "V2_OPTIMIZATIONS.json"
     out_json.write_text(json.dumps(payload, indent=2), encoding="utf-8")

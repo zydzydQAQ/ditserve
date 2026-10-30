@@ -552,6 +552,72 @@ class NativeStudyTest(unittest.TestCase):
         rows = {row["request_id"]: row for row in cell["requests"]}
         self.assertTrue(any(row.get("batched", 0) >= 2 for name, row in rows.items() if name.startswith("i")))
 
+    def test_cluster_atomic_batch_preserves_member_outputs_and_specs(self):
+        phase = self.cluster_phase("static_sp1", gpus=1, options=dict(image_batch=4))
+        phase["profile"]["classes"]["image"]["batch_ms"] = {"2": 25, "4": 30}
+        phase["workload"] = [dict(request_id=f"img-{i}", kind="image", worker="i0", **{"class": "image"},
+            arrival_ms=0, slo_ms=20000, output_mode="digest",
+            spec=dict(prompt=f"prompt-{i}", seed=100+i, steps=1, height=32 if i < 2 else 48)) for i in range(4)]
+        result = self.run_study(self.config([phase], workers=self.cluster_workers(1)), name="member-batches")
+        self.assert_completed(result)
+        rows = result["phases"][0]["cells"][0]["requests"]
+        self.assertEqual(len(rows), 4)
+        hashes = set()
+        for row in rows:
+            self.assertEqual(row["batched"], 2)
+            self.assertEqual(len(row["outputs"]), 1)
+            output = row["outputs"][0]
+            self.assertEqual(output["request_id"], row["request_id"])
+            self.assertEqual(output["generation"], row["generation"])
+            self.assertEqual(output["output_count"], 1)
+            hashes.add(output["output"]["sha256"])
+            self.assertEqual(row["model_time_scope"], "amortized_batch_cost")
+        self.assertEqual(len(hashes), 4)
+
+    def test_cluster_ring_assignment_reaches_every_worker(self):
+        phase = self.cluster_phase("block_elastic", options=dict(sp_transport="export", forms=["u2r2"]))
+        phase["workload"] = [phase["workload"][0]]
+        result = self.run_study(self.config([phase], workers=self.cluster_workers()), name="ring-applied")
+        self.assert_completed(result)
+        row = result["phases"][0]["cells"][0]["requests"][0]
+        self.assertTrue(row["execution"])
+        for action in row["execution"]:
+            self.assertEqual(action["planned_form"], "u2r2")
+            self.assertEqual(action["applied"]["ring"], 2)
+            self.assertEqual(action["applied"]["degree"], 4)
+
+    def test_cluster_pinned_rejects_parallel_form_instead_of_rewriting_it(self):
+        phase = self.cluster_phase("block_elastic", options=dict(sp_transport="pinned", forms=["u2r2"]))
+        result = self.run_study(self.config([phase], workers=self.cluster_workers()), name="pinned-ring")
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("pinned transport", json.dumps(result["failures"]))
+
+    def test_cluster_approx_applies_step_cache_threshold(self):
+        phase = self.cluster_phase("heterodit_approx", gpus=1,
+            options=dict(sp_transport="pinned", cache_thresholds=[0.12], tiered_memory=False))
+        phase["workload"] = [phase["workload"][0]]
+        phase["workload"][0]["slo_ms"] = 1
+        phase["profile"]["classes"]["video"]["cache_skip_table"] = {"0.12": 0.2}
+        result = self.run_study(self.config([phase], workers=self.cluster_workers(1)), name="applied-cache")
+        self.assert_completed(result)
+        row = result["phases"][0]["cells"][0]["requests"][0]
+        self.assertNotIn("blocks", row["action_ms"])
+        self.assertTrue(row["execution"])
+        self.assertTrue(all(action["applied"]["cache_threshold"] == 0.12 for action in row["execution"]))
+
+    def test_cluster_tiered_hints_execute_offload_before_image_and_restore_before_video(self):
+        phase = self.cluster_phase("heterodit_exact", gpus=1,
+            options=dict(sp_transport="pinned", tiered_memory=True, quantum_ms=100))
+        phase["workload"] = [phase["workload"][0], phase["workload"][2]]
+        phase["workload"][1].update(arrival_ms=200, slo_ms=1000)
+        phase["warmup"] = [dict(worker=name, spec=dict(prompt="warmup", steps=1)) for name in ("v0", "i0")]
+        result = self.run_study(self.config([phase], workers=self.cluster_workers(1)), name="tiered-pinned")
+        self.assert_completed(result)
+        row = result["phases"][0]["cells"][0]["requests"][0]
+        self.assertIn("state_moves", row, json.dumps(row, indent=2))
+        self.assertEqual([move["kind"] for move in row["state_moves"]], ["tiered_offload", "tiered_prefetch"])
+        self.assertEqual(row["status"], "completed")
+
     def test_cluster_continuous_batch_late_join_early_exit_and_failure(self):
         def phase(batch):
             value = self.cluster_phase("static_sp1", gpus=1, options=dict(continuous_batch=batch))

@@ -46,6 +46,8 @@ def _model_capabilities(name, config, backend):
                        "sd35": "xFuserSD3Transformer2DWrapper"}[name],
         quanta=quanta, atomic_pipeline=atomic,
         continuous_batch=name == "sana" and not atomic,
+        request_batch=name == "sd35" or (name == "sana" and atomic),
+        dynamic_cache=name == "wan" and execution == "step",
         batch="fixed" if name != "sana" or atomic else "ragged_continuous",
         migration=[] if name != "wan" else ["state"] + ([] if execution == "step" else ["block"]),
         parallel=dict(sp_degrees=[1, 2, 4, 8] if name == "wan" else [1], cfg=name == "wan"),

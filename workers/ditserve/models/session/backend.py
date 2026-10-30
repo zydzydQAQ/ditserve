@@ -126,8 +126,31 @@ class SessionBackend(Backend):
     def generate_batch(self, request):
         if not self.pipeline_mode:
             raise ValueError("batch execution requires Sana pipeline mode")
-        output, service = self.runtime.generate_batch(request["prompts"], seeds=request["seeds"])
-        return dict(output=self.persist(output, request), service=service, qualified=False)
+        members = request.get("requests")
+        if members is not None:
+            if not members or len({m["request_id"] for m in members}) != len(members):
+                raise ValueError("batch request IDs must be distinct")
+            recipe = dict(height=1024, width=1024, steps=2, guidance_scale=4.5, frames=1, batch_size=1)
+            for member in members:
+                if any(member["spec"].get(key, value) != value for key, value in recipe.items()):
+                    raise ValueError("Sana pipeline batch requires its fixed generation recipe")
+                if member["spec"].get("negative_prompt", ""):
+                    raise ValueError("Sana pipeline batch does not accept a negative prompt")
+            prompts = [m["spec"]["prompt"] for m in members]
+            seeds = [m["spec"].get("seed", 0) for m in members]
+        else:
+            prompts, seeds = request["prompts"], request["seeds"]
+        output, service = self.runtime.generate_batch(prompts, seeds=seeds)
+        if members is None:
+            return dict(output=self.persist(output, request), service=service, qualified=False)
+        if len(output) != len(members):
+            raise RuntimeError("model output count differs from batch request count")
+        results = [dict(request_id=m["request_id"], output_count=1,
+                        output=self.persist(output[i:i + 1], dict(id=request["id"], state_id=m["request_id"],
+                                                                 output_mode=m["output_mode"])),
+                        generation=dict(m["spec"], seed=seeds[i])) for i, m in enumerate(members)]
+        self.release_cache()
+        return dict(results=results, service=service, qualified=False)
 
     def release(self, request):
         state = self.state(request)

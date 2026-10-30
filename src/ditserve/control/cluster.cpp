@@ -41,8 +41,8 @@ Policy parse(const std::string& name) {
     else if (name == "block_elastic") policy.elastic = policy.blocks = true;
     else if (name == "round_elastic") policy.elastic = policy.rounds = true;
     else if (name == "knapsack_dp" || name == "heterodit_exact") policy.elastic = policy.blocks = policy.knapsack = true;
-    else if (name == "heterodit_approx") policy.elastic = policy.blocks = policy.knapsack = policy.approx = true;
-    else if (name == "heterodit_v3") policy.elastic = policy.blocks = policy.knapsack = policy.approx = policy.v3 = true;
+    else if (name == "heterodit_approx") policy.elastic = policy.knapsack = policy.approx = true;
+    else if (name == "heterodit_v3") policy.elastic = policy.knapsack = policy.approx = policy.v3 = true;
     else throw std::invalid_argument("unknown cluster policy: " + name);
     return policy;
 }
@@ -738,6 +738,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                 for (std::size_t j = index + 1; j < rows.size() && static_cast<int>(members.size()) < max_batch; ++j) {
                     const Json& q = *rows[j];
                     if (q.at("kind") != "image" || taken.count(&q) || q.at("class") != r.at("class")) continue;
+                    if (r.contains("batch_spec") && q.value("batch_spec", Json::object()) != r.at("batch_spec")) continue;
                     const double service = cost.batch_ms(klass, static_cast<int>(members.size()) + 1) + cost.quantum_overhead_ms();
                     bool fits = now + service <= number_field(q, "deadline_ms");
                     for (const Json* m : members) fits = fits && now + service <= number_field(*m, "deadline_ms");
@@ -779,6 +780,14 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                 Json assignment = {{"request_id", id}, {"group", current}, {"degree", form.degree()}, {"form", form_name(form)},
                                    {"quantum", video_quantum(klass, form, sp_groups(form), &current)},
                                    {"resize", false}, {"reason", "resume"}};
+                if (policy.approx) {
+                    double threshold = 0.0;
+                    for (double tau : cache_thresholds) {
+                        threshold = tau;
+                        if (now + estimate(r, form, sp_groups(form), &current, tau) <= number_field(r, "deadline_ms")) break;
+                    }
+                    assignment["cache_threshold"] = threshold;
+                }
                 if (pair_of.count(&r)) {
                     const Json* q = pair_of.at(&r);
                     assignment["pair"] = q->at("request_id");
@@ -988,7 +997,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         Json assignment = {{"request_id", id}, {"group", chosen}, {"degree", form.degree()}, {"form", form_name(form)},
                            {"quantum", video_quantum(klass, form, sp_groups(form), &chosen, chosen_tau)},
                            {"resize", prepared && chosen != current}, {"reason", prepared ? "regroup" : "admit"}};
-        if (chosen_tau > 0.0) assignment["cache_threshold"] = chosen_tau;
+        if (policy.approx || chosen_tau > 0.0) assignment["cache_threshold"] = chosen_tau;
         // Request-level interleaving: a waiting video at a step boundary joins this one on the
         // group when the pair's step is cheaper than the two in sequence and both still make
         // their deadlines at the pair's pace (or neither would alone).

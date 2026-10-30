@@ -1,22 +1,8 @@
 #!/usr/bin/env python3
-"""Real-GPU HeteroDiT-v3 Optimization Suite (Opts #9-#12) & End-to-End Evaluation.
+"""GPU v3 component microbenchmarks/replay and a separate 8-A100 simulation.
 
-Benchmarks the 4 HeteroDiT-v3 system & algorithmic optimizations on real A100 GPUs:
-  1. Opt #9: Asymmetric Late-Step Classifier-Free Guidance (CFG) Reuse +
-     First-Order Taylor-Compensated DBCache Co-Execution on Wan2.1-T2V-1.3B
-     (measuring transformer pass reduction, wall-clock latency speedup,
-     latent cosine similarity, and decoded video PSNR / SSIM vs Exact).
-  2. Opt #10: Wan2.1 BF16 Tensor-Core Chunked 3D-VAE Decode with FP32 Latent
-     Denormalization + Stream-Isolated Overlap with SD3.5 Denoising
-     (measuring 3D-VAE decode latency reduction, peak HBM, and pixel PSNR / SSIM
-     against FP32 3D-VAE decode).
-  3. Opt #11: SD3.5-Medium SDPA_FLASH xDiT Engine + Channels-Last 2D-VAE +
-     MM-DiT Block Caching (DBCache) + Multi-Prompt Micro-Batching (BS=1, 2, 4).
-  4. Opt #12 & E2E Mixed-Modality Trace Replay:
-     - 8xA100 11-Policy & 6-Stage Orthogonal Ablation Study (via C++ `heterodit_v3`
-       control plane with `ring_quant_scale`).
-     - 1xA100 Real-GPU Mixed-Workload Trace Replay comparing Vanilla-xDiT,
-       GenServe-40GB, HeteroDiT-v1, HeteroDiT-v2, and HeteroDiT-v3.
+The preencoded, manually phased replay does not evaluate online scheduling.
+The C++ study simulates eight devices; it is not an eight-GPU measurement.
 """
 
 from __future__ import annotations
@@ -40,6 +26,14 @@ from ditserve.models.wan.cfg_reuse import AsymmetricCFGStepper
 from ditserve.models.wan.taylor_cache import TaylorResidualCompensator
 from ditserve.models.wan.vae_overlap import ConcurrentVAEDecodeStreamer
 from run_hetero_8a100_study import evaluate_suite as evaluate_8a100_v3_suite
+from run_hetero_quality_and_replay import (
+    DENOISE_SCOPE, IMAGE_SCOPE, REPLAY_SCOPE, _completion_records, _decode_video,
+    _image_requests, _replay_summary, _run_image_batch, _wait_until_arrival,
+)
+
+
+def _format_quality(value, digits=2):
+    return "未评测" if value is None else f"{value:.{digits}f}"
 
 
 WAN_PATH = os.environ.get(
@@ -142,7 +136,7 @@ def benchmark_opt9_asymmetric_cfg_and_taylor(
     torch.cuda.synchronize()
     ref_ms = (time.perf_counter() - t0) * 1000.0
     ref_latents = ref_state.latents.detach().cpu().float().clone()
-    ref_video, _ = wan.runtime.decode_chunks(ref_state, 5)
+    ref_video = _decode_video(wan, ref_state)
     wan.release({"id": "r", "state_id": ref_id})
 
     rows: List[Dict[str, Any]] = [
@@ -179,7 +173,7 @@ def benchmark_opt9_asymmetric_cfg_and_taylor(
     torch.cuda.synchronize()
     cfg_only_ms = (time.perf_counter() - t0) * 1000.0
     cfg_latents = cfg_state.latents.detach().cpu().float().clone()
-    cfg_video, _ = wan.runtime.decode_chunks(cfg_state, 5)
+    cfg_video = _decode_video(wan, cfg_state)
     wan.release({"id": "c", "state_id": cfg_only_id})
 
     cfg_cos = float(F.cosine_similarity(ref_latents.flatten().unsqueeze(0), cfg_latents.flatten().unsqueeze(0)).item())
@@ -249,7 +243,7 @@ def benchmark_opt9_asymmetric_cfg_and_taylor(
         torch.cuda.synchronize()
         co_ms = (time.perf_counter() - t0) * 1000.0
         co_latents = co_state.latents.detach().cpu().float().clone()
-        co_video, _ = wan.runtime.decode_chunks(co_state, 5)
+        co_video = _decode_video(wan, co_state)
         wan.release({"id": "co", "state_id": co_id})
 
         reused_steps = sum(1 for ev in events if ev.get("reused_forwards", 0) > 0)
@@ -280,7 +274,11 @@ def benchmark_opt9_asymmetric_cfg_and_taylor(
             flush=True,
         )
 
-    return {"modes": rows}
+    for row in rows:
+        row.update(evidence_type="measured_microbenchmark", timing_scope=DENOISE_SCOPE,
+                   reused_steps=row["reused_cache_steps"], workload_spec=base_spec,
+                   quality_status="reference" if row is rows[0] else "measured_comparison")
+    return {"evidence_type": "measured_microbenchmark", "timing_scope": DENOISE_SCOPE, "modes": rows}
 
 
 def benchmark_opt10_bf16_3dvae_decode(
@@ -310,13 +308,13 @@ def benchmark_opt10_bf16_3dvae_decode(
     # 1. FP32 Chunked 3D-VAE Decode (Baseline)
     wan.runtime.pipe.vae.to(dtype=torch.float32)
     # Warmup FP32 VAE
-    wan.runtime.decode_chunks(s_fp32, 5, vae_dtype="float32")
+    _decode_video(wan, s_fp32, vae_dtype="float32")
     s_fp32.finished = False
     torch.cuda.synchronize()
     torch.cuda.reset_peak_memory_stats()
 
     t0 = time.perf_counter()
-    video_fp32, info_fp32 = wan.runtime.decode_chunks(s_fp32, 5, vae_dtype="float32")
+    video_fp32 = _decode_video(wan, s_fp32, vae_dtype="float32")
     torch.cuda.synchronize()
     fp32_vae_ms = (time.perf_counter() - t0) * 1000.0
     fp32_peak_hbm = round(torch.cuda.max_memory_allocated() / (1 << 20), 2)
@@ -328,13 +326,13 @@ def benchmark_opt10_bf16_3dvae_decode(
     s_bf16.latents = saved_latents.clone()
     s_bf16.step_index = 4
     # Warmup BF16 VAE
-    wan.runtime.decode_chunks(s_bf16, 5, vae_dtype="bfloat16")
+    _decode_video(wan, s_bf16, vae_dtype="bfloat16")
     s_bf16.finished = False
     torch.cuda.synchronize()
     torch.cuda.reset_peak_memory_stats()
 
     t0 = time.perf_counter()
-    video_bf16, info_bf16 = wan.runtime.decode_chunks(s_bf16, 5, vae_dtype="bfloat16")
+    video_bf16 = _decode_video(wan, s_bf16, vae_dtype="bfloat16")
     torch.cuda.synchronize()
     bf16_vae_ms = (time.perf_counter() - t0) * 1000.0
     bf16_peak_hbm = round(torch.cuda.max_memory_allocated() / (1 << 20), 2)
@@ -381,6 +379,10 @@ def benchmark_opt10_bf16_3dvae_decode(
     )
 
     return {
+        "evidence_type": "measured_microbenchmark",
+        "timing_scope": "complete decode of precomputed latents; excludes encoding and denoise",
+        "overlap_timing_scope": "preencoded: excludes encoding and video denoise; video decode + image pipeline to NumPy",
+        "quality_status": "measured_comparison; FP32 self row is reference only",
         "fp32_vae_decode_ms": round(fp32_vae_ms, 2),
         "fp32_peak_hbm_mb": fp32_peak_hbm,
         "bf16_vae_decode_ms": round(bf16_vae_ms, 2),
@@ -414,154 +416,82 @@ def benchmark_opt11_sd35_flash_channels_last_and_cache(sd35: SD35Backend) -> Dic
     sd35.run_micro_batch({"prompts": [prompts[0]], "seeds": [101], "height": 512, "width": 512, "steps": 4, "attention": "flash"})
     torch.cuda.synchronize()
 
-    # 1. Baseline SDPA_MATH (BS=1, 12 steps, contiguous VAE)
+    requests = _image_requests(prompts, seeds)
+
+    def run(members, **options):
+        torch.cuda.synchronize()
+        return _run_image_batch(sd35, members, time.perf_counter(), **options)
+
     if getattr(sd35.pipe, "vae", None) is not None:
         sd35.pipe.vae.to(memory_format=torch.contiguous_format)
-    res_math = sd35.run_micro_batch({
-        "prompts": [prompts[0]],
-        "seeds": [101],
-        "height": 512,
-        "width": 512,
-        "steps": 12,
-        "attention": "math",
-        "cache": False,
-        "return_images": True,
-    })
+    res_math = run(requests[:1], attention="math", cache=False)
     img_ref = res_math.pop("images")
+    torch.cuda.synchronize()
+    seq_start = time.perf_counter()
+    seq_completions = []
+    for request in requests:
+        batch = _run_image_batch(sd35, [request], seq_start, attention="math", cache=False)
+        batch.pop("images")
+        seq_completions.extend(batch["requests"])
+    seq4_math_ms = max(r["finish_ms"] for r in seq_completions)
 
-    # 2. SDPA_FLASH + Channels-Last 2D-VAE (BS=1, 12 steps, exact no cache)
     if getattr(sd35.pipe, "vae", None) is not None:
         sd35.pipe.vae.to(memory_format=torch.channels_last)
-    res_flash_cl = sd35.run_micro_batch({
-        "prompts": [prompts[0]],
-        "seeds": [101],
-        "height": 512,
-        "width": 512,
-        "steps": 12,
-        "attention": "flash",
-        "cache": False,
-        "return_images": True,
-    })
+    res_flash_cl = run(requests[:1], attention="flash", cache=False)
     img_flash_cl = res_flash_cl.pop("images")
-
-    # 3. SDPA_FLASH + Channels-Last 2D-VAE + MM-DiT Block Cache (tau=0.25, BS=1, 12 steps)
-    res_flash_cache = sd35.run_micro_batch({
-        "prompts": [prompts[0]],
-        "seeds": [101],
-        "height": 512,
-        "width": 512,
-        "steps": 12,
-        "attention": "flash",
-        "cache": True,
-        "threshold": 0.25,
-        "cache_warmup": 4,
-        "cache_max_continuous": 1,
-        "return_images": True,
-    })
+    cache_options = dict(attention="flash", cache=True, threshold=0.25,
+                         cache_warmup=4, cache_max_continuous=1)
+    res_flash_cache = run(requests[:1], **cache_options)
     img_flash_cache = res_flash_cache.pop("images")
-
-    # 4. 4-Prompt Burst: BS=4 + SDPA_FLASH + Channels-Last 2D-VAE + MM-DiT Block Cache (tau=0.25)
-    res_mb4_exact = sd35.run_micro_batch({
-        "prompts": prompts,
-        "seeds": seeds,
-        "height": 512,
-        "width": 512,
-        "steps": 12,
-        "attention": "flash",
-        "cache": False,
-        "return_images": True,
-    })
+    res_mb4_exact = run(requests, attention="flash", cache=False)
     imgs_mb4_exact = res_mb4_exact.pop("images")
-
-    res_mb4_cache = sd35.run_micro_batch({
-        "prompts": prompts,
-        "seeds": seeds,
-        "height": 512,
-        "width": 512,
-        "steps": 12,
-        "attention": "flash",
-        "cache": True,
-        "threshold": 0.25,
-        "cache_warmup": 4,
-        "cache_max_continuous": 1,
-        "return_images": True,
-    })
+    res_mb4_cache = run(requests, **cache_options)
     imgs_mb4_cache = res_mb4_cache.pop("images")
 
-    seq4_math_ms = res_math["model_ms"] * 4.0
-    modes = [
-        {
-            "mode": "SDPA_MATH + Contiguous-VAE (Baseline BS=1)",
-            "batch_size": 1,
-            "cache": False,
-            "reused_steps": 0,
-            "total_ms": res_math["model_ms"],
-            "per_image_ms": res_math["per_image_ms"],
-            "throughput_img_s": round(1000.0 / res_math["per_image_ms"], 3),
-            "speedup_vs_baseline": 1.0,
-            "psnr_db": 99.99,
-            "ssim": 1.0,
-        },
-        {
-            "mode": "SDPA_FLASH + ChannelsLast-2DVAE (BS=1)",
-            "batch_size": 1,
-            "cache": False,
-            "reused_steps": 0,
-            "total_ms": res_flash_cl["model_ms"],
-            "per_image_ms": res_flash_cl["per_image_ms"],
-            "throughput_img_s": round(1000.0 / res_flash_cl["per_image_ms"], 3),
-            "speedup_vs_baseline": round(res_math["per_image_ms"] / res_flash_cl["per_image_ms"], 3),
-            "psnr_db": compute_psnr(img_ref, img_flash_cl),
-            "ssim": round(compute_ssim_frame(img_ref[0], img_flash_cl[0]), 5),
-        },
-        {
-            "mode": "SDPA_FLASH + ChannelsLast-2DVAE + MM-DiT-DBCache (BS=1, tau=0.22)",
-            "batch_size": 1,
-            "cache": True,
-            "reused_steps": res_flash_cache.get("reused_steps", 0),
-            "total_ms": res_flash_cache["model_ms"],
-            "per_image_ms": res_flash_cache["per_image_ms"],
-            "throughput_img_s": round(1000.0 / res_flash_cache["per_image_ms"], 3),
-            "speedup_vs_baseline": round(res_math["per_image_ms"] / res_flash_cache["per_image_ms"], 3),
-            "psnr_db": compute_psnr(img_flash_cl, img_flash_cache),
-            "ssim": round(compute_ssim_frame(img_flash_cl[0], img_flash_cache[0]), 5),
-        },
-        {
-            "mode": "MicroBatch-BS4 + SDPA_FLASH + ChannelsLast-2DVAE (4 Prompts)",
-            "batch_size": 4,
-            "cache": False,
-            "reused_steps": 0,
-            "total_ms": res_mb4_exact["model_ms"],
-            "per_image_ms": res_mb4_exact["per_image_ms"],
-            "throughput_img_s": round(1000.0 / res_mb4_exact["per_image_ms"], 3),
-            "speedup_vs_baseline": round(seq4_math_ms / res_mb4_exact["model_ms"], 3),
-            "psnr_db": 99.99,
-            "ssim": 1.0,
-        },
-        {
-            "mode": "MicroBatch-BS4 + SDPA_FLASH + ChannelsLast-2DVAE + MM-DiT-DBCache (HeteroDiT-v3)",
-            "batch_size": 4,
-            "cache": True,
-            "reused_steps": res_mb4_cache.get("reused_steps", 0),
-            "total_ms": res_mb4_cache["model_ms"],
-            "per_image_ms": res_mb4_cache["per_image_ms"],
-            "throughput_img_s": round(1000.0 / res_mb4_cache["per_image_ms"], 3),
-            "speedup_vs_baseline": round(seq4_math_ms / res_mb4_cache["model_ms"], 3),
-            "psnr_db": compute_psnr(imgs_mb4_exact, imgs_mb4_cache),
-            "ssim": round(
-                float(np.mean([compute_ssim_frame(imgs_mb4_exact[i], imgs_mb4_cache[i]) for i in range(4)])),
-                5,
-            ),
-        },
-    ]
-    for m in modes:
-        print(
-            f"  [Opt #11] {m['mode']}: {m['per_image_ms']:.1f} ms/img "
-            f"({m['throughput_img_s']:.2f} img/s, {m['speedup_vs_baseline']:.2f}x speedup, "
-            f"reused={m['reused_steps']}/12, PSNR={m['psnr_db']:.2f} dB, SSIM={m['ssim']:.4f})",
-            flush=True,
+    modes = []
+    for name, result, cache, reference, output, quality_status, quality_reference, matched in (
+        ("SDPA_MATH + Contiguous-VAE (Baseline BS=1)", res_math, False,
+         None, None, "reference", "self; not an independent quality pass", res_math),
+        ("SDPA_FLASH + ChannelsLast-2DVAE (BS=1)", res_flash_cl, False,
+         img_ref, img_flash_cl, "measured_comparison", "SDPA_MATH BS1", res_math),
+        ("SDPA_FLASH + ChannelsLast-2DVAE + MM-DiT-DBCache (BS=1, tau=0.25)", res_flash_cache, True,
+         img_flash_cl, img_flash_cache, "measured_comparison", "SDPA_FLASH exact BS1", res_flash_cl),
+        ("MicroBatch-BS4 + SDPA_FLASH + ChannelsLast-2DVAE (4 Prompts)", res_mb4_exact, False,
+         None, None, "not_evaluated", "not compared with sequential outputs", res_mb4_exact),
+        ("MicroBatch-BS4 + SDPA_FLASH + ChannelsLast-2DVAE + MM-DiT-DBCache (tau=0.25)", res_mb4_cache, True,
+         imgs_mb4_exact, imgs_mb4_cache, "measured_comparison", "SDPA_FLASH exact BS4", res_mb4_exact),
+    ):
+        count = len(result["requests"])
+        latency = result["batch_latency_ms"]
+        baseline_ms = res_math["batch_latency_ms"] if count == 1 else seq4_math_ms
+        reused = result.get("reused_steps")
+        reuse_observed = reused is not None and reused > 0
+        row = dict(
+            evidence_type="measured_microbenchmark", timing_scope=IMAGE_SCOPE,
+            mode=name, batch_size=count, cache=cache, reused_steps=reused,
+            cache_reuse_observed=reuse_observed,
+            cache_config=cache_options if cache else None,
+            requests=result["requests"], output_count=sum(r["output_count"] for r in result["requests"]),
+            batch_latency_ms=latency, amortized_ms_per_image=latency / count,
+            throughput_img_s=1000.0 * count / latency,
+            speedup_vs_baseline=baseline_ms / latency,
+            baseline_scope="measured same-workload sequential SDPA_MATH; includes non-cache changes",
+            cache_speedup_vs_matched_exact=matched["batch_latency_ms"] / latency if cache and reuse_observed else None,
+            quality_status=quality_status, quality_reference=quality_reference,
+            independent_quality_pass=None,
+            psnr_db=compute_psnr(reference, output) if reference is not None else None,
+            ssim=round(float(np.mean([compute_ssim_frame(reference[i], output[i])
+                                    for i in range(count)])), 5) if reference is not None else None,
         )
-    return {"modes": modes}
+        modes.append(row)
+        print(f"  [Opt #11] {name}: batch latency={latency:.1f} ms, "
+              f"amortized={row['amortized_ms_per_image']:.1f} ms/img, reused={reused}/12, "
+              f"PSNR={_format_quality(row['psnr_db'])}, SSIM={_format_quality(row['ssim'], 4)} "
+              f"({quality_status})", flush=True)
+    return {"evidence_type": "measured_microbenchmark", "timing_scope": IMAGE_SCOPE,
+            "modes": modes, "sequential_four_image_baseline": {
+                "total_ms": seq4_math_ms, "requests": seq_completions,
+                "output_count": sum(r["output_count"] for r in seq_completions)}}
 
 
 def benchmark_e2e_v3_trace_replay(
@@ -569,8 +499,8 @@ def benchmark_e2e_v3_trace_replay(
     sd35: SD35Backend,
     cached_wan_payload,
 ) -> Dict[str, Any]:
-    """Run End-to-End Mixed-Modality Trace Replay with HeteroDiT-v3 (All 12 Optimizations)."""
-    print("[E2E Replay] Running HeteroDiT-v3 Mixed-Modality Trace Replay...", flush=True)
+    """Preencoded component replay with manual phases, not an online scheduler."""
+    print("[Component Replay] Running v3 manual mixed-modality phases...", flush=True)
     # Workload:
     #   t = 0 ms:     Wan2.1 video request (832x480, 17 frames, 20 steps, SLO = 17,000 ms)
     #   t = 1,200 ms: Burst of 2 SD3.5 image requests (img-1 @ 1200ms, img-2 @ 1350ms; SLO = 4,500 ms)
@@ -601,8 +531,9 @@ def benchmark_e2e_v3_trace_replay(
         sd35.pipe.vae.to(memory_format=torch.channels_last)
     torch.cuda.empty_cache()
 
-    v_id = "v3-e2e-wan"
-    v_state = _fast_prepare_wan(wan, wan_spec, v_id, cached_wan_payload)
+    images = _image_requests(img_prompts, [101, 202, 303], [1200.0, 1350.0, 3500.0])
+    video_request = dict(request_id="v0", modality="video", arrival_ms=0.0, spec=wan_spec)
+    v_id = "v3-replay-wan"
     comp = TaylorResidualCompensator(
         torch,
         alpha=-0.22,
@@ -627,150 +558,92 @@ def benchmark_e2e_v3_trace_replay(
     torch.cuda.reset_peak_memory_stats()
     t_start = time.perf_counter()
 
-    def now_ms() -> float:
+    v_start_ms = _wait_until_arrival(t_start, video_request["arrival_ms"])
+    v_state = _fast_prepare_wan(wan, wan_spec, v_id, cached_wan_payload)
+    completions, events, image_reused_steps = [], [], []
+    try:
+        for steps, members in ((3, images[:2]), (4, images[2:])):
+            for _ in range(steps):
+                events.append(stepper.step(wan.runtime, v_state, taylor_compensator=comp))
+            batch = _run_image_batch(sd35, members, t_start, attention="flash", cache=True,
+                                     threshold=0.25, cache_warmup=4, cache_max_continuous=1)
+            batch.pop("images")
+            completions.extend(batch["requests"])
+            image_reused_steps.append(batch.get("reused_steps"))
+        for _ in range(13):
+            events.append(stepper.step(wan.runtime, v_state, taylor_compensator=comp))
+        video = _decode_video(wan, v_state, vae_dtype="bfloat16")
         torch.cuda.synchronize()
-        return (time.perf_counter() - t_start) * 1000.0
+        finish_ms = (time.perf_counter() - t_start) * 1000.0
+        completions.extend(_completion_records([video_request], video, v_start_ms, finish_ms))
+        peak_hbm_mb = round(torch.cuda.max_memory_allocated() / (1 << 20), 2)
+    finally:
+        wan.release({"id": "v3", "state_id": v_id})
 
-    # Phase 1: Run Wan2.1 steps 0..2 (~1,420 ms -> burst of img-1 @ 1200ms and img-2 @ 1350ms has arrived!)
-    for _ in range(3):
-        stepper.step(wan.runtime, v_state, taylor_compensator=comp)
-
-    # Preempt Wan2.1 at step boundary and serve burst [img-1, img-2] in ONE micro-batch with SDPA_FLASH + MM-DiT Cache + Channels-Last!
-    sd35.run_micro_batch({
-        "prompts": img_prompts[:2],
-        "seeds": [101, 202],
-        "height": 512,
-        "width": 512,
-        "steps": 12,
-        "attention": "flash",
-        "cache": True,
-        "threshold": 0.25,
-        "cache_warmup": 4,
-        "cache_max_continuous": 1,
-    })
-    t_img12_done = now_ms()
-    img1_lat = t_img12_done - 1200.0
-    img2_lat = t_img12_done - 1350.0
-
-    # Phase 2: Resume Wan2.1 steps 3..6 (~3,550 ms -> img-3 @ 3500ms has arrived!)
-    for _ in range(4):
-        stepper.step(wan.runtime, v_state, taylor_compensator=comp)
-
-    # Preempt Wan2.1 and serve img-3 with SDPA_FLASH + MM-DiT Cache + Channels-Last!
-    sd35.run_micro_batch({
-        "prompts": [img_prompts[2]],
-        "seeds": [303],
-        "height": 512,
-        "width": 512,
-        "steps": 12,
-        "attention": "flash",
-        "cache": True,
-        "threshold": 0.25,
-        "cache_warmup": 4,
-        "cache_max_continuous": 1,
-    })
-    t_img3_done = now_ms()
-    img3_lat = t_img3_done - 3500.0
-
-    # Phase 3: Finish remaining 13 steps of Wan2.1 with Taylor+AsymmetricCFG + BF16 Tensor-Core 3D-VAE decode
-    for _ in range(13):
-        stepper.step(wan.runtime, v_state, taylor_compensator=comp)
-    wan.runtime.decode_chunks(v_state, 5, vae_dtype="bfloat16")
-    vid_lat = now_ms()
-    peak_hbm_mb = round(torch.cuda.max_memory_allocated() / (1 << 20), 2)
-    wan.release({"id": "v3", "state_id": v_id})
-
-    img_lats = [img1_lat, img2_lat, img3_lat]
-    img_slo = 4500.0
-    vid_slo = 17000.0
-    img_ontime = sum(1 for x in img_lats if x <= img_slo)
-    vid_ontime = int(vid_lat <= vid_slo)
-
-    res = {
-        "policy": "HeteroDiT-v3 (All 12 Optimizations: Taylor+CFGReuse + BF16-3DVAE + Flash-Cache-MicroBatch)",
-        "video_latency_ms": round(vid_lat, 2),
-        "image_latencies_ms": [round(x, 2) for x in img_lats],
-        "image_mean_latency_ms": round(float(np.mean(img_lats)), 2),
-        "image_p99_latency_ms": round(float(np.max(img_lats)), 2),
-        "image_slo_attainment_pct": round(100.0 * img_ontime / 3.0, 2),
-        "video_slo_attainment_pct": round(100.0 * vid_ontime, 2),
-        "total_slo_attainment_pct": round(100.0 * (img_ontime + vid_ontime) / 4.0, 2),
-        "peak_hbm_mb": peak_hbm_mb,
-        "wan_folded_cfg_steps": stepper.stats["folded_cfg_steps"],
-        "wan_saved_uncond_forwards": stepper.stats["saved_uncond_forwards"],
-    }
-    print(
-        f"  [E2E Replay] HeteroDiT-v3: Image Mean={res['image_mean_latency_ms']:.1f} ms, "
-        f"Image P99={res['image_p99_latency_ms']:.1f} ms, Video={res['video_latency_ms']:.1f} ms, "
-        f"Total SLO={res['total_slo_attainment_pct']:.1f}%, Peak HBM={peak_hbm_mb:.1f} MB",
-        flush=True,
-    )
+    res = _replay_summary(completions, 4500.0, 17000.0)
+    res.update(policy="v3 component replay: Taylor + CFGReuse + BF16 decode + Flash/Cache/MicroBatch",
+               peak_hbm_mb=peak_hbm_mb, quality_status="not_evaluated_in_replay",
+               reused_steps=sum(ev.get("reused_forwards", 0) > 0 for ev in events),
+               image_batch_reused_steps=image_reused_steps,
+               wan_folded_cfg_steps=stepper.stats["folded_cfg_steps"],
+               wan_saved_uncond_forwards=stepper.stats["saved_uncond_forwards"])
+    print(f"  [Component Replay] v3: Image max (n=3)={res['image_max_latency_ms']:.1f} ms, "
+          f"Video={res['video_latency_ms']:.1f} ms", flush=True)
     return res
 
 
 def write_markdown_report(out_dir: Path, payload: Dict[str, Any]) -> None:
     lines = [
-        "# HeteroDiT v3 Full-Stack Optimization Report (Opts #9-#12 on Real A100 GPUs)",
+        "# HeteroDiT v3 GPU Component Microbenchmarks/Replay & Separate 8-A100 Simulation",
+        "", f"Component device: `{payload['device_name']}`. The eight-device study is simulation, not real eight-GPU evidence.",
+        "", "## 1. CFG reuse / Taylor: measured_microbenchmark", "", DENOISE_SCOPE,
+        "Reference/self rows are not independent quality passes.",
         "",
-        f"- **Device**: `{payload['device_name']}`",
-        "",
-        "## 1. Opt #9: Asymmetric Late-Step CFG Reuse + First-Order Taylor DBCache Co-Execution (`Wan2.1-T2V-1.3B`)",
-        "",
-        "| Execution Mode | Threshold ($\\tau$) | Reused Cache Steps | Folded CFG Steps | Effective Branch Passes | Denoise Latency (ms) | Speedup | Latent `cos_sim` | Video PSNR (dB) | Video SSIM |",
-        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+        "| Mode | Tau | Reused steps | Folded CFG steps | Denoise (ms) | Speedup | PSNR (dB) | SSIM | Quality status |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
     ]
     for r in payload["opt9_asymmetric_cfg_taylor"]["modes"]:
-        lines.append(
-            f"| `{r['mode']}` | `{r['threshold']:.2f}` | {r['reused_cache_steps']}/20 | "
-            f"{r['folded_cfg_steps']}/20 | {r['effective_branch_forwards']}/40 | "
-            f"**{r['denoise_ms']:.1f}** | **{r['speedup']:.2f}x** | {r['latent_cos_sim']:.6f} | "
-            f"**{r['video_psnr_db']:.2f}** | **{r['video_ssim']:.4f}** |"
-        )
-
+        lines.append(f"| {r['mode']} | {r['threshold']:.2f} | {r['reused_steps']}/20 | "
+                     f"{r['folded_cfg_steps']}/20 | {r['denoise_ms']:.1f} | {r['speedup']:.2f}x | "
+                     f"{_format_quality(r['video_psnr_db'])} | {_format_quality(r['video_ssim'], 4)} | {r['quality_status']} |")
     v10 = payload["opt10_bf16_3dvae"]
     lines.extend([
+        "", "## 2. VAE decode: measured_microbenchmark", "", v10["timing_scope"],
+        "| Mode | Decode (ms) | Peak HBM (MB) | PSNR vs FP32 | SSIM vs FP32 |",
+        "| --- | ---: | ---: | --- | --- |",
+        f"| FP32 reference | {v10['fp32_vae_decode_ms']:.1f} | {v10['fp32_peak_hbm_mb']:.1f} | reference | reference |",
+        f"| BF16 | {v10['bf16_vae_decode_ms']:.1f} | {v10['bf16_peak_hbm_mb']:.1f} | "
+        f"{_format_quality(v10['bf16_vs_fp32_psnr_db'])} | {_format_quality(v10['bf16_vs_fp32_ssim'], 5)} |",
+        "", v10["overlap_timing_scope"],
+        f"BF16 decode + SD3.5 overlap wall: {v10['bf16_stream_overlapped_with_sd35_wall_ms']:.1f} ms.",
+        "", "## 3. SD3.5: measured_microbenchmark", "", IMAGE_SCOPE,
+        "Amortized cost is not latency; batch completion latency and per-request timestamps are retained.",
+        "BS4 speedup uses an actual four-prompt sequential baseline, not four times one image.",
+        "Quality 未评测/null is not a pass. Cache benefit requires observed reused_steps and a matched exact baseline.",
         "",
-        "## 2. Opt #10: `Wan2.1` `BF16` Tensor-Core Chunked 3D-VAE Decode with FP32 Latent Denormalization",
-        "",
-        "| 3D-VAE Mode (5 Chunks, 17 Frames @ 832x480) | Decode Latency (ms) | Speedup vs FP32 | Saved Latency (ms) | Peak HBM (MB) | PSNR vs FP32 (dB) | SSIM vs FP32 |",
-        "| --- | ---: | ---: | ---: | ---: | ---: | ---: |",
-        f"| `FP32 Chunked 3D-VAE (Baseline)` | {v10['fp32_vae_decode_ms']:.1f} | 1.00x | 0.0 | {v10['fp32_peak_hbm_mb']:.1f} | 99.99 | 1.00000 |",
-        f"| **`BF16 Tensor-Core Chunked 3D-VAE (Opt #10)`** | **{v10['bf16_vae_decode_ms']:.1f}** | **{v10['vae_speedup']:.2f}x** | **{v10['saved_vae_ms']:.1f}** | **{v10['bf16_peak_hbm_mb']:.1f}** | **{v10['bf16_vs_fp32_psnr_db']:.2f}** | **{v10['bf16_vs_fp32_ssim']:.5f}** |",
-        "",
-        f"- **BF16 3D-VAE + Stream-Isolated Overlap with `SD3.5` Denoising Wall Time**: **`{v10['bf16_stream_overlapped_with_sd35_wall_ms']:.1f} ms`** (Peak HBM `{v10['bf16_stream_overlapped_peak_hbm_mb']:.1f} MB`)",
-        "",
-        "## 3. Opt #11: `SD3.5-Medium` `SDPA_FLASH` xDiT Engine + `channels_last` 2D-VAE + MM-DiT Block Cache",
-        "",
-        "| Execution Mode (12 Steps, 512x512) | Batch Size | Cache | Total Latency (ms) | Per-Image Latency (ms/img) | Throughput (img/s) | Speedup vs Baseline | PSNR (dB) | SSIM |",
-        "| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |",
+        "| Mode | Batch size | Batch latency (ms) | Amortized ms/image | Reused steps | Speedup vs sequential math | Cache speedup vs matched exact | PSNR | SSIM | Quality status |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | --- | --- | --- | --- |",
     ])
     for r in payload["opt11_sd35_flash_channels_last_cache"]["modes"]:
-        lines.append(
-            f"| `{r['mode']}` | {r['batch_size']} | `{r['cache']}` | {r['total_ms']:.1f} | "
-            f"**{r['per_image_ms']:.1f}** | **{r['throughput_img_s']:.2f}** | "
-            f"**{r['speedup_vs_baseline']:.2f}x** | {r['psnr_db']:.2f} | {r['ssim']:.4f} |"
-        )
-
-    e2e = payload["e2e_v3_replay"]
+        lines.append(f"| {r['mode']} | {r['batch_size']} | {r['batch_latency_ms']:.1f} | "
+                     f"{r['amortized_ms_per_image']:.1f} | {r['reused_steps']} | {r['speedup_vs_baseline']:.2f}x | "
+                     f"{_format_quality(r['cache_speedup_vs_matched_exact'])} | {_format_quality(r['psnr_db'])} | "
+                     f"{_format_quality(r['ssim'], 4)} | {r['quality_status']} |")
+    replay = payload["component_replay_v3"]
     lines.extend([
-        "",
-        "## 4. End-to-End Mixed-Modality Trace Replay (`HeteroDiT-v3` on 1xA100)",
-        "",
-        f"- **`{e2e['policy']}`**: Image Mean **`{e2e['image_mean_latency_ms']:.1f} ms`**, "
-        f"Image P99 **`{e2e['image_p99_latency_ms']:.1f} ms`**, Video **`{e2e['video_latency_ms']:.1f} ms`**, "
-        f"Total SLO Attainment **`{e2e['total_slo_attainment_pct']:.1f}%`**, Peak HBM **`{e2e['peak_hbm_mb']:.1f} MB`**",
-        "",
-        "## 5. Opt #12: 8xA100 11-Policy & 6-Stage Orthogonal Ablation (`heterodit_v3` C++ Control Plane)",
-        "",
-        "| Ablation Stage (Extreme HoL Contention: Gamma CV=3.0, Load=1.25) | Total SLO (%) | Image SLO (%) | Video SLO (%) | Image P99 (ms) | Video P99 (ms) |",
+        "", "## 4. Manually Ordered Component Replay: component_replay", "", REPLAY_SCOPE,
+        "Not online scheduling evidence. Image max uses n=3, not a P99 estimate; replay quality was not evaluated.",
+        f"{replay['policy']}: image mean {replay['image_mean_latency_ms']:.1f} ms, "
+        f"image max (n=3) {replay['image_max_latency_ms']:.1f} ms, video {replay['video_latency_ms']:.1f} ms, "
+        f"video reused steps {replay['reused_steps']}/20, image batch reused steps {replay['image_batch_reused_steps']}, "
+        f"total SLO {replay['total_slo_attainment_pct']:.1f}%.",
+        "", "## 5. Eight-A100 control-plane simulation: simulation (not measured eight-GPU execution)", "",
+        "| Simulated ablation stage | Total SLO (%) | Image SLO (%) | Video SLO (%) | Simulated image P99 (ms) | Simulated video P99 (ms) |",
         "| --- | ---: | ---: | ---: | ---: | ---: |",
     ])
-    for _, row in payload["opt12_8a100_study"]["ablation"]["policies"].items():
-        lines.append(
-            f"| `{row['label']}` | **{row['total_slo_pct']:.2f}%** | {row['image_slo_pct']:.2f}% | "
-            f"{row['video_slo_pct']:.2f}% | {row['image_p99_ms']:.1f} | {row['video_p99_ms']:.1f} |"
-        )
-
+    for row in payload["opt12_8a100_study"]["ablation"]["policies"].values():
+        lines.append(f"| {row['label']} | {row['total_slo_pct']:.2f} | {row['image_slo_pct']:.2f} | "
+                     f"{row['video_slo_pct']:.2f} | {row['image_p99_ms']:.1f} | {row['video_p99_ms']:.1f} |")
     (out_dir / "V3_OPTIMIZATION_REPORT.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -839,16 +712,18 @@ def main() -> None:
     # 6. E2E Mixed-Modality Trace Replay (HeteroDiT-v3)
     e2e_v3_res = benchmark_e2e_v3_trace_replay(wan, sd35, cached_wan_payload)
 
-    # 7. Opt #12: 8xA100 11-Policy & 6-Stage Orthogonal Ablation Study
-    print("[Opt #12] Running 8xA100 11-Policy & 6-Stage Ablation Study (heterodit_v3)...", flush=True)
-    opt12_res = evaluate_8a100_v3_suite()
+    # This calls the control-plane simulation, not an eight-GPU job.
+    print("[Opt #12] Running simulated eight-A100 control-plane ablation...", flush=True)
+    opt12_res = dict(evaluate_8a100_v3_suite(), evidence_type="simulation",
+                     timing_scope="simulated request service times, not GPU wall-clock measurements")
 
     payload = {
         "device_name": device_name,
+        "evidence_types": ["measured_microbenchmark", "component_replay", "simulation"],
         "opt9_asymmetric_cfg_taylor": opt9_res,
         "opt10_bf16_3dvae": opt10_res,
         "opt11_sd35_flash_channels_last_cache": opt11_res,
-        "e2e_v3_replay": e2e_v3_res,
+        "component_replay_v3": e2e_v3_res,
         "opt12_8a100_study": opt12_res,
     }
     out_json = args.out_dir / "V3_OPTIMIZATIONS.json"

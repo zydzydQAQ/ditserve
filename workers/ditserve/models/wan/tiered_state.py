@@ -1,14 +1,4 @@
-"""Tiered VideoState Block Manager for 40 GB A100 PCIe clusters.
-
-Breaks the single-suspended-video-per-GPU HBM ceiling by managing video latent
-and solver states across three tiers:
-  - Tier 0 (HBM Hot): Resident on GPU for zero-copy sub-step block resumption.
-  - Tier 1 (Host Pinned DRAM Pool): Non-blocking DMA offload via dedicated CUDA
-    copy stream and lookahead prefetch during the final step of T2I execution.
-  - Tier 2 (/dev/shm Cross-Group Staging): Enables zero-stall cross-GPU-group
-    and cross-NUMA migration when a preempted video resumes at a different
-    parallel form or GPU subset.
-"""
+"""GPU/pinned-host state transfers that complete before ownership changes."""
 
 from collections import OrderedDict
 import time
@@ -31,7 +21,8 @@ class PinnedSlabPool:
 
     def acquire(self, nbytes: int, pin_memory: bool = True):
         nbytes = int(nbytes)
-        bucket = self._free_slabs.get((nbytes, pin_memory))
+        use_pin = bool(pin_memory and self.torch.cuda.is_available())
+        bucket = self._free_slabs.get((nbytes, use_pin))
         if bucket:
             self.reuses += 1
             return bucket.pop()
@@ -42,7 +33,6 @@ class PinnedSlabPool:
                 f"PinnedSlabPool budget exceeded: requested {nbytes} B, "
                 f"allocated {self.allocated_bytes}/{self.max_bytes} B"
             )
-        use_pin = bool(pin_memory and self.torch.cuda.is_available())
         slab = self.torch.empty(nbytes, dtype=self.torch.uint8, device="cpu", pin_memory=use_pin)
         self.allocated_bytes += nbytes
         self.peak_allocated_bytes = max(self.peak_allocated_bytes, self.allocated_bytes)
@@ -83,7 +73,7 @@ class PinnedSlabPool:
 
 
 class TieredVideoStateManager:
-    """Manages asynchronous offload and lookahead prefetch of preempted VideoStates."""
+    """Owns pinned buffers while a solver-boundary state is suspended."""
 
     def __init__(self, worker, max_pinned_mb: int = 8192):
         self.worker = worker
@@ -102,7 +92,11 @@ class TieredVideoStateManager:
     def offload_to_pinned(self, state, state_id: str, *, non_blocking: bool = True) -> dict:
         """Offload a video state from GPU HBM (Tier 0) to Host Pinned DRAM (Tier 1)."""
         with self.torch.inference_mode():
+            if state_id in self.suspended_states or state.pending_snapshot is not None:
+                raise ValueError("state is already suspended")
+            self.worker._check(state, "gpu")
             started = time.perf_counter()
+            self.worker._sync()
             before = self.worker._memory()
             payload = self.worker._payload(state)
             storage_copies = {}
@@ -123,9 +117,9 @@ class TieredVideoStateManager:
                             storage, 0, (storage.nbytes(),), (1,)
                         )
                         host_slab = self.pinned_pool.acquire(storage.nbytes(), pin_memory=True)
+                        slabs.append(host_slab)
                         host_slab.copy_(raw, non_blocking=bool(non_blocking and host_slab.is_pinned()))
                         storage_copies[key] = host_slab
-                        slabs.append(host_slab)
                         transfer_bytes += storage.nbytes()
                     host_slab = storage_copies[key]
                     converted = self.torch.empty(0, dtype=tensor.dtype, device="cpu").set_(
@@ -137,11 +131,16 @@ class TieredVideoStateManager:
                     placements[id(converted)] = str(tensor.device)
                     return converted
 
-                host_payload = _tree_map(payload, self.torch.is_tensor, move_d2h)
-                if self.dma_stream is not None and not non_blocking:
-                    self.dma_stream.synchronize()
+                try:
+                    host_payload = _tree_map(payload, self.torch.is_tensor, move_d2h)
+                except BaseException:
+                    if self.dma_stream is not None:
+                        self.dma_stream.synchronize()
+                    for slab in slabs:
+                        self.pinned_pool.release(slab)
+                    raise
 
-            if self.dma_stream is not None and non_blocking:
+            if self.dma_stream is not None:
                 self.dma_stream.synchronize()
             self.worker._install_payload(state, host_payload)
             state.pending_snapshot = {
@@ -170,13 +169,14 @@ class TieredVideoStateManager:
             return event
 
     def lookahead_prefetch(self, state, state_id: str, target_device: str = None) -> dict:
-        """Asynchronously prefetch a Tier-1 video state back to target GPU HBM (Tier 0)
-        using the dedicated DMA stream while the current T2I request finishes its last step."""
+        """Restore a pinned state, retaining its slabs until DMA completes."""
         with self.torch.inference_mode():
             started = time.perf_counter()
             saved = getattr(state, "pending_snapshot", None)
             if saved is None or getattr(state, "residency", "gpu") == "gpu":
                 return {"kind": "tiered_prefetch", "skipped": True, "ms": 0.0, "transfer_bytes": 0}
+            if saved.get("mode") != "tiered_pinned" or self.suspended_states.get(state_id) is not state:
+                raise ValueError("state is not owned by the pinned state manager")
             validate_request_engine(self.worker, saved.get("engine"))
             before = self.worker._memory()
             copies = {}
@@ -234,6 +234,13 @@ class TieredVideoStateManager:
             }
             state.events.append(event)
             return event
+
+    def discard(self, state_id, snapshot):
+        self.suspended_states.pop(state_id, None)
+        self.prefetched_states.discard(state_id)
+        if snapshot is not None and snapshot.get("mode") == "tiered_pinned":
+            for slab in snapshot["slabs"]:
+                self.pinned_pool.release(slab)
 
     def summary(self) -> dict:
         return {

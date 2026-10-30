@@ -63,6 +63,7 @@ class HeteroModulesTest(unittest.TestCase):
         k3 = pool.prompt_key("video", "wan21", "a mountain lake", negative_prompt="blurry")
         self.assertEqual(k1, k2)
         self.assertNotEqual(k1, k3)
+        self.assertNotEqual(k1, pool.prompt_key("image", "sd35", "a mountain lake", negative_prompt="blurry", do_cfg=False))
         self.assertEqual(pool.stats()["entries"], 0)
         pool.clear()
 
@@ -82,6 +83,46 @@ class HeteroModulesTest(unittest.TestCase):
         s3 = pool.acquire(896, pin_memory=True)
         self.assertIsNotNone(s3)
         self.assertLessEqual(pool.stats()["allocated_bytes"], 1024)
+
+    def test_block_cache_combination_is_rejected_before_model_work(self):
+        from types import SimpleNamespace
+        from ditserve.models.wan.backend import WanBackend
+
+        backend = WanBackend.__new__(WanBackend)
+        backend.states = {"video": SimpleNamespace()}
+        backend.continuations = {"video": object()}
+        with self.assertRaisesRegex(ValueError, "nonzero cache threshold"):
+            backend.advance(dict(state_id="video", cache_threshold=0.12))
+
+    def test_tiered_release_returns_slabs_after_state_release(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        from ditserve.models.wan.backend import WanBackend
+        from ditserve.models.wan.tiered_state import TieredVideoStateManager
+
+        backend = WanBackend.__new__(WanBackend)
+        slab = _FakeSlab(64, True)
+        snapshot = dict(mode="tiered_pinned", slabs=[slab])
+        state = SimpleNamespace(pending_snapshot=snapshot)
+        backend.states = {"video": state}
+        backend.continuations = {}
+        backend.decode_state = None
+        manager = TieredVideoStateManager.__new__(TieredVideoStateManager)
+        manager.suspended_states = {"video": state}
+        manager.prefetched_states = set()
+        manager.pinned_pool = PinnedSlabPool(_FakeTorch(), max_bytes=128)
+        manager.pinned_pool.allocated_bytes = 64
+        backend.tiered_manager = manager
+
+        def release(actual):
+            self.assertIs(actual, state)
+            self.assertEqual(manager.pinned_pool.stats()["cached_free_bytes"], 0)
+            actual.pending_snapshot = None
+        backend.runtime = SimpleNamespace(release=Mock(side_effect=release))
+        backend.release(dict(state_id="video"))
+        self.assertEqual(manager.pinned_pool.stats()["cached_free_bytes"], 64)
+        self.assertEqual(manager.suspended_states, {})
+        self.assertEqual(backend.states, {})
 
     def test_gamma_workloads_and_dual_tier_slos(self) -> None:
         classes = {
