@@ -208,7 +208,7 @@ def benchmark_opt9_asymmetric_cfg_and_taylor(
     )
 
     # 3. Co-Execution: Taylor1stOrder-DBCache + AsymmetricCFGStepper across tau in {0.12, 0.16, 0.24}
-    for tau, folded_set in ((0.12, {14, 15, 16, 17, 18}), (0.16, {14, 15, 16, 17, 18}), (0.24, {13, 14, 15, 16, 17, 18})):
+    for tau, folded_set in ((0.12, {15, 16, 17, 18}), (0.16, {15, 16, 17, 18}), (0.24, {14, 15, 16, 17, 18})):
         co_id = f"wan-opt9-co-{int(tau*100)}"
         co_state = _fast_prepare_wan(
             wan,
@@ -228,8 +228,8 @@ def benchmark_opt9_asymmetric_cfg_and_taylor(
         stepper = AsymmetricCFGStepper(
             torch,
             folded_steps=folded_set,
-            cfg_damping=0.96,
-            cfg_vel_alpha=0.15,
+            cfg_damping=0.97,
+            cfg_vel_alpha=0.0,
             final_step_exact_anchor=True,
             enabled=True,
         )
@@ -302,15 +302,13 @@ def benchmark_opt10_bf16_3dvae_decode(
     # 1. FP32 Chunked 3D-VAE Decode (Baseline)
     wan.runtime.pipe.vae.to(dtype=torch.float32)
     # Warmup FP32 VAE
-    s_fp32.decode = None
-    wan.runtime.decode_chunks(s_fp32, 5)
-    s_fp32.decode = None
+    wan.runtime.decode_chunks(s_fp32, 5, vae_dtype="float32")
     s_fp32.finished = False
     torch.cuda.synchronize()
     torch.cuda.reset_peak_memory_stats()
 
     t0 = time.perf_counter()
-    video_fp32, info_fp32 = wan.runtime.decode_chunks(s_fp32, 5)
+    video_fp32, info_fp32 = wan.runtime.decode_chunks(s_fp32, 5, vae_dtype="float32")
     torch.cuda.synchronize()
     fp32_vae_ms = (time.perf_counter() - t0) * 1000.0
     fp32_peak_hbm = round(torch.cuda.max_memory_allocated() / (1 << 20), 2)
@@ -322,14 +320,13 @@ def benchmark_opt10_bf16_3dvae_decode(
     s_bf16.latents = saved_latents.clone()
     s_bf16.step_index = 4
     # Warmup BF16 VAE
-    wan.runtime.decode_chunks(s_bf16, 5)
-    s_bf16.decode = None
+    wan.runtime.decode_chunks(s_bf16, 5, vae_dtype="bfloat16")
     s_bf16.finished = False
     torch.cuda.synchronize()
     torch.cuda.reset_peak_memory_stats()
 
     t0 = time.perf_counter()
-    video_bf16, info_bf16 = wan.runtime.decode_chunks(s_bf16, 5)
+    video_bf16, info_bf16 = wan.runtime.decode_chunks(s_bf16, 5, vae_dtype="bfloat16")
     torch.cuda.synchronize()
     bf16_vae_ms = (time.perf_counter() - t0) * 1000.0
     bf16_peak_hbm = round(torch.cuda.max_memory_allocated() / (1 << 20), 2)
@@ -348,7 +345,7 @@ def benchmark_opt10_bf16_3dvae_decode(
     s_ovl = _fast_prepare_wan(wan, wan_spec, "wan-vae-bf16-ovl", cached_wan_payload)
     s_ovl.latents = saved_latents.clone()
     s_ovl.step_index = 4
-    streamer = ConcurrentVAEDecodeStreamer(wan.runtime, chunk_frames=1)
+    streamer = ConcurrentVAEDecodeStreamer(wan.runtime, chunk_frames=1, vae_dtype="bfloat16")
     try:
         ovl_res = streamer.run_overlapped(
             s_ovl,
@@ -361,6 +358,7 @@ def benchmark_opt10_bf16_3dvae_decode(
                 "attention": "flash",
             }),
             chunk_frames=1,
+            vae_dtype="bfloat16",
         )
         ovl_res.pop("video_np", None)
     finally:
@@ -602,9 +600,9 @@ def benchmark_e2e_v3_trace_replay(
     comp.monotonic_gate = False
     stepper = AsymmetricCFGStepper(
         torch,
-        folded_steps={14, 15, 16, 17, 18},
-        cfg_damping=0.96,
-        cfg_vel_alpha=0.15,
+        folded_steps={15, 16, 17, 18},
+        cfg_damping=0.97,
+        cfg_vel_alpha=0.0,
         final_step_exact_anchor=True,
         enabled=True,
     )
@@ -659,7 +657,7 @@ def benchmark_e2e_v3_trace_replay(
     # Phase 3: Finish remaining 12 steps of Wan2.1 with Taylor+AsymmetricCFG + BF16 Tensor-Core 3D-VAE decode
     for _ in range(12):
         stepper.step(wan.runtime, v_state, taylor_compensator=comp)
-    wan.runtime.decode_chunks(v_state, 5)
+    wan.runtime.decode_chunks(v_state, 5, vae_dtype="bfloat16")
     vid_lat = now_ms()
     peak_hbm_mb = round(torch.cuda.max_memory_allocated() / (1 << 20), 2)
     wan.release({"id": "v3", "state_id": v_id})

@@ -40,7 +40,10 @@ class AsymmetricCFGStepper:
     ):
         self.torch = torch_module or importlib.import_module("torch")
         self.folded_steps: Set[int] = (
-            set(folded_steps) if folded_steps is not None else {14, 15, 16, 17, 18}
+            set(folded_steps) if folded_steps is not None else {15, 16, 17, 18}
+        )
+        self.pre_fold_anchor_step: Optional[int] = (
+            min(self.folded_steps) - 1 if self.folded_steps else None
         )
         self.cfg_damping = float(cfg_damping)
         self.cfg_vel_alpha = float(cfg_vel_alpha)
@@ -118,8 +121,15 @@ class AsymmetricCFGStepper:
             g = float(state.spec["guidance_scale"])
             fold_this_step = (g > 1.0) and self.should_fold(index, total_steps)
 
-            # If returning to a full 2-branch step after folding uncond, force an exact anchor
-            if not fold_this_step and self._had_folded_since_anchor:
+            # Force an exact 2-branch anchor on the step immediately preceding the folded
+            # window so Delta_CFG is anchored from an exact (non-DBCache) forward pass,
+            # and keep the single `cond` branch exact during folded steps to prevent
+            # compounding DBCache approximation with CFG branch folding.
+            if self.enabled and self.pre_fold_anchor_step is not None and index == self.pre_fold_anchor_step:
+                state.needs_anchor = True
+            elif fold_this_step:
+                state.needs_anchor = True
+            elif not fold_this_step and self._had_folded_since_anchor:
                 state.needs_anchor = True
                 self._had_folded_since_anchor = False
 
