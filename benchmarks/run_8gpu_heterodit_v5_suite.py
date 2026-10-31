@@ -81,7 +81,7 @@ def main() -> None:
         "vae_dtype": "bfloat16",
         "options": {"execution": "step", "max_pinned_mb": 2048},
     })
-    groups = build_fixed_groups(backend="nccl", timeout_seconds=120)
+    groups = build_fixed_groups(backend="nccl", timeout_seconds=60)
     handle = LayoutHandle(rank, (rank,), cfg=1, ring=1)
     wan.parallel = XDitWanParallelBackend(handle, groups).attach(wan.runtime)
 

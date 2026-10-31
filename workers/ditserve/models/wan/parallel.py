@@ -1041,11 +1041,19 @@ class AsymmetricSubClusterController:
         that absorbs bursty SD3.5-Medium arrivals with zero interruption to the running video group.
     """
 
-    def __init__(self, rank: int, world_size: int, *, video_ranks=(0, 1, 2), image_ranks=(3,)):
-        self.rank = int(rank)
-        self.world_size = int(world_size)
-        self.video_ranks = tuple(video_ranks)
-        self.image_ranks = tuple(image_ranks)
+    def __init__(self, rank_or_world_size: int, world_size: int | None = None, *, video_ranks=(0, 1, 2), image_ranks=(3,)):
+        if world_size is None:
+            self.rank = 0
+            self.world_size = int(rank_or_world_size)
+        else:
+            self.rank = int(rank_or_world_size)
+            self.world_size = int(world_size)
+        if self.world_size >= 8 and tuple(video_ranks) == (0, 1, 2):
+            self.video_ranks = (0, 1, 2, 3, 4, 5)
+            self.image_ranks = (6, 7)
+        else:
+            self.video_ranks = tuple(video_ranks)
+            self.image_ranks = tuple(image_ranks)
         self.is_video_rank = self.rank in self.video_ranks
         self.is_image_rank = self.rank in self.image_ranks
         self.stats = {
@@ -1053,6 +1061,62 @@ class AsymmetricSubClusterController:
             "absorbed_image_batches": 0,
             "rejoin_syncs": 0,
             "rejoin_sync_ms": 0.0,
+        }
+
+    def select_partition(self, image_queue_depth: int = 1, mode: str = "auto") -> dict:
+        """Select optimal asymmetric video + image absorber partition for 4-GPU or 8-GPU clusters."""
+        if self.world_size == 4:
+            if mode == "asymmetric_3_1" or (mode == "auto" and 0 < image_queue_depth <= 4):
+                return {
+                    "mode": "asymmetric_3_1",
+                    "video_ranks": [0, 1, 2],
+                    "image_ranks": [3],
+                    "video_cfg": 1,
+                    "video_ulysses": 3,
+                    "video_ring": 1,
+                }
+            return {
+                "mode": "gang_4_0",
+                "video_ranks": [0, 1, 2, 3],
+                "image_ranks": [],
+                "video_cfg": 1,
+                "video_ulysses": 4,
+                "video_ring": 1,
+            }
+        if self.world_size == 8:
+            if mode == "asymmetric_6_2" or (mode == "auto" and 0 < image_queue_depth <= 6):
+                return {
+                    "mode": "asymmetric_6_2",
+                    "video_ranks": [0, 1, 2, 3, 4, 5],
+                    "image_ranks": [6, 7],
+                    "video_cfg": 1,
+                    "video_ulysses": 3,
+                    "video_ring": 2,
+                }
+            if mode == "asymmetric_3_5":
+                return {
+                    "mode": "asymmetric_3_5",
+                    "video_ranks": [0, 1, 2],
+                    "image_ranks": [3, 4, 5, 6, 7],
+                    "video_cfg": 1,
+                    "video_ulysses": 3,
+                    "video_ring": 1,
+                }
+            return {
+                "mode": "gang_8_0",
+                "video_ranks": [0, 1, 2, 3, 4, 5, 6, 7],
+                "image_ranks": [],
+                "video_cfg": 1,
+                "video_ulysses": 4,
+                "video_ring": 2,
+            }
+        return {
+            "mode": "single_gpu",
+            "video_ranks": list(range(self.world_size)),
+            "image_ranks": [],
+            "video_cfg": 1,
+            "video_ulysses": self.world_size,
+            "video_ring": 1,
         }
 
     def sync_video_state_to_world(self, dist_module, torch_module, state, *, src_rank: int = 0) -> float:
