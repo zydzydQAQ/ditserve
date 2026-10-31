@@ -194,7 +194,6 @@ class WanBackend(Backend):
         else:
             stepper = request.get("stepper")
             taylor_comp = request.get("taylor_compensator")
-            state._active_stepper = stepper
             step_fn = (
                 (lambda s: stepper.step(self.runtime, s, taylor_compensator=taylor_comp))
                 if stepper is not None
@@ -202,7 +201,7 @@ class WanBackend(Backend):
             )
             for unused in range(min(positive_int(request.get("steps", 1)), state.spec["steps"] - state.step_index)):
                 if self.parallel is not None:
-                    records.append(self.parallel.step(state, step_fn=step_fn))
+                    records.append(self.parallel.step(state, step_fn=step_fn, stepper=stepper))
                 elif step_fn is not None:
                     records.append(step_fn(state))
                 else:

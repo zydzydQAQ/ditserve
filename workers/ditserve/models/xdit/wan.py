@@ -255,7 +255,7 @@ class XDitWanParallelBackend:
         self._require_active()
         self.gate.consensus(dict(kind="block_quantum", position=position))
 
-    def step(self, state, step_fn=None):
+    def step(self, state, step_fn=None, stepper=None):
         from ..wan.parallel import ParallelContractError
         if self.worker is None:
             raise ParallelContractError("attach a worker first")
@@ -290,7 +290,6 @@ class XDitWanParallelBackend:
                             return_dict=False,
                         )[0]
                         pred_cond, pred_uncond = self.exchange_predictions(pred_branch)
-                        stepper = getattr(state, "_active_stepper", None)
                         if stepper is not None and hasattr(stepper, "observe_cfg_pair"):
                             stepper.observe_cfg_pair(index, pred_cond, pred_uncond)
                         g = float(state.spec["guidance_scale"])
