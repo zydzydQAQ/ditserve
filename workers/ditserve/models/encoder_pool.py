@@ -18,11 +18,11 @@ import time
 class ProactiveEncoderPool:
     """Centralized or cross-worker shared text encoder pool with proactive staging."""
 
-    def __init__(self, config=None):
-        config = config or {}
-        self.shm_dir = Path(config.get("shm_dir", "/dev/shm/ditserve-hetero-embeds"))
-        self.max_entries = int(config.get("max_entries", 64))
-        self.max_bytes = int(config.get("max_bytes", 512 * (1 << 20)))
+    def __init__(self, config=None, *, max_cache_entries: int | None = None):
+        cfg = config if isinstance(config, dict) else {}
+        self.shm_dir = Path(cfg.get("shm_dir", "/dev/shm/ditserve-hetero-embeds"))
+        self.max_entries = int(max_cache_entries if max_cache_entries is not None else cfg.get("max_entries", 64))
+        self.max_bytes = int(cfg.get("max_bytes", 512 * (1 << 20)))
         self._entries = OrderedDict()
         self._bytes = 0
         self.hits = 0
@@ -227,7 +227,7 @@ class ProactiveEncoderPool:
         return out, seq_len
 
     def encode_wan_prompt_fast(self, wan_runtime, spec: dict, *, max_sequence_length: int = 512,
-                               pin_memory: bool = True):
+                               pin_memory: bool = True, use_cache: bool = True):
         """Fast Wan2.1 CPU prompt encoding with Active-Token Trimming + Pinned LRU Prompt/Neg-Prompt Cache."""
         from .wan.runtime import EncodedPrompt, normalize_spec
 
@@ -240,22 +240,24 @@ class ProactiveEncoderPool:
         pos_key = self.prompt_key("wan_pos", str(wan_runtime.model_path), pos_text, "", max_sequence_length, "float32", False)
         neg_key = self.prompt_key("wan_neg", str(wan_runtime.model_path), "", neg_text, max_sequence_length, "float32", False)
 
-        pos_hit = pos_key in self._entries
+        pos_hit = use_cache and (pos_key in self._entries)
         if pos_hit:
             pos_emb = self.fetch_to_device(pos_key, "cpu")["tensors"]["embed"].clone()
         else:
             pos_emb, _ = self._encode_single_wan_text_trimmed(wan_runtime, pos_text, max_sequence_length)
-            self.stage_embeddings(pos_key, {"embed": pos_emb}, pin_memory=pin_memory)
+            if use_cache:
+                self.stage_embeddings(pos_key, {"embed": pos_emb}, pin_memory=pin_memory)
 
         neg_emb = None
         neg_hit = False
         if do_cfg:
-            neg_hit = neg_key in self._entries
+            neg_hit = use_cache and (neg_key in self._entries)
             if neg_hit:
                 neg_emb = self.fetch_to_device(neg_key, "cpu")["tensors"]["embed"].clone()
             else:
                 neg_emb, _ = self._encode_single_wan_text_trimmed(wan_runtime, neg_text, max_sequence_length)
-                self.stage_embeddings(neg_key, {"embed": neg_emb}, pin_memory=pin_memory)
+                if use_cache:
+                    self.stage_embeddings(neg_key, {"embed": neg_emb}, pin_memory=pin_memory)
 
         elapsed_ms = (time.perf_counter() - t0) * 1000.0
         receipt = {
@@ -271,6 +273,9 @@ class ProactiveEncoderPool:
             owner=wan_runtime._owner,
             negative_prompt_cache=receipt,
         )
+
+    def summary(self) -> dict:
+        return self.stats()
 
     def stats(self) -> dict:
         return {

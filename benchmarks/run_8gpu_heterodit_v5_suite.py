@@ -132,8 +132,8 @@ def main() -> None:
         fp32_trimmed_ms = (time.perf_counter() - t0) * 1000.0
         cos_fp32_trim = float(
             F.cosine_similarity(
-                ref_encoded["prompt_embeds"].flatten().float().unsqueeze(0),
-                trim_fp32_encoded["prompt_embeds"].flatten().float().unsqueeze(0),
+                ref_encoded.prompt_embeds.flatten().float().unsqueeze(0),
+                trim_fp32_encoded.prompt_embeds.flatten().float().unsqueeze(0),
             ).item()
         )
 
@@ -144,8 +144,8 @@ def main() -> None:
         bf16_trimmed_cold_ms = (time.perf_counter() - t0) * 1000.0
         cos_bf16_trim = float(
             F.cosine_similarity(
-                ref_encoded["prompt_embeds"].flatten().float().unsqueeze(0),
-                bf16_trimmed_encoded["prompt_embeds"].flatten().float().unsqueeze(0),
+                ref_encoded.prompt_embeds.flatten().float().unsqueeze(0),
+                bf16_trimmed_encoded.prompt_embeds.flatten().float().unsqueeze(0),
             ).item()
         )
 

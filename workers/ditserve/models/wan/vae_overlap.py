@@ -25,11 +25,19 @@ from ..pipeline import ChunkedDecode
 class ConcurrentVAEDecodeStreamer:
     """Dedicated CUDA stream executor for overlapping Wan 3D-VAE decode with SD3.5 denoising."""
 
-    def __init__(self, wan_runtime, *, chunk_frames: int = 1, vae_dtype: str | None = None):
+    def __init__(
+        self,
+        wan_runtime,
+        *,
+        chunk_frames: int = 1,
+        default_chunk_frames: int | None = None,
+        vae_dtype: str | None = None,
+    ):
         self.runtime = wan_runtime
         self.torch = wan_runtime.torch
         self.device = wan_runtime.device
-        self.chunk_frames = max(1, int(chunk_frames))
+        cf = default_chunk_frames if default_chunk_frames is not None else chunk_frames
+        self.chunk_frames = max(1, int(cf))
         self.vae_dtype = vae_dtype
         if vae_dtype is not None:
             target_dtype = getattr(self.torch, vae_dtype) if isinstance(vae_dtype, str) else vae_dtype
@@ -63,6 +71,7 @@ class ConcurrentVAEDecodeStreamer:
         info = {
             "kind": "stream_overlapped_decode",
             "vae_stream_ms": round(elapsed_ms, 3),
+            "vae_decode_ms": round(elapsed_ms, 3),
             "latent_frames": total_latent_frames,
             "chunks_executed": chunk_count,
             "chunk_frames": chunk_frames,
@@ -71,10 +80,10 @@ class ConcurrentVAEDecodeStreamer:
         state.events.append(info)
         return video_np, info
 
-    def submit_decode(self, state, *, chunk_frames: int | None = None) -> Future:
-        """Launch chunked 3D-VAE decode on `` self.vae_stream`` after recording a ready event on default stream."""
+    def submit_decode(self, state, *, chunk_frames: int | None = None, allow_partial: bool = False) -> Future:
+        """Launch chunked 3D-VAE decode on ``self.vae_stream`` after recording a ready event on default stream."""
         torch = self.torch
-        if state.step_index != state.spec["steps"] or state.finished:
+        if state.finished or (not allow_partial and state.step_index != state.spec["steps"]):
             raise ValueError("ConcurrentVAEDecodeStreamer requires a completed, undecoded Wan state")
         ready_event = None
         if self.vae_stream is not None:
@@ -126,12 +135,12 @@ class ConcurrentVAEDecodeStreamer:
         if int(rank) != 0:
             state.finished = True
             return None
-        return self.submit_decode(state, chunk_frames=chunk_frames)
+        return self.submit_decode(state, chunk_frames=chunk_frames, allow_partial=True)
 
     def collect_rank0_disaggregated(self, rank: int, fut) -> Dict[str, Any]:
         """Collect the Rank-0 async 3D-VAE decode result (no-op on Ranks 1..N-1)."""
         if int(rank) != 0 or fut is None:
-            return {"kind": "rank_non0_bypassed", "vae_stream_ms": 0.0}
+            return {"kind": "rank_non0_bypassed", "vae_stream_ms": 0.0, "vae_decode_ms": 0.0}
         _, vae_info = fut.result()
         return vae_info
 
