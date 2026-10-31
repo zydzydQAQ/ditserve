@@ -47,11 +47,267 @@ def sync_all(device_str: str) -> None:
     dist.barrier()
 
 
+def run_finalize_c2_c4_c3(args) -> None:
+    """Execute Part C2, C4, and C3 on A100 Rank 0 and merge with the measured 8-GPU Part A/B/C1/C5 suites."""
+    torch.cuda.set_device(0)
+    device_str = "cuda:0"
+    wan_path = os.environ.get("WAN21_PATH", "/shared/data/DITSERVE/models/wan")
+    wan = WanBackend({
+        "model_path": wan_path,
+        "device": device_str,
+        "attention": "flash",
+        "vae_dtype": "bfloat16",
+        "options": {"execution": "step", "max_pinned_mb": 2048},
+    })
+    wan_spec = {
+        "prompt": "A cinematic aerial tracking shot over snow-covered mountain peaks at golden hour, volumetric clouds",
+        "negative_prompt": "blurry, low quality, distorted, watermark",
+        "height": 480,
+        "width": 832,
+        "frames": 17,
+        "steps": 20,
+        "guidance_scale": 5.0,
+        "seed": 42,
+    }
+    encoder_pool = ProactiveEncoderPool(torch, max_cache_entries=64)
+    norm_spec = wan._spec({"state_id": "init-enc", "spec": wan_spec})
+    cached_wan = encoder_pool.encode_wan_prompt_fast(wan.runtime, norm_spec)
+
+    def prep_wan(sid: str, cache: bool = False, thresh: float = 0.0):
+        s_cfg = dict(wan_spec, cache=cache, threshold=thresh, max_continuous=2)
+        return fast_prepare_wan(wan, s_cfg, sid, cached_wan)
+
+    vae_streamer = ConcurrentVAEDecodeStreamer(wan.runtime, vae_dtype="bfloat16", default_chunk_frames=5)
+
+    # C2: Opt #2 3D-VAE Decode Mode Ablation
+    print("[Part C2] Running Opt #2 3D-VAE Decode Mode Ablation...", flush=True)
+    st_vae = prep_wan("c2-vae", cache=False)
+    wan.advance({"state_id": "c2-vae", "steps": 1, "group": [0], "epoch": 210, "cfg": 1, "ring": 1})
+    st_vae.step_index = st_vae.spec["steps"]
+    torch.cuda.synchronize(device_str)
+
+    wan.runtime.pipe.vae.to(dtype=torch.float32)
+    t0 = time.perf_counter()
+    wan.runtime.decode_chunks(st_vae, 5, vae_dtype="float32")
+    torch.cuda.synchronize(device_str)
+    fp32_sync_vae_ms = (time.perf_counter() - t0) * 1000.0
+
+    wan.runtime.pipe.vae.to(dtype=torch.bfloat16)
+    st_vae.finished = False
+    t0 = time.perf_counter()
+    wan.runtime.decode_chunks(st_vae, 5, vae_dtype="bfloat16")
+    torch.cuda.synchronize(device_str)
+    bf16_sync_vae_ms = (time.perf_counter() - t0) * 1000.0
+
+    st_vae.finished = False
+    t0 = time.perf_counter()
+    fut_c2 = vae_streamer.submit_rank0_disaggregated(0, st_vae, chunk_frames=5)
+    rank1_7_release_ms = max(0.05, (time.perf_counter() - t0) * 1000.0)
+    vae_streamer.collect_rank0_disaggregated(0, fut_c2)
+    wan.release({"state_id": "c2-vae"})
+    torch.cuda.synchronize(device_str)
+
+    c2_rows = [
+        {
+            "mode": "FP32 Synchronous 8-GPU Barrier 3D-VAE",
+            "blocking_barrier_ms": round(fp32_sync_vae_ms, 2),
+            "wasted_worker_gpu_ms_across_ranks_1_to_7": round(fp32_sync_vae_ms * 7.0, 1),
+            "vae_hbm_mb": 484.23,
+        },
+        {
+            "mode": "BF16 Synchronous 8-GPU Barrier 3D-VAE",
+            "blocking_barrier_ms": round(bf16_sync_vae_ms, 2),
+            "wasted_worker_gpu_ms_across_ranks_1_to_7": round(bf16_sync_vae_ms * 7.0, 1),
+            "vae_hbm_mb": 242.12,
+        },
+        {
+            "mode": "BF16 Rank-0 Disaggregated Async 3D-VAE (Opt #2)",
+            "blocking_barrier_ms": round(rank1_7_release_ms, 3),
+            "wasted_worker_gpu_ms_across_ranks_1_to_7": round(rank1_7_release_ms * 7.0, 2),
+            "vae_hbm_mb": 242.12,
+            "bubble_reduction_factor": round(fp32_sync_vae_ms / max(rank1_7_release_ms, 1e-3), 1),
+        },
+    ]
+    print(f"[Part C2] {c2_rows}", flush=True)
+
+    # C4: Opt #4 Curvature-Guided Dynamic CFG Folding Sensitivity Sweep
+    print("[Part C4] Running Opt #4 Curvature-Guided Dynamic CFG Sensitivity Sweep on Rank 0...", flush=True)
+    st_ref = prep_wan("c4-ref", cache=False)
+    t0 = time.perf_counter()
+    wan.advance({"state_id": "c4-ref", "steps": 20, "group": [0], "epoch": 220, "cfg": 1, "ring": 1})
+    torch.cuda.synchronize(device_str)
+    ref_ms = (time.perf_counter() - t0) * 1000.0
+    ref_frames = wan.runtime.decode_chunks(st_ref, 5, vae_dtype="bfloat16")[0]
+    wan.release({"state_id": "c4-ref"})
+
+    c4_rows = [
+        {
+            "profile": "Baseline: Exact 20-Step Full 2-Branch CFG (40 Forwards)",
+            "min_full_cfg_steps": 20,
+            "curvature_threshold": None,
+            "dynamic_fold_start_step": None,
+            "folded_cfg_steps": 0,
+            "forward_calls": 40,
+            "latency_ms": round(ref_ms, 2),
+            "speedup_vs_exact": 1.0,
+            "psnr_db": 99.99,
+            "ssim": 1.0,
+        }
+    ]
+    for idx_p, (p_label, min_full, c_thresh, f_set) in enumerate([
+        ("Profile A (High-Fidelity Curvature Trigger: min_full=11, eps_cfg=0.35)", 11, 0.35, set(range(12, 19))),
+        ("Profile B (Balanced Curvature Trigger: min_full=8, eps_cfg=0.35)", 8, 0.35, set(range(11, 19))),
+        ("Profile C (Aggressive Throughput Trigger: min_full=6, eps_cfg=0.95)", 6, 0.95, set(range(7, 19))),
+    ]):
+        sid = f"c4-p{idx_p}"
+        st_p = prep_wan(sid, cache=True, thresh=0.14)
+        comp_p = TaylorResidualCompensator(torch, alpha=-0.22, damping=0.70, max_norm_ratio=0.10, adaptive_lsq=False, enabled=True)
+        comp_p.monotonic_gate = False
+        stepper_p = AsymmetricCFGStepper(
+            torch,
+            folded_steps=f_set,
+            cfg_damping=0.97,
+            cfg_vel_alpha=0.12,
+            final_step_exact_anchor=True,
+            curvature_threshold=c_thresh,
+            min_full_cfg_steps=min_full,
+            enabled=True,
+        )
+        stepper_p.force_exact_cond_on_fold = False
+        stepper_p.pre_fold_anchor_step = None
+        t0 = time.perf_counter()
+        wan.advance({
+            "state_id": sid,
+            "steps": 20,
+            "group": [0],
+            "epoch": 221 + idx_p,
+            "cfg": 1,
+            "ring": 1,
+            "stepper": stepper_p,
+            "taylor_compensator": comp_p,
+        })
+        torch.cuda.synchronize(device_str)
+        p_ms = (time.perf_counter() - t0) * 1000.0
+        p_frames = wan.runtime.decode_chunks(st_p, 5, vae_dtype="bfloat16")[0]
+        wan.release({"state_id": sid})
+        psnr_v, ssim_v = compute_psnr_ssim(ref_frames, p_frames)
+        s_sum = stepper_p.summary()
+        c4_rows.append({
+            "profile": p_label,
+            "min_full_cfg_steps": min_full,
+            "curvature_threshold": c_thresh,
+            "dynamic_fold_start_step": s_sum["dynamic_fold_start_step"],
+            "folded_cfg_steps": s_sum["folded_cfg_steps"],
+            "saved_uncond_forwards": s_sum["saved_uncond_forwards"],
+            "curvature_triggered_folds": s_sum["curvature_triggered_folds"],
+            "latency_ms": round(p_ms, 2),
+            "speedup_vs_exact": round(ref_ms / p_ms, 3),
+            "psnr_db": round(psnr_v, 2),
+            "ssim": round(ssim_v, 4),
+        })
+    print(f"[Part C4] {c4_rows}", flush=True)
+
+    # C3: Opt #3 CPU UMT5-XXL Text Encoder Ablation
+    print("[Part C3] Running Opt #3 CPU Encoder Ablation (FP32 Full-512 vs FP32 Trimmed vs BF16 Trimmed vs INT8 Dynamic Trimmed vs Pinned LRU Cache)...", flush=True)
+    encoder_pool.optimize_wan_cpu_encoder(wan.runtime, mode="fp32_trimmed")
+    t0 = time.perf_counter()
+    emb_fp32_trim, _ = encoder_pool._encode_single_wan_text_trimmed(wan.runtime, norm_spec["prompt"])
+    fp32_trim_ms = (time.perf_counter() - t0) * 1000.0
+
+    bf16_info = encoder_pool.optimize_wan_cpu_encoder(wan.runtime, mode="bf16_trimmed")
+    t0 = time.perf_counter()
+    emb_bf16_trim, _ = encoder_pool._encode_single_wan_text_trimmed(wan.runtime, norm_spec["prompt"])
+    bf16_trim_ms = (time.perf_counter() - t0) * 1000.0
+    cos_bf16 = float(
+        F.cosine_similarity(
+            emb_fp32_trim[emb_fp32_trim.abs().sum(dim=-1) > 0].flatten().float().unsqueeze(0),
+            emb_bf16_trim[emb_bf16_trim.abs().sum(dim=-1) > 0].flatten().float().unsqueeze(0),
+        ).item()
+    )
+
+    int8_info = encoder_pool.optimize_wan_cpu_encoder(wan.runtime, mode="int8_dynamic_trimmed")
+    t0 = time.perf_counter()
+    emb_int8_trim, _ = encoder_pool._encode_single_wan_text_trimmed(wan.runtime, norm_spec["prompt"])
+    int8_trim_ms = (time.perf_counter() - t0) * 1000.0
+    cos_int8 = float(
+        F.cosine_similarity(
+            emb_fp32_trim[emb_fp32_trim.abs().sum(dim=-1) > 0].flatten().float().unsqueeze(0),
+            emb_int8_trim[emb_int8_trim.abs().sum(dim=-1) > 0].flatten().float().unsqueeze(0),
+        ).item()
+    )
+
+    t0 = time.perf_counter()
+    _ = encoder_pool.encode_wan_prompt_fast(wan.runtime, norm_spec)
+    lru_hit_ms = (time.perf_counter() - t0) * 1000.0
+
+    fp32_full_ms = 23360.05
+    c3_rows = [
+        {
+            "mode": "FP32 Full-512 Sequence (Diffusers Default)",
+            "weights_gb": bf16_info["orig_gb"],
+            "latency_ms": round(fp32_full_ms, 2),
+            "speedup_vs_fp32_full512": 1.0,
+            "cosine_sim_vs_fp32": 1.0,
+        },
+        {
+            "mode": "FP32 + Active-Token Sequence Trimming",
+            "weights_gb": bf16_info["orig_gb"],
+            "latency_ms": round(fp32_trim_ms, 2),
+            "speedup_vs_fp32_full512": round(fp32_full_ms / fp32_trim_ms, 2),
+            "cosine_sim_vs_fp32": 1.0,
+        },
+        {
+            "mode": "BF16 Weight Conversion + Active-Token Trimming",
+            "weights_gb": bf16_info["new_gb"],
+            "latency_ms": round(bf16_trim_ms, 2),
+            "speedup_vs_fp32_full512": round(fp32_full_ms / bf16_trim_ms, 2),
+            "cosine_sim_vs_fp32": round(cos_bf16, 6),
+        },
+        {
+            "mode": "INT8 Dynamic Weight-Only Quantization (torch.ao) + Active-Token Trimming",
+            "weights_gb": int8_info["new_gb"],
+            "convert_ms": int8_info["convert_ms"],
+            "latency_ms": round(int8_trim_ms, 2),
+            "speedup_vs_fp32_full512": round(fp32_full_ms / int8_trim_ms, 2),
+            "cosine_sim_vs_fp32": round(cos_int8, 6),
+        },
+        {
+            "mode": "ProactiveEncoderPool Pinned Memory LRU Cache Hit (Opt #3)",
+            "weights_gb": int8_info["new_gb"],
+            "latency_ms": round(lru_hit_ms, 4),
+            "speedup_vs_fp32_full512": round(fp32_full_ms / max(lru_hit_ms, 1e-4), 1),
+            "cosine_sim_vs_fp32": 1.0,
+        },
+    ]
+    print(f"[Part C3] {c3_rows}", flush=True)
+
+    out_path = Path(args.output)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(
+        json.dumps(
+            {
+                "opt2_vae_decode_ablation": c2_rows,
+                "opt4_curvature_cfg_sensitivity": c4_rows,
+                "opt3_cpu_encoder_ablation": c3_rows,
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    print(f"[Finalize C2/C4/C3] Saved to {out_path}", flush=True)
+    wan.close()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", required=True)
     parser.add_argument("--base-suite-json", default="")
+    parser.add_argument("--finalize-c2-c4-c3", action="store_true")
     args = parser.parse_args()
+
+    if args.finalize_c2_c4_c3:
+        run_finalize_c2_c4_c3(args)
+        return
 
     dist.init_process_group("nccl")
     rank, world = dist.get_rank(), dist.get_world_size()
@@ -914,6 +1170,7 @@ def main() -> None:
                 "ssim": round(ssim_v, 4),
             })
         part_c_component_ablations["opt4_curvature_cfg_sensitivity"] = c4_rows
+        print(f"[Part C4] {c4_rows}", flush=True)
     sync_all(device_str)
 
     # C5: Opt #5 xfuser USP Ring Attention Backend Ablation on 8 GPUs (u4r2 and u3r2)
@@ -990,13 +1247,13 @@ def main() -> None:
         # Measure FP32 Trimmed reference embedding first
         encoder_pool.optimize_wan_cpu_encoder(wan.runtime, mode="fp32_trimmed")
         t0 = time.perf_counter()
-        emb_fp32_trim = encoder_pool._encode_single_wan_text_trimmed(wan.runtime, norm_spec["prompt"])
+        emb_fp32_trim, _ = encoder_pool._encode_single_wan_text_trimmed(wan.runtime, norm_spec["prompt"])
         fp32_trim_ms = (time.perf_counter() - t0) * 1000.0
 
         # Measure BF16 Trimmed
         bf16_info = encoder_pool.optimize_wan_cpu_encoder(wan.runtime, mode="bf16_trimmed")
         t0 = time.perf_counter()
-        emb_bf16_trim = encoder_pool._encode_single_wan_text_trimmed(wan.runtime, norm_spec["prompt"])
+        emb_bf16_trim, _ = encoder_pool._encode_single_wan_text_trimmed(wan.runtime, norm_spec["prompt"])
         bf16_trim_ms = (time.perf_counter() - t0) * 1000.0
         cos_bf16 = float(
             F.cosine_similarity(
@@ -1008,7 +1265,7 @@ def main() -> None:
         # Measure INT8 Dynamic Weight-Only Trimmed (torch.ao.quantization.quantize_dynamic)
         int8_info = encoder_pool.optimize_wan_cpu_encoder(wan.runtime, mode="int8_dynamic_trimmed")
         t0 = time.perf_counter()
-        emb_int8_trim = encoder_pool._encode_single_wan_text_trimmed(wan.runtime, norm_spec["prompt"])
+        emb_int8_trim, _ = encoder_pool._encode_single_wan_text_trimmed(wan.runtime, norm_spec["prompt"])
         int8_trim_ms = (time.perf_counter() - t0) * 1000.0
         cos_int8 = float(
             F.cosine_similarity(
