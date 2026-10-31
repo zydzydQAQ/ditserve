@@ -198,11 +198,11 @@ def main() -> None:
         comp_curv.monotonic_gate = False
         stepper_curv = AsymmetricCFGStepper(
             torch,
-            folded_steps=set(range(12, 19)),
+            folded_steps=set(range(7, 19)),
             cfg_damping=0.97,
             cfg_vel_alpha=0.12,
             final_step_exact_anchor=True,
-            curvature_threshold=0.18,
+            curvature_threshold=0.95,
             min_full_cfg_steps=6,
             enabled=True,
         )
@@ -223,13 +223,13 @@ def main() -> None:
         curv_20_ms = (time.perf_counter() - t0) * 1000.0
         curv_frames = wan.runtime.decode_chunks(st_curv, 5, vae_dtype="bfloat16")[0]
         wan.release({"state_id": "opt4-curv"})
-        q_curv = compute_psnr_ssim(ref_frames, curv_frames)
+        psnr_db, ssim_val = compute_psnr_ssim(ref_frames, curv_frames)
         opt_results["opt4_curvature_dynamic_cfg"] = {
             "exact_20step_ms": round(ref_20_ms, 2),
             "curvature_dynamic_cfg_ms": round(curv_20_ms, 2),
             "speedup_vs_exact": round(ref_20_ms / curv_20_ms, 3),
-            "psnr_db": round(q_curv["psnr_db"], 2),
-            "ssim": round(q_curv["ssim"], 4),
+            "psnr_db": round(psnr_db, 2),
+            "ssim": round(ssim_val, 4),
             "stepper_summary": stepper_curv.summary(),
         }
         print(f"[Opt #4] {opt_results['opt4_curvature_dynamic_cfg']}", flush=True)
@@ -333,6 +333,7 @@ def main() -> None:
     vae_streamer = ConcurrentVAEDecodeStreamer(wan.runtime, vae_dtype="bfloat16", default_chunk_frames=5)
     st_vae = prep_wan("opt2-vae", cache=False)
     wan.advance({"state_id": "opt2-vae", "steps": 1, "group": list(range(8)), "epoch": 190, "cfg": 2, "ring": 1})
+    st_vae.step_index = st_vae.spec["steps"]
     sync_all(device_str)
 
     # Synchronous Rank-0 VAE decode with 8-GPU barrier
@@ -343,6 +344,7 @@ def main() -> None:
     sync_vae_all_ranks_ms = (time.perf_counter() - t0) * 1000.0
 
     # Disaggregated Rank-0 Async VAE decode: Ranks 1..7 return immediately, Rank 0 overlaps with next step
+    st_vae.finished = False
     t0 = time.perf_counter()
     fut_vae = vae_streamer.submit_rank0_disaggregated(rank, st_vae, chunk_frames=5)
     non_rank0_hold_ms = (time.perf_counter() - t0) * 1000.0
@@ -646,7 +648,7 @@ def main() -> None:
             cfg_damping=0.97,
             cfg_vel_alpha=0.12,
             final_step_exact_anchor=True,
-            curvature_threshold=0.18,
+            curvature_threshold=0.95,
             min_full_cfg_steps=5,
             enabled=True,
         )
@@ -660,6 +662,7 @@ def main() -> None:
         w3_coabsorbed = False
         w3_local_v5 = 0.0
         ep5 = 310
+        pg_6gpu = groups.group((0, 1, 2, 3, 4, 5))
         while st5.step_index < 20:
             wan.advance({
                 "state_id": "p5-8g",
@@ -671,9 +674,11 @@ def main() -> None:
                 "stepper": stepper5,
                 "taylor_compensator": comp5,
             })
-            if not w3_coabsorbed and st5.step_index == 11:
-                while (time.perf_counter() - t0) * 1000.0 < 3000.0:
-                    time.sleep(0.001)
+            torch.cuda.synchronize(device_str)
+            cur_local = (time.perf_counter() - t0) * 1000.0
+            sync_flag = torch.tensor([1 if (not w3_coabsorbed and cur_local >= 3000.0) else 0], device=device_str, dtype=torch.int64)
+            dist.broadcast(sync_flag, src=0, group=pg_6gpu)
+            if int(sync_flag.item()) == 1:
                 sd35.run_micro_batch({
                     "prompts": [img_prompt],
                     "seeds": [300 + rank],
@@ -784,7 +789,7 @@ def main() -> None:
         cfg_damping=0.97,
         cfg_vel_alpha=0.12,
         final_step_exact_anchor=True,
-        curvature_threshold=0.18,
+        curvature_threshold=0.95,
         min_full_cfg_steps=6,
         enabled=True,
     )
@@ -820,6 +825,7 @@ def main() -> None:
     if rank in (0, 1, 2):
         w3_assisted_v6 = False
         ep6 = 352
+        pg_3gpu = groups.group((0, 1, 2))
         while st6.step_index < 20:
             wan.advance({
                 "state_id": "p6-8g",
@@ -831,9 +837,11 @@ def main() -> None:
                 "stepper": stepper6,
                 "taylor_compensator": comp6,
             })
-            if not w3_assisted_v6 and st6.step_index == 13:
-                while (time.perf_counter() - t0) * 1000.0 < 3000.0:
-                    time.sleep(0.001)
+            torch.cuda.synchronize(device_str)
+            cur_local = (time.perf_counter() - t0) * 1000.0
+            sync_flag = torch.tensor([1 if (not w3_assisted_v6 and cur_local >= 3000.0) else 0], device=device_str, dtype=torch.int64)
+            dist.broadcast(sync_flag, src=0, group=pg_3gpu)
+            if int(sync_flag.item()) == 1:
                 sd35.run_micro_batch({
                     "prompts": [img_prompt],
                     "seeds": [300 + rank],

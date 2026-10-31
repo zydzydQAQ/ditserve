@@ -38,7 +38,7 @@ class AsymmetricCFGStepper:
         final_step_exact_anchor: bool = True,
         curvature_threshold: Optional[float] = None,
         min_full_cfg_steps: int = 5,
-        max_curvature_guard: float = 0.35,
+        max_curvature_guard: float = 1.65,
         enabled: bool = True,
     ):
         self.torch = torch_module or importlib.import_module("torch")

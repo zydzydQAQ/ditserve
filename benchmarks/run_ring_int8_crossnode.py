@@ -484,7 +484,7 @@ def run_real_4gpu_mixed_replay(rank: int, world: int, local: int) -> dict:
             cfg_damping=0.97,
             cfg_vel_alpha=0.12,
             final_step_exact_anchor=True,
-            curvature_threshold=0.18,
+            curvature_threshold=0.95,
             min_full_cfg_steps=5,
             enabled=True,
         )
@@ -492,9 +492,10 @@ def run_real_4gpu_mixed_replay(rank: int, world: int, local: int) -> dict:
         stepper5.pre_fold_anchor_step = None
 
         # Ranks 0, 1, 2 run 20 steps of Wan2.1 (u3r1) with ZERO interruption during Wave 1,
-        # only pausing once around Wave 2 to help absorb the 4-image burst in parallel!
+        # only pausing once as soon as t >= 2200ms to help absorb the 4-image Wave 2 burst in parallel!
         w2_assisted = False
         ep5 = 80
+        pg_3gpu = groups.group((0, 1, 2))
         while st5.step_index < 20:
             wan.advance({
                 "state_id": "p5-v0",
@@ -506,12 +507,11 @@ def run_real_4gpu_mixed_replay(rank: int, world: int, local: int) -> dict:
                 "stepper": stepper5,
                 "taylor_compensator": comp5,
             })
+            torch.cuda.synchronize()
             cur_local = (time.perf_counter() - t0) * 1000.0
-            sync_flag = torch.tensor([1 if (not w2_assisted and st5.step_index == 10 and cur_local >= 2200.0) else 0], device=device_str)
-            if rank == 0:
-                pass
-            # Deterministic step-10 co-absorption for Wave 2 across ranks 0, 1, 2
-            if not w2_assisted and st5.step_index == 10:
+            sync_flag = torch.tensor([1 if (not w2_assisted and cur_local >= 2200.0) else 0], device=device_str, dtype=torch.int64)
+            dist.broadcast(sync_flag, src=0, group=pg_3gpu)
+            if int(sync_flag.item()) == 1:
                 sd35.run_micro_batch({
                     "prompts": [img_prompt],
                     "seeds": [300 + rank],
@@ -530,19 +530,6 @@ def run_real_4gpu_mixed_replay(rank: int, world: int, local: int) -> dict:
 
         # Opt #2: Rank 0 submits 3D-VAE decode asynchronously on background stream while Ranks 1, 2 are immediately freed!
         vae_fut = vae_streamer.submit_rank0_disaggregated(rank, st5, chunk_frames=5)
-        if rank in (1, 2):
-            # Freed Ranks 1 & 2 immediately co-absorb one Wave-1 image each while Rank 0 overlaps 3D-VAE decode
-            sd35.run_micro_batch({
-                "prompts": [img_prompt],
-                "seeds": [200 + rank],
-                "height": 512,
-                "width": 512,
-                "steps": 12,
-                "attention": "flash",
-                "cache": True,
-                "threshold": 0.22,
-                "vae_channels_last": True,
-            })
         vae_res = vae_streamer.collect_rank0_disaggregated(rank, vae_fut)
         torch.cuda.synchronize()
         vid_p5_local = (time.perf_counter() - t0) * 1000.0

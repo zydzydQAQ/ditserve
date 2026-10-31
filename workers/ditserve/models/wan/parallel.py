@@ -33,7 +33,7 @@ def aligned_groups(world_size):
     if world_size >= 4 and (0, 1, 2) not in groups:
         groups.append((0, 1, 2))
     if world_size >= 8:
-        for extra in ((4, 5, 6), (0, 1, 2, 3, 4, 5)):
+        for extra in ((3, 4, 5), (4, 5, 6), (0, 1, 2, 3, 4, 5)):
             if extra not in groups:
                 groups.append(extra)
     return tuple(groups)
