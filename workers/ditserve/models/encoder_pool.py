@@ -176,6 +176,15 @@ class ProactiveEncoderPool:
         else:
             raise ValueError(f"Unsupported CPU encoder optimization mode: {mode}")
         new_bytes = sum(p.numel() * p.element_size() for p in encoder.parameters())
+        for mod in encoder.modules():
+            if hasattr(mod, "_packed_params") and hasattr(mod._packed_params, "_weight_bias"):
+                try:
+                    w_q, b_q = mod._packed_params._weight_bias()
+                    new_bytes += w_q.numel() * w_q.element_size()
+                    if b_q is not None:
+                        new_bytes += b_q.numel() * b_q.element_size()
+                except Exception:
+                    pass
         return {
             "mode": mode,
             "orig_gb": round(orig_bytes / (1 << 30), 3),
