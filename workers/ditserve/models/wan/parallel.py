@@ -17,42 +17,57 @@ import time
 import types
 
 
-WORLD_SIZES = (2, 4, 8)
+WORLD_SIZES = (2, 4, 8, 16)
 
 
 def aligned_groups(world_size):
-    """Aligned power-of-two and 12-head-divisible asymmetric rank groups (3-GPU u3r1, 6-GPU u3r2/cfg2u3r1)."""
+    """Aligned power-of-two and 12/24-head-divisible asymmetric rank groups (up to 16 GPUs across 2x8 nodes)."""
     if world_size not in WORLD_SIZES:
-        raise ParallelContractError("SP world size must be 2, 4 or 8")
+        raise ParallelContractError("SP world size must be 2, 4, 8 or 16")
     groups, degree = [], 1
     while degree <= world_size:
         groups.extend(tuple(range(start, start + degree)) for start in range(0, world_size, degree))
         degree *= 2
-    # Wan2.1-1.3B has 12 heads (12 % 3 == 0, 12 % 6 == 0) and 7020 tokens (7020 % 6 == 0),
-    # enabling disaggregated 3+1 sub-clusters on 4 GPUs and 6+2 or 3+3+2 sub-clusters on 8 GPUs.
+    # Wan2.1-1.3B (12 heads) and Wan2.2-TI2V-5B (24 heads) support 3-GPU, 6-GPU, and 12-GPU sub-clusters.
     if world_size >= 4 and (0, 1, 2) not in groups:
         groups.append((0, 1, 2))
     if world_size >= 8:
         for extra in ((3, 4, 5), (4, 5, 6), (0, 1, 2, 3, 4, 5)):
             if extra not in groups:
                 groups.append(extra)
+    if world_size >= 16:
+        for extra in (
+            (8, 9, 10),
+            (11, 12, 13),
+            (8, 9, 10, 11, 12, 13),
+            (6, 7, 8, 9, 10, 11),
+            tuple(range(12)),
+        ):
+            if extra not in groups:
+                groups.append(extra)
     return tuple(groups)
 
 
 def strided_ring_groups(world_size):
-    """Strided 2-rank Ring subgroups for 2D Hybrid USP (u2r2 on 4 GPUs, u3r2 on 6 GPUs, u4r2 / cfg2u2r2 on 8 GPUs)."""
+    """Strided Ring subgroups for 2D Hybrid USP (u2r2, u3r2, u4r2, u6r2, u8r2, u4r4 up to 16 GPUs)."""
     if world_size not in WORLD_SIZES:
-        raise ParallelContractError("SP world size must be 2, 4 or 8")
+        raise ParallelContractError("SP world size must be 2, 4, 8 or 16")
     out = []
-    for degree in (4, 6, 8):
+    for degree in (4, 6, 8, 12, 16):
         if degree > world_size:
             continue
         u_deg = degree // 2
-        for start in range(0, world_size - degree + 1, degree if degree != 6 else 8):
+        step = degree if degree not in (6, 12) else (8 if degree == 6 else 16)
+        for start in range(0, world_size - degree + 1, step):
             for r_off in range(u_deg):
                 pair = (start + r_off, start + u_deg + r_off)
                 if pair not in out:
                     out.append(pair)
+    if world_size >= 16:
+        for r_off in range(4):
+            quad = (r_off, r_off + 4, r_off + 8, r_off + 12)
+            if quad not in out:
+                out.append(quad)
     return tuple(out)
 
 LATENT_CACHE_BUFFER_NAMES = frozenset(
@@ -125,10 +140,10 @@ class FixedLayout:
             raise ParallelContractError("cfg must be 1 or 2")
         if self.cfg == 2 and len(self.ranks) < 2:
             raise ParallelContractError("CFG parallelism needs an aligned group of at least two ranks")
-        if self.ring not in (1, 2):
-            raise ParallelContractError("ring must be 1 or 2")
-        if self.ring == 2 and self.sp_degree < 4:
-            raise ParallelContractError("2D Hybrid USP (ring=2) requires sp_degree >= 4")
+        if self.ring not in (1, 2, 4):
+            raise ParallelContractError("ring must be 1, 2 or 4")
+        if self.ring >= 2 and self.sp_degree < 4:
+            raise ParallelContractError("2D Hybrid USP (ring>=2) requires sp_degree >= 4")
 
     @property
     def degree(self):
@@ -1108,6 +1123,37 @@ class AsymmetricSubClusterController:
                 "image_ranks": [],
                 "video_cfg": 1,
                 "video_ulysses": 4,
+                "video_ring": 2,
+            }
+        if self.world_size == 16:
+            if mode == "asymmetric_12_4" or (mode == "auto" and 0 < image_queue_depth <= 12):
+                return {
+                    "mode": "asymmetric_12_4",
+                    "video_ranks": list(range(12)),
+                    "video_node0_ranks": [0, 1, 2, 3, 4, 5],
+                    "video_node1_ranks": [8, 9, 10, 11, 12, 13],
+                    "image_ranks": [6, 7, 14, 15],
+                    "video_cfg": 2,
+                    "video_ulysses": 6,
+                    "video_ring": 1,
+                }
+            if mode == "asymmetric_6_10":
+                return {
+                    "mode": "asymmetric_6_10",
+                    "video_node0_ranks": [0, 1, 2],
+                    "video_node1_ranks": [8, 9, 10],
+                    "video_ranks": [0, 1, 2, 8, 9, 10],
+                    "image_ranks": [3, 4, 5, 6, 7, 11, 12, 13, 14, 15],
+                    "video_cfg": 1,
+                    "video_ulysses": 3,
+                    "video_ring": 1,
+                }
+            return {
+                "mode": "gang_16_0",
+                "video_ranks": list(range(16)),
+                "image_ranks": [],
+                "video_cfg": 1,
+                "video_ulysses": 8,
                 "video_ring": 2,
             }
         return {
