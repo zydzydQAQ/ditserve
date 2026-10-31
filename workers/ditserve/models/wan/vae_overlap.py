@@ -115,5 +115,25 @@ class ConcurrentVAEDecodeStreamer:
             "video_np": video_np,
         }
 
+    def submit_rank0_disaggregated(self, rank: int, state, *, chunk_frames: int | None = None):
+        """Multi-GPU Rank-0 Disaggregated Async 3D-VAE Decode.
+
+        On Rank 0, clones ``state.latents`` on ``vae_stream`` and launches asynchronous
+        BF16 3D-VAE decoding without blocking Ranks 1..N-1 or Rank 0's primary compute stream.
+        On Ranks 1..N-1, immediately marks the state finished and returns a zero-wait handle
+        so worker ranks are freed immediately after the final diffusion step.
+        """
+        if int(rank) != 0:
+            state.finished = True
+            return None
+        return self.submit_decode(state, chunk_frames=chunk_frames)
+
+    def collect_rank0_disaggregated(self, rank: int, fut) -> Dict[str, Any]:
+        """Collect the Rank-0 async 3D-VAE decode result (no-op on Ranks 1..N-1)."""
+        if int(rank) != 0 or fut is None:
+            return {"kind": "rank_non0_bypassed", "vae_stream_ms": 0.0}
+        _, vae_info = fut.result()
+        return vae_info
+
     def close(self) -> None:
         self._pool.shutdown(wait=True, cancel_futures=True)

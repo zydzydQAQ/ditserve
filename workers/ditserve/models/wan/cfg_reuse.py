@@ -36,6 +36,9 @@ class AsymmetricCFGStepper:
         cfg_damping: float = 0.96,
         cfg_vel_alpha: float = 0.15,
         final_step_exact_anchor: bool = True,
+        curvature_threshold: Optional[float] = None,
+        min_full_cfg_steps: int = 5,
+        max_curvature_guard: float = 0.35,
         enabled: bool = True,
     ):
         self.torch = torch_module or importlib.import_module("torch")
@@ -49,17 +52,25 @@ class AsymmetricCFGStepper:
         self.cfg_damping = float(cfg_damping)
         self.cfg_vel_alpha = float(cfg_vel_alpha)
         self.final_step_exact_anchor = bool(final_step_exact_anchor)
+        self.curvature_threshold = float(curvature_threshold) if curvature_threshold is not None else None
+        self.min_full_cfg_steps = int(min_full_cfg_steps)
+        self.max_curvature_guard = float(max_curvature_guard)
         self.enabled = bool(enabled)
 
         self._last_delta_cfg: Optional["torch.Tensor"] = None
         self._last_delta_step: Optional[int] = None
         self._delta_velocity: Optional["torch.Tensor"] = None
+        self._last_curvature: Optional[float] = None
         self._had_folded_since_anchor: bool = False
+        self.curvature_history: list[dict] = []
+        self.dynamic_fold_start_step: Optional[int] = None
 
         self.stats = {
             "full_cfg_steps": 0,
             "folded_cfg_steps": 0,
             "saved_uncond_forwards": 0,
+            "curvature_triggered_folds": 0,
+            "curvature_guarded_unfolds": 0,
         }
 
     def summary(self) -> dict:
@@ -69,6 +80,10 @@ class AsymmetricCFGStepper:
             "cfg_damping": self.cfg_damping,
             "cfg_vel_alpha": self.cfg_vel_alpha,
             "final_step_exact_anchor": self.final_step_exact_anchor,
+            "curvature_threshold": self.curvature_threshold,
+            "min_full_cfg_steps": self.min_full_cfg_steps,
+            "dynamic_fold_start_step": self.dynamic_fold_start_step,
+            "curvature_history": list(self.curvature_history),
             **self.stats,
         }
 
@@ -76,7 +91,10 @@ class AsymmetricCFGStepper:
         self._last_delta_cfg = None
         self._last_delta_step = None
         self._delta_velocity = None
+        self._last_curvature = None
         self._had_folded_since_anchor = False
+        self.curvature_history.clear()
+        self.dynamic_fold_start_step = None
 
     def should_fold(self, step_index: int, total_steps: int) -> bool:
         if not self.enabled:
@@ -85,6 +103,18 @@ class AsymmetricCFGStepper:
             return False
         if step_index >= total_steps - 1 and self.final_step_exact_anchor:
             return False
+        if self.curvature_threshold is not None:
+            if step_index < self.min_full_cfg_steps:
+                return False
+            if self._last_curvature is not None:
+                if self._last_curvature <= self.curvature_threshold:
+                    if self.dynamic_fold_start_step is None:
+                        self.dynamic_fold_start_step = step_index
+                    self.stats["curvature_triggered_folds"] += 1
+                    return True
+                if self._last_curvature > self.max_curvature_guard:
+                    self.stats["curvature_guarded_unfolds"] += 1
+                    return False
         return step_index in self.folded_steps
 
     def _predict_delta_cfg(self, step_index: int, dtype: "torch.dtype") -> "torch.Tensor":
@@ -126,7 +156,12 @@ class AsymmetricCFGStepper:
             # window so Delta_CFG is anchored from an exact (non-DBCache) forward pass,
             # and keep the single `cond` branch exact during folded steps to prevent
             # compounding DBCache approximation with CFG branch folding.
-            if self.enabled and self.pre_fold_anchor_step is not None and index == self.pre_fold_anchor_step:
+            if (
+                self.enabled
+                and self.curvature_threshold is None
+                and self.pre_fold_anchor_step is not None
+                and index == self.pre_fold_anchor_step
+            ):
                 state.needs_anchor = True
             elif fold_this_step and self.force_exact_cond_on_fold:
                 state.needs_anchor = True
@@ -136,6 +171,15 @@ class AsymmetricCFGStepper:
 
             if taylor_compensator is not None and not state.needs_anchor:
                 taylor_compensator.pre_step(state)
+
+            try:
+                from xfuser.model_executor.layers.usp import get_active_ring_quantizer
+
+                active_rq = get_active_ring_quantizer()
+                if active_rq is not None and hasattr(active_rq, "set_step"):
+                    active_rq.set_step(index, total_steps)
+            except Exception:
+                pass
 
             runtime._sync()
             started = time.perf_counter()
@@ -181,6 +225,10 @@ class AsymmetricCFGStepper:
                         if self._last_delta_cfg is not None and self._last_delta_step is not None and index > self._last_delta_step:
                             dt = float(index - self._last_delta_step)
                             self._delta_velocity = (delta_f32 - self._last_delta_cfg) / dt
+                            diff_l1 = float(torch.linalg.vector_norm(delta_f32 - self._last_delta_cfg, ord=1).item())
+                            ref_l1 = max(1e-6, float(torch.linalg.vector_norm(delta_f32, ord=1).item()))
+                            self._last_curvature = (diff_l1 / ref_l1) / dt
+                            self.curvature_history.append({"step": index, "curvature": round(self._last_curvature, 5)})
                         self._last_delta_cfg = delta_f32.clone()
                         self._last_delta_step = index
                         prediction = pred_uncond + g * (pred_cond - pred_uncond)

@@ -21,26 +21,34 @@ WORLD_SIZES = (2, 4, 8)
 
 
 def aligned_groups(world_size):
-    """Aligned power-of-two rank groups; ranks follow PCIe/socket topology order."""
+    """Aligned power-of-two and 12-head-divisible asymmetric rank groups (3-GPU u3r1, 6-GPU u3r2/cfg2u3r1)."""
     if world_size not in WORLD_SIZES:
         raise ParallelContractError("SP world size must be 2, 4 or 8")
     groups, degree = [], 1
     while degree <= world_size:
         groups.extend(tuple(range(start, start + degree)) for start in range(0, world_size, degree))
         degree *= 2
+    # Wan2.1-1.3B has 12 heads (12 % 3 == 0, 12 % 6 == 0) and 7020 tokens (7020 % 6 == 0),
+    # enabling disaggregated 3+1 sub-clusters on 4 GPUs and 6+2 or 3+3+2 sub-clusters on 8 GPUs.
+    if world_size >= 4 and (0, 1, 2) not in groups:
+        groups.append((0, 1, 2))
+    if world_size >= 8:
+        for extra in ((4, 5, 6), (0, 1, 2, 3, 4, 5)):
+            if extra not in groups:
+                groups.append(extra)
     return tuple(groups)
 
 
 def strided_ring_groups(world_size):
-    """Strided 2-rank Ring subgroups for 2D Hybrid USP (u2r2 on 4 GPUs, u4r2 / cfg2u2r2 on 8 GPUs)."""
+    """Strided 2-rank Ring subgroups for 2D Hybrid USP (u2r2 on 4 GPUs, u3r2 on 6 GPUs, u4r2 / cfg2u2r2 on 8 GPUs)."""
     if world_size not in WORLD_SIZES:
         raise ParallelContractError("SP world size must be 2, 4 or 8")
     out = []
-    for degree in (4, 8):
+    for degree in (4, 6, 8):
         if degree > world_size:
             continue
         u_deg = degree // 2
-        for start in range(0, world_size, degree):
+        for start in range(0, world_size - degree + 1, degree if degree != 6 else 8):
             for r_off in range(u_deg):
                 pair = (start + r_off, start + u_deg + r_off)
                 if pair not in out:
@@ -1021,3 +1029,42 @@ class CacheOffGroupMigration:
         except BaseException:
             self.handle.fail()
             raise
+
+
+class AsymmetricSubClusterController:
+    """Disaggregated / Asymmetric GPU Sub-Cluster Coordinator for 4-GPU (3+1) and 8-GPU (6+2 / 4+4) serving.
+
+    Exploits Wan2.1-1.3B's 12 attention heads (divisible by 2, 3, 4, 6) to partition a multi-GPU node into:
+      - A continuous Video USP Sub-Cluster (e.g., 3 GPUs ``(0, 1, 2)`` in ``u3r1`` on a 4-GPU node, or
+        6 GPUs ``(0, 1, 2, 3, 4, 5)`` in ``u3r2`` / ``cfg2u3r1`` or 4 GPUs ``(0, 1, 2, 3)`` in ``u4r1`` on an 8-GPU node).
+      - A dedicated or elastic T2I Absorber Sub-Cluster (e.g., GPU ``(3,)`` on 4 GPUs, or GPUs ``(6, 7)`` / ``(4, 5, 6, 7)`` on 8 GPUs)
+        that absorbs bursty SD3.5-Medium arrivals with zero interruption to the running video group.
+    """
+
+    def __init__(self, rank: int, world_size: int, *, video_ranks=(0, 1, 2), image_ranks=(3,)):
+        self.rank = int(rank)
+        self.world_size = int(world_size)
+        self.video_ranks = tuple(video_ranks)
+        self.image_ranks = tuple(image_ranks)
+        self.is_video_rank = self.rank in self.video_ranks
+        self.is_image_rank = self.rank in self.image_ranks
+        self.stats = {
+            "disaggregated_video_steps": 0,
+            "absorbed_image_batches": 0,
+            "rejoin_syncs": 0,
+            "rejoin_sync_ms": 0.0,
+        }
+
+    def sync_video_state_to_world(self, dist_module, torch_module, state, *, src_rank: int = 0) -> float:
+        """Broadcast 1.22 MB video latents and step index from ``src_rank`` when absorber GPUs rejoin full-world execution."""
+        t0 = time.perf_counter()
+        dist_module.broadcast(state.latents, src=src_rank)
+        step_tensor = torch_module.tensor([int(state.step_index)], device=state.latents.device, dtype=torch_module.int64)
+        dist_module.broadcast(step_tensor, src=src_rank)
+        target_step = int(step_tensor.item())
+        if self.rank not in self.video_ranks:
+            state.step_index = target_step
+        elapsed_ms = (time.perf_counter() - t0) * 1000.0
+        self.stats["rejoin_syncs"] += 1
+        self.stats["rejoin_sync_ms"] = round(self.stats["rejoin_sync_ms"] + elapsed_ms, 3)
+        return elapsed_ms

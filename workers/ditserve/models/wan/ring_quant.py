@@ -30,12 +30,18 @@ class AsymmetricRingQuantizer:
         self.warmup_steps = max(0, int(warmup_steps))
         self.tail_anchor_steps = max(0, int(tail_anchor_steps))
         self.enabled = bool(enabled)
+        self.current_step_quantize: bool = bool(enabled)
         self.stats = {
             "quantized_packets": 0,
             "fp16_anchor_packets": 0,
             "orig_bytes": 0,
             "wire_bytes": 0,
         }
+
+    def set_step(self, step_index: int, total_steps: int) -> bool:
+        """Update current_step_quantize according to step-aware anchor schedule."""
+        self.current_step_quantize = self.should_quantize(step_index, total_steps)
+        return self.current_step_quantize
 
     def should_quantize(self, step_index: int, total_steps: int) -> bool:
         """Return True if step_index should use INT8 Ring KV compression."""
@@ -142,6 +148,18 @@ class AsymmetricRingQuantizer:
         for req in reqs:
             req.wait()
         return self.unpack_packet(packed_recv, target_dtype=kv_send.dtype)
+
+    def install_xfuser_hook(self, min_bytes: int = 2 * 1024 * 1024) -> None:
+        """Embed this AsymmetricRingQuantizer into xfuser's USP Ring P2P kernel."""
+        from xfuser.core.distributed.fp8_comms import register_int8_ring_quantizer
+
+        register_int8_ring_quantizer(self, min_bytes=min_bytes)
+
+    def uninstall_xfuser_hook(self) -> None:
+        """Remove this AsymmetricRingQuantizer from xfuser's USP Ring P2P kernel."""
+        from xfuser.core.distributed.fp8_comms import register_int8_ring_quantizer
+
+        register_int8_ring_quantizer(None)
 
     def summary(self) -> dict:
         orig = max(1, self.stats["orig_bytes"])

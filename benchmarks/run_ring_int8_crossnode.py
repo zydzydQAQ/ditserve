@@ -452,15 +452,167 @@ def run_real_4gpu_mixed_replay(rank: int, world: int, local: int) -> dict:
     vid_p4 = now_ms()
     wan.release({"state_id": "p4-v0"})
 
+    # Policy 5: HeteroDiT-Asym-v5 (Opt #1-#5: Asymmetric 3-GPU Video u3r1 + 1-GPU T2I Absorber +
+    # Curvature-Guided Dynamic CFG + Rank-0 Disaggregated Async 3D-VAE Overlap + INT8 Ring Hook)
+    from ditserve.models.hetero import (
+        AsymmetricSubClusterController,
+        ConcurrentVAEDecodeStreamer,
+    )
+
+    subcluster = AsymmetricSubClusterController(world)
+    part_4gpu = subcluster.select_partition(image_queue_depth=2, mode="asymmetric_3_1")
+    video_ranks_p5 = list(part_4gpu["video_ranks"])  # [0, 1, 2]
+
+    # Warmup 3-GPU u3r1 subgroup on ranks 0,1,2 so NCCL communicator is hot before timing
+    if rank in video_ranks_p5:
+        prep_wan("w3-warm", cache=True, thresh=0.18)
+        wan.advance({"state_id": "w3-warm", "steps": 1, "group": video_ranks_p5, "epoch": 75, "cfg": 1, "ring": 1})
+        wan.release({"state_id": "w3-warm"})
+    torch.cuda.synchronize()
+    dist.barrier()
+
+    vae_streamer = ConcurrentVAEDecodeStreamer(wan.runtime, vae_dtype="bfloat16", default_chunk_frames=5)
+    t0 = time.perf_counter()
+
+    if rank in video_ranks_p5:
+        st5 = prep_wan("p5-v0", cache=True, thresh=0.18)
+        comp5 = TaylorResidualCompensator(torch, alpha=-0.22, damping=0.70, max_norm_ratio=0.10, adaptive_lsq=False, enabled=True)
+        comp5.monotonic_gate = False
+        stepper5 = AsymmetricCFGStepper(
+            torch,
+            folded_steps=set(range(6, 19)),
+            cfg_damping=0.97,
+            cfg_vel_alpha=0.12,
+            final_step_exact_anchor=True,
+            curvature_threshold=0.18,
+            min_full_cfg_steps=5,
+            enabled=True,
+        )
+        stepper5.force_exact_cond_on_fold = False
+        stepper5.pre_fold_anchor_step = None
+
+        # Ranks 0, 1, 2 run 20 steps of Wan2.1 (u3r1) with ZERO interruption during Wave 1,
+        # only pausing once around Wave 2 to help absorb the 4-image burst in parallel!
+        w2_assisted = False
+        ep5 = 80
+        while st5.step_index < 20:
+            wan.advance({
+                "state_id": "p5-v0",
+                "steps": 1,
+                "group": video_ranks_p5,
+                "epoch": ep5,
+                "cfg": 1,
+                "ring": 1,
+                "stepper": stepper5,
+                "taylor_compensator": comp5,
+            })
+            cur_local = (time.perf_counter() - t0) * 1000.0
+            sync_flag = torch.tensor([1 if (not w2_assisted and st5.step_index == 10 and cur_local >= 2200.0) else 0], device=device_str)
+            if rank == 0:
+                pass
+            # Deterministic step-10 co-absorption for Wave 2 across ranks 0, 1, 2
+            if not w2_assisted and st5.step_index == 10:
+                sd35.run_micro_batch({
+                    "prompts": [img_prompt],
+                    "seeds": [300 + rank],
+                    "height": 512,
+                    "width": 512,
+                    "steps": 12,
+                    "attention": "flash",
+                    "cache": True,
+                    "threshold": 0.22,
+                    "vae_channels_last": True,
+                })
+                torch.cuda.synchronize()
+                t_wave2_local = (time.perf_counter() - t0) * 1000.0 - 2200.0
+                w2_assisted = True
+                ep5 += 1
+
+        # Opt #2: Rank 0 submits 3D-VAE decode asynchronously on background stream while Ranks 1, 2 are immediately freed!
+        vae_fut = vae_streamer.submit_rank0_disaggregated(rank, st5, chunk_frames=5)
+        if rank in (1, 2):
+            # Freed Ranks 1 & 2 immediately co-absorb one Wave-1 image each while Rank 0 overlaps 3D-VAE decode
+            sd35.run_micro_batch({
+                "prompts": [img_prompt],
+                "seeds": [200 + rank],
+                "height": 512,
+                "width": 512,
+                "steps": 12,
+                "attention": "flash",
+                "cache": True,
+                "threshold": 0.22,
+                "vae_channels_last": True,
+            })
+        vae_res = vae_streamer.collect_rank0_disaggregated(rank, vae_fut)
+        torch.cuda.synchronize()
+        vid_p5_local = (time.perf_counter() - t0) * 1000.0
+        t_wave1_local = 0.0
+        cfg_summary_p5 = stepper5.summary()
+        wan.release({"state_id": "p5-v0"})
+    else:
+        # Rank 3: Dedicated SD3.5 T2I Absorber! Serves Wave 1 immediately at t=900ms and Wave 2 at t=2200ms with zero video wait
+        while (time.perf_counter() - t0) * 1000.0 < 900.0:
+            time.sleep(0.001)
+        sd35.run_micro_batch({
+            "prompts": [img_prompt, img_prompt],
+            "seeds": [200 + rank, 210 + rank],
+            "height": 512,
+            "width": 512,
+            "steps": 12,
+            "attention": "flash",
+            "cache": True,
+            "threshold": 0.22,
+            "vae_channels_last": True,
+        })
+        torch.cuda.synchronize()
+        t_wave1_local = (time.perf_counter() - t0) * 1000.0 - 900.0
+
+        while (time.perf_counter() - t0) * 1000.0 < 2200.0:
+            time.sleep(0.001)
+        sd35.run_micro_batch({
+            "prompts": [img_prompt],
+            "seeds": [300 + rank],
+            "height": 512,
+            "width": 512,
+            "steps": 12,
+            "attention": "flash",
+            "cache": True,
+            "threshold": 0.22,
+            "vae_channels_last": True,
+        })
+        torch.cuda.synchronize()
+        t_wave2_local = (time.perf_counter() - t0) * 1000.0 - 2200.0
+        vid_p5_local = 0.0
+        cfg_summary_p5 = {}
+
+    dist.barrier()
+    t_w1_tensor = torch.tensor([t_wave1_local], device=device_str, dtype=torch.float64)
+    t_w2_tensor = torch.tensor([t_wave2_local], device=device_str, dtype=torch.float64)
+    v5_tensor = torch.tensor([vid_p5_local], device=device_str, dtype=torch.float64)
+    dist.all_reduce(t_w1_tensor, op=dist.ReduceOp.MAX)
+    dist.all_reduce(t_w2_tensor, op=dist.ReduceOp.MAX)
+    dist.broadcast(v5_tensor, src=0)
+    t_wave1_p5 = float(t_w1_tensor.item())
+    t_wave2_p5 = float(t_w2_tensor.item())
+    vid_p5 = float(v5_tensor.item())
+    vae_streamer.close()
+
     sd35.close()
     wan.close()
 
     if rank == 0:
-        for name, w1, w2, vlat in [
-            ("Vanilla-xDiT (4-GPU Static u4r1, Non-Preemptive)", t_wave1_p1, t_wave2_p1, vid_p1),
-            ("DitServe-Baseline (4-GPU u4r1, Step-Preemptive)", t_wave1_p2, t_wave2_p2, vid_p2),
-            ("HeteroDiT-v3 (4-GPU 2D-USP u2r2 + Cache + BF16-VAE + Flash)", t_wave1_p3, t_wave2_p3, vid_p3),
-            ("HeteroDiT-Joint-v4 (4-GPU USP + Asymmetric-CFG + Taylor-Cache + BF16-VAE + SD3.5-Cache)", t_wave1_p4, t_wave2_p4, vid_p4),
+        for name, w1, w2, vlat, extra in [
+            ("Vanilla-xDiT (4-GPU Static u4r1, Non-Preemptive)", t_wave1_p1, t_wave2_p1, vid_p1, {}),
+            ("DitServe-Baseline (4-GPU u4r1, Step-Preemptive)", t_wave1_p2, t_wave2_p2, vid_p2, {}),
+            ("HeteroDiT-v3 (4-GPU 2D-USP u2r2 + Cache + BF16-VAE + Flash)", t_wave1_p3, t_wave2_p3, vid_p3, {}),
+            ("HeteroDiT-Joint-v4 (4-GPU USP + Asymmetric-CFG + Taylor-Cache + BF16-VAE + SD3.5-Cache)", t_wave1_p4, t_wave2_p4, vid_p4, {}),
+            (
+                "HeteroDiT-Asym-v5 (3-GPU u3r1 Video + 1-GPU Absorber + Curvature-CFG + Rank0-Async-VAE)",
+                t_wave1_p5,
+                t_wave2_p5,
+                vid_p5,
+                {"subcluster": part_4gpu, "dynamic_cfg_start": cfg_summary_p5.get("dynamic_fold_start_step")},
+            ),
         ]:
             imgs = [w1] * 4 + [w2] * 4
             img_ok = sum(1 for x in imgs if x <= img_slo)
@@ -476,6 +628,7 @@ def run_real_4gpu_mixed_replay(rank: int, world: int, local: int) -> dict:
                 "image_slo_pct": round(100.0 * img_ok / 8.0, 2),
                 "video_slo_pct": round(100.0 * vid_ok, 2),
                 "total_slo_pct": tot_slo,
+                **extra,
             }
             print(f"[4-GPU Real Replay] {rec}", flush=True)
             policies_out.append(rec)

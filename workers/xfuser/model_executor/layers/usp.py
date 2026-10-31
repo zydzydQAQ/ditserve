@@ -69,6 +69,41 @@ def _warn_fp8_comms_missing_attn():
 # through the same Ulysses exchange without knowing what they mean.
 ULYSSES_EXTRA_INPUTS_KEY = "ulysses_extra_inputs"
 
+_ACTIVE_RING_QUANTIZER = None
+_MIN_INT8_RING_BYTES = 2 * 1024 * 1024
+
+
+def set_active_ring_quantizer(quantizer, min_bytes: int = 2 * 1024 * 1024):
+    """Register or clear an AsymmetricRingQuantizer hook inside USP ring_attn."""
+    global _ACTIVE_RING_QUANTIZER, _MIN_INT8_RING_BYTES
+    _ACTIVE_RING_QUANTIZER = quantizer
+    _MIN_INT8_RING_BYTES = max(0, int(min_bytes))
+
+
+def get_active_ring_quantizer():
+    return _ACTIVE_RING_QUANTIZER
+
+
+def _merge_ring_out_lse(out, lse, block_out, block_lse):
+    """Numerically stable online softmax combiner across Ring KV shards."""
+    orig_dtype = out.dtype
+    out_f32 = out.to(torch.float32)
+    b_out_f32 = block_out.to(torch.float32)
+    lse_f32 = lse.to(torch.float32)
+    b_lse_f32 = block_lse.to(torch.float32)
+    if lse_f32.ndim == out_f32.ndim - 1:
+        lse_u = lse_f32.unsqueeze(-1)
+        b_lse_u = b_lse_f32.unsqueeze(-1)
+    else:
+        lse_u = lse_f32
+        b_lse_u = b_lse_f32
+    new_lse_u = torch.logaddexp(lse_u, b_lse_u)
+    w_old = torch.exp(lse_u - new_lse_u)
+    w_new = torch.exp(b_lse_u - new_lse_u)
+    merged_out = (out_f32 * w_old + b_out_f32 * w_new).to(orig_dtype)
+    merged_lse = new_lse_u.squeeze(-1) if lse_f32.ndim == out_f32.ndim - 1 else new_lse_u
+    return merged_out, merged_lse
+
 
 def ring_attn(
     attention_function, query, key, value, dropout_p=0.0, is_causal=False, joint_attn_kwargs=None, attention_kwargs=None
@@ -79,6 +114,54 @@ def ring_attn(
         "joint_attn_kwargs": joint_attn_kwargs,
         "attention_kwargs": attention_kwargs,
     }
+    quantizer = _ACTIVE_RING_QUANTIZER
+    ring_size = get_ring_parallel_world_size()
+    kv_bytes = (key.numel() + value.numel()) * key.element_size()
+    if (
+        quantizer is not None
+        and getattr(quantizer, "enabled", True)
+        and ring_size >= 2
+        and not is_causal
+        and joint_attn_kwargs is None
+        and kv_bytes >= _MIN_INT8_RING_BYTES
+    ):
+        if not getattr(quantizer, "current_step_quantize", True):
+            quantizer.stats["fp16_anchor_packets"] += max(1, ring_size - 1)
+            quantizer.stats["orig_bytes"] += int(kv_bytes * max(1, ring_size - 1))
+            quantizer.stats["wire_bytes"] += int(kv_bytes * max(1, ring_size - 1))
+        else:
+            ring_pg = PROCESS_GROUP.RING_PG
+            ring_rank = get_ring_parallel_rank()
+            ring_ranks = torch.distributed.get_process_group_ranks(ring_pg)
+            send_peer = ring_ranks[(ring_rank + 1) % ring_size]
+            recv_peer = ring_ranks[(ring_rank - 1 + ring_size) % ring_size]
+            cur_k, cur_v = key, value
+            acc_out = None
+            acc_lse = None
+            for step in range(ring_size):
+                reqs = None
+                recv_packed = None
+                if step + 1 < ring_size:
+                    kv_pair = torch.stack([cur_k, cur_v], dim=0)
+                    send_packed = quantizer.pack_packet(kv_pair)
+                    recv_packed = torch.empty_like(send_packed)
+                    ops = [
+                        torch.distributed.P2POp(torch.distributed.isend, send_packed, send_peer, group=ring_pg),
+                        torch.distributed.P2POp(torch.distributed.irecv, recv_packed, recv_peer, group=ring_pg),
+                    ]
+                    reqs = torch.distributed.batch_isend_irecv(ops)
+                block_out, block_lse = attention_function(query, cur_k, cur_v, **kwargs)
+                if acc_out is None:
+                    acc_out, acc_lse = block_out, block_lse
+                else:
+                    acc_out, acc_lse = _merge_ring_out_lse(acc_out, acc_lse, block_out, block_lse)
+                if reqs is not None:
+                    for req in reqs:
+                        req.wait()
+                    unpacked = quantizer.unpack_packet(recv_packed, target_dtype=key.dtype)
+                    cur_k, cur_v = unpacked[0], unpacked[1]
+            return acc_out
+
     if version_at_least(torch.__version__, "2.6.0"):
         from torch.distributed.tensor.experimental._attention import _cp_options
 

@@ -627,3 +627,18 @@ def validate_fp8_comms_config(config, capabilities, settings) -> None:
         "fp8 comms feeds pre-quantized Q/K/V to AITER MHA v4 when eligible, "
         "with the dense FP8 attention kernel retained as the fallback."
     )
+
+
+def register_int8_ring_quantizer(quantizer, min_bytes: int = 2 * 1024 * 1024) -> None:
+    """Register an AsymmetricRingQuantizer as the A100-compatible INT8 Ring P2P backend in USP."""
+    from xfuser.model_executor.layers.usp import set_active_ring_quantizer
+
+    set_active_ring_quantizer(quantizer, min_bytes=min_bytes)
+
+
+def get_int8_ring_quantizer():
+    """Return the currently registered INT8 Ring P2P quantizer in USP (or None)."""
+    from xfuser.model_executor.layers.usp import get_active_ring_quantizer
+
+    return get_active_ring_quantizer()
+

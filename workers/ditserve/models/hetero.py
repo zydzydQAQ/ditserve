@@ -9,6 +9,7 @@ from .sd35_cache import (
 )
 from .wan.backend import WanBackend
 from .wan.cfg_reuse import AsymmetricCFGStepper
+from .wan.parallel import AsymmetricSubClusterController
 from .wan.ring_quant import AsymmetricRingQuantizer
 from .wan.taylor_cache import TaylorResidualCompensator
 from .wan.tiered_state import PinnedSlabPool, TieredVideoStateManager
@@ -36,6 +37,7 @@ __all__ = [
     "AsymmetricCFGStepper",
     "ConcurrentVAEDecodeStreamer",
     "StreamIsolated3DVAEStreamer",
+    "AsymmetricSubClusterController",
     "install_sd35_fast_cache_hooks",
     "configure_sd35_fast_cache",
     "pop_sd35_reused_steps",

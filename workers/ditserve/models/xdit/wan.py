@@ -259,7 +259,44 @@ class XDitWanParallelBackend:
         if self.worker is None:
             raise ParallelContractError("attach a worker first")
         if self.handle.current.cfg == 2:
-            raise ParallelContractError("CFG-parallel layouts run through the block executor")
+            if state.cache_enabled:
+                raise ParallelContractError("CFG-parallel layouts run through the block executor")
+            with self.worker._lock:
+                self.begin_step(state)
+                try:
+                    import time
+                    t0 = time.perf_counter()
+                    layout = self.handle.current
+                    role = layout.cfg_role(self.handle.rank)
+                    branch = "cond" if role == 0 else "uncond"
+                    torch = self.worker.torch
+                    index = int(state.step_index)
+                    with torch.inference_mode(), self.worker._dit_attention_context():
+                        pred_branch = self.worker.xdit.forward(state, branch)
+                        pred_cond, pred_uncond = self.exchange_predictions(pred_branch)
+                        g = float(state.spec["guidance_scale"])
+                        prediction = pred_uncond + g * (pred_cond - pred_uncond)
+                        t_val = state.scheduler.timesteps[index]
+                        state.latents = state.scheduler.step(
+                            prediction, t_val, state.latents, return_dict=False
+                        )[0]
+                    state.step_index += 1
+                    state.needs_anchor = False
+                    self.end_step()
+                    ms = (time.perf_counter() - t0) * 1000.0
+                    record = dict(
+                        kind="step",
+                        step_index=index,
+                        completed_steps=state.step_index,
+                        ms=ms,
+                        cfg=2,
+                        reused_forwards=0,
+                    )
+                    state.events.append(record)
+                    return record
+                except BaseException as error:
+                    self._abort(error)
+                    raise
         with self.worker._lock:
             self.begin_step(state)
             try:
