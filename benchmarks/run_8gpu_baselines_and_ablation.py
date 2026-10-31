@@ -111,7 +111,7 @@ def main() -> None:
         "seed": 42,
     }
 
-    encoder_pool = ProactiveEncoderPool(max_entries=64, max_bytes=512 * 1024 * 1024)
+    encoder_pool = ProactiveEncoderPool(torch, max_cache_entries=64)
     norm_spec = wan._spec({"state_id": "init-enc", "spec": wan_spec})
     # Encode once on Rank 0 using trimmed FP32 before any quantization test
     cached_wan = encoder_pool.encode_wan_prompt_fast(wan.runtime, norm_spec)

@@ -18,11 +18,12 @@ import time
 class ProactiveEncoderPool:
     """Centralized or cross-worker shared text encoder pool with proactive staging."""
 
-    def __init__(self, config=None, *, max_cache_entries: int | None = None):
+    def __init__(self, config=None, *, max_cache_entries: int | None = None, max_entries: int | None = None, max_bytes: int | None = None):
         cfg = config if isinstance(config, dict) else {}
+        eff_entries = max_cache_entries if max_cache_entries is not None else max_entries
         self.shm_dir = Path(cfg.get("shm_dir", "/dev/shm/ditserve-hetero-embeds"))
-        self.max_entries = int(max_cache_entries if max_cache_entries is not None else cfg.get("max_entries", 64))
-        self.max_bytes = int(cfg.get("max_bytes", 512 * (1 << 20)))
+        self.max_entries = int(eff_entries if eff_entries is not None else cfg.get("max_entries", 64))
+        self.max_bytes = int(max_bytes if max_bytes is not None else cfg.get("max_bytes", 512 * (1 << 20)))
         self._entries = OrderedDict()
         self._bytes = 0
         self.hits = 0
