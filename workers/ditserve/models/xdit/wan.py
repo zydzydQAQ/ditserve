@@ -210,11 +210,12 @@ class XDitWanParallelBackend:
         self._bound_epoch = layout.epoch
         try:
             context_manifest = {}
-            for name, context in state.contexts.items():
-                with self.worker.manager.enter_context(context):
-                    norm_name = "blocks" if (str(name).startswith("blocks_") and str(name)[7:].isdigit()) else name
-                    context_manifest[norm_name] = cache_manager_manifest(self.worker.manager)
-            descriptor = dict(contexts=context_manifest, cache_enabled=state.cache_enabled,
+            if layout.cfg == 1:
+                for name, context in state.contexts.items():
+                    with self.worker.manager.enter_context(context):
+                        norm_name = "blocks" if (str(name).startswith("blocks_") and str(name)[7:].isdigit()) else name
+                        context_manifest[norm_name] = cache_manager_manifest(self.worker.manager)
+            descriptor = dict(contexts=context_manifest, cache_enabled=bool(state.cache_enabled and layout.cfg == 1),
                               spec=state.spec, latents_shape=list(state.latents.shape),
                               latents_dtype=str(state.latents.dtype), needs_anchor=state.needs_anchor)
             self.gate.pre_step(descriptor)
@@ -259,8 +260,6 @@ class XDitWanParallelBackend:
         if self.worker is None:
             raise ParallelContractError("attach a worker first")
         if self.handle.current.cfg == 2:
-            if state.cache_enabled:
-                raise ParallelContractError("CFG-parallel layouts run through the block executor")
             with self.worker._lock:
                 self.begin_step(state)
                 try:
@@ -271,9 +270,29 @@ class XDitWanParallelBackend:
                     branch = "cond" if role == 0 else "uncond"
                     torch = self.worker.torch
                     index = int(state.step_index)
+                    total_steps = int(state.spec["steps"])
+                    try:
+                        from xfuser.model_executor.layers.usp import get_active_ring_quantizer
+
+                        active_rq = get_active_ring_quantizer()
+                        if active_rq is not None and hasattr(active_rq, "set_step"):
+                            active_rq.set_step(index, total_steps)
+                    except Exception:
+                        pass
                     with torch.inference_mode(), self.worker._dit_attention_context():
-                        pred_branch = self.worker.xdit.forward(state, branch)
+                        self.worker.xdit.activate(state, layout)
+                        encoder = state.prompt_embeds if branch == "cond" else state.negative_prompt_embeds
+                        pred_branch = self.worker._original_forward(
+                            hidden_states=state.latents.to(self.worker.xdit.model.dtype),
+                            timestep=self.worker.xdit._timestep(state),
+                            encoder_hidden_states=encoder,
+                            attention_kwargs=None,
+                            return_dict=False,
+                        )[0]
                         pred_cond, pred_uncond = self.exchange_predictions(pred_branch)
+                        stepper = getattr(state, "_active_stepper", None)
+                        if stepper is not None and hasattr(stepper, "observe_cfg_pair"):
+                            stepper.observe_cfg_pair(index, pred_cond, pred_uncond)
                         g = float(state.spec["guidance_scale"])
                         prediction = pred_uncond + g * (pred_cond - pred_uncond)
                         t_val = state.scheduler.timesteps[index]
@@ -282,6 +301,7 @@ class XDitWanParallelBackend:
                         )[0]
                     state.step_index += 1
                     state.needs_anchor = False
+                    self.worker._detach_contexts()
                     self.end_step()
                     ms = (time.perf_counter() - t0) * 1000.0
                     record = dict(
@@ -295,6 +315,7 @@ class XDitWanParallelBackend:
                     state.events.append(record)
                     return record
                 except BaseException as error:
+                    self.worker._detach_contexts()
                     self._abort(error)
                     raise
         with self.worker._lock:

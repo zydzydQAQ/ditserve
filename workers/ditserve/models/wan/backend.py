@@ -194,6 +194,7 @@ class WanBackend(Backend):
         else:
             stepper = request.get("stepper")
             taylor_comp = request.get("taylor_compensator")
+            state._active_stepper = stepper
             step_fn = (
                 (lambda s: stepper.step(self.runtime, s, taylor_compensator=taylor_comp))
                 if stepper is not None

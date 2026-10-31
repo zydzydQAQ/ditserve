@@ -133,6 +133,21 @@ class AsymmetricCFGStepper:
             base = base + corr * scale
         return base.to(dtype)
 
+    def observe_cfg_pair(self, index: int, pred_cond: "torch.Tensor", pred_uncond: "torch.Tensor") -> None:
+        """Record an exact (pred_cond, pred_uncond) pair from a CFG=2 parallel step."""
+        torch = self.torch
+        delta_f32 = pred_cond.detach().to(torch.float32) - pred_uncond.detach().to(torch.float32)
+        if self._last_delta_cfg is not None and self._last_delta_step is not None and index > self._last_delta_step:
+            dt = float(index - self._last_delta_step)
+            self._delta_velocity = (delta_f32 - self._last_delta_cfg) / dt
+            diff_l1 = float(torch.linalg.vector_norm(delta_f32 - self._last_delta_cfg, ord=1).item())
+            ref_l1 = max(1e-6, float(torch.linalg.vector_norm(delta_f32, ord=1).item()))
+            self._last_curvature = (diff_l1 / ref_l1) / dt
+            self.curvature_history.append({"step": int(index), "curvature": round(float(self._last_curvature), 5)})
+        self._last_delta_cfg = delta_f32.clone()
+        self._last_delta_step = int(index)
+        self.stats["full_cfg_steps"] += 1
+
     def step(
         self,
         runtime,
@@ -233,6 +248,12 @@ class AsymmetricCFGStepper:
                         self._last_delta_step = index
                         prediction = pred_uncond + g * (pred_cond - pred_uncond)
                         self.stats["full_cfg_steps"] += 1
+                        if state.cache_enabled:
+                            for context in state.contexts.values():
+                                context.executed_steps = index + 1
+                                context.accumulated_executed_steps = index + 1
+                                context.transformer_executed_steps = (index + 1) * 2
+                                context.accumulated_transformer_executed_steps = (index + 1) * 2
                     else:
                         # Single-branch CFG reconstruction: e_c(t) + (g - 1) * Delta_CFG_hat(t)
                         delta_hat = self._predict_delta_cfg(index, pred_cond.dtype)

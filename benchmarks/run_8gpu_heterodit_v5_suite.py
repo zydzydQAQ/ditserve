@@ -198,12 +198,12 @@ def main() -> None:
         comp_curv.monotonic_gate = False
         stepper_curv = AsymmetricCFGStepper(
             torch,
-            folded_steps=set(range(7, 19)),
+            folded_steps=set(range(11, 19)),
             cfg_damping=0.97,
             cfg_vel_alpha=0.12,
             final_step_exact_anchor=True,
-            curvature_threshold=0.95,
-            min_full_cfg_steps=6,
+            curvature_threshold=0.14,
+            min_full_cfg_steps=8,
             enabled=True,
         )
         stepper_curv.force_exact_cond_on_fold = False
@@ -785,12 +785,12 @@ def main() -> None:
     comp6.monotonic_gate = False
     stepper6 = AsymmetricCFGStepper(
         torch,
-        folded_steps=set(range(6, 19)),
+        folded_steps=set(range(7, 19)),
         cfg_damping=0.97,
         cfg_vel_alpha=0.12,
         final_step_exact_anchor=True,
-        curvature_threshold=0.95,
-        min_full_cfg_steps=6,
+        curvature_threshold=0.40,
+        min_full_cfg_steps=7,
         enabled=True,
     )
     stepper6.force_exact_cond_on_fold = False
@@ -806,6 +806,7 @@ def main() -> None:
                 "epoch": 350,
                 "cfg": 2,
                 "ring": 1,
+                "stepper": stepper6,
             })
         # Seed stepper6's Delta_CFG from the step-5 latent trajectory on Ranks 0..2
         if rank in (0, 1, 2):
