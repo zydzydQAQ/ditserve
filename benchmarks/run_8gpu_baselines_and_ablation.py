@@ -97,14 +97,14 @@ def run_finalize_c2_c4_c3(args) -> None:
 
     wan.runtime.pipe.vae.to(dtype=torch.float32)
     t0 = time.perf_counter()
-    wan.runtime.decode_chunks(st_vae, 5, vae_dtype="float32")
+    wan.runtime.decode_chunks(st_vae, 9, vae_dtype="float32")
     torch.cuda.synchronize(device_str)
     fp32_sync_vae_ms = (time.perf_counter() - t0) * 1000.0
 
     wan.runtime.pipe.vae.to(dtype=torch.bfloat16)
     st_vae.finished = False
     t0 = time.perf_counter()
-    wan.runtime.decode_chunks(st_vae, 5, vae_dtype="bfloat16")
+    wan.runtime.decode_chunks(st_vae, 9, vae_dtype="bfloat16")
     torch.cuda.synchronize(device_str)
     bf16_sync_vae_ms = (time.perf_counter() - t0) * 1000.0
 
@@ -146,7 +146,7 @@ def run_finalize_c2_c4_c3(args) -> None:
     wan.advance({"state_id": "c4-ref", "steps": 20, "group": [0], "epoch": 220, "cfg": 1, "ring": 1})
     torch.cuda.synchronize(device_str)
     ref_ms = (time.perf_counter() - t0) * 1000.0
-    ref_frames = wan.runtime.decode_chunks(st_ref, 5, vae_dtype="bfloat16")[0]
+    ref_frames = wan.runtime.decode_chunks(st_ref, 9, vae_dtype="bfloat16")[0]
     wan.release({"state_id": "c4-ref"})
 
     c4_rows = [
@@ -195,7 +195,7 @@ def run_finalize_c2_c4_c3(args) -> None:
         })
         torch.cuda.synchronize(device_str)
         p_ms = (time.perf_counter() - t0) * 1000.0
-        p_frames = wan.runtime.decode_chunks(st_p, 5, vae_dtype="bfloat16")[0]
+        p_frames = wan.runtime.decode_chunks(st_p, 9, vae_dtype="bfloat16")[0]
         wan.release({"state_id": sid})
         psnr_v, ssim_v = compute_psnr_ssim(ref_frames, p_frames)
         s_sum = stepper_p.summary()
@@ -470,7 +470,7 @@ def main() -> None:
     if rank == 0:
         st_b2 = prep_wan("b2-sp1", cache=False)
         wan.advance({"state_id": "b2-sp1", "steps": 20, "group": [0], "epoch": 101, "cfg": 1, "ring": 1})
-        wan.runtime.decode_chunks(st_b2, 5, vae_dtype="bfloat16")
+        wan.runtime.decode_chunks(st_b2, 9, vae_dtype="bfloat16")
         torch.cuda.synchronize(device_str)
         vid_b2 = (time.perf_counter() - t0) * 1000.0
         wan.release({"state_id": "b2-sp1"})
@@ -510,7 +510,7 @@ def main() -> None:
         st_b4 = prep_wan("b4-6v2i", cache=False)
         wan.advance({"state_id": "b4-6v2i", "steps": 20, "group": [0, 1, 2, 3, 4, 5], "epoch": 110, "cfg": 1, "ring": 2})
         if rank == 0:
-            wan.runtime.decode_chunks(st_b4, 5, vae_dtype="bfloat16")
+            wan.runtime.decode_chunks(st_b4, 9, vae_dtype="bfloat16")
         torch.cuda.synchronize(device_str)
         vid_b4 = (time.perf_counter() - t0) * 1000.0
         wan.release({"state_id": "b4-6v2i"})
@@ -567,7 +567,7 @@ def main() -> None:
     w3_b5 = (time.perf_counter() - t0) * 1000.0 - w3_arr
     # Resume Stage 2: BF16 3D-VAE decode
     if rank == 0:
-        wan.runtime.decode_chunks(st_b5, 5, vae_dtype="bfloat16")
+        wan.runtime.decode_chunks(st_b5, 9, vae_dtype="bfloat16")
     sync_all(device_str)
     vid_b5 = (time.perf_counter() - t0) * 1000.0
     wan.release({"state_id": "b5-stage"})
@@ -609,7 +609,7 @@ def main() -> None:
             w3_b6 = (time.perf_counter() - t0) * 1000.0 - w3_arr
             w3_done = True
     if rank == 0:
-        wan.runtime.decode_chunks(st_b6, 5, vae_dtype="bfloat16")
+        wan.runtime.decode_chunks(st_b6, 9, vae_dtype="bfloat16")
     sync_all(device_str)
     vid_b6 = (time.perf_counter() - t0) * 1000.0
     wan.release({"state_id": "b6-round"})
@@ -659,7 +659,7 @@ def main() -> None:
             w3_a0 = (time.perf_counter() - t0) * 1000.0 - w3_arr
             w3_done = True
     if rank == 0:
-        wan.runtime.decode_chunks(st_a0, 5, vae_dtype="bfloat16")
+        wan.runtime.decode_chunks(st_a0, 9, vae_dtype="bfloat16")
     sync_all(device_str)
     vid_a0 = (time.perf_counter() - t0) * 1000.0
     wan.release({"state_id": "a0-genserve"})
@@ -700,7 +700,7 @@ def main() -> None:
             w3_a1 = (time.perf_counter() - t0) * 1000.0 - w3_arr
             w3_done = True
     if rank == 0:
-        wan.runtime.decode_chunks(st_a1, 5, vae_dtype="bfloat16")
+        wan.runtime.decode_chunks(st_a1, 9, vae_dtype="bfloat16")
     sync_all(device_str)
     vid_a1 = (time.perf_counter() - t0) * 1000.0
     wan.release({"state_id": "a1-tier0"})
@@ -743,7 +743,7 @@ def main() -> None:
             w3_a2 = (time.perf_counter() - t0) * 1000.0 - w3_arr
             w3_done = True
     if rank == 0:
-        wan.runtime.decode_chunks(st_a2, 5, vae_dtype="bfloat16")
+        wan.runtime.decode_chunks(st_a2, 9, vae_dtype="bfloat16")
     sync_all(device_str)
     vid_a2 = (time.perf_counter() - t0) * 1000.0
     rq_a2.uninstall_xfuser_hook()
@@ -803,7 +803,7 @@ def main() -> None:
             w3_a3 = (time.perf_counter() - t0) * 1000.0 - w3_arr
             w3_done = True
     if rank == 0:
-        wan.runtime.decode_chunks(st_a3, 5, vae_dtype="bfloat16")
+        wan.runtime.decode_chunks(st_a3, 9, vae_dtype="bfloat16")
     sync_all(device_str)
     vid_a3 = (time.perf_counter() - t0) * 1000.0
     rq_a3.uninstall_xfuser_hook()
@@ -868,7 +868,7 @@ def main() -> None:
             w3_a4 = (time.perf_counter() - t0) * 1000.0 - w3_arr
             w3_done = True
     if rank == 0:
-        wan.runtime.decode_chunks(st_a4, 5, vae_dtype="bfloat16")
+        wan.runtime.decode_chunks(st_a4, 9, vae_dtype="bfloat16")
     sync_all(device_str)
     vid_a4 = (time.perf_counter() - t0) * 1000.0
     rq_a4.uninstall_xfuser_hook()
@@ -1020,7 +1020,7 @@ def main() -> None:
     wan.runtime.pipe.vae.to(dtype=torch.float32)
     t0 = time.perf_counter()
     if rank == 0:
-        wan.runtime.decode_chunks(st_vae, 5, vae_dtype="float32")
+        wan.runtime.decode_chunks(st_vae, 9, vae_dtype="float32")
     sync_all(device_str)
     fp32_sync_vae_ms = (time.perf_counter() - t0) * 1000.0
 
@@ -1028,7 +1028,7 @@ def main() -> None:
     st_vae.finished = False
     t0 = time.perf_counter()
     if rank == 0:
-        wan.runtime.decode_chunks(st_vae, 5, vae_dtype="bfloat16")
+        wan.runtime.decode_chunks(st_vae, 9, vae_dtype="bfloat16")
     sync_all(device_str)
     bf16_sync_vae_ms = (time.perf_counter() - t0) * 1000.0
 
@@ -1070,7 +1070,7 @@ def main() -> None:
         wan.advance({"state_id": "c4-ref", "steps": 20, "group": [0], "epoch": 220, "cfg": 1, "ring": 1})
         torch.cuda.synchronize(device_str)
         ref_ms = (time.perf_counter() - t0) * 1000.0
-        ref_frames = wan.runtime.decode_chunks(st_ref, 5, vae_dtype="bfloat16")[0]
+        ref_frames = wan.runtime.decode_chunks(st_ref, 9, vae_dtype="bfloat16")[0]
         wan.release({"state_id": "c4-ref"})
 
         c4_rows = [
@@ -1119,7 +1119,7 @@ def main() -> None:
             })
             torch.cuda.synchronize(device_str)
             p_ms = (time.perf_counter() - t0) * 1000.0
-            p_frames = wan.runtime.decode_chunks(st_p, 5, vae_dtype="bfloat16")[0]
+            p_frames = wan.runtime.decode_chunks(st_p, 9, vae_dtype="bfloat16")[0]
             wan.release({"state_id": sid})
             psnr_v, ssim_v = compute_psnr_ssim(ref_frames, p_frames)
             s_sum = stepper_p.summary()

@@ -340,7 +340,7 @@ def main() -> None:
         st_b1_0 = prep_wan("b16-v0", cache=False)
         wan.advance({"state_id": "b16-v0", "steps": 20, "group": list(range(16)), "epoch": 101, "cfg": 1, "ring": gang16_ring})
         if rank == 0:
-            wan.runtime.decode_chunks(st_b1_0, 5, vae_dtype="bfloat16")
+            wan.runtime.decode_chunks(st_b1_0, 13, vae_dtype="bfloat16")
         sync_all(device_str)
         v0_b1 = now_ms(t0, device_str) - v0_arr
         wan.release({"state_id": "b16-v0"})
@@ -348,7 +348,7 @@ def main() -> None:
         st_b1_1 = prep_wan("b16-v1", cache=False)
         wan.advance({"state_id": "b16-v1", "steps": 20, "group": list(range(16)), "epoch": 102, "cfg": 1, "ring": gang16_ring})
         if rank == 0:
-            wan.runtime.decode_chunks(st_b1_1, 5, vae_dtype="bfloat16")
+            wan.runtime.decode_chunks(st_b1_1, 13, vae_dtype="bfloat16")
         sync_all(device_str)
         v1_b1 = now_ms(t0, device_str) - v1_arr
         wan.release({"state_id": "b16-v1"})
@@ -375,7 +375,7 @@ def main() -> None:
         if rank == 0:
             st_b2_0 = prep_wan("b2-v0", cache=False)
             wan.advance({"state_id": "b2-v0", "steps": 20, "group": [0], "epoch": 110, "cfg": 1, "ring": 1})
-            wan.runtime.decode_chunks(st_b2_0, 5, vae_dtype="bfloat16")
+            wan.runtime.decode_chunks(st_b2_0, 13, vae_dtype="bfloat16")
             torch.cuda.synchronize(device_str)
             v0_b2 = (time.perf_counter() - t0) * 1000.0 - v0_arr
             wan.release({"state_id": "b2-v0"})
@@ -384,7 +384,7 @@ def main() -> None:
                 time.sleep(0.002)
             st_b2_1 = prep_wan("b2-v1", cache=False)
             wan.advance({"state_id": "b2-v1", "steps": 20, "group": [8], "epoch": 111, "cfg": 1, "ring": 1})
-            wan.runtime.decode_chunks(st_b2_1, 5, vae_dtype="bfloat16")
+            wan.runtime.decode_chunks(st_b2_1, 13, vae_dtype="bfloat16")
             torch.cuda.synchronize(device_str)
             v1_b2 = (time.perf_counter() - t0) * 1000.0 - v1_arr
             wan.release({"state_id": "b2-v1"})
@@ -424,7 +424,7 @@ def main() -> None:
             st_b3v0 = prep_wan("b3v-v0", cache=False)
             wan.advance({"state_id": "b3v-v0", "steps": 20, "group": list(range(8)), "epoch": 120, "cfg": 1, "ring": 2})
             if rank == 0:
-                wan.runtime.decode_chunks(st_b3v0, 5, vae_dtype="bfloat16")
+                wan.runtime.decode_chunks(st_b3v0, 13, vae_dtype="bfloat16")
             torch.cuda.synchronize(device_str)
             v0_b3v = (time.perf_counter() - t0) * 1000.0 - v0_arr
             wan.release({"state_id": "b3v-v0"})
@@ -432,7 +432,7 @@ def main() -> None:
             st_b3v1 = prep_wan("b3v-v1", cache=False)
             wan.advance({"state_id": "b3v-v1", "steps": 20, "group": list(range(8)), "epoch": 121, "cfg": 1, "ring": 2})
             if rank == 0:
-                wan.runtime.decode_chunks(st_b3v1, 5, vae_dtype="bfloat16")
+                wan.runtime.decode_chunks(st_b3v1, 13, vae_dtype="bfloat16")
             torch.cuda.synchronize(device_str)
             v1_b3v = (time.perf_counter() - t0) * 1000.0 - v1_arr
             wan.release({"state_id": "b3v-v1"})
@@ -476,7 +476,7 @@ def main() -> None:
             st_b3o0 = prep_wan("b3o-v0", cache=True, thresh=0.08)
             wan.advance({"state_id": "b3o-v0", "steps": 20, "group": [0, 1, 2, 3], "epoch": 130, "cfg": 1, "ring": 1})
             if rank == 0:
-                wan.runtime.decode_chunks(st_b3o0, 5, vae_dtype="bfloat16")
+                wan.runtime.decode_chunks(st_b3o0, 13, vae_dtype="bfloat16")
             torch.cuda.synchronize(device_str)
             v0_b3o = (time.perf_counter() - t0) * 1000.0 - v0_arr
             wan.release({"state_id": "b3o-v0"})
@@ -486,7 +486,7 @@ def main() -> None:
             st_b3o1 = prep_wan("b3o-v1", cache=True, thresh=0.08)
             wan.advance({"state_id": "b3o-v1", "steps": 20, "group": [8, 9, 10, 11], "epoch": 131, "cfg": 1, "ring": 1})
             if rank == 8:
-                wan.runtime.decode_chunks(st_b3o1, 5, vae_dtype="bfloat16")
+                wan.runtime.decode_chunks(st_b3o1, 13, vae_dtype="bfloat16")
             torch.cuda.synchronize(device_str)
             v1_b3o = (time.perf_counter() - t0) * 1000.0 - v1_arr
             wan.release({"state_id": "b3o-v1"})
@@ -521,7 +521,7 @@ def main() -> None:
             st_b4_0 = prep_wan("b4-v0", cache=False)
             wan.advance({"state_id": "b4-v0", "steps": 20, "group": [0, 1, 2, 3, 4, 5], "epoch": 140, "cfg": 1, "ring": 2})
             if rank == 0:
-                wan.runtime.decode_chunks(st_b4_0, 5, vae_dtype="bfloat16")
+                wan.runtime.decode_chunks(st_b4_0, 13, vae_dtype="bfloat16")
             torch.cuda.synchronize(device_str)
             v0_b4 = (time.perf_counter() - t0) * 1000.0 - v0_arr
             wan.release({"state_id": "b4-v0"})
@@ -531,7 +531,7 @@ def main() -> None:
             st_b4_1 = prep_wan("b4-v1", cache=False)
             wan.advance({"state_id": "b4-v1", "steps": 20, "group": [8, 9, 10, 11, 12, 13], "epoch": 141, "cfg": 1, "ring": 2})
             if rank == 8:
-                wan.runtime.decode_chunks(st_b4_1, 5, vae_dtype="bfloat16")
+                wan.runtime.decode_chunks(st_b4_1, 13, vae_dtype="bfloat16")
             torch.cuda.synchronize(device_str)
             v1_b4 = (time.perf_counter() - t0) * 1000.0 - v1_arr
             wan.release({"state_id": "b4-v1"})
@@ -583,7 +583,7 @@ def main() -> None:
         dist.barrier(group=pg_node)
         w3_b5 = (time.perf_counter() - t0) * 1000.0 - w3_arr
         if rank in (0, 8):
-            wan.runtime.decode_chunks(st_b5, 5, vae_dtype="bfloat16")
+            wan.runtime.decode_chunks(st_b5, 13, vae_dtype="bfloat16")
         dist.barrier(group=pg_node)
         if rank == 0:
             v0_b5 = (time.perf_counter() - t0) * 1000.0 - v0_arr
@@ -640,7 +640,7 @@ def main() -> None:
                 w3_done = True
                 ep_b6 += 1
         if rank in (0, 8):
-            wan.runtime.decode_chunks(st_b6, 5, vae_dtype="bfloat16")
+            wan.runtime.decode_chunks(st_b6, 13, vae_dtype="bfloat16")
         dist.barrier(group=pg_node)
         if rank == 0:
             v0_b6 = (time.perf_counter() - t0) * 1000.0 - v0_arr
@@ -708,7 +708,7 @@ def main() -> None:
                 w3_done = True
                 ep_b7 += 2
         if rank in (0, 8):
-            wan.runtime.decode_chunks(st_b7, 5, vae_dtype="bfloat16")
+            wan.runtime.decode_chunks(st_b7, 13, vae_dtype="bfloat16")
         dist.barrier(group=pg_node)
         if rank == 0:
             v0_b7 = (time.perf_counter() - t0) * 1000.0 - v0_arr
@@ -765,7 +765,7 @@ def main() -> None:
                 w3_done = True
                 ep_b8 += 1
         if rank in (0, 8):
-            wan.runtime.decode_chunks(st_b8, 5, vae_dtype="bfloat16")
+            wan.runtime.decode_chunks(st_b8, 13, vae_dtype="bfloat16")
         dist.barrier(group=pg_node)
         if rank == 0:
             v0_b8 = (time.perf_counter() - t0) * 1000.0 - v0_arr
@@ -835,7 +835,7 @@ def main() -> None:
                 w3_done = True
                 ep_b9 += 1
         if rank in (0, 8):
-            wan.runtime.decode_chunks(st_b9, 5, vae_dtype="bfloat16")
+            wan.runtime.decode_chunks(st_b9, 13, vae_dtype="bfloat16")
         dist.barrier(group=pg_node)
         if rank == 0:
             v0_b9 = (time.perf_counter() - t0) * 1000.0 - v0_arr
@@ -1058,7 +1058,7 @@ def main() -> None:
         st_b3_mv01 = prep_wan("mv16-b3-v01", cache=True, thresh=0.08)
         wan.advance({"state_id": "mv16-b3-v01", "steps": 20, "group": grp_b3_4, "epoch": ep_b3_a, "cfg": 1, "ring": 1})
         if rank in (0, 8):
-            wan.runtime.decode_chunks(st_b3_mv01, 5, vae_dtype="bfloat16")
+            wan.runtime.decode_chunks(st_b3_mv01, 13, vae_dtype="bfloat16")
         torch.cuda.synchronize(device_str)
         if rank == 0:
             v0_b3_loc = (time.perf_counter() - t0_b3_mv) * 1000.0
@@ -1069,7 +1069,7 @@ def main() -> None:
         st_b3_mv23 = prep_wan("mv16-b3-v23", cache=True, thresh=0.08)
         wan.advance({"state_id": "mv16-b3-v23", "steps": 20, "group": grp_b3_4, "epoch": ep_b3_a + 1, "cfg": 1, "ring": 1})
         if rank in (0, 8):
-            wan.runtime.decode_chunks(st_b3_mv23, 5, vae_dtype="bfloat16")
+            wan.runtime.decode_chunks(st_b3_mv23, 13, vae_dtype="bfloat16")
         torch.cuda.synchronize(device_str)
         if rank == 0:
             v2_b3_loc = (time.perf_counter() - t0_b3_mv) * 1000.0 - 500.0
@@ -1104,7 +1104,7 @@ def main() -> None:
             wan.advance({"state_id": "mv16-v01", "steps": 1, "group": vid_grp_3, "epoch": ep_mv_b, "cfg": 1, "ring": 1, "stepper": stepper_mv01, "taylor_compensator": comp_mv01})
         if rank in (0, 8):
             torch.cuda.empty_cache()
-            wan.runtime.decode_chunks(st_mv01, 5, vae_dtype="bfloat16")
+            wan.runtime.decode_chunks(st_mv01, 13, vae_dtype="bfloat16")
         torch.cuda.synchronize(device_str)
         if rank == 0:
             v0_mv_loc = (time.perf_counter() - t0_mv) * 1000.0
@@ -1128,7 +1128,7 @@ def main() -> None:
             wan.advance({"state_id": "mv16-v23", "steps": 1, "group": grp_freed_3, "epoch": ep_mv_c, "cfg": 1, "ring": 1, "stepper": stepper_mv23, "taylor_compensator": comp_mv23})
         if rank in (3, 11):
             torch.cuda.empty_cache()
-            wan.runtime.decode_chunks(st_mv23, 5, vae_dtype="bfloat16")
+            wan.runtime.decode_chunks(st_mv23, 13, vae_dtype="bfloat16")
         torch.cuda.synchronize(device_str)
         if rank == 3:
             v2_mv_loc = (time.perf_counter() - t0_mv) * 1000.0 - 500.0
