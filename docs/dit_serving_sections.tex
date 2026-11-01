@@ -134,13 +134,35 @@ the mechanism. The returned worker execution record must match the planned
 form and approximation flags. Approximation flags that are not implemented by
 the worker fail closed rather than being ignored.
 
-Baselines are named by the behavior actually implemented. A step-boundary
-elastic-SP arm is \emph{GenServe-like}, not a reproduction of all of
-GenServe~\cite{ye2026genserve}. A round-based elastic-SP arm is
-\emph{TetriServe-like}; it does not claim to reproduce TetriServe's complete
-deadline scheduler~\cite{lu2026tetriserve}. Static CFG2, EDF with always-CFG2,
-and an oracle static-placement arm are included to test whether the planner
-adds value beyond a simple rule.
+Baselines are re-implemented on the same native executor, workers, calibrated
+profile and trace, and are named by provenance. Methods available only as
+preprints are named by method rather than by system; the published TetriServe
+and the xDiT engine keep their names with the re-implementation scope stated.
+\begin{itemize}
+  \item \textbf{xDiT}~\cite{fang2024xdit}: the usual deployment of the engine:
+        each model on its own GPUs (the image share fixed in advance from the
+        trace's expected GPU time), videos on a fixed CFG pair, FCFS, no
+        preemption.
+  \item \textbf{TetriServe (re-impl.)}~\cite{lu2026tetriserve}: step-level
+        sequence parallelism re-planned every round by a deadline group knapsack
+        over minimal feasible allocations. Rounds are approximated by a fixed
+        number of solver steps; its batching and multi-node deployment are not
+        reproduced.
+  \item \textbf{SBP-ESP}, the method of GenServe~\cite{ye2026genserve}:
+        step-boundary video preemption, elastic SP re-planned every step by an
+        SLO-aware knapsack, dynamic image batching and single-GPU VAE decode;
+        its exact utility function is not reproduced.
+  \item \textbf{EDF-BF}, the \texttt{EdfBestFit} policy of
+        GF-DiT~\cite{gfdit2026}: smallest size meeting the deadline, otherwise
+        the largest that fits, then EDF surplus redistribution. Its
+        group-free collectives are vendored and evaluated separately.
+\end{itemize}
+Simple heuristics are \textbf{EDF-CFG2} (every video on one CFG pair) and
+\textbf{CFG2-First} (DitServe's form rules without sub-step preemption). The
+planner of an earlier DitServe version, a hand-weighted knapsack, overlaps with
+TetriServe's formulation and is reported only as an ablation. Ablations remove
+one DitServe mechanism at a time: block preemption, dominated-form pruning,
+CFG-pair admission and pair-fit image placement.
 
 \section{Evaluation Protocol}
 \paragraph{Hardware and models.}
@@ -168,7 +190,7 @@ speedup.
 \paragraph{Mechanism studies.}
 Block preemption reports stop-latency CDFs, resident state size, transfer
 bytes/time, steady-state overhead, and end-to-end ablation. A controlled
-\texttt{static\_cfg2} versus \texttt{block\_cfg2} arm holds the parallel form
+\texttt{edf-cfg2} versus \texttt{block-cfg2} arm holds the parallel form
 fixed and compares digest-bound outputs. Doorbell-to-safe-point stop time is
 reported separately from request queueing and from the count of requests that
 actually preempt a video. Parallel forms report direct latency, numerical

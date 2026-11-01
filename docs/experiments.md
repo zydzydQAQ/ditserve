@@ -43,19 +43,40 @@ worker 以完整 GPU UUID 绑定设备，模型使用 `cuda:0`。显式 `actions
 
 ## 原生 cluster 策略
 
-| 策略 | 实际行为 |
-| --- | --- |
-| `static_sp1/2/3/4/6/8` | 固定 SP，整步执行，开始后留在原组 |
-| `static_cfg2`、`static_cfg2sp2/3/4` | 固定 CFG/SP 形态 |
-| `block_<form>`（如 `block_cfg2`） | 与对应静态形态相同的固定布局，但按 block quantum 并允许子步抢占；用于受控 A/B，不改变形态 |
-| `step_elastic` | step 边界弹性放置，GenServe-like，不是完整 GenServe 复现 |
-| `round_elastic` | 固定 round 边界弹性放置，TetriServe-like |
-| `block_elastic` | block quantum、lazy preemption 和 step 边界换组 |
-| `heterodit_exact` | block、knapsack、可选 tiered state，不使用特征缓存或 CFG fold |
-| `heterodit_approx` / `heterodit_v3` | 独立的 whole-step 特征缓存研究路径，真实后端限 SP1 pinned |
-| `heterodit_v5` | 独立 Approx：block、worker 驱动 CFG fold、形态收缩和真实异步 decode |
+策略行为的唯一来源是 `src/ditserve/control/policy.cpp` 的注册表（`PolicyTraits`）；规划器、执行器能力检查和模拟器读同一行。外部方法在同一执行器、同一 worker 和同一画像上重实现：只有 arXiv 预印本的方法按**方法简称**命名，已发表系统（TetriServe, ASPLOS'26）和真实引擎（xDiT）用系统名并注明重实现范围。`benchmarks/native_serving.py --suite` 生成论文各表的策略列表。
 
-`heterodit_v5` 不默认叠加 Taylor、DBCache 或 INT8 Ring。Exact 与 Approx 结果必须分表。固定步数折叠与曲率门控都由 worker 的 `options.cfg_fold` 决定；只有 worker 在完整 CFG 步后返回 `cfg_fold_eligible=true`，规划器才可折叠。`max_folded_steps` 是每请求的独立计算预算，必须进入 continuation 的配置校验；曲率臂要与固定折叠臂报告实际折叠步数，不得把不同计算量直接称为算法收益。折叠状态随 continuation 导出/导入，最终 exact anchor 由配置决定。
+**主对比（`--suite main`）**
+
+| 策略 | 论文名 | 来源 | 行为 | 未复现部分 |
+| --- | --- | --- | --- | --- |
+| `xdit`（=`xdit-cfg2`） | xDiT | xDiT 引擎常规部署 | 两个模型各占固定 GPU（图像份额 `partition_image_gpus` 按 trace 的 GPU 时间占比预先算出）；视频固定 cfg2、FCFS、开始后不抢占 | — |
+| `tetriserve` | TetriServe (re-impl.) | ASPLOS'26 | step 级弹性 SP，每 `round_steps` 步一轮；每轮对可动视频做 0/1 group knapsack：价值=保持按时的请求数，代价=最小可行 GPU 数；剩余 GPU 先给救不回的请求再按 EDF 加宽 | 原文 batching、多节点；round 用 step 数近似固定时长 |
+| `sbp-esp` | SBP-ESP | GenServe 的方法（arXiv:2604.04335） | step 边界让出视频 GPU 给图像，每步用同一 deadline knapsack 重规划，图像动态 batch（需画像含 `batch_ms`），VAE 单卡 | 原文效用函数；当前画像无 `batch_ms` 时图像 batch 不生效 |
+| `edf-bestfit` | EDF-BF | GF-DiT 的方法（arXiv:2606.13501）`EdfBestFit` | EDF 次序取能按时完成的最小 size，否则取剩余可放的最大 size；再按 EDF 逐级加宽剩余 GPU | 任意 rank 组与 group-free collectives 需 `collective_backend=gfc`（阶段 B 才放开非对齐组） |
+| `edf-cfg2` | EDF-CFG2 | 启发式 | 每个视频固定一对 CFG GPU，EDF，图像在视频 step 边界取卡 | — |
+| `cfg2-first` | CFG2-First | 启发式 | step 边界弹性，但剪除被支配形态、视频不窄于一对 CFG GPU、只在每卡效率 ≥0.9 时加宽；无子步抢占 | — |
+| `ditserve` | DitServe | 本文 | `cfg2-first` 的形态规则 + block 级 exact 子步抢占（doorbell）+ pair-fit 图像放置 | — |
+
+**消融（`--suite ablation`，以 `ditserve` 为满配逐项拿掉）**：`abl-no-block`（整步量子）、`abl-no-prune`（不剪支配形态）、`abl-no-mindeg`（允许单卡 admit）、`abl-first-fit`（图像放最低号空卡）、`block-cfg2`（只保留 block 抢占、不弹性）、`edf-cfg2`（全部拿掉）、`ditserve-v1`（旧手调 knapsack 规划器）。
+
+**受控与诊断**：`static-<form>`（校准与对照）、`block-<form>`（同形态 + 子步抢占，与 `edf-cfg2` 做 digest 配对，`--suite preempt`）、`ditserve-approx`（DitServe + CFG 折叠，Approx 单独成表）、`diag-*`（特征缓存、v3、tiered、2D-USP，不进论文表）。
+
+**旧名**：旧记录与旧配置中的名字经别名表解析，运行结果写 canonical ID 并记录 `policy_alias_of`；历史 REPORT/XLSX 不改写。
+
+| 旧名 | 新 ID |
+| --- | --- |
+| `heterodit_exact`、`knapsack_dp` | `ditserve-v1` |
+| `heterodit_v5` | `ditserve-v1-approx` |
+| `step_elastic` / `block_elastic` / `round_elastic` | `abl-step-elastic` / `abl-block-elastic` / `abl-round-elastic` |
+| `static_<form>`、`block_<form>` | `static-<form>`、`block-<form>` |
+| `heterodit_approx`、`heterodit_v3`、`ablation_tiered`、`ablation_2d_usp`、`static_partition` | `diag-feature-cache`、`diag-v3`、`diag-tiered`、`diag-2d-usp`、`diag-elastic-partition` |
+| `vanilla_xdit`、`tridentserve_stage`、`vllm_omni`、`gf_dit`、`genserve_40gb` | 已删除：借用外部系统名的粗略近似，读取时报错 |
+
+**规划器选项**：`prune_dominated`（某 class 的形态若被另一张卡数不多、步时不长且至少一项更优的形态支配则剪除）、`min_video_degree`（视频最小组大小）、`partition_image_gpus`（只作用于分区策略）、`round_steps`、`widen_efficiency`、`image_placement`、`order`、`demote_late`；省略时取注册表默认值。
+
+**集合通信后端**：`options.collective_backend=nccl|gfc`。`gfc` 使用 vendored 的 group-free collectives（`workers/gfc`，MIT，来自 GF-DiT），承载 Ulysses all-to-all、SP 输出 all-gather、CFG 预测交换和 doorbell 归约；初始化失败即报错，不回退 NCCL。上线前先跑 `benchmarks/gfc_microbench.py`（建组开销、时延、与 NCCL 逐位一致），再用 `benchmarks/compare_digests.py` 比较同 trace 的 nccl/gfc 两次运行。
+
+`ditserve-approx` 不默认叠加 Taylor、DBCache 或 INT8 Ring。Exact 与 Approx 结果必须分表。固定步数折叠与曲率门控都由 worker 的 `options.cfg_fold` 决定；只有 worker 在完整 CFG 步后返回 `cfg_fold_eligible=true`，规划器才可折叠。`max_folded_steps` 是每请求的独立计算预算，必须进入 continuation 的配置校验；曲率臂要与固定折叠臂报告实际折叠步数，不得把不同计算量直接称为算法收益。折叠状态随 continuation 导出/导入，最终 exact anchor 由配置决定。
 
 并行形态支持 Wan 合法头数对应的 1/2/3/4/6/8 卡 SP 度及 CFG 组合，例如 `sp3`、`cfg2sp3`；`cfg2u3r1` 规范化为 `cfg2sp3`。组按拓扑顺序对齐，8 卡可实现 6+2→3+5。每次 assignment 和 worker `applied` 必须一致，否则运行失败。
 
@@ -63,7 +84,7 @@ worker 以完整 GPU UUID 绑定设备，模型使用 `cuda:0`。显式 `actions
 
 `options.async_rank0_decode=true` 使用 `decode_start` 启动后台 VAE，再轮询 `decode_poll` 并结算。VAE 固定使用 MATH；decode 期间该 GPU 不接受新视频，避免 DiT Flash 与 VAE MATH 的全局设置竞争，但独立图像 worker 仍可重叠执行。它不是同步 decode 的折扣模型，也不再同时做 chunked decode。
 
-其他选项包括 `image_batch`、锁步 `pairing`、`reserve_image_gpus`、`quantum_blocks/quantum_ms`、`order`、feasible-first EDF 和 work-neutral widening。基线名称只描述实际实现，不能把 step/round 基线写成完整外部系统。
+其他选项包括 `image_batch`、锁步 `pairing`、`reserve_image_gpus`、`quantum_blocks/quantum_ms`、feasible-first EDF 和 work-neutral widening。重实现的外部方法必须在论文中写明未复现部分。
 
 ## 成本画像与模拟
 
