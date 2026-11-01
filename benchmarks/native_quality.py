@@ -122,6 +122,7 @@ def compare_runs(reference_run, candidate_run, *, with_lpips=True, lpips_device=
             "ssim": summary([row["ssim"] for row in pairs]),
             "lpips_mean": summary([row["lpips_mean"] for row in pairs if row["lpips_mean"] is not None]),
             "exact_match_count": sum(bool(row["exact_match"]) for row in pairs),
+            "candidate_cfg_folded_steps": summary([row["candidate_cfg_folded_steps"] for row in pairs]),
         },
         "pairs": pairs,
     }

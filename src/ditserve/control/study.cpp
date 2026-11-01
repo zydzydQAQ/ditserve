@@ -724,7 +724,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         int steady_blocks=0,resumed_blocks=0,resumes=0;
     };
     int epochs=0,transfers=0;   // export transport: placement epochs and transfer file names
-    struct Task{std::size_t row;Json assignment;std::future<Json> result;double started;bool after_other=false,continuous=false,rung=false;};
+    struct Task{std::size_t row;Json assignment;std::future<Json> result;double started;bool after_other=false,continuous=false,rung=false;double rung_ms=-1;};
     std::vector<Live> live(rows.size());
     std::vector<Task> tasks;
     std::vector<bool> busy(gpus,false);
@@ -907,7 +907,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                         const auto& held=task.assignment.at("group");
                         if(std::find(held.begin(),held.end(),Json(source))==held.end())continue;
                         for(const auto& gpu:held)bells.ring(gpu.get<int>());
-                        task.rung=true;
+                        task.rung=true;task.rung_ms=now();
                     }
                     st.prepare={{"op","prepare"},{"state_id",rid},{"spec",spec_of(arow)},{"sp_degree",degree}};
                     st.prepare["cfg"]=form.cfg;st.prepare["ring"]=form.ring;
@@ -1030,6 +1030,12 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         const auto key=quantum.is_string()?quantum.get<std::string>():"blocks";
         row["action_ms"][key]=row.value("action_ms",Json::object()).value(key,0.)+elapsed;
         row["quanta"]=row.value("quanta",0)+1;
+        if(task.rung_ms>=0){
+            bool stopped=false;
+            for(const auto& rank:out.value("ranks",Json::array()))for(const auto& event:rank.value("events",Json::array()))
+                stopped=stopped||event.value("doorbell_stop",false);
+            if(stopped)row["preemption_stop_samples"].push_back({{"stop_ms",now()-task.rung_ms}});
+        }
         if(out.contains("async_decode")){
             state.decode_ticket=out.at("async_decode").at("ticket").get<std::string>();
             state.decode_started=task.started;
@@ -1354,7 +1360,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             for(std::size_t k=0;k<rows.size()&&!image_waiting;++k)image_waiting=live[k].status=="waiting"&&rows[k].at("kind")=="image";
             if(image_waiting)for(auto& task:tasks)if(task.continuous&&!task.rung){
                 for(const auto& gpu:task.assignment.at("group"))bells.ring(gpu.get<int>());
-                task.rung=true;
+                task.rung=true;task.rung_ms=now();
             }
         }
         if(!progressed)wait_until(monotonic_seconds()+.0005);

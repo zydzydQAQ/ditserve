@@ -16,7 +16,7 @@ FORMS = ["sp1", "cfg2", "sp2", "cfg2sp2", "sp3", "cfg2sp3", "sp4", "cfg2sp4", "s
 
 def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load, pattern,
                          video_fraction, count, policies=None, video_slo_scale=1.5,
-                         image_slo_scale=2.5, quality_per_kind=0, cfg_fold=None, forms=None):
+                         image_slo_scale=2.5, quality_per_kind=0, cfg_fold=None, forms=None, doorbell=False):
     policies = policies or DEFAULT_POLICIES
     forms = forms or FORMS
     if model == "wan21":
@@ -25,7 +25,9 @@ def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load,
         raise ValueError("policies must be nonempty and unique")
     if not forms or len(set(forms)) != len(forms):
         raise ValueError("forms must be nonempty and unique")
-    approximate = any(name in ("heterodit_v5", "heterodit_approx", "heterodit_v3") for name in policies)
+    if any(name in ("heterodit_approx", "heterodit_v3") for name in policies):
+        raise ValueError("native serving's CFG-fold evaluation supports only heterodit_v5")
+    approximate = "heterodit_v5" in policies
     if approximate and cfg_fold is None:
         raise ValueError("approximate serving requires an explicit cfg_fold configuration")
     if not approximate and cfg_fold is not None:
@@ -106,13 +108,14 @@ def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load,
                 "async_rank0_decode": approximate,
                 "image_batch": 1,
                 "tiered_memory": False,
+                "doorbell": doorbell,
             },
             "matrix": {
                 "/policy": policies,
                 "/workload": [trace["workload"]],
                 "/trace_provenance": [provenance],
             },
-            "artifact_dependencies": [],
+            "artifact_dependencies": ([{"consumer": "native_quality", "closed": False}] if quality_per_kind else []),
         }],
         "benchmark": {
             "native_serving": True,
@@ -149,6 +152,7 @@ def main():
     parser.add_argument("--quality-per-kind", type=int, default=0)
     parser.add_argument("--curvature", action="store_true")
     parser.add_argument("--fold-steps", help="comma-separated fixed CFG folding steps")
+    parser.add_argument("--doorbell", action="store_true")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     if args.curvature and args.fold_steps:
@@ -166,6 +170,8 @@ def main():
             "curvature_threshold": 0.30,
             "min_full_cfg_steps": 12,
             "max_curvature_guard": 1.65,
+            "folded_steps": list(range(12, 19)),
+            "max_folded_steps": 7,
             "final_step_exact_anchor": True,
             "force_exact_cond_on_fold": True,
         }
@@ -181,7 +187,7 @@ def main():
         pattern=args.pattern, video_fraction=args.video_fraction, count=args.count,
         policies=policies, video_slo_scale=args.video_slo_scale,
         image_slo_scale=args.image_slo_scale, quality_per_kind=args.quality_per_kind,
-        cfg_fold=cfg_fold, forms=args.forms.split(","),
+        cfg_fold=cfg_fold, forms=args.forms.split(","), doorbell=args.doorbell,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("x", encoding="utf-8") as stream:

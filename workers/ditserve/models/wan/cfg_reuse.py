@@ -1,18 +1,9 @@
-"""Asymmetric Late-Step Classifier-Free Guidance (CFG) Reuse for Wan2.1 T2V.
+"""Optional single-branch CFG execution with a per-request fold budget.
 
-In flow-matching video diffusion (Wan2.1), every solver step normally evaluates
-two full 30-block transformer passes: ``cond`` (e_c) and ``uncond`` (e_u),
-combining them via:
-    e_guided(t) = e_u(t) + g * (e_c(t) - e_u(t))
-                = e_c(t) + (g - 1) * Delta_CFG(t)
-where ``Delta_CFG(t) = e_c(t) - e_u(t)``.
-
-During late denoising steps (e.g., steps 14..18 out of 20), global spatial-temporal
-layout has already converged and ``Delta_CFG(t)`` evolves smoothly. By executing
-only the ``cond`` branch on late folded steps and reconstructing the guided velocity
-via ``e_c(t) + (g - 1) * gamma * Delta_CFG(t_anchor)`` (followed by a full exact
-anchor on the final step ``T - 1``), we eliminate 50% of transformer compute on
-folded steps while preserving high PSNR (> 33.5 dB) and SSIM (> 0.96).
+For guidance scale ``g``, a folded step reconstructs the guided prediction from
+its conditional branch and the most recent stored CFG delta. Full-CFG steps
+refresh that delta. Fixed windows and curvature gating are explicit numerical
+modes; quality must be measured against the same runtime without folding.
 """
 
 from __future__ import annotations
@@ -40,9 +31,13 @@ class AsymmetricCFGStepper:
         curvature_threshold: Optional[float] = None,
         min_full_cfg_steps: int = 5,
         max_curvature_guard: float = 1.65,
+        max_folded_steps: Optional[int] = None,
         enabled: bool = True,
     ):
         self.torch = torch_module or importlib.import_module("torch")
+        if max_folded_steps is not None and (type(max_folded_steps) is not int or max_folded_steps < 0):
+            raise ValueError("max_folded_steps must be a nonnegative integer or None")
+        self.max_folded_steps = max_folded_steps
         self.curvature_threshold = float(curvature_threshold) if curvature_threshold is not None else None
         if folded_steps is not None:
             self.folded_steps: Set[int] = set(folded_steps)
@@ -76,7 +71,6 @@ class AsymmetricCFGStepper:
             "folded_cfg_steps": 0,
             "saved_uncond_forwards": 0,
             "curvature_triggered_folds": 0,
-            "curvature_guarded_unfolds": 0,
         }
 
     def summary(self) -> dict:
@@ -88,6 +82,7 @@ class AsymmetricCFGStepper:
             "final_step_exact_anchor": self.final_step_exact_anchor,
             "curvature_threshold": self.curvature_threshold,
             "min_full_cfg_steps": self.min_full_cfg_steps,
+            "max_folded_steps": self.max_folded_steps,
             "dynamic_fold_start_step": self.dynamic_fold_start_step,
             "curvature_history": list(self.curvature_history),
             **self.stats,
@@ -125,6 +120,7 @@ class AsymmetricCFGStepper:
             "curvature_threshold": self.curvature_threshold,
             "min_full_cfg_steps": self.min_full_cfg_steps,
             "max_curvature_guard": self.max_curvature_guard,
+            "max_folded_steps": self.max_folded_steps,
             "enabled": self.enabled,
         }
         runtime = {
@@ -195,6 +191,8 @@ class AsymmetricCFGStepper:
 
     def should_fold(self, step_index: int, total_steps: int) -> bool:
         if not self.enabled:
+            return False
+        if self.max_folded_steps is not None and self.stats["folded_cfg_steps"] >= self.max_folded_steps:
             return False
         if self._last_delta_cfg is None:
             return False

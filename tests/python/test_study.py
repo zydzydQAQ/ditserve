@@ -512,6 +512,9 @@ class NativeStudyTest(unittest.TestCase):
         self.assertGreater(bell["continuous_quanta"], 0)
         # Images arrive while the videos run, so the controller had to ring at least once.
         self.assertGreater(bell["rings"], 0)
+        stops = [sample for row in cells["doorbell"]["requests"] for sample in row.get("preemption_stop_samples", [])]
+        self.assertTrue(stops)
+        self.assertTrue(all(sample["stop_ms"] >= 0 for sample in stops))
         self.assertFalse(cells["blocks"]["doorbell"]["enabled"])
         for name in cells:
             rows = {row["request_id"]: row for row in cells[name]["requests"]}

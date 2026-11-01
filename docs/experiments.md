@@ -54,7 +54,7 @@ worker 以完整 GPU UUID 绑定设备，模型使用 `cuda:0`。显式 `actions
 | `heterodit_approx` / `heterodit_v3` | 独立的 whole-step 特征缓存研究路径，真实后端限 SP1 pinned |
 | `heterodit_v5` | 独立 Approx：block、worker 驱动 CFG fold、形态收缩和真实异步 decode |
 
-`heterodit_v5` 不默认叠加 Taylor、DBCache 或 INT8 Ring。Exact 与 Approx 结果必须分表。固定步数折叠与曲率门控都由 worker 的 `options.cfg_fold` 决定；只有 worker 在完整 CFG 步后返回 `cfg_fold_eligible=true`，规划器才可折叠。折叠状态随 continuation 导出/导入，最终 exact anchor 由配置决定。
+`heterodit_v5` 不默认叠加 Taylor、DBCache 或 INT8 Ring。Exact 与 Approx 结果必须分表。固定步数折叠与曲率门控都由 worker 的 `options.cfg_fold` 决定；只有 worker 在完整 CFG 步后返回 `cfg_fold_eligible=true`，规划器才可折叠。`max_folded_steps` 是每请求的独立计算预算，必须进入 continuation 的配置校验；曲率臂要与固定折叠臂报告实际折叠步数，不得把不同计算量直接称为算法收益。折叠状态随 continuation 导出/导入，最终 exact anchor 由配置决定。
 
 并行形态支持 Wan 合法头数对应的 1/2/3/4/6/8 卡 SP 度及 CFG 组合，例如 `sp3`、`cfg2sp3`；`cfg2u3r1` 规范化为 `cfg2sp3`。组按拓扑顺序对齐，8 卡可实现 6+2→3+5。每次 assignment 和 worker `applied` 必须一致，否则运行失败。
 

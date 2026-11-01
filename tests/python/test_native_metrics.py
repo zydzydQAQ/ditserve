@@ -20,7 +20,8 @@ class NativeMetricsTest(unittest.TestCase):
             }]}],
             "requests": [
                 {"cell": 0, "kind": "video", "status": "completed", "arrival_ms": 0.0,
-                 "deadline_ms": 100.0, "finish_ms": 120.0, "advance_samples": [{"steady": True, "elapsed_ms": 5.0}]},
+                 "deadline_ms": 100.0, "finish_ms": 120.0, "advance_samples": [{"steady": True, "elapsed_ms": 5.0}],
+                 "preemption_stop_samples": [{"stop_ms": 7.5}]},
                 {"cell": 0, "kind": "image", "status": "completed", "arrival_ms": 0.0, "start_ms": 50.0,
                  "deadline_ms": 100.0, "finish_ms": 80.0, "preemption_reason": "block_preempt",
                  "advance_samples": [{"steady": True, "elapsed_ms": 7.0}]},
@@ -35,6 +36,7 @@ class NativeMetricsTest(unittest.TestCase):
         self.assertEqual(cell["block_quantum_elapsed_ms"]["count"], 2)
         self.assertEqual(cell["preemption_response_ms"]["p50"], 50.0)
         self.assertEqual(cell["preempting_request_count"], 1)
+        self.assertEqual(cell["preemption_stop_ms"]["p50"], 7.5)
         self.assertEqual(result["used_gpu_seconds"], 40.0)
 
 

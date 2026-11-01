@@ -55,16 +55,23 @@ class NativeServingTest(unittest.TestCase):
         self.assertTrue(config["benchmark"]["exact_mode"])
         self.assertNotIn("cfg_fold", config["workers"]["wan0"]["config"]["options"])
         self.assertFalse(phase["options"]["async_rank0_decode"])
+        self.assertFalse(phase["options"]["doorbell"])
         self.assertEqual(config["benchmark"]["trace"]["sha256"], phase["matrix"]["/trace_provenance"][0]["sha256"])
+        continuous = native_serving.build_serving_config(
+            "wan22", [f"GPU-{i}" for i in range(8)], profile(), pools,
+            seed=201, load=1.0, pattern="poisson", video_fraction=0.2, count=40, doorbell=True,
+        )
+        self.assertTrue(continuous["phases"][0]["options"]["doorbell"])
 
     def test_approximation_is_explicit_and_separate(self):
         pools = {"image": pool("diffusiondb"), "video": pool("vidprom")}
-        with self.assertRaises(ValueError):
-            native_serving.build_serving_config(
-                "wan22", [f"GPU-{i}" for i in range(8)], profile(), pools,
-                seed=201, load=1.0, pattern="poisson", video_fraction=0.2, count=40,
-                policies=["heterodit_v5"],
-            )
+        for policies in (["heterodit_v5"], ["heterodit_approx"], ["heterodit_v3"]):
+            with self.assertRaises(ValueError):
+                native_serving.build_serving_config(
+                    "wan22", [f"GPU-{i}" for i in range(8)], profile(), pools,
+                    seed=201, load=1.0, pattern="poisson", video_fraction=0.2, count=40,
+                    policies=policies,
+                )
         config = native_serving.build_serving_config(
             "wan22", [f"GPU-{i}" for i in range(8)], profile(), pools,
             seed=201, load=1.0, pattern="poisson", video_fraction=0.2, count=40,
@@ -73,6 +80,18 @@ class NativeServingTest(unittest.TestCase):
         self.assertFalse(config["benchmark"]["exact_mode"])
         self.assertTrue(config["phases"][0]["options"]["async_rank0_decode"])
         self.assertEqual(config["workers"]["wan0"]["config"]["options"]["cfg_fold"]["folded_steps"], [12, 13])
+
+    def test_quality_outputs_remain_pending_for_evaluation(self):
+        pools = {"image": pool("diffusiondb"), "video": pool("vidprom")}
+        config = native_serving.build_serving_config(
+            "wan22", [f"GPU-{i}" for i in range(8)], profile(), pools,
+            seed=201, load=1.0, pattern="poisson", video_fraction=0.2, count=40,
+            policies=["heterodit_v5"], cfg_fold={"folded_steps": [12, 13]}, quality_per_kind=1,
+        )
+        self.assertEqual(config["phases"][0]["artifact_dependencies"], [{"consumer": "native_quality", "closed": False}])
+        rows = config["phases"][0]["matrix"]["/workload"][0]
+        self.assertEqual(sum(row["output_mode"] == "file" for row in rows), 2)
+        self.assertTrue(all(row["output_mode"] == "file" for row in rows if row["request_id"] in ("w0-v0000", "w0-i0000")))
 
 
 if __name__ == "__main__":

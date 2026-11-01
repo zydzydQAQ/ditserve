@@ -155,6 +155,7 @@ class MockBackend(Backend):
         placement = [list(request.get("group") or []), request.get("epoch")]
         if grouped and state["unit"] % state["blocks"] and state.get("placement") not in (None, placement):
             raise ValueError("SP group changes only at a solver-step boundary")
+        slept = False
         if state["blocks"] == 1:
             count = positive_int(request.get("steps", request.get("blocks", 1)))
             executed = min(count, state["steps"] - state["step"])
@@ -170,7 +171,6 @@ class MockBackend(Backend):
             # Continuous execution: block groups of check_blocks, stopping early once the doorbell rings.
             from ..runtime.doorbell import rung
             bell = rung(request)
-            slept = False
             if bell is not None:
                 check, done = positive_int(request.get("check_blocks", 1), "check_blocks"), 0
                 while done < executed:
@@ -195,6 +195,7 @@ class MockBackend(Backend):
                     frames=4, fps=16., duration_ms=250., prompt_version=state["prompt_version"],
                     applied=dict(cfg=request.get("cfg", 1), ring=request.get("ring", 1), degree=degree,
                                  cache_threshold=float(request.get("cache_threshold", 0.0)), reused_forwards=0),
+                    events=[dict(doorbell_stop=bool(slept and bell and bell()))] if slept else [],
                     progress=self._progress(state))
 
     def tiered_offload(self, request):

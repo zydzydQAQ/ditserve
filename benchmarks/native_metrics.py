@@ -66,6 +66,10 @@ def summarize_run(record):
                 if row.get("preemption_reason") == "block_preempt" and row.get("start_ms") is not None
             ]),
             "preempting_request_count": sum(row.get("preemption_reason") == "block_preempt" for row in rows),
+            "preemption_stop_ms": distribution([
+                sample["stop_ms"] for row in rows
+                for sample in row.get("preemption_stop_samples", [])
+            ]),
             "failures": [row for row in rows if row.get("status") not in ("completed",)],
         })
     return {
@@ -78,6 +82,7 @@ def summarize_run(record):
             "allocated_gpu_seconds": "sum over native cell elapsed time times registered GPUs; budget.used_gpu_seconds additionally includes process startup and cleanup",
             "block_quantum_elapsed_ms": "steady quantum wall time, not a direct preemption-wait CDF",
             "preemption_response_ms": "arrival-to-first-start response of requests marked block_preempt; includes scheduling and queueing, not only the boundary stop",
+            "preemption_stop_ms": "doorbell ring to a video worker-confirmed block-boundary stop on the preempted request; not the preempting request queueing delay",
         },
     }
 

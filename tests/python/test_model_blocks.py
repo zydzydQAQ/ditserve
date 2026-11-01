@@ -282,6 +282,20 @@ class BlockExecutorTests(unittest.TestCase):
         self.assertEqual(continuation.stepper.stats["saved_uncond_forwards"], 2)
         self.assertEqual(continuation.stepper.dynamic_fold_start_step, 1)
 
+    def test_cfg_fold_respects_per_request_compute_budget(self):
+        options = dict(folded_steps={1, 2}, max_folded_steps=1, final_step_exact_anchor=True)
+        worker, executor, prepare = fixture(steps=4, cfg_fold_options=options)
+        continuation = executor.attach(prepare("budgeted-fold"))
+        executor.advance(continuation, 60, cfg_folded=False)
+        self.assertTrue(continuation.stepper.should_fold(1, 4))
+        executor.advance(continuation, 30, cfg_folded=True)
+        self.assertFalse(continuation.stepper.should_fold(2, 4))
+        self.assertEqual(continuation.stepper.export_state()[0]["config"]["max_folded_steps"], 1)
+        executor.advance(continuation, 30, cfg_folded=False)
+        executor.advance(continuation, 30, cfg_folded=False)
+        self.assertEqual(continuation.stepper.stats["full_cfg_steps"], 3)
+        self.assertEqual(continuation.stepper.stats["folded_cfg_steps"], 1)
+
     def test_cfg_fold_cannot_change_between_sequential_branches(self):
         options = dict(folded_steps={1, 2}, final_step_exact_anchor=True)
         worker, executor, prepare = fixture(cfg_fold_options=options)
