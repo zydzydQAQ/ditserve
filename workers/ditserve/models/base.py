@@ -94,9 +94,9 @@ class Backend:
     def release_cache(self):
         """Return the CUDA allocator's cached blocks once a request's output exists.
 
-        The Wan2.2 VAE decode of a 720p video leaves about 20 GB reserved that the
-        image worker sharing the GPU cannot use (K20); options.release_cache
-        (default true) hands it back after every decode and image.
+        VAE decode can retain allocator blocks that an image worker sharing the
+        GPU cannot reuse; options.release_cache (default true) releases them
+        after every decode and image.
         """
         if not self.config.get("options", {}).get("release_cache", True):
             return

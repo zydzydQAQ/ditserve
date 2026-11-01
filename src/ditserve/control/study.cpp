@@ -898,8 +898,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 int source=-1;
                 if(!astate.prepared){
                     // Prepare where the prompt was encoded and export the prepared state into the group. Preparing
-                    // on another worker without the ticket re-encodes the prompt on the CPU (8-16 s) while the
-                    // group's GPUs wait (the per-video overhead K45-K47 measured).
+                    // on another worker without the ticket re-encodes the prompt while the group's GPUs wait.
                     const bool ticket=!astate.ticket.empty();
                     source=ticket?astate.encode_gpu:group.front();
                     st.reencode=!ticket;
@@ -1321,8 +1320,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 if(!state.pair.empty())view["pair"]=state.pair;
                 // Under the export transport the encoding worker prepares the request and exports
                 // it to whatever group the planner picks, so the prompt's GPU is no constraint;
-                // the other transports must prepare on that GPU (K26: with the pin, videos waited
-                // minutes for their encoding GPU while others stood idle).
+                // the other transports must prepare on that GPU so its prompt state remains local.
                 if(!state.prepared&&!state.ticket.empty()&&transport!="export")view["affinity"]=state.encode_gpu;
                 requests.push_back(view);
             }
@@ -1472,7 +1470,7 @@ bool execute_cells(const Json& phase,const Json& request,const Json& devices,
         const auto occupancy_backend=cell.value("occupancy_backend",std::string("nvidia_smi"));
         // occupancy_thread: observe on a background thread every 2 s instead of inside a heartbeat. Every worker call
         // runs the heartbeat first and then every 0.5 s while it waits, all under one mutex, so an inline observation
-        // stalls every rank's sends and replies for its whole duration (K43/K45).
+        // stalls every rank's sends and replies for its whole duration.
         const bool probe_thread=cell.value("occupancy_thread",false);
         OccupancyProbe probe(request,cell_dir/"probe",occupancy_backend);
         double last_observation=0;

@@ -465,7 +465,7 @@ int main() {
         try { plan(rows, "block_elastic", 1); } catch (const std::logic_error&) { contract = true; }
         require(contract, "the post-condition names the conflict");
         require(plan(rows, "block_elastic", 1, Json::array(), {{"pin_started", true}}).size() == 1, "pinned workers may interleave");
-        // K11 shape: 4 GPUs, SP1/2/4, ~300 ms quanta, overloaded mixed traffic with
+        // 4 GPUs, SP1/2/4, ~300 ms quanta, overloaded mixed traffic with
         // tight video deadlines. Any interleaving the SP workers reject throws from the
         // post-condition; without the step-boundary resume check 5 of the 6 "free" runs do.
         for (const auto* feasibility : {"widest", "free"})

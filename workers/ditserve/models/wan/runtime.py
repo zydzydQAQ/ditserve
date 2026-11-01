@@ -260,8 +260,7 @@ class WanStepWorker:
             raise ValueError("device must be an explicit cuda:N device")
         if attention not in ATTENTION_BACKENDS:
             raise ValueError("attention must be math, flash, or efficient")
-        # The VAE's precision: float32 is the official recipe; bfloat16 halves the decode's
-        # transient memory (about 20 GB for a 720p Wan2.2 decode, K20) and is a measured deviation.
+        # VAE dtype is explicit because a lower-precision decode changes the numerical mode.
         if vae_dtype not in ("float32", "bfloat16", "float16"):
             raise ValueError("vae_dtype must be float32, bfloat16 or float16")
         if engine not in ("xdit", "legacy"):
