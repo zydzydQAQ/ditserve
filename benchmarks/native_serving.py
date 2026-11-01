@@ -16,10 +16,13 @@ FORMS = ["sp1", "cfg2", "sp2", "cfg2sp2", "sp3", "cfg2sp3", "sp4", "cfg2sp4", "s
 
 def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load, pattern,
                          video_fraction, count, policies=None, video_slo_scale=1.5,
-                         image_slo_scale=2.5, quality_per_kind=0, cfg_fold=None):
+                         image_slo_scale=2.5, quality_per_kind=0, cfg_fold=None, forms=None):
     policies = policies or DEFAULT_POLICIES
+    forms = forms or FORMS
     if not policies or len(set(policies)) != len(policies):
         raise ValueError("policies must be nonempty and unique")
+    if not forms or len(set(forms)) != len(forms):
+        raise ValueError("forms must be nonempty and unique")
     approximate = any(name in ("heterodit_v5", "heterodit_approx", "heterodit_v3") for name in policies)
     if approximate and cfg_fold is None:
         raise ValueError("approximate serving requires an explicit cfg_fold configuration")
@@ -96,7 +99,7 @@ def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load,
             "warmup": warmup,
             "options": {
                 "sp_transport": "export",
-                "forms": FORMS,
+                "forms": forms,
                 "quantum_blocks": 4,
                 "async_rank0_decode": approximate,
                 "image_batch": 1,
@@ -138,6 +141,7 @@ def main():
     parser.add_argument("--video-fraction", type=float, default=0.2)
     parser.add_argument("--count", type=int, default=40)
     parser.add_argument("--policies", default=",".join(DEFAULT_POLICIES))
+    parser.add_argument("--forms", default=",".join(FORMS))
     parser.add_argument("--video-slo-scale", type=float, default=1.5)
     parser.add_argument("--image-slo-scale", type=float, default=2.5)
     parser.add_argument("--quality-per-kind", type=int, default=0)
@@ -165,7 +169,7 @@ def main():
         pattern=args.pattern, video_fraction=args.video_fraction, count=args.count,
         policies=policies, video_slo_scale=args.video_slo_scale,
         image_slo_scale=args.image_slo_scale, quality_per_kind=args.quality_per_kind,
-        cfg_fold=cfg_fold,
+        cfg_fold=cfg_fold, forms=args.forms.split(","),
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("x", encoding="utf-8") as stream:
