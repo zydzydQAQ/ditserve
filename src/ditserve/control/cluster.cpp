@@ -1,4 +1,5 @@
 #include "ditserve/control/cluster.hpp"
+#include "ditserve/control/policy.hpp"
 #include <algorithm>
 #include <cmath>
 #include <map>
@@ -14,46 +15,9 @@ bool power_of_two(int value) { return value > 0 && (value & (value - 1)) == 0; }
 bool supported_degree(int value) { return value == 1 || value == 2 || value == 3 || value == 4 || value == 6 || value == 8; }
 std::string degree_key(int degree) { return std::to_string(degree); }
 
-struct Policy {
-    int fixed_degree = 0;    // static_<form>: GPUs per video
-    Form fixed_form;         // and how they run it
-    bool elastic = false;    // regroup at step boundaries
-    bool blocks = false;     // advance in block quanta, lazy intra-step preemption
-    bool rounds = false;     // regroup only every options.round_steps steps (TetriServe-like)
-    bool knapsack = false;   // 3-stage multi-granularity Knapsack DP + tiered state hints
-    bool approx = false;     // laxity-driven dynamic feature caching (heterodit_approx)
-    bool v3 = false;         // HeteroDiT-v3: INT8 Ring + Taylor+CFG reuse + BF16 3D-VAE + SD3.5 Flash+Cache
-    bool v5 = false;         // HeteroDiT-v5: Late-step CFG branch folding + subgroup morphing + Rank-0 async VAE
-};
-Policy parse(const std::string& name) {
-    Policy policy;
-    if (name.rfind("static_", 0) == 0 && name != "static_partition") {
-        try { policy.fixed_form = parse_form(name.substr(7)); }
-        catch (const std::invalid_argument&) { throw std::invalid_argument("unknown cluster policy: " + name); }
-        policy.fixed_degree = policy.fixed_form.degree();
-    } else if (name.rfind("block_", 0) == 0 && name != "block_elastic") {
-        try { policy.fixed_form = parse_form(name.substr(6)); }
-        catch (const std::invalid_argument&) { throw std::invalid_argument("unknown cluster policy: " + name); }
-        policy.fixed_degree = policy.fixed_form.degree();
-        policy.blocks = true;
-    } else if (name == "vanilla_xdit") {
-        policy.fixed_form = parse_form("sp4");
-        policy.fixed_degree = 4;
-    } else if (name == "static_partition") policy.elastic = true;
-    else if (name == "tridentserve_stage") policy.elastic = policy.rounds = true;
-    else if (name == "vllm_omni" || name == "gf_dit") policy.elastic = true;
-    else if (name == "genserve_40gb") policy.elastic = policy.knapsack = true;
-    else if (name == "ablation_tiered" || name == "ablation_2d_usp") policy.elastic = policy.blocks = true;
-    else if (name == "step_elastic") policy.elastic = true;
-    else if (name == "block_elastic") policy.elastic = policy.blocks = true;
-    else if (name == "round_elastic") policy.elastic = policy.rounds = true;
-    else if (name == "knapsack_dp" || name == "heterodit_exact") policy.elastic = policy.blocks = policy.knapsack = true;
-    else if (name == "heterodit_approx") policy.elastic = policy.knapsack = policy.approx = true;
-    else if (name == "heterodit_v3") policy.elastic = policy.knapsack = policy.approx = policy.v3 = true;
-    else if (name == "heterodit_v5") policy.elastic = policy.blocks = policy.knapsack = policy.v5 = true;
-    else throw std::invalid_argument("unknown cluster policy: " + name);
-    return policy;
-}
+// Policy behaviour comes from the registry (policy.hpp); see PolicyTraits.
+using Policy = PolicyTraits;
+const Policy& parse(const std::string& name) { return policy_traits(name); }
 std::vector<int> group_of(const Json& request) {
     std::vector<int> group;
     for (const auto& gpu : request.value("group", Json::array())) group.push_back(static_cast<int>(integer(gpu, "group GPU")));
@@ -404,7 +368,7 @@ double ClusterCost::remaining_ms(const Json& request, const Form& form, int sp_g
 }
 
 Json cluster_plan(const Json& state, const std::string& name, const ClusterCost& cost, const Json& options) {
-    const Policy policy = parse(name);
+    const Policy& policy = parse(name);
     const double now = number(state.at("now_ms"), "now_ms");
     const int gpus = static_cast<int>(integer(state.at("gpus"), "gpus"));
     // Parallel forms the policy may choose; the group sizes follow from them.
@@ -416,7 +380,8 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             if (!item.is_string()) throw std::invalid_argument("options.forms lists form names");
             forms.push_back(parse_form(item.get<std::string>()));
         }
-    } else if ((policy.knapsack || name == "ablation_2d_usp") && !options.contains("degrees")) {
+    } else if ((policy.knapsack || policy.prune_dominated || policy.deadline_dp || policy.best_fit || policy.id == "diag-2d-usp")
+               && !options.contains("degrees")) {
         const auto& links = cost.profile().value("links", Json::object());
         forms.push_back(parse_form("sp1"));
         if (links.contains("2")) { forms.push_back(parse_form("cfg2")); forms.push_back(parse_form("sp2")); }
@@ -459,14 +424,62 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     // form of the same size unless that form is faster by more than this fraction.
     const double prefer_exact = number_field(options, "prefer_exact");
     auto exact_form = [](const Form& form) { return form.sp == 1; };
+    // Smallest group a video may run on (DitServe and CFG2-First: one CFG pair), clamped
+    // to the cluster and raised to a class minimum.
+    const int min_video_option = int_field(options, "min_video_degree", policy.min_video_degree, 1);
+    auto min_video_degree = [&](const std::string& klass) {
+        return std::min(gpus, std::max(min_video_option, int_field(cost.klass(klass), "min_degree", 1)));
+    };
+    // CFG-aware pruning: a listed form is dominated for a video class when another listed
+    // form the class may use takes no more GPUs and is no slower, and is better in one of
+    // the two. Priced uncontended, independent of placement. On PCIe nodes this removes
+    // sequence-parallel forms that cost GPUs without saving time.
+    const bool prune = bool_field(options, "prune_dominated", policy.prune_dominated);
+    std::map<std::string, std::vector<bool>> kept_forms;
+    auto kept = [&](const std::string& klass) -> const std::vector<bool>& {
+        auto found = kept_forms.find(klass);
+        if (found != kept_forms.end()) return found->second;
+        std::vector<bool> keep(forms.size(), true);
+        if (prune && !policy.fixed_degree && cost.klass(klass).at("kind") == "video") {
+            const int lowest = min_video_degree(klass);
+            std::vector<double> ms(forms.size());
+            for (std::size_t i = 0; i < forms.size(); ++i) ms[i] = cost.step_ms(klass, forms[i], 1);
+            for (std::size_t i = 0; i < forms.size(); ++i) {
+                if (forms[i].degree() < lowest) continue;
+                for (std::size_t j = 0; j < forms.size() && keep[i]; ++j) {
+                    if (j == i || forms[j].degree() < lowest || forms[j].degree() > gpus) continue;
+                    const bool fewer = forms[j].degree() < forms[i].degree(), faster = ms[j] < ms[i] - 1e-9;
+                    if (forms[j].degree() <= forms[i].degree() && ms[j] <= ms[i] + 1e-9 && (fewer || faster)) keep[i] = false;
+                }
+            }
+        }
+        return kept_forms.emplace(klass, std::move(keep)).first->second;
+    };
+    // Group sizes a video of `klass` may take, ascending: listed, fitting, at least the class
+    // and policy minimum, and (with pruning) naming at least one non-dominated form.
+    auto video_degrees = [&](const std::string& klass) {
+        std::vector<int> out;
+        const int lowest = min_video_degree(klass);
+        const auto& keep = kept(klass);
+        for (std::size_t i = 0; i < forms.size(); ++i) {
+            const int d = forms[i].degree();
+            if (d > gpus || d < lowest || !keep[i] || std::find(out.begin(), out.end(), d) != out.end()) continue;
+            out.push_back(d);
+        }
+        if (policy.fixed_degree && out.empty()) out.push_back(std::min(gpus, std::max(policy.fixed_degree, lowest)));
+        std::sort(out.begin(), out.end());
+        return out;
+    };
     // The cheapest listed form of a group size, on a named group when given. A size
     // no form names (a class minimum above the policy's sizes) runs plain SP.
     auto form_for = [&](const std::string& klass, int degree, const std::vector<int>* group = nullptr) {
         Form best{1, degree}, best_exact{1, degree};
         double best_ms = 0, exact_ms = 0;
         bool found = false, found_exact = false;
-        for (const auto& form : forms) {
-            if (form.degree() != degree) continue;
+        const auto& keep = kept(klass);
+        for (std::size_t index = 0; index < forms.size(); ++index) {
+            const auto& form = forms[index];
+            if (form.degree() != degree || !keep[index]) continue;
             const double ms = cost.step_ms(klass, form, sp_groups(form), group);
             if (!found || ms < best_ms) { best = form; best_ms = ms; found = true; }
             if (exact_form(form) && (!found_exact || ms < exact_ms)) { best_exact = form; exact_ms = ms; found_exact = true; }
@@ -512,17 +525,21 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     const bool lazy = bool_field(options, "lazy_preemption", true);
     // Minimum per-GPU efficiency (SP1 step time / (GPUs x form step time)) at which a video
     // widens beyond its minimal feasible group while others wait; 0 keeps the minimal group.
-    const double widen = options.contains("widen_efficiency") ? number_field(options, "widen_efficiency") : (policy.knapsack ? 0.90 : 0.0);
+    const double widen = options.contains("widen_efficiency") ? number_field(options, "widen_efficiency") : policy.widen;
     if (widen > 1) throw std::invalid_argument("widen_efficiency must be in [0, 1]");
     // Real backends without state migration keep a started request on its group.
-    const bool pin_started = bool_field(options, "pin_started", name == "vanilla_xdit" || name == "tridentserve_stage");
+    const bool pin_started = bool_field(options, "pin_started", policy.pin_started);
     // Static partition baseline: the last R GPUs serve images only.
-    const int reserve = int_field(options, "reserve_image_gpus", name == "static_partition" ? std::max(1, gpus / 4) : 0, 0);
-    const bool strict_partition = bool_field(options, "strict_partition", name == "static_partition");
-    const bool hold_diffuse = bool_field(options, "hold_diffuse", name == "vanilla_xdit" || name == "tridentserve_stage");
+    // Partitioned policies reserve image GPUs; options.partition_image_gpus sizes the share
+    // for those policies only (reserve_image_gpus applies to every policy).
+    const int partition_default = policy.partition_divisor > 0
+        ? int_field(options, "partition_image_gpus", std::max(1, gpus / policy.partition_divisor), 1) : 0;
+    const int reserve = int_field(options, "reserve_image_gpus", partition_default, 0);
+    const bool strict_partition = bool_field(options, "strict_partition", policy.partition_divisor > 0);
+    const bool hold_diffuse = bool_field(options, "hold_diffuse", policy.hold_diffuse);
     // Image placement among equally ranked free GPUs: "first" takes the lowest index; "pair_fit" takes the GPU
     // whose aligned partner (then quad) is already occupied, so free aligned pairs stay whole for CFG2 videos.
-    const auto image_placement = options.value("image_placement", std::string(policy.knapsack ? "pair_fit" : "first"));
+    const auto image_placement = options.value("image_placement", policy.image_placement);
     if (image_placement != "first" && image_placement != "pair_fit") throw std::invalid_argument("image_placement must be first or pair_fit");
     if (reserve >= gpus) throw std::invalid_argument("reserve_image_gpus must leave a GPU for videos");
     auto reserved = [&](int gpu) { return gpu >= gpus - reserve; };
@@ -598,14 +615,14 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     // Feasible-first EDF: a request that cannot meet its deadline even on the
     // largest group yields to those that still can, so an overloaded queue of
     // late videos does not starve newly arrived short requests.
-    const bool demote_late = bool_field(options, "demote_late", true);
+    const bool demote_late = bool_field(options, "demote_late", policy.demote_late);
     // Late requests shorter than this keep their EDF position: they barely
     // delay feasible work, and demoting them behind a long video only turns a
     // small miss into a very long tail.
     const double late_short_ms = number_field(options, "late_short_ms", 2000);
     // Queue order among feasible requests: deadline (edf, the default), estimated remaining
     // single-GPU work (srtf) or arrival (fcfs); the lateness demotion applies to all three.
-    const auto order_rule = options.value("order", std::string("edf"));
+    const auto order_rule = options.value("order", policy.order);
     if (order_rule != "edf" && order_rule != "srtf" && order_rule != "fcfs") throw std::invalid_argument("order must be edf, srtf or fcfs");
     const int widest = policy.fixed_degree ? policy.fixed_degree
                        : feasibility == "free" ? free_widest : *std::max_element(degrees.begin(), degrees.end());
@@ -616,6 +633,11 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         const int best = r->at("kind") == "image" ? 1 : std::min(std::max(widest, int_field(cost.klass(klass), "min_degree", 1)), gpus);
         int degree = best;
         while (degree > 1 && !supported_degree(degree)) --degree;
+        if (prune && r->at("kind") == "video" && !policy.fixed_degree) {
+            // Price lateness on the widest non-dominated size that fits the test degree.
+            const auto sizes = video_degrees(klass);
+            for (auto d = sizes.rbegin(); d != sizes.rend(); ++d) if (*d <= best) { degree = *d; break; }
+        }
         const auto group = group_of(*r);
         const bool mid_step = r->value("prepared", false) && int_field(*r, "blocks_done", 0, 0) > 0;
         const Form form = r->at("kind") == "image" ? Form{} : mid_step ? form_of(*r, group) : form_for(klass, degree);
@@ -630,7 +652,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     std::sort(rows.begin(), rows.end(), [&](const Json* a, const Json* b) { return edf(a) < edf(b); });
     // Round-based regrouping: a placed video keeps its group until it has completed a multiple of
     // round_steps steps, like TetriServe's rounds; other elastic policies regroup at every step.
-    const int round_steps = int_field(options, "round_steps", name == "tridentserve_stage" ? 1000 : 5);
+    const int round_steps = int_field(options, "round_steps", policy.round_steps);
 
     auto time_to_boundary = [&](const Json* r) {
         const auto group = group_of(*r);
@@ -777,7 +799,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                 for (const Json* m : members) batch.push_back(m->at("request_id"));
                 for (std::size_t m = 1; m < members.size(); ++m) taken.insert(members[m]);
                 assignment["batch"] = batch;
-            } else if (image_batch > 1 || (policy.knapsack && !options.contains("image_batch") && cost.klass(klass).contains("batch_ms")
+            } else if (image_batch > 1 || ((policy.knapsack || policy.image_batching) && !options.contains("image_batch") && cost.klass(klass).contains("batch_ms")
                        && std::count(free.begin(), free.end(), true) == 0)) {
                 const int max_batch = image_batch > 1 ? image_batch : 4;
                 std::vector<const Json*> members = {&r};
@@ -857,7 +879,103 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         if (policy.fixed_degree && min_degree > policy.fixed_degree) order = {min_degree};
         std::sort(order.begin(), order.end());
         order.erase(std::remove_if(order.begin(), order.end(), [&](int d) { return d > gpus || d < min_degree; }), order.end());
+        if (!policy.fixed_degree && (prune || min_video_option > 1)) order = video_degrees(klass);
         if (order.empty()) throw std::invalid_argument("request class needs more GPUs than the cluster offers: " + klass);
+        // Batch planners (TetriServe deadline knapsack, GF-DiT EDF best fit) size every movable
+        // video once per plan; a video they leave out waits for the next plan.
+        if ((policy.deadline_dp || policy.best_fit) && !knapsack_solved) {
+            knapsack_solved = true;
+            int g_avail = 0;
+            for (int g = 0; g < gpus; ++g) if (free[g] && !reserved(g) && !mid_owner[g] && !decode_hold[g]) ++g_avail;
+            std::vector<const Json*> cands;
+            for (std::size_t j = index; j < rows.size(); ++j) {
+                const Json& q = *rows[j];
+                if (taken.count(&q) || q.at("kind") == "image") continue;
+                const auto qklass = q.at("class").get<std::string>();
+                const bool qprep = q.value("prepared", false);
+                const int qsteps = int_field(q, "steps_total", int_field(cost.klass(qklass), "steps", 0), 1);
+                if (qprep && int_field(q, "steps_done", 0, 0) >= qsteps) continue;
+                const bool qfixed = qprep && (int_field(q, "blocks_done", 0, 0) > 0 || !policy.elastic || pin_started
+                                              || (policy.rounds && int_field(q, "steps_done", 0, 0) % round_steps != 0));
+                if (!qfixed && cands.size() < 16) cands.push_back(&q);
+            }
+            const int K = static_cast<int>(cands.size());
+            // Sizes per candidate, and the smallest that meets the deadline (0: none does).
+            std::vector<std::vector<int>> sizes(K);
+            std::vector<int> need(K, 0);
+            for (int m = 0; m < K; ++m) {
+                const Json& q = *cands[m];
+                const auto qklass = q.at("class").get<std::string>();
+                sizes[m] = (prune || min_video_option > 1) ? video_degrees(qklass) : [&] {
+                    std::vector<int> v;
+                    const int qmin = int_field(cost.klass(qklass), "min_degree", 1);
+                    for (int d : degrees) if (d <= gpus && d >= qmin) v.push_back(d);
+                    std::sort(v.begin(), v.end());
+                    return v;
+                }();
+                const auto qcur = group_of(q);
+                const bool qprep = q.value("prepared", false);
+                for (int d : sizes[m]) {
+                    const Form f = form_for(qklass, d);
+                    const double extra = (qprep && static_cast<int>(qcur.size()) != d) ? cost.resize_ms() : 0.0;
+                    if (now + estimate(q, f, sp_groups(f)) + extra <= number_field(q, "deadline_ms")) { need[m] = d; break; }
+                }
+            }
+            std::vector<int> pick(K, 0);
+            int used = 0;
+            if (policy.deadline_dp && K > 0 && g_avail > 0) {
+                // 0/1 group knapsack: value 1 per request kept on track (EDF-ordered epsilon breaks
+                // ties toward urgent requests), cost its minimal feasible GPUs; fewest GPUs among optima.
+                std::vector<std::vector<double>> dp(K + 1, std::vector<double>(g_avail + 1, -1.0));
+                std::vector<std::vector<bool>> took(K + 1, std::vector<bool>(g_avail + 1, false));
+                dp[0][0] = 0.0;
+                for (int m = 0; m < K; ++m)
+                    for (int g = 0; g <= g_avail; ++g) {
+                        if (dp[m][g] < 0) continue;
+                        if (dp[m][g] > dp[m + 1][g]) { dp[m + 1][g] = dp[m][g]; took[m + 1][g] = false; }
+                        if (need[m] > 0 && g + need[m] <= g_avail) {
+                            const double value = dp[m][g] + 1.0 + 1e-3 * (K - m) / K;
+                            if (value > dp[m + 1][g + need[m]] + 1e-12) { dp[m + 1][g + need[m]] = value; took[m + 1][g + need[m]] = true; }
+                        }
+                    }
+                int best_g = 0;
+                for (int g = 1; g <= g_avail; ++g) if (dp[K][g] > dp[K][best_g] + 1e-12) best_g = g;
+                for (int m = K, g = best_g; m >= 1; --m)
+                    if (took[m][g]) { pick[m - 1] = need[m - 1]; g -= need[m - 1]; }
+                used = best_g;
+                // Leftover GPUs: requests no size can save still progress, widest first in EDF order.
+                for (int m = 0; m < K; ++m) {
+                    if (pick[m] || need[m]) continue;
+                    for (auto d = sizes[m].rbegin(); d != sizes[m].rend(); ++d)
+                        if (used + *d <= g_avail) { pick[m] = *d; used += *d; break; }
+                }
+            } else if (policy.best_fit && K > 0) {
+                // Pass 1: EDF best fit, the smallest size meeting the deadline, else the largest that fits.
+                for (int m = 0; m < K; ++m) {
+                    if (need[m] > 0 && used + need[m] <= g_avail) { pick[m] = need[m]; used += need[m]; continue; }
+                    for (auto d = sizes[m].rbegin(); d != sizes[m].rend(); ++d)
+                        if (used + *d <= g_avail) { pick[m] = *d; used += *d; break; }
+                }
+            }
+            // Surplus: promote placed requests in EDF order to their next size while GPUs remain
+            // (best fit always; the deadline knapsack only when no image waits behind).
+            bool images_after = false;
+            for (std::size_t j = index; j < rows.size(); ++j) images_after = images_after || (!taken.count(rows[j]) && rows[j]->at("kind") == "image");
+            if (policy.best_fit || !images_after) {
+                for (bool grew = true; grew && used < g_avail;) {
+                    grew = false;
+                    for (int m = 0; m < K && used < g_avail; ++m) {
+                        if (!pick[m]) continue;
+                        const auto next = std::upper_bound(sizes[m].begin(), sizes[m].end(), pick[m]);
+                        if (next == sizes[m].end() || used - pick[m] + *next > g_avail) continue;
+                        const auto qklass = cands[m]->at("class").get<std::string>();
+                        if (!policy.best_fit && cost.step_ms(qklass, form_for(qklass, *next), 1) >= cost.step_ms(qklass, form_for(qklass, pick[m]), 1)) continue;
+                        used += *next - pick[m]; pick[m] = *next; grew = true;
+                    }
+                }
+            }
+            for (int m = 0; m < K; ++m) { knapsack_target[cands[m]] = pick[m]; knapsack_tau[cands[m]] = 0.0; }
+        }
         if (policy.knapsack && !knapsack_solved) {
             knapsack_solved = true;
             int g_avail = 0;
@@ -971,14 +1089,19 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         }
         int target = order.back();
         double chosen_tau = 0.0;
-        if (policy.knapsack && knapsack_target.count(&r)) {
+        if ((policy.deadline_dp || policy.best_fit) && knapsack_target.count(&r) && knapsack_target.at(&r) == 0) continue;
+        if ((policy.knapsack || policy.deadline_dp || policy.best_fit) && knapsack_target.count(&r)) {
             if (knapsack_target.at(&r) > 0) {
                 target = knapsack_target.at(&r);
                 chosen_tau = knapsack_tau.at(&r);
             } else {
                 target = order.front();
             }
-        } else if (others_waiting) {
+        } else if (others_waiting || prune) {
+            // With pruning the remaining sizes trade GPUs for little time, so a video that no size
+            // saves keeps the most efficient size instead of the widest, and an idle queue does not
+            // hand one video a wide group it must give back at the next arrival.
+            if (prune) target = order.front();
             for (int d : order) {
                 const double extra = prepared && static_cast<int>(current.size()) != d ? cost.resize_ms() : 0;
                 const Form form = form_for(klass, d);
@@ -1106,10 +1229,9 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             }
         }
     }
-    Json result = {{"assignments", assignments}, {"policy", name}};
-    const bool tiered_memory = bool_field(options, "tiered_memory",
-        name == "knapsack_dp" || name == "heterodit_exact" || name == "heterodit_approx" || name == "heterodit_v3"
-        || name == "heterodit_v5" || name == "ablation_tiered" || name == "ablation_2d_usp");
+    Json result = {{"assignments", assignments}, {"policy", policy.id}};
+    if (policy.id != name) result["policy_alias_of"] = name;
+    const bool tiered_memory = bool_field(options, "tiered_memory", policy.tiered_memory || (policy.knapsack && policy.v5));
     if (tiered_memory) {
         std::set<std::string> scheduled;
         for (const auto& a : assignments) {

@@ -10,8 +10,45 @@ from ditserve.evaluation.common import read_json, verify_seal
 from ditserve.evaluation.workloads import build_trace, validate_trace
 
 
-DEFAULT_POLICIES = ["static_sp1", "step_elastic", "round_elastic", "block_elastic", "static_cfg2", "static_cfg2sp3", "heterodit_exact"]
+# Paper tables (see docs/experiments.md and src/ditserve/control/policy.cpp, the authoritative
+# registry). Preprint-only methods are named by method; TetriServe (ASPLOS'26) and xDiT by system.
+POLICY_DISPLAY = {
+    "xdit": "xDiT", "tetriserve": "TetriServe (re-impl.)", "sbp-esp": "SBP-ESP", "edf-bestfit": "EDF-BF",
+    "edf-cfg2": "EDF-CFG2", "cfg2-first": "CFG2-First", "partition": "Static-Partition",
+    "ditserve": "DitServe", "ditserve-approx": "DitServe-Approx",
+    "abl-no-block": "DitServe w/o block preemption", "abl-no-prune": "DitServe w/o form pruning",
+    "abl-no-mindeg": "DitServe w/o CFG-pair admission", "abl-first-fit": "DitServe w/o pair-fit placement",
+    "ditserve-v1": "DitServe-v1 (knapsack)", "block-cfg2": "Block-cfg2",
+}
+SUITES = {
+    # External methods and simple heuristics against DitServe.
+    "main": ["xdit", "tetriserve", "sbp-esp", "edf-bestfit", "edf-cfg2", "cfg2-first", "ditserve"],
+    # DitServe with one mechanism removed; EDF-CFG2 has all of them removed.
+    "ablation": ["ditserve", "abl-no-block", "abl-no-prune", "abl-no-mindeg", "abl-first-fit",
+                 "block-cfg2", "edf-cfg2", "ditserve-v1"],
+    # Same fixed form with and without sub-step preemption (digest-checked pair).
+    "preempt": ["edf-cfg2", "block-cfg2"],
+}
+SUITES["main+ablation"] = list(dict.fromkeys(SUITES["main"] + SUITES["ablation"]))
+DEFAULT_POLICIES = SUITES["main"]
+APPROXIMATE_POLICIES = ("ditserve-approx", "ditserve-v1-approx", "heterodit_v5")
 FORMS = ["sp1", "cfg2", "sp2", "cfg2sp2", "sp3", "cfg2sp3", "sp4", "cfg2sp4", "sp6", "sp8"]
+
+
+def partition_image_gpus(gpus, video_fraction, video_cost, image_service_ms):
+    """GPUs the partitioned policies (xDiT, Static-Partition) reserve for images.
+
+    Proportional to the trace's expected image share of GPU time (videos priced at their SP1
+    GPU time, which a CFG pair spends as two halves), at least one, leaving an even number of
+    GPUs for CFG pairs. Fixed before any run, from the profile and the mix only.
+    """
+    video_gpu_ms = video_cost["steps"] * video_cost["step_compute_ms"] + video_cost.get("finish_ms", 0.0)
+    image_demand = (1.0 - video_fraction) * image_service_ms
+    total = image_demand + video_fraction * video_gpu_ms
+    images = max(1, min(gpus - 2, round(gpus * image_demand / total))) if total > 0 else 1
+    if (gpus - images) % 2:
+        images = images + 1 if images + 1 <= gpus - 2 else images - 1
+    return max(1, images)
 
 
 def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load, pattern,
@@ -32,9 +69,9 @@ def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load,
     profile_match = profile_uuids == list(gpu_uuids)
     if require_profile_match and not profile_match:
         raise ValueError("calibration GPU UUIDs are absent or differ from this allocation")
-    if any(name in ("heterodit_approx", "heterodit_v3") for name in policies):
-        raise ValueError("native serving's CFG-fold evaluation supports only heterodit_v5")
-    approximate = "heterodit_v5" in policies
+    if any(name in ("heterodit_approx", "heterodit_v3", "diag-feature-cache", "diag-v3") for name in policies):
+        raise ValueError("native serving's CFG-fold evaluation supports only ditserve-approx")
+    approximate = any(name in APPROXIMATE_POLICIES for name in policies)
     if approximate and cfg_fold is None:
         raise ValueError("approximate serving requires an explicit cfg_fold configuration")
     if not approximate and cfg_fold is not None:
@@ -69,6 +106,8 @@ def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load,
             },
         },
     }
+    image_share = partition_image_gpus(len(gpu_uuids), video_fraction, video_cost,
+                                       profile["classes"]["sd35-preflight"]["service_ms"])
     window = {
         "count": count, "video_fraction": video_fraction, "pattern": pattern, "load": load,
     }
@@ -116,6 +155,7 @@ def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load,
                 "image_batch": 1,
                 "tiered_memory": False,
                 "doorbell": doorbell,
+                "partition_image_gpus": image_share,
             },
             "matrix": {
                 "/policy": policies,
@@ -142,6 +182,8 @@ def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load,
             },
             "trace": provenance,
             "policies": policies,
+            "policy_display": {name: POLICY_DISPLAY.get(name, name) for name in policies},
+            "partition_image_gpus": {"value": image_share, "rule": "expected image share of GPU time, even video remainder"},
         },
     }
 
@@ -157,7 +199,8 @@ def main():
     parser.add_argument("--pattern", choices=["poisson", "gamma", "bursty", "offline_all"], default="poisson")
     parser.add_argument("--video-fraction", type=float, default=0.2)
     parser.add_argument("--count", type=int, default=40)
-    parser.add_argument("--policies", default=",".join(DEFAULT_POLICIES))
+    parser.add_argument("--suite", choices=sorted(SUITES), help="named policy list; --policies overrides it")
+    parser.add_argument("--policies")
     parser.add_argument("--forms", default=",".join(FORMS))
     parser.add_argument("--video-slo-scale", type=float, default=1.5)
     parser.add_argument("--image-slo-scale", type=float, default=2.5)
@@ -177,7 +220,8 @@ def main():
         kind: verify_seal(read_json(args.datasets / f"{name}.json"))
         for kind, name in (("image", "diffusiondb"), ("video", "vidprom"))
     }
-    policies = args.policies.split(",")
+    policies = (args.policies.split(",") if args.policies
+                else SUITES[args.suite] if args.suite else DEFAULT_POLICIES)
     cfg_fold = None
     if args.curvature:
         cfg_fold = {

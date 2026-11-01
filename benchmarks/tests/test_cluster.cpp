@@ -1,10 +1,12 @@
 #include "ditserve/benchmark/cluster_sim.hpp"
 #include "ditserve/control/cluster.hpp"
+#include "ditserve/control/policy.hpp"
 #include "ditserve/control/dispatch.hpp"
 #include <cmath>
 #include <functional>
 #include <iostream>
 #include <stdexcept>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -733,6 +735,125 @@ int main() {
                                               {"gpus", 1}, {"options", {{"continuous_batch", 4}, {"bubble_free", true}}}});
         require(sim_serial.at("metrics").at("completed") == 2 && sim_bf.at("metrics").at("completed") == 2, "both simulations complete");
         require(sim_bf.at("makespan_ms").get<double>() < sim_serial.at("makespan_ms").get<double>(), "bubble_free reduces continuous batch makespan");
+    });
+
+    // ---- policy registry and the baseline / heuristic / ablation policies ----
+    // Measured Wan2.1 480x832x33f step times on 8x A100-PCIe (same-allocation calibration, 2026-11-01).
+    auto pcie_profile = [] {
+        Json p = profile();
+        Json forms = {{"sp1", {{"step_ms", 1147.0}}}, {"cfg2", {{"step_ms", 583.4}}}, {"sp2", {{"step_ms", 1196.9}}},
+                      {"cfg2sp2", {{"step_ms", 790.6}}}, {"sp3", {{"step_ms", 1101.1}}}, {"cfg2sp3", {{"step_ms", 622.0}}},
+                      {"sp4", {{"step_ms", 1091.6}}}, {"cfg2sp4", {{"step_ms", 567.1}}}, {"sp6", {{"step_ms", 827.9}}}};
+        p["classes"]["video"] = {{"kind", "video"}, {"steps", 20}, {"blocks_per_step", 60}, {"prepare_ms", 0}, {"encode_ms", 0},
+                                 {"step_compute_ms", 1147.0}, {"comm_mb_per_step", 10351}, {"collectives_per_step", 240},
+                                 {"finish_ms", 1840}, {"forms", forms}};
+        p["classes"]["image"] = {{"kind", "image"}, {"service_ms", 6450}};
+        for (const char* d : {"2", "3", "4", "6", "8"}) p["links"][d] = {{"gbps", 3.75}, {"latency_ms", 0.5}};
+        return p;
+    };
+    const Json pcie_forms = {{"forms", {"sp1", "cfg2", "sp2", "cfg2sp2", "sp3", "cfg2sp3", "sp4", "cfg2sp4", "sp6"}}};
+    auto pcie_plan = [&](const Json& requests, const std::string& policy, Json busy = Json::array(), Json extra = Json::object()) {
+        Json options = pcie_forms;
+        options.merge_patch(extra);
+        return cluster_plan({{"now_ms", 0}, {"gpus", 8}, {"busy", busy}, {"requests", requests}}, policy,
+                            ClusterCost(pcie_profile()), options);
+    };
+    check("policy registry", [] {
+        for (const char* id : {"xdit", "tetriserve", "sbp-esp", "edf-bestfit", "edf-cfg2", "cfg2-first", "partition", "ditserve",
+                               "ditserve-approx", "abl-no-block", "abl-no-prune", "abl-no-mindeg", "abl-first-fit", "ditserve-v1",
+                               "block-cfg2", "static-cfg2sp3", "xdit-sp4"})
+            require(cluster_policy(id), std::string("registered policy: ") + id);
+        require(canonical_policy("heterodit_exact") == "ditserve-v1" && canonical_policy("step_elastic") == "abl-step-elastic"
+                && canonical_policy("static_cfg2") == "static-cfg2" && canonical_policy("block_cfg2") == "block-cfg2"
+                && canonical_policy("heterodit_v5") == "ditserve-v1-approx" && canonical_policy("xdit") == "xdit-cfg2",
+                "legacy names resolve to canonical IDs");
+        for (const char* retired : {"vanilla_xdit", "tridentserve_stage", "vllm_omni", "gf_dit", "genserve_40gb"})
+            require(!cluster_policy(retired), std::string("retired name rejected: ") + retired);
+        rejects([] { policy_traits("no_such_policy"); });
+        rejects([] { policy_traits("static-cfg3"); });
+        const auto& d = policy_traits("ditserve");
+        require(d.family == "ours" && d.blocks && d.elastic && d.prune_dominated && d.min_video_degree == 2 && !d.knapsack,
+                "DitServe: block preemption, pruning, CFG-pair admission, no hand-weighted knapsack");
+        require(policy_traits("abl-no-block").family == "ablation" && !policy_traits("abl-no-block").blocks, "ablation removes one mechanism");
+        require(policy_traits("sbp-esp").display == "SBP-ESP" && policy_traits("edf-bestfit").display == "EDF-BF",
+                "preprint methods are named by method");
+        require(policy_traits("xdit").hold_diffuse && policy_traits("xdit").order == "fcfs" && policy_traits("xdit").partition_divisor == 4,
+                "xDiT: disjoint model GPUs, FCFS, no preemption");
+        const auto catalog = policy_catalog();
+        require(catalog.is_array() && catalog.size() >= 20, "catalog lists every policy");
+    });
+    check("legacy alias plans name the canonical policy", [] {
+        const auto result = cluster_plan({{"now_ms", 0}, {"gpus", 2}, {"busy", Json::array()}, {"requests", Json::array({video("v", 1e9)})}},
+                                         "step_elastic", ClusterCost(profile()));
+        require(result.at("policy") == "abl-step-elastic" && result.at("policy_alias_of") == "step_elastic", "alias recorded");
+    });
+    check("dominated forms pruned on PCIe", [&] {
+        // A lone video with nobody waiting: DitServe keeps one CFG pair (cfg2sp4 saves 3% for 4x the GPUs).
+        const auto lone = pcie_plan(Json::array({video("v", 1e9)}), "ditserve").at("assignments");
+        require(lone.size() == 1 && lone[0].at("form") == "cfg2", "lone video stays on a CFG pair: " + lone.dump());
+        // Without pruning the work-conserving rule hands it the widest group.
+        const auto wide = pcie_plan(Json::array({video("v", 1e9)}), "abl-no-prune").at("assignments");
+        require(wide.size() == 1 && wide[0].at("degree") == 8, "unpruned lone video takes the node: " + wide.dump());
+        // cfg2sp2 (4 GPUs, slower than cfg2) is never chosen with pruning even when a deadline is tight.
+        const auto tight = pcie_plan(Json::array({video("v", 20 * 700.0 + 1840), video("w", 1e9)}), "ditserve").at("assignments");
+        for (const auto& a : tight) require(a.at("form") != "cfg2sp2" && a.at("form") != "sp2" && a.at("form") != "sp4", "no dominated form");
+    });
+    check("CFG-pair admission waits instead of starting narrow", [&] {
+        // Only GPU 7 free: abl-no-mindeg starts the video on SP1, DitServe and CFG2-First wait.
+        const Json busy = {true, true, true, true, true, true, true, false};
+        for (const char* policy : {"ditserve", "cfg2-first"})
+            require(pcie_plan(Json::array({video("v", 1e9), video("w", 1e9)}), policy, busy).at("assignments").empty(),
+                    std::string(policy) + " waits for a pair");
+        const auto narrow = pcie_plan(Json::array({video("v", 1e9), video("w", 1e9)}), "abl-no-mindeg", busy).at("assignments");
+        require(narrow.size() == 1 && narrow[0].at("degree") == 1, "without the minimum the video starts on SP1");
+        // Images still take the lone GPU.
+        const auto img = pcie_plan(Json::array({video("v", 1e9), image("i", 7000)}), "ditserve", busy).at("assignments");
+        require(img.size() == 1 && img[0].at("request_id") == "i", "image placed while the video waits");
+    });
+    check("deadline knapsack keeps the most requests on track", [&] {
+        // Four GPUs free, three videos: two can make it on cfg2, the third cannot on any form.
+        const Json busy = {true, true, true, true, false, false, false, false};
+        const double ok = 20 * 583.4 + 1840 + 500, hopeless = 5000;
+        const auto result = pcie_plan(Json::array({video("late", hopeless), video("a", ok), video("b", ok + 1)}), "tetriserve", busy,
+                                      {{"demote_late", false}}).at("assignments");
+        std::set<std::string> placed;
+        for (const auto& a : result) { placed.insert(a.at("request_id").get<std::string>()); require(a.at("degree") == 2, "minimal feasible pair"); }
+        require(placed == std::set<std::string>{"a", "b"}, "the knapsack drops the hopeless request: " + result.dump());
+        // sbp-esp re-plans every step with the same objective.
+        const auto genserve = pcie_plan(Json::array({video("late", hopeless), video("a", ok), video("b", ok + 1)}), "sbp-esp", busy,
+                                        {{"demote_late", false}}).at("assignments");
+        require(genserve.size() == 2, "SBP-ESP keeps the two feasible videos");
+    });
+    check("EDF best fit with surplus redistribution", [&] {
+        // One feasible video, all 8 GPUs free, nothing else waiting: best fit takes the smallest feasible
+        // size, then surplus promotion widens it step by step while GPUs remain.
+        const auto result = pcie_plan(Json::array({video("a", 1e9)}), "edf-bestfit").at("assignments");
+        require(result.size() == 1 && result[0].at("degree") == 8, "surplus promotes to the widest size: " + result.dump());
+        // Two videos: both placed, the earlier deadline first.
+        const auto two = pcie_plan(Json::array({video("a", 1e9), video("b", 2e9)}), "edf-bestfit").at("assignments");
+        require(two.size() == 2, "both placed");
+    });
+    check("xDiT and Static-Partition reserve image GPUs", [&] {
+        const auto x = pcie_plan(Json::array({video("v1", 1e9), video("v2", 1e9), video("v3", 1e9), video("v4", 1e9)}), "xdit").at("assignments");
+        require(x.size() == 3, "two of eight GPUs serve images only, so three CFG pairs: " + x.dump());
+        for (const auto& a : x) for (const auto& g : a.at("group")) require(g.get<int>() < 6, "videos stay off image GPUs");
+        const auto sized = pcie_plan(Json::array({video("v1", 1e9), video("v2", 1e9), video("v3", 1e9)}), "partition", Json::array(),
+                                     {{"partition_image_gpus", 4}}).at("assignments");
+        require(sized.size() == 2, "partition_image_gpus resizes the image share");
+        // reserve_image_gpus is unchanged for other policies.
+        require(pcie_plan(Json::array({video("v1", 1e9), video("v2", 1e9), video("v3", 1e9), video("v4", 1e9)}), "edf-cfg2").at("assignments").size() == 4,
+                "EDF-CFG2 uses every GPU");
+    });
+    check("new policies simulate to completion", [&] {
+        Json trace = Json::array();
+        for (int i = 0; i < 12; ++i) trace.push_back(trace_row("v" + std::to_string(i), "video", i * 3000.0, i * 3000.0 + 60000));
+        for (int i = 0; i < 12; ++i) trace.push_back(trace_row("i" + std::to_string(i), "image", i * 2500.0 + 700, i * 2500.0 + 700 + 9000));
+        for (const char* policy : {"xdit", "tetriserve", "sbp-esp", "edf-bestfit", "edf-cfg2", "cfg2-first", "partition", "ditserve",
+                                   "abl-no-block", "abl-no-prune", "abl-no-mindeg", "abl-first-fit", "ditserve-v1", "block-cfg2"}) {
+            Json options = pcie_forms;
+            const auto result = simulate_cluster({{"workload", trace}, {"profile", pcie_profile()}, {"policy", policy}, {"gpus", 8}, {"options", options}});
+            require(result.at("metrics").at("completed") == 24, std::string("simulation completes: ") + policy);
+        }
     });
     std::cout << checks - failures << "/" << checks << " cluster checks passed\n";
     return failures ? 1 : 0;

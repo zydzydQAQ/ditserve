@@ -8,8 +8,19 @@ from pathlib import Path
 from native_metrics import distribution
 
 
+# Records written before the policy registry use the legacy names.
+EQUIVALENT_POLICIES = (
+    {"edf-cfg2", "static-cfg2", "static_cfg2"},
+    {"block-cfg2", "block_cfg2"},
+)
+
+
+def same_policy(name, wanted):
+    return name == wanted or any(name in group and wanted in group for group in EQUIVALENT_POLICIES)
+
+
 def rows_for(record, policy):
-    cells = [cell for cell in record["phases"][0]["cells"] if cell["policy"] == policy]
+    cells = [cell for cell in record["phases"][0]["cells"] if same_policy(cell["policy"], policy)]
     if len(cells) != 1:
         raise ValueError("expected exactly one cell for policy " + policy)
     cell = cells[0]
@@ -31,7 +42,7 @@ def checked_digest(row):
     return artifact["array_sha256"]
 
 
-def compare(record, reference_policy="static_cfg2", candidate_policy="block_cfg2", form="cfg2"):
+def compare(record, reference_policy="edf-cfg2", candidate_policy="block-cfg2", form="cfg2"):
     reference_cell, reference = rows_for(record, reference_policy)
     candidate_cell, candidate = rows_for(record, candidate_policy)
     missing = sorted(set(reference) ^ set(candidate))
@@ -68,8 +79,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--reference-policy", default="static_cfg2")
-    parser.add_argument("--candidate-policy", default="block_cfg2")
+    parser.add_argument("--reference-policy", default="edf-cfg2")
+    parser.add_argument("--candidate-policy", default="block-cfg2")
     parser.add_argument("--form", default="cfg2")
     args = parser.parse_args()
     result = compare(json.loads(args.run.read_text(encoding="utf-8")),

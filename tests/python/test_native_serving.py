@@ -80,9 +80,38 @@ class NativeServingTest(unittest.TestCase):
         )
         self.assertTrue(matched["benchmark"]["profile_placement"]["matches"])
 
+    def test_suites_name_registered_policies(self):
+        self.assertEqual(native_serving.DEFAULT_POLICIES, native_serving.SUITES["main"])
+        self.assertIn("ditserve", native_serving.SUITES["main"])
+        for retired in ("heterodit_exact", "step_elastic", "vanilla_xdit", "genserve_40gb"):
+            for suite in native_serving.SUITES.values():
+                self.assertNotIn(retired, suite)
+        self.assertEqual(native_serving.SUITES["preempt"], ["edf-cfg2", "block-cfg2"])
+        merged = native_serving.SUITES["main+ablation"]
+        self.assertEqual(len(merged), len(set(merged)))
+        for name in merged:
+            self.assertIn(name, native_serving.POLICY_DISPLAY)
+        pools = {"image": pool("diffusiondb"), "video": pool("vidprom")}
+        config = native_serving.build_serving_config(
+            "wan22", [f"GPU-{i}" for i in range(8)], profile(), pools,
+            seed=201, load=1.0, pattern="poisson", video_fraction=0.2, count=40,
+            policies=native_serving.SUITES["main+ablation"],
+        )
+        self.assertEqual(config["phases"][0]["matrix"]["/policy"], merged)
+        self.assertEqual(config["benchmark"]["policy_display"]["sbp-esp"], "SBP-ESP")
+        self.assertTrue(config["benchmark"]["exact_mode"])
+
+    def test_partition_share_follows_the_mix(self):
+        cost = {"steps": 20, "step_compute_ms": 1147.0, "finish_ms": 1840.0}
+        self.assertEqual(native_serving.partition_image_gpus(8, 0.5, cost, 6450.0), 2)
+        self.assertEqual(native_serving.partition_image_gpus(8, 0.2, cost, 6450.0), 4)
+        for fraction in (0.0, 0.2, 0.5, 0.8, 1.0):
+            images = native_serving.partition_image_gpus(8, fraction, cost, 6450.0)
+            self.assertTrue(1 <= images <= 6 and (8 - images) % 2 == 0)
+
     def test_approximation_is_explicit_and_separate(self):
         pools = {"image": pool("diffusiondb"), "video": pool("vidprom")}
-        for policies in (["heterodit_v5"], ["heterodit_approx"], ["heterodit_v3"]):
+        for policies in (["heterodit_v5"], ["ditserve-approx"], ["heterodit_approx"], ["heterodit_v3"]):
             with self.assertRaises(ValueError):
                 native_serving.build_serving_config(
                     "wan22", [f"GPU-{i}" for i in range(8)], profile(), pools,

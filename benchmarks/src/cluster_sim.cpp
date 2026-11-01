@@ -1,4 +1,5 @@
 #include "ditserve/benchmark/cluster_sim.hpp"
+#include "ditserve/control/policy.hpp"
 #include "ditserve/control/cluster.hpp"
 #include "ditserve/control/dispatch.hpp"
 #include <algorithm>
@@ -151,7 +152,7 @@ Json simulate_cluster(const Json& config) {
                 }
                 else if (quantum == "finish") {
                     blocks = assignment.value("decode_frames", cost.decode_chunks(klass) - row.value("decode_done", 0));
-                    const bool async_decode = bool_field(options, "async_rank0_decode", policy == "heterodit_v5");
+                    const bool async_decode = bool_field(options, "async_rank0_decode", policy_traits(policy).v5);
                     double async_scale = 1.0;
                     if (async_decode) {
                         if (!cost.klass(klass).contains("async_decode_scale") && !options.contains("async_decode_scale"))

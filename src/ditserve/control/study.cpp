@@ -1,6 +1,7 @@
 #include "ditserve/control/study.hpp"
 #include "ditserve/control/budget.hpp"
 #include "ditserve/control/cluster.hpp"
+#include "ditserve/control/policy.hpp"
 #include "ditserve/control/dispatch.hpp"
 #include "ditserve/runtime/process.hpp"
 #include "ditserve/benchmark/cluster_sim.hpp"
@@ -598,6 +599,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     Json rows=study_workload(phase);
     const ClusterCost cost(phase.at("profile"));
     const auto policy=phase.at("policy").get<std::string>();
+    const PolicyTraits& traits=policy_traits(policy);
     Json options=phase.value("options",Json::object());
     const int continuous_batch=int_field(options,"continuous_batch",0,0);
     if(continuous_batch>8)throw std::invalid_argument("continuous_batch must be in [0, 8]");
@@ -614,19 +616,17 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     // same worker; SP workers hold one request inside a solver step at a time.
     if(transport!="pinned"&&bool_field(options,"pin_started",false))throw std::invalid_argument("pin_started needs pinned transport");
     if(transport=="pinned"){
-        const bool fixed=(policy.rfind("static_",0)==0&&policy!="static_partition")||(policy.rfind("block_",0)==0&&policy!="block_elastic");
-        if(fixed&&policy!="static_sp1"&&policy!="block_sp1")throw std::invalid_argument("pinned cluster workers support SP1 only");
+        if(traits.fixed_degree>1)throw std::invalid_argument("pinned cluster workers support SP1 only");
         for(const auto& form:options.value("forms",Json::array()))if(parse_form(form.get<std::string>()).degree()!=1)
             throw std::invalid_argument("pinned transport cannot execute the requested parallel forms");
         for(const auto& degree:options.value("degrees",Json::array()))if(degree!=1)
             throw std::invalid_argument("pinned transport cannot execute the requested parallel degrees");
         options.erase("forms");options["degrees"]=Json::array({1});options["pin_started"]=true;
     }
-    const bool approximate=policy=="heterodit_approx"||policy=="heterodit_v3";
-    const bool async_decode=bool_field(options,"async_rank0_decode",policy=="heterodit_v5");
+    const bool approximate=traits.approx||traits.v3;
+    const bool async_decode=bool_field(options,"async_rank0_decode",traits.v5);
     if(async_decode&&transport!="export")throw std::invalid_argument("asynchronous rank-0 decode requires export transport");
-    const bool tiered=bool_field(options,"tiered_memory",approximate||policy=="heterodit_exact"||policy=="knapsack_dp"
-        ||policy=="ablation_tiered"||policy=="ablation_2d_usp");
+    const bool tiered=bool_field(options,"tiered_memory",traits.tiered_memory);
     if(tiered&&transport!="pinned")throw std::invalid_argument("tiered memory currently requires pinned SP1 transport");
     if(!fixtures&&approximate&&transport!="pinned")throw std::invalid_argument("dynamic cache currently requires SP1 pinned whole-step execution");
     if(!fixtures&&number_field(phase.at("profile"),"ring_quant_scale",1.)!=1.)
@@ -670,16 +670,14 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         const auto name=slot.at(role).get<std::string>();
         const auto backend=workers.backend(name);
         const auto capabilities=engine_contract(workers.get(name),backend,budget.deadline());
-        const bool batch_requested=int_field(options,"image_batch",1)>1||(!options.contains("image_batch")&&
-            (policy=="genserve_40gb"||policy=="knapsack_dp"||policy=="heterodit_exact"||approximate));
+        const bool batch_requested=int_field(options,"image_batch",1)>1||(!options.contains("image_batch")&&traits.image_batching);
         if(std::string(role)=="image"&&batch_requested&&backend!="mock"&&!capabilities.value("request_batch",false))
             throw std::invalid_argument("image batching requires a per-request batch output capability");
         if(std::string(role)=="video"&&backend=="wan"){
             const auto quanta=capabilities.value("quanta",Json::array());
             const auto migration=capabilities.value("migration",Json::array());
             const auto degrees=capabilities.value("parallel",Json::object()).value("sp_degrees",Json::array());
-            const bool blocks=policy.rfind("block_",0)==0||policy=="heterodit_exact"||policy=="knapsack_dp"
-                ||policy=="heterodit_v5"||policy=="ablation_tiered"||policy=="ablation_2d_usp";
+            const bool blocks=traits.blocks;
             if(blocks&&std::find(quanta.begin(),quanta.end(),"block")==quanta.end())
                 throw std::invalid_argument("block/elastic policy requires block execution on every Wan worker");
             if(approximate&&capabilities.value("execution",std::string())!="step")
@@ -773,7 +771,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         if(form.degree()!=degree)throw std::logic_error("assignment form does not match its group");
         if(form.cfg>1&&transport=="pinned")throw std::invalid_argument("pinned cluster workers run SP1 only");
         const bool cfg_folded=assignment.value("cfg_folded",false);
-        if(cfg_folded&&(policy!="heterodit_v5"||form.cfg!=1))throw std::invalid_argument("CFG folding requires the v5 single-branch form");
+        if(cfg_folded&&(!traits.v5||form.cfg!=1))throw std::invalid_argument("CFG folding requires the v5 single-branch form");
         state.cfg_folded=cfg_folded;
         const auto form_label=form_name(form);
         if(std::find(row["degrees"].begin(),row["degrees"].end(),degree)==row["degrees"].end())row["degrees"].push_back(degree);
@@ -1875,7 +1873,7 @@ Json simulate_study(const Json& request){
     for(std::size_t index=0;index<cells.size();++index){
         const auto& cell=cells[index];
         const auto rows=study_workload(cell.contains("workload")?Json{{"workload",cell.at("workload")}}:Json{{"generator",cell.at("generator")}});
-        for(const auto& policy:cell.value("policies",Json::array({"static_sp1","step_elastic","block_elastic"}))){
+        for(const auto& policy:cell.value("policies",Json::array({"static-sp1","abl-step-elastic","abl-block-elastic"}))){
             const auto name=policy.get<std::string>();const int gpus=cell.value("gpus",4);
             if(name.rfind("static_sp",0)==0 && std::stoi(name.substr(9))>gpus){
                 record["phases"].push_back({{"id",name+"-c"+std::to_string(index)},{"status","skipped"},{"policy",policy},{"cell",index},
