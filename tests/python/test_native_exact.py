@@ -1,9 +1,11 @@
 import importlib.util
 from pathlib import Path
+import sys
 import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "benchmarks"))
 SPEC = importlib.util.spec_from_file_location("native_exact", ROOT / "benchmarks" / "native_exact.py")
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
