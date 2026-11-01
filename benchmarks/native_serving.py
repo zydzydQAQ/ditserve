@@ -148,8 +148,11 @@ def main():
     parser.add_argument("--image-slo-scale", type=float, default=2.5)
     parser.add_argument("--quality-per-kind", type=int, default=0)
     parser.add_argument("--curvature", action="store_true")
+    parser.add_argument("--fold-steps", help="comma-separated fixed CFG folding steps")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    if args.curvature and args.fold_steps:
+        parser.error("--curvature and --fold-steps are mutually exclusive")
     uuids = args.gpu_uuids.split(",") if args.gpu_uuids else allocated_uuids()
     profile = json.loads(args.profile.read_text(encoding="utf-8"))
     pools = {
@@ -165,6 +168,13 @@ def main():
             "max_curvature_guard": 1.65,
             "final_step_exact_anchor": True,
             "force_exact_cond_on_fold": True,
+        }
+    elif args.fold_steps:
+        cfg_fold = {
+            "folded_steps": [int(value) for value in args.fold_steps.split(",")],
+            "final_step_exact_anchor": True,
+            "force_exact_cond_on_fold": True,
+            "cfg_vel_alpha": 0.0,
         }
     config = build_serving_config(
         args.model, uuids, profile, pools, seed=args.seed, load=args.load,
