@@ -54,8 +54,10 @@ def partition_image_gpus(gpus, video_fraction, video_cost, image_service_ms):
 def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load, pattern,
                          video_fraction, count, policies=None, video_slo_scale=1.5,
                          image_slo_scale=2.5, quality_per_kind=0, cfg_fold=None, forms=None, doorbell=False,
-                         output_mode="check", require_profile_match=False):
+                         output_mode="check", require_profile_match=False, collective_backend="nccl"):
     policies = policies or DEFAULT_POLICIES
+    if collective_backend not in ("nccl", "gfc"):
+        raise ValueError("collective_backend must be nccl or gfc")
     forms = forms or FORMS
     if model == "wan21":
         forms = [name for name in forms if name != "sp8"]
@@ -156,6 +158,7 @@ def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load,
                 "tiered_memory": False,
                 "doorbell": doorbell,
                 "partition_image_gpus": image_share,
+                "collective_backend": collective_backend,
             },
             "matrix": {
                 "/policy": policies,
@@ -183,6 +186,7 @@ def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load,
             "trace": provenance,
             "policies": policies,
             "policy_display": {name: POLICY_DISPLAY.get(name, name) for name in policies},
+            "collective_backend": collective_backend,
             "partition_image_gpus": {"value": image_share, "rule": "expected image share of GPU time, even video remainder"},
         },
     }
@@ -210,6 +214,7 @@ def main():
     parser.add_argument("--doorbell", action="store_true")
     parser.add_argument("--output-mode", choices=["check", "digest"], default="check")
     parser.add_argument("--require-profile-match", action="store_true")
+    parser.add_argument("--collective-backend", choices=["nccl", "gfc"], default="nccl")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     if args.curvature and args.fold_steps:
@@ -249,7 +254,7 @@ def main():
         policies=policies, video_slo_scale=args.video_slo_scale,
         image_slo_scale=args.image_slo_scale, quality_per_kind=args.quality_per_kind,
         cfg_fold=cfg_fold, forms=args.forms.split(","), doorbell=args.doorbell, output_mode=args.output_mode,
-        require_profile_match=args.require_profile_match,
+        require_profile_match=args.require_profile_match, collective_backend=args.collective_backend,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("x", encoding="utf-8") as stream:

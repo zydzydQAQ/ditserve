@@ -635,6 +635,10 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     // Continuous execution (options.doorbell): a video block quantum runs to its step end and stops early only when
     // the controller rings its GPUs' doorbells, 8-byte counters in shared files the workers map. The controller
     // rings when a decision could change (an image waits), so no-op quantum round trips disappear.
+    // Data-path collectives of the video workers: NCCL, or group-free collectives (GF-DiT's GFC).
+    const auto collective_backend=string_field(options,"collective_backend","nccl");
+    if(collective_backend!="nccl"&&collective_backend!="gfc")throw std::invalid_argument("collective_backend must be nccl or gfc");
+    if(collective_backend=="gfc"&&transport!="export")throw std::invalid_argument("group-free collectives need the export transport");
     const bool doorbell=bool_field(options,"doorbell",false);
     if(doorbell&&transport!="export")throw std::invalid_argument("doorbell needs the export transport");
     struct Bells{
@@ -702,7 +706,9 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         for(int gpu=0;gpu<gpus;++gpu){
             const auto name=slots.at(gpu).at("video").get<std::string>();
             Json init={{"op","distributed"},{"action","init"},{"init_method","tcp://127.0.0.1:"+std::to_string(port)},
-                       {"rank",gpu},{"world_size",gpus},{"ranks",Json::array({gpu})}};
+                       {"rank",gpu},{"world_size",gpus},{"ranks",Json::array({gpu})},{"collective_backend",collective_backend}};
+            if(options.contains("gfc_max_collective_bytes"))init["gfc_max_collective_bytes"]=int_field(options,"gfc_max_collective_bytes",1,1);
+            if(options.contains("gfc_copy_engine"))init["gfc_copy_engine"]=bool_field(options,"gfc_copy_engine",false);
             ranks.push_back(std::async(std::launch::async,[&workers,name,init,deadline=budget.deadline()]{return workers.get(name).call(init,deadline);}));
         }
         std::string error;

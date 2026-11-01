@@ -192,8 +192,11 @@ class XDitWanParallelBackend:
             raise ParallelContractError("prediction exchange needs a CFG-parallel layout")
         torch = self.worker.torch
         try:
-            chunks = [torch.empty_like(prediction) for _ in layout.ranks]
-            torch.distributed.all_gather(chunks, prediction.contiguous(), group=self.groups.group(layout.ranks))
+            from . import collectives
+            chunks = collectives.all_gather_chunks(prediction, tuple(layout.ranks))
+            if chunks is None:
+                chunks = [torch.empty_like(prediction) for _ in layout.ranks]
+                torch.distributed.all_gather(chunks, prediction.contiguous(), group=self.groups.group(layout.ranks))
         except Exception as error:
             self._abort(error)
             raise ParallelContractError("CFG prediction exchange failed: " + str(error)) from error
@@ -243,8 +246,10 @@ class XDitWanParallelBackend:
         if layout.degree > 1:
             torch = self.worker.torch
             try:
-                torch.distributed.all_reduce(flag, op=torch.distributed.ReduceOp.MAX,
-                                             group=self.gate.groups.group(layout.ranks))
+                from . import collectives
+                if not collectives.all_reduce_max(flag, tuple(layout.ranks)):
+                    torch.distributed.all_reduce(flag, op=torch.distributed.ReduceOp.MAX,
+                                                 group=self.gate.groups.group(layout.ranks))
             except Exception as error:
                 self.handle.fail()
                 from ..wan.parallel import ParallelContractError

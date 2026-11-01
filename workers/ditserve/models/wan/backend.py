@@ -469,6 +469,18 @@ class WanBackend(Backend):
             from .parallel import LayoutHandle, build_fixed_groups
             from ..xdit.wan import XDitWanParallelBackend
             groups = build_fixed_groups(backend=backend, timeout_seconds=request.get("timeout_seconds", 30))
+            # Data-path collectives: NCCL (default) or group-free collectives, configured on every
+            # rank at this same point because the GFC rendezvous is collective over the world.
+            from ..xdit import collectives
+            collective_backend = request.get("collective_backend", "nccl")
+            if collective_backend not in collectives.BACKENDS:
+                raise ValueError("collective_backend must be nccl or gfc")
+            if collective_backend == "gfc" and backend != "nccl":
+                raise ValueError("group-free collectives need CUDA (NCCL bootstrap) workers")
+            collective_info = collectives.configure(
+                collective_backend, device=self.runtime.device if collective_backend == "gfc" else None,
+                max_collective_bytes=int(request.get("gfc_max_collective_bytes", 128 * 1024 * 1024)),
+                use_copy_engine=bool(request.get("gfc_copy_engine", False)))
             handle = LayoutHandle(torch.distributed.get_rank(), request.get("ranks"),
                                   cfg=request.get("cfg", 1), ring=request.get("ring", 1))
             self.parallel = XDitWanParallelBackend(handle, groups).attach(self.runtime)
@@ -477,7 +489,7 @@ class WanBackend(Backend):
                 from .block import WanBlockExecutor
                 self.executor = WanBlockExecutor(self.runtime, parallel=self.parallel, interleave=self.interleave,
                                                  cfg_fold_options=self.cfg_fold_options)
-            return dict(self.parallel.capabilities, initialized=True, execution=self.execution)
+            return dict(self.parallel.capabilities, initialized=True, execution=self.execution, collectives=collective_info)
         if self.parallel is None:
             raise ValueError("distributed init must complete first on every rank")
         if action == "prepare":
@@ -595,6 +607,8 @@ class WanBackend(Backend):
             if getattr(self.runtime, "xdit", None) is not None:
                 self.runtime.xdit.close()
             if self.owns_world:
+                from ..xdit import collectives
+                collectives.shutdown()
                 self.runtime.torch.distributed.destroy_process_group()
             self.runtime._sync()
         finally:

@@ -204,6 +204,11 @@ def _sdpa_all_to_all_single(x):
     # NCCL does not support FP8 collectives before PyTorch 2.11, view as uint8 (same width) for the transfer.
     if _FP8_NCCL_NEEDS_VIEW and x_dtype in _FP8_DTYPES:
         x = x.view(torch.uint8)
+    # DITSERVE: a configured collective backend (group-free collectives) may carry the exchange.
+    override = getattr(PROCESS_GROUP, "ALL_TO_ALL", None)
+    exchanged = override(x, PROCESS_GROUP.ULYSSES_PG) if override is not None else None
+    if exchanged is not None:
+        return exchanged.view(x_dtype).reshape(x_shape)
     x = ft_c.all_to_all_single(x, output_split_sizes=None, input_split_sizes=None, group=PROCESS_GROUP.ULYSSES_PG)
     x = _maybe_wait(x)
     x = x.view(x_dtype).reshape(x_shape)

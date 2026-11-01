@@ -11,6 +11,7 @@ from xfuser.core.distributed.group_coordinator import (
     SequenceParallelGroupCoordinator,
 )
 
+from . import collectives
 from .process_group import PROCESS_GROUP
 
 
@@ -69,6 +70,8 @@ class ProcessGroupPool:
         coordinator.cpu_group = self._cpu_group(ranks)
         coordinator.shm_broadcaster = None
         coordinator.device = self.device
+        if collectives.uses_gfc() and len(ranks) > 1:
+            coordinator.all_gather_override = lambda output, tensor, ranks=ranks: collectives.all_gather_into(output, tensor, ranks)
         if sequence:
             degree = len(ranks)
             r_deg = int(ring_degree or 1)
@@ -132,6 +135,12 @@ class ProcessGroupPool:
         ps._DIT = self._device_group(sp_ranks)
         PROCESS_GROUP.ULYSSES_PG = coordinator.ulysses_group
         PROCESS_GROUP.RING_PG = coordinator.ring_group
+        if collectives.uses_gfc():
+            u_index = coordinator.rank_in_group // u_deg
+            collectives.bind(coordinator.ulysses_group, sp_ranks[u_index * u_deg:(u_index + 1) * u_deg])
+            PROCESS_GROUP.ALL_TO_ALL = collectives.all_to_all_flat
+        else:
+            PROCESS_GROUP.ALL_TO_ALL = None
         self.current_ranks = sp_ranks
         if runtime_state is not None:
             config = runtime_state.parallel_config
@@ -154,6 +163,7 @@ class ProcessGroupPool:
     def close(self):
         PROCESS_GROUP.ULYSSES_PG = None
         PROCESS_GROUP.RING_PG = None
+        PROCESS_GROUP.ALL_TO_ALL = None
         self.current_ranks = None
         for name in ("_WORLD", "_MODEL_REPLICA", "_DP", "_CFG", "_SP", "_PP", "_TP", "_FS", "_DIT", "_VAE"):
             setattr(ps, name, None)

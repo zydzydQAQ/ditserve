@@ -225,8 +225,10 @@ class GroupCoordinator:
         input_size = list(input_.size())
         input_size[0] *= world_size
         output_tensor = torch.empty(input_size, dtype=input_.dtype, device=input_.device)
-        # All-gather.
-        torch.distributed.all_gather_into_tensor(output_tensor, input_, group=self.device_group)
+        # All-gather. DITSERVE: a coordinator bound to group-free collectives carries it there.
+        override = getattr(self, "all_gather_override", None)
+        if override is None or not override(output_tensor, input_):
+            torch.distributed.all_gather_into_tensor(output_tensor, input_, group=self.device_group)
         if dim != 0:
             input_size[0] //= world_size
             output_tensor = output_tensor.reshape(
