@@ -87,7 +87,11 @@ planning estimate has the form
 Bandwidth, latency, contention, and overlap are calibrated per placement.
 Calibration and evaluation configurations are disjoint; per-request fudge
 factors and bandwidth overrides inferred from the evaluation row are forbidden.
-Held-out error is reported by model, shape, form, and placement.
+Held-out error is reported by model, shape, form, and placement. A measured
+form table has precedence over this analytical estimate for forms calibrated
+on the same placement; the analytical path is a fallback for unmeasured or
+contended cases. Large held-out errors therefore limit, rather than promote,
+the analytical contribution.
 
 \subsection{Quality-guarded approximation}
 Late-step CFG folding and elastic subgroup fission are a separate approximate
