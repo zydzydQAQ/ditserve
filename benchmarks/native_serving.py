@@ -10,7 +10,7 @@ from ditserve.evaluation.common import read_json, verify_seal
 from ditserve.evaluation.workloads import build_trace, validate_trace
 
 
-DEFAULT_POLICIES = ["static_sp1", "step_elastic", "round_elastic", "block_elastic", "static_cfg2", "heterodit_exact"]
+DEFAULT_POLICIES = ["static_sp1", "step_elastic", "round_elastic", "block_elastic", "static_cfg2", "static_cfg2sp3", "heterodit_exact"]
 FORMS = ["sp1", "cfg2", "sp2", "cfg2sp2", "sp3", "cfg2sp3", "sp4", "cfg2sp4", "sp6", "sp8"]
 
 
