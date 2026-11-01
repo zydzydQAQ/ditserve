@@ -41,6 +41,8 @@ def extract_measurements(record):
     cells = record["phases"][0]["cells"]
     videos, images = [], []
     for row in record["requests"]:
+        if row.get("status") != "completed":
+            continue
         policy = cells[row["cell"]]["config"]["policy"]
         if row["kind"] == "image":
             images.append({"policy": policy, "service_ms": row["model_ms"]})

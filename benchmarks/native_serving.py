@@ -19,6 +19,8 @@ def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load,
                          image_slo_scale=2.5, quality_per_kind=0, cfg_fold=None, forms=None):
     policies = policies or DEFAULT_POLICIES
     forms = forms or FORMS
+    if model == "wan21":
+        forms = [name for name in forms if name != "sp8"]
     if not policies or len(set(policies)) != len(policies):
         raise ValueError("policies must be nonempty and unique")
     if not forms or len(set(forms)) != len(forms):

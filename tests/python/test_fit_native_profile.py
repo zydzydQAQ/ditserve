@@ -26,11 +26,11 @@ class FitNativeProfileTest(unittest.TestCase):
         for index, policy in enumerate(policies):
             step_ms = MODULE.predict(500.0, arch, *MODULE.form_of(policy), 12.0, 1.0, 0.05)
             requests.append({
-                "cell": index, "kind": "video", "model_ms": 20 * step_ms + 100.0,
+                "cell": index, "kind": "video", "status": "completed", "model_ms": 20 * step_ms + 100.0,
                 "outputs": [{"model_ms": 100.0}], "spec": spec, "encode_model_ms": 20.0,
                 "transfer_export_ms": 2.0, "dispatch_gap_ms": 4.0, "timed_quanta": 2,
             })
-        requests.append({"cell": 0, "kind": "image", "model_ms": 250.0})
+        requests.append({"cell": 0, "kind": "image", "status": "completed", "model_ms": 250.0})
         record = {
             "experiment": "kairos-wan22-native-calibration", "run_id": "fixture",
             "phases": [{"cells": [{"config": {"policy": policy}} for policy in policies]}],

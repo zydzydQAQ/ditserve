@@ -31,6 +31,8 @@ def build_calibration_config(model, gpu_uuids):
         frames = 49
     else:
         raise ValueError("unknown model: " + model)
+    policies = [name for name in CALIBRATION_POLICIES if model != "wan21" or name != "static_sp8"]
+    held_out = [name for name in policies if name not in FIT_POLICIES]
     steps, image_steps = 20, 28
     video_spec = {
         "steps": steps,
@@ -89,8 +91,8 @@ def build_calibration_config(model, gpu_uuids):
         "note": "Native per-form calibration. Synthetic fields are scheduling placeholders, not measured results.",
         "workers": workers,
         "budget": {
-            "limit_gpu_seconds": len(CALIBRATION_POLICIES) * gpus * 7200,
-            "watchdog_seconds": len(CALIBRATION_POLICIES) * 7200,
+            "limit_gpu_seconds": len(policies) * gpus * 7200,
+            "watchdog_seconds": len(policies) * 7200,
             "repair_reserve_gpu_seconds": 0,
             "carry": "none",
         },
@@ -139,7 +141,7 @@ def build_calibration_config(model, gpu_uuids):
                 "image_batch": 1,
                 "tiered_memory": False,
             },
-            "matrix": {"/policy": CALIBRATION_POLICIES},
+            "matrix": {"/policy": policies},
             "artifact_dependencies": [],
         }],
         "benchmark": {
@@ -148,7 +150,7 @@ def build_calibration_config(model, gpu_uuids):
             "quality_qualified": False,
             "models": [selected["name"], "SD3.5-Medium"],
             "fit_policies": FIT_POLICIES,
-            "held_out_policies": HELD_OUT_POLICIES,
+            "held_out_policies": held_out,
             "shape": {"frames": frames, "steps": steps, "image_steps": image_steps},
         },
     }
@@ -169,8 +171,8 @@ def main():
     print(json.dumps({
         "output": str(args.output),
         "experiment": config["experiment"],
-        "cells": len(CALIBRATION_POLICIES),
-        "held_out": HELD_OUT_POLICIES,
+        "cells": len(config["phases"][0]["matrix"]["/policy"]),
+        "held_out": config["benchmark"]["held_out_policies"],
     }))
 
 

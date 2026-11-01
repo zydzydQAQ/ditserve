@@ -52,6 +52,9 @@ class ClusterConfigTest(unittest.TestCase):
         self.assertEqual(config["benchmark"]["shape"], {"frames": 49, "steps": 20, "image_steps": 28})
         self.assertEqual(phase["profile"]["provenance"], "synthetic")
         self.assertFalse(config["benchmark"]["performance_qualified"])
+        wan21 = native_study.build_calibration_config("wan21", [f"GPU-{i}" for i in range(8)])
+        self.assertEqual(len(wan21["phases"][0]["matrix"]["/policy"]), 9)
+        self.assertNotIn("static_sp8", wan21["phases"][0]["matrix"]["/policy"])
 
     def test_invalid_allocations_fail_before_a_job_is_created(self):
         with self.assertRaises(ValueError):
