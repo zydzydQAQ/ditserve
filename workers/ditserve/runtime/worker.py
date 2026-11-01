@@ -34,24 +34,35 @@ def _model_capabilities(name, config, backend):
     from ..models.xdit import engine_info
 
     options = config.get("options", {})
-    atomic = name in ("wan_pipeline", "sd35")
+    sd35_step = name == "sd35" and bool(options.get("continuous_batch", False) or options.get("execution") == "step")
+    atomic = name == "wan_pipeline" or (name == "sd35" and not sd35_step)
     execution = ("pipeline" if atomic else options.get("execution", "step"))
-    quanta = ["atomic"] if atomic else ["step"] + ([] if execution == "step" else ["block"])
+    if name == "sd35":
+        quanta = ["atomic", "step", "continuous_batch"] if sd35_step else ["atomic"]
+    else:
+        quanta = ["atomic"] if atomic else ["step"] + ([] if execution == "step" else ["block"])
     attention = config.get("attention", "math")
-    async_decode = name == "wan" and attention in ("math", "flash")
+    async_decode = (name == "wan" and attention in ("math", "flash")) or (
+        name == "sd35" and bool(options.get("async_decode", False) or options.get("bubble_free", False))
+    )
     capabilities = dict(
         engine=engine_info(), engine_status="configured", execution=execution,
         model_wrapper={"wan": "xFuserWanTransformer3DWrapper", "wan_pipeline": "xFuserWanTransformer3DWrapper",
                        "sd35": "xFuserSD3Transformer2DWrapper"}[name],
         quanta=quanta, atomic_pipeline=atomic,
-        continuous_batch=False,
+        continuous_batch=sd35_step,
         request_batch=name == "sd35",
         async_decode=async_decode,
         dynamic_cache=name == "wan" and execution == "step",
-        batch="fixed",
+        batch="packed" if (name == "sd35" and options.get("sequence_packing", False)) else "fixed",
         migration=[] if name != "wan" else ["state"] + ([] if execution == "step" else ["block"]),
         parallel=dict(sp_degrees=[1, 2, 3, 4, 6, 8] if name == "wan" else [1], cfg=name == "wan"),
     )
+    if name == "sd35" and (options.get("bubble_free", False) or options.get("sequence_packing", False)):
+        capabilities.update(
+            bubble_free=bool(options.get("bubble_free", False)),
+            sequence_packing=bool(options.get("sequence_packing", False)),
+        )
     runtime = getattr(backend, "runtime", None)
     engine = getattr(backend, "xdit", None) or getattr(runtime, "xdit", None)
     if engine is not None:

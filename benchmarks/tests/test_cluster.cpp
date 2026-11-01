@@ -680,6 +680,60 @@ int main() {
             {"async_decoding", {true, false}}, {"requests", {image("i", 100)}}}, "static_sp1", ClusterCost(profile())).at("assignments");
         require(images.size() == 1 && images[0].at("group") == Json::array({0}), "independent image can overlap decode");
     });
+    check("FlashPS-inspired bubble-free continuous batching and heterogeneous sequence packing", [] {
+        Json prof = profile();
+        prof["classes"]["image"] = {{"kind", "image"}, {"service_ms", 100}, {"steps", 2},
+                                    {"prepare_ms", 20}, {"finish_ms", 40},
+                                    {"batch_ms", {{"2", 80}, {"4", 120}}},
+                                    {"batch_step_ms", {{"1", 50}, {"2", 50}, {"4", 50}}}};
+        const ClusterCost cost(prof);
+        auto img_with = [](const std::string& id, double deadline, const Json& extra) {
+            Json row = image(id, deadline);
+            row.merge_patch(extra);
+            return row;
+        };
+        // Request 'a' is at step 1/2 (exiting after this step); request 'b' arrives at step 0/2 with deadline 160 ms.
+        // Without bubble_free: round_cost({a, b}) = 50 + 20 (b prepare) + 40 (a finish) = 110 ms,
+        // so b's total completion time is 110 + 50 + 40 = 200 ms > 160 ms (cannot join).
+        // With bubble_free: round_cost({a, b}) = 50 ms (b's prepare overlapped, a's 2D-VAE finish decoupled on side stream),
+        // so b completes at 50 + 50 + 40 = 140 ms <= 160 ms (joins 'a' in the same continuous batch!).
+        const Json cb_rows = Json::array({
+            img_with("a", 120, {{"status", "suspended"}, {"prepared", true}, {"group", {0}}, {"steps_done", 1}, {"steps_total", 2}, {"continuous_batch", true}}),
+            img_with("b", 160, {{"status", "waiting"}, {"prepared", false}, {"steps_done", 0}, {"steps_total", 2}, {"continuous_batch", true}})
+        });
+        const auto serial_cb = cluster_plan({{"now_ms", 0}, {"gpus", 1}, {"busy", Json::array()}, {"requests", cb_rows}},
+                                            "static_sp1", cost, {{"continuous_batch", 4}, {"bubble_free", false}}).at("assignments");
+        const auto bubble_free_cb = cluster_plan({{"now_ms", 0}, {"gpus", 1}, {"busy", Json::array()}, {"requests", cb_rows}},
+                                                 "static_sp1", cost, {{"continuous_batch", 4}, {"bubble_free", true}}).at("assignments");
+        require(serial_cb.size() == 1 && serial_cb[0].at("batch").size() == 1, "serial prepare+finish prevents late join under tight deadline");
+        require(bubble_free_cb.size() == 1 && bubble_free_cb[0].at("batch") == Json::array({"a", "b"})
+                && bubble_free_cb[0].value("bubble_free", false), "bubble_free decouples encode/VAE so late join fits");
+
+        // Heterogeneous resolution packing: 512x512 and 768x768 requests have different batch_spec.height/width.
+        const Json res_rows = Json::array({
+            img_with("r512", 500, {{"batch_spec", {{"steps", 12}, {"height", 512}, {"width", 512}}}}),
+            img_with("r768", 500, {{"batch_spec", {{"steps", 12}, {"height", 768}, {"width", 768}}}})
+        });
+        const auto unpacked = cluster_plan({{"now_ms", 0}, {"gpus", 1}, {"busy", Json::array()}, {"requests", res_rows}},
+                                           "static_sp1", cost, {{"image_batch", 4}, {"sequence_packing", false}}).at("assignments");
+        const auto packed = cluster_plan({{"now_ms", 0}, {"gpus", 1}, {"busy", Json::array()}, {"requests", res_rows}},
+                                         "static_sp1", cost, {{"image_batch", 4}, {"sequence_packing", true}}).at("assignments");
+        require(unpacked.size() == 1 && !unpacked[0].contains("batch"), "without sequence_packing heterogeneous resolutions cannot batch");
+        require(packed.size() == 1 && packed[0].at("batch") == Json::array({"r512", "r768"})
+                && packed[0].value("sequence_packing", false), "sequence_packing batches heterogeneous resolutions together");
+
+        // Simulate continuous_batch with and without bubble_free
+        const Json sim_trace = Json::array({
+            trace_row("i0", "image", 0, 500),
+            trace_row("i1", "image", 50, 500)
+        });
+        const auto sim_serial = simulate_cluster({{"workload", sim_trace}, {"profile", prof}, {"policy", "static_sp1"},
+                                                  {"gpus", 1}, {"options", {{"continuous_batch", 4}, {"bubble_free", false}}}});
+        const auto sim_bf = simulate_cluster({{"workload", sim_trace}, {"profile", prof}, {"policy", "static_sp1"},
+                                              {"gpus", 1}, {"options", {{"continuous_batch", 4}, {"bubble_free", true}}}});
+        require(sim_serial.at("metrics").at("completed") == 2 && sim_bf.at("metrics").at("completed") == 2, "both simulations complete");
+        require(sim_bf.at("makespan_ms").get<double>() < sim_serial.at("makespan_ms").get<double>(), "bubble_free reduces continuous batch makespan");
+    });
     std::cout << checks - failures << "/" << checks << " cluster checks passed\n";
     return failures ? 1 : 0;
 }

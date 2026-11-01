@@ -607,6 +607,14 @@ class NativeStudyTest(unittest.TestCase):
             self.assertEqual(row["model_time_scope"], "amortized_batch_cost")
         self.assertEqual(len(hashes), 4)
 
+        packed_phase = self.cluster_phase("static_sp1", gpus=1, options=dict(image_batch=4, sequence_packing=True, bubble_free=True))
+        packed_phase["profile"]["classes"]["image"]["batch_ms"] = {"2": 25, "4": 30}
+        packed_phase["workload"] = phase["workload"]
+        packed_result = self.run_study(self.config([packed_phase], workers=self.cluster_workers(1)), name="packed-member-batches")
+        self.assert_completed(packed_result)
+        for row in packed_result["phases"][0]["cells"][0]["requests"]:
+            self.assertEqual(row["batched"], 4)
+
     def test_cluster_ring_assignment_reaches_every_worker(self):
         phase = self.cluster_phase("block_elastic", options=dict(sp_transport="export", forms=["u2r2"]))
         phase["workload"] = [phase["workload"][0]]

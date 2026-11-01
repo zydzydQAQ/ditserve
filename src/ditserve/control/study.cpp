@@ -664,7 +664,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     if(continuous_batch>0)for(const auto& slot:slots){
         const auto name=slot.at("image").get<std::string>();
         const auto backend=workers.backend(name);
-        if(backend!="mock")throw std::invalid_argument("continuous_batch requires an explicit-step mock worker");
+        if(backend!="mock"&&backend!="sd35")throw std::invalid_argument("continuous_batch requires an explicit-step mock or sd35 worker");
     }
     for(const auto& slot:slots)for(const auto* role:{"video","image"}){
         const auto name=slot.at(role).get<std::string>();
@@ -805,7 +805,9 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 mrow["batched"]=static_cast<int>(assignment.at("batch").size());
                 mstate.status="running";mstate.group=group;mstate.form=form_label;
             }
-            work_unit=[&workers,name,ids,specs,modes,new_count,active_count,deadline,origin]{
+            const bool cb_bubble_free=assignment.value("bubble_free",false);
+            const bool cb_seq_pack=assignment.value("sequence_packing",false);
+            work_unit=[&workers,name,ids,specs,modes,new_count,active_count,deadline,origin,cb_bubble_free,cb_seq_pack]{
                 auto& w=workers.get(name);
                 Json out={{"prepare",Json::array()},{"finish",Json::array()},
                           {"new_count",new_count},{"active_count",active_count}};
@@ -813,11 +815,16 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                     auto prepared=w.call({{"op","prepare"},{"state_id",mid},{"spec",specs.at(mid.get<std::string>())}},deadline);
                     prepared["state_id"]=mid;out["prepare"].push_back(prepared);
                 }
-                const auto advanced=w.call({{"op","advance_batch"},{"state_ids",ids}},deadline);
+                Json adv_req={{"op","advance_batch"},{"state_ids",ids}};
+                if(cb_bubble_free)adv_req["bubble_free"]=true;
+                if(cb_seq_pack)adv_req["sequence_packing"]=true;
+                const auto advanced=w.call(adv_req,deadline);
                 out["advance_batch"]=advanced;
                 for(const auto& result:advanced.at("results"))if(result.at("progress").value("done",false)){
                     const auto mid=result.at("state_id").get<std::string>();
-                    auto finished=w.call({{"op","finish"},{"state_id",mid},{"output_mode",modes.at(mid)}},deadline);
+                    Json fin_req={{"op","finish"},{"state_id",mid},{"output_mode",modes.at(mid)}};
+                    if(cb_bubble_free)fin_req["bubble_free"]=true;
+                    auto finished=w.call(fin_req,deadline);
                     w.call({{"op","release"},{"state_id",mid}},deadline);
                     finished["completed_at_ms"]=(monotonic_seconds()-origin)*1000;
                     finished["state_id"]=mid;out["finish"].push_back(finished);
@@ -826,6 +833,8 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             };
         }else if(quantum=="atomic"&&assignment.contains("batch")){
             const auto name=image(group.front());
+            const bool batch_bubble_free=assignment.value("bubble_free",false);
+            const bool batch_seq_pack=assignment.value("sequence_packing",false);
             Json prompts=Json::array(),seeds=Json::array(),members=Json::array();auto batch_mode=output_mode;
             for(const auto& member:assignment.at("batch")){
                 auto& mrow=rows[index.at(member.get<std::string>())];const auto mspec=spec_of(mrow);
@@ -835,11 +844,14 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 if(!mrow.contains("start_ms"))mrow["start_ms"]=now();
                 mrow["batched"]=static_cast<int>(assignment.at("batch").size());live[index.at(member.get<std::string>())].status="running";
             }
-            work_unit=[&workers,name,prompts,seeds,members,deadline,batch_mode]{
+            work_unit=[&workers,name,prompts,seeds,members,deadline,batch_mode,batch_bubble_free,batch_seq_pack]{
                 auto& w=workers.get(name);
                 Json out={{"calls",Json::array()}};
-                out["finish"]=w.call({{"op","generate_batch"},{"prompts",prompts},{"seeds",seeds},
-                    {"requests",members},{"output_mode",batch_mode}},deadline);
+                Json batch_req={{"op","generate_batch"},{"prompts",prompts},{"seeds",seeds},
+                    {"requests",members},{"output_mode",batch_mode}};
+                if(batch_bubble_free)batch_req["bubble_free"]=true;
+                if(batch_seq_pack)batch_req["sequence_packing"]=true;
+                out["finish"]=w.call(batch_req,deadline);
                 const auto& results=out.at("finish").at("results");
                 if(!results.is_array()||results.size()!=members.size())throw std::runtime_error("batch output count differs from requests");
                 std::set<std::string> returned;

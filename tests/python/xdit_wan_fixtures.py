@@ -151,5 +151,8 @@ class EngineDouble:
     def info(self):
         return engine_info()
 
+    def bind_global(self):
+        pass
+
     def close(self):
         pass

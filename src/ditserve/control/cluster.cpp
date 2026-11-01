@@ -717,17 +717,32 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             }
             if (chosen < 0) continue;
             free[chosen] = false;
+            const bool bubble_free = bool_field(options, "bubble_free", false);
+            const bool sequence_packing = bool_field(options, "sequence_packing", false);
+            auto compatible_batch_spec = [&](const Json& lhs, const Json& rhs) {
+                if (!lhs.contains("batch_spec")) return true;
+                Json a = lhs.at("batch_spec"), b = rhs.value("batch_spec", Json::object());
+                if (sequence_packing && a.is_object() && b.is_object()) {
+                    a.erase("height"); a.erase("width");
+                    b.erase("height"); b.erase("width");
+                }
+                return a == b;
+            };
             Json assignment = {{"request_id", id}, {"group", Json::array({chosen})}, {"degree", 1},
                                {"quantum", continuous_batch > 0 ? "continuous_batch" : "atomic"},
                                {"resize", false}, {"reason", rank == 2 ? "block_preempt" : "edf"}};
+            if (bubble_free) assignment["bubble_free"] = true;
+            if (sequence_packing) assignment["sequence_packing"] = true;
             if (continuous_batch > 0) {
                 std::vector<const Json*> members = {&r};
                 auto round_cost = [&](const std::vector<const Json*>& batch) {
                     double value = cost.continuous_step_ms(klass, static_cast<int>(batch.size())) + cost.quantum_overhead_ms();
-                    for (const Json* m : batch) {
-                        if (!m->value("prepared", false)) value += number_field(cost.klass(klass), "prepare_ms");
-                        const int steps = int_field(*m, "steps_total", int_field(cost.klass(klass), "steps", 2), 1);
-                        if (int_field(*m, "steps_done", 0, 0) + 1 >= steps) value += number_field(cost.klass(klass), "finish_ms");
+                    if (!bubble_free) {
+                        for (const Json* m : batch) {
+                            if (!m->value("prepared", false)) value += number_field(cost.klass(klass), "prepare_ms");
+                            const int steps = int_field(*m, "steps_total", int_field(cost.klass(klass), "steps", 2), 1);
+                            if (int_field(*m, "steps_done", 0, 0) + 1 >= steps) value += number_field(cost.klass(klass), "finish_ms");
+                        }
                     }
                     return value;
                 };
@@ -739,6 +754,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                         double complete = service;
                         if (remaining > 0) complete += remaining * (cost.continuous_step_ms(klass, static_cast<int>(batch.size()))
                             + cost.quantum_overhead_ms()) + number_field(cost.klass(klass), "finish_ms");
+                        else if (bubble_free) complete += number_field(cost.klass(klass), "finish_ms");
                         if (now + complete > number_field(*m, "deadline_ms")) return false;
                     }
                     return true;
@@ -746,6 +762,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                 for (std::size_t j = index + 1; j < rows.size() && static_cast<int>(members.size()) < continuous_batch; ++j) {
                     const Json& q = *rows[j];
                     if (q.at("kind") != "image" || taken.count(&q) || q.at("class") != r.at("class")) continue;
+                    if (!compatible_batch_spec(r, q)) continue;
                     if (q.value("prepared", false)) {
                         const auto other = group_of(q);
                         if (other.size() != 1) throw std::invalid_argument("a continuous image state must have exactly one resident GPU");
@@ -767,7 +784,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                 for (std::size_t j = index + 1; j < rows.size() && static_cast<int>(members.size()) < max_batch; ++j) {
                     const Json& q = *rows[j];
                     if (q.at("kind") != "image" || taken.count(&q) || q.at("class") != r.at("class")) continue;
-                    if (r.contains("batch_spec") && q.value("batch_spec", Json::object()) != r.at("batch_spec")) continue;
+                    if (!compatible_batch_spec(r, q)) continue;
                     const double service = cost.batch_ms(klass, static_cast<int>(members.size()) + 1) + cost.quantum_overhead_ms();
                     bool fits = now + service <= number_field(q, "deadline_ms");
                     for (const Json* m : members) fits = fits && now + service <= number_field(*m, "deadline_ms");

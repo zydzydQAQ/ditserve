@@ -280,6 +280,33 @@ class SD35BatchContracts(unittest.TestCase):
             backend.generate_batch(dict(id=2, requests=self.requests()))
         backend.run_micro_batch.assert_not_called()
 
+    def test_sequence_packing_allows_heterogeneous_resolutions_in_generate_batch(self):
+        import numpy as np
+        from unittest.mock import Mock
+
+        backend = self.backend()
+        backend.run_packed_batch = Mock(return_value=dict(
+            images=[np.ones((2, 2, 3), dtype=np.float32), np.zeros((4, 2, 3), dtype=np.float32)],
+            model_ms=15.0,
+            batch_size=2,
+            sequence_packed=True,
+            reused_steps=0,
+        ))
+        members = self.requests()
+        members[0]["spec"]["height"], members[0]["spec"]["width"] = 32, 32
+        members[1]["spec"]["height"], members[1]["spec"]["width"] = 64, 32
+        with self.assertRaisesRegex(ValueError, "compatible"):
+            backend.generate_batch(dict(id=10, requests=members, sequence_packing=False))
+        res = backend.generate_batch(dict(id=11, requests=members, sequence_packing=True, bubble_free=True))
+        self.assertTrue(res["service"]["sequence_packed"])
+        self.assertTrue(res["service"]["bubble_free"])
+        self.assertEqual(res["results"][0]["output"]["shape"], [1, 2, 2, 3])
+        self.assertEqual(res["results"][1]["output"]["shape"], [1, 4, 2, 3])
+        self.assertEqual(res["results"][0]["generation"]["batch_protocol"], "packed_requests")
+        called = backend.run_packed_batch.call_args.args[0]
+        self.assertEqual(called["heights"], [32, 64])
+        self.assertEqual(called["widths"], [32, 32])
+
 
 if __name__ == "__main__":
     unittest.main()

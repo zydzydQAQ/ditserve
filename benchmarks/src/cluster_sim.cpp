@@ -39,10 +39,11 @@ Json simulate_cluster(const Json& config) {
         if (cost.klass(klass).at("kind") != row.at("kind")) throw std::invalid_argument("request kind differs from its cost class");
         // Keep only scheduling fields: every plan copies the queue.
         Json light;
-        for (const auto* key : {"request_id", "kind", "class", "arrival_ms", "deadline_ms", "slo_ms", "service_ms", "steps_total", "decode_done"})
+        for (const auto* key : {"request_id", "kind", "class", "arrival_ms", "deadline_ms", "slo_ms", "service_ms", "steps_total", "decode_done", "batch_spec"})
             if (row.contains(key)) light[key] = row.at(key);
         row = light;
         row["status"] = "pending"; row["steps_done"] = 0; row["blocks_done"] = 0; row["prepared"] = false;
+        if (row.at("kind") == "image" && int_field(options, "continuous_batch", 0, 0) > 0) row["continuous_batch"] = true;
         row["group"] = Json::array(); row["ready"] = false; row["degrees"] = Json::array(); row["forms"] = Json::array();
         index[row.at("request_id").get<std::string>()] = i;
     }
@@ -135,6 +136,19 @@ Json simulate_cluster(const Json& config) {
                 int blocks = 0;
                 if (quantum == "atomic") duration += assignment.contains("batch") ? cost.batch_ms(klass, static_cast<int>(assignment.at("batch").size()))
                                                                                : number_field(cost.klass(klass), "service_ms");
+                else if (quantum == "continuous_batch") {
+                    const bool bubble_free = bool_field(options, "bubble_free", false);
+                    const auto& batch_arr = assignment.at("batch");
+                    duration += cost.continuous_step_ms(klass, static_cast<int>(batch_arr.size()));
+                    if (!bubble_free) {
+                        for (const auto& member : batch_arr) {
+                            const auto& mrow = rows[index.at(member.get<std::string>())];
+                            if (!mrow.value("prepared", false)) duration += number_field(cost.klass(klass), "prepare_ms");
+                            const int steps = int_field(mrow, "steps_total", int_field(cost.klass(klass), "steps", 2), 1);
+                            if (int_field(mrow, "steps_done", 0, 0) + 1 >= steps) duration += number_field(cost.klass(klass), "finish_ms");
+                        }
+                    }
+                }
                 else if (quantum == "finish") {
                     blocks = assignment.value("decode_frames", cost.decode_chunks(klass) - row.value("decode_done", 0));
                     const bool async_decode = bool_field(options, "async_rank0_decode", policy == "heterodit_v5");
@@ -252,6 +266,29 @@ Json simulate_cluster(const Json& config) {
                 for (std::size_t m : it->batch) {
                     auto& other = rows[m];
                     other["status"] = "completed"; other["finish_ms"] = it->end; other["group"] = Json::array(); ++completed;
+                }
+            } else if (quantum == "continuous_batch") {
+                const bool bubble_free = bool_field(options, "bubble_free", false);
+                std::vector<std::size_t> members = {it->row};
+                members.insert(members.end(), it->batch.begin(), it->batch.end());
+                for (std::size_t m : members) {
+                    auto& mrow = rows[m];
+                    const auto mklass = mrow.at("class").get<std::string>();
+                    const int steps = int_field(mrow, "steps_total", int_field(cost.klass(mklass), "steps", 2), 1);
+                    const int next_step = int_field(mrow, "steps_done", 0, 0) + 1;
+                    mrow["steps_done"] = next_step;
+                    mrow["prepared"] = true;
+                    if (next_step >= steps) {
+                        mrow["status"] = "completed";
+                        mrow["finish_ms"] = it->end + (bubble_free ? number_field(cost.klass(mklass), "finish_ms") : 0.0);
+                        mrow["group"] = Json::array();
+                        mrow.erase("form");
+                        ++completed;
+                    } else {
+                        mrow["status"] = "suspended";
+                        mrow["group"] = it->assignment.at("group");
+                        mrow["form"] = "sp1";
+                    }
                 }
             } else {
                 std::vector<std::size_t> members = {it->row};
