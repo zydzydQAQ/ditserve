@@ -1203,7 +1203,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         if(!row.contains("advance_samples"))row["advance_samples"]=Json::array();
         row["advance_samples"].push_back({
             {"form",form_name(expected_form)},{"cfg_folded",expected_folded},
-            {"first",first},{"transfer",out.contains("transfer")},
+            {"reason",task.assignment.at("reason")},{"first",first},{"transfer",out.contains("transfer")},
             {"steady",!first&&!out.contains("transfer")&&task.assignment.value("pair",std::string()).empty()},
             {"elapsed_ms",elapsed},{"model_ms",model},{"worker_operation_ms",operation_ms}
         });
@@ -1364,7 +1364,10 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         record["requests"].insert(record["requests"].end(),rows.begin(),rows.end());throw;
     }
     for(std::size_t i=0;i<rows.size();++i){
-        auto& row=rows[i];row.erase("preempting");const auto& st=live[i];
+        auto& row=rows[i];
+        if(row.value("preempting",false))row["preemption_reason"]="block_preempt";
+        row.erase("preempting");
+        const auto& st=live[i];
         if(st.steady_blocks<=0)continue;
         const double steady=st.steady_ms/st.steady_blocks;
         row["block_ms_steady"]=steady;row["resumes"]=st.resumes;
