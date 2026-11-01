@@ -479,6 +479,21 @@ class NativeStudyTest(unittest.TestCase):
         videos = [row for name, row in rows.items() if name.startswith("v")]
         self.assertTrue(videos and all(row["prompt_reencoded"] is False for row in videos))
 
+    def test_cluster_async_decode_frees_rank_zero_until_poll_completes(self):
+        phase = self.cluster_phase("heterodit_v5", options=dict(sp_transport="export", async_rank0_decode=True))
+        workers = self.cluster_workers()
+        for name in ("v0", "v1", "v2", "v3"):
+            workers[name]["config"]["options"]["decode_delay_ms"] = 200
+        value = self.run_study(self.config([phase], workers=workers), name="async-decode")
+        self.assert_completed(value)
+        cell = value["phases"][0]["cells"][0]
+        self.assertTrue(cell["async_rank0_decode"])
+        rows = {row["request_id"]: row for row in cell["requests"]}
+        videos = [row for name, row in rows.items() if name.startswith("v")]
+        images = [row for name, row in rows.items() if name.startswith("i")]
+        self.assertTrue(all(row["async_decode_submits"] == 1 and row["async_decode_wall_ms"] >= 190 for row in videos))
+        self.assertTrue(any(image["finish_ms"] < min(video["finish_ms"] for video in videos) for image in images))
+
     def test_cluster_doorbell_runs_videos_continuously_and_stops_them_for_images(self):
         with self.assertRaises(CoreError):
             # Continuous execution needs exported, regroupable state.

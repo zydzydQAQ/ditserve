@@ -10,7 +10,7 @@ from unittest.mock import Mock, patch
 from ditserve.models.wan.block import WanBlockExecutor
 
 
-def fixture(steps=4, expand=False, interleave=False):
+def fixture(steps=4, expand=False, interleave=False, cfg_fold_options=None):
     import torch
     from diffusers import WanTransformer3DModel, UniPCMultistepScheduler
     torch.manual_seed(731)
@@ -44,7 +44,7 @@ def fixture(steps=4, expand=False, interleave=False):
         worker._states[name] = state
         return state
     with patch.object(WanBlockExecutor, "_validate_model"):
-        executor = WanBlockExecutor(worker, interleave=interleave)
+        executor = WanBlockExecutor(worker, interleave=interleave, cfg_fold_options=cfg_fold_options)
     return worker, executor, prepare
 
 
@@ -258,6 +258,29 @@ class BlockExecutorTests(unittest.TestCase):
         executor.advance(continuation, 30)
         self.assertTrue(self.torch.equal(state.latents, reference.latents))
 
+
+    def test_cfg_fold_is_worker_gated_counted_once_and_final_step_is_full(self):
+        options = dict(folded_steps={1, 2}, final_step_exact_anchor=True, cfg_vel_alpha=0.0)
+        worker, executor, prepare = fixture(steps=4, cfg_fold_options=options)
+        state = prepare("fold")
+        continuation = executor.attach(state)
+        full = executor.advance(continuation, executor.quantum(continuation, "step", cfg_folded=False), cfg_folded=False)
+        self.assertEqual(full["blocks"], 60)
+        for _ in range(5):
+            self.assertTrue(continuation.stepper.should_fold(1, 4))
+        self.assertEqual(continuation.stepper.stats["curvature_triggered_folds"], 0)
+        for expected in (1, 2):
+            row = executor.advance(continuation, executor.quantum(continuation, "step", cfg_folded=True), cfg_folded=True)
+            self.assertEqual(row["blocks"], 30)
+            self.assertEqual(state.step_index, expected + 1)
+            self.assertIsNone(continuation.packet_uncond)
+        final = executor.advance(continuation, executor.quantum(continuation, "step", cfg_folded=False), cfg_folded=False)
+        self.assertEqual(final["blocks"], 60)
+        self.assertFalse(state.events[-1]["cfg_folded"])
+        self.assertEqual(continuation.stepper.stats["full_cfg_steps"], 2)
+        self.assertEqual(continuation.stepper.stats["folded_cfg_steps"], 2)
+        self.assertEqual(continuation.stepper.stats["saved_uncond_forwards"], 2)
+        self.assertEqual(continuation.stepper.dynamic_fold_start_step, 1)
 
 
     def test_cancel_discards_partial_state_without_solver_commit(self):

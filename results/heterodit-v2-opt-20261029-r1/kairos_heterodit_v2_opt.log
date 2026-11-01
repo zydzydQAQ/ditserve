@@ -1,74 +1,0 @@
-== kairos_heterodit_v2_opt.sh run=heterodit-v2-opt-20261029-r1 host=heterodit-v2-opt-20261029-r1-master-0 2026-10-29T16:05:03+00:00
-build=ce9abfe core=6f54332ad72b3dc1 package=/shared/code/DITSERVE/builds/ce9abfe/share/ditserve
-ditserve 0.4.0
-=== Running Real-GPU HeteroDiT v2 Optimizations Suite ===
-=== Running HeteroDiT v2 Optimizations on NVIDIA A100-PCIE-40GB ===
-[Opt #1] Running Asymmetric INT8 Ring KV Compression benchmark...
-  [Opt #1] 8GPU_u4r2_17f: 2340 KB -> 1188 KB (1.97x), codec=0.283 ms, attn_cos=0.999957, SQNR=40.65 dB, CrossNode Comm Speedup=1.85x
-  [Opt #1] 8GPU_u4r2_33f: 4680 KB -> 2377 KB (1.97x), codec=0.288 ms, attn_cos=0.999959, SQNR=40.84 dB, CrossNode Comm Speedup=1.91x
-  [Opt #1] 4GPU_u2r2_33f: 9360 KB -> 4753 KB (1.97x), codec=0.421 ms, attn_cos=0.999956, SQNR=40.56 dB, CrossNode Comm Speedup=1.92x
-[Init] Loading Wan2.1-T2V-1.3B and SD3.5-Medium on cuda:0...
-`torch_dtype` is deprecated! Use `dtype` instead!
-Loading checkpoint shards:   0%|          | 0/5 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 5/5 [00:00<00:00, 122.94it/s]
-WARNING 10-29 16:05:16 [compat.py:122] Skipping xfuser.model_executor.pipelines.pipeline_flux2_klein: cannot import name 'Flux2KleinPipeline' from 'diffusers' (/opt/venv/lib/python3.10/site-packages/diffusers/__init__.py). What it provides will be unavailable, usually because the installed diffusers predates the feature. Set XDIT_LOGGING_LEVEL=DEBUG for the traceback.
-DEBUG 10-29 16:05:16 [compat.py:127] Import of xfuser.model_executor.pipelines.pipeline_flux2_klein failed
-DEBUG 10-29 16:05:16 [compat.py:127] Traceback (most recent call last):
-DEBUG 10-29 16:05:16 [compat.py:127]   File "/shared/code/DITSERVE/builds/ce9abfe/share/ditserve/python/xfuser/compat.py", line 119, in _import_optional
-DEBUG 10-29 16:05:16 [compat.py:127]     return importlib.import_module(name)
-DEBUG 10-29 16:05:16 [compat.py:127]   File "/usr/local/lib/python3.10/importlib/__init__.py", line 126, in import_module
-DEBUG 10-29 16:05:16 [compat.py:127]     return _bootstrap._gcd_import(name[level:], package, level)
-DEBUG 10-29 16:05:16 [compat.py:127]   File "<frozen importlib._bootstrap>", line 1050, in _gcd_import
-DEBUG 10-29 16:05:16 [compat.py:127]   File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
-DEBUG 10-29 16:05:16 [compat.py:127]   File "<frozen importlib._bootstrap>", line 1006, in _find_and_load_unlocked
-DEBUG 10-29 16:05:16 [compat.py:127]   File "<frozen importlib._bootstrap>", line 688, in _load_unlocked
-DEBUG 10-29 16:05:16 [compat.py:127]   File "<frozen importlib._bootstrap_external>", line 883, in exec_module
-DEBUG 10-29 16:05:16 [compat.py:127]   File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
-DEBUG 10-29 16:05:16 [compat.py:127]   File "/shared/code/DITSERVE/builds/ce9abfe/share/ditserve/python/xfuser/model_executor/pipelines/pipeline_flux2_klein.py", line 8, in <module>
-DEBUG 10-29 16:05:16 [compat.py:127]     from diffusers import Flux2KleinPipeline
-DEBUG 10-29 16:05:16 [compat.py:127] ImportError: cannot import name 'Flux2KleinPipeline' from 'diffusers' (/opt/venv/lib/python3.10/site-packages/diffusers/__init__.py)
-DEBUG 10-29 16:05:16 [compat.py:154] .model_executor.pipelines does not provide xFuserFlux2KleinPipeline on this install
-Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards:  50%|█████     | 1/2 [00:00<00:00,  1.91it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00,  3.31it/s]
-Loading pipeline components...:   0%|          | 0/5 [00:00<?, ?it/s]Loading pipeline components...:  20%|██        | 1/5 [00:00<00:02,  1.60it/s]Loading pipeline components...: 100%|██████████| 5/5 [00:00<00:00,  7.41it/s]
-[10-29 16:05:19] [Cache-DiT] Registered custom attn backends: native, _sdpa_cudnn, sage, _native_npu, _npu_fia.
-Attention backends are an experimental feature and the API may be subject to change.
-[10-29 16:05:19] [Cache-DiT] Set attention backend to <native> for module: xFuserWanTransformer3DWrapper.
-[10-29 16:05:19] [Cache-DiT] WanExplicitExecutionPipeline is officially supported by cache-dit. Use it's pre-defined BlockAdapter directly!
-[10-29 16:05:19] [Cache-DiT] Transformer class xFuserWanTransformer3DWrapper is from xfuser not diffusers, skipping strict type check in BlockAdapter.
-[10-29 16:05:19] [Cache-DiT] Auto fill blocks_name: blocks.
-[10-29 16:05:19] [Cache-DiT] Match Block Forward Pattern: WanTransformerBlock, ForwardPattern.Pattern_2
-[10-29 16:05:19] [Cache-DiT] IN:('hidden_states', 'encoder_hidden_states'), OUT:('hidden_states',))
-[10-29 16:05:19] [Cache-DiT] Use custom 'enable_separate_cfg' from cache context kwargs: True. Pipeline: WanExplicitExecutionPipeline.
-[10-29 16:05:19] [Cache-DiT] Collected Context Config: DBCache_F8B0_W8I1M0MC3_R0.08_N50_CFG1, Calibrator Config: None
-[10-29 16:05:19] [Cache-DiT] Match Blocks: CachedBlocks_Pattern_0_1_2, for blocks, cache_context: blocks_125587770282368, context_manager: WanExplicitExecutionPipeline_125587770290960.
-Attention backends are an experimental feature and the API may be subject to change.
-[10-29 16:05:19] [Cache-DiT] Set attention backend to <native> for module: xFuserWanTransformer3DWrapper.
-INFO 10-29 16:05:19 [config.py:207] Pipeline patch number not set, using default value 1
-INFO 10-29 16:05:19 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)
-DEBUG 10-29 16:05:19 [compat.py:39] xfuser has no installed metadata; not checking diffusers version
-WARNING 10-29 16:05:19 [logger.py:126] Using SDPA_FLASH as attention backend.
-[Opt #3] Running First-Order Taylor-Compensated Residual Extrapolation benchmark...
-  [Opt #3] ZeroOrder tau=0.12: 9280.2 ms (1.16x), skip=4/20, PSNR=34.15 dB, SSIM=0.9616
-  [Opt #3] Taylor1stOrder tau=0.12 (alpha=0.22): 9390.6 ms (1.15x), PSNR=34.95 dB (gain +0.80 dB), SSIM=0.9679 (gain +0.0063)
-  [Opt #3] ZeroOrder tau=0.16: 8985.9 ms (1.20x), skip=5/20, PSNR=34.16 dB, SSIM=0.9616
-  [Opt #3] Taylor1stOrder tau=0.16 (alpha=0.22): 9036.6 ms (1.19x), PSNR=35.02 dB (gain +0.86 dB), SSIM=0.9686 (gain +0.0070)
-  [Opt #3] ZeroOrder tau=0.24: 8236.7 ms (1.31x), skip=7/20, PSNR=31.91 dB, SSIM=0.9286
-  [Opt #3] Taylor1stOrder tau=0.24 (alpha=0.25): 8287.5 ms (1.30x), PSNR=32.37 dB (gain +0.46 dB), SSIM=0.9358 (gain +0.0072)
-Loading pipeline components...:   0%|          | 0/9 [00:00<?, ?it/s]
-Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s][A
-Loading checkpoint shards:  50%|█████     | 1/2 [00:01<00:01,  1.07s/it][A
-Loading checkpoint shards: 100%|██████████| 2/2 [00:02<00:00,  1.00s/it][ALoading checkpoint shards: 100%|██████████| 2/2 [00:02<00:00,  1.01s/it]
-Loading pipeline components...:  11%|█         | 1/9 [00:02<00:16,  2.09s/it]Loading pipeline components...:  33%|███▎      | 3/9 [00:02<00:03,  1.67it/s]Loading pipeline components...:  44%|████▍     | 4/9 [00:03<00:04,  1.23it/s]Loading pipeline components...:  78%|███████▊  | 7/9 [00:03<00:00,  2.37it/s]You set `add_prefix_space`. The tokenizer needs to be converted from the slow tokenizers
-Loading pipeline components...:  89%|████████▉ | 8/9 [00:04<00:00,  2.52it/s]Loading pipeline components...: 100%|██████████| 9/9 [00:04<00:00,  3.03it/s]Loading pipeline components...: 100%|██████████| 9/9 [00:04<00:00,  2.06it/s]
-INFO 10-29 16:08:23 [config.py:207] Pipeline patch number not set, using default value 1
-INFO 10-29 16:08:23 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)
-WARNING 10-29 16:08:23 [logger.py:126] Runtime state is already initialized, reinitializing with pipeline...
-WARNING 10-29 16:08:23 [logger.py:126] Using SDPA_MATH as attention backend.
-INFO 10-29 16:08:23 [base_pipeline.py:494] Scheduler found, trying to parallel scheduler...
-[Opt #2] Running SD3.5-Medium SDPA_FLASH + Multi-Prompt Micro-Batching benchmark...
-  [Opt #2] Batch=1 (12 steps): SDPA_MATH=2311.9 ms -> SDPA_FLASH=762.8 ms (3.03x speedup, PSNR=37.76 dB, SSIM=0.9828)
-  [Opt #2] 4 Distinct Images Total Latency: Seq-Math=9310.5 ms (2327.6 ms/img) | Seq-Flash=3064.5 ms (766.1 ms/img) | 2xMicroBatch2-Flash=2821.3 ms (705.3 ms/img) | 1xMicroBatch4-Flash=2707.3 ms (676.8 ms/img, 3.44x speedup)
-[Opt #4] Running Stream-Isolated 3D-VAE Decode + SD3.5 Denoising Overlap benchmark...
-  [Opt #4] Sequential (VAE=1457.1 ms + SD3.5=762.6 ms) = 2219.6 ms | Stream-Overlapped Wall = 2125.2 ms (Saved 94.5 ms, 1.04x speedup, Peak HBM=17827.5 MB, max_diff=3.68e-03)
-[E2E Replay] Running HeteroDiT-v2 Mixed-Modality Trace Replay...
-  [E2E Replay] HeteroDiT-v2: Image Mean=2030.7 ms, Image P99=2519.4 ms, Video=12665.2 ms, Total SLO=100.0%, Peak HBM=18129.6 MB
-=== Completed HeteroDiT v2 Optimizations -> /shared/output/DITSERVE/acceptance/heterodit-v2-opt-20261029-r1/V2_OPTIMIZATIONS.json ===

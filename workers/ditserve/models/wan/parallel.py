@@ -710,7 +710,7 @@ def validate_request_engine(worker, binding):
     layout = binding["layout"]
     if type(layout) is not dict or set(layout) != {"sp_degree", "cfg", "boundary"}:
         raise ParallelContractError("unknown engine layout in request state")
-    if (type(layout["sp_degree"]) is not int or layout["sp_degree"] not in (1, 2, 4, 8)
+    if (type(layout["sp_degree"]) is not int or layout["sp_degree"] not in (1, 2, 3, 4, 6, 8)
             or layout["cfg"] not in (1, 2)):
         raise ParallelContractError("invalid engine layout in request state")
     if layout["boundary"] != "solver_step":

@@ -27,6 +27,8 @@ class BlockState:
     cancelled: bool = False
     failed: bool = False
     closed: bool = False
+    folded: bool = False
+    stepper: object = None
     events: list = dataclasses.field(default_factory=list)
 
 
@@ -41,7 +43,7 @@ class WanBlockExecutor:
     is a collective safe point, and the solver commit closes the step.
     """
 
-    def __init__(self, worker, parallel=None, interleave=False):
+    def __init__(self, worker, parallel=None, interleave=False, cfg_fold_options=None):
         self.worker, self.model, self.parallel = worker, worker.pipe.transformer, parallel
         self.xdit = getattr(worker, "xdit", None)
         # Wan2.2 TI2V conditions every patch token on its own timestep.
@@ -51,6 +53,7 @@ class WanBlockExecutor:
         # overlaps the other's compute under SP. Same kernels, same inputs, same
         # results; under a CFG-parallel layout each rank has one branch and it is moot.
         self.interleave = bool(interleave)
+        self.cfg_fold_options = None if cfg_fold_options is None else dict(cfg_fold_options)
         self._side = None
         self._validate_model()
         self._owner, self._states, self._advancing = object(), {}, False
@@ -116,7 +119,11 @@ class WanBlockExecutor:
                 raise ValueError("request already has a block continuation")
             if base.finished or base.step_index >= base.spec["steps"]:
                 raise ValueError("request has no remaining solver steps")
-            state = BlockState(base, self._owner, committed_step=base.step_index)
+            stepper = None
+            if self.cfg_fold_options is not None:
+                from .cfg_reuse import AsymmetricCFGStepper
+                stepper = AsymmetricCFGStepper(self.worker.torch, **self.cfg_fold_options)
+            state = BlockState(base, self._owner, committed_step=base.step_index, stepper=stepper)
             self._states[id(base)] = state
             return state
 
@@ -131,8 +138,16 @@ class WanBlockExecutor:
             raise ValueError("cache policy changed during block execution")
         self.worker._update_policy(state.base)
 
-    def _begin(self, state, interleave=True):
+    def _begin(self, state, interleave=True, fold=False):
         base, model = state.base, self.model
+        state.folded = bool(fold)
+        if state.folded:
+            if state.stepper is None:
+                raise ValueError("CFG folding requires cfg_fold worker options")
+            if self.parallel is not None and self.parallel.handle.current.cfg != 1:
+                raise ValueError("CFG folding requires a single-branch execution form")
+            if not state.stepper.should_fold(base.step_index, base.spec["steps"]):
+                raise ValueError("CFG-fold request is not eligible at this solver boundary")
         from .runtime import model_timestep
         timestep = model_timestep(self.worker.torch, base.latents, base.scheduler.timesteps[base.step_index],
                                   self.expand_timesteps)
@@ -157,7 +172,7 @@ class WanBlockExecutor:
             state.packet = dict(hidden=hidden, encoder=encoder, temb=temb,
                                 projected=projected.unflatten(2 if tokens else 1, (6, -1)), rotary=rotary,
                                 shape=(batch, frames // pt, height // ph, width // pw, pt, ph, pw))
-        if interleave and self._interleaving(state):
+        if interleave and not state.folded and self._interleaving(state):
             encoder_uncond = model.condition_embedder(
                 timestep.flatten() if tokens else timestep, base.negative_prompt_embeds, None, timestep_seq_len=tokens)[2]
             state.packet_uncond = dict(state.packet, encoder=encoder_uncond)
@@ -188,22 +203,28 @@ class WanBlockExecutor:
         prediction = self._prediction(state.packet)
         state.packet, state.next_block = None, 0
         layout = self.parallel.handle.current if self.parallel is not None else None
-        if state.packet_uncond is not None:
-            # Interleaved: both branches ended this block; combine in the sequential order.
+        guidance = base.spec["guidance_scale"]
+        if state.folded:
+            prediction = state.stepper.fold_prediction(base.step_index, prediction, guidance)
+        elif state.packet_uncond is not None:
             state.conditional = prediction
             prediction = self._prediction(state.packet_uncond)
             state.packet_uncond = None
-            prediction = prediction + base.spec["guidance_scale"] * (state.conditional - prediction)
+            if state.stepper is not None:
+                state.stepper.observe_cfg_pair(base.step_index, state.conditional, prediction)
+            prediction = prediction + guidance * (state.conditional - prediction)
         elif layout is not None and layout.cfg == 2:
-            # Each half ran one branch; the group exchanges the two predictions once.
             conditional, unconditional = self.parallel.exchange_predictions(prediction)
-            prediction = unconditional + base.spec["guidance_scale"] * (conditional - unconditional)
-        elif state.branch == "cond" and base.spec["guidance_scale"] > 1:
+            if state.stepper is not None:
+                state.stepper.observe_cfg_pair(base.step_index, conditional, unconditional)
+            prediction = unconditional + guidance * (conditional - unconditional)
+        elif state.branch == "cond" and guidance > 1:
             state.conditional, state.branch = prediction, "uncond"
             return False
         elif state.branch == "uncond":
-            prediction = prediction + base.spec["guidance_scale"] * (state.conditional - prediction)
-        # The solver is touched exactly once, after both predictions exist.
+            if state.stepper is not None:
+                state.stepper.observe_cfg_pair(base.step_index, state.conditional, prediction)
+            prediction = prediction + guidance * (state.conditional - prediction)
         base.latents = base.scheduler.step(
             prediction, base.scheduler.timesteps[base.step_index], base.latents, return_dict=False)[0]
         base.step_index += 1
@@ -213,10 +234,11 @@ class WanBlockExecutor:
         if not bool(self.worker.torch.isfinite(base.latents).all().item()):
             raise RuntimeError("nonfinite latent after block solver commit")
         base.events.append(dict(kind="step", step_index=base.step_index - 1,
-                                completed_steps=base.step_index, path="compute", executor="blocks"))
+                                completed_steps=base.step_index, path="compute", executor="blocks",
+                                cfg_folded=state.folded))
         return True
 
-    def advance(self, state, blocks=1, *, observe=False, check_budget=lambda: None, doorbell=None, check_every=0):
+    def advance(self, state, blocks=1, *, observe=False, check_budget=lambda: None, doorbell=None, check_every=0, cfg_folded=False):
         """Execute at most blocks blocks, stopping no later than one solver commit.
 
         All launched GPU work completes before returning. Prelude, output
@@ -240,6 +262,10 @@ class WanBlockExecutor:
                 raise RuntimeError("overlapping/reentrant GPU block execution")
             if state.base.step_index >= state.base.spec["steps"]:
                 raise ValueError("request has no remaining solver steps")
+            if type(cfg_folded) is not bool:
+                raise ValueError("cfg_folded must be a boolean")
+            if state.packet is not None and state.folded != cfg_folded:
+                raise ValueError("CFG-fold mode cannot change inside a solver step")
             check_budget()
             step, initial_branch, initial_block = state.committed_step, state.branch, state.next_block
             events, completed, executed = [], False, 0
@@ -254,7 +280,7 @@ class WanBlockExecutor:
                     if state.packet is None:
                         if self.parallel is not None and state.branch == "cond":
                             self.parallel.begin_step(state.base)
-                        self._begin(state)
+                        self._begin(state, fold=cfg_folded)
                     if state.packet_uncond is not None and side is None:
                         # Once per quantum: the side stream must see everything the main stream produced.
                         side = self._side_stream()
@@ -481,7 +507,8 @@ class WanBlockExecutor:
                 return sum(visit(v, count) for v in value)
             return 0
         visit(self.worker._payload(state.base), False)
-        return int(visit((state.packet, state.packet_uncond, state.conditional), True))
+        fold_tensors = () if state.stepper is None else (state.stepper._last_delta_cfg, state.stepper._delta_velocity)
+        return int(visit((state.packet, state.packet_uncond, state.conditional, fold_tensors), True))
 
     def native_step(self, state, *, check_budget=lambda: None):
         """The unmodified worker baseline, admitted only at a solver boundary."""
@@ -520,10 +547,11 @@ class WanBlockExecutor:
             state.closed = True
             del self._states[id(state.base)]
 
-    def quantum(self, state, policy):
+    def quantum(self, state, policy, cfg_folded=None):
         branches = 2 if state.base.spec["guidance_scale"] > 1 else 1
-        if self.parallel is not None and self.parallel.handle.current.cfg == 2:
-            branches = 1   # each rank runs one branch
+        folded = state.folded if cfg_folded is None else cfg_folded
+        if folded or (self.parallel is not None and self.parallel.handle.current.cfg == 2):
+            branches = 1
         if policy == "step":
             return len(self.model.blocks) * branches
         if policy == "cfg":
@@ -563,10 +591,16 @@ def export_block_state(executor, state):
         started = time.perf_counter()
         base, tensors = pack_cache_off_request(worker, state.base)
         layout = dict(committed_step=state.committed_step, branch=state.branch, next_block=state.next_block,
-                      packet=state.packet is not None, conditional=state.conditional is not None)
+                      packet=state.packet is not None, conditional=state.conditional is not None,
+                      folded=state.folded)
         if executor.xdit is not None:
             layout["engine"] = executor.xdit.info()
         extra = {}
+        if state.stepper is not None:
+            fold_metadata, fold_tensors = state.stepper.export_state()
+            layout["cfg_fold"] = fold_metadata
+            for name, value in fold_tensors.items():
+                extra["cfg_fold." + name] = value
         if state.packet is not None:
             for name in PACKET_TENSORS:
                 extra["packet." + name] = state.packet[name]
@@ -630,6 +664,15 @@ def import_block_state(executor, payload):
             state = executor.attach(base)
             device = base.latents.device
             state.branch, state.next_block = layout["branch"], layout["next_block"]
+            state.folded = layout["folded"]
+            if ("cfg_fold" in layout) != (state.stepper is not None):
+                raise ValueError("CFG-fold continuation and worker configuration differ")
+            if state.stepper is not None:
+                fold_tensors = {
+                    name.removeprefix("cfg_fold."): value.to(device)
+                    for name, value in tensors.items() if name.startswith("cfg_fold.")
+                }
+                state.stepper.import_state(layout["cfg_fold"], fold_tensors)
             if layout["packet"]:
                 packet = {name: tensors["packet." + name].to(device) for name in PACKET_TENSORS}
                 packet["rotary"] = tuple(tensors["packet.rotary.%d" % index].to(device) for index in range(layout["rotary"]))

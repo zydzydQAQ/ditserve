@@ -622,6 +622,8 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         options.erase("forms");options["degrees"]=Json::array({1});options["pin_started"]=true;
     }
     const bool approximate=policy=="heterodit_approx"||policy=="heterodit_v3";
+    const bool async_decode=bool_field(options,"async_rank0_decode",policy=="heterodit_v5");
+    if(async_decode&&transport!="export")throw std::invalid_argument("asynchronous rank-0 decode requires export transport");
     const bool tiered=bool_field(options,"tiered_memory",approximate||policy=="heterodit_exact"||policy=="knapsack_dp"
         ||policy=="ablation_tiered"||policy=="ablation_2d_usp");
     if(tiered&&transport!="pinned")throw std::invalid_argument("tiered memory currently requires pinned SP1 transport");
@@ -676,11 +678,13 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             const auto migration=capabilities.value("migration",Json::array());
             const auto degrees=capabilities.value("parallel",Json::object()).value("sp_degrees",Json::array());
             const bool blocks=policy=="block_elastic"||policy=="heterodit_exact"||policy=="knapsack_dp"
-                ||policy=="ablation_tiered"||policy=="ablation_2d_usp";
+                ||policy=="heterodit_v5"||policy=="ablation_tiered"||policy=="ablation_2d_usp";
             if(blocks&&std::find(quanta.begin(),quanta.end(),"block")==quanta.end())
                 throw std::invalid_argument("block/elastic policy requires block execution on every Wan worker");
             if(approximate&&capabilities.value("execution",std::string())!="step")
                 throw std::invalid_argument("approximate policies require whole-step Wan execution; block cache is unsupported");
+            if(async_decode&&!capabilities.value("async_decode",false))
+                throw std::invalid_argument("asynchronous decode requires a compatible Wan attention and VAE configuration");
             if(transport=="export"&&std::find(migration.begin(),migration.end(),"state")==migration.end())
                 throw std::invalid_argument("export transport requires xDiT solver-step state migration");
             if(transport=="export"&&std::find(degrees.begin(),degrees.end(),slots.size())==degrees.end())
@@ -709,7 +713,16 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     auto check=[&](){if(cancelled())throw std::runtime_error("run cancelled");budget.check(number_field(phase,"cleanup_reserve_seconds",0));};
     // steady_*: block quanta that followed this request's own previous quantum on the same GPUs;
     // resumed_*: block quanta that followed another request there (the first quantum and regroups excluded).
-    struct Live{std::string status="pending";bool prepared=false,offloaded=false;int steps=0,blocks=0,total=0,encode_gpu=-1,decode_done=0,epoch=0;std::vector<int> group;std::string form="sp1",ticket,pair;std::set<int> resident;double steady_ms=0,resumed_ms=0;int steady_blocks=0,resumed_blocks=0,resumes=0;};
+    struct Live{
+        std::string status="pending";
+        bool prepared=false,offloaded=false,cfg_folded=false,cfg_fold_eligible=false;
+        int steps=0,blocks=0,total=0,encode_gpu=-1,decode_gpu=-1,decode_done=0,epoch=0;
+        std::vector<int> group;
+        std::string form="sp1",ticket,pair,decode_ticket;
+        std::set<int> resident;
+        double steady_ms=0,resumed_ms=0,decode_started=0;
+        int steady_blocks=0,resumed_blocks=0,resumes=0;
+    };
     int epochs=0,transfers=0;   // export transport: placement epochs and transfer file names
     struct Task{std::size_t row;Json assignment;std::future<Json> result;double started;bool after_other=false,continuous=false,rung=false;};
     std::vector<Live> live(rows.size());
@@ -758,6 +771,9 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         const Form form=parse_form(assignment.value("form","sp"+std::to_string(degree)));
         if(form.degree()!=degree)throw std::logic_error("assignment form does not match its group");
         if(form.cfg>1&&transport=="pinned")throw std::invalid_argument("pinned cluster workers run SP1 only");
+        const bool cfg_folded=assignment.value("cfg_folded",false);
+        if(cfg_folded&&(policy!="heterodit_v5"||form.cfg!=1))throw std::invalid_argument("CFG folding requires the v5 single-branch form");
+        state.cfg_folded=cfg_folded;
         const auto form_label=form_name(form);
         if(std::find(row["degrees"].begin(),row["degrees"].end(),degree)==row["degrees"].end())row["degrees"].push_back(degree);
         if(assignment.at("quantum")!="atomic"&&assignment.at("quantum")!="finish"&&std::find(row["forms"].begin(),row["forms"].end(),form_label)==row["forms"].end())row["forms"].push_back(form_label);
@@ -855,17 +871,18 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             };
         }else if(quantum=="finish"){
             const auto name=video(group.front());
-            Json action={{"op","finish"},{"state_id",id},{"output_mode",row.at("output_mode")}};
-            if(assignment.contains("decode_frames"))action["decode_frames"]=assignment.at("decode_frames");
+            Json action={{"op",async_decode?"decode_start":"finish"},{"state_id",id},{"output_mode",row.at("output_mode")}};
+            if(!async_decode&&assignment.contains("decode_frames"))action["decode_frames"]=assignment.at("decode_frames");
             work_unit=[&workers,name,id,deadline,action]{
                 auto& w=workers.get(name);
+                if(action.at("op")=="decode_start")return Json{{"async_decode",w.call(action,deadline)}};
                 Json out={{"finish",w.call(action,deadline)}};
-                // A chunked decode releases its state with the last chunk.
                 if(out["finish"].value("decode",Json::object()).value("done",true))w.call({{"op","release"},{"state_id",id}},deadline);
                 return out;
             };
             for(int gpu:state.resident)if(gpu!=group.front())stale[gpu].push_back(id);
             state.resident={group.front()};
+            state.decode_gpu=group.front();
         }else if(transport=="export"){
             // One rank owns the request (it prepares it, or already holds the replicated
             // step-boundary state); ranks entering the group import its host-staged export
@@ -916,7 +933,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             std::vector<std::pair<std::string,Json>> advances;
             for(int gpu:group){
                 Json advance={{"op","advance"},{"state_id",id},{"sp_degree",degree},{"group",group},{"epoch",state.epoch}};
-                advance["cfg"]=form.cfg;advance["ring"]=form.ring;
+                advance["cfg"]=form.cfg;advance["ring"]=form.ring;advance["cfg_folded"]=cfg_folded;
                 if(assignment.contains("cache_threshold"))advance["cache_threshold"]=assignment.at("cache_threshold");
                 if(!pair.empty())advance["pair_state_id"]=pair;
                 if(quantum=="step")advance["quantum"]="step";else advance["blocks"]=quantum;
@@ -977,7 +994,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                     actions.push_back(prepare);
                 }
                 Json advance={{"op","advance"},{"state_id",id},{"sp_degree",degree},{"quantum",quantum}};
-                advance["cfg"]=form.cfg;advance["ring"]=form.ring;
+                advance["cfg"]=form.cfg;advance["ring"]=form.ring;advance["cfg_folded"]=cfg_folded;
                 if(assignment.contains("cache_threshold"))advance["cache_threshold"]=assignment.at("cache_threshold");
                 if(!pair.empty())advance["pair_state_id"]=pair;
                 if(quantum!="step"){advance["blocks"]=quantum;advance["quantum"]=nullptr;}
@@ -1012,6 +1029,14 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         const auto key=quantum.is_string()?quantum.get<std::string>():"blocks";
         row["action_ms"][key]=row.value("action_ms",Json::object()).value(key,0.)+elapsed;
         row["quanta"]=row.value("quanta",0)+1;
+        if(out.contains("async_decode")){
+            state.decode_ticket=out.at("async_decode").at("ticket").get<std::string>();
+            state.decode_started=task.started;
+            state.status="decoding";
+            row["status"]="decoding";
+            row["async_decode_submits"]=row.value("async_decode_submits",0)+1;
+            return;
+        }
         if(quantum=="finish"&&!out.at("finish").value("decode",Json::object()).value("done",true)){
             row["model_ms"]=number_field(row,"model_ms")+number_field(out.at("finish"),"model_ms");
             state.decode_done=out.at("finish").at("decode").value("frames_done",state.decode_done);state.status="suspended";
@@ -1119,16 +1144,18 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         const auto& ranks=out.at("ranks");
         const auto expected_form=parse_form(task.assignment.value("form",std::string("sp1")));
         const double expected_threshold=number_field(task.assignment,"cache_threshold",0.);
+        const bool expected_folded=task.assignment.value("cfg_folded",false);
         Json applied;
         for(const auto& rank:ranks){
             const auto& actual=rank.at("applied");
             if(actual.at("degree")!=expected_form.degree()||actual.at("cfg")!=expected_form.cfg||actual.at("ring")!=expected_form.ring
-                    ||number_field(actual,"cache_threshold")!=expected_threshold)
-                throw std::runtime_error("worker execution differs from planned form or cache threshold");
+                    ||number_field(actual,"cache_threshold")!=expected_threshold||actual.value("cfg_folded",false)!=expected_folded)
+                throw std::runtime_error("worker execution differs from planned form, cache threshold or CFG-fold mode");
             if(applied.is_null())applied=actual;
             else if(actual!=applied)throw std::runtime_error("worker ranks disagree on applied execution");
         }
-        Json trace={{"planned_form",form_name(expected_form)},{"planned_cache_threshold",expected_threshold},{"applied",applied}};
+        Json trace={{"planned_form",form_name(expected_form)},{"planned_cache_threshold",expected_threshold},
+                    {"planned_cfg_folded",expected_folded},{"applied",applied}};
         if(!row.contains("execution"))row["execution"]=Json::array();
         if(row["execution"].empty()||row["execution"].back()!=trace)row["execution"].push_back(trace);
         row["reused_forwards"]=row.value("reused_forwards",0)+applied.value("reused_forwards",0);
@@ -1151,11 +1178,20 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         }
         auto settle=[&](Json& arow,Live& astate,const char* progress_key){
             const auto progress=ranks.at(0).at(progress_key);
-            for(const auto& rank:ranks)if(rank.at(progress_key).value("step",-1)!=progress.value("step",-2))throw std::runtime_error("SP ranks disagree on solver progress");
+            for(const auto& rank:ranks){
+                const auto& other=rank.at(progress_key);
+                if(other.value("step",-1)!=progress.value("step",-2)
+                        ||other.value("cfg_folded",false)!=progress.value("cfg_folded",false)
+                        ||other.value("cfg_fold_eligible",false)!=progress.value("cfg_fold_eligible",false))
+                    throw std::runtime_error("SP ranks disagree on solver progress or CFG-fold state");
+            }
             arow["model_ms"]=number_field(arow,"model_ms")+model;
+            if(progress.contains("cfg_fold"))arow["cfg_fold"]=progress.at("cfg_fold");
             const int executed=reported>=0?reported:quantum=="step"?cost.blocks_per_step(arow.at("class").get<std::string>())-astate.blocks:quantum.get<int>();
             const int previous_step=astate.steps;
             astate.steps=progress.value("step",0);astate.total=progress.value("steps",0);astate.prepared=true;
+            astate.cfg_folded=progress.value("cfg_folded",expected_folded);
+            astate.cfg_fold_eligible=progress.value("cfg_fold_eligible",false);
             if(progress.value("transfer_ready",true)||astate.steps>previous_step)astate.blocks=0;
             else astate.blocks=progress.contains("block")?progress.value("block",0):astate.blocks+executed;
             astate.status="suspended";
@@ -1202,6 +1238,25 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             }
             finish_task(*it,out);it=tasks.erase(it);progressed=true;
         }
+        for(std::size_t i=0;i<rows.size();++i){
+            auto& state=live[i];
+            if(state.status!="decoding")continue;
+            auto& worker=workers.get(video(state.decode_gpu));
+            auto polled=worker.call({{"op","decode_poll"},{"ticket",state.decode_ticket},{"wait",false}},budget.deadline());
+            if(!polled.value("ready",false))continue;
+            auto& row=rows[i];
+            row["model_ms"]=number_field(row,"model_ms")+number_field(polled,"model_ms");
+            row["decode_model_ms"]=number_field(polled,"model_ms");
+            row["async_decode_wall_ms"]=now()-state.decode_started;
+            row["async_decode_event"]=polled.value("event",Json::object());
+            add_artifacts(record,polled,work,phase.value("artifact_dependencies",Json::array()));
+            if(!row.contains("outputs"))row["outputs"]=Json::array();
+            row["outputs"].push_back(polled);
+            worker.call({{"op","release"},{"state_id",row.at("request_id")}},budget.deadline());
+            row["status"]="completed";row["finish_ms"]=now();
+            state.status="completed";state.group.clear();state.resident.clear();state.decode_ticket.clear();state.decode_gpu=-1;
+            ++terminal;progressed=true;
+        }
         const double instant=now();
         for(int gpu=0;gpu<gpus;++gpu)if(!busy[gpu])for(const auto& id:stale[gpu]){workers.get(video(gpu)).call({{"op","release"},{"state_id",id}},budget.deadline());}
         for(int gpu=0;gpu<gpus;++gpu)if(!busy[gpu])stale[gpu].clear();
@@ -1234,6 +1289,10 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 Json view={{"request_id",row.at("request_id")},{"kind",row.at("kind")},{"class",row.at("class")},
                     {"arrival_ms",row.at("arrival_ms")},{"deadline_ms",row.at("deadline_ms")},{"status",state.status},{"ready",true},
                     {"prepared",state.prepared},{"steps_done",state.steps},{"blocks_done",state.blocks},{"group",state.group},{"decode_done",state.decode_done}};
+                if(row.at("kind")=="video"){
+                    view["cfg_folded"]=state.cfg_folded;
+                    view["cfg_fold_eligible"]=state.cfg_fold_eligible;
+                }
                 if(row.at("kind")=="image"){
                     view["continuous_batch"]=continuous_batch>0;
                     Json batch_spec=spec_of(row);
@@ -1300,7 +1359,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     return {{"requests",rows},{"metrics",request_summary(rows)},{"elapsed_ms",now()},{"warmup",warmed},
             {"by_kind",{{"video",kind_summary(rows,"video")},{"image",kind_summary(rows,"image")}}},
             {"policy",policy},{"gpus",gpus},{"sp_transport",transport},{"real_backends_pinned_sp1",!fixtures&&transport=="pinned"},
-            {"continuous_batch",cb_stats},
+            {"async_rank0_decode",async_decode},{"continuous_batch",cb_stats},
             {"doorbell",{{"enabled",doorbell},{"continuous_quanta",bells.continuous},{"rings",bells.rings}}}};
 }
 

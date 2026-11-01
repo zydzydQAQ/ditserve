@@ -21,12 +21,12 @@ def tiny_model(torch):
                                  rope_max_seq_len=16).eval().to(torch.float16)
 
 
-def attach(model):
+def attach(model, cfg_fold_options=None):
     from ditserve.models.wan.block import WanBlockExecutor
     worker, state = fixture(cached=False, boundary=2)
     worker.pipe, worker.attention = SimpleNamespace(transformer=model), "math"
     with patch.object(WanBlockExecutor, "_validate_model"):
-        executor = WanBlockExecutor(worker)
+        executor = WanBlockExecutor(worker, cfg_fold_options=cfg_fold_options)
     return worker, state, executor, executor.attach(state)
 
 
@@ -80,6 +80,32 @@ class BlockTransferTests(unittest.TestCase):
         self.assertEqual(payload["manifest"]["layout"]["branch"], "uncond")
         self.assertTrue(payload["manifest"]["layout"]["conditional"])
         self.assertTrue(self.torch.equal(reference.latents, resumed.latents))
+
+    def test_cfg_fold_state_crosses_process_boundary_without_changing_execution(self):
+        from ditserve.models.wan.block import WanBlockExecutor, export_block_state, import_block_state
+        options = dict(folded_steps={1}, final_step_exact_anchor=True, cfg_vel_alpha=0.0)
+        model = tiny_model(self.torch)
+        worker, state, executor, continuation = attach(model, options)
+        executor.advance(continuation, blocks=60, cfg_folded=False)
+        payload, _ = export_block_state(executor, continuation)
+        self.assertIn("cfg_fold", payload["manifest"]["layout"])
+        self.assertIn("cfg_fold.delta", payload["tensors"])
+        buffer = io.BytesIO()
+        self.torch.save(payload, buffer)
+        buffer.seek(0)
+        loaded = self.torch.load(buffer, map_location="cpu", weights_only=True)
+
+        target, placeholder = fixture(cached=False, boundary=0)
+        target.release(placeholder)
+        target.pipe, target.attention = SimpleNamespace(transformer=copy.deepcopy(model)), "math"
+        with patch.object(WanBlockExecutor, "_validate_model"):
+            target_executor = WanBlockExecutor(target, cfg_fold_options=options)
+        resumed, moved, _ = import_block_state(target_executor, loaded)
+        executor.advance(continuation, blocks=30, cfg_folded=True)
+        target_executor.advance(moved, blocks=30, cfg_folded=True)
+        self.assertTrue(self.torch.equal(state.latents, resumed.latents))
+        self.assertEqual(moved.stepper.stats["folded_cfg_steps"], 1)
+        self.assertEqual(moved.stepper.stats["full_cfg_steps"], 1)
 
     def test_tampered_packet_is_rejected_before_registration(self):
         from ditserve.models.wan.block import WanBlockExecutor, export_block_state, import_block_state

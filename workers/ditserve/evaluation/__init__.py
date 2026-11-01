@@ -8,14 +8,6 @@ perceptual libraries are imported only by operations that need them.
 
 from .artifacts import check_backend_quality, evaluate_artifacts, evaluate_run, freeze_outputs
 from .datasets import prepare_dataset
-from .hetero_metrics import (
-    compute_psnr,
-    compute_ssim_batch,
-    compute_video_ssim,
-    fast_prepare_wan,
-    module_bytes,
-    module_params,
-)
 from .vbench import export_vbench_manifest, export_vbench_videos, run_vbench
 
 

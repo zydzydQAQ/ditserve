@@ -1,9 +1,0 @@
-{
- "commit": "cd5b390",
- "subject": "feat(hetero): add 3-stage knapsack DP, 2D hybrid USP, encoder pool, tiered state and laxity cache",
- "built_utc": "2026-10-29T10:41:53+00:00",
- "tested_runtime_image": "192.168.1.114:30500/jjjkairos/ditserve:xdit-dev-016e1ca-slim",
- "core_sha256": "d0be5af74ed6fdd4a3c3504dc18d36021f8f7866ca219b4227c2f3b68a88196a",
- "files": 413,
- "bytes": 6634006
-}

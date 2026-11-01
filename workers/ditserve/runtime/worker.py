@@ -37,6 +37,9 @@ def _model_capabilities(name, config, backend):
     atomic = name in ("wan_pipeline", "sd35")
     execution = ("pipeline" if atomic else options.get("execution", "step"))
     quanta = ["atomic"] if atomic else ["step"] + ([] if execution == "step" else ["block"])
+    attention = config.get("attention", "math")
+    vae_dtype = config.get("vae_dtype", "float32")
+    async_decode = name == "wan" and (attention == "math" or (attention == "flash" and vae_dtype in ("bfloat16", "float16")))
     capabilities = dict(
         engine=engine_info(), engine_status="configured", execution=execution,
         model_wrapper={"wan": "xFuserWanTransformer3DWrapper", "wan_pipeline": "xFuserWanTransformer3DWrapper",
@@ -44,10 +47,11 @@ def _model_capabilities(name, config, backend):
         quanta=quanta, atomic_pipeline=atomic,
         continuous_batch=False,
         request_batch=name == "sd35",
+        async_decode=async_decode,
         dynamic_cache=name == "wan" and execution == "step",
         batch="fixed",
         migration=[] if name != "wan" else ["state"] + ([] if execution == "step" else ["block"]),
-        parallel=dict(sp_degrees=[1, 2, 4, 8] if name == "wan" else [1], cfg=name == "wan"),
+        parallel=dict(sp_degrees=[1, 2, 3, 4, 6, 8] if name == "wan" else [1], cfg=name == "wan"),
     )
     runtime = getattr(backend, "runtime", None)
     engine = getattr(backend, "xdit", None) or getattr(runtime, "xdit", None)

@@ -57,11 +57,12 @@ Json trace_row(const std::string& id, const std::string& kind, double arrival, d
 
 int main() {
     check("aligned groups", [] {
-        const auto groups = cluster_groups(8, {1, 2, 4, 8});
-        require(groups.size() == 15, "8+4+2+1 groups");
+        const auto groups = cluster_groups(8, {1, 2, 3, 4, 6, 8});
+        require(groups.size() == 18, "8+4+2+2+1+1 groups");
         for (const auto& group : groups) require(group.front() % static_cast<int>(group.size()) == 0, "group is aligned");
         require(cluster_groups(6, {4}).size() == 1, "partial node keeps only whole groups");
-        rejects([] { cluster_groups(8, {3}); });
+        require(cluster_groups(8, {6})[0] == std::vector<int>({0, 1, 2, 3, 4, 5}), "six-GPU video group");
+        rejects([] { cluster_groups(8, {5}); });
         rejects([] { cluster_groups(0, {1}); });
     });
     check("image placement keeps aligned pairs whole", [] {
@@ -151,7 +152,9 @@ int main() {
     check("parallel forms", [] {
         require(form_name(parse_form("cfg2sp2")) == "cfg2sp2" && parse_form("cfg2").degree() == 2 && parse_form("sp8").sp == 8, "form names round-trip");
         require(form_name(Form{}) == "sp1" && form_name(Form{2, 1}) == "cfg2", "default form is sp1");
-        for (const auto* bad : {"", "sp3", "cfg3", "cfg2sp3", "cfg", "sp", "sp16"}) rejects([bad] { parse_form(bad); });
+        require(parse_form("sp3").degree() == 3 && parse_form("cfg2sp3").degree() == 6, "three-head-group forms");
+        require(form_name(parse_form("cfg2u3r1")) == "cfg2sp3", "Ulysses alias canonicalizes without Ring");
+        for (const auto* bad : {"", "sp5", "cfg3", "cfg2sp5", "cfg", "sp", "sp16"}) rejects([bad] { parse_form(bad); });
         Json prof = profile(); prof["classes"]["video"]["cfg_exchange_mb"] = 20;
         const ClusterCost cost(prof);
         // Each half runs one branch: half the compute, one 20 MB exchange on the pair link plus its latency.
@@ -625,18 +628,37 @@ int main() {
         const auto approx_plan = cluster_plan({{"now_ms", 0}, {"gpus", 4}, {"busy", Json::array()}, {"requests", tight}}, "heterodit_approx", cost);
         require(exact_plan.contains("tiered_hints") && approx_plan.contains("tiered_hints"), "tiered state hints emitted");
         require(approx_plan.at("assignments")[0].value("cache_threshold", 0.0) > 0.0, "approx selects positive cache_threshold for tight video");
-        // Full mixed trace simulation across exact and approx policies.
+
+        prof["links"]["3"] = {{"gbps", 15}, {"latency_ms", 0.1}};
+        const ClusterCost morph_cost(prof);
+        Json morph = video("m", 1e9, {{"status", "suspended"}, {"prepared", true}, {"steps_done", 12}, {"steps_total", 20},
+            {"group", {0, 1, 2, 3, 4, 5}}, {"form", "cfg2sp3"}, {"cfg_fold_eligible", true}});
+        const auto morph_plan = cluster_plan({{"now_ms", 0}, {"gpus", 8}, {"busy", Json::array()},
+            {"requests", {morph, image("i", 1e9)}}}, "heterodit_v5", morph_cost, {{"forms", {"cfg2sp3"}}});
+        Json folded;
+        for (const auto& assignment : morph_plan.at("assignments")) if (assignment.at("request_id") == "m") folded = assignment;
+        require(!folded.is_null() && folded.at("group") == Json::array({0, 1, 2}) && folded.at("form") == "sp3"
+                && folded.value("cfg_folded", false), "worker-gated 6+2 to 3+5 morphing");
+        morph["blocks_done"] = 4; morph["group"] = {0, 1, 2}; morph["form"] = "sp3"; morph["cfg_folded"] = true;
+        const auto resumed = cluster_plan({{"now_ms", 0}, {"gpus", 8}, {"busy", Json::array()}, {"requests", {morph}}},
+            "heterodit_v5", morph_cost, {{"forms", {"cfg2sp3"}}}).at("assignments")[0];
+        require(resumed.value("cfg_folded", false), "mid-step resume preserves CFG-fold mode");
+
         Json generator = {{"count", 80}, {"seed", 7}, {"pattern", "poisson"}, {"rate_rps", 4},
             {"classes", {{{"class", "video"}, {"kind", "video"}, {"weight", 1}, {"service_ms", 4000}, {"slo_scale", 1.5}},
                          {{"class", "image"}, {"kind", "image"}, {"weight", 3}, {"service_ms", 50}, {"slo_ms", 300}}}}};
         const auto trace = study_workload({{"generator", generator}});
         const auto sim_exact = simulate_cluster({{"workload", trace}, {"profile", prof}, {"policy", "heterodit_exact"}, {"gpus", 8}});
         const auto sim_approx = simulate_cluster({{"workload", trace}, {"profile", prof}, {"policy", "heterodit_approx"}, {"gpus", 8}});
-        const auto sim_v5 = simulate_cluster({{"workload", trace}, {"profile", prof}, {"policy", "heterodit_v5"}, {"gpus", 8}});
+        const Json v5_options = {{"cfg_fold_eligible_from_step", 1}, {"cfg_fold_step_scale", 0.52}, {"async_decode_scale", 0.15}};
+        const auto sim_v5 = simulate_cluster({{"workload", trace}, {"profile", prof}, {"policy", "heterodit_v5"}, {"gpus", 8},
+                                             {"options", v5_options}});
         require(sim_exact.at("metrics").at("completed") == 80 && sim_approx.at("metrics").at("completed") == 80
                 && sim_v5.at("metrics").at("completed") == 80, "all requests complete");
         require(sim_approx.at("approx_quanta").get<int>() > 0 && sim_v5.at("approx_quanta").get<int>() > 0, "approx quanta used under load");
         require(sim_v5.at("makespan_ms").get<double>() <= sim_exact.at("makespan_ms").get<double>(), "heterodit_v5 reduces or matches makespan");
+        rejects([&] { simulate_cluster({{"workload", trace}, {"profile", prof}, {"policy", "heterodit_v5"}, {"gpus", 8},
+                                       {"options", {{"cfg_fold_eligible_from_step", 1}}}}); });
     });
     std::cout << checks - failures << "/" << checks << " cluster checks passed\n";
     return failures ? 1 : 0;

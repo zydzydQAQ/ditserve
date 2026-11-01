@@ -1,9 +1,0 @@
-{
- "commit": "cf18515",
- "subject": "Add 10-policy baseline matrix, 5-stage ablation study, and real-GPU quality Pareto & trace replay benchmark",
- "built_utc": "2026-10-29T13:55:38+00:00",
- "tested_runtime_image": "192.168.1.114:30500/jjjkairos/ditserve:xdit-dev-016e1ca-slim",
- "core_sha256": "6f54332ad72b3dc1b114bbe8969e93fa6b3cc35f0f45c15c49a1a5037c048c07",
- "files": 461,
- "bytes": 7271481
-}

@@ -125,7 +125,7 @@ class XDitWanEngine:
 class XDitWanParallelBackend:
     capabilities = dict(
         backend="xdit-xfuser-usp",
-        fixed_sp_degrees=[1, 2, 4, 8],
+        fixed_sp_degrees=[1, 2, 3, 4, 6, 8],
         explicit_sp1_bypass=True,
         local_layout_hook_binding=True,
         request_group_cache_gate=True,

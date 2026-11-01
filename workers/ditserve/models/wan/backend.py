@@ -33,6 +33,11 @@ class WanBackend(Backend):
             raise ValueError("Wan execution must be step, block or block_interleaved")
         # block_interleaved runs the two CFG branches block by block on two CUDA streams.
         self.interleave = self.execution == "block_interleaved"
+        self.cfg_fold_options = self.options.get("cfg_fold")
+        if self.cfg_fold_options is not None and not isinstance(self.cfg_fold_options, dict):
+            raise ValueError("options.cfg_fold must be an object")
+        if self.cfg_fold_options is not None and not self.execution.startswith("block"):
+            raise ValueError("options.cfg_fold requires block execution")
         self.executor = self.parallel = None
         self.continuations, self.pending = {}, {}
         self.encoder = ThreadPoolExecutor(max_workers=1, thread_name_prefix="prompt-encoder")
@@ -48,8 +53,8 @@ class WanBackend(Backend):
         state = self._boundary(request)
         if self.decode_ticket is not None:
             raise ValueError("collect the previous decode before starting another")
-        if self.parallel:
-            raise ValueError("asynchronous VAE overlap is supported only for the SP1 worker")
+        if self.parallel and self.parallel.handle.active is not None:
+            raise ValueError("asynchronous VAE requires a closed solver step")
         if self.decoder is None:
             from .async_decode import AsyncDecoder
             self.decoder = AsyncDecoder(self.runtime)
@@ -81,7 +86,22 @@ class WanBackend(Backend):
 
     def _progress(self, state):
         continuation = next((value for value in self.continuations.values() if value.base is state), None)
-        return dict(progress(state.step_index, state.spec["steps"]), transfer_ready=self._transfer_ready(state, continuation))
+        ready = self._transfer_ready(state, continuation)
+        result = dict(progress(state.step_index, state.spec["steps"]), transfer_ready=ready)
+        if continuation is not None and continuation.stepper is not None:
+            stepper = continuation.stepper
+            result.update(
+                cfg_folded=continuation.folded,
+                cfg_fold_eligible=bool(ready and state.step_index < state.spec["steps"]
+                                       and stepper.should_fold(state.step_index, state.spec["steps"])),
+                cfg_fold={
+                    "last_curvature": stepper._last_curvature,
+                    "full_cfg_steps": stepper.stats["full_cfg_steps"],
+                    "folded_cfg_steps": stepper.stats["folded_cfg_steps"],
+                    "dynamic_fold_start_step": stepper.dynamic_fold_start_step,
+                },
+            )
+        return result
 
     @staticmethod
     def _transfer_ready(state, continuation):
@@ -136,7 +156,7 @@ class WanBackend(Backend):
             if self.execution.startswith("block"):
                 if self.executor is None:
                     from .block import WanBlockExecutor
-                    self.executor = WanBlockExecutor(self.runtime, interleave=self.interleave)
+                    self.executor = WanBlockExecutor(self.runtime, interleave=self.interleave, cfg_fold_options=self.cfg_fold_options)
                 self.continuations[key] = self.executor.attach(state)
             self.states[key] = state
         except BaseException:
@@ -166,31 +186,35 @@ class WanBackend(Backend):
             self.runtime._update_policy(state)
         records = []
         if key in self.continuations:
-            blocks = (2 * len(self.runtime.pipe.transformer.blocks) if request.get("quantum") == "step"
-                      else positive_int(request.get("blocks", request.get("steps", 1))))
+            folded = request.get("cfg_folded", False)
+            if type(folded) is not bool:
+                raise ValueError("cfg_folded must be a boolean")
+            blocks = (self.executor.quantum(self.continuations[key], "step", cfg_folded=folded)
+                      if request.get("quantum") == "step" else positive_int(request.get("blocks", request.get("steps", 1))))
             pair = request.get("pair_state_id")
             if pair is not None:
-                # Two requests of this group advance in lockstep (request-level interleaving); the
-                # quantum counts block indices, so each request advances `blocks` blocks.
+                if folded:
+                    raise ValueError("CFG folding cannot join a lockstep request pair")
                 if pair not in self.continuations:
                     raise ValueError("unknown pair_state_id")
                 paired = self.states[pair]
-                pair_blocks = (self.executor.quantum(self.continuations[key], "step") if request.get("quantum") == "step"
-                               else positive_int(request.get("blocks", 1)))
+                pair_blocks = (self.executor.quantum(self.continuations[key], "step", cfg_folded=False)
+                               if request.get("quantum") == "step" else positive_int(request.get("blocks", 1)))
                 mine, theirs = self.executor.advance_pair(self.continuations[key], self.continuations[pair], blocks=pair_blocks,
                                                           observe=bool(request.get("observe", False)))
                 layout = self.parallel.handle.current if self.parallel is not None else None
                 applied = dict(cfg=layout.cfg if layout else 1, ring=layout.ring if layout else 1,
-                               degree=layout.degree if layout else 1, cache_threshold=0.0, reused_forwards=0)
+                               degree=layout.degree if layout else 1, cache_threshold=0.0, reused_forwards=0,
+                               cfg_folded=False)
                 return dict(state_id=key, pair_state_id=pair, progress=self._progress(state), pair_progress=self._progress(paired),
                             events=[mine], pair_events=[theirs], model_ms=mine["ms"], applied=applied)
-            # Continuous execution: run to the step end unless the controller rings this GPU's doorbell.
             from ...runtime.doorbell import rung
             bell = rung(request)
             records.append(self.executor.advance(self.continuations[key],
                 blocks=blocks,
                 observe=bool(request.get("observe", False)),
-                doorbell=bell, check_every=positive_int(request.get("check_blocks", 1), "check_blocks") if bell else 0))
+                doorbell=bell, check_every=positive_int(request.get("check_blocks", 1), "check_blocks") if bell else 0,
+                cfg_folded=folded))
         else:
             stepper = request.get("stepper")
             taylor_comp = request.get("taylor_compensator")
@@ -212,7 +236,8 @@ class WanBackend(Backend):
         applied = dict(cfg=layout.cfg if layout else 1, ring=layout.ring if layout else 1,
                        degree=layout.degree if layout else 1,
                        cache_threshold=float(state.spec["threshold"]) if state.spec["cache"] else 0.0,
-                       reused_forwards=sum(record.get("reused_forwards", 0) for record in records))
+                       reused_forwards=sum(record.get("reused_forwards", 0) for record in records),
+                       cfg_folded=self.continuations[key].folded if key in self.continuations else False)
         return dict(state_id=key, progress=self._progress(state), events=records, applied=applied,
                     model_ms=sum(record.get("ms", 0.) for record in records))
 
@@ -349,7 +374,7 @@ class WanBackend(Backend):
         read_ms = (time.perf_counter() - started) * 1000
         if self.executor is None:
             from .block import WanBlockExecutor
-            self.executor = WanBlockExecutor(self.runtime, interleave=self.interleave)
+            self.executor = WanBlockExecutor(self.runtime, interleave=self.interleave, cfg_fold_options=self.cfg_fold_options)
         from .block import import_block_state
         state, continuation, timing = import_block_state(self.executor, payload)
         self.states[key], self.continuations[key] = state, continuation
@@ -448,7 +473,8 @@ class WanBackend(Backend):
             if self.execution.startswith("block"):
                 # A warmup may have built a single-GPU executor; block quanta now need SP safe points.
                 from .block import WanBlockExecutor
-                self.executor = WanBlockExecutor(self.runtime, parallel=self.parallel, interleave=self.interleave)
+                self.executor = WanBlockExecutor(self.runtime, parallel=self.parallel, interleave=self.interleave,
+                                                 cfg_fold_options=self.cfg_fold_options)
             return dict(self.parallel.capabilities, initialized=True, execution=self.execution)
         if self.parallel is None:
             raise ValueError("distributed init must complete first on every rank")
@@ -508,7 +534,7 @@ class WanBackend(Backend):
 
     @staticmethod
     def _paths(state):
-        keys = ("step_index", "cache_contexts", "reused_forwards", "path_scope", "path")
+        keys = ("step_index", "cache_contexts", "reused_forwards", "path_scope", "path", "cfg_folded")
         return [{key: event[key] for key in keys if key in event}
                 for event in state.events if event.get("kind") == "step"]
 
@@ -523,7 +549,8 @@ class WanBackend(Backend):
             dtype="float16", vae_dtype=self.runtime.vae_dtype, text_encoder_dtype="float32", text_encoder_device="cpu",
             fps=self.config.get("fps", 16), attention=self.runtime.attention,
             cache_enabled=spec["cache"], cache_threshold=spec["threshold"],
-            approximate=bool(spec["cache"] or any(row.get("reused_forwards", 0) for row in paths)))
+            approximate=bool(spec["cache"] or any(row.get("reused_forwards", 0) or row.get("cfg_folded", False) for row in paths)),
+            cfg_folded_steps=sum(bool(row.get("cfg_folded", False)) for row in paths))
         generation["engine"] = getattr(self.runtime, "engine_name", "legacy")
         if getattr(self.runtime, "xdit", None) is not None:
             generation["xdit_revision"] = self.runtime.xdit.revision

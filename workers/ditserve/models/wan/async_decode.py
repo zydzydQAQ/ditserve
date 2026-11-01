@@ -8,8 +8,10 @@ from ..pipeline import decode_final_latent
 
 class AsyncDecoder:
     def __init__(self, worker):
-        if worker.attention != "math":
-            raise ValueError("overlapping VAE decode requires the pinned global SDPA MATH policy")
+        if worker.attention not in ("math", "flash"):
+            raise ValueError("asynchronous VAE requires a pinned SDPA execution mode")
+        if worker.attention == "flash" and worker.vae_dtype not in ("bfloat16", "float16"):
+            raise ValueError("Flash asynchronous VAE requires a 16-bit VAE")
         self.worker, self.torch = worker, worker.torch
         self.pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="wan-vae")
         self.stream = self.torch.cuda.Stream(device=worker.device)
@@ -24,9 +26,10 @@ class AsyncDecoder:
         worker._check(state, "gpu")
         if state.finished or state.step_index != state.spec["steps"]:
             raise ValueError("async decode requires a complete undecoded state")
-        # Pin process-global settings until this stream is joined. Main-model
-        # contexts enter/leave the same MATH setting while the decoder runs.
-        self.context = worker.p._sdpa_math_context(torch)
+        if worker.attention == "flash":
+            self.context = torch.nn.attention.sdpa_kernel([torch.nn.attention.SDPBackend.FLASH_ATTENTION])
+        else:
+            self.context = worker.p._sdpa_math_context(torch)
         self.context.__enter__()
         self.original_sync = worker._sync
         worker._sync = lambda: torch.cuda.current_stream(worker.device).synchronize()
@@ -44,9 +47,14 @@ class AsyncDecoder:
         started = time.perf_counter()
         with torch.cuda.device(worker.device), torch.inference_mode(), torch.cuda.stream(self.stream):
             flags = torch.backends.cuda
-            if (not flags.math_sdp_enabled() or flags.flash_sdp_enabled() or
-                    flags.mem_efficient_sdp_enabled() or flags.cudnn_sdp_enabled()):
-                raise RuntimeError("VAE thread escaped the process-wide SDPA MATH policy")
+            if worker.attention == "math":
+                valid = (flags.math_sdp_enabled() and not flags.flash_sdp_enabled()
+                         and not flags.mem_efficient_sdp_enabled() and not flags.cudnn_sdp_enabled())
+            else:
+                valid = (flags.flash_sdp_enabled() and not flags.math_sdp_enabled()
+                         and not flags.mem_efficient_sdp_enabled() and not flags.cudnn_sdp_enabled())
+            if not valid:
+                raise RuntimeError("VAE thread escaped its pinned SDPA policy")
             self.stream.wait_event(boundary)
             begin, end = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
             begin.record(self.stream)

@@ -43,17 +43,20 @@ class AsymmetricCFGStepper:
         enabled: bool = True,
     ):
         self.torch = torch_module or importlib.import_module("torch")
-        self.folded_steps: Set[int] = (
-            set(folded_steps) if folded_steps is not None else {17, 18}
-        )
+        self.curvature_threshold = float(curvature_threshold) if curvature_threshold is not None else None
+        if folded_steps is not None:
+            self.folded_steps: Set[int] = set(folded_steps)
+        elif self.curvature_threshold is not None:
+            self.folded_steps = set()
+        else:
+            self.folded_steps = {17, 18}
         self.pre_fold_anchor_step: Optional[int] = (
-            min(self.folded_steps) - 1 if self.folded_steps else None
+            min(self.folded_steps) - 1 if self.folded_steps else (int(min_full_cfg_steps) - 1 if self.curvature_threshold is not None else None)
         )
         self.force_exact_cond_on_fold: bool = bool(force_exact_cond_on_fold)
         self.cfg_damping = float(cfg_damping)
         self.cfg_vel_alpha = float(cfg_vel_alpha)
         self.final_step_exact_anchor = bool(final_step_exact_anchor)
-        self.curvature_threshold = float(curvature_threshold) if curvature_threshold is not None else None
         self.min_full_cfg_steps = int(min_full_cfg_steps)
         self.max_curvature_guard = float(max_curvature_guard)
         self.enabled = bool(enabled)
@@ -101,6 +104,64 @@ class AsymmetricCFGStepper:
         self.curvature_history.clear()
         self.dynamic_fold_start_step = None
 
+    def fold_prediction(self, step_index: int, pred_cond: "torch.Tensor", guidance_scale: float) -> "torch.Tensor":
+        prediction = pred_cond + (guidance_scale - 1.0) * self._predict_delta_cfg(step_index, pred_cond.dtype)
+        self._had_folded_since_anchor = True
+        if self.dynamic_fold_start_step is None:
+            self.dynamic_fold_start_step = int(step_index)
+        if self.curvature_threshold is not None:
+            self.stats["curvature_triggered_folds"] += 1
+        self.stats["folded_cfg_steps"] += 1
+        self.stats["saved_uncond_forwards"] += 1
+        return prediction
+
+    def export_state(self) -> tuple[dict, dict]:
+        config = {
+            "folded_steps": sorted(self.folded_steps),
+            "cfg_damping": self.cfg_damping,
+            "cfg_vel_alpha": self.cfg_vel_alpha,
+            "final_step_exact_anchor": self.final_step_exact_anchor,
+            "force_exact_cond_on_fold": self.force_exact_cond_on_fold,
+            "curvature_threshold": self.curvature_threshold,
+            "min_full_cfg_steps": self.min_full_cfg_steps,
+            "max_curvature_guard": self.max_curvature_guard,
+            "enabled": self.enabled,
+        }
+        runtime = {
+            "last_delta_step": self._last_delta_step,
+            "warmup_ref_l1": self._warmup_ref_l1,
+            "last_curvature": self._last_curvature,
+            "last_raw_curvature": self._last_raw_curvature,
+            "had_folded_since_anchor": self._had_folded_since_anchor,
+            "curvature_history": list(self.curvature_history),
+            "dynamic_fold_start_step": self.dynamic_fold_start_step,
+            "stats": dict(self.stats),
+        }
+        tensors = {}
+        if self._last_delta_cfg is not None:
+            tensors["delta"] = self._last_delta_cfg.detach().cpu().clone()
+        if self._delta_velocity is not None:
+            tensors["velocity"] = self._delta_velocity.detach().cpu().clone()
+        return {"config": config, "runtime": runtime}, tensors
+
+    def import_state(self, metadata: dict, tensors: dict) -> None:
+        current, unused = self.export_state()
+        if metadata.get("config") != current["config"]:
+            raise ValueError("CFG-fold configuration differs across continuation import")
+        runtime = metadata.get("runtime")
+        if not isinstance(runtime, dict):
+            raise ValueError("CFG-fold continuation is missing runtime state")
+        self._last_delta_step = runtime["last_delta_step"]
+        self._warmup_ref_l1 = runtime["warmup_ref_l1"]
+        self._last_curvature = runtime["last_curvature"]
+        self._last_raw_curvature = runtime["last_raw_curvature"]
+        self._had_folded_since_anchor = bool(runtime["had_folded_since_anchor"])
+        self.curvature_history = list(runtime["curvature_history"])
+        self.dynamic_fold_start_step = runtime["dynamic_fold_start_step"]
+        self.stats = dict(runtime["stats"])
+        self._last_delta_cfg = None if self._last_delta_step is None else tensors["delta"]
+        self._delta_velocity = tensors.get("velocity")
+
     def _update_curvature_metrics(self, index: int, delta_f32: "torch.Tensor") -> None:
         torch = self.torch
         cur_l1 = max(1e-6, float(torch.linalg.vector_norm(delta_f32, ord=1).item()))
@@ -144,16 +205,9 @@ class AsymmetricCFGStepper:
                 return False
             if self.folded_steps and step_index not in self.folded_steps:
                 return False
-            if self._last_curvature is not None:
-                if self._last_curvature > self.max_curvature_guard:
-                    self.stats["curvature_guarded_unfolds"] += 1
-                    return False
-                if self._last_curvature <= self.curvature_threshold:
-                    if self.dynamic_fold_start_step is None:
-                        self.dynamic_fold_start_step = step_index
-                    self.stats["curvature_triggered_folds"] += 1
-                    return True
-            return False
+            return (self._last_curvature is not None
+                    and self._last_curvature <= self.curvature_threshold
+                    and self._last_curvature <= self.max_curvature_guard)
         return step_index in self.folded_steps
 
     def _predict_delta_cfg(self, step_index: int, dtype: "torch.dtype") -> "torch.Tensor":
@@ -278,13 +332,7 @@ class AsymmetricCFGStepper:
                                 context.transformer_executed_steps = (index + 1) * 2
                                 context.accumulated_transformer_executed_steps = (index + 1) * 2
                     else:
-                        # Single-branch CFG reconstruction: e_c(t) + (g - 1) * Delta_CFG_hat(t)
-                        delta_hat = self._predict_delta_cfg(index, pred_cond.dtype)
-                        prediction = pred_cond + (g - 1.0) * delta_hat
-                        self._had_folded_since_anchor = True
-                        self.stats["folded_cfg_steps"] += 1
-                        self.stats["saved_uncond_forwards"] += 1
-                        # Synchronize cache-dit step counters when uncond branch was bypassed
+                        prediction = self.fold_prediction(index, pred_cond, g)
                         for context in state.contexts.values():
                             context.executed_steps = index + 1
                             context.accumulated_executed_steps = index + 1

@@ -362,18 +362,6 @@ class HeteroModulesTest(unittest.TestCase):
         summary = stepper.summary()
         self.assertEqual(summary["folded_steps"], [14, 15, 16, 17, 18])
 
-    def test_hetero_facade_and_metrics(self) -> None:
-        import numpy as np
-        from ditserve.evaluation.hetero_metrics import compute_psnr, module_bytes, module_params
-        from ditserve.models import hetero
-
-        for symbol in hetero.__all__:
-            self.assertTrue(hasattr(hetero, symbol), f"missing {symbol} on ditserve.models.hetero")
-        self.assertEqual(module_bytes(None), 0)
-        self.assertEqual(module_params(None), 0)
-        arr = np.ones((2, 8, 8, 3), dtype=np.float32) * 0.5
-        self.assertEqual(compute_psnr(arr, arr), 99.99)
-
 
 if __name__ == "__main__":
     unittest.main()

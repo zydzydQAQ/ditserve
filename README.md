@@ -32,7 +32,7 @@ docs/                 使用说明、能力边界及研究文档
 
 ## 构建和验证
 
-Linux、C++17、CMake 3.16+、OpenSSL、Python 3.10+。nlohmann/json 固定 3.11.3 并校验 SHA256；保留 `-ffp-contract=off`。模型依赖按 `configs/requirements-*.txt` 和 `docker/artifacts-runtime.json` 锁定；运行镜像由仓库 Dockerfile 重建，报告使用 openpyxl 3.1.5，可复用 `.cache/tools`。
+Linux、C++17、CMake 3.16+、OpenSSL、Python 3.10+。nlohmann/json 固定 3.11.3 并校验 SHA256；保留 `-ffp-contract=off`。模型依赖按 `configs/requirements-*.txt` 和 `docker/artifacts-runtime.json` 锁定；jjjkairos 使用既有运行镜像，禁止在本机 WSL 或集群节点构建镜像。报告使用 openpyxl 3.1.5，可复用 `.cache/tools`。
 
 ```bash
 cmake -S . -B .cache/build -DCMAKE_BUILD_TYPE=Release
@@ -68,4 +68,4 @@ PYTHONPATH=workers CUDA_VISIBLE_DEVICES='' HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE
 
 最终交付为 `results/<experiment>/<run>/results.xlsx` 和 `REPORT.md`。累计账本在 `.state/<experiment>/budget.json`；可恢复控制文件和有实际下游依赖的输入在 `.cache/results-work/`。`compact-results` 保留为结果 skill 兼容入口。
 
-[实验配置](docs/experiments.md) · [结果处理](docs/results.md) · [容器镜像](docs/container.md) · [能力覆盖与精简统计](docs/rewrite.md)
+[实验配置](docs/experiments.md) · [结果处理](docs/results.md) · [容器镜像](docs/container.md) · [论文设计与评估协议](docs/dit_serving_sections.tex)

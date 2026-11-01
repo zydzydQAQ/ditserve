@@ -11,6 +11,7 @@
 namespace ditserve {
 namespace {
 bool power_of_two(int value) { return value > 0 && (value & (value - 1)) == 0; }
+bool supported_degree(int value) { return value == 1 || value == 2 || value == 3 || value == 4 || value == 6 || value == 8; }
 std::string degree_key(int degree) { return std::to_string(degree); }
 
 struct Policy {
@@ -44,7 +45,7 @@ Policy parse(const std::string& name) {
     else if (name == "knapsack_dp" || name == "heterodit_exact") policy.elastic = policy.blocks = policy.knapsack = true;
     else if (name == "heterodit_approx") policy.elastic = policy.knapsack = policy.approx = true;
     else if (name == "heterodit_v3") policy.elastic = policy.knapsack = policy.approx = policy.v3 = true;
-    else if (name == "heterodit_v5") policy.elastic = policy.blocks = policy.knapsack = policy.approx = policy.v3 = policy.v5 = true;
+    else if (name == "heterodit_v5") policy.elastic = policy.blocks = policy.knapsack = policy.v5 = true;
     else throw std::invalid_argument("unknown cluster policy: " + name);
     return policy;
 }
@@ -67,30 +68,30 @@ Form parse_form(const std::string& name) {
     std::string rest = name;
     if (rest.rfind("cfg2", 0) == 0) { form.cfg = 2; rest = rest.substr(4); }
     if (rest.empty() && form.cfg == 2) return form;
-    if (rest.size() == 4 && rest[0] == 'u' && rest[1] >= '1' && rest[1] <= '8' && rest[2] == 'r' && rest[3] >= '2' && rest[3] <= '8') {
+    if (rest.size() == 4 && rest[0] == 'u' && rest[1] >= '1' && rest[1] <= '8' && rest[2] == 'r' && rest[3] >= '1' && rest[3] <= '8') {
         form.sp = rest[1] - '0';
         form.ring = rest[3] - '0';
-        if (!power_of_two(form.sp) || !power_of_two(form.ring) || form.degree() > 8)
+        if (!supported_degree(form.sp) || !power_of_two(form.ring) || form.degree() > 8)
             throw std::invalid_argument("unknown parallel form: " + name);
         return form;
     }
-    if (rest.size() == 5 && rest.rfind("sp", 0) == 0 && rest[2] >= '1' && rest[2] <= '8' && rest[3] == 'r' && rest[4] >= '2' && rest[4] <= '8') {
+    if (rest.size() == 5 && rest.rfind("sp", 0) == 0 && rest[2] >= '1' && rest[2] <= '8' && rest[3] == 'r' && rest[4] >= '1' && rest[4] <= '8') {
         form.sp = rest[2] - '0';
         form.ring = rest[4] - '0';
-        if (!power_of_two(form.sp) || !power_of_two(form.ring) || form.degree() > 8)
+        if (!supported_degree(form.sp) || !power_of_two(form.ring) || form.degree() > 8)
             throw std::invalid_argument("unknown parallel form: " + name);
         return form;
     }
     if (rest.size() < 3 || rest.rfind("sp", 0) != 0 || rest.size() > 3 || rest[2] < '1' || rest[2] > '8')
         throw std::invalid_argument("unknown parallel form: " + name);
     form.sp = rest[2] - '0';
-    if (!power_of_two(form.sp)) throw std::invalid_argument("unknown parallel form: " + name);
+    if (!supported_degree(form.sp)) throw std::invalid_argument("unknown parallel form: " + name);
     return form;
 }
 
 std::string form_name(const Form& form) {
     if (form.cfg != 1 && form.cfg != 2) throw std::invalid_argument("cfg must be 1 or 2");
-    if (!power_of_two(form.sp) || !power_of_two(form.ring)) throw std::invalid_argument("SP and Ring degrees must be powers of two");
+    if (!supported_degree(form.sp) || !power_of_two(form.ring)) throw std::invalid_argument("unsupported Wan SP or Ring degree");
     if (form.ring > 1) return (form.cfg == 2 ? "cfg2" : "") + std::string("u") + std::to_string(form.sp) + "r" + std::to_string(form.ring);
     return (form.cfg == 2 ? "cfg2" : "") + (form.sp == 1 && form.cfg == 2 ? std::string() : "sp" + std::to_string(form.sp));
 }
@@ -104,7 +105,7 @@ std::vector<std::vector<int>> cluster_groups(int gpus, const std::vector<int>& d
     std::vector<std::vector<int>> groups;
     std::set<int> seen;
     for (int degree : degrees) {
-        if (!power_of_two(degree)) throw std::invalid_argument("SP degree must be a power of two");
+        if (!supported_degree(degree)) throw std::invalid_argument("unsupported Wan SP degree");
         if (degree > gpus || !seen.insert(degree).second) continue;
         for (int start = 0; start + degree <= gpus; start += degree) {
             std::vector<int> group(degree);
@@ -415,7 +416,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     for (const auto& form : forms) if (std::find(degrees.begin(), degrees.end(), form.degree()) == degrees.end()) degrees.push_back(form.degree());
     if (cluster_groups(gpus, degrees).empty()) throw std::invalid_argument("no SP group fits the cluster");
     // Every aligned group stays addressable: a class minimum can exceed the policy's degrees.
-    const auto groups = cluster_groups(gpus, {1, 2, 4, 8});
+    const auto groups = cluster_groups(gpus, {1, 2, 3, 4, 6, 8});
     const int quantum_blocks = int_field(options, "quantum_blocks", 4);
     // Optional time target: blocks per quantum follow the class and parallel form,
     // so a preemption check happens about every quantum_ms of GPU work.
@@ -455,6 +456,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     auto ceil_div = [](int a, int b) { return (a + b - 1) / b; };
     // Latent-frame chunks per decode quantum (0: the decode is one quantum).
     auto decode_frames = [&](const std::string& klass) {
+        if (bool_field(options, "async_rank0_decode", policy.v5)) return 0;
         int frames = int_field(options, "decode_chunk_frames", 0, 0);
         if (cost.decode_chunks(klass) > 1 && quantum_ms > 0 && bool_field(options, "chunked_decode", true))
             frames = std::max(1, static_cast<int>(std::floor(quantum_ms / cost.chunk_ms(klass))));
@@ -588,7 +590,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         const auto klass = r->at("class").get<std::string>();
         const int best = r->at("kind") == "image" ? 1 : std::min(std::max(widest, int_field(cost.klass(klass), "min_degree", 1)), gpus);
         int degree = best;
-        while (degree > 1 && !power_of_two(degree)) --degree;
+        while (degree > 1 && !supported_degree(degree)) --degree;
         const auto group = group_of(*r);
         const bool mid_step = r->value("prepared", false) && int_field(*r, "blocks_done", 0, 0) > 0;
         const Form form = r->at("kind") == "image" ? Form{} : mid_step ? form_of(*r, group) : form_for(klass, degree);
@@ -782,6 +784,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                 Json assignment = {{"request_id", id}, {"group", current}, {"degree", form.degree()}, {"form", form_name(form)},
                                    {"quantum", video_quantum(klass, form, sp_groups(form), &current)},
                                    {"resize", false}, {"reason", "resume"}};
+                if (r.value("cfg_folded", false)) assignment["cfg_folded"] = true;
                 if (policy.approx) {
                     double threshold = 0.0;
                     for (double tau : cache_thresholds) {
@@ -988,10 +991,9 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             }
         }
         if (chosen.empty()) continue;
-        const double cfg_fold_ratio = number_field(options, "cfg_fold_start_ratio", policy.v5 ? 0.65 : 1.0);
-        const bool cfg_folded = policy.v5 && int_field(r, "steps_done", 0, 0) >= static_cast<int>(std::ceil(cfg_fold_ratio * steps))
-                                && int_field(r, "steps_done", 0, 0) < steps - 1;
-        if (cfg_folded && chosen.size() >= 2 && others_waiting) {
+        const bool cfg_folded = policy.v5 && r.value("cfg_fold_eligible", false)
+                                && int_field(r, "steps_done", 0, 0) < steps;
+        if (cfg_folded && chosen.size() >= 2) {
             const int half = static_cast<int>(chosen.size()) / 2;
             if (half >= min_degree) chosen.resize(half);
         }
@@ -1012,7 +1014,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         // Request-level interleaving: a waiting video at a step boundary joins this one on the
         // group when the pair's step is cheaper than the two in sequence and both still make
         // their deadlines at the pair's pace (or neither would alone).
-        if (pairing && others_waiting && cost.pair_overlap() > 0 && form.sp >= 2) {
+        if (!cfg_folded && pairing && others_waiting && cost.pair_overlap() > 0 && form.sp >= 2) {
             for (std::size_t j = index + 1; j < rows.size(); ++j) {
                 const Json& q = *rows[j];
                 if (q.at("kind") != "video" || taken.count(&q) || pair_of.count(&q)) continue;

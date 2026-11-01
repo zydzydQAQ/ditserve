@@ -90,7 +90,18 @@ Json simulate_cluster(const Json& config) {
         Json busy_flags = Json::array();
         for (bool flag : busy) busy_flags.push_back(flag);
         Json requests = Json::array();
-        for (const auto& row : rows) if (row.at("status") == "waiting" || row.at("status") == "suspended") requests.push_back(row);
+        for (const auto& row : rows) {
+            if (row.at("status") != "waiting" && row.at("status") != "suspended") continue;
+            Json view = row;
+            if (options.contains("cfg_fold_eligible_from_step") && row.at("kind") == "video") {
+                const auto klass = row.at("class").get<std::string>();
+                const int steps = int_field(row, "steps_total", int_field(cost.klass(klass), "steps", 0), 1);
+                const int start = int_field(options, "cfg_fold_eligible_from_step", steps, 0);
+                view["cfg_fold_eligible"] = int_field(row, "steps_done", 0, 0) >= start
+                                            && int_field(row, "steps_done", 0, 0) < steps - 1;
+            }
+            requests.push_back(view);
+        }
         if (!requests.empty() && std::find(busy.begin(), busy.end(), false) != busy.end()) {
             ++plans;
             int sp_running = 0;
@@ -127,7 +138,16 @@ Json simulate_cluster(const Json& config) {
                 else if (quantum == "finish") {
                     blocks = assignment.value("decode_frames", cost.decode_chunks(klass) - row.value("decode_done", 0));
                     const bool async_decode = bool_field(options, "async_rank0_decode", policy == "heterodit_v5");
-                    duration += blocks * cost.chunk_ms(klass) * (async_decode ? 0.15 : 1.0);
+                    double async_scale = 1.0;
+                    if (async_decode) {
+                        if (!cost.klass(klass).contains("async_decode_scale") && !options.contains("async_decode_scale"))
+                            throw std::invalid_argument("async decode simulation requires an explicit measured scale");
+                        async_scale = number_field(cost.klass(klass), "async_decode_scale",
+                                                   number_field(options, "async_decode_scale", 1.0));
+                        if (async_scale <= 0.0 || async_scale > 1.0)
+                            throw std::invalid_argument("async decode scale must be in (0, 1]");
+                    }
+                    duration += blocks * cost.chunk_ms(klass) * async_scale;
                 }
                 else {
                     const int remaining = cost.blocks_per_step(klass) - row.at("blocks_done").get<int>();
@@ -154,7 +174,15 @@ Json simulate_cluster(const Json& config) {
                         if (assignment.value("pair_resize", false)) { duration += cost.resize_ms(); ++resizes; }
                         duration += blocks * cost.pair_ms(klass, oklass, form, form.sp_total() >= 2 ? sp_groups : 1, &group) / cost.blocks_per_step(klass);
                     } else {
-                        const double fold_scale = (cfg_folded && form.cfg == 1) ? 0.52 : 1.0;
+                        double fold_scale = 1.0;
+                        if (cfg_folded && form.cfg == 1) {
+                            if (!cost.klass(klass).contains("cfg_fold_step_scale") && !options.contains("cfg_fold_step_scale"))
+                                throw std::invalid_argument("CFG-fold simulation requires an explicit measured scale");
+                            fold_scale = number_field(cost.klass(klass), "cfg_fold_step_scale",
+                                                      number_field(options, "cfg_fold_step_scale", 1.0));
+                            if (fold_scale <= 0.0 || fold_scale > 1.0)
+                                throw std::invalid_argument("CFG-fold scale must be in (0, 1]");
+                        }
                         duration += blocks * cost.block_ms(klass, form, form.sp_total() >= 2 ? sp_groups : 1, &group, cache_threshold) * fold_scale;
                     }
                 }
@@ -234,6 +262,7 @@ Json simulate_cluster(const Json& config) {
                     int blocks = item.at("blocks_done").get<int>() + it->blocks;
                     if (blocks >= cost.blocks_per_step(iklass)) { blocks = 0; item["steps_done"] = item.at("steps_done").get<int>() + 1; }
                     item["blocks_done"] = blocks; item["prepared"] = true;
+                    item["cfg_folded"] = it->assignment.value("cfg_folded", false);
                     item["group"] = it->assignment.at("group"); item["form"] = form_name(form_of(it->assignment)); item["status"] = "suspended";
                     // A pair stopped inside a step resumes together; at a step boundary it dissolves.
                     if (members.size() > 1 && blocks > 0) item["pair"] = rows[members[member == members[0] ? 1 : 0]].at("request_id");
