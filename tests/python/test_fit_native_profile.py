@@ -48,6 +48,8 @@ class FitNativeProfileTest(unittest.TestCase):
         self.assertEqual(profile["classes"]["wan22-preflight"]["step_compute_ms"], 500.0)
         self.assertTrue(all(value == 2 for value in profile["source"]["steady_samples"].values()))
         self.assertEqual(profile["provenance"], "mixed")
+        self.assertIn("cfg2sp3", profile["classes"]["wan22-preflight"]["forms"])
+        self.assertEqual(profile["source"]["execution_cost_mode"], "measured_form_table_with_analytical_fallback")
         self.assertNotIn("groups", profile["links"])
         self.assertNotIn("sp_overlap", profile["links"]["2"])
 

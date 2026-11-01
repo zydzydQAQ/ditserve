@@ -164,6 +164,16 @@ int main() {
         near(cost.step_ms("video", parse_form("sp2")), cost.step_ms("video", 2));
         near(cost.remaining_ms(video("v", 1e9), parse_form("cfg2")), 4 * 501.1 + 100);
         rejects([&] { cost.step_ms("video", Form{3, 1}); });
+        Json measured = prof;
+        measured["classes"]["video"]["forms"]["cfg2sp3"]["step_ms"] = 123;
+        measured["links"]["3"] = {{"gbps", 15}, {"latency_ms", 0.1}};
+        const ClusterCost measured_cost(measured);
+        near(measured_cost.step_ms("video", parse_form("cfg2sp3")), 123);
+        near(measured_cost.block_ms("video", parse_form("cfg2sp3")), 12.3);
+        require(measured_cost.step_ms("video", parse_form("cfg2sp3"), 2) != 123, "concurrent groups use analytical fallback");
+        require(measured_cost.step_ms("video", parse_form("cfg2sp3"), 1, nullptr, 0.16) != 123, "cache uses analytical fallback");
+        Json bad_measured = prof; bad_measured["classes"]["video"]["forms"]["sp1"]["step_ms"] = -1;
+        rejects([&] { ClusterCost{bad_measured}; });
         // Interleaved branches hide part of the shorter term; a CFG half has no partner branch.
         Json overlapped = prof; overlapped["sp_overlap"] = 1;
         near(ClusterCost(overlapped).step_ms("video", 2), 500 + 1);

@@ -170,6 +170,10 @@ def build_profile(record, runtime_facts, model_name):
         },
         "links": {},
     }
+    profile["classes"][class_name]["forms"] = {
+        row["policy"].removeprefix("static_"): {"step_ms": row["step_ms"]}
+        for row in videos
+    }
     for degree in (2, 3, 4, 6, 8):
         profile["links"][str(degree)] = {
             "gbps": bandwidth_inf * degree / (degree + gamma),
@@ -191,6 +195,7 @@ def build_profile(record, runtime_facts, model_name):
         "held_out_mean_relative_error_pct": mean(held_out),
         "held_out_max_relative_error_pct": max(held_out),
         "predictions": predictions,
+        "execution_cost_mode": "measured_form_table_with_analytical_fallback",
         "method": "single constrained saturation model fitted once; no per-form bandwidth or overlap overrides",
     }
     return profile

@@ -159,6 +159,13 @@ ClusterCost::ClusterCost(const Json& profile) : profile_(profile) {
         number_field(row, "step_compute_ms", 0, true); number_field(row, "finish_ms");
         number_field(row, "prepare_ms"); number_field(row, "comm_mb_per_step"); number_field(row, "collectives_per_step");
         number_field(row, "cfg_exchange_mb"); number_field(row, "resume_ms");
+        if (row.contains("forms")) {
+            if (!row.at("forms").is_object()) throw std::invalid_argument("forms must map parallel-form names to measured costs");
+            for (auto entry = row.at("forms").begin(); entry != row.at("forms").end(); ++entry) {
+                parse_form(entry.key());
+                number_field(entry.value(), "step_ms", 0, true);
+            }
+        }
     }
     efficiency_ = number_field(profile, "sp_efficiency", 1, true);
     if (efficiency_ > 1) throw std::invalid_argument("sp_efficiency must be in (0, 1]");
@@ -235,6 +242,15 @@ ClusterCost::Terms ClusterCost::terms(const std::string& name, const Form& form,
     };
     const double cfg = form.cfg, sp = form.sp, ring = form.ring, sp_tot = form.sp_total();
     Terms t;
+    if (cache_threshold == 0.0 && sp_groups <= 1 && row.contains("forms")) {
+        const auto& measured = row.at("forms");
+        const auto key = form_name(form);
+        if (measured.is_object() && measured.contains(key)) {
+            t.compute = number_field(measured.at(key), "step_ms", 0, true);
+            t.blocks = block_overhead_ms_ * blocks_per_step(name) / form.cfg;
+            return t;
+        }
+    }
     t.compute = number_field(row, "step_compute_ms", 0, true) / (cfg * sp_tot * efficiency_);
     if (form.sp > 1) {
         const auto& link = link_of(form.sp);
