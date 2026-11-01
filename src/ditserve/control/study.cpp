@@ -614,7 +614,8 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     // same worker; SP workers hold one request inside a solver step at a time.
     if(transport!="pinned"&&bool_field(options,"pin_started",false))throw std::invalid_argument("pin_started needs pinned transport");
     if(transport=="pinned"){
-        if(policy.rfind("static_",0)==0&&policy!="static_sp1"&&policy!="static_partition")throw std::invalid_argument("pinned cluster workers support SP1 only");
+        const bool fixed=(policy.rfind("static_",0)==0&&policy!="static_partition")||(policy.rfind("block_",0)==0&&policy!="block_elastic");
+        if(fixed&&policy!="static_sp1"&&policy!="block_sp1")throw std::invalid_argument("pinned cluster workers support SP1 only");
         for(const auto& form:options.value("forms",Json::array()))if(parse_form(form.get<std::string>()).degree()!=1)
             throw std::invalid_argument("pinned transport cannot execute the requested parallel forms");
         for(const auto& degree:options.value("degrees",Json::array()))if(degree!=1)
@@ -677,7 +678,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             const auto quanta=capabilities.value("quanta",Json::array());
             const auto migration=capabilities.value("migration",Json::array());
             const auto degrees=capabilities.value("parallel",Json::object()).value("sp_degrees",Json::array());
-            const bool blocks=policy=="block_elastic"||policy=="heterodit_exact"||policy=="knapsack_dp"
+            const bool blocks=policy.rfind("block_",0)==0||policy=="heterodit_exact"||policy=="knapsack_dp"
                 ||policy=="heterodit_v5"||policy=="ablation_tiered"||policy=="ablation_2d_usp";
             if(blocks&&std::find(quanta.begin(),quanta.end(),"block")==quanta.end())
                 throw std::invalid_argument("block/elastic policy requires block execution on every Wan worker");

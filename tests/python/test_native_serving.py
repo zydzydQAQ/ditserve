@@ -93,6 +93,18 @@ class NativeServingTest(unittest.TestCase):
         self.assertEqual(sum(row["output_mode"] == "file" for row in rows), 2)
         self.assertTrue(all(row["output_mode"] == "file" for row in rows if row["request_id"] in ("w0-v0000", "w0-i0000")))
 
+    def test_digest_trace_is_hash_bound_without_quality_files(self):
+        pools = {"image": pool("diffusiondb"), "video": pool("vidprom")}
+        config = native_serving.build_serving_config(
+            "wan22", [f"GPU-{i}" for i in range(8)], profile(), pools,
+            seed=201, load=1.0, pattern="bursty", video_fraction=0.5, count=16,
+            policies=["static_cfg2", "block_cfg2"], forms=["cfg2"], doorbell=True, output_mode="digest",
+        )
+        rows = config["phases"][0]["matrix"]["/workload"][0]
+        self.assertTrue(all(row["output_mode"] == "digest" for row in rows))
+        self.assertEqual(config["phases"][0]["artifact_dependencies"], [])
+        self.assertEqual(config["benchmark"]["output_mode"], "digest")
+
 
 if __name__ == "__main__":
     unittest.main()

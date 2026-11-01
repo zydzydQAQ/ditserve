@@ -16,7 +16,8 @@ FORMS = ["sp1", "cfg2", "sp2", "cfg2sp2", "sp3", "cfg2sp3", "sp4", "cfg2sp4", "s
 
 def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load, pattern,
                          video_fraction, count, policies=None, video_slo_scale=1.5,
-                         image_slo_scale=2.5, quality_per_kind=0, cfg_fold=None, forms=None, doorbell=False):
+                         image_slo_scale=2.5, quality_per_kind=0, cfg_fold=None, forms=None, doorbell=False,
+                         output_mode="check"):
     policies = policies or DEFAULT_POLICIES
     forms = forms or FORMS
     if model == "wan21":
@@ -25,6 +26,8 @@ def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load,
         raise ValueError("policies must be nonempty and unique")
     if not forms or len(set(forms)) != len(forms):
         raise ValueError("forms must be nonempty and unique")
+    if output_mode not in ("check", "digest") or quality_per_kind and output_mode != "check":
+        raise ValueError("digest trace mode requires quality_per_kind=0")
     if any(name in ("heterodit_approx", "heterodit_v3") for name in policies):
         raise ValueError("native serving's CFG-fold evaluation supports only heterodit_v5")
     approximate = "heterodit_v5" in policies
@@ -68,7 +71,7 @@ def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load,
     if pattern == "bursty":
         window.update(bursts=2, burst_active_fraction=0.25)
     trace = build_trace(classes, prompt_pools, [window], slots=len(gpu_uuids), seed=seed,
-                        quality_per_kind=quality_per_kind)
+                        quality_per_kind=quality_per_kind, output_mode=output_mode)
     validate_trace(trace)
     provenance = {
         "path": "generated:diffusiondb+vidprom",
@@ -128,6 +131,7 @@ def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load,
             "pattern": pattern,
             "video_fraction": video_fraction,
             "count": count,
+            "output_mode": output_mode,
             "trace": provenance,
             "policies": policies,
         },
@@ -153,6 +157,7 @@ def main():
     parser.add_argument("--curvature", action="store_true")
     parser.add_argument("--fold-steps", help="comma-separated fixed CFG folding steps")
     parser.add_argument("--doorbell", action="store_true")
+    parser.add_argument("--output-mode", choices=["check", "digest"], default="check")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     if args.curvature and args.fold_steps:
@@ -187,7 +192,7 @@ def main():
         pattern=args.pattern, video_fraction=args.video_fraction, count=args.count,
         policies=policies, video_slo_scale=args.video_slo_scale,
         image_slo_scale=args.image_slo_scale, quality_per_kind=args.quality_per_kind,
-        cfg_fold=cfg_fold, forms=args.forms.split(","), doorbell=args.doorbell,
+        cfg_fold=cfg_fold, forms=args.forms.split(","), doorbell=args.doorbell, output_mode=args.output_mode,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("x", encoding="utf-8") as stream:

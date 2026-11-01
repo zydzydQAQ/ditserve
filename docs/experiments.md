@@ -39,7 +39,7 @@ worker 以完整 GPU UUID 绑定设备，模型使用 `cuda:0`。显式 `actions
 
 可使用冻结 `workload` 或确定性 `generator`（offline_all、steady、Poisson、bursty、Gamma）。`evaluation/workloads.py` 提供公开 prompt pool 的冻结混合 trace，manifest 记录来源和哈希；它不是生产日志。
 
-`output_mode` 为 `file`、`digest` 或 `check`。无下游质量评测的 serving 实验使用 `check`，质量子集显式保留输出并登记依赖。warmup 在到达时钟前完成，模型加载和首次 kernel 不计入首批请求；所有注册 GPU 从阶段开始到清理确认均计费。
+`output_mode` 为 `file`、`digest` 或 `check`。无下游质量评测的 serving 实验使用 `check`，质量子集显式保留输出并登记依赖。`block_<form>` 与对应 `static_<form>` 的受控对照使用 `digest`，由 `benchmarks/native_exact.py` 检查全部视频哈希、形态和真实停止记录；这不是跨 SP 或 FP32 的等价声明。warmup 在到达时钟前完成，模型加载和首次 kernel 不计入首批请求；所有注册 GPU 从阶段开始到清理确认均计费。
 
 ## 原生 cluster 策略
 
@@ -47,6 +47,7 @@ worker 以完整 GPU UUID 绑定设备，模型使用 `cuda:0`。显式 `actions
 | --- | --- |
 | `static_sp1/2/3/4/6/8` | 固定 SP，整步执行，开始后留在原组 |
 | `static_cfg2`、`static_cfg2sp2/3/4` | 固定 CFG/SP 形态 |
+| `block_<form>`（如 `block_cfg2`） | 与对应静态形态相同的固定布局，但按 block quantum 并允许子步抢占；用于受控 A/B，不改变形态 |
 | `step_elastic` | step 边界弹性放置，GenServe-like，不是完整 GenServe 复现 |
 | `round_elastic` | 固定 round 边界弹性放置，TetriServe-like |
 | `block_elastic` | block quantum、lazy preemption 和 step 边界换组 |

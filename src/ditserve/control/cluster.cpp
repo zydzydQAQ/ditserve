@@ -31,6 +31,11 @@ Policy parse(const std::string& name) {
         try { policy.fixed_form = parse_form(name.substr(7)); }
         catch (const std::invalid_argument&) { throw std::invalid_argument("unknown cluster policy: " + name); }
         policy.fixed_degree = policy.fixed_form.degree();
+    } else if (name.rfind("block_", 0) == 0 && name != "block_elastic") {
+        try { policy.fixed_form = parse_form(name.substr(6)); }
+        catch (const std::invalid_argument&) { throw std::invalid_argument("unknown cluster policy: " + name); }
+        policy.fixed_degree = policy.fixed_form.degree();
+        policy.blocks = true;
     } else if (name == "vanilla_xdit") {
         policy.fixed_form = parse_form("sp4");
         policy.fixed_degree = 4;

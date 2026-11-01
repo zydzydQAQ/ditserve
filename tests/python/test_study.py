@@ -525,6 +525,21 @@ class NativeStudyTest(unittest.TestCase):
         # The doorbell files are removed with the cell.
         self.assertEqual(list((self.root / "shm-doorbell").glob("doorbell-*")), [])
 
+    def test_fixed_cfg2_block_preemption_preserves_mock_outputs(self):
+        phase = self.cluster_phase("block_cfg2", gpus=2, output_mode="digest", options=dict(
+            sp_transport="export", doorbell=True, transfer_dir=str(self.root / "shm-fixed-cfg2")))
+        value = self.run_study(self.config([phase], workers=self.cluster_workers(gpus=2)), name="fixed-cfg2-block")
+        self.assert_completed(value)
+        cell = value["phases"][0]["cells"][0]
+        videos = [row for row in cell["requests"] if row["kind"] == "video"]
+        self.assertTrue(all(row["forms"] == ["cfg2"] for row in videos))
+        self.assertTrue(any(row.get("preemption_stop_samples") for row in videos))
+        reference = self.run_study(self.config([self.cluster_phase("static_cfg2", gpus=2, output_mode="digest")],
+                                               workers=self.cluster_workers(gpus=2)), name="fixed-cfg2-step")
+        baseline = {row["request_id"]: row["outputs"][-1]["output"]["sha256"]
+                    for row in reference["requests"] if row["kind"] == "video"}
+        self.assertEqual({row["request_id"]: row["outputs"][-1]["output"]["sha256"] for row in videos}, baseline)
+
     def test_cluster_export_transport_runs_cfg_forms(self):
         # Only CFG pairs beyond SP1: the two videos take a pair each and the ranks receive cfg=2.
         phase = self.cluster_phase("block_elastic", options=dict(sp_transport="export", forms=["sp1", "cfg2"]))

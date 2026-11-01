@@ -291,8 +291,8 @@ class BlockExecutorTests(unittest.TestCase):
         executor.advance(continuation, 30, cfg_folded=True)
         self.assertFalse(continuation.stepper.should_fold(2, 4))
         self.assertEqual(continuation.stepper.export_state()[0]["config"]["max_folded_steps"], 1)
-        executor.advance(continuation, 30, cfg_folded=False)
-        executor.advance(continuation, 30, cfg_folded=False)
+        executor.advance(continuation, 60, cfg_folded=False)
+        executor.advance(continuation, 60, cfg_folded=False)
         self.assertEqual(continuation.stepper.stats["full_cfg_steps"], 3)
         self.assertEqual(continuation.stepper.stats["folded_cfg_steps"], 1)
 

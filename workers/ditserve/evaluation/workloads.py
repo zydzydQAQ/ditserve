@@ -92,7 +92,7 @@ def _pool_manifest(pool):
     return dict(kind=pool.get("kind"), source=pool.get("source"), selection=pool.get("selection"))
 
 
-def build_trace(classes, prompt_pools, windows, *, slots, seed, quality_per_kind=0):
+def build_trace(classes, prompt_pools, windows, *, slots, seed, quality_per_kind=0, output_mode="check"):
     """Freeze deadlines without changing the independent arrival/tier RNG streams.
 
     Absolute class.slo_ms takes precedence even for fast videos. Otherwise the
@@ -104,6 +104,10 @@ def build_trace(classes, prompt_pools, windows, *, slots, seed, quality_per_kind
         raise ValueError("slots must be a positive integer")
     if type(seed) is not int or type(quality_per_kind) is not int or quality_per_kind < 0:
         raise ValueError("seed must be an integer and quality_per_kind nonnegative")
+    if output_mode not in ("check", "digest"):
+        raise ValueError("trace output_mode must be check or digest")
+    if quality_per_kind and output_mode != "check":
+        raise ValueError("quality outputs use file mode and cannot be combined with trace digest mode")
     if not isinstance(classes, dict) or not classes:
         raise ValueError("classes must be a nonempty mapping")
     for name, klass in classes.items():
@@ -249,7 +253,7 @@ def build_trace(classes, prompt_pools, windows, *, slots, seed, quality_per_kind
                            slo_source=slo_parameters["source"], effective_slo_scale=slo_parameters["effective_slo_scale"],
                            deadline_ms=arrival + slo, kind=kind, **{"class": name}, spec=spec,
                            dataset=prompt_pools[kind].get("kind"), dataset_sample_id=sample["sample_id"],
-                           output_mode="file" if quality else "check", trace_seed=seed)
+                           output_mode="file" if quality else output_mode, trace_seed=seed)
                 if tier is not None:
                     row["tier"] = tier
                 if "worker" in klass:
