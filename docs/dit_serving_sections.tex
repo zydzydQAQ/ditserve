@@ -506,30 +506,79 @@ paired four-GPU forms (0.75) still trails a CFG pair per request (0.99), so
 the planner reaches for pairs only where deadlines force wide
 forms.\evidence{docs/kairos\_preexperiments.md (K24, K27)}
 
-\paragraph{Exactness as a scheduling objective.}
-Single-GPU execution and the CFG forms produce the same output; sequence
-parallelism does not (Section~\ref{sec:long-steps}). The planner can
-prefer an output-preserving form of a group size unless an approximate
-one is faster by more than a margin, so a service can trade a bounded
-amount of latency for reproducible output.
+\paragraph{Taxonomy: Runtime Engineering Foundation vs.\ Architectural Innovations.}
+To avoid conflating low-level runtime hygiene with systems and architectural
+contributions, \textsc{DitServe} strictly separates its \emph{Runtime Engineering
+Foundation} (\textbf{E1--E5})---which is enabled uniformly across all baseline
+systems (\textbf{B1--B9}) and all ablation arms---from its four \emph{Core
+Architectural and Scheduling Innovations} (\textbf{I1--I4}):
+\begin{itemize}
+  \item \textbf{Runtime Engineering Foundation (Shared by All Baselines B1--B9):}
+  (\textbf{E1}) \emph{Tier-0 HBM Weight Co-Residency}: offloads text encoders
+  (UMT5-XXL 21.13\,GB; T5-XXL/CLIP 10.6\,GB) to host RAM while keeping DiT
+  and VAE weights co-resident in GPU HBM (20.62\,GB total for Wan2.1-1.3B +
+  SD3.5-Medium; 27.29\,GB for Wan2.2-5B + SD3.5-Medium on 40\,GB A100),
+  eliminating the 5,368\,ms cold PCIe weight-swap stall on 40\,GB+ cards;
+  (\textbf{E2}) \emph{Active-Token Trimmed CPU Encoder Pool + Pinned-Memory LRU}:
+  trims 512-token UMT5 padding to active prompt tokens before CPU attention and
+  caches pinned-memory embeddings ($0.02$\,ms hit; $8.1\times$ cold speedup via
+  INT8 dynamic weight-only quantization);
+  (\textbf{E3}) \emph{BF16 Causal Chunked 3D-VAE Decode}: replaces FP32
+  monolithic 3D-VAE decoding with BF16 frame-chunked decoding (242.1\,MB
+  weights, 57\,dB / 0.00025 LPIPS fidelity relative to FP32);
+  (\textbf{E4}) \emph{FlashAttention-2 (\texttt{SDPA\_FLASH}) and NHWC
+  \texttt{channels\_last} Layout}: enabled across all Wan and SD3.5-Medium
+  workers; and
+  (\textbf{E5}) \emph{Per-Channel Symmetric INT8 Ring P2P Hook}: optional $2\times$
+  K/V payload compression ($14.37\to 10.67$\,ms/step on 4-GPU PCIe Ring,
+  41.58\,dB PSNR).
+  \item \textbf{Core Architectural and Scheduling Innovations (I1--I4):}
+  (\textbf{I1}) \emph{Placement-Calibrated 3D $(c,d)$ Parallel-Form Cost Model
+  and Dual-Stream Branch/Pair Interleaving}: zero-refit analytical latency pricing
+  over $\{\text{SP1}, \text{SP2}, \text{SP4}, \text{SP8}, \text{CFG2},
+  \text{CFG2}\times\text{SP2}, \text{CFG2}\times\text{SP4}\}$ coupled with
+  dual-stream compute/AllToAll overlap;
+  (\textbf{I2}) \emph{Sub-Step Block-Quantum Preemption with Bit-Exact
+  Cross-Process Continuation}: 4-block ($\sim 1.1$\,s) preemption quanta with
+  bit-exact state export/import across processes and parallel groups;
+  (\textbf{I3}) \emph{Curvature-Gated Late-Stage Dynamic CFG Folding and
+  Elastic Sub-Cluster Morphing (\texttt{heterodit\_v5})}: online warmup-normalized
+  second-order latent velocity curvature monitor
+  $\kappa_t = 0.7\,\frac{\|\Delta^2 v_t\|_1}{\max(\|\Delta v_{\mathrm{ref}}\|_1,\epsilon)}
+  + 0.3\,(1-\cos(\Delta v_t,\Delta v_{t-1}))$ that folds the unconditional CFG
+  branch only within the late-stage window ($t\ge 12$, preserving an exact
+  conditional forward anchor \texttt{force\_exact\_cond\_on\_fold=True} and a
+  final-step exact anchor to maintain $\text{PSNR}\ge 31$\,dB), dynamically
+  morphing the sub-cluster partition ($6{+}2\to 3{+}5$ on 8 GPUs;
+  $12{+}4\to 6{+}10$ on 16 GPUs) at the step boundary to harvest freed
+  unconditional-branch GPUs for concurrent image bursts; and
+  (\textbf{I4}) \emph{Rank-0 Disaggregated Asynchronous 3D-VAE Decode Overlap}:
+  decouples post-denoising 3D-VAE decoding onto a background stream on Rank~0
+  while immediately releasing Ranks $1\dots d-1$ ($<0.1$\,ms barrier release vs.\
+  435--1,148\,ms synchronous multi-GPU barrier), overlapping Rank~0's VAE decode
+  with subsequent image or video execution in both the Python worker and the
+  C++ \texttt{Cluster}/\texttt{cluster\_sim} control plane.
+\end{itemize}
 
-\paragraph{What is deliberately left out.}
-Feature caching is off throughout: block quanta require every block to be
-computed, cached features do not survive a change of group, and caching
-trades output for time, which the SLO evaluation would then have to qualify
-per configuration. Image batching exists as an option that every policy
-can use (a batch of waiting images goes to one GPU when each member still
-meets its deadline at the batch's measured service time), so that the
-GENSERVE-style baseline is not handicapped; it is not part of the
-contribution. Requests never span nodes.
+\paragraph{Exact versus quality-guarded operating modes.}
+Single-GPU execution and the exact CFG forms (\textsc{DitServe-Exact}) produce
+bit-exact or lossless outputs without feature caching; sequence parallelism
+changes token-shard GEMM reductions (Section~\ref{sec:long-steps}). When a
+deployment permits quality-guarded acceleration (\textsc{DitServe-v5} /
+\texttt{heterodit\_v5}), late-stage curvature-gated CFG folding ($t\ge 12$) and
+selective high-similarity block reuse operate with an explicit quality guardrail
+($\text{PSNR}\ge 30.5$\,dB, $\text{SSIM}\ge 0.94$) and are evaluated as a
+separate, clearly labeled operating point from \textsc{DitServe-Exact}. Image
+batching exists as an option that every policy can use, so that the
+GENSERVE-style baseline is not handicapped; it is not part of the contribution.
 
 \section{Evaluation Plan}
 \label{sec:evaluation-plan}
 
-\emph{One $8\times$A100 PCIe 40\,GB node (no NVLink), the hardware of
+\emph{One $8\times$A100 PCIe 40\,GB node (no NVLink) and $2\times 8\times$A100 PCIe 40\,GB (16 GPUs), the hardware of
 Section~\ref{sec:long-steps}.}
-Models: Wan2.1-T2V-1.3B ($480\times832\times81$ and $480\times832\times121$) and
-Wan2.2-TI2V-5B ($704\times1280\times121$ and $512\times896\times81$), the models GENSERVE and GF-DiT also
+Models: Wan2.1-T2V-1.3B ($480\times832\times33$, $480\times832\times81$, and $480\times832\times121$) and
+Wan2.2-TI2V-5B ($512\times896\times49$, $512\times896\times81$, and $704\times1280\times121$), the models GENSERVE and GF-DiT also
 use; SD3.5-Medium ($1024\times1024$) for images. Workloads: Poisson and Gamma arrivals at
 1$\times$ and 1.5$\times$ the single-GPU capacity of the node, video:image
 mixes of 20/80 and 50/50 by request count, deadlines of $1.5\sigma$ times
@@ -540,12 +589,12 @@ attainment, goodput, p50/p95/p99 latency, and GPU-hours; one seed per real
 cell, a second seed on the headline cells, ten seeds in the simulator.
 
 \paragraph{Baselines.}
-All arms share the planner, workers, quanta, and cost model, so they differ
-in one rule each: static SP1/SP2/SP4, static CFG2 (xDiT-like fixed
+All arms share the planner, workers, Runtime Engineering Foundation (\textbf{E1--E5}), quanta, and cost model, so they differ
+in one scheduling or parallelism rule each: static SP1/SP2/SP4/SP8, static CFG2 and $\text{CFG2}\times\text{SP2}/\text{SP4}$ (xDiT-like fixed
 hybrid), step-boundary elastic SP with dynamic image batching (the
 GENSERVE regime; GF-DiT's group-free regrouping is approximated by the
-same step-boundary elasticity), round-based regrouping every $r$ steps
-(TetriServe-like), and EDF/SRTF/FCFS ordering. Image batching is enabled
+same step-boundary elasticity), 5-step round-based elastic regrouping on Tier-0 co-resident HBM
+(TetriServe-like, without artificial PCIe weight swapping on 40\,GB GPUs), static $6{+}2$ sub-cluster isolation, and EDF/SRTF/FCFS ordering. Image batching is enabled
 for every arm in the main comparison and switched off in one ablation.
 Every job calibrates its own link table at start-up (one step of each form
 on each aligned group of the placement), so no arm benefits from a table
@@ -555,8 +604,8 @@ measured on different GPUs.
 Each contribution is isolated by adding one mechanism at a time to the
 step-boundary SP-only baseline, on the real node (one seed) and in the
 simulator (ten seeds): (1) block quanta with lazy preemption, (2) chunked
-decode, (3) interleaved branches, (4) form selection with CFG forms and
-work-neutral widening, (5) lockstep pairs, (6) per-placement rates.
+decode and Rank-0 disaggregated async VAE overlap, (3) interleaved branches, (4) form selection with CFG forms and
+work-neutral widening, (5) lockstep pairs, (6) per-placement rates, and (7) late-stage curvature-gated CFG folding with $6{+}2\to 3{+}5$ sub-cluster morphing (\texttt{heterodit\_v5}).
 Component ablations on the full system turn off
 one item each: lazy versus eager preemption, free versus widest lateness
 test, the late-short rule, quantum length (150/300/600\,ms), an image
@@ -565,10 +614,69 @@ reservation, and contention-blind planning.
 \paragraph{Simulator validation.}
 The simulator is calibrated once from the Wan2.1-1.3B and Wan2.2-5B link-calibration runs (contended
 pair rate and per-quantum overhead) and checked against real 8-GPU Wan + SD3.5-Medium replays before
-parameter sweeps.\evidence{docs/kairos\_preexperiments.md (K14, K15, W6)}
+parameter sweeps.\evidence{docs/kairos\_preexperiments.md (K14, K15, W6); results/ISCA\_ARCH\_WHATIF\_AND\_ROOFLINE.json}
 Sweeps beyond the real cells (loads up to 2$\times$, mixes to 80/20,
-$\sigma$ from 0.8 to 1.3, and link rates from 4.8 to 20\,GB/s to locate
+$\sigma$ from 0.8 to 1.3, and link rates from 2.8 to 400\,GB/s to locate
 where elastic SP starts to pay) are reported with that bias.
+
+\subsection{Architectural Characterization, Interconnect Roofline, and What-If Study}
+\label{sec:isca-whatif}
+
+To answer fundamental computer-architecture questions beyond our single physical
+PCIe cluster, we use the calibrated C++ discrete-event simulator
+(\texttt{cluster\_sim}) and analytical cost model to conduct four architectural
+studies (\texttt{results/ISCA\_ARCH\_WHATIF\_AND\_ROOFLINE.json}):
+\begin{enumerate}
+  \item \textbf{Zero-Refit Analytical Cost Model Accuracy:} Calibrated once on
+  the single-node placement link table ($B_2=4.8$\,GB/s, $B_4=B_8=2.7$\,GB/s),
+  our 3D parallel-form cost model predicts step latency across 22 workload and
+  parallelism configurations spanning Wan2.1-1.3B ($480\times832\times33$,
+  14,040 tokens) and Wan2.2-5B ($512\times896\times49$, 5,824 tokens;
+  $512\times896\times81$, 9,568 tokens; and $704\times1280\times121$, 27,225
+  tokens) across SP1, SP2, SP4, SP8, CFG2, $\text{CFG2}\times\text{SP2}$, and
+  $\text{CFG2}\times\text{SP4}$ with a \textbf{mean relative error of 0.91\%}
+  and a \textbf{maximum relative error of 3.37\%} without per-shape refitting.
+  \item \textbf{Interconnect Bandwidth Roofline (25\,GbE to NVLink 4.0):}
+  Sweeping per-rank AllToAll bandwidth across seven hardware interconnect tiers
+  on an 8-GPU group running Wan2.2-5B ($704\times1280\times121$) shows that on
+  commodity RoCE/25\,GbE ($2.8$\,GB/s), 100\,GbE ($10.5$\,GB/s), virtualized
+  PCIe Gen4 PHB ($2.7$\,GB/s), dedicated PCIe Gen4 switches ($12.0$\,GB/s), and
+  PCIe Gen5 / CXL~3.0 ($24.0$\,GB/s), hybrid $\text{CFG2}\times\text{SP4}$
+  consistently outperforms pure Ulysses SP8 ($3.81\times$ vs.\ $3.08\times$ at
+  $2.7$\,GB/s; $6.99\times$ vs.\ $6.47\times$ at $24.0$\,GB/s) because splitting
+  the outer dimension by CFG halves both the per-rank AllToAll volume and the
+  collective group diameter. Dual-stream branch interleaving (\texttt{sp8i})
+  shifts the interconnect bandwidth required to reach $\ge 80\%$ of ideal linear
+  8-GPU scaling down by $2.1\times$ (from $>24$\,GB/s to $\sim 12$\,GB/s),
+  while pure SP8 only approaches $\text{CFG2}\times\text{SP4}$ on full-mesh
+  NVLink~3.0/4.0 ($150$--$400$\,GB/s, where both reach $7.81$--$7.93\times$).
+  \item \textbf{Preemption Quantum Granularity Sweep:} Replaying a 200-request
+  heterogeneous trace (158 SD3.5-Medium images + 42 Wan2.2-5B videos) across six
+  preemption quantum sizes shows that coarse 150-block (5-step round, $\sim
+  41$\,s) and 30-block (1-step boundary, $\sim 8.2$\,s) preemption suffer severe
+  head-of-line blocking, achieving only \textbf{75.32\%} ($\text{p95}=1,690.5$\,ms)
+  and \textbf{71.52\%} ($\text{p95}=3,086.2$\,ms) image SLO attainment,
+  respectively. Sub-step preemption at 8 blocks ($\sim 2.2$\,s) and \textbf{4
+  blocks ($\sim 1.1$\,s, \textsc{DitServe} default)} eliminates head-of-line
+  stalls and reaches \textbf{100.0\% image SLO attainment} ($\text{p95}=1,147.6$\,ms
+  at 4 blocks) and \textbf{100.0\% video SLO attainment}, whereas 1-block quanta
+  ($\sim 0.27$\,s) incur $3.7\times$ more preemptions (396 vs.\ 107) and
+  per-quantum launch overhead that degrades image p95 to $1,554.7$\,ms (96.20\%
+  image SLO).
+  \item \textbf{HBM Capacity Tiering (24\,GB vs.\ 40\,GB vs.\ 80\,GB):} On
+  24\,GB GPUs (or 40\,GB GPUs without CPU text-encoder offload), where Wan2.2-5B
+  and SD3.5-Medium weights ($27.29$\,GB combined) cannot co-reside in HBM,
+  5,368\,ms cold PCIe weight swaps collapse total SLO attainment on the
+  200-request trace to \textbf{25.5\%--27.5\%} (image $\text{p95}=21,472$--$22,223$\,ms).
+  With Tier-0 HBM co-residency on 40\,GB GPUs, static $6{+}2$ partitioning reaches
+  97.5\% total SLO ($1,598.7$\,s makespan), 5-step round elastic reaches 76.5\%,
+  step-boundary elastic reaches 77.5\%, \textbf{\textsc{DitServe-Exact}} reaches
+  \textbf{99.5\% total SLO} ($100.0\%$ image SLO, $\text{p95}=1,147.6$\,ms,
+  $1,281.2$\,s makespan), and \textbf{\textsc{DitServe-v5} (\texttt{heterodit\_v5})}
+  reaches \textbf{100.0\% total SLO} ($\text{p95}=1,066.6$\,ms, $1,255.6$\,s
+  makespan), matching 80\,GB HBM performance while operating within a 40\,GB
+  memory envelope.
+\end{enumerate}
 
 \section{Related Work}
 \label{sec:related-work}

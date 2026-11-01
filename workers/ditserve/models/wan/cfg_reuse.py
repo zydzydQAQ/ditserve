@@ -36,6 +36,7 @@ class AsymmetricCFGStepper:
         cfg_damping: float = 0.96,
         cfg_vel_alpha: float = 0.15,
         final_step_exact_anchor: bool = True,
+        force_exact_cond_on_fold: bool = True,
         curvature_threshold: Optional[float] = None,
         min_full_cfg_steps: int = 5,
         max_curvature_guard: float = 1.65,
@@ -48,7 +49,7 @@ class AsymmetricCFGStepper:
         self.pre_fold_anchor_step: Optional[int] = (
             min(self.folded_steps) - 1 if self.folded_steps else None
         )
-        self.force_exact_cond_on_fold: bool = True
+        self.force_exact_cond_on_fold: bool = bool(force_exact_cond_on_fold)
         self.cfg_damping = float(cfg_damping)
         self.cfg_vel_alpha = float(cfg_vel_alpha)
         self.final_step_exact_anchor = bool(final_step_exact_anchor)

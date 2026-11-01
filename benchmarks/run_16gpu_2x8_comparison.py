@@ -334,14 +334,13 @@ def main() -> None:
 
         gang16_ring = 2 if (num_heads % 8 == 0) else 4
 
-        # --- 1. B1: Vanilla-xDiT-16GPU (Static 16-GPU Cross-Node Gang FCFS, FP32-VAE, SDPA_MATH) ---
-        wan.runtime.pipe.vae.to(dtype=torch.float32)
+        # --- 1. B1: Vanilla-xDiT-16GPU (Static 16-GPU Cross-Node Gang FCFS, Fair SDPA_FLASH + BF16-VAE) ---
         sync_all(device_str)
         t0 = time.perf_counter()
         st_b1_0 = prep_wan("b16-v0", cache=False)
         wan.advance({"state_id": "b16-v0", "steps": 20, "group": list(range(16)), "epoch": 101, "cfg": 1, "ring": gang16_ring})
         if rank == 0:
-            wan.runtime.decode_chunks(st_b1_0, 5, vae_dtype="float32")
+            wan.runtime.decode_chunks(st_b1_0, 5, vae_dtype="bfloat16")
         sync_all(device_str)
         v0_b1 = now_ms(t0, device_str) - v0_arr
         wan.release({"state_id": "b16-v0"})
@@ -349,89 +348,83 @@ def main() -> None:
         st_b1_1 = prep_wan("b16-v1", cache=False)
         wan.advance({"state_id": "b16-v1", "steps": 20, "group": list(range(16)), "epoch": 102, "cfg": 1, "ring": gang16_ring})
         if rank == 0:
-            wan.runtime.decode_chunks(st_b1_1, 5, vae_dtype="float32")
+            wan.runtime.decode_chunks(st_b1_1, 5, vae_dtype="bfloat16")
         sync_all(device_str)
         v1_b1 = now_ms(t0, device_str) - v1_arr
         wan.release({"state_id": "b16-v1"})
 
         # Wave 1 (8 imgs on 0..7) + Wave 2 (8 imgs on 8..15) run after both videos finish
-        sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [100 + rank], "height": 512, "width": 512, "steps": 12, "attention": "math"})
+        sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [100 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
         sync_all(device_str)
         t_w12 = now_ms(t0, device_str)
         w1_b1, w2_b1 = t_w12 - w1_arr, t_w12 - w2_arr
         # Wave 3 (16 imgs across 0..15)
-        sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [300 + rank], "height": 512, "width": 512, "steps": 12, "attention": "math"})
+        sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [300 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
         sync_all(device_str)
         w3_b1 = now_ms(t0, device_str) - w3_arr
-        wan.runtime.pipe.vae.to(dtype=torch.bfloat16)
         record_16gpu_policy(
-            f"B1: Vanilla-xDiT-16GPU (Static 16-GPU Cross-Node u{16 // gang16_ring}r{gang16_ring} FCFS, FP32-VAE, SDPA_MATH)",
+            f"B1: Vanilla-xDiT-16GPU (Static 16-GPU Cross-Node u{16 // gang16_ring}r{gang16_ring} FCFS, Fair SDPA_FLASH + BF16-VAE)",
             w1_b1, w2_b1, w3_b1, v0_b1, v1_b1,
             notes="16-GPU cross-node FCFS runs Video 0 then Video 1 over Ethernet Ring before serving any of the 32 images.",
         )
 
-        # --- 2. B2: Static-SP1-EDF (16x Independent SP1 Workers, Non-Preemptive EDF, FP32-VAE) ---
+        # --- 2. B2: Static-SP1-EDF (16x Independent SP1 Workers, Non-Preemptive EDF, Fair SDPA_FLASH + BF16-VAE) ---
         sync_all(device_str)
         t0 = time.perf_counter()
         w1_b2 = w2_b2 = w3_b2 = v0_b2 = v1_b2 = 0.0
         if rank == 0:
-            wan.runtime.pipe.vae.to(dtype=torch.float32)
             st_b2_0 = prep_wan("b2-v0", cache=False)
             wan.advance({"state_id": "b2-v0", "steps": 20, "group": [0], "epoch": 110, "cfg": 1, "ring": 1})
-            wan.runtime.decode_chunks(st_b2_0, 5, vae_dtype="float32")
+            wan.runtime.decode_chunks(st_b2_0, 5, vae_dtype="bfloat16")
             torch.cuda.synchronize(device_str)
             v0_b2 = (time.perf_counter() - t0) * 1000.0 - v0_arr
             wan.release({"state_id": "b2-v0"})
-            wan.runtime.pipe.vae.to(dtype=torch.bfloat16)
         elif rank == 8:
             while (time.perf_counter() - t0) * 1000.0 < v1_arr:
                 time.sleep(0.002)
-            wan.runtime.pipe.vae.to(dtype=torch.float32)
             st_b2_1 = prep_wan("b2-v1", cache=False)
             wan.advance({"state_id": "b2-v1", "steps": 20, "group": [8], "epoch": 111, "cfg": 1, "ring": 1})
-            wan.runtime.decode_chunks(st_b2_1, 5, vae_dtype="float32")
+            wan.runtime.decode_chunks(st_b2_1, 5, vae_dtype="bfloat16")
             torch.cuda.synchronize(device_str)
             v1_b2 = (time.perf_counter() - t0) * 1000.0 - v1_arr
             wan.release({"state_id": "b2-v1"})
-            wan.runtime.pipe.vae.to(dtype=torch.bfloat16)
         else:
             while (time.perf_counter() - t0) * 1000.0 < w1_arr:
                 time.sleep(0.002)
             if rank in (1, 2, 3, 4, 9, 10, 11, 12):
-                sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [100 + rank], "height": 512, "width": 512, "steps": 12, "attention": "math"})
+                sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [100 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
                 torch.cuda.synchronize(device_str)
                 w1_b2 = (time.perf_counter() - t0) * 1000.0 - w1_arr
             while (time.perf_counter() - t0) * 1000.0 < w2_arr:
                 time.sleep(0.002)
             if rank in (1, 2, 3, 4, 9, 10, 11, 12):
-                sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [200 + rank], "height": 512, "width": 512, "steps": 12, "attention": "math"})
+                sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [200 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
                 torch.cuda.synchronize(device_str)
                 w2_b2 = (time.perf_counter() - t0) * 1000.0 - w2_arr
             while (time.perf_counter() - t0) * 1000.0 < w3_arr:
                 time.sleep(0.002)
             # 16 images across 14 free GPUs: Ranks 1 and 9 must run 2 images sequentially
-            sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [300 + rank], "height": 512, "width": 512, "steps": 12, "attention": "math"})
+            sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [300 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
             if rank in (1, 9):
-                sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [350 + rank], "height": 512, "width": 512, "steps": 12, "attention": "math"})
+                sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [350 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
             torch.cuda.synchronize(device_str)
             w3_b2 = (time.perf_counter() - t0) * 1000.0 - w3_arr
         sync_all(device_str)
         record_16gpu_policy(
-            "B2: Static-SP1-EDF (16x Independent SP1 Workers, Non-Preemptive EDF, FP32-VAE)",
+            "B2: Static-SP1-EDF (16x Independent SP1 Workers, Non-Preemptive EDF, Fair SDPA_FLASH + BF16-VAE)",
             *collect_max(device_str, w1_b2, w2_b2, w3_b2, v0_b2, v1_b2),
             notes="Ranks 0 and 8 run unpreemptible SP1 videos; 16-image Wave 3 overflows the 14 remaining GPUs.",
         )
 
-        # --- 3. B3-Vanilla: Vanilla-Static-Partition-8v8i (Node 0: 8-GPU Video u4r2 Exact + Node 1: 8-GPU T2I Exact, FP32-VAE) ---
+        # --- 3. B3-Vanilla: Vanilla-Static-Partition-8v8i (Node 0: 8-GPU Video u4r2 Exact + Node 1: 8-GPU T2I Exact, Fair SDPA_FLASH + BF16-VAE) ---
         sync_all(device_str)
         t0 = time.perf_counter()
         w1_b3v = w2_b3v = w3_b3v = v0_b3v = v1_b3v = 0.0
         if rank < 8:
-            wan.runtime.pipe.vae.to(dtype=torch.float32)
             st_b3v0 = prep_wan("b3v-v0", cache=False)
             wan.advance({"state_id": "b3v-v0", "steps": 20, "group": list(range(8)), "epoch": 120, "cfg": 1, "ring": 2})
             if rank == 0:
-                wan.runtime.decode_chunks(st_b3v0, 5, vae_dtype="float32")
+                wan.runtime.decode_chunks(st_b3v0, 5, vae_dtype="bfloat16")
             torch.cuda.synchronize(device_str)
             v0_b3v = (time.perf_counter() - t0) * 1000.0 - v0_arr
             wan.release({"state_id": "b3v-v0"})
@@ -439,41 +432,40 @@ def main() -> None:
             st_b3v1 = prep_wan("b3v-v1", cache=False)
             wan.advance({"state_id": "b3v-v1", "steps": 20, "group": list(range(8)), "epoch": 121, "cfg": 1, "ring": 2})
             if rank == 0:
-                wan.runtime.decode_chunks(st_b3v1, 5, vae_dtype="float32")
+                wan.runtime.decode_chunks(st_b3v1, 5, vae_dtype="bfloat16")
             torch.cuda.synchronize(device_str)
             v1_b3v = (time.perf_counter() - t0) * 1000.0 - v1_arr
             wan.release({"state_id": "b3v-v1"})
-            wan.runtime.pipe.vae.to(dtype=torch.bfloat16)
         else:
             while (time.perf_counter() - t0) * 1000.0 < w1_arr:
                 time.sleep(0.002)
-            sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [100 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash"})
+            sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [100 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
             torch.cuda.synchronize(device_str)
             w1_b3v = (time.perf_counter() - t0) * 1000.0 - w1_arr
             while (time.perf_counter() - t0) * 1000.0 < w2_arr:
                 time.sleep(0.002)
-            sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [200 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash"})
+            sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [200 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
             torch.cuda.synchronize(device_str)
             w2_b3v = (time.perf_counter() - t0) * 1000.0 - w2_arr
             while (time.perf_counter() - t0) * 1000.0 < w3_arr:
                 time.sleep(0.002)
-            sd35.run_micro_batch({"prompts": [img_prompt, img_prompt], "seeds": [300 + rank, 310 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash"})
+            sd35.run_micro_batch({"prompts": [img_prompt, img_prompt], "seeds": [300 + rank, 310 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
             torch.cuda.synchronize(device_str)
             w3_b3v = (time.perf_counter() - t0) * 1000.0 - w3_arr
         sync_all(device_str)
         record_16gpu_policy(
-            "B3-Vanilla: Vanilla-Static-Partition-8v8i (Node 0: 8-GPU Video u4r2 Exact + Node 1: 8-GPU T2I Exact, FP32-VAE)",
+            "B3-Vanilla: Vanilla-Static-Partition-8v8i (Node 0: 8-GPU Video u4r2 Exact + Node 1: 8-GPU T2I Exact, Fair SDPA_FLASH + BF16-VAE)",
             *collect_max(device_str, w1_b3v, w2_b3v, w3_b3v, v0_b3v, v1_b3v),
             notes="Node 0 serializes Video 1 behind Video 0; Node 1 (8 T2I GPUs) suffers 2x batching delay on 16-image Wave 3.",
         )
 
         # --- 4. B3-Opt: Static-Partition-8v8i (Dual 4-GPU Video [0..3 & 8..11] + 8-GPU T2I [4..7 & 12..15] + HeteroDiT Cache & BF16-VAE) ---
         if rank in (0, 1, 2, 3):
-            st_w = prep_wan("b3o-w0", cache=True, thresh=0.16)
+            st_w = prep_wan("b3o-w0", cache=True, thresh=0.08)
             wan.advance({"state_id": "b3o-w0", "steps": 1, "group": [0, 1, 2, 3], "epoch": 128, "cfg": 1, "ring": 1})
             wan.release({"state_id": "b3o-w0"})
         elif rank in (8, 9, 10, 11):
-            st_w = prep_wan("b3o-w1", cache=True, thresh=0.16)
+            st_w = prep_wan("b3o-w1", cache=True, thresh=0.08)
             wan.advance({"state_id": "b3o-w1", "steps": 1, "group": [8, 9, 10, 11], "epoch": 129, "cfg": 1, "ring": 1})
             wan.release({"state_id": "b3o-w1"})
         sync_all(device_str)
@@ -481,7 +473,7 @@ def main() -> None:
         t0 = time.perf_counter()
         w1_b3o = w2_b3o = w3_b3o = v0_b3o = v1_b3o = 0.0
         if rank in (0, 1, 2, 3):
-            st_b3o0 = prep_wan("b3o-v0", cache=True, thresh=0.16)
+            st_b3o0 = prep_wan("b3o-v0", cache=True, thresh=0.08)
             wan.advance({"state_id": "b3o-v0", "steps": 20, "group": [0, 1, 2, 3], "epoch": 130, "cfg": 1, "ring": 1})
             if rank == 0:
                 wan.runtime.decode_chunks(st_b3o0, 5, vae_dtype="bfloat16")
@@ -491,7 +483,7 @@ def main() -> None:
         elif rank in (8, 9, 10, 11):
             while (time.perf_counter() - t0) * 1000.0 < v1_arr:
                 time.sleep(0.001)
-            st_b3o1 = prep_wan("b3o-v1", cache=True, thresh=0.16)
+            st_b3o1 = prep_wan("b3o-v1", cache=True, thresh=0.08)
             wan.advance({"state_id": "b3o-v1", "steps": 20, "group": [8, 9, 10, 11], "epoch": 131, "cfg": 1, "ring": 1})
             if rank == 8:
                 wan.runtime.decode_chunks(st_b3o1, 5, vae_dtype="bfloat16")
@@ -546,17 +538,17 @@ def main() -> None:
         else:
             while (time.perf_counter() - t0) * 1000.0 < w1_arr:
                 time.sleep(0.001)
-            sd35.run_micro_batch({"prompts": [img_prompt, img_prompt], "seeds": [100 + rank, 110 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash"})
+            sd35.run_micro_batch({"prompts": [img_prompt, img_prompt], "seeds": [100 + rank, 110 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
             torch.cuda.synchronize(device_str)
             w1_b4 = (time.perf_counter() - t0) * 1000.0 - w1_arr
             while (time.perf_counter() - t0) * 1000.0 < w2_arr:
                 time.sleep(0.001)
-            sd35.run_micro_batch({"prompts": [img_prompt, img_prompt], "seeds": [200 + rank, 210 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash"})
+            sd35.run_micro_batch({"prompts": [img_prompt, img_prompt], "seeds": [200 + rank, 210 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
             torch.cuda.synchronize(device_str)
             w2_b4 = (time.perf_counter() - t0) * 1000.0 - w2_arr
             while (time.perf_counter() - t0) * 1000.0 < w3_arr:
                 time.sleep(0.001)
-            sd35.run_micro_batch({"prompts": [img_prompt] * 4, "seeds": [300 + rank, 310 + rank, 320 + rank, 330 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash"})
+            sd35.run_micro_batch({"prompts": [img_prompt] * 4, "seeds": [300 + rank, 310 + rank, 320 + rank, 330 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
             torch.cuda.synchronize(device_str)
             w3_b4 = (time.perf_counter() - t0) * 1000.0 - w3_arr
         sync_all(device_str)
@@ -566,8 +558,7 @@ def main() -> None:
             notes="Fixed 12+4 without elastic borrowing overloads 4 T2I GPUs on 16-image Wave 3 (4 images/GPU).",
         )
 
-        # --- 6. B5: TridentServe-Stage-16GPU (Dual-Node 8-GPU u4r2 Stage-Boundary Preemption, FP32-VAE) ---
-        wan.runtime.pipe.vae.to(dtype=torch.float32)
+        # --- 6. B5: TridentServe-Stage-16GPU (Dual-Node 8-GPU u4r2 Stage-Boundary Preemption, Fair SDPA_FLASH + BF16-VAE) ---
         sync_all(device_str)
         t0 = time.perf_counter()
         grp_node = list(range(8)) if rank < 8 else list(range(8, 16))
@@ -581,18 +572,18 @@ def main() -> None:
         dist.barrier(group=pg_node)
         # Preempt between 20-step Diffusion stage and 3D-VAE stage to serve queued Waves 1, 2, 3
         if (rank % 8) < 4:
-            sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [100 + rank], "height": 512, "width": 512, "steps": 12, "attention": "math"})
+            sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [100 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
         dist.barrier(group=pg_node)
         w1_b5 = (time.perf_counter() - t0) * 1000.0 - w1_arr
         if (rank % 8) < 4:
-            sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [200 + rank], "height": 512, "width": 512, "steps": 12, "attention": "math"})
+            sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [200 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
         dist.barrier(group=pg_node)
         w2_b5 = (time.perf_counter() - t0) * 1000.0 - w2_arr
-        sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [300 + rank], "height": 512, "width": 512, "steps": 12, "attention": "math"})
+        sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [300 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
         dist.barrier(group=pg_node)
         w3_b5 = (time.perf_counter() - t0) * 1000.0 - w3_arr
         if rank in (0, 8):
-            wan.runtime.decode_chunks(st_b5, 5, vae_dtype="float32")
+            wan.runtime.decode_chunks(st_b5, 5, vae_dtype="bfloat16")
         dist.barrier(group=pg_node)
         if rank == 0:
             v0_b5 = (time.perf_counter() - t0) * 1000.0 - v0_arr
@@ -601,12 +592,12 @@ def main() -> None:
         wan.release({"state_id": "b5-v"})
         sync_all(device_str)
         record_16gpu_policy(
-            "B5: TridentServe-Stage-16GPU (Dual-Node 8-GPU u4r2 Stage-Boundary Preemption, FP32-VAE)",
+            "B5: TridentServe-Stage-16GPU (Dual-Node 8-GPU u4r2 Stage-Boundary Preemption, Fair SDPA_FLASH + BF16-VAE)",
             *collect_max(device_str, w1_b5, w2_b5, w3_b5, v0_b5, v1_b5),
             notes="Preempts only between 20-step Diffusion and 3D-VAE stages; holds all 16 GPUs during 20 diffusion steps.",
         )
 
-        # --- 7. B6: TetriServe-Round-16GPU (Dual-Node 8-GPU u4r2 Coarse 5-Step Round Preemption, FP32-VAE) ---
+        # --- 7. B6: TetriServe-Round-16GPU (Dual-Node 8-GPU u4r2 Coarse 5-Step Round Preemption, Fair SDPA_FLASH + BF16-VAE) ---
         sync_all(device_str)
         t0 = time.perf_counter()
         st_b6 = prep_wan("b6-v", cache=False)
@@ -624,7 +615,7 @@ def main() -> None:
             dist.broadcast(f1, src=grp_node[0], group=pg_node)
             if int(f1.item()) == 1:
                 if (rank % 8) < 4:
-                    sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [100 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash"})
+                    sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [100 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
                 dist.barrier(group=pg_node)
                 w1_b6 = (time.perf_counter() - t0) * 1000.0 - w1_arr
                 w1_done = True
@@ -634,7 +625,7 @@ def main() -> None:
             dist.broadcast(f2, src=grp_node[0], group=pg_node)
             if int(f2.item()) == 1:
                 if (rank % 8) < 4:
-                    sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [200 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash"})
+                    sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [200 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
                 dist.barrier(group=pg_node)
                 w2_b6 = (time.perf_counter() - t0) * 1000.0 - w2_arr
                 w2_done = True
@@ -643,28 +634,28 @@ def main() -> None:
             f3 = torch.tensor([1 if (not w3_done and cur_local >= w3_arr) else 0], device=device_str, dtype=torch.int64)
             dist.broadcast(f3, src=grp_node[0], group=pg_node)
             if int(f3.item()) == 1:
-                sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [300 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash"})
+                sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [300 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
                 dist.barrier(group=pg_node)
                 w3_b6 = (time.perf_counter() - t0) * 1000.0 - w3_arr
                 w3_done = True
                 ep_b6 += 1
         if rank in (0, 8):
-            wan.runtime.decode_chunks(st_b6, 5, vae_dtype="float32")
+            wan.runtime.decode_chunks(st_b6, 5, vae_dtype="bfloat16")
         dist.barrier(group=pg_node)
         if rank == 0:
             v0_b6 = (time.perf_counter() - t0) * 1000.0 - v0_arr
         if rank == 8:
             v1_b6 = (time.perf_counter() - t0) * 1000.0 - v1_arr
         wan.release({"state_id": "b6-v"})
-        wan.runtime.pipe.vae.to(dtype=torch.bfloat16)
         sync_all(device_str)
         record_16gpu_policy(
-            "B6: TetriServe-Round-16GPU (Dual-Node 8-GPU u4r2 Coarse 5-Step Round Preemption, FP32-VAE)",
+            "B6: TetriServe-Round-16GPU (Dual-Node 8-GPU u4r2 Coarse 5-Step Round Preemption, Fair SDPA_FLASH + BF16-VAE)",
             *collect_max(device_str, w1_b6, w2_b6, w3_b6, v0_b6, v1_b6),
             notes="Preempts only at coarse 5-step round boundaries (steps 5, 10, 15, 20).",
         )
 
-        # --- 8. B7 / A0: GenServe-16GPU (Dual-Node 8-GPU Gang Step-Preempt + Cold PCIe Weight Swap + FP32-VAE) ---
+        # --- 8. B7 / A0: GenServe-16GPU (Dual-Node 8-GPU 5-Step Round-Elastic Preemption + Tier-0 HBM, Fair SDPA_FLASH + BF16-VAE) ---
+        # Also measure cold PCIe weight swap roundtrip separately for 24GB / un-offloaded HBM characterization
         sync_all(device_str)
         t_sw0 = time.perf_counter()
         wan.runtime.pipe.transformer.to("cpu")
@@ -674,12 +665,66 @@ def main() -> None:
         pcie_swap_ms = (time.perf_counter() - t_sw0) * 1000.0
         sync_all(device_str)
 
-        # Measure B8 / A1 first and add measured PCIe weight swap penalty for B7 / A0 to save 35s of redundant PCIe bus thrashing
-        wan.runtime.pipe.vae.to(dtype=torch.float32)
-        sync_all(device_str)
         t0 = time.perf_counter()
         grp_node = list(range(8)) if rank < 8 else list(range(8, 16))
         pg_node = groups.group(tuple(grp_node))
+        st_b7 = prep_wan("b7-v", cache=False)
+        w1_done = w2_done = w3_done = False
+        w1_b7 = w2_b7 = w3_b7 = v0_b7 = v1_b7 = 0.0
+        ep_b7 = 158 if rank < 8 else 159
+        if rank >= 8:
+            while (time.perf_counter() - t0) * 1000.0 < v1_arr:
+                time.sleep(0.001)
+        while st_b7.step_index < 20:
+            wan.advance({"state_id": "b7-v", "steps": 5, "group": grp_node, "epoch": ep_b7, "cfg": 1, "ring": 2})
+            torch.cuda.synchronize(device_str)
+            cur_local = (time.perf_counter() - t0) * 1000.0
+            f1 = torch.tensor([1 if (not w1_done and cur_local >= w1_arr) else 0], device=device_str, dtype=torch.int64)
+            dist.broadcast(f1, src=grp_node[0], group=pg_node)
+            if int(f1.item()) == 1:
+                if (rank % 8) < 4:
+                    sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [100 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
+                dist.barrier(group=pg_node)
+                w1_b7 = (time.perf_counter() - t0) * 1000.0 - w1_arr
+                w1_done = True
+                ep_b7 += 2
+            cur_local = (time.perf_counter() - t0) * 1000.0
+            f2 = torch.tensor([1 if (not w2_done and cur_local >= w2_arr) else 0], device=device_str, dtype=torch.int64)
+            dist.broadcast(f2, src=grp_node[0], group=pg_node)
+            if int(f2.item()) == 1:
+                if (rank % 8) < 4:
+                    sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [200 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
+                dist.barrier(group=pg_node)
+                w2_b7 = (time.perf_counter() - t0) * 1000.0 - w2_arr
+                w2_done = True
+                ep_b7 += 2
+            cur_local = (time.perf_counter() - t0) * 1000.0
+            f3 = torch.tensor([1 if (not w3_done and cur_local >= w3_arr) else 0], device=device_str, dtype=torch.int64)
+            dist.broadcast(f3, src=grp_node[0], group=pg_node)
+            if int(f3.item()) == 1:
+                sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [300 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
+                dist.barrier(group=pg_node)
+                w3_b7 = (time.perf_counter() - t0) * 1000.0 - w3_arr
+                w3_done = True
+                ep_b7 += 2
+        if rank in (0, 8):
+            wan.runtime.decode_chunks(st_b7, 5, vae_dtype="bfloat16")
+        dist.barrier(group=pg_node)
+        if rank == 0:
+            v0_b7 = (time.perf_counter() - t0) * 1000.0 - v0_arr
+        if rank == 8:
+            v1_b7 = (time.perf_counter() - t0) * 1000.0 - v1_arr
+        wan.release({"state_id": "b7-v"})
+        sync_all(device_str)
+        record_16gpu_policy(
+            "B7 / A0: GenServe-16GPU (Dual-Node 8-GPU u4r2 5-Step Round-Elastic Preempt + Tier-0 HBM, Fair SDPA_FLASH + BF16-VAE)",
+            *collect_max(device_str, w1_b7, w2_b7, w3_b7, v0_b7, v1_b7),
+            notes=f"Fair Tier-0 HBM co-residency with 5-step Round-Elastic gang preemption (cold PCIe swap measured separately at {pcie_swap_ms:.1f} ms).",
+        )
+
+        # --- 9. B8 / A1: vLLM-Omni / DitServe-16GPU-GangStep (Dual-Node 8-GPU 1-Step Gang Preempt + Tier-0 HBM, Exact, Fair SDPA_FLASH + BF16-VAE) ---
+        sync_all(device_str)
+        t0 = time.perf_counter()
         st_b8 = prep_wan("b8-v", cache=False)
         w1_done = w2_done = w3_done = False
         w1_b8 = w2_b8 = w3_b8 = v0_b8 = v1_b8 = 0.0
@@ -695,7 +740,7 @@ def main() -> None:
             dist.broadcast(f1, src=grp_node[0], group=pg_node)
             if int(f1.item()) == 1:
                 if (rank % 8) < 4:
-                    sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [100 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash"})
+                    sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [100 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
                 dist.barrier(group=pg_node)
                 w1_b8 = (time.perf_counter() - t0) * 1000.0 - w1_arr
                 w1_done = True
@@ -705,7 +750,7 @@ def main() -> None:
             dist.broadcast(f2, src=grp_node[0], group=pg_node)
             if int(f2.item()) == 1:
                 if (rank % 8) < 4:
-                    sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [200 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash"})
+                    sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [200 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
                 dist.barrier(group=pg_node)
                 w2_b8 = (time.perf_counter() - t0) * 1000.0 - w2_arr
                 w2_done = True
@@ -714,53 +759,40 @@ def main() -> None:
             f3 = torch.tensor([1 if (not w3_done and cur_local >= w3_arr) else 0], device=device_str, dtype=torch.int64)
             dist.broadcast(f3, src=grp_node[0], group=pg_node)
             if int(f3.item()) == 1:
-                sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [300 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash"})
+                sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [300 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
                 dist.barrier(group=pg_node)
                 w3_b8 = (time.perf_counter() - t0) * 1000.0 - w3_arr
                 w3_done = True
                 ep_b8 += 1
         if rank in (0, 8):
-            wan.runtime.decode_chunks(st_b8, 5, vae_dtype="float32")
+            wan.runtime.decode_chunks(st_b8, 5, vae_dtype="bfloat16")
         dist.barrier(group=pg_node)
         if rank == 0:
             v0_b8 = (time.perf_counter() - t0) * 1000.0 - v0_arr
         if rank == 8:
             v1_b8 = (time.perf_counter() - t0) * 1000.0 - v1_arr
         wan.release({"state_id": "b8-v"})
-        wan.runtime.pipe.vae.to(dtype=torch.bfloat16)
         sync_all(device_str)
         w1_b8_m, w2_b8_m, w3_b8_m, v0_b8_m, v1_b8_m = collect_max(device_str, w1_b8, w2_b8, w3_b8, v0_b8, v1_b8)
-
         record_16gpu_policy(
-            "B7 / A0: GenServe-16GPU (Dual-Node 8-GPU u4r2 Gang Step-Preempt + Cold PCIe Weight Swap + FP32-VAE)",
-            w1_b8_m + pcie_swap_ms * 0.5,
-            w2_b8_m + pcie_swap_ms * 1.5,
-            w3_b8_m + pcie_swap_ms * 2.5,
-            v0_b8_m + pcie_swap_ms * 3.0,
-            v1_b8_m + pcie_swap_ms * 3.0,
-            notes=f"Incurs {pcie_swap_ms:.1f} ms PCIe weight swap roundtrip on each preempted wave across 16 GPUs.",
-        )
-        record_16gpu_policy(
-            "B8 / A1: vLLM-Omni / DitServe-16GPU-GangStep (Dual-Node 8-GPU u4r2 Gang Step-Preempt + Tier-0 HBM, Exact)",
+            "B8 / A1: vLLM-Omni / DitServe-16GPU-GangStep (Dual-Node 8-GPU u4r2 Gang Step-Preempt + Tier-0 HBM, Exact, Fair SDPA_FLASH + BF16-VAE)",
             w1_b8_m, w2_b8_m, w3_b8_m, v0_b8_m, v1_b8_m,
-            notes="Pauses all 16 GPUs on Wave 1 & Wave 2 (leaving 8 GPUs idle per wave) + synchronous FP32 3D-VAE barrier.",
+            notes="Pauses all 16 GPUs on Wave 1 & Wave 2 (leaving 8 GPUs idle per wave) + synchronous BF16 3D-VAE barrier.",
         )
 
-        # --- 8. B9: HeteroDiT-Joint-v4-16GPU (Dual-Node 8-GPU Gang u4r2 + Static AsymCFG + Taylor + Sync BF16-VAE) ---
-        st_w9 = prep_wan("b9-w", cache=True, thresh=0.16)
+        # --- 10. B9: HeteroDiT-Joint-v4-16GPU (Dual-Node 8-GPU Gang u4r2 + Late AsymCFG + Taylor + Sync BF16-VAE) ---
+        st_w9 = prep_wan("b9-w", cache=True, thresh=0.08)
         wan.advance({"state_id": "b9-w", "steps": 1, "group": grp_node, "epoch": 170 if rank < 8 else 171, "cfg": 1, "ring": 2})
         wan.release({"state_id": "b9-w"})
         sync_all(device_str)
 
         t0 = time.perf_counter()
-        st_b9 = prep_wan("b9-v", cache=True, thresh=0.16)
+        st_b9 = prep_wan("b9-v", cache=True, thresh=0.08)
         comp_b9 = TaylorResidualCompensator(torch, alpha=-0.22, damping=0.70, max_norm_ratio=0.10, adaptive_lsq=False, enabled=True)
         comp_b9.monotonic_gate = False
         stepper_b9 = AsymmetricCFGStepper(
-            torch, folded_steps=set(range(6, 19)), cfg_damping=0.97, cfg_vel_alpha=0.12, final_step_exact_anchor=True, enabled=True
+            torch, folded_steps=set(range(12, 19)), cfg_damping=0.97, cfg_vel_alpha=0.12, final_step_exact_anchor=True, enabled=True
         )
-        stepper_b9.force_exact_cond_on_fold = False
-        stepper_b9.pre_fold_anchor_step = None
         w1_done = w2_done = w3_done = False
         w1_b9 = w2_b9 = w3_b9 = v0_b9 = v1_b9 = 0.0
         ep_b9 = 175 if rank < 8 else 180
@@ -812,17 +844,17 @@ def main() -> None:
         wan.release({"state_id": "b9-v"})
         sync_all(device_str)
         record_16gpu_policy(
-            "B9: HeteroDiT-Joint-v4-16GPU (Dual-Node 8-GPU Gang u4r2 + Static AsymCFG + Taylor + Sync BF16-VAE)",
+            "B9: HeteroDiT-Joint-v4-16GPU (Dual-Node 8-GPU Gang u4r2 + Late AsymCFG + Taylor + Sync BF16-VAE)",
             *collect_max(device_str, w1_b9, w2_b9, w3_b9, v0_b9, v1_b9),
             notes="Still gang-pauses all 16 GPUs on Wave 1 & Wave 2 (8 idle GPUs per wave) and waits at synchronous 3D-VAE barriers.",
         )
 
-        # --- 9. Ours-1: HeteroDiT-Elastic-v5-16GPU (Opt #1a Dual-Node 6+2 = 12v+4i Elastic Sub-Cluster + Opt #2-#5) ---
+        # --- 11. Ours-1: HeteroDiT-Elastic-v5-16GPU (Opt #1a Dual-Node 6+2 = 12v+4i Elastic Sub-Cluster + Opt #2-#5) ---
         rq_v5 = AsymmetricRingQuantizer(torch, warmup_steps=2, tail_anchor_steps=2, enabled=True)
         rq_v5.install_xfuser_hook(min_bytes=256 * 1024)
         vid_grp_6 = [0, 1, 2, 3, 4, 5] if rank < 8 else [8, 9, 10, 11, 12, 13]
         if rank in (0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13):
-            st_w6 = prep_wan("v5-w6", cache=True, thresh=0.16)
+            st_w6 = prep_wan("v5-w6", cache=True, thresh=0.08)
             wan.advance({"state_id": "v5-w6", "steps": 1, "group": vid_grp_6, "epoch": 190 if rank < 8 else 191, "cfg": 1, "ring": 2})
             wan.release({"state_id": "v5-w6"})
         sync_all(device_str)
@@ -833,15 +865,13 @@ def main() -> None:
             if rank >= 8:
                 while (time.perf_counter() - t0) * 1000.0 < v1_arr:
                     time.sleep(0.001)
-            st5 = prep_wan("v5-vid", cache=True, thresh=0.16)
+            st5 = prep_wan("v5-vid", cache=True, thresh=0.08)
             comp5 = TaylorResidualCompensator(torch, alpha=-0.22, damping=0.70, max_norm_ratio=0.10, adaptive_lsq=False, enabled=True)
             comp5.monotonic_gate = False
             stepper5 = AsymmetricCFGStepper(
-                torch, folded_steps=set(range(6, 19)), cfg_damping=0.97, cfg_vel_alpha=0.12,
-                final_step_exact_anchor=True, curvature_threshold=0.85, min_full_cfg_steps=6, enabled=True,
+                torch, folded_steps=set(range(12, 19)), cfg_damping=0.97, cfg_vel_alpha=0.12,
+                final_step_exact_anchor=True, curvature_threshold=0.30, min_full_cfg_steps=12, enabled=True,
             )
-            stepper5.force_exact_cond_on_fold = False
-            stepper5.pre_fold_anchor_step = None
             w3_coabsorbed = False
             ep5 = 195 if rank < 8 else 200
             pg_6 = groups.group(tuple(vid_grp_6))
@@ -894,45 +924,38 @@ def main() -> None:
             notes="Dual 6-GPU intra-node video groups (0..5 & 8..13) run with zero interruption during Wave 1 & Wave 2; all 16 GPUs co-absorb 16-image Wave 3.",
         )
 
-        # --- 10. Ours-2: HeteroDiT-Morphing-v5-16GPU (Opt #1b+#4 Dynamic CFG-Morphing 12+4 -> 6+10 Sub-Cluster + Opt #2-#5) ---
+        # --- 12. Ours-2: HeteroDiT-Morphing-v5-16GPU (Opt #1b+#4 Dynamic CFG-Morphing 12+4 -> 6+10 Sub-Cluster + Opt #2-#5) ---
         vid_grp_3 = [0, 1, 2] if rank < 8 else [8, 9, 10]
         if rank in (0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13):
-            st_wm1 = prep_wan("vm-w1", cache=True, thresh=0.16)
+            st_wm1 = prep_wan("vm-w1", cache=True, thresh=0.08)
             wan.advance({"state_id": "vm-w1", "steps": 1, "group": vid_grp_6, "epoch": 210 if rank < 8 else 211, "cfg": 2, "ring": 1})
             wan.release({"state_id": "vm-w1"})
         if rank in (0, 1, 2, 8, 9, 10):
-            st_wm2 = prep_wan("vm-w2", cache=True, thresh=0.16)
+            st_wm2 = prep_wan("vm-w2", cache=True, thresh=0.08)
             wan.advance({"state_id": "vm-w2", "steps": 1, "group": vid_grp_3, "epoch": 212 if rank < 8 else 213, "cfg": 1, "ring": 1})
             wan.release({"state_id": "vm-w2"})
         sync_all(device_str)
 
         t0 = time.perf_counter()
         w1_v6 = w2_v6 = w3_v6 = v0_v6 = v1_v6 = 0.0
-        st6 = prep_wan("v6-vid", cache=True, thresh=0.16) if rank in (0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13) else None
+        st6 = prep_wan("v6-vid", cache=True, thresh=0.08) if rank in (0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13) else None
         comp6 = TaylorResidualCompensator(torch, alpha=-0.22, damping=0.70, max_norm_ratio=0.10, adaptive_lsq=False, enabled=True)
         comp6.monotonic_gate = False
         stepper6 = AsymmetricCFGStepper(
-            torch, folded_steps=set(range(7, 19)), cfg_damping=0.97, cfg_vel_alpha=0.12,
-            final_step_exact_anchor=True, curvature_threshold=0.85, min_full_cfg_steps=7, enabled=True,
+            torch, folded_steps=set(range(12, 19)), cfg_damping=0.97, cfg_vel_alpha=0.12,
+            final_step_exact_anchor=True, curvature_threshold=0.30, min_full_cfg_steps=12, enabled=True,
         )
-        stepper6.force_exact_cond_on_fold = False
-        stepper6.pre_fold_anchor_step = None
 
-        # Phase A (Steps 0..5): Node 0 Ranks 0..5 run Video 0 (cfg2u3r1) and Node 1 Ranks 8..13 run Video 1 (cfg2u3r1)
+        # Phase A (Steps 0..11): Node 0 Ranks 0..5 run Video 0 (cfg2u3r1) and Node 1 Ranks 8..13 run Video 1 (cfg2u3r1)
         if rank in (0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13):
             if rank >= 8:
                 while (time.perf_counter() - t0) * 1000.0 < v1_arr:
                     time.sleep(0.001)
             ep6_a = 220 if rank < 8 else 230
-            for _ in range(6):
+            for _ in range(12):
                 wan.advance({"state_id": "v6-vid", "steps": 1, "group": vid_grp_6, "epoch": ep6_a, "cfg": 2, "ring": 1, "stepper": stepper6})
-            if rank in (0, 1, 2, 8, 9, 10):
-                wan.advance({
-                    "state_id": "v6-vid", "steps": 1, "group": vid_grp_3, "epoch": ep6_a + 1, "cfg": 1, "ring": 1,
-                    "stepper": stepper6, "taylor_compensator": comp6,
-                })
 
-        # Phase B (Steps 7..19): Ranks 0..2 and 8..10 run folded single-branch CFG (2x u3r1 = 6 Video GPUs);
+        # Phase B (Steps 12..19): Ranks 0..2 and 8..10 run folded single-branch CFG (2x u3r1 = 6 Video GPUs);
         # Ranks 3,4,5 and 11,12,13 morph into T2I Absorbers alongside 6,7,14,15 (10 Absorber GPUs total!)
         if rank in (0, 1, 2, 8, 9, 10):
             w3_assisted_v6 = False
@@ -998,7 +1021,7 @@ def main() -> None:
         record_16gpu_policy(
             "Ours-2: HeteroDiT-Morphing-v5-16GPU (Opt #1b+#4 Dynamic CFG-Morphing 12+4->6+10 Sub-Cluster + Opt #2-#5)",
             *collect_max(device_str, w1_v6, w2_v6, w3_v6, v0_v6, v1_v6),
-            notes="Morphs 12v+4i (2x cfg2u3r1) into 6v+10i (2x u3r1 + 10 T2I Absorbers) at step 6; clears Wave 2 & Wave 3 at 1 image/GPU with zero cross-node video traffic.",
+            notes="Morphs 12v+4i (2x cfg2u3r1) into 6v+10i (2x u3r1 + 10 T2I Absorbers) at step 12; clears Wave 2 & Wave 3 at 1 image/GPU with zero cross-node video traffic.",
         )
         if rank == 0:
             out_path = Path(args.output)
@@ -1023,35 +1046,56 @@ def main() -> None:
     vid_grp_6 = [0, 1, 2, 3, 4, 5] if rank < 8 else [8, 9, 10, 11, 12, 13]
     vid_grp_3 = [0, 1, 2] if rank < 8 else [8, 9, 10]
     # =========================================================================
-    # PART 3: 4-Video Contention Burst on 16 GPUs (2x8)
+    # PART 3: 4-Video Contention Burst on 16 GPUs (2x8) (Real Live Execution for Both B3-Opt and Ours-2)
     # =========================================================================
-    # 4 Video requests (v0, v1 at t=0ms; v2, v3 at t=500ms) + T2I Absorber on Ranks 6, 7, 14, 15:
-    # - In B3-Opt (Static-Partition-8v8i): only two 4-GPU video groups ([0..3] and [8..11]) exist,
-    #   so v2 and v3 must queue serially behind v0 and v1's full 20-step diffusion + sync 3D-VAE.
-    # - In Ours-2 (HeteroDiT-Morphing-v5-16GPU): when v0 ([0..5]) and v1 ([8..13]) morph to 3-GPU u3r1
-    #   ([0..2] and [8..10]) at step 6, freed Ranks [3..5] and [11..13] immediately launch v2 and v3
-    #   in parallel across four simultaneous 3-GPU u3r1 video groups!
-    b3o_row = next(r for r in policies_16gpu if r["policy"].startswith("B3-Opt"))
-    v01_b3o_ms = b3o_row["video0_latency_ms"]
-    v23_b3o_ms = (2.0 * v01_b3o_ms) - 500.0
+    torch.cuda.empty_cache()
+    sync_all(device_str)
+    t0_b3_mv = time.perf_counter()
+    v0_b3_loc = v1_b3_loc = v2_b3_loc = v3_b3_loc = 0.0
+    if rank in (0, 1, 2, 3, 8, 9, 10, 11):
+        grp_b3_4 = [0, 1, 2, 3] if rank < 8 else [8, 9, 10, 11]
+        ep_b3_a = 240 if rank < 8 else 245
+        st_b3_mv01 = prep_wan("mv16-b3-v01", cache=True, thresh=0.08)
+        wan.advance({"state_id": "mv16-b3-v01", "steps": 20, "group": grp_b3_4, "epoch": ep_b3_a, "cfg": 1, "ring": 1})
+        if rank in (0, 8):
+            wan.runtime.decode_chunks(st_b3_mv01, 5, vae_dtype="bfloat16")
+        torch.cuda.synchronize(device_str)
+        if rank == 0:
+            v0_b3_loc = (time.perf_counter() - t0_b3_mv) * 1000.0
+        if rank == 8:
+            v1_b3_loc = (time.perf_counter() - t0_b3_mv) * 1000.0
+        wan.release({"state_id": "mv16-b3-v01"})
+
+        st_b3_mv23 = prep_wan("mv16-b3-v23", cache=True, thresh=0.08)
+        wan.advance({"state_id": "mv16-b3-v23", "steps": 20, "group": grp_b3_4, "epoch": ep_b3_a + 1, "cfg": 1, "ring": 1})
+        if rank in (0, 8):
+            wan.runtime.decode_chunks(st_b3_mv23, 5, vae_dtype="bfloat16")
+        torch.cuda.synchronize(device_str)
+        if rank == 0:
+            v2_b3_loc = (time.perf_counter() - t0_b3_mv) * 1000.0 - 500.0
+        if rank == 8:
+            v3_b3_loc = (time.perf_counter() - t0_b3_mv) * 1000.0 - 500.0
+        wan.release({"state_id": "mv16-b3-v23"})
+    sync_all(device_str)
+    v0_b3_m, v1_b3_m, v2_b3_m, v3_b3_m = collect_max(device_str, v0_b3_loc, v1_b3_loc, v2_b3_loc, v3_b3_loc)
+    v01_b3o_ms = 0.5 * (v0_b3_m + v1_b3_m)
+    v23_b3o_ms = 0.5 * (v2_b3_m + v3_b3_m)
 
     torch.cuda.empty_cache()
     sync_all(device_str)
     t0_mv = time.perf_counter()
     v0_mv_loc = v1_mv_loc = v2_mv_loc = v3_mv_loc = 0.0
-    st_mv01 = prep_wan("mv16-v01", cache=True, thresh=0.16) if rank in (0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13) else None
+    st_mv01 = prep_wan("mv16-v01", cache=True, thresh=0.08) if rank in (0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13) else None
     comp_mv01 = TaylorResidualCompensator(torch, alpha=-0.22, damping=0.70, max_norm_ratio=0.10, adaptive_lsq=False, enabled=True)
     comp_mv01.monotonic_gate = False
     stepper_mv01 = AsymmetricCFGStepper(
-        torch, folded_steps=set(range(7, 19)), cfg_damping=0.97, cfg_vel_alpha=0.12,
-        final_step_exact_anchor=True, curvature_threshold=0.85, min_full_cfg_steps=7, enabled=True,
+        torch, folded_steps=set(range(12, 19)), cfg_damping=0.97, cfg_vel_alpha=0.12,
+        final_step_exact_anchor=True, curvature_threshold=0.30, min_full_cfg_steps=12, enabled=True,
     )
-    stepper_mv01.force_exact_cond_on_fold = False
-    stepper_mv01.pre_fold_anchor_step = None
 
     if rank in (0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13):
         ep_mv_a = 250 if rank < 8 else 260
-        for _ in range(6):
+        for _ in range(12):
             wan.advance({"state_id": "mv16-v01", "steps": 1, "group": vid_grp_6, "epoch": ep_mv_a, "cfg": 2, "ring": 1, "stepper": stepper_mv01})
 
     if rank in (0, 1, 2, 8, 9, 10):
@@ -1073,15 +1117,13 @@ def main() -> None:
         torch.cuda.empty_cache()
         grp_freed_3 = [3, 4, 5] if rank < 8 else [11, 12, 13]
         ep_mv_c = 252 if rank < 8 else 262
-        st_mv23 = prep_wan("mv16-v23", cache=True, thresh=0.16)
+        st_mv23 = prep_wan("mv16-v23", cache=True, thresh=0.08)
         comp_mv23 = TaylorResidualCompensator(torch, alpha=-0.22, damping=0.70, max_norm_ratio=0.10, adaptive_lsq=False, enabled=True)
         comp_mv23.monotonic_gate = False
         stepper_mv23 = AsymmetricCFGStepper(
-            torch, folded_steps=set(range(6, 19)), cfg_damping=0.97, cfg_vel_alpha=0.12,
-            final_step_exact_anchor=True, curvature_threshold=0.85, min_full_cfg_steps=6, enabled=True,
+            torch, folded_steps=set(range(12, 19)), cfg_damping=0.97, cfg_vel_alpha=0.12,
+            final_step_exact_anchor=True, curvature_threshold=0.30, min_full_cfg_steps=12, enabled=True,
         )
-        stepper_mv23.force_exact_cond_on_fold = False
-        stepper_mv23.pre_fold_anchor_step = None
         while st_mv23.step_index < 20:
             wan.advance({"state_id": "mv16-v23", "steps": 1, "group": grp_freed_3, "epoch": ep_mv_c, "cfg": 1, "ring": 1, "stepper": stepper_mv23, "taylor_compensator": comp_mv23})
         if rank in (3, 11):
