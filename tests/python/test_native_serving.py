@@ -62,6 +62,20 @@ class NativeServingTest(unittest.TestCase):
             seed=201, load=1.0, pattern="poisson", video_fraction=0.2, count=40, doorbell=True,
         )
         self.assertTrue(continuous["phases"][0]["options"]["doorbell"])
+        with self.assertRaisesRegex(ValueError, "GPU UUID"):
+            native_serving.build_serving_config(
+                "wan22", [f"GPU-{i}" for i in range(8)], profile(), pools,
+                seed=201, load=1.0, pattern="poisson", video_fraction=0.2, count=40,
+                require_profile_match=True,
+            )
+        bound = profile()
+        bound["source"]["gpu_uuids"] = [f"GPU-{i}" for i in range(8)]
+        matched = native_serving.build_serving_config(
+            "wan22", [f"GPU-{i}" for i in range(8)], bound, pools,
+            seed=201, load=1.0, pattern="poisson", video_fraction=0.2, count=40,
+            require_profile_match=True,
+        )
+        self.assertTrue(matched["benchmark"]["profile_placement"]["matches"])
 
     def test_approximation_is_explicit_and_separate(self):
         pools = {"image": pool("diffusiondb"), "video": pool("vidprom")}

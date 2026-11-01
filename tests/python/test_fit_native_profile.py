@@ -40,9 +40,11 @@ class FitNativeProfileTest(unittest.TestCase):
             "experiment": "kairos-wan22-native-calibration", "run_id": "fixture",
             "phases": [{"cells": [{"config": {"policy": policy}} for policy in policies]}],
             "requests": requests,
+            "budget": {"sessions": [{"identity": {"gpu_uuids": [f"GPU-{i}" for i in range(8)]}}]},
         }
         profile = MODULE.build_profile(record, facts, "Wan2.2-TI2V-5B")
         self.assertEqual(profile["source"]["architecture"]["tokens"], 5824)
+        self.assertEqual(profile["source"]["gpu_uuids"], [f"GPU-{i}" for i in range(8)])
         self.assertLess(profile["source"]["held_out_max_relative_error_pct"], 1e-8)
         self.assertEqual(profile["classes"]["sd35-preflight"]["service_ms"], 250.0)
         self.assertEqual(profile["classes"]["wan22-preflight"]["step_compute_ms"], 500.0)

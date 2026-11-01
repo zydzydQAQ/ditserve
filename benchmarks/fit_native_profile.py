@@ -179,9 +179,14 @@ def build_profile(record, runtime_facts, model_name):
             "gbps": bandwidth_inf * degree / (degree + gamma),
             "latency_ms": latency,
         }
+    sessions = record.get("budget", {}).get("sessions", [])
+    placements = [list(session["identity"]["gpu_uuids"]) for session in sessions]
+    if placements and any(placement != placements[0] for placement in placements[1:]):
+        raise ValueError("calibration changed GPU placement between sessions")
     profile["source"] = {
         "experiment": experiment,
         "run_id": record["run_id"],
+        "gpu_uuids": placements[0] if placements else [],
         "run_sha256": hashlib.sha256(json.dumps(record, sort_keys=True).encode()).hexdigest(),
         "model": model_name,
         "shape": spec,

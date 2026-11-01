@@ -69,7 +69,7 @@ worker 以完整 GPU UUID 绑定设备，模型使用 `cuda:0`。显式 `actions
 
 `profile.provenance` 为 measured、extrapolated、synthetic 或 mixed。视频类包含 steps、blocks_per_step、prepare/encode/finish、SP1 compute、通信量、collectives 和 CFG exchange；links 按度数和放置校准 bandwidth/latency/contention/overlap。模拟器与真实执行共用 `cluster_plan`，但模拟输出只代表成本模型。
 
-What-If 的 CFG fold 起点必须显式写 `options.cfg_fold_eligible_from_step`，`cfg_fold_step_scale` 和 `async_decode_scale` 必须显式给出来源明确的标定值；缺失或越界会失败，不再使用隐藏的固定折扣。校准集与验证集必须分离，不允许从评测行反写带宽或 overlap 后宣称零重拟合。
+正式 serving 可选择在同一作业内先校准；画像 `source.gpu_uuids` 来自校准预算身份。`--require-profile-match` 要求它与本次 `nvidia-smi` 分配逐一相同，缺失或跨分配复用会在模型加载前失败。三臂 Approx 共享一次校准，Exact/固定折叠/曲率折叠仍各自生成独立 run。What-If 的 CFG fold 起点必须显式写 `options.cfg_fold_eligible_from_step`，`cfg_fold_step_scale` 和 `async_decode_scale` 必须显式给出来源明确的标定值；缺失或越界会失败，不再使用隐藏的固定折扣。校准集与验证集必须分离，不允许从评测行反写带宽或 overlap 后宣称零重拟合。
 
 ## 数值口径与证据
 
