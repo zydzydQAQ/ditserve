@@ -2,7 +2,7 @@
 
 from .base import OUTPUT_MODES, positive_int, progress
 from .encoder_pool import ProactiveEncoderPool
-from .flux import FluxBackend
+from .pipeline import AtomicPipelineBackend
 from .sd35_cache import (
     configure_sd35_fast_cache,
     install_sd35_fast_cache_hooks,
@@ -10,16 +10,16 @@ from .sd35_cache import (
 )
 
 
-class SD35Backend(FluxBackend):
+class SD35Backend(AtomicPipelineBackend):
     model = "sd35"
-    operations = FluxBackend.operations + (
+    operations = AtomicPipelineBackend.operations + (
         "encode_pool_stats",
         "offload_encoders",
         "restore_encoders",
         "run_micro_batch",
         "generate_batch",
     )
-    defaults = dict(FluxBackend.defaults, steps=28, guidance_scale=4.5, max_sequence_length=256)
+    defaults = dict(AtomicPipelineBackend.defaults, steps=28, guidance_scale=4.5, max_sequence_length=256)
 
     def __init__(self, config):
         super().__init__(config)

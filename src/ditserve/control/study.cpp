@@ -294,7 +294,7 @@ double remaining(const Json& row,const Live* live,const Json& costs) {
 }
 
 Json engine_contract(Worker& worker,const std::string& backend,double deadline) {
-    static const std::set<std::string> targets={"wan","wan_pipeline","sana","flux"};
+    static const std::set<std::string> targets={"wan","wan_pipeline","sd35"};
     if(!targets.count(backend))return Json::object();
     auto hello=worker.call({{"op","hello"}},deadline);
     if(!hello.contains("capabilities")||!hello.at("capabilities").is_object())
@@ -661,12 +661,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     if(continuous_batch>0)for(const auto& slot:slots){
         const auto name=slot.at("image").get<std::string>();
         const auto backend=workers.backend(name);
-        if(backend!="sana"&&backend!="mock")throw std::invalid_argument("continuous_batch requires an explicit-step Sana or mock worker");
-        if(backend=="sana"){
-            auto hello=workers.get(name).call({{"op","hello"}},budget.deadline());
-            if(!hello.at("capabilities").value("continuous_batch",false))
-                throw std::invalid_argument("continuous_batch cannot use the atomic Sana pipeline");
-        }
+        if(backend!="mock")throw std::invalid_argument("continuous_batch requires an explicit-step mock worker");
     }
     for(const auto& slot:slots)for(const auto* role:{"video","image"}){
         const auto name=slot.at(role).get<std::string>();

@@ -6,11 +6,11 @@ import unittest
 from unittest.mock import Mock
 
 from ditserve.models.base import Backend
-from ditserve.models.flux import FluxBackend
+from ditserve.models.pipeline import AtomicPipelineBackend
 
 
 class ProfilingTests(unittest.TestCase):
-    def test_flux_profile_preserves_output_and_restores_hooks_after_forward_failure(self):
+    def test_pipeline_profile_preserves_output_and_restores_hooks_after_forward_failure(self):
         try:
             import torch
             import numpy as np
@@ -62,7 +62,7 @@ class ProfilingTests(unittest.TestCase):
                         value = kwargs["callback_on_step_end"](self, step, step, {"latents": value})["latents"]
                 return SimpleNamespace(images=self.image_processor.postprocess(self.vae.decode(value)))
 
-        backend = FluxBackend.__new__(FluxBackend)
+        backend = AtomicPipelineBackend.__new__(AtomicPipelineBackend)
         Backend.__init__(backend, dict(options={}))
         backend.pipe, backend.torch, backend.device = Pipeline(), proxy, "cuda:0"
         from xdit_wan_fixtures import EngineDouble

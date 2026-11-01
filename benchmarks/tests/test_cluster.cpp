@@ -632,8 +632,11 @@ int main() {
         const auto trace = study_workload({{"generator", generator}});
         const auto sim_exact = simulate_cluster({{"workload", trace}, {"profile", prof}, {"policy", "heterodit_exact"}, {"gpus", 8}});
         const auto sim_approx = simulate_cluster({{"workload", trace}, {"profile", prof}, {"policy", "heterodit_approx"}, {"gpus", 8}});
-        require(sim_exact.at("metrics").at("completed") == 80 && sim_approx.at("metrics").at("completed") == 80, "all requests complete");
-        require(sim_approx.at("approx_quanta").get<int>() > 0, "approx quanta used under load");
+        const auto sim_v5 = simulate_cluster({{"workload", trace}, {"profile", prof}, {"policy", "heterodit_v5"}, {"gpus", 8}});
+        require(sim_exact.at("metrics").at("completed") == 80 && sim_approx.at("metrics").at("completed") == 80
+                && sim_v5.at("metrics").at("completed") == 80, "all requests complete");
+        require(sim_approx.at("approx_quanta").get<int>() > 0 && sim_v5.at("approx_quanta").get<int>() > 0, "approx quanta used under load");
+        require(sim_v5.at("makespan_ms").get<double>() <= sim_exact.at("makespan_ms").get<double>(), "heterodit_v5 reduces or matches makespan");
     });
     std::cout << checks - failures << "/" << checks << " cluster checks passed\n";
     return failures ? 1 : 0;

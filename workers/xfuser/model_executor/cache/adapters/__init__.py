@@ -100,44 +100,6 @@ def apply_cache(
     transformer is returned. When transformer is omitted, the patched module
     is also assigned back to pipe.
     """
-    if cache_method == "teacache":
-        from xfuser.model_executor.cache.adapters.flux import apply_teacache
-
-        target = transformer if transformer is not None else getattr(pipe, transformer_attr)
-        patch_target = _unwrap_fsdp(target)
-        apply_teacache(
-            patch_target,
-            rel_l1_thresh=_resolve_threshold(preset_kwargs, cache_config),
-            num_steps=num_steps,
-        )
-        _restart_step_caches_per_request(pipe, patch_target)
-        if transformer is None:
-            setattr(pipe, transformer_attr, target)
-        return target
-
-    if cache_method == "fbcache":
-        from xfuser.envs import XDIT_FBCACHE_THRESH
-
-        target = transformer if transformer is not None else getattr(pipe, transformer_attr)
-        patch_target = _unwrap_fsdp(target)
-        default_threshold = float(XDIT_FBCACHE_THRESH) if XDIT_FBCACHE_THRESH else 0.12
-        from xfuser.model_executor.cache.adapters.flux import apply_fbcache
-        apply_fbcache(
-            patch_target,
-            use_cache="Fb",
-            rel_l1_thresh=_resolve_threshold(
-                preset_kwargs,
-                cache_config,
-                default=default_threshold,
-            ),
-            return_hidden_states_first=False,
-            num_steps=num_steps,
-        )
-        _restart_step_caches_per_request(pipe, patch_target)
-        if transformer is None:
-            setattr(pipe, transformer_attr, target)
-        return target
-
     if cache_method == "dbcache":
         from xfuser.model_executor.cache.adapters.cache_dit import (
             apply_cache_dit_cache,
@@ -172,4 +134,4 @@ def apply_cache(
             setattr(pipe, attr, patched)
         return patched
 
-    raise ValueError(f"Unknown cache_method: {cache_method!r}. Supported: 'teacache', 'fbcache', 'dbcache'.")
+    raise ValueError(f"Unknown cache_method: {cache_method!r}. Supported: 'dbcache'.")

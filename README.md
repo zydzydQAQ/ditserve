@@ -28,7 +28,7 @@ docs/                 使用说明、能力边界及研究文档
 
 `cmd/main.cpp` 启动 `src/ditserve/interface/command.cpp` 中的正式命令入口。C++ 基础核心提供类型、预算、调度和进程监督；benchmark 库依赖核心；应用层组合实验控制器、命令和 benchmark，依赖无环。Python 包只承担 worker 服务和可选客户端，`python -m ditserve` 仅转交原生程序。`results/` 是实际实验产物目录，源码位于 `workers/ditserve/results/`。
 
-当前支持 FLUX、SD3.5、Wan 和 Sana，DiT 执行固定使用 xDiT `16c34e7f070de65d9d2c67a6d74e0007dd8b426a` 的 xFuser。Wan/Sana 的逐步、连续批、scheduler/RNG、迁移与 C++ 调度仍由 DITSERVE 管理；FLUX、SD3.5 与原子 Wan 使用 xDiT pipeline wrapper。SD3.5-medium 使用独立 `sd35` 后端，保留负向 prompt、固定 batch 和单 CPU Generator。Mistral、LongLive 专用后端已删除，通用多阶段 replay 与历史结果只读兼容保留。合成模拟和 CPU mock 结果不能作为 GPU 性能或模型质量结论；真实 GPU 路径以 Kairos 验收记录为准。
+当前支持 Wan（Wan2.1-T2V-1.3B / Wan2.2-TI2V-5B）和 SD3.5-Medium，DiT 执行固定使用 xDiT `16c34e7f070de65d9d2c67a6d74e0007dd8b426a` 的 xFuser。Wan 的逐步/block 抢占、scheduler/RNG、迁移与 C++ 调度由 DITSERVE 管理；SD3.5 与原子 Wan 使用 xDiT pipeline wrapper。SD3.5-medium 使用独立 `sd35` 后端，保留负向 prompt、固定 batch 和单 CPU Generator。Sana、FLUX、Mistral、LongLive 专用后端已删除，通用多阶段 replay 与历史结果只读兼容保留。合成模拟和 CPU mock 结果不能作为 GPU 性能或模型质量结论；真实 GPU 路径以 Kairos 验收记录为准。
 
 ## 构建和验证
 

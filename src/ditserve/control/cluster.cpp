@@ -22,6 +22,7 @@ struct Policy {
     bool knapsack = false;   // 3-stage multi-granularity Knapsack DP + tiered state hints
     bool approx = false;     // laxity-driven dynamic feature caching (heterodit_approx)
     bool v3 = false;         // HeteroDiT-v3: INT8 Ring + Taylor+CFG reuse + BF16 3D-VAE + SD3.5 Flash+Cache
+    bool v5 = false;         // HeteroDiT-v5: Late-step CFG branch folding + subgroup morphing + Rank-0 async VAE
 };
 Policy parse(const std::string& name) {
     Policy policy;
@@ -43,6 +44,7 @@ Policy parse(const std::string& name) {
     else if (name == "knapsack_dp" || name == "heterodit_exact") policy.elastic = policy.blocks = policy.knapsack = true;
     else if (name == "heterodit_approx") policy.elastic = policy.knapsack = policy.approx = true;
     else if (name == "heterodit_v3") policy.elastic = policy.knapsack = policy.approx = policy.v3 = true;
+    else if (name == "heterodit_v5") policy.elastic = policy.blocks = policy.knapsack = policy.approx = policy.v3 = policy.v5 = true;
     else throw std::invalid_argument("unknown cluster policy: " + name);
     return policy;
 }
@@ -401,7 +403,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             forms.push_back(parse_form("sp4"));
         }
         if (links.contains("8")) {
-            if (links.contains("4")) forms.push_back(parse_form("u4r2"));
+            if (links.contains("4")) { forms.push_back(parse_form("cfg2sp4")); forms.push_back(parse_form("u4r2")); }
             if (links.contains("2") && links.contains("4")) forms.push_back(parse_form("cfg2u2r2"));
             forms.push_back(parse_form("sp8"));
         }
@@ -986,8 +988,16 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             }
         }
         if (chosen.empty()) continue;
+        const double cfg_fold_ratio = number_field(options, "cfg_fold_start_ratio", policy.v5 ? 0.65 : 1.0);
+        const bool cfg_folded = policy.v5 && int_field(r, "steps_done", 0, 0) >= static_cast<int>(std::ceil(cfg_fold_ratio * steps))
+                                && int_field(r, "steps_done", 0, 0) < steps - 1;
+        if (cfg_folded && chosen.size() >= 2 && others_waiting) {
+            const int half = static_cast<int>(chosen.size()) / 2;
+            if (half >= min_degree) chosen.resize(half);
+        }
         take(chosen);
-        const Form form = form_for(klass, static_cast<int>(chosen.size()), &chosen);
+        Form form = form_for(klass, static_cast<int>(chosen.size()), &chosen);
+        if (cfg_folded && form.cfg == 2) form = Form{1, form.sp * 2, form.ring};
         if (policy.approx && chosen_tau == 0.0 && now + estimate(r, form, sp_groups(form), &chosen, 0.0) > number_field(r, "deadline_ms")) {
             for (double tau : cache_thresholds) {
                 chosen_tau = tau;
@@ -997,6 +1007,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         Json assignment = {{"request_id", id}, {"group", chosen}, {"degree", form.degree()}, {"form", form_name(form)},
                            {"quantum", video_quantum(klass, form, sp_groups(form), &chosen, chosen_tau)},
                            {"resize", prepared && chosen != current}, {"reason", prepared ? "regroup" : "admit"}};
+        if (cfg_folded) assignment["cfg_folded"] = true;
         if (policy.approx || chosen_tau > 0.0) assignment["cache_threshold"] = chosen_tau;
         // Request-level interleaving: a waiting video at a step boundary joins this one on the
         // group when the pair's step is cheaper than the two in sequence and both still make
@@ -1054,7 +1065,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     Json result = {{"assignments", assignments}, {"policy", name}};
     const bool tiered_memory = bool_field(options, "tiered_memory",
         name == "knapsack_dp" || name == "heterodit_exact" || name == "heterodit_approx" || name == "heterodit_v3"
-        || name == "ablation_tiered" || name == "ablation_2d_usp");
+        || name == "heterodit_v5" || name == "ablation_tiered" || name == "ablation_2d_usp");
     if (tiered_memory) {
         std::set<std::string> scheduled;
         for (const auto& a : assignments) {

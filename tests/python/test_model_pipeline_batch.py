@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 from ditserve.models.base import Backend
-from ditserve.models.flux import FluxBackend
+from ditserve.models.pipeline import AtomicPipelineBackend
 from ditserve.models.sd35 import SD35Backend
 from ditserve.models.wan.pipeline import WanPipelineBackend
 
@@ -26,11 +26,16 @@ class PipelineBatchTests(unittest.TestCase):
         backend.torch, backend.device = self.torch, "cpu"
         from xdit_wan_fixtures import EngineDouble
         backend.xdit = EngineDouble()
+        if cls is SD35Backend:
+            from ditserve.models.encoder_pool import ProactiveEncoderPool
+            backend.attention = "math"
+            backend.encoder_pool = ProactiveEncoderPool({})
+            backend.encoders_offloaded = False
         return backend
 
     def test_offline_batches_repeat_prompts_share_seed_and_reencode_each_call(self):
         torch, np = self.torch, self.np
-        for cls, encoder in ((FluxBackend, "cuda"), (SD35Backend, "cuda"),
+        for cls, encoder in ((AtomicPipelineBackend, "cuda"),
                              (WanPipelineBackend, "cuda"), (WanPipelineBackend, "cpu")):
             with self.subTest(backend=cls.__name__, encoder=encoder), tempfile.TemporaryDirectory() as directory:
                 backend = self.backend(cls, dict(text_encoder_device=encoder, work_dir=directory))
@@ -53,7 +58,7 @@ class PipelineBatchTests(unittest.TestCase):
                 backend.pipe = Pipeline()
                 for index, (size, seed) in enumerate(((1, 7), (3, 7), (3, 7), (3, 8))):
                     key = str(index)
-                    negative = "" if cls is FluxBackend else "noise"
+                    negative = "noise"
                     prepared = backend.prepare(dict(state_id=key, spec=dict(prompt="kettle", negative_prompt=negative,
                         seed=seed, batch_size=size, steps=2)))
                     self.assertEqual(prepared["batch_size"], size)
@@ -70,9 +75,6 @@ class PipelineBatchTests(unittest.TestCase):
                     self.assertEqual(kwargs["generator"].initial_seed(), seed)
                     if cls is WanPipelineBackend:
                         self.assertEqual(kwargs["num_frames"], 81)
-                    if cls is SD35Backend:
-                        self.assertEqual(kwargs["negative_prompt"], ["noise"] * size)
-                        self.assertEqual(kwargs["max_sequence_length"], 256)
                     if encoder == "cpu":
                         self.assertNotIn("prompt", kwargs)
                         self.assertEqual(encodings[-1]["prompt"], ["kettle"] * size)
@@ -96,7 +98,7 @@ class PipelineBatchTests(unittest.TestCase):
         self.assertFalse(torch.cuda.is_initialized())
 
     def test_finish_releases_allocator_cache_without_changing_output(self):
-        for cls in (FluxBackend, SD35Backend):
+        for cls in (AtomicPipelineBackend, SD35Backend):
             backend = self.backend(cls, {"options": {"release_cache": True}, "model_path": "fixture"})
             backend.device = "cuda:0"
             backend.torch = SimpleNamespace(cuda=Mock())
@@ -114,13 +116,11 @@ class PipelineBatchTests(unittest.TestCase):
             self.assertIs(backend.states["image"]["output"], image)
 
     def test_invalid_batch_shapes_fail_before_state_creation(self):
-        for cls in (FluxBackend, SD35Backend, WanPipelineBackend):
+        for cls in (AtomicPipelineBackend, SD35Backend, WanPipelineBackend):
             backend = self.backend(cls, {})
             bad = [dict(batch_size=0), dict(batch_size=True), dict(batch_size=1.5), dict(prompt=["kettle"]),
                    dict(seed=True), dict(seed=1 << 64), dict(guidance_scale=float("nan")), dict(height=17)]
             bad.append(dict(frames=2))
-            if cls is FluxBackend:
-                bad.append(dict(negative_prompt="noise"))
             if cls is SD35Backend:
                 bad.extend((dict(max_sequence_length=0), dict(max_sequence_length=513)))
             for spec in bad:

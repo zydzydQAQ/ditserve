@@ -60,7 +60,9 @@ class AsymmetricCFGStepper:
         self._last_delta_cfg: Optional["torch.Tensor"] = None
         self._last_delta_step: Optional[int] = None
         self._delta_velocity: Optional["torch.Tensor"] = None
+        self._warmup_ref_l1: Optional[float] = None
         self._last_curvature: Optional[float] = None
+        self._last_raw_curvature: Optional[float] = None
         self._had_folded_since_anchor: bool = False
         self.curvature_history: list[dict] = []
         self.dynamic_fold_start_step: Optional[int] = None
@@ -91,10 +93,43 @@ class AsymmetricCFGStepper:
         self._last_delta_cfg = None
         self._last_delta_step = None
         self._delta_velocity = None
+        self._warmup_ref_l1 = None
         self._last_curvature = None
+        self._last_raw_curvature = None
         self._had_folded_since_anchor = False
         self.curvature_history.clear()
         self.dynamic_fold_start_step = None
+
+    def _update_curvature_metrics(self, index: int, delta_f32: "torch.Tensor") -> None:
+        torch = self.torch
+        cur_l1 = max(1e-6, float(torch.linalg.vector_norm(delta_f32, ord=1).item()))
+        if self._warmup_ref_l1 is None or index <= min(4, max(1, self.min_full_cfg_steps // 2)):
+            self._warmup_ref_l1 = cur_l1 if self._warmup_ref_l1 is None else max(self._warmup_ref_l1, cur_l1)
+        if self._last_delta_cfg is not None and self._last_delta_step is not None and index > self._last_delta_step:
+            dt = float(index - self._last_delta_step)
+            self._delta_velocity = (delta_f32 - self._last_delta_cfg) / dt
+            damped_prev = self._last_delta_cfg * (self.cfg_damping ** dt)
+            diff_l1 = float(torch.linalg.vector_norm(delta_f32 - damped_prev, ord=1).item())
+            raw_curv = (diff_l1 / cur_l1) / dt
+            ref_denom = max(cur_l1, 0.65 * (self._warmup_ref_l1 or cur_l1))
+            cos_sim = float(
+                torch.nn.functional.cosine_similarity(
+                    delta_f32.flatten().unsqueeze(0),
+                    self._last_delta_cfg.flatten().unsqueeze(0),
+                ).item()
+            )
+            ang_curv = max(0.0, 1.0 - cos_sim)
+            rel_curv = 0.55 * ((diff_l1 / ref_denom) / dt) + 0.45 * ang_curv
+            self._last_raw_curvature = raw_curv
+            self._last_curvature = rel_curv
+            self.curvature_history.append({
+                "step": int(index),
+                "curvature": round(float(rel_curv), 5),
+                "raw_l1_curvature": round(float(raw_curv), 5),
+                "angular_curvature": round(float(ang_curv), 5),
+            })
+        self._last_delta_cfg = delta_f32.clone()
+        self._last_delta_step = int(index)
 
     def should_fold(self, step_index: int, total_steps: int) -> bool:
         if not self.enabled:
@@ -106,15 +141,18 @@ class AsymmetricCFGStepper:
         if self.curvature_threshold is not None:
             if step_index < self.min_full_cfg_steps:
                 return False
+            if self.folded_steps and step_index not in self.folded_steps:
+                return False
             if self._last_curvature is not None:
+                if self._last_curvature > self.max_curvature_guard:
+                    self.stats["curvature_guarded_unfolds"] += 1
+                    return False
                 if self._last_curvature <= self.curvature_threshold:
                     if self.dynamic_fold_start_step is None:
                         self.dynamic_fold_start_step = step_index
                     self.stats["curvature_triggered_folds"] += 1
                     return True
-                if self._last_curvature > self.max_curvature_guard:
-                    self.stats["curvature_guarded_unfolds"] += 1
-                    return False
+            return False
         return step_index in self.folded_steps
 
     def _predict_delta_cfg(self, step_index: int, dtype: "torch.dtype") -> "torch.Tensor":
@@ -137,15 +175,7 @@ class AsymmetricCFGStepper:
         """Record an exact (pred_cond, pred_uncond) pair from a CFG=2 parallel step."""
         torch = self.torch
         delta_f32 = pred_cond.detach().to(torch.float32) - pred_uncond.detach().to(torch.float32)
-        if self._last_delta_cfg is not None and self._last_delta_step is not None and index > self._last_delta_step:
-            dt = float(index - self._last_delta_step)
-            self._delta_velocity = (delta_f32 - self._last_delta_cfg) / dt
-            diff_l1 = float(torch.linalg.vector_norm(delta_f32 - self._last_delta_cfg, ord=1).item())
-            ref_l1 = max(1e-6, float(torch.linalg.vector_norm(delta_f32, ord=1).item()))
-            self._last_curvature = (diff_l1 / ref_l1) / dt
-            self.curvature_history.append({"step": int(index), "curvature": round(float(self._last_curvature), 5)})
-        self._last_delta_cfg = delta_f32.clone()
-        self._last_delta_step = int(index)
+        self._update_curvature_metrics(int(index), delta_f32)
         self.stats["full_cfg_steps"] += 1
 
     def step(
@@ -237,15 +267,7 @@ class AsymmetricCFGStepper:
                 if g > 1.0:
                     if not fold_this_step and pred_uncond is not None:
                         delta_f32 = pred_cond.detach().to(torch.float32) - pred_uncond.detach().to(torch.float32)
-                        if self._last_delta_cfg is not None and self._last_delta_step is not None and index > self._last_delta_step:
-                            dt = float(index - self._last_delta_step)
-                            self._delta_velocity = (delta_f32 - self._last_delta_cfg) / dt
-                            diff_l1 = float(torch.linalg.vector_norm(delta_f32 - self._last_delta_cfg, ord=1).item())
-                            ref_l1 = max(1e-6, float(torch.linalg.vector_norm(delta_f32, ord=1).item()))
-                            self._last_curvature = (diff_l1 / ref_l1) / dt
-                            self.curvature_history.append({"step": index, "curvature": round(self._last_curvature, 5)})
-                        self._last_delta_cfg = delta_f32.clone()
-                        self._last_delta_step = index
+                        self._update_curvature_metrics(index, delta_f32)
                         prediction = pred_uncond + g * (pred_cond - pred_uncond)
                         self.stats["full_cfg_steps"] += 1
                         if state.cache_enabled:

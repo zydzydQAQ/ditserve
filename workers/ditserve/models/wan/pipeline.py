@@ -2,13 +2,13 @@
 
 import time
 
-from ..flux import FluxBackend
+from ..pipeline import AtomicPipelineBackend
 
 
-class WanPipelineBackend(FluxBackend):
+class WanPipelineBackend(AtomicPipelineBackend):
     model = "wan"
     output_field = "frames"
-    defaults = dict(FluxBackend.defaults, height=480, width=832, frames=81,
+    defaults = dict(AtomicPipelineBackend.defaults, height=480, width=832, frames=81,
                     steps=50, guidance_scale=5.)
 
     def _arguments(self, spec):

@@ -62,7 +62,7 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(self.call("inventory", state_id="a")["step"], 0)
 
     def test_removed_model_backends_are_rejected(self):
-        for backend in ("mistral", "longlive"):
+        for backend in ("mistral", "longlive", "sana", "flux"):
             with self.subTest(backend=backend):
                 self.assertNotIn(backend, BACKENDS)
                 with self.assertRaisesRegex(ValueError, "unknown backend"):
@@ -72,8 +72,6 @@ class ProtocolTests(unittest.TestCase):
         from ditserve.models.xdit import XDIT_REVISION
         cases = (("wan", "block", ["step", "block"], ["state", "block"]),
                  ("wan_pipeline", None, ["atomic"], []),
-                 ("sana", "pipeline", ["atomic"], []),
-                 ("flux", None, ["atomic"], []),
                  ("sd35", None, ["atomic"], []))
         for backend, execution, quanta, migration in cases:
             with self.subTest(backend=backend):
@@ -85,7 +83,7 @@ class ProtocolTests(unittest.TestCase):
                 self.assertEqual(capabilities["engine_status"], "configured")
                 self.assertEqual((capabilities["quanta"], capabilities["migration"]), (quanta, migration))
                 self.assertTrue(capabilities["model_wrapper"].startswith("xFuser"))
-                self.assertEqual(capabilities["continuous_batch"], backend == "sana" and execution != "pipeline")
+                self.assertFalse(capabilities["continuous_batch"])
 
     def test_framing_errors_stdout_and_recovery(self):
         commands = ["not json", '{"version":1,"id":1,"op":"hello","value":NaN}',

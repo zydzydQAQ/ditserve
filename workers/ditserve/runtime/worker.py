@@ -19,8 +19,6 @@ BACKENDS = {
     "wan": ("wan.backend", "WanBackend"),
     "wan_pipeline": ("wan.pipeline", "WanPipelineBackend"),
     "wan_profile": ("wan.profile", "WanProfileBackend"),
-    "sana": ("session.backend", "SessionBackend"),
-    "flux": ("flux", "FluxBackend"),
     "sd35": ("sd35", "SD35Backend"),
     "results": None,
     "evaluation": None,
@@ -31,24 +29,23 @@ SERVICE_OPERATIONS = {"results": ("finalize", "verify", "inspect", "compact"),
 
 
 def _model_capabilities(name, config, backend):
-    if name not in ("wan", "wan_pipeline", "sana", "flux", "sd35"):
+    if name not in ("wan", "wan_pipeline", "sd35"):
         return {}
     from ..models.xdit import engine_info
 
     options = config.get("options", {})
-    atomic = name in ("wan_pipeline", "flux", "sd35") or (name == "sana" and options.get("execution") == "pipeline")
-    execution = ("pipeline" if atomic else options.get("execution", "session" if name == "sana" else "step"))
+    atomic = name in ("wan_pipeline", "sd35")
+    execution = ("pipeline" if atomic else options.get("execution", "step"))
     quanta = ["atomic"] if atomic else ["step"] + ([] if execution == "step" else ["block"])
     capabilities = dict(
         engine=engine_info(), engine_status="configured", execution=execution,
         model_wrapper={"wan": "xFuserWanTransformer3DWrapper", "wan_pipeline": "xFuserWanTransformer3DWrapper",
-                       "sana": "xFuserSanaTransformer2DWrapper", "flux": "xFuserFluxTransformer2DWrapper",
                        "sd35": "xFuserSD3Transformer2DWrapper"}[name],
         quanta=quanta, atomic_pipeline=atomic,
-        continuous_batch=name == "sana" and not atomic,
-        request_batch=name == "sd35" or (name == "sana" and atomic),
+        continuous_batch=False,
+        request_batch=name == "sd35",
         dynamic_cache=name == "wan" and execution == "step",
-        batch="fixed" if name != "sana" or atomic else "ragged_continuous",
+        batch="fixed",
         migration=[] if name != "wan" else ["state"] + ([] if execution == "step" else ["block"]),
         parallel=dict(sp_degrees=[1, 2, 4, 8] if name == "wan" else [1], cfg=name == "wan"),
     )
@@ -171,11 +168,6 @@ class Worker:
         operations = cls.operations if cls else SERVICE_OPERATIONS[self.name]
         if op == "hello":
             capabilities = {"operations": list(operations), "persistent_states": cls is not None}
-            if self.name == "sana":
-                options = self.config.get("options", {})
-                capabilities.update(execution=options.get("execution", "session"),
-                                    continuous_batch=options.get("execution") != "pipeline",
-                                    hardware_profile=options.get("hardware_profile", "v100_fp32"))
             capabilities.update(_model_capabilities(self.name, self.config, self.backend))
             return {"backend": self.name, "operations": list(dict.fromkeys(["hello", "occupancy", "memory", "mps_control", *operations, "evaluate", "shutdown"])),
                     "loaded": self.backend is not None, "measured": self.name not in ("mock", "results", "environment"),

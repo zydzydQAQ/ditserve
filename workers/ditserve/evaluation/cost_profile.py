@@ -1,8 +1,7 @@
-"""Cluster cost profiles from measured Wan/Sana operations, plus labeled extrapolation.
+"""Cluster cost profiles from measured Wan/SD3.5 operations, plus labeled extrapolation.
 
-``measured_classes`` reads the explicit-action run of
-``configs/studies/local-a100/e2_cost_profile.json`` (its ``run.json``) and
-returns per-shape SP1 costs. ``extrapolate`` rescales SP1 step compute to
+``measured_classes`` reads an explicit-action cost profile run (its ``run.json``)
+and returns per-shape SP1 costs. ``extrapolate`` rescales SP1 step compute to
 another Wan architecture by the analytic FLOP ratio at equal utilization, and
 ``ulysses_comm_mb`` gives the full-sequence all-to-all volume per solver step.
 Extrapolated classes are never measurements; profiles carry their provenance.
@@ -64,7 +63,7 @@ def _median(values):
     return statistics.median(values)
 
 
-def measured_classes(run_json, *, wan_worker="wan", sana_worker="sana", steps=None, blocks_per_step=60,
+def measured_classes(run_json, *, wan_worker="wan", image_worker="sd35", steps=None, blocks_per_step=60,
                      architecture="wan2.1-t2v-1.3b"):
     """SP1 per-shape costs from the E2 explicit-action run; n is per sample."""
     arch = ARCHITECTURES[architecture]
@@ -120,7 +119,7 @@ def measured_classes(run_json, *, wan_worker="wan", sana_worker="sana", steps=No
                                            restore_ms=row.get("restore_ms"), shape=[spec["height"], spec["width"], spec["frames"]],
                                            tokens=tokens))
     if image["service"]:
-        classes["sana-1024"] = dict(kind="image", service_ms=_median(image["service"]) + _median(image["finish"] or [0.]),
+        classes["sd35-1024"] = dict(kind="image", service_ms=_median(image["service"]) + _median(image["finish"] or [0.]),
                                     evidence=dict(service_samples=image["service"], finish_samples=image["finish"]))
     return classes
 

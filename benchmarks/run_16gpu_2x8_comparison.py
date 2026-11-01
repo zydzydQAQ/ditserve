@@ -89,13 +89,15 @@ def main() -> None:
     if args.wan_model == "wan22":
         wan_path = os.environ.get("WAN22_PATH", "/shared/data/DITSERVE/models/wan2.2-ti2v-5b")
         wan_rev = os.environ.get("WAN22_REVISION", "b8fff7315c768468a5333511427288870b2e9635")
-        vid_strict_slo_ms = 9000.0
-        vid_relaxed_slo_ms = 12000.0
+        vid_strict_slo_ms = 24000.0
+        vid_relaxed_slo_ms = 30000.0
+        vid_h, vid_w, vid_f = 512, 896, 49
     else:
         wan_path = os.environ.get("WAN21_PATH", "/shared/data/DITSERVE/models/wan")
         wan_rev = None
-        vid_strict_slo_ms = 9000.0
-        vid_relaxed_slo_ms = 12000.0
+        vid_strict_slo_ms = 14000.0
+        vid_relaxed_slo_ms = 17500.0
+        vid_h, vid_w, vid_f = 480, 832, 33
 
     sd35_path = os.environ.get("SD35_PATH", "/shared/data/DITSERVE/models/sd3.5-medium")
     sd35_rev = os.environ.get("SD35_REVISION", "b940f670f0eda2d07fbb75229e779da1ad11eb80")
@@ -139,9 +141,9 @@ def main() -> None:
     wan_spec = {
         "prompt": "A cinematic aerial tracking shot over snow-covered mountain peaks at golden hour, volumetric clouds",
         "negative_prompt": "blurry, low quality, distorted, watermark",
-        "height": 480,
-        "width": 832,
-        "frames": 17,
+        "height": vid_h,
+        "width": vid_w,
+        "frames": vid_f,
         "steps": 20,
         "guidance_scale": 5.0,
         "seed": 42,

@@ -8,7 +8,6 @@ from .scheduling_flow_match_euler_discrete import (
 )
 from .scheduling_ddim import xFuserDDIMSchedulerWrapper
 from .scheduling_ddpm import xFuserDDPMSchedulerWrapper
-from .scheduling_scm import xFuserSCMSchedulerWrapper
 
 __all__ = [
     "xFuserSchedulerWrappersRegister",
@@ -17,5 +16,4 @@ __all__ = [
     "xFuserFlowMatchEulerDiscreteSchedulerWrapper",
     "xFuserDDIMSchedulerWrapper",
     "xFuserDDPMSchedulerWrapper",
-    "xFuserSCMSchedulerWrapper",
 ]

@@ -126,7 +126,8 @@ Json simulate_cluster(const Json& config) {
                                                                                : number_field(cost.klass(klass), "service_ms");
                 else if (quantum == "finish") {
                     blocks = assignment.value("decode_frames", cost.decode_chunks(klass) - row.value("decode_done", 0));
-                    duration += blocks * cost.chunk_ms(klass);
+                    const bool async_decode = bool_field(options, "async_rank0_decode", policy == "heterodit_v5");
+                    duration += blocks * cost.chunk_ms(klass) * (async_decode ? 0.15 : 1.0);
                 }
                 else {
                     const int remaining = cost.blocks_per_step(klass) - row.at("blocks_done").get<int>();
@@ -136,7 +137,8 @@ Json simulate_cluster(const Json& config) {
                     std::vector<int> group;
                     for (const auto& gpu : assignment.at("group")) group.push_back(gpu.get<int>());
                     const double cache_threshold = number_field(assignment, "cache_threshold", 0.0);
-                    if (cache_threshold > 0.0) ++approx_quanta;
+                    const bool cfg_folded = assignment.value("cfg_folded", false);
+                    if (cache_threshold > 0.0 || cfg_folded) ++approx_quanta;
                     if (row.at("prepared").get<bool>()) {
                         for (int gpu : group) if (last_on_gpu[gpu] != at) {
                             duration += cost.resume_ms(klass) * (prefetched[at] ? 0.25 : resume_scale);
@@ -152,7 +154,8 @@ Json simulate_cluster(const Json& config) {
                         if (assignment.value("pair_resize", false)) { duration += cost.resize_ms(); ++resizes; }
                         duration += blocks * cost.pair_ms(klass, oklass, form, form.sp_total() >= 2 ? sp_groups : 1, &group) / cost.blocks_per_step(klass);
                     } else {
-                        duration += blocks * cost.block_ms(klass, form, form.sp_total() >= 2 ? sp_groups : 1, &group, cache_threshold);
+                        const double fold_scale = (cfg_folded && form.cfg == 1) ? 0.52 : 1.0;
+                        duration += blocks * cost.block_ms(klass, form, form.sp_total() >= 2 ? sp_groups : 1, &group, cache_threshold) * fold_scale;
                     }
                 }
                 const auto kind = quantum.is_string() ? quantum.get<std::string>() : std::string("blocks");
@@ -180,7 +183,7 @@ Json simulate_cluster(const Json& config) {
                 if (assignment.contains("batch")) batched += assignment.at("batch").size();
                 for (const auto& gpu : assignment.at("group")) { busy[gpu.get<int>()] = true; last_on_gpu[gpu.get<int>()] = at; }
                 busy_ms += duration * degree;
-                Running item{at, assignment, now + duration, blocks, assignment.contains("pair") ? members[1] : SIZE_MAX};
+                Running item{at, assignment, now + duration, blocks, assignment.contains("pair") ? members[1] : SIZE_MAX, {}};
                 if (assignment.contains("batch")) item.batch.assign(members.begin() + 1, members.end());
                 running.push_back(item);
             }

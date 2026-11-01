@@ -39,6 +39,7 @@
         "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
         "dtype": "bfloat16",
         "text_encoder_dtype": "bfloat16",
+        "attention": "flash",
         "options": {
           "profile": false,
           "cache": false
@@ -81,6 +82,7 @@
         "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
         "dtype": "bfloat16",
         "text_encoder_dtype": "bfloat16",
+        "attention": "flash",
         "options": {
           "profile": false,
           "cache": false
@@ -123,6 +125,7 @@
         "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
         "dtype": "bfloat16",
         "text_encoder_dtype": "bfloat16",
+        "attention": "flash",
         "options": {
           "profile": false,
           "cache": false
@@ -165,6 +168,7 @@
         "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
         "dtype": "bfloat16",
         "text_encoder_dtype": "bfloat16",
+        "attention": "flash",
         "options": {
           "profile": false,
           "cache": false
@@ -207,6 +211,7 @@
         "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
         "dtype": "bfloat16",
         "text_encoder_dtype": "bfloat16",
+        "attention": "flash",
         "options": {
           "profile": false,
           "cache": false
@@ -249,6 +254,7 @@
         "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
         "dtype": "bfloat16",
         "text_encoder_dtype": "bfloat16",
+        "attention": "flash",
         "options": {
           "profile": false,
           "cache": false
@@ -291,6 +297,7 @@
         "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
         "dtype": "bfloat16",
         "text_encoder_dtype": "bfloat16",
+        "attention": "flash",
         "options": {
           "profile": false,
           "cache": false
@@ -333,6 +340,7 @@
         "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
         "dtype": "bfloat16",
         "text_encoder_dtype": "bfloat16",
+        "attention": "flash",
         "options": {
           "profile": false,
           "cache": false
@@ -393,9 +401,15 @@
           "code_commit": "1917afe6bc24d91637050a26dd731ccfaf025e7a",
           "wan_revision": "0fad780a534b6463e45facd96134c9f345acfa5b",
           "sd35_revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
-          "settings": "Wan FP16 DiT, UMT5 CPU FP32, Flash, cache off, xDiT; SD3.5 BF16 MATH, cache off",
-          "parallel_scope": "Only SP1 costs measured. Links, resize and controller overheads require new-engine calibration."
+          "settings": "Wan FP16 DiT, UMT5 CPU FP32 (negative prompt cache enabled), Flash, cache off, xDiT; SD3.5 BF16 FLASH, cache off",
+          "parallel_scope": "Wan2.1-1.3B (12 heads) supports sp1, cfg2, sp2, cfg2sp2, sp4, cfg2sp4 (sp8 excluded because 12 % 8 != 0); default forms use CFG-priority [cfg2, cfg2sp2, cfg2sp4]. Links and SD3.5 FLASH service_ms require new-engine calibration."
         }
+      },
+      "occupancy_backend": "nvml",
+      "occupancy_thread": true,
+      "video_worker_options": {
+        "negative_prompt_cache_entries": 4,
+        "negative_prompt_cache_bytes": 67108864
       },
       "gpus": [
         {
@@ -748,7 +762,9 @@
       "options": {
         "quantum_ms": 300,
         "forms": [
-          "sp1"
+          "cfg2",
+          "cfg2sp2",
+          "cfg2sp4"
         ],
         "chunked_decode": true,
         "decode_chunk_frames": 8,

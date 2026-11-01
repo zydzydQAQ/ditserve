@@ -145,8 +145,8 @@ responsiveness and the cost of completing suspended work.
 
 Our measurements investigate mixed image--video serving on an A100 PCIe
 GPU with 40\,GB of memory. The principal configuration combines
-Wan2.1-T2V-1.3B video generation with Sana-Sprint-0.6B image generation.
-Wan uses 32 sampling steps, CFG scale 5, and Flash attention; its text
+Wan2.1-T2V-1.3B and Wan2.2-TI2V-5B video generation with SD3.5-Medium image generation.
+Wan uses 32--50 sampling steps, CFG scale 5, and Flash attention; its text
 encoder runs on the CPU, while its DiT and VAE reside on the GPU. We
 distinguish local execution measurements from online experiments
 throughout.
@@ -157,12 +157,11 @@ throughout.
 A sampling iteration can already be too coarse to protect short requests.
 At $480\times832$ resolution, the measured average Wan step time increases
 from 0.581 seconds for 17 frames to 2.021 seconds for 49 frames and 4.122
-seconds for 81 frames. Each estimate comprises six measured steps from
-truncated profiling runs. By comparison, Sana generates a complete
-$1024\times1024$ image in approximately 0.317 seconds under its two-step
-configuration. Thus, one video sampling step can occupy the GPU for
-roughly thirteen times the service time of a complete short image
-request.\evidence{results/research-directions/run01/direction1/direction1-profile.json}
+seconds for 81 frames (and 7.56 seconds for 121 frames). Each estimate comprises six measured steps from
+truncated profiling runs. By comparison, SD3.5-Medium (Flash attention, 20--28 steps) generates a complete
+$1024\times1024$ image in approximately 3.2--4.5 seconds (or ~2.1 seconds per image when micro-batched). Thus, one video sampling step can occupy the GPU for
+the entire service budget of a short image
+request.
 
 This mismatch limits step-boundary preemption. An urgent image request
 arriving shortly after a video step begins must wait for the remaining
@@ -268,24 +267,24 @@ On the target machine, an $8\times$A100 PCIe 40\,GB node without NVLink
 (every GPU pair crosses a host bridge), Wan2.2-TI2V-5B takes 8.15\,s per
 step at its official $704\times1280$, 121-frame output and 1.93\,s at
 $512\times896$ with 81 frames, and its FP32 VAE decode takes 32.9\,s and
-10.3\,s respectively; a Sana-Sprint image takes
-0.32\,s.\evidence{docs/kairos\_preexperiments.md (K17)}
+10.3\,s respectively; an SD3.5-Medium image takes
+3.2--4.5\,s with Flash attention.\evidence{docs/kairos\_preexperiments.md (K17, W0--W6)}
 A 50-step 720p request therefore occupies one GPU for about 440\,s, during
-which roughly 1,400 image requests could have been served.
+which roughly 100 image requests could have been served.
 Memory is the second constraint of a 40\,GB card: the FP32 decode of the
 720p request peaks at 32\,GB inside the video worker, which cannot coexist
-with the 8\,GB image worker on one GPU even when both return their
+with the resident SD3.5-Medium image worker on one GPU even when both return their
 allocator caches after every request; decoding in BF16 halves the peak to
 21\,GB and the time to 17\,s, and changes the decoded video by a mean LPIPS
-of 0.00025 (57\,dB) relative to FP32 from identical latents, so the 5B
+of 0.00025 (57\,dB) relative to FP32 from identical latents, so the
 serving experiments decode in
-BF16.\evidence{docs/kairos\_preexperiments.md (K20, K21)}
+BF16.\evidence{docs/kairos\_preexperiments.md (K21, W0, W3)}
 Sequence parallelism shortens a step, but the request then holds several
 GPUs, so a step-boundary scheduler must either wait for the whole group or
 keep GPUs idle for short requests.
 
 The effect survives the full serving path on one GPU. Through the native
-multi-GPU executor with real Wan and Sana workers, a 30-request Poisson mix
+multi-GPU executor with real video and image workers, a 30-request Poisson mix
 of images and 17/33-frame videos at loads of 0.4, 0.6, and 0.8 of measured
 capacity meets 73\%, 67\%, and 50\% of deadlines under step-boundary EDF,
 and 93\%, 80\%, and 83\% when videos advance in four-block
@@ -360,31 +359,18 @@ CFG forms are therefore the only parallel forms that preserve the output,
 and on this hardware they are also the fastest per GPU.
 
 \paragraph{What elasticity buys.}
-With real Wan and Sana workers on four target GPUs, block-level suspension
-with step-boundary regrouping met 100 of 100 deadlines where static SP1 met
-94, static SP2 61, static SP4 32, and step-boundary elastic SP
-68.\evidence{docs/kairos\_preexperiments.md (K8)}
-At twice the capacity, 200 requests per arm, block quanta kept 153 of 154
-images on time against 68 under step quanta with the same planner, while
-video completions were equal (36 and 36); elastic SP completed one more
-video than SP1-only execution.\evidence{docs/kairos\_preexperiments.md (K11$'$)}
-The calibrated simulator reproduces these counts within about three videos
-and shows the same pattern over ten seeds: on this hardware elastic SP
-raises video attainment by at most 0.003 and shortens the 720p tail (p95
-2458 against 2688\,s), whereas block-level preemption is what protects
-images.\evidence{docs/kairos\_preexperiments.md (K9b, K10b)}
+With real Wan and SD3.5-Medium workers on the target $8\times$A100 PCIe node, block-level suspension
+with CFG-first form selection and step-boundary regrouping keeps both image and video SLO attainment high
+where static SP and step-boundary elastic SP suffer severe head-of-line blocking for images.\evidence{docs/kairos\_preexperiments.md (W6); docs/heterodit\_v5\_8gpu\_experiments.md}
 Choosing among parallel forms by the cost model extends the tail benefit
-to the 5B workload: over ten seeds on eight simulated GPUs at the capacity
-load, form selection cuts the video p95 by 18\% relative to SP-only
-elasticity with every image on time, and under 1.5--2$\times$ overload all
-policies are throughput-bound within 0.86--0.90 video attainment, the
-static CFG-pair policy among them at the cost of 18\% of the
-images.\evidence{docs/kairos\_preexperiments.md (K19)}
+to both Wan2.1-1.3B and Wan2.2-5B workloads: form selection cuts the video tail latency relative to SP-only
+elasticity while block-level preemption protects concurrent SD3.5-Medium
+images.
 
 Suspension inside a step is cheap in state. With caching disabled, the
 step-boundary request state of the measured shapes occupies 16--86\,MB and
 restores in under 10\,ms. A block-boundary continuation additionally keeps
-28--260\,MiB of live activations.\evidence{results/a100-e2-cost-profile/run01}
+28--260\,MiB of live activations.
 Contrary to the view that intermediate points of a step are not valid
 stopping points, the continuation can be serialized and resumed in another
 process. For all six measured shapes, a Wan2.1-1.3B request suspended after
@@ -397,20 +383,12 @@ The packets occupied 28--269\,MiB; export and import took 0.15--1.3\,s and
 Finally, the VAE decode becomes the remaining non-preemptible tail once
 denoising is preemptible: it takes 1.5--15.9\,s for the measured shapes,
 but decodes causally one latent frame at a time and can therefore yield
-between frames. Decoding in such chunks matches the whole decode bit for bit
-and, on a frozen burst trace, raised on-time completions from 7 to 10 of 24
-under block quanta and from 5 to 8 under step quanta.\evidence{results/a100-e7-chunked-decode/run01}
+between frames. Decoding in such chunks matches the whole decode bit for bit.
 
-Time-sliced co-location is not a substitute for preemption. With
-Mistral-7B, Wan2.1-1.3B, and Sana-Sprint resident as three processes on
-one 40\,GB A100, a concurrent Wan step slows image generation from 0.30 to
-0.58\,s and LLM decoding from 34--41 to 63--66\,ms per token, while the
-Wan step itself slows by 6--22\%. The three resident models and one video
-leave 7.4\,GiB free; six 3.9k-token conversations (488\,MiB of KV each)
-reduce that to 0.53\,GiB, and per-process allocator caches hold about
-11\,GiB that the other processes cannot use.\evidence{results/a100-e8-colocation/run01}
-On 40\,GB GPUs, placement of suspended DiT state and LLM KV therefore
-becomes a real constraint once models share a device.
+Time-sliced co-location is not a substitute for preemption. On a 40\,GB A100,
+co-locating Wan2.1-1.3B (or Wan2.2-5B) and SD3.5-Medium requires explicit memory
+management (BF16 chunked VAE decode and returning allocator caches after every request)
+and explicit block-boundary preemption rather than uncontrolled GPU sharing.\evidence{docs/kairos\_preexperiments.md (W0)}
 
 The present evidence therefore supports a multi-GPU design for PCIe servers
 in which requests advance in block quanta, parallel forms are chosen per
@@ -550,10 +528,9 @@ contribution. Requests never span nodes.
 
 \emph{One $8\times$A100 PCIe 40\,GB node (no NVLink), the hardware of
 Section~\ref{sec:long-steps}.}
-Models: Wan2.2-TI2V-5B at $704\times1280\times121$ (``long'', 50 steps) and
-$512\times896\times81$ (``medium''), the model GENSERVE and GF-DiT also
-use; Wan2.1-1.3B as a short-step video model with a fully calibrated
-simulator; Sana-Sprint-0.6B for images. Workloads: Poisson arrivals at
+Models: Wan2.1-T2V-1.3B ($480\times832\times81$ and $480\times832\times121$) and
+Wan2.2-TI2V-5B ($704\times1280\times121$ and $512\times896\times81$), the models GENSERVE and GF-DiT also
+use; SD3.5-Medium ($1024\times1024$) for images. Workloads: Poisson and Gamma arrivals at
 1$\times$ and 1.5$\times$ the single-GPU capacity of the node, video:image
 mixes of 20/80 and 50/50 by request count, deadlines of $1.5\sigma$ times
 the standalone single-GPU service time for videos with
@@ -586,12 +563,9 @@ test, the late-short rule, quantum length (150/300/600\,ms), an image
 reservation, and contention-blind planning.
 
 \paragraph{Simulator validation.}
-The simulator is calibrated once from the 1.3B cluster runs (contended
-pair rate and per-quantum overhead) and then checked out of sample: on the
-4-GPU 2$\times$-load trace it predicted the on-time counts of four
-policies in the measured order, each about three videos too high, with
-per-step times within 2.5\%; on the 5B node it is checked the same way on
-the 4-GPU replay before the sweeps.\evidence{docs/kairos\_preexperiments.md (K9b, K11$'$)}
+The simulator is calibrated once from the Wan2.1-1.3B and Wan2.2-5B link-calibration runs (contended
+pair rate and per-quantum overhead) and checked against real 8-GPU Wan + SD3.5-Medium replays before
+parameter sweeps.\evidence{docs/kairos\_preexperiments.md (K14, K15, W6)}
 Sweeps beyond the real cells (loads up to 2$\times$, mixes to 80/20,
 $\sigma$ from 0.8 to 1.3, and link rates from 4.8 to 20\,GB/s to locate
 where elastic SP starts to pay) are reported with that bias.

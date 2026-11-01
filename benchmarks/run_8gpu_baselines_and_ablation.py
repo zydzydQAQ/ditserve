@@ -64,13 +64,22 @@ def run_finalize_c2_c4_c3(args) -> None:
         "negative_prompt": "blurry, low quality, distorted, watermark",
         "height": 480,
         "width": 832,
-        "frames": 17,
+        "frames": 33,
         "steps": 20,
         "guidance_scale": 5.0,
         "seed": 42,
     }
     encoder_pool = ProactiveEncoderPool(torch, max_cache_entries=64)
     norm_spec = wan._spec({"state_id": "init-enc", "spec": wan_spec})
+    # Measure full-512 untrimmed CPU UMT5-XXL encoding live on Rank 0 before any modifications
+    t_f512 = time.perf_counter()
+    with torch.inference_mode():
+        tok = wan.runtime.pipe.tokenizer
+        te = wan.runtime.pipe.text_encoder
+        for p_str in (norm_spec["prompt"], norm_spec["negative_prompt"]):
+            inp = tok(p_str, padding="max_length", max_length=512, truncation=True, return_tensors="pt")
+            _ = te(inp.input_ids.to(te.device), inp.attention_mask.to(te.device))
+    fp32_full_ms = (time.perf_counter() - t_f512) * 1000.0
     cached_wan = encoder_pool.encode_wan_prompt_fast(wan.runtime, norm_spec)
 
     def prep_wan(sid: str, cache: bool = False, thresh: float = 0.0):
@@ -154,27 +163,25 @@ def run_finalize_c2_c4_c3(args) -> None:
             "ssim": 1.0,
         }
     ]
-    for idx_p, (p_label, min_full, c_thresh, f_set) in enumerate([
-        ("Profile A (High-Fidelity Curvature Trigger: min_full=11, eps_cfg=0.35)", 11, 0.35, set(range(12, 19))),
-        ("Profile B (Balanced Curvature Trigger: min_full=8, eps_cfg=0.35)", 8, 0.35, set(range(11, 19))),
-        ("Profile C (Aggressive Throughput Trigger: min_full=6, eps_cfg=0.95)", 6, 0.95, set(range(7, 19))),
+    for idx_p, (p_label, min_full, c_thresh, f_set, exact_cond) in enumerate([
+        ("Profile A (Strict Quality Guardrail: min_full=13, eps_cfg=0.28, exact_cond_on_fold=True)", 13, 0.28, set(range(13, 19)), True),
+        ("Profile B (Balanced Curvature Trigger: min_full=12, eps_cfg=0.32, exact_cond_on_fold=True)", 12, 0.32, set(range(12, 19)), True),
+        ("Profile C (Relaxed Late-Stage Trigger: min_full=11, eps_cfg=0.36, exact_cond_on_fold=True)", 11, 0.36, set(range(11, 19)), True),
     ]):
         sid = f"c4-p{idx_p}"
-        st_p = prep_wan(sid, cache=True, thresh=0.14)
-        comp_p = TaylorResidualCompensator(torch, alpha=-0.22, damping=0.70, max_norm_ratio=0.10, adaptive_lsq=False, enabled=True)
-        comp_p.monotonic_gate = False
+        st_p = prep_wan(sid, cache=True, thresh=0.08)
+        comp_p = TaylorResidualCompensator(torch, alpha=-0.20, damping=0.65, max_norm_ratio=0.08, adaptive_lsq=False, enabled=True)
         stepper_p = AsymmetricCFGStepper(
             torch,
             folded_steps=f_set,
             cfg_damping=0.97,
             cfg_vel_alpha=0.12,
             final_step_exact_anchor=True,
+            force_exact_cond_on_fold=exact_cond,
             curvature_threshold=c_thresh,
             min_full_cfg_steps=min_full,
             enabled=True,
         )
-        stepper_p.force_exact_cond_on_fold = False
-        stepper_p.pre_fold_anchor_step = None
         t0 = time.perf_counter()
         wan.advance({
             "state_id": sid,
@@ -196,6 +203,7 @@ def run_finalize_c2_c4_c3(args) -> None:
             "profile": p_label,
             "min_full_cfg_steps": min_full,
             "curvature_threshold": c_thresh,
+            "force_exact_cond_on_fold": exact_cond,
             "dynamic_fold_start_step": s_sum["dynamic_fold_start_step"],
             "folded_cfg_steps": s_sum["folded_cfg_steps"],
             "saved_uncond_forwards": s_sum["saved_uncond_forwards"],
@@ -240,7 +248,6 @@ def run_finalize_c2_c4_c3(args) -> None:
     _ = encoder_pool.encode_wan_prompt_fast(wan.runtime, norm_spec)
     lru_hit_ms = (time.perf_counter() - t0) * 1000.0
 
-    fp32_full_ms = 23360.05
     c3_rows = [
         {
             "mode": "FP32 Full-512 Sequence (Diffusers Default)",
@@ -400,14 +407,14 @@ def main() -> None:
     sync_all(device_str)
 
     # Unified 8-GPU Mixed-Modality Trace Parameters:
-    #   1 Video (Wan2.1 480x832x17, 20 steps) at t = 0 ms (Strict 8-GPU SLO = 9,000 ms; Relaxed SLO = 12,000 ms)
+    #   1 Video (Wan2.1 480x832x33, 20 steps) at t = 0 ms (Strict 8-GPU SLO = 14,000 ms; Relaxed SLO = 17,500 ms)
     #   Wave 1: 4 Images at t = 700 ms   (SLO = 1,500 ms)
     #   Wave 2: 4 Images at t = 1,800 ms (SLO = 1,500 ms)
     #   Wave 3: 8 Images at t = 3,000 ms (SLO = 1,500 ms)
     w1_arr, w2_arr, w3_arr = 700.0, 1800.0, 3000.0
     img_slo_ms = 1500.0
-    vid_slo_ms = 9000.0
-    vid_relaxed_slo_ms = 12000.0
+    vid_slo_ms = 14000.0
+    vid_relaxed_slo_ms = 17500.0
 
     def summarize_8gpu_policy(name: str, w1_lat: float, w2_lat: float, w3_lat: float, vid_lat: float, notes: str = "") -> dict:
         all_imgs = [w1_lat] * 4 + [w2_lat] * 4 + [w3_lat] * 8
@@ -444,7 +451,7 @@ def main() -> None:
     if base_suite and "mixed_serving_8gpu_policies" in base_suite:
         for row in base_suite["mixed_serving_8gpu_policies"]:
             p_name = row["policy"]
-            # Add 12s relaxed SLO fields for completeness
+            # Add relaxed SLO fields for completeness
             all_imgs = [row["image_wave1_latency_ms"]] * 4 + [row["image_wave2_latency_ms"]] * 4 + [row["image_wave3_latency_ms"]] * 8
             img_ok = sum(1 for x in all_imgs if x <= img_slo_ms)
             vid_rel_ok = 1 if row["video_latency_ms"] <= vid_relaxed_slo_ms else 0
@@ -456,49 +463,41 @@ def main() -> None:
     # EXECUTE MISSING BASELINES & CUMULATIVE ABLATION STAGES ON 8x A100
     # =========================================================================
 
-    # --- B2: Static-SP1-EDF (8 Independent SP1 Workers, Non-Preemptive EDF, FP32-VAE) ---
-    # Rank 0 runs Wan2.1 on 1-GPU (SP1: u1r1) non-preemptively + FP32 3D-VAE.
-    # Ranks 1..7 (7 GPUs) serve incoming T2I bursts (SDPA_MATH, BS=1):
-    #   Wave 1 (4 imgs) -> Ranks 1..4 (1 img each)
-    #   Wave 2 (4 imgs) -> Ranks 1..4 (1 img each)
-    #   Wave 3 (8 imgs) -> only 7 GPUs (Ranks 1..7) are free because Rank 0 is blocked on SP1 video!
-    #   So Rank 1 must serve 2 images sequentially while Ranks 2..7 serve 1 image each.
+    # --- B2: Static-SP1-EDF (8 Independent SP1 Workers, Non-Preemptive EDF, Fair SDPA_FLASH + BF16-VAE) ---
     sync_all(device_str)
     t0 = time.perf_counter()
     w1_b2 = w2_b2 = w3_b2 = vid_b2 = 0.0
     if rank == 0:
-        wan.runtime.pipe.vae.to(dtype=torch.float32)
         st_b2 = prep_wan("b2-sp1", cache=False)
         wan.advance({"state_id": "b2-sp1", "steps": 20, "group": [0], "epoch": 101, "cfg": 1, "ring": 1})
-        wan.runtime.decode_chunks(st_b2, 5, vae_dtype="float32")
+        wan.runtime.decode_chunks(st_b2, 5, vae_dtype="bfloat16")
         torch.cuda.synchronize(device_str)
         vid_b2 = (time.perf_counter() - t0) * 1000.0
         wan.release({"state_id": "b2-sp1"})
-        wan.runtime.pipe.vae.to(dtype=torch.bfloat16)
     else:
         while (time.perf_counter() - t0) * 1000.0 < w1_arr:
             time.sleep(0.002)
         if rank in (1, 2, 3, 4):
-            sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [100 + rank], "height": 512, "width": 512, "steps": 12, "attention": "math"})
+            sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [100 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
             torch.cuda.synchronize(device_str)
             w1_b2 = (time.perf_counter() - t0) * 1000.0 - w1_arr
         while (time.perf_counter() - t0) * 1000.0 < w2_arr:
             time.sleep(0.002)
         if rank in (1, 2, 3, 4):
-            sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [200 + rank], "height": 512, "width": 512, "steps": 12, "attention": "math"})
+            sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [200 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
             torch.cuda.synchronize(device_str)
             w2_b2 = (time.perf_counter() - t0) * 1000.0 - w2_arr
         while (time.perf_counter() - t0) * 1000.0 < w3_arr:
             time.sleep(0.002)
         # 8 images across 7 available GPUs (Ranks 1..7): Rank 1 runs 2 sequential images
-        sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [300 + rank], "height": 512, "width": 512, "steps": 12, "attention": "math"})
+        sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [300 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
         if rank == 1:
-            sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [350 + rank], "height": 512, "width": 512, "steps": 12, "attention": "math"})
+            sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [350 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
         torch.cuda.synchronize(device_str)
         w3_b2 = (time.perf_counter() - t0) * 1000.0 - w3_arr
     sync_all(device_str)
     row_b2 = summarize_8gpu_policy(
-        "B2: Static-SP1-EDF (8x Independent SP1 Workers, Non-Preemptive EDF, FP32-VAE)",
+        "B2: Static-SP1-EDF (8x Independent SP1 Workers, Non-Preemptive EDF, Fair SDPA_FLASH + BF16-VAE)",
         *collect_max(w1_b2, w2_b2, w3_b2, vid_b2),
         notes="Rank 0 runs unpreemptible SP1 video; Ranks 1..7 serve T2I bursts (8-image Wave 3 overflows 7 free GPUs).",
     )
@@ -518,12 +517,12 @@ def main() -> None:
     else:
         while (time.perf_counter() - t0) * 1000.0 < w1_arr:
             time.sleep(0.002)
-        sd35.run_micro_batch({"prompts": [img_prompt, img_prompt], "seeds": [100 + rank, 110 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash"})
+        sd35.run_micro_batch({"prompts": [img_prompt, img_prompt], "seeds": [100 + rank, 110 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
         torch.cuda.synchronize(device_str)
         w1_b4 = (time.perf_counter() - t0) * 1000.0 - w1_arr
         while (time.perf_counter() - t0) * 1000.0 < w2_arr:
             time.sleep(0.002)
-        sd35.run_micro_batch({"prompts": [img_prompt, img_prompt], "seeds": [200 + rank, 210 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash"})
+        sd35.run_micro_batch({"prompts": [img_prompt, img_prompt], "seeds": [200 + rank, 210 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
         torch.cuda.synchronize(device_str)
         w2_b4 = (time.perf_counter() - t0) * 1000.0 - w2_arr
         while (time.perf_counter() - t0) * 1000.0 < w3_arr:
@@ -536,6 +535,7 @@ def main() -> None:
             "width": 512,
             "steps": 12,
             "attention": "flash",
+            "vae_channels_last": True,
         })
         torch.cuda.synchronize(device_str)
         w3_b4 = (time.perf_counter() - t0) * 1000.0 - w3_arr
@@ -546,9 +546,8 @@ def main() -> None:
         notes="Fixed 6+2 partition: 2 T2I GPUs handle 4-image Wave 1/2 but overload on 8-image Wave 3 without elastic borrowing.",
     )
 
-    # --- B5: TridentServe-Stage (8-GPU u4r2 Stage-Boundary Preemption: Preempts Between Diffusion and VAE Stages) ---
+    # --- B5: TridentServe-Stage (8-GPU u4r2 Stage-Boundary Preemption, Fair SDPA_FLASH + BF16-VAE) ---
     sync_all(device_str)
-    wan.runtime.pipe.vae.to(dtype=torch.float32)
     t0 = time.perf_counter()
     st_b5 = prep_wan("b5-stage", cache=False)
     # Non-preemptive during all 20 diffusion steps (Stage 1)
@@ -556,32 +555,30 @@ def main() -> None:
     sync_all(device_str)
     # Stage-boundary preemption before 3D-VAE decode: serve queued Wave 1, Wave 2, Wave 3 across 8 GPUs
     if rank < 4:
-        sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [100 + rank], "height": 512, "width": 512, "steps": 12, "attention": "math"})
+        sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [100 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
     sync_all(device_str)
     w1_b5 = (time.perf_counter() - t0) * 1000.0 - w1_arr
     if rank < 4:
-        sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [200 + rank], "height": 512, "width": 512, "steps": 12, "attention": "math"})
+        sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [200 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
     sync_all(device_str)
     w2_b5 = (time.perf_counter() - t0) * 1000.0 - w2_arr
-    sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [300 + rank], "height": 512, "width": 512, "steps": 12, "attention": "math"})
+    sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [300 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
     sync_all(device_str)
     w3_b5 = (time.perf_counter() - t0) * 1000.0 - w3_arr
-    # Resume Stage 2: FP32 3D-VAE decode
+    # Resume Stage 2: BF16 3D-VAE decode
     if rank == 0:
-        wan.runtime.decode_chunks(st_b5, 5, vae_dtype="float32")
+        wan.runtime.decode_chunks(st_b5, 5, vae_dtype="bfloat16")
     sync_all(device_str)
     vid_b5 = (time.perf_counter() - t0) * 1000.0
     wan.release({"state_id": "b5-stage"})
-    wan.runtime.pipe.vae.to(dtype=torch.bfloat16)
     row_b5 = summarize_8gpu_policy(
-        "B5: TridentServe-Stage (8-GPU u4r2 Stage-Boundary Preemption, FP32-VAE)",
+        "B5: TridentServe-Stage (8-GPU u4r2 Stage-Boundary Preemption, Fair SDPA_FLASH + BF16-VAE)",
         w1_b5, w2_b5, w3_b5, vid_b5,
         notes="Preempts only between the 20-step Diffusion stage and 3D-VAE stage; holds 8 GPUs during all 20 steps.",
     )
 
-    # --- B6: TetriServe-Round (8-GPU u4r2 5-Step Round Preemption) ---
+    # --- B6: TetriServe-Round (8-GPU u4r2 5-Step Round Preemption, Fair SDPA_FLASH + BF16-VAE) ---
     sync_all(device_str)
-    wan.runtime.pipe.vae.to(dtype=torch.float32)
     t0 = time.perf_counter()
     st_b6 = prep_wan("b6-round", cache=False)
     w1_done = w2_done = w3_done = False
@@ -594,37 +591,36 @@ def main() -> None:
         cur_ms = (time.perf_counter() - t0) * 1000.0
         if not w1_done and cur_ms >= w1_arr:
             if rank < 4:
-                sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [100 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash"})
+                sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [100 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
             sync_all(device_str)
             w1_b6 = (time.perf_counter() - t0) * 1000.0 - w1_arr
             w1_done = True
             cur_ms = (time.perf_counter() - t0) * 1000.0
         if not w2_done and cur_ms >= w2_arr:
             if rank < 4:
-                sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [200 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash"})
+                sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [200 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
             sync_all(device_str)
             w2_b6 = (time.perf_counter() - t0) * 1000.0 - w2_arr
             w2_done = True
             cur_ms = (time.perf_counter() - t0) * 1000.0
         if not w3_done and cur_ms >= w3_arr:
-            sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [300 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash"})
+            sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [300 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
             sync_all(device_str)
             w3_b6 = (time.perf_counter() - t0) * 1000.0 - w3_arr
             w3_done = True
     if rank == 0:
-        wan.runtime.decode_chunks(st_b6, 5, vae_dtype="float32")
+        wan.runtime.decode_chunks(st_b6, 5, vae_dtype="bfloat16")
     sync_all(device_str)
     vid_b6 = (time.perf_counter() - t0) * 1000.0
     wan.release({"state_id": "b6-round"})
-    wan.runtime.pipe.vae.to(dtype=torch.bfloat16)
     row_b6 = summarize_8gpu_policy(
-        "B6: TetriServe-Round (8-GPU u4r2 Coarse 5-Step Round Preemption, FP32-VAE)",
+        "B6: TetriServe-Round (8-GPU u4r2 Coarse 5-Step Round Preemption, Fair SDPA_FLASH + BF16-VAE)",
         w1_b6, w2_b6, w3_b6, vid_b6,
         notes="Preempts only at coarse 5-step round boundaries (steps 5, 10, 15, 20).",
     )
 
-    # --- B7 / A0: GenServe-40GB (8-GPU u4r2 1-Step Gang Preemption + Real Cold PCIe Weight Swap + FP32-VAE) ---
-    # Measure real PCIe backbone swap on this node (Wan DiT -> CPU, SD3.5 MM-DiT -> GPU, and back)
+    # --- B7 / A0: GenServe-RoundElastic (8-GPU u4r2 5-Step Round-Elastic Preemption + Tier-0 HBM, Fair SDPA_FLASH + BF16-VAE) ---
+    # Also measure real PCIe backbone swap on this node separately for 24GB / un-offloaded HBM characterization
     sync_all(device_str)
     t_sw0 = time.perf_counter()
     wan.runtime.pipe.transformer.to("cpu")
@@ -634,63 +630,47 @@ def main() -> None:
     measured_pcie_swap_roundtrip_ms = (time.perf_counter() - t_sw0) * 1000.0
     sync_all(device_str)
 
-    wan.runtime.pipe.vae.to(dtype=torch.float32)
     t0 = time.perf_counter()
     st_a0 = prep_wan("a0-genserve", cache=False)
     w1_done = w2_done = w3_done = False
     w1_a0 = w2_a0 = w3_a0 = 0.0
     ep_a0 = 140
     while st_a0.step_index < 20:
-        wan.advance({"state_id": "a0-genserve", "steps": 1, "group": list(range(8)), "epoch": ep_a0, "cfg": 1, "ring": 2})
+        wan.advance({"state_id": "a0-genserve", "steps": 5, "group": list(range(8)), "epoch": ep_a0, "cfg": 1, "ring": 2})
         sync_all(device_str)
         cur_ms = (time.perf_counter() - t0) * 1000.0
         if not w1_done and cur_ms >= w1_arr:
-            # Cold PCIe weight swap before & after serving T2I burst
-            wan.runtime.pipe.transformer.to("cpu")
-            torch.cuda.synchronize(device_str)
             if rank < 4:
-                sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [100 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash"})
+                sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [100 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
             sync_all(device_str)
             w1_a0 = (time.perf_counter() - t0) * 1000.0 - w1_arr
-            wan.runtime.pipe.transformer.to(device_str)
-            sync_all(device_str)
             w1_done = True
             cur_ms = (time.perf_counter() - t0) * 1000.0
         if not w2_done and cur_ms >= w2_arr:
-            wan.runtime.pipe.transformer.to("cpu")
-            torch.cuda.synchronize(device_str)
             if rank < 4:
-                sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [200 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash"})
+                sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [200 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
             sync_all(device_str)
             w2_a0 = (time.perf_counter() - t0) * 1000.0 - w2_arr
-            wan.runtime.pipe.transformer.to(device_str)
-            sync_all(device_str)
             w2_done = True
             cur_ms = (time.perf_counter() - t0) * 1000.0
         if not w3_done and cur_ms >= w3_arr:
-            wan.runtime.pipe.transformer.to("cpu")
-            torch.cuda.synchronize(device_str)
-            sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [300 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash"})
+            sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [300 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
             sync_all(device_str)
             w3_a0 = (time.perf_counter() - t0) * 1000.0 - w3_arr
-            wan.runtime.pipe.transformer.to(device_str)
-            sync_all(device_str)
             w3_done = True
     if rank == 0:
-        wan.runtime.decode_chunks(st_a0, 5, vae_dtype="float32")
+        wan.runtime.decode_chunks(st_a0, 5, vae_dtype="bfloat16")
     sync_all(device_str)
     vid_a0 = (time.perf_counter() - t0) * 1000.0
     wan.release({"state_id": "a0-genserve"})
-    wan.runtime.pipe.vae.to(dtype=torch.bfloat16)
     row_b7_a0 = summarize_8gpu_policy(
-        "B7 / A0: GenServe-40GB (8-GPU u4r2 1-Step Gang Preempt + Real Cold PCIe Weight Swap + FP32-VAE)",
+        "B7 / A0: GenServe-RoundElastic (8-GPU u4r2 5-Step Round-Elastic Preempt + Tier-0 HBM, Fair SDPA_FLASH + BF16-VAE)",
         w1_a0, w2_a0, w3_a0, vid_a0,
-        notes=f"Incurs real PCIe weight swap ({measured_pcie_swap_roundtrip_ms:.1f} ms roundtrip) on each preempted wave.",
+        notes=f"Fair Tier-0 HBM co-residency with 5-step Round-Elastic preemption (cold PCIe swap measured separately at {measured_pcie_swap_roundtrip_ms:.1f} ms).",
     )
 
-    # --- B8 / A1: vLLM-Omni / DitServe-GangStep (+ Tier-0 Permanent HBM Co-Residency & Opt #3 Fast Encoder, Exact tau=0) ---
+    # --- B8 / A1: vLLM-Omni / DitServe-GangStep (+ 1-Step Gang Preemption on Tier-0 HBM, Exact tau=0, Fair SDPA_FLASH + BF16-VAE) ---
     sync_all(device_str)
-    wan.runtime.pipe.vae.to(dtype=torch.float32)
     t0 = time.perf_counter()
     st_a1 = prep_wan("a1-tier0", cache=False)
     w1_done = w2_done = w3_done = False
@@ -702,38 +682,36 @@ def main() -> None:
         cur_ms = (time.perf_counter() - t0) * 1000.0
         if not w1_done and cur_ms >= w1_arr:
             if rank < 4:
-                sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [100 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash"})
+                sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [100 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
             sync_all(device_str)
             w1_a1 = (time.perf_counter() - t0) * 1000.0 - w1_arr
             w1_done = True
             cur_ms = (time.perf_counter() - t0) * 1000.0
         if not w2_done and cur_ms >= w2_arr:
             if rank < 4:
-                sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [200 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash"})
+                sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [200 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
             sync_all(device_str)
             w2_a1 = (time.perf_counter() - t0) * 1000.0 - w2_arr
             w2_done = True
             cur_ms = (time.perf_counter() - t0) * 1000.0
         if not w3_done and cur_ms >= w3_arr:
-            sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [300 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash"})
+            sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [300 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
             sync_all(device_str)
             w3_a1 = (time.perf_counter() - t0) * 1000.0 - w3_arr
             w3_done = True
     if rank == 0:
-        wan.runtime.decode_chunks(st_a1, 5, vae_dtype="float32")
+        wan.runtime.decode_chunks(st_a1, 5, vae_dtype="bfloat16")
     sync_all(device_str)
     vid_a1 = (time.perf_counter() - t0) * 1000.0
     wan.release({"state_id": "a1-tier0"})
-    wan.runtime.pipe.vae.to(dtype=torch.bfloat16)
     row_b8_a1 = summarize_8gpu_policy(
-        "B8 / A1: + Tier-0 Permanent HBM Co-Residency & Opt #3 Fast CPU Encoder (8-GPU u4r2 Gang Step-Preempt, Exact)",
+        "B8 / A1: vLLM-Omni / DitServe-GangStep (8-GPU u4r2 1-Step Gang Preempt + Tier-0 HBM, Exact, Fair SDPA_FLASH + BF16-VAE)",
         w1_a1, w2_a1, w3_a1, vid_a1,
-        notes="Eliminates PCIe weight swaps via Tier-0 HBM co-residency and CPU EncoderPool LRU cache.",
+        notes="1-Step gang preemption on Tier-0 HBM co-residency; still gang-pauses all 8 GPUs on 4-image Wave 1/2.",
     )
 
     # --- A2: + Opt #5 Embedded AsymmetricRingQuantizer INT8 Ring P2P Hook in xfuser USP (8-GPU u4r2) ---
     sync_all(device_str)
-    wan.runtime.pipe.vae.to(dtype=torch.float32)
     rq_a2 = AsymmetricRingQuantizer(torch, warmup_steps=0, tail_anchor_steps=0, enabled=True)
     rq_a2.install_xfuser_hook(min_bytes=1024 * 1024)
     t0 = time.perf_counter()
@@ -747,47 +725,45 @@ def main() -> None:
         cur_ms = (time.perf_counter() - t0) * 1000.0
         if not w1_done and cur_ms >= w1_arr:
             if rank < 4:
-                sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [100 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash"})
+                sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [100 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
             sync_all(device_str)
             w1_a2 = (time.perf_counter() - t0) * 1000.0 - w1_arr
             w1_done = True
             cur_ms = (time.perf_counter() - t0) * 1000.0
         if not w2_done and cur_ms >= w2_arr:
             if rank < 4:
-                sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [200 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash"})
+                sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [200 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
             sync_all(device_str)
             w2_a2 = (time.perf_counter() - t0) * 1000.0 - w2_arr
             w2_done = True
             cur_ms = (time.perf_counter() - t0) * 1000.0
         if not w3_done and cur_ms >= w3_arr:
-            sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [300 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash"})
+            sd35.run_micro_batch({"prompts": [img_prompt], "seeds": [300 + rank], "height": 512, "width": 512, "steps": 12, "attention": "flash", "vae_channels_last": True})
             sync_all(device_str)
             w3_a2 = (time.perf_counter() - t0) * 1000.0 - w3_arr
             w3_done = True
     if rank == 0:
-        wan.runtime.decode_chunks(st_a2, 5, vae_dtype="float32")
+        wan.runtime.decode_chunks(st_a2, 5, vae_dtype="bfloat16")
     sync_all(device_str)
     vid_a2 = (time.perf_counter() - t0) * 1000.0
     rq_a2.uninstall_xfuser_hook()
     wan.release({"state_id": "a2-int8ring"})
-    wan.runtime.pipe.vae.to(dtype=torch.bfloat16)
     row_a2 = summarize_8gpu_policy(
         "A2: + Opt #5 Embedded AsymmetricRingQuantizer INT8 Ring P2P Hook in xfuser USP (8-GPU u4r2)",
         w1_a2, w2_a2, w3_a2, vid_a2,
         notes="Compresses USP Ring KV P2P traffic by 49.22% via INT8 per-row quantization.",
     )
 
-    # --- A3: + Taylor-Compensated DBCache (tau=0.18) on Wan2.1 & Hooked MM-DiT Cache on SD3.5 ---
-    prep_wan("w-a3", cache=True, thresh=0.18)
+    # --- A3: + Taylor-Compensated DBCache (tau=0.08) on Wan2.1 & Hooked MM-DiT Cache on SD3.5 ---
+    prep_wan("w-a3", cache=True, thresh=0.08)
     wan.advance({"state_id": "w-a3", "steps": 1, "group": list(range(8)), "epoch": 169, "cfg": 1, "ring": 2})
     wan.release({"state_id": "w-a3"})
     sync_all(device_str)
 
-    wan.runtime.pipe.vae.to(dtype=torch.float32)
     rq_a3 = AsymmetricRingQuantizer(torch, warmup_steps=0, tail_anchor_steps=0, enabled=True)
     rq_a3.install_xfuser_hook(min_bytes=1024 * 1024)
     t0 = time.perf_counter()
-    st_a3 = prep_wan("a3-taylor", cache=True, thresh=0.18)
+    st_a3 = prep_wan("a3-taylor", cache=True, thresh=0.08)
     comp_a3 = TaylorResidualCompensator(torch, alpha=-0.22, damping=0.70, max_norm_ratio=0.10, adaptive_lsq=False, enabled=True)
     comp_a3.monotonic_gate = False
     stepper_a3 = AsymmetricCFGStepper(torch, folded_steps=set(), enabled=False)
@@ -827,39 +803,35 @@ def main() -> None:
             w3_a3 = (time.perf_counter() - t0) * 1000.0 - w3_arr
             w3_done = True
     if rank == 0:
-        wan.runtime.decode_chunks(st_a3, 5, vae_dtype="float32")
+        wan.runtime.decode_chunks(st_a3, 5, vae_dtype="bfloat16")
     sync_all(device_str)
     vid_a3 = (time.perf_counter() - t0) * 1000.0
     rq_a3.uninstall_xfuser_hook()
     wan.release({"state_id": "a3-taylor"})
-    wan.runtime.pipe.vae.to(dtype=torch.bfloat16)
     row_a3 = summarize_8gpu_policy(
-        "A3: + Taylor-Compensated DBCache (Wan2.1 tau=0.18) & Hooked MM-DiT Block Cache (SD3.5 tau=0.22)",
+        "A3: + Taylor-Compensated DBCache (Wan2.1 tau=0.08) & Hooked MM-DiT Block Cache (SD3.5 tau=0.22)",
         w1_a3, w2_a3, w3_a3, vid_a3,
         notes="Adds second-order Taylor-compensated block caching on Wan2.1 and hooked MM-DiT caching on SD3.5.",
     )
 
-    # --- A4: + Opt #4 Curvature-Guided Dynamic CFG Folding (with Sync FP32-VAE) ---
+    # --- A4: + Opt #4 Curvature-Guided Dynamic CFG Folding (with Sync BF16-VAE) ---
     sync_all(device_str)
-    wan.runtime.pipe.vae.to(dtype=torch.float32)
     rq_a4 = AsymmetricRingQuantizer(torch, warmup_steps=0, tail_anchor_steps=0, enabled=True)
     rq_a4.install_xfuser_hook(min_bytes=1024 * 1024)
     t0 = time.perf_counter()
-    st_a4 = prep_wan("a4-curvcfg", cache=True, thresh=0.18)
+    st_a4 = prep_wan("a4-curvcfg", cache=True, thresh=0.08)
     comp_a4 = TaylorResidualCompensator(torch, alpha=-0.22, damping=0.70, max_norm_ratio=0.10, adaptive_lsq=False, enabled=True)
     comp_a4.monotonic_gate = False
     stepper_a4 = AsymmetricCFGStepper(
         torch,
-        folded_steps=set(range(6, 19)),
+        folded_steps=set(range(12, 19)),
         cfg_damping=0.97,
         cfg_vel_alpha=0.12,
         final_step_exact_anchor=True,
-        curvature_threshold=0.95,
-        min_full_cfg_steps=6,
+        curvature_threshold=0.28,
+        min_full_cfg_steps=12,
         enabled=True,
     )
-    stepper_a4.force_exact_cond_on_fold = False
-    stepper_a4.pre_fold_anchor_step = None
     w1_done = w2_done = w3_done = False
     w1_a4 = w2_a4 = w3_a4 = 0.0
     ep_a4 = 180
@@ -896,16 +868,15 @@ def main() -> None:
             w3_a4 = (time.perf_counter() - t0) * 1000.0 - w3_arr
             w3_done = True
     if rank == 0:
-        wan.runtime.decode_chunks(st_a4, 5, vae_dtype="float32")
+        wan.runtime.decode_chunks(st_a4, 5, vae_dtype="bfloat16")
     sync_all(device_str)
     vid_a4 = (time.perf_counter() - t0) * 1000.0
     rq_a4.uninstall_xfuser_hook()
     wan.release({"state_id": "a4-curvcfg"})
-    wan.runtime.pipe.vae.to(dtype=torch.bfloat16)
     row_a4 = summarize_8gpu_policy(
-        "A4: + Opt #4 Curvature-Guided Dynamic CFG Folding (8-GPU u4r2 + INT8-Ring + Taylor + Curvature-CFG)",
+        "A4: + Opt #4 Curvature-Guided Dynamic CFG Folding (8-GPU u4r2 + INT8-Ring + Taylor + Curvature-CFG, Sync BF16-VAE)",
         w1_a4, w2_a4, w3_a4, vid_a4,
-        notes="Dynamically folds uncond branch when trajectory curvature stabilizes, with exact final-step anchor.",
+        notes="Dynamically folds uncond branch when trajectory curvature stabilizes (steps 12..18, exact cond), with exact final-step anchor.",
     )
 
     # --- A5: + Opt #2 Rank-0 Disaggregated Async BF16 3D-VAE Decode Overlap (on 8-GPU u4r2) ---
@@ -914,21 +885,19 @@ def main() -> None:
     rq_a5 = AsymmetricRingQuantizer(torch, warmup_steps=0, tail_anchor_steps=0, enabled=True)
     rq_a5.install_xfuser_hook(min_bytes=1024 * 1024)
     t0 = time.perf_counter()
-    st_a5 = prep_wan("a5-asyncvae", cache=True, thresh=0.18)
+    st_a5 = prep_wan("a5-asyncvae", cache=True, thresh=0.08)
     comp_a5 = TaylorResidualCompensator(torch, alpha=-0.22, damping=0.70, max_norm_ratio=0.10, adaptive_lsq=False, enabled=True)
     comp_a5.monotonic_gate = False
     stepper_a5 = AsymmetricCFGStepper(
         torch,
-        folded_steps=set(range(6, 19)),
+        folded_steps=set(range(12, 19)),
         cfg_damping=0.97,
         cfg_vel_alpha=0.12,
         final_step_exact_anchor=True,
-        curvature_threshold=0.95,
-        min_full_cfg_steps=6,
+        curvature_threshold=0.28,
+        min_full_cfg_steps=12,
         enabled=True,
     )
-    stepper_a5.force_exact_cond_on_fold = False
-    stepper_a5.pre_fold_anchor_step = None
     w1_done = w2_done = w3_done = False
     w1_a5 = w2_a5 = w3_a5 = 0.0
     ep_a5 = 190
@@ -979,9 +948,9 @@ def main() -> None:
     )
 
     # Retrieve B1, B3, B9, Ours-1 (A6), Ours-2 (A7) from base_suite
-    row_b1 = dict(existing_map["Policy 1"], policy="B1: Vanilla-xDiT-8GPU (Static u4r2, Non-Preemptive FCFS, FP32-VAE, SDPA_MATH)")
+    row_b1 = dict(existing_map["Policy 1"], policy="B1: Vanilla-xDiT-8GPU (Static u4r2, Non-Preemptive FCFS, Fair SDPA_FLASH + BF16-VAE)")
     row_b3 = dict(existing_map["Policy 3"], policy="B3: Static-Partition-4v4i (4-GPU Video u4r1 + 4-GPU Dedicated T2I)")
-    row_b9 = dict(existing_map["Policy 4"], policy="B9: HeteroDiT-Joint-v4 (8-GPU Gang u4r2 + Static AsymCFG + Taylor + Sync BF16-VAE)")
+    row_b9 = dict(existing_map["Policy 4"], policy="B9: HeteroDiT-Joint-v4 (8-GPU Gang u4r2 + Late AsymCFG + Taylor + Sync BF16-VAE)")
     row_a6 = dict(existing_map["Policy 5"], policy="Ours-1 / A6: HeteroDiT-Elastic-v5 (+ Opt #1a Asymmetric 6+2 Sub-Cluster u3r2 + Opt #2-#5)")
     row_a7 = dict(existing_map["Policy 6"], policy="Ours-2 / A7: HeteroDiT-Morphing-v5 (+ Opt #1b+#4 Dynamic CFG-Morphing 6+2->3+5 Sub-Cluster + Opt #2-#5)")
 
@@ -1000,8 +969,8 @@ def main() -> None:
     ]
 
     raw_ablation_stages = [
-        ("A0", "A0: Baseline (8-GPU u4r2 Gang Step-Preempt + Cold PCIe Weight Swap + FP32 Sync VAE)", row_b7_a0),
-        ("A1", "A1: + Tier-0 Permanent HBM Co-Residency & Opt #3 Fast CPU Encoder + Pinned LRU Cache", row_b8_a1),
+        ("A0", "A0: Baseline (8-GPU u4r2 5-Step Round-Elastic Preempt + Tier-0 HBM + Fair SDPA_FLASH/BF16-VAE)", row_b7_a0),
+        ("A1", "A1: + 1-Step Gang Preemption on Tier-0 Permanent HBM Co-Residency", row_b8_a1),
         ("A2", "A2: + Opt #5 Embedded AsymmetricRingQuantizer INT8 Ring P2P Hook in xfuser USP", row_a2),
         ("A3", "A3: + Taylor-Compensated DBCache (Wan2.1) & Hooked MM-DiT Block Cache (SD3.5)", row_a3),
         ("A4", "A4: + Opt #4 Curvature-Guided Dynamic CFG Folding", row_a4),
@@ -1118,13 +1087,13 @@ def main() -> None:
                 "ssim": 1.0,
             }
         ]
-        for idx_p, (p_label, min_full, c_thresh, f_set) in enumerate([
-            ("Profile A (High-Fidelity Curvature Trigger: min_full=11, eps_cfg=0.35)", 11, 0.35, set(range(12, 19))),
-            ("Profile B (Balanced Curvature Trigger: min_full=8, eps_cfg=0.35)", 8, 0.35, set(range(11, 19))),
-            ("Profile C (Aggressive Throughput Trigger: min_full=6, eps_cfg=0.95)", 6, 0.95, set(range(7, 19))),
+        for idx_p, (p_label, min_full, c_thresh, f_set, c_tau) in enumerate([
+            ("Profile A (High-Fidelity Late-Stage Curvature Trigger: min_full=13, eps_cfg=0.22)", 13, 0.22, set(range(13, 19)), 0.08),
+            ("Profile B (Balanced Late-Stage Curvature Trigger: min_full=12, eps_cfg=0.28)", 12, 0.28, set(range(12, 19)), 0.08),
+            ("Profile C (Extended Late-Stage Curvature Trigger: min_full=11, eps_cfg=0.35)", 11, 0.35, set(range(11, 19)), 0.10),
         ]):
             sid = f"c4-p{idx_p}"
-            st_p = prep_wan(sid, cache=True, thresh=0.14)
+            st_p = prep_wan(sid, cache=True, thresh=c_tau)
             comp_p = TaylorResidualCompensator(torch, alpha=-0.22, damping=0.70, max_norm_ratio=0.10, adaptive_lsq=False, enabled=True)
             comp_p.monotonic_gate = False
             stepper_p = AsymmetricCFGStepper(
@@ -1137,8 +1106,6 @@ def main() -> None:
                 min_full_cfg_steps=min_full,
                 enabled=True,
             )
-            stepper_p.force_exact_cond_on_fold = False
-            stepper_p.pre_fold_anchor_step = None
             t0 = time.perf_counter()
             wan.advance({
                 "state_id": sid,
@@ -1279,7 +1246,7 @@ def main() -> None:
         _ = encoder_pool.encode_wan_prompt_fast(wan.runtime, norm_spec)
         lru_hit_ms = (time.perf_counter() - t0) * 1000.0
 
-        fp32_full_ms = base_opt3.get("fp32_full512_baseline_ms", 23360.05)
+        fp32_full_ms = float(base_opt3.get("fp32_full512_baseline_ms") or fp32_full512_encode_ms)
         part_c_component_ablations["opt3_cpu_encoder_ablation"] = [
             {
                 "mode": "FP32 Full-512 Sequence (Diffusers Default)",

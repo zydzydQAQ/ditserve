@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import math
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import numpy as np
+if TYPE_CHECKING:
+    import numpy as np
 
 
 def module_bytes(mod: Any) -> int:
@@ -43,6 +44,8 @@ def module_params(mod: Any) -> int:
 
 def compute_psnr(ref: np.ndarray, test: np.ndarray, digits: int = 2) -> float:
     """Compute Peak Signal-to-Noise Ratio (dB) for images/videos in [0, 1]."""
+    import numpy as np
+
     ref_f = ref.astype(np.float64)
     test_f = test.astype(np.float64)
     mse = float(np.mean((ref_f - test_f) ** 2))
@@ -53,6 +56,7 @@ def compute_psnr(ref: np.ndarray, test: np.ndarray, digits: int = 2) -> float:
 
 def compute_ssim_frame(x: np.ndarray, y: np.ndarray) -> float:
     """Compute SSIM for a single HWC image/frame in [0, 1]."""
+    import numpy as np
     import torch
     import torch.nn.functional as F
 
@@ -73,6 +77,8 @@ def compute_ssim_frame(x: np.ndarray, y: np.ndarray) -> float:
 
 def compute_ssim_batch(ref_imgs: np.ndarray, test_imgs: np.ndarray) -> float:
     """Compute mean SSIM across a batch of images or video frames [N, H, W, C] in [0, 1]."""
+    import numpy as np
+
     ref_v = ref_imgs[0] if ref_imgs.ndim == 5 else ref_imgs
     test_v = test_imgs[0] if test_imgs.ndim == 5 else test_imgs
     scores = [compute_ssim_frame(ref_v[i], test_v[i]) for i in range(ref_v.shape[0])]
@@ -84,6 +90,8 @@ compute_video_ssim = compute_ssim_batch
 
 def compute_psnr_ssim(ref_frames: np.ndarray, test_frames: np.ndarray) -> tuple[float, float]:
     """Compute mean PSNR (dB) and SSIM across video frames in [0, 1]."""
+    import numpy as np
+
     ref = np.clip(ref_frames.astype(np.float32), 0.0, 1.0)
     tst = np.clip(test_frames.astype(np.float32), 0.0, 1.0)
     return compute_psnr(ref, tst, digits=2), round(compute_ssim_batch(ref, tst), 4)

@@ -512,8 +512,8 @@ class LayoutTests(unittest.TestCase):
         handle.begin_step("r", 0)
         with self.assertRaisesRegex(ParallelContractError, "step boundary"):
             handle.adopt((7,), epoch=12)
-        with self.assertRaisesRegex(ParallelContractError, r"rank must be in \[0, 8\)"):
-            LayoutHandle(8)
+        with self.assertRaisesRegex(ParallelContractError, r"rank must be in \[0, 16\)"):
+            LayoutHandle(16)
         from ditserve.models.wan.parallel import FixedLayout
         quad = FixedLayout((0, 1, 2, 3), cfg=2)
         self.assertEqual((quad.sp_degree, quad.cfg_role(2), quad.sp_ranks(2), quad.sp_ranks(0)), (2, 1, (2, 3), (0, 1)))
