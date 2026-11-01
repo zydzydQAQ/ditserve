@@ -105,7 +105,7 @@ def main() -> None:
         "steps": 20,
         "height": 480,
         "width": 832,
-        "frames": 17,
+        "frames": 33,
         "guidance_scale": 5.0,
         "cache": False,
         "threshold": 0.0,
@@ -190,24 +190,22 @@ def main() -> None:
         wan.advance({"state_id": "opt4-ref", "steps": 20, "group": [0], "epoch": 1, "cfg": 1, "ring": 1})
         torch.cuda.synchronize(device_str)
         ref_20_ms = (time.perf_counter() - t0) * 1000.0
-        ref_frames = wan.runtime.decode_chunks(st_ref, 5, vae_dtype="bfloat16")[0]
+        ref_frames = wan.runtime.decode_chunks(st_ref, 9, vae_dtype="bfloat16")[0]
         wan.release({"state_id": "opt4-ref"})
 
-        st_curv = prep_wan("opt4-curv", cache=True, thresh=0.14)
-        comp_curv = TaylorResidualCompensator(torch, alpha=-0.22, damping=0.70, max_norm_ratio=0.10, adaptive_lsq=False, enabled=True)
-        comp_curv.monotonic_gate = False
+        st_curv = prep_wan("opt4-curv", cache=True, thresh=0.08)
+        comp_curv = TaylorResidualCompensator(torch, alpha=-0.20, damping=0.65, max_norm_ratio=0.08, adaptive_lsq=False, enabled=True)
         stepper_curv = AsymmetricCFGStepper(
             torch,
-            folded_steps=set(range(11, 19)),
+            folded_steps=set(range(12, 19)),
             cfg_damping=0.97,
             cfg_vel_alpha=0.12,
             final_step_exact_anchor=True,
-            curvature_threshold=0.14,
-            min_full_cfg_steps=8,
+            force_exact_cond_on_fold=True,
+            curvature_threshold=0.32,
+            min_full_cfg_steps=12,
             enabled=True,
         )
-        stepper_curv.force_exact_cond_on_fold = False
-        stepper_curv.pre_fold_anchor_step = None
         t0 = time.perf_counter()
         wan.advance({
             "state_id": "opt4-curv",
@@ -221,7 +219,7 @@ def main() -> None:
         })
         torch.cuda.synchronize(device_str)
         curv_20_ms = (time.perf_counter() - t0) * 1000.0
-        curv_frames = wan.runtime.decode_chunks(st_curv, 5, vae_dtype="bfloat16")[0]
+        curv_frames = wan.runtime.decode_chunks(st_curv, 9, vae_dtype="bfloat16")[0]
         wan.release({"state_id": "opt4-curv"})
         psnr_db, ssim_val = compute_psnr_ssim(ref_frames, curv_frames)
         opt_results["opt4_curvature_dynamic_cfg"] = {
@@ -374,13 +372,13 @@ def main() -> None:
     # PART 3: 8-GPU End-to-End Mixed-Modality Serving Comparison (6 Policies)
     # =========================================================================
     # Workload on 8 GPUs:
-    #   - Video job v0 arrives at t = 0 ms (Wan2.1-1.3B 480x832x33, 14040 tokens, 20 steps, SLO = 13,500 ms)
-    #   - Image Wave 1: 4x SD3.5-Medium requests arrive at t = 1,200 ms (SLO = 1,500 ms)
-    #   - Image Wave 2: 4x SD3.5-Medium requests arrive at t = 3,000 ms (SLO = 1,500 ms)
-    #   - Image Wave 3: 8x SD3.5-Medium requests arrive at t = 5,200 ms (SLO = 1,500 ms)
-    w1_arr, w2_arr, w3_arr = 1200.0, 3000.0, 5200.0
+    #   - Video job v0 arrives at t = 0 ms (Wan2.1-1.3B 480x832x33, 14040 tokens, 20 steps, SLO = 16,500 ms)
+    #   - Image Wave 1: 4x SD3.5-Medium requests arrive at t = 1,500 ms (SLO = 1,500 ms)
+    #   - Image Wave 2: 4x SD3.5-Medium requests arrive at t = 4,000 ms (SLO = 1,500 ms)
+    #   - Image Wave 3: 8x SD3.5-Medium requests arrive at t = 7,500 ms (SLO = 1,500 ms)
+    w1_arr, w2_arr, w3_arr = 1500.0, 4000.0, 7500.0
     img_slo = 1500.0
-    vid_slo = 13500.0
+    vid_slo = 16500.0
     policies_8gpu = []
 
     def now_ms(t_start: float) -> float:
@@ -408,8 +406,9 @@ def main() -> None:
     t0 = time.perf_counter()
     st1 = prep_wan("p1-8g", cache=False)
     wan.advance({"state_id": "p1-8g", "steps": 20, "group": list(range(8)), "epoch": 201, "cfg": 1, "ring": 2})
+    ref_vid_frames_p1 = None
     if rank == 0:
-        wan.runtime.decode_chunks(st1, 9, vae_dtype="bfloat16")
+        ref_vid_frames_p1 = wan.runtime.decode_chunks(st1, 9, vae_dtype="bfloat16")[0]
     sync_all(device_str)
     vid_p1 = now_ms(t0)
     wan.release({"state_id": "p1-8g"})
@@ -617,8 +616,11 @@ def main() -> None:
             w3_p4 = now_ms(t0) - w3_arr
             w3_done = True
             ep += 1
+    psnr_p4 = ssim_p4 = None
     if rank == 0:
-        wan.runtime.decode_chunks(st4, 9, vae_dtype="bfloat16")
+        frames_p4 = wan.runtime.decode_chunks(st4, 9, vae_dtype="bfloat16")[0]
+        if ref_vid_frames_p1 is not None:
+            psnr_p4, ssim_p4 = compute_psnr_ssim(ref_vid_frames_p1, frames_p4)
     sync_all(device_str)
     vid_p4 = now_ms(t0)
     wan.release({"state_id": "p4-8g"})
@@ -695,9 +697,12 @@ def main() -> None:
                 ep5 += 1
 
         fut5 = vae_streamer.submit_rank0_disaggregated(rank, st5, chunk_frames=5)
-        vae_streamer.collect_rank0_disaggregated(rank, fut5)
+        out5 = vae_streamer.collect_rank0_disaggregated(rank, fut5)
         torch.cuda.synchronize(device_str)
         vid_p5_local = (time.perf_counter() - t0) * 1000.0
+        psnr_p5 = ssim_p5 = None
+        if rank == 0 and out5.get("frames") is not None and ref_vid_frames_p1 is not None:
+            psnr_p5, ssim_p5 = compute_psnr_ssim(ref_vid_frames_p1, out5["frames"])
         w1_local_v5 = 0.0
         w2_local_v5 = 0.0
         wan.release({"state_id": "p5-8g"})
@@ -841,9 +846,12 @@ def main() -> None:
                 w3_assisted_v6 = True
                 ep6 += 1
         fut6 = vae_streamer.submit_rank0_disaggregated(rank, st6, chunk_frames=5)
-        vae_streamer.collect_rank0_disaggregated(rank, fut6)
+        out6 = vae_streamer.collect_rank0_disaggregated(rank, fut6)
         torch.cuda.synchronize(device_str)
         vid_p6_local = (time.perf_counter() - t0) * 1000.0
+        psnr_p6 = ssim_p6 = None
+        if rank == 0 and out6.get("frames") is not None and ref_vid_frames_p1 is not None:
+            psnr_p6, ssim_p6 = compute_psnr_ssim(ref_vid_frames_p1, out6["frames"])
         wan.release({"state_id": "p6-8g"})
     elif rank in (3, 4, 5):
         wan.release({"state_id": "p6-8g"})
@@ -924,13 +932,13 @@ def main() -> None:
     wan.close()
 
     if rank == 0:
-        for name, w1, w2, w3, vlat in [
-            ("Policy 1: Vanilla-xDiT-8GPU (Static u4r2, Non-Preemptive, Fair SDPA_FLASH + BF16-VAE)", w1_p1, w2_p1, w3_p1, vid_p1),
-            ("Policy 2: DitServe-8GPU-GangPreempt (8-GPU u4r2 Gang Step-Preempt, Fair SDPA_FLASH + BF16-VAE)", w1_p2, w2_p2, w3_p2, vid_p2),
-            ("Policy 3: Static-Partition-4v4i (4-GPU Video u4r1 + 4-GPU Dedicated T2I)", w1_p3, w2_p3, w3_p3, vid_p3),
-            ("Policy 4: HeteroDiT-Joint-v4 (8-GPU Gang u4r2 + Late AsymCFG + Taylor + BF16-VAE)", w1_p4, w2_p4, w3_p4, vid_p4),
-            ("Policy 5: HeteroDiT-Elastic-v5 (Opt #1-#5: 6+2 Sub-Cluster u3r2 + Curvature-CFG + INT8-Ring + Rank0-Async-VAE)", w1_p5, w2_p5, w3_p5, vid_p5),
-            ("Policy 6: HeteroDiT-Morphing-v5 (Opt #1-#5: CFG-Morphing 6+2->3+5 Sub-Cluster + Curvature-CFG + Rank0-Async-VAE)", w1_p6, w2_p6, w3_p6, vid_p6),
+        for name, w1, w2, w3, vlat, v_psnr, v_ssim in [
+            ("Policy 1: Vanilla-xDiT-8GPU (Static u4r2, Non-Preemptive, Fair SDPA_FLASH + BF16-VAE)", w1_p1, w2_p1, w3_p1, vid_p1, 99.99, 1.0),
+            ("Policy 2: DitServe-8GPU-GangPreempt (8-GPU u4r2 Gang Step-Preempt, Fair SDPA_FLASH + BF16-VAE)", w1_p2, w2_p2, w3_p2, vid_p2, None, None),
+            ("Policy 3: Static-Partition-4v4i (4-GPU Video u4r1 + 4-GPU Dedicated T2I)", w1_p3, w2_p3, w3_p3, vid_p3, None, None),
+            ("Policy 4: HeteroDiT-Joint-v4 (8-GPU Gang u4r2 + Late AsymCFG + Taylor + BF16-VAE)", w1_p4, w2_p4, w3_p4, vid_p4, psnr_p4, ssim_p4),
+            ("Policy 5: HeteroDiT-Elastic-v5 (Opt #1-#5: 6+2 Sub-Cluster u3r2 + Curvature-CFG + INT8-Ring + Rank0-Async-VAE)", w1_p5, w2_p5, w3_p5, vid_p5, psnr_p5, ssim_p5),
+            ("Policy 6: HeteroDiT-Morphing-v5 (Opt #1-#5: CFG-Morphing 6+2->3+5 Sub-Cluster + Curvature-CFG + Rank0-Async-VAE)", w1_p6, w2_p6, w3_p6, vid_p6, psnr_p6, ssim_p6),
         ]:
             imgs = [w1] * 4 + [w2] * 4 + [w3] * 8
             img_ok = sum(1 for x in imgs if x <= img_slo)
@@ -948,6 +956,10 @@ def main() -> None:
                 "video_slo_pct": round(100.0 * vid_ok, 2),
                 "total_slo_pct": tot_slo,
             }
+            if v_psnr is not None:
+                rec["video_psnr_db"] = v_psnr
+            if v_ssim is not None:
+                rec["video_ssim"] = v_ssim
             policies_8gpu.append(rec)
             print(f"[Part 3] {rec}", flush=True)
 

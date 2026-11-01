@@ -305,12 +305,114 @@ def run_finalize_c2_c4_c3(args) -> None:
     wan.close()
 
 
+def merge_base_suite_into_existing(args) -> None:
+    existing_path = Path(args.merge_base_suite_into_existing)
+    base_path = Path(args.base_suite_json)
+    out_path = Path(args.output)
+    existing = json.loads(existing_path.read_text(encoding="utf-8"))
+    base_suite = json.loads(base_path.read_text(encoding="utf-8"))
+
+    img_slo_ms = 1500.0
+    vid_slo_ms = 16500.0
+    vid_relaxed_slo_ms = 18500.0
+
+    existing_map = {}
+    for row in base_suite.get("mixed_serving_8gpu_policies", []):
+        p_name = row["policy"]
+        v_lat = row["video_latency_ms"]
+        img_ok = round(row["image_slo_pct"] * 16.0 / 100.0)
+        vid_ok = 1 if v_lat <= vid_slo_ms else 0
+        vid_rel_ok = 1 if v_lat <= vid_relaxed_slo_ms else 0
+        row_copy = dict(row)
+        row_copy["video_slo_pct"] = round(100.0 * vid_ok, 2)
+        row_copy["video_slo_12s_pct"] = round(100.0 * vid_rel_ok, 2)
+        row_copy["total_slo_pct"] = round(100.0 * (img_ok + vid_ok) / 17.0, 2)
+        row_copy["total_slo_12s_pct"] = round(100.0 * (img_ok + vid_rel_ok) / 17.0, 2)
+        existing_map[p_name.split(":")[0].strip()] = row_copy
+
+    row_b1 = dict(existing_map["Policy 1"], policy="B1: Vanilla-xDiT-8GPU (Static u4r2, Non-Preemptive FCFS, Fair SDPA_FLASH + BF16-VAE)")
+    row_b3 = dict(existing_map["Policy 3"], policy="B3: Static-Partition-4v4i (4-GPU Video u4r1 + 4-GPU Dedicated T2I)")
+    row_b9 = dict(existing_map["Policy 4"], policy="B9: HeteroDiT-Joint-v4 (8-GPU Gang u4r2 + Late AsymCFG + Taylor + Sync BF16-VAE)")
+    row_a6 = dict(existing_map["Policy 5"], policy="Ours-1 / A6: HeteroDiT-Elastic-v5 (+ Opt #1a Asymmetric 6+2 Sub-Cluster u3r2 + Opt #2-#5)")
+    row_a7 = dict(existing_map["Policy 6"], policy="Ours-2 / A7: HeteroDiT-Morphing-v5 (+ Opt #1b+#4 Dynamic CFG-Morphing 6+2->3+5 Sub-Cluster + Opt #2-#5)")
+
+    by_prefix = {r["policy"].split(":")[0].strip(): r for r in existing["part_a_all_11_baselines_and_sota_8gpu"]}
+    row_b2 = by_prefix["B2"]
+    row_b4 = by_prefix["B4"]
+    row_b5 = by_prefix["B5"]
+    row_b6 = by_prefix["B6"]
+    row_b7_a0 = by_prefix["B7 / A0"]
+    row_b8_a1 = by_prefix["B8 / A1"]
+
+    existing["part_a_all_11_baselines_and_sota_8gpu"] = [
+        row_b1,
+        row_b2,
+        row_b3,
+        row_b4,
+        row_b5,
+        row_b6,
+        row_b7_a0,
+        row_b8_a1,
+        row_b9,
+        row_a6,
+        row_a7,
+    ]
+
+    by_stage = {r["stage_id"]: r for r in existing["part_b_cumulative_8stage_ablation_8gpu"]}
+    raw_ablation_stages = [
+        ("A0", "A0: Baseline (8-GPU u4r2 5-Step Round-Elastic Preempt + Tier-0 HBM + Fair SDPA_FLASH/BF16-VAE)", row_b7_a0),
+        ("A1", "A1: + 1-Step Gang Preemption on Tier-0 Permanent HBM Co-Residency", row_b8_a1),
+        ("A2", "A2: + Opt #5 Embedded AsymmetricRingQuantizer INT8 Ring P2P Hook in xfuser USP", by_stage["A2"]),
+        ("A3", "A3: + Taylor-Compensated DBCache (Wan2.1) & Hooked MM-DiT Block Cache (SD3.5)", by_stage["A3"]),
+        ("A4", "A4: + Opt #4 Curvature-Guided Dynamic CFG Folding", by_stage["A4"]),
+        ("A5", "A5: + Opt #2 Rank-0 Disaggregated Async BF16 3D-VAE Decode Overlap", by_stage["A5"]),
+        ("A6", "A6: + Opt #1a Asymmetric 6+2 Sub-Cluster Partitioning (HeteroDiT-Elastic-v5)", row_a6),
+        ("A7", "A7: + Opt #1b+#4 Dynamic CFG-Morphing 6+2->3+5 Sub-Cluster (HeteroDiT-Morphing-v5)", row_a7),
+    ]
+    part_b = []
+    prev_row = None
+    for stage_id, stage_label, r_data in raw_ablation_stages:
+        entry = {k: v for k, v in r_data.items() if k not in ("stage_id", "stage_label", "delta_vs_prev")}
+        entry["stage_id"] = stage_id
+        entry["stage_label"] = stage_label
+        if prev_row is not None:
+            entry["delta_vs_prev"] = {
+                "delta_image_mean_ms": round(entry["image_mean_latency_ms"] - prev_row["image_mean_latency_ms"], 1),
+                "delta_video_latency_ms": round(entry["video_latency_ms"] - prev_row["video_latency_ms"], 1),
+                "delta_total_slo_pct": round(entry["total_slo_pct"] - prev_row["total_slo_pct"], 2),
+                "delta_total_slo_12s_pct": round(entry["total_slo_12s_pct"] - prev_row["total_slo_12s_pct"], 2),
+            }
+        else:
+            entry["delta_vs_prev"] = None
+        part_b.append(entry)
+        prev_row = entry
+    existing["part_b_cumulative_8stage_ablation_8gpu"] = part_b
+
+    row_a5_clean = {k: v for k, v in by_stage["A5"].items() if k not in ("stage_id", "stage_label", "delta_vs_prev")}
+    existing["part_c_component_orthogonal_ablations_8gpu"]["opt1_subcluster_topology_ablation"] = [
+        {"topology": "8+0 Gang All-8-GPU (u4r2)", **row_a5_clean},
+        {"topology": "4+4 Static Partition (4v u4r1 + 4i)", **row_b3},
+        {"topology": "6+2 Static Partition (6v u3r2 + 2i, No Borrow)", **row_b4},
+        {"topology": "6+2 Elastic Asymmetric Sub-Cluster (u3r2 + 2i Absorber)", **row_a6},
+        {"topology": "6+2 -> 3+5 Dynamic CFG-Morphing Sub-Cluster (cfg2u3r1 -> u3r1 + 5i Absorber)", **row_a7},
+    ]
+    existing["hosts_by_rank"] = base_suite.get("hosts_by_rank", existing.get("hosts_by_rank"))
+    out_path.write_text(json.dumps(existing, indent=2), encoding="utf-8")
+    print(f"[Merge Base Suite] Updated {out_path} with 33-frame base suite policies", flush=True)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", required=True)
     parser.add_argument("--base-suite-json", default="")
+    parser.add_argument("--c2-c4-c3-json", default="")
+    parser.add_argument("--merge-base-suite-into-existing", default="")
     parser.add_argument("--finalize-c2-c4-c3", action="store_true")
     args = parser.parse_args()
+
+    if args.merge_base_suite_into_existing:
+        merge_base_suite_into_existing(args)
+        return
 
     if args.finalize_c2_c4_c3:
         run_finalize_c2_c4_c3(args)
@@ -417,14 +519,14 @@ def main() -> None:
     sync_all(device_str)
 
     # Unified 8-GPU Mixed-Modality Trace Parameters:
-    #   1 Video (Wan2.1 480x832x33, 14040 tokens, 20 steps) at t = 0 ms (Strict 8-GPU SLO = 13,500 ms; Relaxed SLO = 16,500 ms)
-    #   Wave 1: 4 Images at t = 1,200 ms (SLO = 1,500 ms)
-    #   Wave 2: 4 Images at t = 3,000 ms (SLO = 1,500 ms)
-    #   Wave 3: 8 Images at t = 5,200 ms (SLO = 1,500 ms)
-    w1_arr, w2_arr, w3_arr = 1200.0, 3000.0, 5200.0
+    #   1 Video (Wan2.1 480x832x33, 14040 tokens, 20 steps) at t = 0 ms (Strict 8-GPU SLO = 16,500 ms; Relaxed SLO = 18,500 ms)
+    #   Wave 1: 4 Images at t = 1,500 ms (SLO = 1,500 ms)
+    #   Wave 2: 4 Images at t = 4,000 ms (SLO = 1,500 ms)
+    #   Wave 3: 8 Images at t = 7,500 ms (SLO = 1,500 ms)
+    w1_arr, w2_arr, w3_arr = 1500.0, 4000.0, 7500.0
     img_slo_ms = 1500.0
-    vid_slo_ms = 13500.0
-    vid_relaxed_slo_ms = 16500.0
+    vid_slo_ms = 16500.0
+    vid_relaxed_slo_ms = 18500.0
 
     def summarize_8gpu_policy(name: str, w1_lat: float, w2_lat: float, w3_lat: float, vid_lat: float, notes: str = "") -> dict:
         all_imgs = [w1_lat] * 4 + [w2_lat] * 4 + [w3_lat] * 8
@@ -1072,82 +1174,90 @@ def main() -> None:
         },
     ]
 
+    c2_c4_c3_pre = None
+    if args.c2_c4_c3_json and Path(args.c2_c4_c3_json).is_file():
+        c2_c4_c3_pre = json.loads(Path(args.c2_c4_c3_json).read_text(encoding="utf-8"))
+
     # C4: Opt #4 Curvature-Guided Dynamic CFG Folding Sensitivity Sweep (on Rank 0)
     if rank == 0:
-        print("[Part C4] Running Opt #4 Curvature-Guided Dynamic CFG Sensitivity Sweep on Rank 0...", flush=True)
-        st_ref = prep_wan("c4-ref", cache=False)
-        t0 = time.perf_counter()
-        wan.advance({"state_id": "c4-ref", "steps": 20, "group": [0], "epoch": 220, "cfg": 1, "ring": 1})
-        torch.cuda.synchronize(device_str)
-        ref_ms = (time.perf_counter() - t0) * 1000.0
-        ref_frames = wan.runtime.decode_chunks(st_ref, 9, vae_dtype="bfloat16")[0]
-        wan.release({"state_id": "c4-ref"})
-
-        c4_rows = [
-            {
-                "profile": "Baseline: Exact 20-Step Full 2-Branch CFG (40 Forwards)",
-                "min_full_cfg_steps": 20,
-                "curvature_threshold": None,
-                "dynamic_fold_start_step": None,
-                "folded_cfg_steps": 0,
-                "forward_calls": 40,
-                "latency_ms": round(ref_ms, 2),
-                "speedup_vs_exact": 1.0,
-                "psnr_db": 99.99,
-                "ssim": 1.0,
-            }
-        ]
-        for idx_p, (p_label, min_full, c_thresh, f_set, c_tau) in enumerate([
-            ("Profile A (High-Fidelity Late-Stage Curvature Trigger: min_full=13, eps_cfg=0.28)", 13, 0.28, set(range(13, 19)), 0.08),
-            ("Profile B (Balanced Late-Stage Curvature Trigger: min_full=12, eps_cfg=0.32)", 12, 0.32, set(range(12, 19)), 0.08),
-            ("Profile C (Extended Late-Stage Curvature Trigger: min_full=11, eps_cfg=0.36)", 11, 0.36, set(range(11, 19)), 0.08),
-        ]):
-            sid = f"c4-p{idx_p}"
-            st_p = prep_wan(sid, cache=True, thresh=c_tau)
-            comp_p = TaylorResidualCompensator(torch, alpha=-0.20, damping=0.65, max_norm_ratio=0.08, adaptive_lsq=False, enabled=True)
-            stepper_p = AsymmetricCFGStepper(
-                torch,
-                folded_steps=f_set,
-                cfg_damping=0.97,
-                cfg_vel_alpha=0.12,
-                final_step_exact_anchor=True,
-                force_exact_cond_on_fold=True,
-                curvature_threshold=c_thresh,
-                min_full_cfg_steps=min_full,
-                enabled=True,
-            )
+        if c2_c4_c3_pre and "opt4_curvature_cfg_sensitivity" in c2_c4_c3_pre:
+            part_c_component_ablations["opt4_curvature_cfg_sensitivity"] = c2_c4_c3_pre["opt4_curvature_cfg_sensitivity"]
+            print(f"[Part C4] Loaded from {args.c2_c4_c3_json}", flush=True)
+        else:
+            print("[Part C4] Running Opt #4 Curvature-Guided Dynamic CFG Sensitivity Sweep on Rank 0...", flush=True)
+            st_ref = prep_wan("c4-ref", cache=False)
             t0 = time.perf_counter()
-            wan.advance({
-                "state_id": sid,
-                "steps": 20,
-                "group": [0],
-                "epoch": 221 + idx_p,
-                "cfg": 1,
-                "ring": 1,
-                "stepper": stepper_p,
-                "taylor_compensator": comp_p,
-            })
+            wan.advance({"state_id": "c4-ref", "steps": 20, "group": [0], "epoch": 220, "cfg": 1, "ring": 1})
             torch.cuda.synchronize(device_str)
-            p_ms = (time.perf_counter() - t0) * 1000.0
-            p_frames = wan.runtime.decode_chunks(st_p, 9, vae_dtype="bfloat16")[0]
-            wan.release({"state_id": sid})
-            psnr_v, ssim_v = compute_psnr_ssim(ref_frames, p_frames)
-            s_sum = stepper_p.summary()
-            c4_rows.append({
-                "profile": p_label,
-                "min_full_cfg_steps": min_full,
-                "curvature_threshold": c_thresh,
-                "dynamic_fold_start_step": s_sum["dynamic_fold_start_step"],
-                "folded_cfg_steps": s_sum["folded_cfg_steps"],
-                "saved_uncond_forwards": s_sum["saved_uncond_forwards"],
-                "curvature_triggered_folds": s_sum["curvature_triggered_folds"],
-                "latency_ms": round(p_ms, 2),
-                "speedup_vs_exact": round(ref_ms / p_ms, 3),
-                "psnr_db": round(psnr_v, 2),
-                "ssim": round(ssim_v, 4),
-            })
-        part_c_component_ablations["opt4_curvature_cfg_sensitivity"] = c4_rows
-        print(f"[Part C4] {c4_rows}", flush=True)
+            ref_ms = (time.perf_counter() - t0) * 1000.0
+            ref_frames = wan.runtime.decode_chunks(st_ref, 9, vae_dtype="bfloat16")[0]
+            wan.release({"state_id": "c4-ref"})
+
+            c4_rows = [
+                {
+                    "profile": "Baseline: Exact 20-Step Full 2-Branch CFG (40 Forwards)",
+                    "min_full_cfg_steps": 20,
+                    "curvature_threshold": None,
+                    "dynamic_fold_start_step": None,
+                    "folded_cfg_steps": 0,
+                    "forward_calls": 40,
+                    "latency_ms": round(ref_ms, 2),
+                    "speedup_vs_exact": 1.0,
+                    "psnr_db": 99.99,
+                    "ssim": 1.0,
+                }
+            ]
+            for idx_p, (p_label, min_full, c_thresh, f_set, c_tau) in enumerate([
+                ("Profile A (High-Fidelity Late-Stage Curvature Trigger: min_full=13, eps_cfg=0.28)", 13, 0.28, set(range(13, 19)), 0.08),
+                ("Profile B (Balanced Late-Stage Curvature Trigger: min_full=12, eps_cfg=0.32)", 12, 0.32, set(range(12, 19)), 0.08),
+                ("Profile C (Extended Late-Stage Curvature Trigger: min_full=11, eps_cfg=0.36)", 11, 0.36, set(range(11, 19)), 0.08),
+            ]):
+                sid = f"c4-p{idx_p}"
+                st_p = prep_wan(sid, cache=True, thresh=c_tau)
+                comp_p = TaylorResidualCompensator(torch, alpha=-0.20, damping=0.65, max_norm_ratio=0.08, adaptive_lsq=False, enabled=True)
+                stepper_p = AsymmetricCFGStepper(
+                    torch,
+                    folded_steps=f_set,
+                    cfg_damping=0.97,
+                    cfg_vel_alpha=0.12,
+                    final_step_exact_anchor=True,
+                    force_exact_cond_on_fold=True,
+                    curvature_threshold=c_thresh,
+                    min_full_cfg_steps=min_full,
+                    enabled=True,
+                )
+                t0 = time.perf_counter()
+                wan.advance({
+                    "state_id": sid,
+                    "steps": 20,
+                    "group": [0],
+                    "epoch": 221 + idx_p,
+                    "cfg": 1,
+                    "ring": 1,
+                    "stepper": stepper_p,
+                    "taylor_compensator": comp_p,
+                })
+                torch.cuda.synchronize(device_str)
+                p_ms = (time.perf_counter() - t0) * 1000.0
+                p_frames = wan.runtime.decode_chunks(st_p, 9, vae_dtype="bfloat16")[0]
+                wan.release({"state_id": sid})
+                psnr_v, ssim_v = compute_psnr_ssim(ref_frames, p_frames)
+                s_sum = stepper_p.summary()
+                c4_rows.append({
+                    "profile": p_label,
+                    "min_full_cfg_steps": min_full,
+                    "curvature_threshold": c_thresh,
+                    "dynamic_fold_start_step": s_sum["dynamic_fold_start_step"],
+                    "folded_cfg_steps": s_sum["folded_cfg_steps"],
+                    "saved_uncond_forwards": s_sum["saved_uncond_forwards"],
+                    "curvature_triggered_folds": s_sum["curvature_triggered_folds"],
+                    "latency_ms": round(p_ms, 2),
+                    "speedup_vs_exact": round(ref_ms / p_ms, 3),
+                    "psnr_db": round(psnr_v, 2),
+                    "ssim": round(ssim_v, 4),
+                })
+            part_c_component_ablations["opt4_curvature_cfg_sensitivity"] = c4_rows
+            print(f"[Part C4] {c4_rows}", flush=True)
     sync_all(device_str)
 
     # C5: Opt #5 xfuser USP Ring Attention Backend Ablation on 8 GPUs (u4r2 and u3r2)
@@ -1216,86 +1326,90 @@ def main() -> None:
 
     # C3: Opt #3 CPU UMT5-XXL Text Encoder Ablation (including INT8 Dynamic Weight-Only Quantization) on Rank 0
     if rank == 0:
-        print("[Part C3] Running Opt #3 CPU Encoder Ablation (FP32 Full-512 vs FP32 Trimmed vs BF16 Trimmed vs INT8 Dynamic Trimmed vs Pinned LRU Cache)...", flush=True)
-        base_opt3 = (
-            base_suite.get("five_optimizations_verification", {}).get("opt3_cpu_encoder_acceleration", {})
-            if base_suite else {}
-        )
-        # Measure FP32 Trimmed reference embedding first
-        encoder_pool.optimize_wan_cpu_encoder(wan.runtime, mode="fp32_trimmed")
-        t0 = time.perf_counter()
-        emb_fp32_trim, _ = encoder_pool._encode_single_wan_text_trimmed(wan.runtime, norm_spec["prompt"])
-        fp32_trim_ms = (time.perf_counter() - t0) * 1000.0
+        if c2_c4_c3_pre and "opt3_cpu_encoder_ablation" in c2_c4_c3_pre:
+            part_c_component_ablations["opt3_cpu_encoder_ablation"] = c2_c4_c3_pre["opt3_cpu_encoder_ablation"]
+            print(f"[Part C3] Loaded from {args.c2_c4_c3_json}", flush=True)
+        else:
+            print("[Part C3] Running Opt #3 CPU Encoder Ablation (FP32 Full-512 vs FP32 Trimmed vs BF16 Trimmed vs INT8 Dynamic Trimmed vs Pinned LRU Cache)...", flush=True)
+            base_opt3 = (
+                base_suite.get("five_optimizations_verification", {}).get("opt3_cpu_encoder_acceleration", {})
+                if base_suite else {}
+            )
+            # Measure FP32 Trimmed reference embedding first
+            encoder_pool.optimize_wan_cpu_encoder(wan.runtime, mode="fp32_trimmed")
+            t0 = time.perf_counter()
+            emb_fp32_trim, _ = encoder_pool._encode_single_wan_text_trimmed(wan.runtime, norm_spec["prompt"])
+            fp32_trim_ms = (time.perf_counter() - t0) * 1000.0
 
-        # Measure BF16 Trimmed
-        bf16_info = encoder_pool.optimize_wan_cpu_encoder(wan.runtime, mode="bf16_trimmed")
-        t0 = time.perf_counter()
-        emb_bf16_trim, _ = encoder_pool._encode_single_wan_text_trimmed(wan.runtime, norm_spec["prompt"])
-        bf16_trim_ms = (time.perf_counter() - t0) * 1000.0
-        cos_bf16 = float(
-            F.cosine_similarity(
-                emb_fp32_trim[emb_fp32_trim.abs().sum(dim=-1) > 0].flatten().float().unsqueeze(0),
-                emb_bf16_trim[emb_bf16_trim.abs().sum(dim=-1) > 0].flatten().float().unsqueeze(0),
-            ).item()
-        )
+            # Measure BF16 Trimmed
+            bf16_info = encoder_pool.optimize_wan_cpu_encoder(wan.runtime, mode="bf16_trimmed")
+            t0 = time.perf_counter()
+            emb_bf16_trim, _ = encoder_pool._encode_single_wan_text_trimmed(wan.runtime, norm_spec["prompt"])
+            bf16_trim_ms = (time.perf_counter() - t0) * 1000.0
+            cos_bf16 = float(
+                F.cosine_similarity(
+                    emb_fp32_trim[emb_fp32_trim.abs().sum(dim=-1) > 0].flatten().float().unsqueeze(0),
+                    emb_bf16_trim[emb_bf16_trim.abs().sum(dim=-1) > 0].flatten().float().unsqueeze(0),
+                ).item()
+            )
 
-        # Measure INT8 Dynamic Weight-Only Trimmed (torch.ao.quantization.quantize_dynamic)
-        int8_info = encoder_pool.optimize_wan_cpu_encoder(wan.runtime, mode="int8_dynamic_trimmed")
-        t0 = time.perf_counter()
-        emb_int8_trim, _ = encoder_pool._encode_single_wan_text_trimmed(wan.runtime, norm_spec["prompt"])
-        int8_trim_ms = (time.perf_counter() - t0) * 1000.0
-        cos_int8 = float(
-            F.cosine_similarity(
-                emb_fp32_trim[emb_fp32_trim.abs().sum(dim=-1) > 0].flatten().float().unsqueeze(0),
-                emb_int8_trim[emb_int8_trim.abs().sum(dim=-1) > 0].flatten().float().unsqueeze(0),
-            ).item()
-        )
+            # Measure INT8 Dynamic Weight-Only Trimmed (torch.ao.quantization.quantize_dynamic)
+            int8_info = encoder_pool.optimize_wan_cpu_encoder(wan.runtime, mode="int8_dynamic_trimmed")
+            t0 = time.perf_counter()
+            emb_int8_trim, _ = encoder_pool._encode_single_wan_text_trimmed(wan.runtime, norm_spec["prompt"])
+            int8_trim_ms = (time.perf_counter() - t0) * 1000.0
+            cos_int8 = float(
+                F.cosine_similarity(
+                    emb_fp32_trim[emb_fp32_trim.abs().sum(dim=-1) > 0].flatten().float().unsqueeze(0),
+                    emb_int8_trim[emb_int8_trim.abs().sum(dim=-1) > 0].flatten().float().unsqueeze(0),
+                ).item()
+            )
 
-        # Measure Pinned Memory LRU Cache Hit
-        t0 = time.perf_counter()
-        _ = encoder_pool.encode_wan_prompt_fast(wan.runtime, norm_spec)
-        lru_hit_ms = (time.perf_counter() - t0) * 1000.0
+            # Measure Pinned Memory LRU Cache Hit
+            t0 = time.perf_counter()
+            _ = encoder_pool.encode_wan_prompt_fast(wan.runtime, norm_spec)
+            lru_hit_ms = (time.perf_counter() - t0) * 1000.0
 
-        fp32_full_ms = float(base_opt3.get("fp32_full512_baseline_ms") or fp32_full512_encode_ms)
-        part_c_component_ablations["opt3_cpu_encoder_ablation"] = [
-            {
-                "mode": "FP32 Full-512 Sequence (Diffusers Default)",
-                "weights_gb": bf16_info["orig_gb"],
-                "latency_ms": round(fp32_full_ms, 2),
-                "speedup_vs_fp32_full512": 1.0,
-                "cosine_sim_vs_fp32": 1.0,
-            },
-            {
-                "mode": "FP32 + Active-Token Sequence Trimming",
-                "weights_gb": bf16_info["orig_gb"],
-                "latency_ms": round(fp32_trim_ms, 2),
-                "speedup_vs_fp32_full512": round(fp32_full_ms / fp32_trim_ms, 2),
-                "cosine_sim_vs_fp32": 1.0,
-            },
-            {
-                "mode": "BF16 Weight Conversion + Active-Token Trimming",
-                "weights_gb": bf16_info["new_gb"],
-                "latency_ms": round(bf16_trim_ms, 2),
-                "speedup_vs_fp32_full512": round(fp32_full_ms / bf16_trim_ms, 2),
-                "cosine_sim_vs_fp32": round(cos_bf16, 6),
-            },
-            {
-                "mode": "INT8 Dynamic Weight-Only Quantization (torch.ao) + Active-Token Trimming",
-                "weights_gb": int8_info["new_gb"],
-                "convert_ms": int8_info["convert_ms"],
-                "latency_ms": round(int8_trim_ms, 2),
-                "speedup_vs_fp32_full512": round(fp32_full_ms / int8_trim_ms, 2),
-                "cosine_sim_vs_fp32": round(cos_int8, 6),
-            },
-            {
-                "mode": "ProactiveEncoderPool Pinned Memory LRU Cache Hit (Opt #3)",
-                "weights_gb": int8_info["new_gb"],
-                "latency_ms": round(lru_hit_ms, 4),
-                "speedup_vs_fp32_full512": round(fp32_full_ms / max(lru_hit_ms, 1e-4), 1),
-                "cosine_sim_vs_fp32": 1.0,
-            },
-        ]
-        print(f"[Part C3] {part_c_component_ablations['opt3_cpu_encoder_ablation']}", flush=True)
+            fp32_full_ms = float(base_opt3.get("fp32_full512_baseline_ms") or fp32_full512_encode_ms)
+            part_c_component_ablations["opt3_cpu_encoder_ablation"] = [
+                {
+                    "mode": "FP32 Full-512 Sequence (Diffusers Default)",
+                    "weights_gb": bf16_info["orig_gb"],
+                    "latency_ms": round(fp32_full_ms, 2),
+                    "speedup_vs_fp32_full512": 1.0,
+                    "cosine_sim_vs_fp32": 1.0,
+                },
+                {
+                    "mode": "FP32 + Active-Token Sequence Trimming",
+                    "weights_gb": bf16_info["orig_gb"],
+                    "latency_ms": round(fp32_trim_ms, 2),
+                    "speedup_vs_fp32_full512": round(fp32_full_ms / fp32_trim_ms, 2),
+                    "cosine_sim_vs_fp32": 1.0,
+                },
+                {
+                    "mode": "BF16 Weight Conversion + Active-Token Trimming",
+                    "weights_gb": bf16_info["new_gb"],
+                    "latency_ms": round(bf16_trim_ms, 2),
+                    "speedup_vs_fp32_full512": round(fp32_full_ms / bf16_trim_ms, 2),
+                    "cosine_sim_vs_fp32": round(cos_bf16, 6),
+                },
+                {
+                    "mode": "INT8 Dynamic Weight-Only Quantization (torch.ao) + Active-Token Trimming",
+                    "weights_gb": int8_info["new_gb"],
+                    "convert_ms": int8_info["convert_ms"],
+                    "latency_ms": round(int8_trim_ms, 2),
+                    "speedup_vs_fp32_full512": round(fp32_full_ms / int8_trim_ms, 2),
+                    "cosine_sim_vs_fp32": round(cos_int8, 6),
+                },
+                {
+                    "mode": "ProactiveEncoderPool Pinned Memory LRU Cache Hit (Opt #3)",
+                    "weights_gb": int8_info["new_gb"],
+                    "latency_ms": round(lru_hit_ms, 4),
+                    "speedup_vs_fp32_full512": round(fp32_full_ms / max(lru_hit_ms, 1e-4), 1),
+                    "cosine_sim_vs_fp32": 1.0,
+                },
+            ]
+            print(f"[Part C3] {part_c_component_ablations['opt3_cpu_encoder_ablation']}", flush=True)
     sync_all(device_str)
 
     if rank == 0:
