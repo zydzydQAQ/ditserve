@@ -31,19 +31,13 @@ def allocated_uuids():
     return [value.strip() for value in output.splitlines() if value.strip()]
 
 
-def build_config(model, gpu_uuids, *, frames=17, steps=4, image_steps=4):
+def make_workers(model, gpu_uuids, *, video_spec, image_spec, cfg_fold=None):
     if model not in MODELS:
         raise ValueError("unknown model: " + model)
     if len(gpu_uuids) not in (2, 4, 8) or len(set(gpu_uuids)) != len(gpu_uuids):
-        raise ValueError("preflight requires 2, 4 or 8 distinct GPU UUIDs")
-    if frames != 17 or steps != 4 or image_steps != 4:
-        raise ValueError("the functional preflight is fixed at Wan 17f/4 steps and SD3.5 4 steps")
+        raise ValueError("native studies require 2, 4 or 8 distinct GPU UUIDs")
     selected = MODELS[model]
-    gpus = len(gpu_uuids)
-    form = {2: "cfg2", 4: "cfg2sp2", 8: "cfg2sp3"}[gpus]
-    workers = {}
-    slots = []
-    warmup = []
+    workers, slots, warmup = {}, [], []
     for index, uuid in enumerate(gpu_uuids):
         environment = {
             "OMP_NUM_THREADS": "4",
@@ -51,31 +45,9 @@ def build_config(model, gpu_uuids, *, frames=17, steps=4, image_steps=4):
             "OPENBLAS_NUM_THREADS": "4",
             "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True",
         }
-        video_spec = {
-            "steps": steps,
-            "height": 480,
-            "width": 832,
-            "frames": frames,
-            "guidance_scale": 5.0,
-            "cache": False,
-            "threshold": 0.0,
-            "max_continuous": 1,
-            "negative_prompt": "",
-            "prompt": "A red ceramic kettle on a wooden table.",
-            "seed": 201,
-        }
-        image_spec = {
-            "height": 512,
-            "width": 512,
-            "steps": image_steps,
-            "frames": 1,
-            "batch_size": 1,
-            "guidance_scale": 4.5,
-            "negative_prompt": "blurry, low quality",
-            "max_sequence_length": 256,
-            "prompt": "A lighthouse at dusk.",
-            "seed": 202,
-        }
+        options = {"execution": "block"}
+        if cfg_fold is not None:
+            options["cfg_fold"] = cfg_fold
         workers[f"wan{index}"] = {
             "backend": "wan",
             "python": "/opt/venv/bin/python",
@@ -86,15 +58,7 @@ def build_config(model, gpu_uuids, *, frames=17, steps=4, image_steps=4):
                 "device": "cuda:0",
                 "attention": "flash",
                 "vae_dtype": "bfloat16",
-                "options": {
-                    "execution": "block",
-                    "cfg_fold": {
-                        "folded_steps": [2],
-                        "final_step_exact_anchor": True,
-                        "force_exact_cond_on_fold": True,
-                        "cfg_vel_alpha": 0.0,
-                    },
-                },
+                "options": options,
             },
         }
         workers[f"image{index}"] = {
@@ -117,6 +81,50 @@ def build_config(model, gpu_uuids, *, frames=17, steps=4, image_steps=4):
             {"worker": f"wan{index}", "spec": dict(video_spec, prompt="warmup", seed=7), "quantum": "step"},
             {"worker": f"image{index}", "spec": dict(image_spec, prompt="warmup", seed=7)},
         ])
+    return selected, workers, slots, warmup
+
+
+def build_config(model, gpu_uuids, *, frames=17, steps=4, image_steps=4):
+    if frames != 17 or steps != 4 or image_steps != 4:
+        raise ValueError("the functional preflight is fixed at Wan 17f/4 steps and SD3.5 4 steps")
+    if len(gpu_uuids) not in (2, 4, 8) or len(set(gpu_uuids)) != len(gpu_uuids):
+        raise ValueError("preflight requires 2, 4 or 8 distinct GPU UUIDs")
+    gpus = len(gpu_uuids)
+    form = {2: "cfg2", 4: "cfg2sp2", 8: "cfg2sp3"}[gpus]
+    video_spec = {
+        "steps": steps,
+        "height": 480,
+        "width": 832,
+        "frames": frames,
+        "guidance_scale": 5.0,
+        "cache": False,
+        "threshold": 0.0,
+        "max_continuous": 1,
+        "negative_prompt": "",
+        "prompt": "A red ceramic kettle on a wooden table.",
+        "seed": 201,
+    }
+    image_spec = {
+        "height": 512,
+        "width": 512,
+        "steps": image_steps,
+        "frames": 1,
+        "batch_size": 1,
+        "guidance_scale": 4.5,
+        "negative_prompt": "blurry, low quality",
+        "max_sequence_length": 256,
+        "prompt": "A lighthouse at dusk.",
+        "seed": 202,
+    }
+    cfg_fold = {
+        "folded_steps": [2],
+        "final_step_exact_anchor": True,
+        "force_exact_cond_on_fold": True,
+        "cfg_vel_alpha": 0.0,
+    }
+    selected, workers, slots, warmup = make_workers(
+        model, gpu_uuids, video_spec=video_spec, image_spec=image_spec, cfg_fold=cfg_fold,
+    )
     video_row = {
         "request_id": "video-preflight",
         "kind": "video",
