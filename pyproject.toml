@@ -14,11 +14,12 @@ reports = ["openpyxl==3.1.5"]
 
 [tool.setuptools.packages.find]
 where = ["workers"]
-include = ["ditserve*", "xfuser*"]
+include = ["ditserve*", "xfuser*", "gfc*"]
 namespaces = false
 
 [tool.setuptools.package-data]
 xfuser = ["LICENSE.txt"]
+gfc = ["LICENSE", "VENDORED.md"]
 
 [tool.setuptools.data-files]
 "share/ditserve/configs" = ["configs/*.json", "configs/*.txt"]
