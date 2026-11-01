@@ -676,6 +676,37 @@ studies (\texttt{results/ISCA\_ARCH\_WHATIF\_AND\_ROOFLINE.json}):
   reaches \textbf{100.0\% total SLO} ($\text{p95}=1,066.6$\,ms, $1,255.6$\,s
   makespan), matching 80\,GB HBM performance while operating within a 40\,GB
   memory envelope.
+  \item \textbf{Real $8\times$A100 Multi-Frame Positive-Scaling Verification:}
+  Across positive-scaling multi-frame workloads on $8\times$A100 PCIe GPUs where
+  all baselines (\texttt{B1--B9}) share the identical runtime engineering base
+  (FlashAttention, BF16 chunked 3D-VAE, and active-token trimmed text encoding),
+  on Wan2.2-TI2V-5B ($512\times896\times49$, 5,824 tokens, 20 steps) single-step
+  latency scales positively from $1,060.20$\,ms on 1~GPU (\texttt{u1r1}) to
+  $1,000.62$\,ms on 3~GPUs (\texttt{u3r1}, $1.06\times$), $948.10$\,ms on 4~GPUs
+  (\texttt{u4r1}, $1.12\times$), $784.08$\,ms on 6~GPUs (\texttt{u3r2}+INT8-Ring,
+  $1.35\times$), $554.78$\,ms on 6~GPUs (\texttt{cfg2u3r1}, $1.91\times$), and
+  $482.72$\,ms on 8~GPUs (\texttt{cfg2u4r1}, $2.20\times$); on Wan2.1-T2V-1.3B
+  ($480\times832\times33$, 14,040 tokens, 20 steps) step latency scales from
+  $1,152.14$\,ms on 1~GPU to $1,119.13$\,ms on 3~GPUs ($1.03\times$),
+  $1,101.48$\,ms on 4~GPUs ($1.05\times$), $914.29$\,ms on 6~GPUs
+  (\texttt{u3r2}+INT8-Ring, $1.26\times$), $625.19$\,ms on 6~GPUs
+  (\texttt{cfg2u3r1}, $1.84\times$), $753.63$\,ms on 8~GPUs
+  (\texttt{u4r2}+INT8-Ring, $1.53\times$), and $556.92$\,ms on 8~GPUs
+  (\texttt{cfg2u4r1}, $2.07\times$). Under mixed-modality bursts (1 video + 16
+  SD3.5-Medium images across 3 waves), \textsc{HeteroDiT-Morphing-v5}
+  (\texttt{Ours-2}) achieves $100.0\%$ total SLO attainment on both models,
+  reducing video latency to $15,747.9$\,ms on Wan2.2-5B ($1.47\times$ faster
+  than \texttt{B3-Opt} $23,132.9$\,ms and $1.50\times$ faster than \texttt{B8}
+  $23,554.3$\,ms, with $\text{PSNR}=31.51$\,dB and $\text{SSIM}=0.9640$;
+  standalone curvature sweep $\text{PSNR}=30.65$--$35.39$\,dB) and to
+  $14,979.8$\,ms on Wan2.1-1.3B ($1.50\times$ faster than \texttt{B3}
+  $22,494.8$\,ms and $1.59\times$ faster than \texttt{B8} $23,782.3$\,ms, with
+  $\text{PSNR}=38.18$\,dB and $\text{SSIM}=0.9900$; standalone curvature sweep
+  $\text{PSNR}=34.28$--$38.14$\,dB). In live 2-video contention on $8\times$A100
+  GPUs, dynamic $6{+}2\to 3{+}5$ subgroup fission reduces second-video latency
+  from $45,816.7$\,ms to $24,709.4$\,ms ($1.85\times$ speedup; mean video latency
+  $20,206.1$\,ms vs.\ $34,495.6$\,ms, $1.71\times$
+  speedup).\evidence{results/heterodit-wan22-8gpu-49f-20261101/WAN22\_8GPU\_VERIFICATION.json; results/heterodit-wan22-8gpu-49f-20261101/WAN21\_33F\_8GPU\_BASELINES\_AND\_ABLATION.json}
 \end{enumerate}
 
 \section{Related Work}
