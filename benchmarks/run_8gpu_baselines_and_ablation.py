@@ -368,7 +368,7 @@ def main() -> None:
         "negative_prompt": "blurry, low quality, distorted, watermark",
         "height": 480,
         "width": 832,
-        "frames": 17,
+        "frames": 33,
         "steps": 20,
         "guidance_scale": 5.0,
         "seed": 42,
@@ -376,6 +376,16 @@ def main() -> None:
 
     encoder_pool = ProactiveEncoderPool(torch, max_cache_entries=64)
     norm_spec = wan._spec({"state_id": "init-enc", "spec": wan_spec})
+    fp32_full512_encode_ms = 0.0
+    if rank == 0:
+        t_f512 = time.perf_counter()
+        with torch.inference_mode():
+            tok = wan.runtime.pipe.tokenizer
+            te = wan.runtime.pipe.text_encoder
+            for p_str in (norm_spec["prompt"], norm_spec["negative_prompt"]):
+                inp = tok(p_str, padding="max_length", max_length=512, truncation=True, return_tensors="pt")
+                _ = te(inp.input_ids.to(te.device), inp.attention_mask.to(te.device))
+        fp32_full512_encode_ms = (time.perf_counter() - t_f512) * 1000.0
     # Encode once on Rank 0 using trimmed FP32 before any quantization test
     cached_wan = encoder_pool.encode_wan_prompt_fast(wan.runtime, norm_spec)
 
@@ -407,14 +417,14 @@ def main() -> None:
     sync_all(device_str)
 
     # Unified 8-GPU Mixed-Modality Trace Parameters:
-    #   1 Video (Wan2.1 480x832x33, 20 steps) at t = 0 ms (Strict 8-GPU SLO = 14,000 ms; Relaxed SLO = 17,500 ms)
-    #   Wave 1: 4 Images at t = 700 ms   (SLO = 1,500 ms)
-    #   Wave 2: 4 Images at t = 1,800 ms (SLO = 1,500 ms)
-    #   Wave 3: 8 Images at t = 3,000 ms (SLO = 1,500 ms)
-    w1_arr, w2_arr, w3_arr = 700.0, 1800.0, 3000.0
+    #   1 Video (Wan2.1 480x832x33, 14040 tokens, 20 steps) at t = 0 ms (Strict 8-GPU SLO = 13,500 ms; Relaxed SLO = 16,500 ms)
+    #   Wave 1: 4 Images at t = 1,200 ms (SLO = 1,500 ms)
+    #   Wave 2: 4 Images at t = 3,000 ms (SLO = 1,500 ms)
+    #   Wave 3: 8 Images at t = 5,200 ms (SLO = 1,500 ms)
+    w1_arr, w2_arr, w3_arr = 1200.0, 3000.0, 5200.0
     img_slo_ms = 1500.0
-    vid_slo_ms = 14000.0
-    vid_relaxed_slo_ms = 17500.0
+    vid_slo_ms = 13500.0
+    vid_relaxed_slo_ms = 16500.0
 
     def summarize_8gpu_policy(name: str, w1_lat: float, w2_lat: float, w3_lat: float, vid_lat: float, notes: str = "") -> dict:
         all_imgs = [w1_lat] * 4 + [w2_lat] * 4 + [w3_lat] * 8
@@ -1088,20 +1098,20 @@ def main() -> None:
             }
         ]
         for idx_p, (p_label, min_full, c_thresh, f_set, c_tau) in enumerate([
-            ("Profile A (High-Fidelity Late-Stage Curvature Trigger: min_full=13, eps_cfg=0.22)", 13, 0.22, set(range(13, 19)), 0.08),
-            ("Profile B (Balanced Late-Stage Curvature Trigger: min_full=12, eps_cfg=0.28)", 12, 0.28, set(range(12, 19)), 0.08),
-            ("Profile C (Extended Late-Stage Curvature Trigger: min_full=11, eps_cfg=0.35)", 11, 0.35, set(range(11, 19)), 0.10),
+            ("Profile A (High-Fidelity Late-Stage Curvature Trigger: min_full=13, eps_cfg=0.28)", 13, 0.28, set(range(13, 19)), 0.08),
+            ("Profile B (Balanced Late-Stage Curvature Trigger: min_full=12, eps_cfg=0.32)", 12, 0.32, set(range(12, 19)), 0.08),
+            ("Profile C (Extended Late-Stage Curvature Trigger: min_full=11, eps_cfg=0.36)", 11, 0.36, set(range(11, 19)), 0.08),
         ]):
             sid = f"c4-p{idx_p}"
             st_p = prep_wan(sid, cache=True, thresh=c_tau)
-            comp_p = TaylorResidualCompensator(torch, alpha=-0.22, damping=0.70, max_norm_ratio=0.10, adaptive_lsq=False, enabled=True)
-            comp_p.monotonic_gate = False
+            comp_p = TaylorResidualCompensator(torch, alpha=-0.20, damping=0.65, max_norm_ratio=0.08, adaptive_lsq=False, enabled=True)
             stepper_p = AsymmetricCFGStepper(
                 torch,
                 folded_steps=f_set,
                 cfg_damping=0.97,
                 cfg_vel_alpha=0.12,
                 final_step_exact_anchor=True,
+                force_exact_cond_on_fold=True,
                 curvature_threshold=c_thresh,
                 min_full_cfg_steps=min_full,
                 enabled=True,

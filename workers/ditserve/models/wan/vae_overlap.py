@@ -140,9 +140,9 @@ class ConcurrentVAEDecodeStreamer:
     def collect_rank0_disaggregated(self, rank: int, fut) -> Dict[str, Any]:
         """Collect the Rank-0 async 3D-VAE decode result (no-op on Ranks 1..N-1)."""
         if int(rank) != 0 or fut is None:
-            return {"kind": "rank_non0_bypassed", "vae_stream_ms": 0.0, "vae_decode_ms": 0.0}
-        _, vae_info = fut.result()
-        return vae_info
+            return {"kind": "rank_non0_bypassed", "vae_stream_ms": 0.0, "vae_decode_ms": 0.0, "frames": None}
+        video_np, vae_info = fut.result()
+        return {**vae_info, "frames": video_np}
 
     def close(self) -> None:
         self._pool.shutdown(wait=True, cancel_futures=True)

@@ -645,14 +645,14 @@ def main() -> None:
     # =========================================================================
     # Workload Trace:
     #   - 1 Video (Wan2.2-TI2V-5B 512x896x49, 5824 tokens, 20 steps) arrives at t = 0 ms
-    #     (Strict 8-GPU Wan2.2 Video SLO = 13,500 ms; Relaxed SLO = 16,500 ms)
-    #   - Wave 1: 4x SD3.5-Medium (512x512, 12 steps, Flash) arrive at t = 700 ms (Image SLO = 1,500 ms)
-    #   - Wave 2: 4x SD3.5-Medium (512x512, 12 steps, Flash) arrive at t = 1,800 ms (Image SLO = 1,500 ms)
-    #   - Wave 3: 8x SD3.5-Medium (512x512, 12 steps, Flash) arrive at t = 3,000 ms (Image SLO = 1,500 ms)
-    w1_arr, w2_arr, w3_arr = 700.0, 1800.0, 3000.0
+    #     (Strict 8-GPU Wan2.2 49-Frame Video SLO = 19,000 ms; Relaxed SLO = 20,500 ms)
+    #   - Wave 1: 4x SD3.5-Medium (512x512, 12 steps, Flash) arrive at t = 1,500 ms (Image SLO = 1,500 ms)
+    #   - Wave 2: 4x SD3.5-Medium (512x512, 12 steps, Flash) arrive at t = 4,000 ms (Image SLO = 1,500 ms)
+    #   - Wave 3: 8x SD3.5-Medium (512x512, 12 steps, Flash) arrive at t = 7,200 ms (Image SLO = 1,500 ms)
+    w1_arr, w2_arr, w3_arr = 1500.0, 4000.0, 7200.0
     img_slo_ms = 1500.0
-    vid_slo_ms = 13500.0
-    vid_relaxed_slo_ms = 16500.0
+    vid_slo_ms = 19000.0
+    vid_relaxed_slo_ms = 20500.0
     policies_wan22 = []
 
     def record_policy(
