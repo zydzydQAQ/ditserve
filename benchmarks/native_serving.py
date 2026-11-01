@@ -184,6 +184,8 @@ def main():
             "curvature_threshold": 0.30,
             "min_full_cfg_steps": 12,
             "max_curvature_guard": 1.65,
+            "cfg_vel_alpha": 0.0,
+            "cfg_damping": 0.96,
             "folded_steps": list(range(12, 19)),
             "max_folded_steps": 7,
             "final_step_exact_anchor": True,
@@ -195,6 +197,7 @@ def main():
             "final_step_exact_anchor": True,
             "force_exact_cond_on_fold": True,
             "cfg_vel_alpha": 0.0,
+            "cfg_damping": 0.96,
         }
     config = build_serving_config(
         args.model, uuids, profile, pools, seed=args.seed, load=args.load,

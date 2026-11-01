@@ -1,7 +1,10 @@
 import importlib.util
+import json
 import sys
 import unittest
 from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from ditserve.evaluation.common import seal
 
@@ -118,6 +121,28 @@ class NativeServingTest(unittest.TestCase):
         self.assertTrue(all(row["output_mode"] == "digest" for row in rows))
         self.assertEqual(config["phases"][0]["artifact_dependencies"], [])
         self.assertEqual(config["benchmark"]["output_mode"], "digest")
+
+    def test_curvature_and_fixed_fold_share_predictor_settings(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "profile.json").write_text(json.dumps(profile()), encoding="utf-8")
+            for kind, name in (("image", "diffusiondb"), ("video", "vidprom")):
+                (root / (name + ".json")).write_text(json.dumps(pool(kind)), encoding="utf-8")
+            common = [
+                "native_serving.py", "--model", "wan22", "--profile", str(root / "profile.json"),
+                "--datasets", str(root), "--gpu-uuids", ",".join(f"GPU-{i}" for i in range(8)),
+                "--policies", "heterodit_v5", "--count", "32", "--video-fraction", "1.0",
+            ]
+            with patch.object(sys, "argv", common + ["--curvature", "--output", str(root / "curve.json")]):
+                native_serving.main()
+            with patch.object(sys, "argv", common + ["--fold-steps", "12,13,14,15,16,17,18", "--output", str(root / "fixed.json")]):
+                native_serving.main()
+            curve = json.loads((root / "curve.json").read_text())["workers"]["wan0"]["config"]["options"]["cfg_fold"]
+            fixed = json.loads((root / "fixed.json").read_text())["workers"]["wan0"]["config"]["options"]["cfg_fold"]
+            self.assertEqual(curve["folded_steps"], fixed["folded_steps"])
+            self.assertEqual(curve["cfg_vel_alpha"], fixed["cfg_vel_alpha"])
+            self.assertEqual(curve["cfg_damping"], fixed["cfg_damping"])
+            self.assertEqual(curve["max_folded_steps"], len(fixed["folded_steps"]))
 
 
 if __name__ == "__main__":
