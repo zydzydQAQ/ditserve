@@ -282,6 +282,16 @@ class BlockExecutorTests(unittest.TestCase):
         self.assertEqual(continuation.stepper.stats["saved_uncond_forwards"], 2)
         self.assertEqual(continuation.stepper.dynamic_fold_start_step, 1)
 
+    def test_cfg_fold_cannot_change_between_sequential_branches(self):
+        options = dict(folded_steps={1, 2}, final_step_exact_anchor=True)
+        worker, executor, prepare = fixture(cfg_fold_options=options)
+        continuation = executor.attach(prepare("branch"))
+        executor.advance(continuation, 30, cfg_folded=False)
+        self.assertEqual(continuation.branch, "uncond")
+        self.assertIsNone(continuation.packet)
+        with self.assertRaisesRegex(ValueError, "inside a solver step"):
+            executor.advance(continuation, 30, cfg_folded=True)
+
 
     def test_cancel_discards_partial_state_without_solver_commit(self):
         worker, executor, prepare = fixture()

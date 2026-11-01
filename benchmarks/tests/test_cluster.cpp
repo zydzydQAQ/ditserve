@@ -660,6 +660,16 @@ int main() {
         rejects([&] { simulate_cluster({{"workload", trace}, {"profile", prof}, {"policy", "heterodit_v5"}, {"gpus", 8},
                                        {"options", {{"cfg_fold_eligible_from_step", 1}}}}); });
     });
+    check("async decode holds video placement but not independent images", [] {
+        const Json requests = {video("a", 1e9), video("b", 1e9)};
+        const auto videos = cluster_plan({{"now_ms", 0}, {"gpus", 2}, {"busy", Json::array()},
+            {"async_decoding", {true, false}}, {"requests", requests}}, "block_elastic", ClusterCost(profile()),
+            {{"degrees", {1}}}).at("assignments");
+        require(videos.size() == 1 && videos[0].at("group") == Json::array({1}), "decode GPU cannot start another video");
+        const auto images = cluster_plan({{"now_ms", 0}, {"gpus", 2}, {"busy", Json::array()},
+            {"async_decoding", {true, false}}, {"requests", {image("i", 100)}}}, "static_sp1", ClusterCost(profile())).at("assignments");
+        require(images.size() == 1 && images[0].at("group") == Json::array({0}), "independent image can overlap decode");
+    });
     std::cout << checks - failures << "/" << checks << " cluster checks passed\n";
     return failures ? 1 : 0;
 }

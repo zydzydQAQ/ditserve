@@ -55,6 +55,8 @@ class WanBackend(Backend):
             raise ValueError("collect the previous decode before starting another")
         if self.parallel and self.parallel.handle.active is not None:
             raise ValueError("asynchronous VAE requires a closed solver step")
+        if self.runtime.attention == "flash" and not request.get("video_exclusion", False):
+            raise ValueError("Flash DiT with MATH VAE requires planner exclusion of new video")
         if self.decoder is None:
             from .async_decode import AsyncDecoder
             self.decoder = AsyncDecoder(self.runtime)

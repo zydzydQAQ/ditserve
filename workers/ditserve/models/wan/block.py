@@ -264,7 +264,9 @@ class WanBlockExecutor:
                 raise ValueError("request has no remaining solver steps")
             if type(cfg_folded) is not bool:
                 raise ValueError("cfg_folded must be a boolean")
-            if state.packet is not None and state.folded != cfg_folded:
+            in_step = (state.packet is not None or state.branch != "cond"
+                       or state.conditional is not None or state.next_block != 0)
+            if in_step and state.folded != cfg_folded:
                 raise ValueError("CFG-fold mode cannot change inside a solver step")
             check_budget()
             step, initial_branch, initial_block = state.committed_step, state.branch, state.next_block

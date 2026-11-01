@@ -60,7 +60,7 @@ worker 以完整 GPU UUID 绑定设备，模型使用 `cuda:0`。显式 `actions
 
 `options.sp_transport`：`pinned` 限真实 SP1；`resume` 仅供 mock；`export` 在 2/4/8 卡进程组间通过 host-staged、带哈希的 step-boundary 状态换组。SP/CFG 的 mid-step packet 不跨组，SP1 可在 block 边界导出。文本预编码 ticket 避免换组时重复编码。
 
-`options.async_rank0_decode=true` 使用 `decode_start` 启动后台 VAE，立即释放该 rank 供其他请求执行，再轮询 `decode_poll` 并结算。它不是同步 decode 的折扣模型。MATH 模式要求固定 MATH；Flash 模式要求 16-bit VAE 且 DiT/VAE 都固定 Flash SDPA，不兼容组合 fail closed。异步模式不再同时做 chunked decode。
+`options.async_rank0_decode=true` 使用 `decode_start` 启动后台 VAE，再轮询 `decode_poll` 并结算。VAE 固定使用 MATH；decode 期间该 GPU 不接受新视频，避免 DiT Flash 与 VAE MATH 的全局设置竞争，但独立图像 worker 仍可重叠执行。它不是同步 decode 的折扣模型，也不再同时做 chunked decode。
 
 其他选项包括 `image_batch`、锁步 `pairing`、`reserve_image_gpus`、`quantum_blocks/quantum_ms`、`order`、feasible-first EDF 和 work-neutral widening。基线名称只描述实际实现，不能把 step/round 基线写成完整外部系统。
 

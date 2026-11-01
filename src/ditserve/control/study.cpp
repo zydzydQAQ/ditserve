@@ -872,6 +872,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         }else if(quantum=="finish"){
             const auto name=video(group.front());
             Json action={{"op",async_decode?"decode_start":"finish"},{"state_id",id},{"output_mode",row.at("output_mode")}};
+            if(async_decode)action["video_exclusion"]=true;
             if(!async_decode&&assignment.contains("decode_frames"))action["decode_frames"]=assignment.at("decode_frames");
             work_unit=[&workers,name,id,deadline,action]{
                 auto& w=workers.get(name);
@@ -1310,10 +1311,14 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 requests.push_back(view);
             }
             if(!requests.empty()){
-                Json flags=Json::array();for(bool flag:busy)flags.push_back(flag);
+                Json flags=Json::array(),decode_flags=Json::array();
+                for(bool flag:busy)flags.push_back(flag);
+                for(int gpu=0;gpu<gpus;++gpu)decode_flags.push_back(false);
+                for(const auto& state:live)if(state.status=="decoding")decode_flags[state.decode_gpu]=true;
                 int sp_running=0;   // SP advances in flight contend for the host bridge
                 for(const auto& task:tasks){const auto& a=task.assignment;sp_running+=parse_form(a.value("form","sp"+std::to_string(a.at("degree").get<int>()))).sp>=2&&a.at("quantum")!="atomic"&&a.at("quantum")!="finish";}
-                const auto plan=cluster_plan({{"now_ms",now()},{"gpus",gpus},{"busy",flags},{"requests",requests},{"sp_groups_running",sp_running}},policy,cost,options);
+                const auto plan=cluster_plan({{"now_ms",now()},{"gpus",gpus},{"busy",flags},{"async_decoding",decode_flags},
+                    {"requests",requests},{"sp_groups_running",sp_running}},policy,cost,options);
                 if(tiered&&plan.contains("tiered_hints")){
                     std::set<std::size_t> offloaded;
                     std::set<int> assigned;

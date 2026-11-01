@@ -506,10 +506,14 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     if (reserve >= gpus) throw std::invalid_argument("reserve_image_gpus must leave a GPU for videos");
     auto reserved = [&](int gpu) { return gpu >= gpus - reserve; };
 
-    std::vector<bool> free(gpus, true);
+    std::vector<bool> free(gpus, true), decode_hold(gpus, false);
     const auto busy = state.value("busy", Json::array());
     if (!busy.is_array() || static_cast<int>(busy.size()) > gpus) throw std::invalid_argument("busy must list at most one flag per GPU");
     for (std::size_t g = 0; g < busy.size(); ++g) free[g] = !busy[g].get<bool>();
+    const auto decoding = state.value("async_decoding", Json::array());
+    if (!decoding.is_array() || static_cast<int>(decoding.size()) > gpus)
+        throw std::invalid_argument("async_decoding must list at most one flag per GPU");
+    for (std::size_t g = 0; g < decoding.size(); ++g) decode_hold[g] = decoding[g].get<bool>();
     // Degree assumed by the lateness test. "widest": the largest policy degree, optimistic under
     // load, where a full group is rarely free: a request only an idle node could save keeps its EDF
     // priority, runs narrow and misses, delaying feasible work behind it. "free" (the default for
@@ -568,7 +572,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     int free_widest = 1;
     for (int d : degrees)
         for (const auto& group : cluster_groups(gpus, {d}))
-            if (d > free_widest && std::all_of(group.begin(), group.end(), [&](int gpu) { return free[gpu] && !reserved(gpu) && !mid_owner[gpu]; }))
+            if (d > free_widest && std::all_of(group.begin(), group.end(), [&](int gpu) { return free[gpu] && !reserved(gpu) && !mid_owner[gpu] && !decode_hold[gpu]; }))
                 free_widest = d;
     // Feasible-first EDF: a request that cannot meet its deadline even on the
     // largest group yields to those that still can, so an overloaded queue of
@@ -623,7 +627,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         return work + overhead * (quantum.is_number_integer() ? ceil_div(blocks, quantum.get<int>()) : 1);
     };
     auto all_free = [&](const std::vector<int>& group) {
-        return std::all_of(group.begin(), group.end(), [&](int gpu) { return free[gpu]; });
+        return std::all_of(group.begin(), group.end(), [&](int gpu) { return free[gpu] && !decode_hold[gpu]; });
     };
     auto take = [&](const std::vector<int>& group) { for (int gpu : group) free[gpu] = false; };
     // Another video suspended inside a step holds these GPUs even between its quanta.
@@ -819,7 +823,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         if (policy.knapsack && !knapsack_solved) {
             knapsack_solved = true;
             int g_avail = 0;
-            for (int g = 0; g < gpus; ++g) if (free[g] && !reserved(g) && !mid_owner[g]) ++g_avail;
+            for (int g = 0; g < gpus; ++g) if (free[g] && !reserved(g) && !mid_owner[g] && !decode_hold[g]) ++g_avail;
             std::vector<const Json*> cands;
             bool images_after = false;
             for (std::size_t j = index; j < rows.size(); ++j) {

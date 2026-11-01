@@ -38,8 +38,7 @@ def _model_capabilities(name, config, backend):
     execution = ("pipeline" if atomic else options.get("execution", "step"))
     quanta = ["atomic"] if atomic else ["step"] + ([] if execution == "step" else ["block"])
     attention = config.get("attention", "math")
-    vae_dtype = config.get("vae_dtype", "float32")
-    async_decode = name == "wan" and (attention == "math" or (attention == "flash" and vae_dtype in ("bfloat16", "float16")))
+    async_decode = name == "wan" and attention in ("math", "flash")
     capabilities = dict(
         engine=engine_info(), engine_status="configured", execution=execution,
         model_wrapper={"wan": "xFuserWanTransformer3DWrapper", "wan_pipeline": "xFuserWanTransformer3DWrapper",

@@ -1,10 +1,13 @@
 import importlib.util
+import os
 import unittest
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location("cluster_config", ROOT / "benchmarks" / "cluster_config.py")
+PACKAGE_ROOT = os.environ.get("DITSERVE_PACKAGE_ROOT")
+BENCHMARKS = Path(PACKAGE_ROOT).parent / "benchmarks" if PACKAGE_ROOT else ROOT / "benchmarks"
+SPEC = importlib.util.spec_from_file_location("cluster_config", BENCHMARKS / "cluster_config.py")
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 

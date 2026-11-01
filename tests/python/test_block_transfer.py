@@ -83,7 +83,7 @@ class BlockTransferTests(unittest.TestCase):
 
     def test_cfg_fold_state_crosses_process_boundary_without_changing_execution(self):
         from ditserve.models.wan.block import WanBlockExecutor, export_block_state, import_block_state
-        options = dict(folded_steps={1}, final_step_exact_anchor=True, cfg_vel_alpha=0.0)
+        options = dict(folded_steps={3}, final_step_exact_anchor=True, cfg_vel_alpha=0.0)
         model = tiny_model(self.torch)
         worker, state, executor, continuation = attach(model, options)
         executor.advance(continuation, blocks=60, cfg_folded=False)
