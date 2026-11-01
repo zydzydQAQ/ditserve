@@ -28,6 +28,11 @@ class FitNativeProfileTest(unittest.TestCase):
             requests.append({
                 "cell": index, "kind": "video", "status": "completed", "model_ms": 20 * step_ms + 100.0,
                 "outputs": [{"model_ms": 100.0}], "spec": spec, "encode_model_ms": 20.0,
+                "advance_samples": [
+                    {"steady": False, "model_ms": 999999.0},
+                    {"steady": True, "model_ms": step_ms},
+                    {"steady": True, "model_ms": step_ms},
+                ],
                 "transfer_export_ms": 2.0, "dispatch_gap_ms": 4.0, "timed_quanta": 2,
             })
         requests.append({"cell": 0, "kind": "image", "status": "completed", "model_ms": 250.0})
@@ -41,6 +46,7 @@ class FitNativeProfileTest(unittest.TestCase):
         self.assertLess(profile["source"]["held_out_max_relative_error_pct"], 1e-8)
         self.assertEqual(profile["classes"]["sd35-preflight"]["service_ms"], 250.0)
         self.assertEqual(profile["classes"]["wan22-preflight"]["step_compute_ms"], 500.0)
+        self.assertTrue(all(value == 2 for value in profile["source"]["steady_samples"].values()))
         self.assertEqual(profile["provenance"], "mixed")
         self.assertNotIn("groups", profile["links"])
         self.assertNotIn("sp_overlap", profile["links"]["2"])

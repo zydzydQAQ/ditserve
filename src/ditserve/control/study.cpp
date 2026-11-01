@@ -1198,6 +1198,15 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             astate.status="suspended";
         };
         const bool first=!state.prepared;
+        double operation_ms=0;
+        for(const auto& rank:ranks)operation_ms=std::max(operation_ms,number_field(rank,"worker_operation_ms"));
+        if(!row.contains("advance_samples"))row["advance_samples"]=Json::array();
+        row["advance_samples"].push_back({
+            {"form",form_name(expected_form)},{"cfg_folded",expected_folded},
+            {"first",first},{"transfer",out.contains("transfer")},
+            {"steady",!first&&!out.contains("transfer")&&task.assignment.value("pair",std::string()).empty()},
+            {"elapsed_ms",elapsed},{"model_ms",model},{"worker_operation_ms",operation_ms}
+        });
         const int executed_main=reported>=0?reported:quantum=="step"?cost.blocks_per_step(row.at("class").get<std::string>())-state.blocks:quantum.get<int>();
         settle(row,state,"progress");
         if(!first&&executed_main>0&&!out.contains("transfer")&&task.assignment.value("pair",std::string()).empty()){

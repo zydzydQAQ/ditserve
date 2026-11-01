@@ -16,6 +16,14 @@ def mean(values):
     return math.fsum(values) / len(values) if values else 0.0
 
 
+def median(values):
+    values = sorted(values)
+    if not values:
+        raise ValueError("median requires at least one sample")
+    middle = len(values) // 2
+    return values[middle] if len(values) % 2 else (values[middle - 1] + values[middle]) / 2
+
+
 def form_of(policy):
     name = policy.removeprefix("static_")
     if name.startswith("cfg2"):
@@ -43,16 +51,20 @@ def extract_measurements(record):
     for row in record["requests"]:
         if row.get("status") != "completed":
             continue
-        policy = cells[row["cell"]]["config"]["policy"]
+        policy = cells[row["cell"]].get("policy") or cells[row["cell"]]["config"]["policy"]
         if row["kind"] == "image":
             images.append({"policy": policy, "service_ms": row["model_ms"]})
             continue
         decode_ms = math.fsum(output.get("model_ms", 0.0) for output in row.get("outputs", []))
         steps = row["spec"]["steps"]
+        steady = [sample for sample in row.get("advance_samples", []) if sample.get("steady") is True]
+        step_ms = median(sample["model_ms"] for sample in steady) if steady else (row["model_ms"] - decode_ms) / steps
         videos.append({
             "policy": policy,
             "form": form_of(policy),
-            "step_ms": (row["model_ms"] - decode_ms) / steps,
+            "step_ms": step_ms,
+            "steady_samples": len(steady),
+            "timing_scope": "median_steady_advance" if steady else "includes_initial_layout_overhead",
             "decode_ms": decode_ms,
             "encode_ms": row.get("encode_model_ms", 0.0),
             "spec": row["spec"],
@@ -170,6 +182,8 @@ def build_profile(record, runtime_facts, model_name):
         "model": model_name,
         "shape": spec,
         "architecture": arch,
+        "timing_scopes": {row["policy"]: row["timing_scope"] for row in videos},
+        "steady_samples": {row["policy"]: row["steady_samples"] for row in videos},
         "bandwidth_saturation_gbps": bandwidth_inf,
         "bandwidth_gamma": gamma,
         "fit_policies": sorted(FIT_POLICIES),
