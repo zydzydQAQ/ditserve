@@ -80,7 +80,7 @@ class BlockExecutorTests(unittest.TestCase):
         state = prepare("a")
         adapter = WanBackend.__new__(WanBackend)
         Backend.__init__(adapter, {})
-        adapter.runtime, adapter.executor, adapter.decode_state = worker, executor, None
+        adapter.runtime, adapter.executor, adapter.decode_state, adapter.parallel = worker, executor, None, None
         adapter.states["a"] = state
         adapter.continuations = {"a": executor.attach(state)}
         conditional = adapter.advance(dict(state_id="a", blocks=30))
