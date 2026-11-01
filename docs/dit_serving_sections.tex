@@ -91,7 +91,10 @@ Held-out error is reported by model, shape, form, and placement. A measured
 form table has precedence over this analytical estimate for forms calibrated
 on the same placement; the analytical path is a fallback for unmeasured or
 contended cases. Large held-out errors therefore limit, rather than promote,
-the analytical contribution.
+the analytical contribution. A profile records the GPU UUIDs from its calibration
+budget identity. Formal native runs require these UUIDs to match the current
+allocation; otherwise the run is rejected or explicitly labelled as a diagnostic.
+Approximate arms share one such calibration but retain independent run records.
 
 \subsection{Quality-guarded approximation}
 Late-step CFG folding and elastic subgroup fission are a separate approximate
@@ -164,17 +167,23 @@ speedup.
 
 \paragraph{Mechanism studies.}
 Block preemption reports stop-latency CDFs, resident state size, transfer
-bytes/time, steady-state overhead, and end-to-end ablation. Parallel forms
-report direct latency, numerical comparison, and communication overlap. The
-cost model is fitted on one partition and evaluated on held-out models,
-shapes, forms, and placements. Simulator sweeps beyond measured cells are
-labeled extrapolations and include validation against native runs.
+bytes/time, steady-state overhead, and end-to-end ablation. A controlled
+\texttt{static\_cfg2} versus \texttt{block\_cfg2} arm holds the parallel form
+fixed and compares digest-bound outputs. Doorbell-to-safe-point stop time is
+reported separately from request queueing and from the count of requests that
+actually preempt a video. Parallel forms report direct latency, numerical
+comparison, and communication overlap. The cost model is fitted on one
+partition and evaluated on held-out models, shapes, forms, and placements.
+Simulator sweeps beyond measured cells are labeled extrapolations and include
+validation against native runs.
 
 \paragraph{Quality study.}
 Each approximate video arm is evaluated on at least 32 prompts and three
 seeds per model, with exact references from the same optimized runtime.
 PSNR, SSIM, LPIPS, and VBench dimensions are reported as distributions with
-failure counts. The curvature guard must beat fixed-step folding at comparable
+failure counts. Fixed and curvature-gated folding share the same late-step
+window, predictor damping and velocity coefficient, and per-request fold
+budget. The curvature guard must beat fixed-step folding at comparable
 compute or quality to remain a contribution. If it does not, the paper retains
 only the simpler mechanism or drops the approximation claim.
 
