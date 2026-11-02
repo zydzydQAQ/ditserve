@@ -73,7 +73,7 @@ class IsolatedReviewTest(unittest.TestCase):
                                 cache_threshold=0, cfg_folded=False, reused_forwards=0))],
                         advance_samples=[dict(form='cfg2', group=[0, 1], cfg_folded=False)])
                     record['requests'].append(row)
-        return record
+        return fixtures.bind_ledger(record, inputs['gpu_uuids'])
 
     def fresh(self):
         return self.record(self.inputs, self.config)
@@ -186,8 +186,8 @@ class IsolatedReviewTest(unittest.TestCase):
                      lambda s: s['identity'].__setitem__('run_id', 'other')]
         for mutate in mutations:
             record = self.fresh(); mutate(record['budget']['sessions'][0])
-            with self.subTest(mutate=mutate):
-                self.assertEqual(self.run_review(record)['timing_eligible_requests'], 64)
+            with self.subTest(mutate=mutate), self.assertRaises(ValueError):
+                self.run_review(record)
         record = self.fresh(); record['budget']['sessions'][0]['identity']['gpu_uuids'] = ['GPU-c', 'GPU-d']
         with self.assertRaises(ValueError):
             self.run_review(record)
@@ -200,8 +200,7 @@ class IsolatedReviewTest(unittest.TestCase):
         record.update(status='failed', failures=[dict(phase='seed-201', error='injected')])
         record['phases'] = record['phases'][:1]
         record['phases'][0].update(status='failed', cells=[dict(cell=0, status='failed')])
-        record['budget']['sessions'] = record['budget']['sessions'][:1]
-        record['budget']['sessions'][0]['status'] = 'failed'
+        fixtures.bind_ledger(record, self.inputs['gpu_uuids'])
         record['requests'] = record['requests'][:8]
         for row in record['requests']:
             row['status'] = 'failed'; row['outputs'] = []
@@ -242,16 +241,12 @@ class IsolatedReviewTest(unittest.TestCase):
     def test_active_allocation_blocks_aggregate_even_when_all_cells_completed(self):
         record = self.fresh()
         record['budget']['active'] = dict(session_id='unsettled-session', identity=dict(run_id=record['run_id']))
-        value = self.run_review(record)
-        self.assertEqual(value['status'], 'incomplete')
-        self.assertFalse(value['allocation_settled'])
-        self.assertTrue(all(s['status'] == 'measured_diagnostic' for s in value['seeds']))
-        self.assertTrue(all(x['mean'] is None and x['ci95'] is None for x in value['intervals'].values()))
+        # An unsettled allocation cannot authenticate any retained timing.
+        with self.assertRaisesRegex(ValueError, 'unsettled'):
+            self.run_review(record)
         del record['budget']['active']
-        value = self.run_review(record)
-        self.assertEqual(value['status'], 'incomplete')
-        self.assertFalse(value['allocation_settled'])
-        self.assertTrue(all(x['mean'] is None and x['ci95'] is None for x in value['intervals'].values()))
+        with self.assertRaisesRegex(ValueError, 'unsettled'):
+            self.run_review(record)
 
     @staticmethod
     def write(root, name, value):
@@ -290,6 +285,21 @@ class IsolatedReviewTest(unittest.TestCase):
             self.assertFalse(value['stable_capacity_claim'])
             self.assertFalse(value['retention']['dependencies_closed'])
             self.assertFalse(value['retention']['deletion_authorized'])
+            original_ref = manifest['cases'][0]['run']
+            for problem in ('active', 'source'):
+                changed = copy.deepcopy(run)
+                if problem == 'active':
+                    changed['budget']['active'] = {'session_id': 'unsettled'}
+                else:
+                    changed['budget']['sessions'][0]['identity']['source_sha256'] = 'b'*64
+                manifest['cases'][0]['run'] = self.write(root, problem+'-run.json', changed)
+                invalid = review.evaluate(manifest, root)
+                self.assertEqual(invalid['expected_requests'], 384)
+                case = invalid['cases'][0]
+                self.assertEqual((case['status'], case['expected_requests'], len(case['cells'])), ('invalid', 96, 12))
+                self.assertEqual(case['timing_eligible_requests'], 0)
+                self.assertFalse(invalid['qualification_eligible'])
+            manifest['cases'][0]['run'] = original_ref
             # Even byte-only formatting edits are rejected by the frozen reference.
             with Path(manifest['cases'][0]['run']['path']).open('a') as stream:
                 stream.write('\n')

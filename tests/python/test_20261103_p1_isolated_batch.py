@@ -20,6 +20,33 @@ from ditserve.runtime import PACKAGE_ROOT
 from ditserve.runtime.client import CoreBridge
 
 
+def bind_ledger(record, uuids, history=()):
+    """Complete synthetic native ledger/charge fields, without granting qualification."""
+    record.setdefault('run_id', 'fixture-replay')
+    sessions = copy.deepcopy(list(history))
+    started = sessions[-1]['ended_monotonic'] + 1 if sessions else 1.
+    for phase in record['phases']:
+        sid = record['run_id'] + '/' + phase['id'] + '/' + str(phase['attempt'])
+        session = dict(session_id=sid, phase=phase['id'], devices=len(uuids), repair=False,
+            status=phase['status'], cleanup_verified=True, started_monotonic=started,
+            ended_monotonic=started + 1, elapsed_seconds=1., gpu_seconds=float(len(uuids)),
+            identity=dict(run_id=record['run_id'], attempt=phase['attempt'], gpu_uuids=list(uuids),
+                config_sha256=record['config_sha256'], source_sha256=canonical_hash(record['source'])))
+        phase.update(session_id=sid, charge=copy.deepcopy(session))
+        sessions.append(session)
+        started += 2
+    usage = {}
+    for session in sessions:
+        if not session['repair']:
+            usage[session['phase']] = usage.get(session['phase'], 0.) + session['gpu_seconds']
+    regular = sum(s['gpu_seconds'] for s in sessions if not s['repair'])
+    repair = sum(s['gpu_seconds'] for s in sessions if s['repair'])
+    record['budget'] = dict(schema_version='ditserve.budget.v1', allocation_id='fixture-allocation',
+        active=None, sessions=sessions, limits=dict(carry='none'), phase_usage=usage,
+        used_regular_gpu_seconds=regular, used_repair_gpu_seconds=repair, used_gpu_seconds=regular + repair)
+    return record
+
+
 class IsolatedBatchTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -75,6 +102,7 @@ class IsolatedBatchTest(unittest.TestCase):
             source=dict(core_sha256=identity['core_sha256'], files=identity['python_sources']),
             phases=[dict(id='cluster', attempt=1, status='completed', cells=cells)], requests=rows,
             budget=dict(sessions=[dict(identity=dict(gpu_uuids=uuids, config_sha256=canonical_hash(config)))]))
+        bind_ledger(record, uuids)
         bundle = formal.assemble(cls.f.p, pair['model'], [record], facts)
         return dict(protocol=cls.f.p, pair_plan=cls.plan, pair_id=pair['id'], gpu_uuids=uuids,
             pools=cls.f.pools, model_manifests=manifests, identity=identity, bundle=bundle,
@@ -82,6 +110,101 @@ class IsolatedBatchTest(unittest.TestCase):
 
     def inputs(self, pair='wan21-0'):
         return copy.deepcopy(self.examples[pair])
+
+    def cumulative_inputs(self):
+        inputs = self.inputs('wan21-1')
+        first = self.inputs('wan21-0')['calibrations'][0]
+        second = inputs['calibrations'][0]
+        bind_ledger(second, inputs['gpu_uuids'], first['budget']['sessions'])
+        inputs['calibrations'] = [first, second]
+        inputs['bundle'] = formal.assemble(inputs['protocol'], 'wan21', inputs['calibrations'], inputs['runtime_facts'])
+        return inputs
+
+    def test_calibration_cumulative_history_accepts_config_change(self):
+        inputs = self.cumulative_inputs()
+        first, second = inputs['calibrations']
+        self.assertNotEqual(first['config_sha256'], second['config_sha256'])
+        self.assertEqual(first['budget']['sessions'], second['budget']['sessions'][:-1])
+        original = copy.deepcopy(inputs)
+        self.assertEqual(len(isolated.compile_case(inputs)['phases']), 3)
+        self.assertEqual(inputs, original)
+
+    def test_calibration_rejects_unbound_or_mutated_history(self):
+        for change in (
+                lambda v: v['calibrations'].pop(0),
+                lambda v: v['calibrations'][1]['budget']['sessions'][0]['identity'].update(config_sha256='b'*64),
+                lambda v: v['calibrations'][1]['budget'].update(allocation_id='other-allocation'),
+                lambda v: v['calibrations'][1]['budget'].update(limits={'carry': 'forward'})):
+            inputs = self.cumulative_inputs()
+            change(inputs)
+            with self.subTest(change=change), self.assertRaisesRegex(ValueError, 'predecessor prefix'):
+                isolated.compile_case(inputs)
+
+    def test_current_phase_identity_cannot_be_replaced_by_history(self):
+        changes = (
+            lambda r: r['phases'][0].update(session_id=r['budget']['sessions'][0]['session_id']),
+            lambda r: r['phases'][0].update(session_id='absent'),
+            lambda r: r['budget']['sessions'][-1]['identity'].update(config_sha256='b'*64),
+            lambda r: r['budget']['sessions'][-1]['identity'].update(run_id='other-run'),
+            lambda r: r['budget']['sessions'][-1]['identity'].update(attempt=2),
+            lambda r: r['phases'][0]['charge']['identity'].update(config_sha256='b'*64))
+        for change in changes:
+            inputs = self.cumulative_inputs()
+            change(inputs['calibrations'][1])
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                isolated.compile_case(inputs)
+
+    def test_ledger_rejects_unsettled_duplicate_or_misaccounted_history(self):
+        changes = (
+            lambda b: b.update(active={'session_id': 'active'}),
+            lambda b: b['sessions'][0].update(cleanup_verified=False),
+            lambda b: b['sessions'][0].update(status='running'),
+            lambda b: b['sessions'].insert(0, copy.deepcopy(b['sessions'][0])),
+            lambda b: b['sessions'][0]['identity'].update(source_sha256='b'*64),
+            lambda b: b['sessions'][0]['identity'].update(gpu_uuids=['wrong']),
+            lambda b: b['sessions'][0].update(gpu_seconds=100),
+            lambda b: b['sessions'][0].update(ended_monotonic=100),
+            lambda b: b.update(used_gpu_seconds=100),
+            lambda b: b.update(phase_usage={}))
+        for change in changes:
+            inputs = self.cumulative_inputs()
+            change(inputs['calibrations'][1]['budget'])
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                isolated.compile_case(inputs)
+
+    def cumulative_replay(self):
+        from test_20261103_p1_isolated_review import IsolatedReviewTest
+        inputs = self.inputs()
+        config = isolated.compile_case(inputs)
+        record = IsolatedReviewTest.record(inputs, config)
+        old = copy.deepcopy(record)
+        old['run_id'] = 'previous-run'
+        old['config_sha256'] = 'b'*64
+        bind_ledger(old, inputs['gpu_uuids'])
+        bind_ledger(record, inputs['gpu_uuids'], old['budget']['sessions'])
+        return config, record
+
+    def test_coverage_keeps_three_current_phases_after_other_run(self):
+        config, record = self.cumulative_replay()
+        self.assertEqual(len(record['budget']['sessions']), 6)
+        result = isolated.coverage(config, record)
+        self.assertEqual((result['completed'], result['abba_cells_completed'], result['expected_requests']), (96, 12, 96))
+        self.assertFalse(result['qualification_eligible'])
+
+    def test_coverage_rejects_wrong_current_and_history_sources(self):
+        changes = (
+            lambda r: r['budget']['sessions'][0]['identity'].update(source_sha256='b'*64),
+            lambda r: r['budget']['sessions'][-1]['identity'].update(source_sha256='b'*64),
+            lambda r: r['budget']['sessions'][-1]['identity'].update(config_sha256='b'*64),
+            lambda r: r['phases'][0].update(session_id='absent'),
+            lambda r: r['phases'][1].update(session_id=r['phases'][0]['session_id']),
+            lambda r: r['phases'][0]['charge'].update(gpu_seconds=100),
+            lambda r: r['budget']['sessions'].reverse())
+        for change in changes:
+            config, record = self.cumulative_replay()
+            change(record)
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                isolated.coverage(config, record)
 
     def test_all_four_pairs_compile_three_same_input_abba_phases(self):
         for pair, inputs in self.examples.items():
@@ -255,7 +378,7 @@ class IsolatedBatchTest(unittest.TestCase):
         record['config'] = formal.calibration(inputs['protocol'], pair['model'], inputs['gpu_uuids'],
             inputs['pools'], inputs['model_manifests'], pair['video_shape'], pair['image_shape'])
         record['config_sha256'] = canonical_hash(record['config'])
-        record['budget']['sessions'][0]['identity']['config_sha256'] = record['config_sha256']
+        bind_ledger(record, inputs['gpu_uuids'])
         inputs['bundle'] = formal.assemble(inputs['protocol'], pair['model'], [record], inputs['runtime_facts'])
         with self.assertRaisesRegex(ValueError, 'insufficient distinct development'):
             isolated.compile_case(inputs)
@@ -282,6 +405,7 @@ class IsolatedBatchTest(unittest.TestCase):
             source=dict(core_sha256=identity['core_sha256'], files=identity['python_sources']),
             budget=dict(sessions=[dict(identity=dict(gpu_uuids=['GPU-a', 'GPU-b'], config_sha256=canonical_hash(config)))]),
             phases=[dict(id='seed-201', attempt=1, status='failed', cells=[dict(cell=0, status='failed')])])
+        bind_ledger(record, ['GPU-a', 'GPU-b'])
         result = isolated.coverage(config, record)
         self.assertEqual((result['expected_requests'], result['failed_or_incomplete'], result['unexecuted']), (96, 1, 95))
         self.assertFalse(result['qualification_eligible'])
@@ -305,6 +429,7 @@ class IsolatedBatchTest(unittest.TestCase):
                                observation_id=f"{phase['id']}/1/{plan['position']}", status='completed')
                     record['requests'].append(row)
             record['phases'].append(executed)
+        bind_ledger(record, ['GPU-a', 'GPU-b'])
         self.assertEqual(isolated.coverage(config, record)['abba_cells_completed'], 12)
         changes = [lambda r: r.pop('phases'),
             lambda r: r['requests'][0].pop('observation_id'),

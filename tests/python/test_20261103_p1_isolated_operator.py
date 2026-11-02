@@ -81,6 +81,7 @@ class OperatorPreparationTest(unittest.TestCase):
             record = copy.deepcopy(fixtures.IsolatedBatchTest.examples[model+'-'+str(i)]['calibrations'][0])
             record.update(run_id=env['DITSERVE_RUN_ID']+'-cal'+str(i),
                 source=dict(core_sha256=build['core_sha256'], files=job.inventory(package)))
+            fixtures.bind_ledger(record, first['gpu_uuids'], records[-1]['budget']['sessions'] if records else ())
             path = root/f'calibration-{i}.json'; path.write_bytes(job.encoded(record))
             records.append(record); paths.append(path)
         bundle = formal.assemble(first['protocol'], model, records, first['runtime_facts'])

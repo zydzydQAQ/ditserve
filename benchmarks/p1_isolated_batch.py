@@ -57,6 +57,99 @@ def load_inputs(path, expected_sha256):
     return values
 
 
+
+def settled_ledger(record, binding, uuids):
+    """Bind current phases, retaining and checking the cumulative allocation history.
+
+    Older runs keep their own native config digest. Their charges are not
+    evidence for this run; callers with raw predecessors must bind the prefix.
+    """
+    budget = record.get('budget', {})
+    sessions = budget.get('sessions')
+    if (budget.get('schema_version') != 'ditserve.budget.v1'
+            or not budget.get('allocation_id') or budget.get('active', 'missing') is not None
+            or not isinstance(sessions, list)):
+        raise ValueError('allocation ledger is missing or unsettled')
+    phases = record.get('phases', [])
+    selected = {}
+    for phase in phases:
+        sid = phase.get('session_id')
+        if not sid or sid in selected:
+            raise ValueError('phase lacks a unique allocation session')
+        selected[sid] = phase
+    seen, current, history = set(), set(), []
+    regular, repair, usage = 0., 0., {}
+    previous_end = None
+    statuses = {'completed', 'failed', 'interrupted', 'timed_out', 'cancelled', 'incomplete', 'censored'}
+
+    def number(value):
+        if type(value) not in (int, float) or not math.isfinite(value) or value < 0:
+            raise ValueError('invalid allocation charge/time')
+        return value
+
+    def same(left, right):
+        return math.isclose(number(left), number(right), rel_tol=1e-12, abs_tol=1e-6)
+
+    for session in sessions:
+        sid, owner = session.get('session_id'), session.get('identity', {})
+        if not sid or sid in seen:
+            raise ValueError('allocation session identity is missing or duplicate')
+        seen.add(sid)
+        if (session.get('cleanup_verified') is not True or session.get('status') not in statuses
+                or type(session.get('repair')) is not bool):
+            raise ValueError('allocation history is not fully settled')
+        if (owner.get('gpu_uuids') != uuids or session.get('devices') != len(uuids)
+                or owner.get('source_sha256') != canonical_hash(record.get('source', {}))
+                or not owner.get('run_id') or type(owner.get('attempt')) is not int or owner['attempt'] < 1
+                or not formal.HEX64.fullmatch(owner.get('config_sha256', ''))):
+            raise ValueError('allocation history source/GPU/native config hash identity differs')
+        start, end = (number(session.get(k)) for k in ('started_monotonic', 'ended_monotonic'))
+        elapsed, charge = number(session.get('elapsed_seconds')), number(session.get('gpu_seconds'))
+        if (end < start or previous_end is not None and start < previous_end
+                or not same(end - start, elapsed) or not same(charge, elapsed * len(uuids))):
+            raise ValueError('allocation history time/device-seconds differ')
+        previous_end = end
+        if session['repair']:
+            repair += charge
+        else:
+            regular += charge
+            pid = session.get('phase')
+            if not isinstance(pid, str) or not pid:
+                raise ValueError('allocation history phase is missing')
+            usage[pid] = usage.get(pid, 0.) + charge
+        if sid in selected:
+            phase = selected[sid]
+            match_native_config(binding, owner)
+            if (owner['run_id'] != record.get('run_id') or owner['attempt'] != phase.get('attempt')
+                    or session.get('phase') != phase.get('id') or session['status'] != phase.get('status')
+                    or phase.get('charge') != session):
+                raise ValueError('current phase/session run/attempt/source/charge identity differs')
+            current.add(sid)
+        else:
+            if current or owner['run_id'] == record.get('run_id'):
+                raise ValueError('allocation history is not a preceding run prefix')
+            history.append(session)
+    if current != set(selected) or record.get('requests') and not current:
+        raise ValueError('phase lacks a unique allocation session')
+    actual_usage = budget.get('phase_usage', {})
+    if (not same(budget.get('used_regular_gpu_seconds'), regular)
+            or not same(budget.get('used_repair_gpu_seconds'), repair)
+            or not same(budget.get('used_gpu_seconds'), regular + repair)
+            or set(actual_usage) != set(usage) or any(not same(actual_usage[k], v) for k, v in usage.items())):
+        raise ValueError('allocation cumulative charge history differs')
+    return history
+
+
+def calibration_history(record, binding, uuids, records):
+    """Authenticate a cumulative prefix against independently supplied raw runs."""
+    history = settled_ledger(record, binding, uuids)
+    if history and not any(other is not record
+            and other.get('budget', {}).get('allocation_id') == record['budget']['allocation_id']
+            and other['budget'].get('limits') == record['budget'].get('limits')
+            and other['budget'].get('sessions') == history for other in records):
+        raise ValueError('calibration history lacks its exact raw predecessor prefix')
+
+
 def validate_sources(inputs):
     p, plan, bundle, identity = (inputs[k] for k in ('protocol', 'pair_plan', 'bundle', 'identity'))
     if not formal.HEX64.fullmatch(inputs.get('inputs_manifest_sha256', '')):
@@ -100,11 +193,7 @@ def validate_sources(inputs):
             raise ValueError('calibration must execute formal pair shapes')
         expected_config = formal.calibration(p, pair['model'], uuids, inputs['pools'], manifests, *ids)
         config_binding = config_identity(record, expected_config)
-        for session in record.get('budget', {}).get('sessions', []):
-            match_native_config(config_binding, session.get('identity', {}))
-        for phase in record.get('phases', []):
-            if 'identity' in phase.get('charge', {}):
-                match_native_config(config_binding, phase['charge']['identity'])
+        calibration_history(record, config_binding, uuids, records)
         cal_phase = expected_config['phases'][0]
         phases = record.get('phases', [])
         if (len(phases) != 1 or phases[0].get('id') != cal_phase['id']
@@ -277,16 +366,7 @@ def coverage(config, record=None, *, attempt=1):
         if (source.get('core_sha256') != identity['core_sha256']
                 or source.get('files') != identity['python_sources']):
             raise ValueError('executed runtime source differs from frozen inputs')
-        sessions = record.get('budget', {}).get('sessions', [])
-        for session in sessions:
-            match_native_config(config_binding, session.get('identity', {}))
-        for phase in record.get('phases', []):
-            if 'identity' in phase.get('charge', {}):
-                match_native_config(config_binding, phase['charge']['identity'])
-        if (record.get('requests') and not sessions) or any(
-                s.get('identity', {}).get('gpu_uuids') != config['benchmark']['profile_placement']['gpu_uuids']
-                for s in sessions):
-            raise ValueError('executed allocation differs from calibration')
+        settled_ledger(record, config_binding, config['benchmark']['profile_placement']['gpu_uuids'])
     expected = {(c['phase'], c['cell'], c['order']): c for c in planned_cells(config)}
     # Native cell numbers repeat on the reverse pass. Only their position in
     # one explicit phase attempt, bound by each row's observation_id, identifies
