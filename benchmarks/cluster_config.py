@@ -34,8 +34,8 @@ def allocated_uuids():
 def make_workers(model, gpu_uuids, *, video_spec, image_spec, cfg_fold=None):
     if model not in MODELS:
         raise ValueError("unknown model: " + model)
-    if len(gpu_uuids) not in (2, 4, 8) or len(set(gpu_uuids)) != len(gpu_uuids):
-        raise ValueError("native studies require 2, 4 or 8 distinct GPU UUIDs")
+    if len(gpu_uuids) not in (2, 4, 6, 8) or len(set(gpu_uuids)) != len(gpu_uuids):
+        raise ValueError("native studies require 2, 4, 6 or 8 distinct GPU UUIDs")
     selected = MODELS[model]
     workers, slots, warmup = {}, [], []
     for index, uuid in enumerate(gpu_uuids):
@@ -87,10 +87,10 @@ def make_workers(model, gpu_uuids, *, video_spec, image_spec, cfg_fold=None):
 def build_config(model, gpu_uuids, *, frames=17, steps=4, image_steps=4):
     if frames != 17 or steps != 4 or image_steps != 4:
         raise ValueError("the functional preflight is fixed at Wan 17f/4 steps and SD3.5 4 steps")
-    if len(gpu_uuids) not in (2, 4, 8) or len(set(gpu_uuids)) != len(gpu_uuids):
-        raise ValueError("preflight requires 2, 4 or 8 distinct GPU UUIDs")
+    if len(gpu_uuids) not in (2, 4, 6, 8) or len(set(gpu_uuids)) != len(gpu_uuids):
+        raise ValueError("preflight requires 2, 4, 6 or 8 distinct GPU UUIDs")
     gpus = len(gpu_uuids)
-    form = {2: "cfg2", 4: "cfg2sp2", 8: "cfg2sp3"}[gpus]
+    form = {2: "cfg2", 4: "cfg2sp2", 6: "cfg2sp3", 8: "cfg2sp3"}[gpus]
     video_spec = {
         "steps": steps,
         "height": 480,

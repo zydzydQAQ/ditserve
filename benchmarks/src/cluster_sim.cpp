@@ -3,6 +3,7 @@
 #include "ditserve/control/cluster.hpp"
 #include "ditserve/control/dispatch.hpp"
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <limits>
 #include <map>
@@ -63,7 +64,7 @@ Json simulate_cluster(const Json& config) {
     auto sp_advance = [&](const Json& assignment) {
         return form_of(assignment).sp_total() >= 2 && assignment.at("quantum") != "atomic" && assignment.at("quantum") != "finish";
     };
-    double now = 0, busy_ms = 0;
+    double now = 0, busy_ms = 0, planner_cpu_ms_total = 0, planner_cpu_ms_max = 0;
     std::size_t completed = 0, preemptions = 0, resizes = 0, plans = 0, pairs = 0, batches = 0, batched = 0;
     std::size_t tiered_offloads = 0, tiered_prefetches = 0, approx_quanta = 0;
     std::vector<bool> prefetched(rows.size(), false);
@@ -108,8 +109,12 @@ Json simulate_cluster(const Json& config) {
             ++plans;
             int sp_running = 0;
             for (const auto& item : running) sp_running += sp_advance(item.assignment);
+            const auto plan_t0 = std::chrono::steady_clock::now();
             const auto plan = cluster_plan({{"now_ms", now}, {"gpus", gpus}, {"busy", busy_flags}, {"requests", requests}, {"sp_groups_running", sp_running}},
                                            policy, planner, options);
+            const double plan_dt_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - plan_t0).count();
+            planner_cpu_ms_total += plan_dt_ms;
+            planner_cpu_ms_max = std::max(planner_cpu_ms_max, plan_dt_ms);
             // SP quanta of this plan run alongside the running ones. Each is priced at
             // dispatch; a later change in concurrency does not re-time it.
             int sp_groups = sp_running;
@@ -323,6 +328,9 @@ Json simulate_cluster(const Json& config) {
             {"batches", batches}, {"batched_images", batched},
             {"tiered_offloads", tiered_offloads}, {"tiered_prefetches", tiered_prefetches}, {"approx_quanta", approx_quanta},
             {"provenance", cost.profile().at("provenance")}, {"requests", rows},
+            {"planner_cpu_ms_total", bool_field(options, "measure_planner_cpu", false) ? planner_cpu_ms_total : 0.},
+            {"planner_cpu_ms_mean", (bool_field(options, "measure_planner_cpu", false) && plans > 0) ? planner_cpu_ms_total / static_cast<double>(plans) : 0.},
+            {"planner_cpu_ms_max", bool_field(options, "measure_planner_cpu", false) ? planner_cpu_ms_max : 0.},
             {"notice", "Cost-model simulation; durations come from the profile, not from executing models."}};
 }
 }

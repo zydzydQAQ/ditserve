@@ -79,6 +79,16 @@ class NativeServingTest(unittest.TestCase):
             require_profile_match=True,
         )
         self.assertTrue(matched["benchmark"]["profile_placement"]["matches"])
+        sub_alloc = native_serving.build_serving_config(
+            "wan22", [f"GPU-{i}" for i in range(4)], bound, pools,
+            seed=201, load=1.0, pattern="gamma", cv=2.5, video_fraction=0.5, count=20,
+            policies=native_serving.SUITES["sweep"], require_profile_match=True,
+        )
+        self.assertTrue(sub_alloc["benchmark"]["profile_placement"]["matches"])
+        self.assertEqual(sub_alloc["benchmark"]["gpus"], 4)
+        self.assertEqual(sub_alloc["benchmark"]["cv"], 2.5)
+        self.assertNotIn("cfg2sp3", sub_alloc["phases"][0]["options"]["forms"])
+        self.assertIn("cfg2sp2", sub_alloc["phases"][0]["options"]["forms"])
 
     def test_suites_name_registered_policies(self):
         self.assertEqual(native_serving.DEFAULT_POLICIES, native_serving.SUITES["main"])
@@ -124,7 +134,7 @@ class NativeServingTest(unittest.TestCase):
             policies=["heterodit_v5"], cfg_fold={"folded_steps": [12, 13]},
         )
         self.assertFalse(config["benchmark"]["exact_mode"])
-        self.assertTrue(config["phases"][0]["options"]["async_rank0_decode"])
+        self.assertFalse(config["phases"][0]["options"]["async_rank0_decode"])
         self.assertEqual(config["workers"]["wan0"]["config"]["options"]["cfg_fold"]["folded_steps"], [12, 13])
 
     def test_quality_outputs_remain_pending_for_evaluation(self):

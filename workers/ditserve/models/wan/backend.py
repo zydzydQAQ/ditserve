@@ -459,8 +459,8 @@ class WanBackend(Backend):
             if backend == "nccl" and self.runtime.attention != "flash":
                 raise ValueError("pinned Wan SP requires config.attention=flash")
             world_size = request.get("world_size", 4)
-            if world_size not in (2, 4, 8):
-                raise ValueError("aligned-group SP requires 2, 4 or 8 ranks")
+            if world_size not in (2, 4, 6, 8):
+                raise ValueError("aligned-group SP requires 2, 4, 6 or 8 ranks")
             from datetime import timedelta
             if not torch.distributed.is_initialized():
                 torch.distributed.init_process_group(backend=backend, init_method=request["init_method"],

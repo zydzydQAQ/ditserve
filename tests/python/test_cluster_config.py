@@ -35,7 +35,7 @@ class ClusterConfigTest(unittest.TestCase):
         self.assertNotIn("Sana", str(config))
 
     def test_forms_cover_every_supported_native_world_size(self):
-        for count, form in ((2, "cfg2"), (4, "cfg2sp2"), (8, "cfg2sp3")):
+        for count, form in ((2, "cfg2"), (4, "cfg2sp2"), (6, "cfg2sp3"), (8, "cfg2sp3")):
             with self.subTest(count=count):
                 config = MODULE.build_config("wan22", [f"GPU-{i}" for i in range(count)])
                 self.assertEqual(config["phases"][0]["options"]["forms"], [form])

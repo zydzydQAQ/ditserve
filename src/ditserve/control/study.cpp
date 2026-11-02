@@ -611,7 +611,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     const auto transport=string_field(options,"sp_transport",fixtures?"resume":"pinned");
     if(transport!="pinned"&&transport!="resume"&&transport!="export")throw std::invalid_argument("sp_transport must be pinned, resume or export");
     if(transport=="resume"&&!fixtures)throw std::invalid_argument("resume transport re-prepares from counters and is mock only");
-    if(transport=="export"&&gpus!=2&&gpus!=4&&gpus!=8)throw std::invalid_argument("export transport needs 2, 4 or 8 GPUs");
+    if(transport=="export"&&gpus!=2&&gpus!=4&&gpus!=6&&gpus!=8)throw std::invalid_argument("export transport needs 2, 4, 6 or 8 GPUs");
     // Pinning lets a started request resume while another is inside a step on the
     // same worker; SP workers hold one request inside a solver step at a time.
     if(transport!="pinned"&&bool_field(options,"pin_started",false))throw std::invalid_argument("pin_started needs pinned transport");
@@ -1143,6 +1143,8 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                     mrow["quanta"]=mrow.value("quanta",0)+1;
                 }
                 mrow["batch_model_ms"]=number_field(out,"model_ms");
+                mrow["batch_size"]=finished.at("results").size();
+                mrow["batch_request_ids"]=task.assignment.at("batch");
                 mrow["model_ms"]=number_field(mrow,"model_ms")+number_field(out,"model_ms")/finished.at("results").size();
                 mrow["model_time_scope"]="amortized_batch_cost";
                 mrow["status"]="completed";mrow["finish_ms"]=finished_at;
@@ -1177,7 +1179,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             if(applied.is_null())applied=actual;
             else if(actual!=applied)throw std::runtime_error("worker ranks disagree on applied execution");
         }
-        Json trace={{"planned_form",form_name(expected_form)},{"planned_cache_threshold",expected_threshold},
+        Json trace={{"planned_form",form_name(expected_form)},{"group",task.assignment.at("group")},{"planned_cache_threshold",expected_threshold},
                     {"planned_cfg_folded",expected_folded},{"applied",applied}};
         if(!row.contains("execution"))row["execution"]=Json::array();
         if(row["execution"].empty()||row["execution"].back()!=trace)row["execution"].push_back(trace);
@@ -1224,7 +1226,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         for(const auto& rank:ranks)operation_ms=std::max(operation_ms,number_field(rank,"worker_operation_ms"));
         if(!row.contains("advance_samples"))row["advance_samples"]=Json::array();
         row["advance_samples"].push_back({
-            {"form",form_name(expected_form)},{"cfg_folded",expected_folded},
+            {"form",form_name(expected_form)},{"group",task.assignment.at("group")},{"cfg_folded",expected_folded},
             {"reason",task.assignment.at("reason")},{"first",first},{"transfer",out.contains("transfer")},
             {"steady",!first&&!out.contains("transfer")&&task.assignment.value("pair",std::string()).empty()},
             {"elapsed_ms",elapsed},{"model_ms",model},{"worker_operation_ms",operation_ms}
@@ -1370,12 +1372,29 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             }
         }
         if(doorbell){
-            // An image that found no GPU needs a block boundary now: ring every continuous video once.
-            bool image_waiting=false;
-            for(std::size_t k=0;k<rows.size()&&!image_waiting;++k)image_waiting=live[k].status=="waiting"&&rows[k].at("kind")=="image";
-            if(image_waiting)for(auto& task:tasks)if(task.continuous&&!task.rung){
-                for(const auto& gpu:task.assignment.at("group"))bells.ring(gpu.get<int>());
-                task.rung=true;task.rung_ms=now();
+            std::vector<int> waiting;
+            for(std::size_t k=0;k<rows.size();++k)if((live[k].status=="waiting"||live[k].status=="suspended")&&rows[k].at("kind")=="image")
+                waiting.push_back(live[k].prepared&&!live[k].group.empty()?live[k].group.front():-1);
+            if(!waiting.empty()){
+                std::vector<PreemptionGroup> candidates;
+                const double instant=now();
+                int sp_running=0;
+                for(const auto& task:tasks)if(task.continuous&&parse_form(task.assignment.at("form").get<std::string>()).sp>=2)++sp_running;
+                for(const auto& task:tasks)if(task.continuous){
+                    const auto& row=rows[task.row];const auto& state=live[task.row];
+                    const auto klass=row.at("class").get<std::string>();
+                    const auto form=parse_form(task.assignment.at("form").get<std::string>());
+                    const int rank_blocks=std::max(1,cost.blocks_per_step(klass)/form.cfg);
+                    const double block=cost.step_ms(klass,form,std::max(1,sp_running),&state.group)/rank_blocks;
+                    const double stop=block*task.assignment.at("quantum").get<int>();
+                    const double left=std::max(block,(rank_blocks-state.blocks)*block-(instant-task.started));
+                    candidates.push_back({row.at("request_id").get<std::string>(),state.group,stop,left,cost.resume_ms(klass),task.rung});
+                }
+                const auto selected=select_preemption_groups(waiting,candidates);
+                for(auto& task:tasks)if(task.continuous&&!task.rung&&std::find(selected.begin(),selected.end(),rows[task.row].at("request_id").get<std::string>())!=selected.end()){
+                    for(const auto& gpu:task.assignment.at("group"))bells.ring(gpu.get<int>());
+                    task.rung=true;task.rung_ms=now();
+                }
             }
         }
         if(!progressed)wait_until(monotonic_seconds()+.0005);
@@ -1706,8 +1725,8 @@ void validate(const Json& config){
                         throw std::invalid_argument("sp_transport must be pinned, resume or export");
                     if(bool_field(cell.value("options",Json::object()),"doorbell",false)&&transport!="export")
                         throw std::invalid_argument("doorbell needs the export transport");
-                    if(transport=="export"&&slots.size()!=2&&slots.size()!=4&&slots.size()!=8)
-                        throw std::invalid_argument("export transport needs 2, 4 or 8 GPUs");
+                    if(transport=="export"&&slots.size()!=2&&slots.size()!=4&&slots.size()!=6&&slots.size()!=8)
+                        throw std::invalid_argument("export transport needs 2, 4, 6 or 8 GPUs");
                     for(const auto& row:rows)if(cost.klass(row.at("class").get<std::string>()).at("kind")!=row.at("kind"))
                         throw std::invalid_argument("request kind differs from its cost class");
                     continue;

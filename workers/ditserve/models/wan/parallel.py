@@ -17,24 +17,26 @@ import time
 import types
 
 
-WORLD_SIZES = (2, 4, 8, 16)
+WORLD_SIZES = (2, 4, 6, 8, 16)
 
 
 def aligned_groups(world_size):
     """Aligned power-of-two and 12/24-head-divisible asymmetric rank groups (up to 16 GPUs across 2x8 nodes)."""
     if world_size not in WORLD_SIZES:
-        raise ParallelContractError("SP world size must be 2, 4, 8 or 16")
+        raise ParallelContractError("SP world size must be 2, 4, 6, 8 or 16")
     groups, degree = [], 1
     while degree <= world_size:
-        groups.extend(tuple(range(start, start + degree)) for start in range(0, world_size, degree))
+        groups.extend(tuple(range(start, start + degree)) for start in range(0, world_size - degree + 1, degree))
         degree *= 2
     # Wan2.1-1.3B (12 heads) and Wan2.2-TI2V-5B (24 heads) support 3-GPU, 6-GPU, and 12-GPU sub-clusters.
     if world_size >= 4 and (0, 1, 2) not in groups:
         groups.append((0, 1, 2))
-    if world_size >= 8:
-        for extra in ((3, 4, 5), (4, 5, 6), (0, 1, 2, 3, 4, 5)):
+    if world_size >= 6:
+        for extra in ((3, 4, 5), (0, 1, 2, 3, 4, 5)):
             if extra not in groups:
                 groups.append(extra)
+    if world_size >= 8 and (4, 5, 6) not in groups:
+        groups.append((4, 5, 6))
     if world_size >= 16:
         for extra in (
             (8, 9, 10),
@@ -51,7 +53,7 @@ def aligned_groups(world_size):
 def strided_ring_groups(world_size):
     """Strided Ring subgroups for 2D Hybrid USP (u2r2, u3r2, u4r2, u6r2, u8r2, u4r4 up to 16 GPUs)."""
     if world_size not in WORLD_SIZES:
-        raise ParallelContractError("SP world size must be 2, 4, 8 or 16")
+        raise ParallelContractError("SP world size must be 2, 4, 6, 8 or 16")
     out = []
     for degree in (4, 6, 8, 12, 16):
         if degree > world_size:
