@@ -204,6 +204,8 @@ PYTHONPATH=workers python3 benchmarks/collect_stage_evidence.py \
 
 该入口目前仅评审固定 CFG2 子资格，不生成 P1 晋级 receipt。完整 P1 还缺所有允许形态的资格和独立恢复/导入/编排计时；语义质量归属独立评测。三个 seed 的区间是小样本负载变化估计，不是同输入计时重复性证明。阈值为 null 时只报告效果区间，不能事后挑阈值宣布收益。
 
+另有独立的 `p1_isolated_batch.py --inputs INPUTS.json --inputs-sha256 SHA256 --output CONFIG.json`，只编译有限离线批诊断：每个正式 shape pair、同两张 GPU，8 条开发视频同时到达，三个 seed 各执行 EDF→Block→Block→EDF，共 96 策略请求/shape pair、全计划 384 次。图像模型驻留与 warmup 保留，测量窗口无图像；两轮时序重复嵌套在 seed 内。输入清单绑定正式校准原始记录、模型映射、core/Python/runtime 身份，并要求重新拟合后与 bundle 一致，不能借用其他分配或四卡校准。添加 `--config` 与 `--run` 仅审查实际 observation/cell/attempt 的覆盖与失败分母，不授予数值、零停止、性能或 P1 资格。该诊断不能替代原 v1 的低负载 Poisson 唤醒问题，提交仍须 P0 门禁；原 v1 不变。
+
 2026-11-03 的 `12b0918` P0 contention 在第一个 Block-CFG2 cell 暴露固定形态恢复漏洞：step 边界请求的 GPU 虽空闲，仍可能保留另一视频未完成的 solver step。最终互斥检查正确拒绝计划；30 请求完成、10 中断，另一策略 40 请求尚未执行，不能授予资格。修复在固定恢复分支补充已有 owner 筛选，保留 mid-step/合法 lockstep 及 pinned 路径；用真实到达/截止时间与所有 59 个可能的中途 block 位置做回归。新核心需要新的 CONTRACT/P0；旧失败数据和仍未闭合的原始依赖继续保留。
 
 ### P2 配对比较与单机制消融（2026-11-03）
@@ -227,6 +229,8 @@ P3 的 `p3_stream.py` 生成固定 warmup/measurement/drain 观察窗内不归�
 P4 的 `p4_quality_plan.py prepare` 固定同一组每模型至少 32 prompt × 3 个 generation seed，并将提示词选择 seed 与生成 seed 分离。正式 50 步的 late-window、折叠预算与质量阈值需独立开发证据；固定 N=1..K、adaptive 与 exact 的控制保持实际 unconditional-forward 数量可比，N=0 复用 exact 且不记为算法收益。它检查官方模型映射、同分配每档校准与完整/逐配对临时存储预算，尚不生成可执行作业或质量 receipt。LPIPS 权重、完整 VBench 和依赖闭合仍待完成。PSNR 的无限值以 exact-match 关系报告，不做 ∞−∞ 或任意截顶。
 
 `p4_stream_quality.py --plan ... --evidence ... --output ...` 现可离线读取已绑定该计划的成对 NPY：最多同时打开两份只读 memmap，以逐帧工作数组计算 MSE、PSNR、SSIM 和时序差分误差。文件与数组 SHA256、实际 matrix/worker_config/video_worker_options 合并顺序、模型、输入、GPU 放置与完整折叠历史都须核验；旧的未绑定输出不能直接改名进入此计划。所有缺失、失败项保留在计划分母，按 prompt 聚类重采样并保留 seed/shape 关联，另按 shape 与实际折叠 N 分层。无限 PSNR 以精确关系和有限 MSE 差分处理。该工具没有 GPU runner，LPIPS/VBench 仍为 unknown，不能授予 P4 或算法优越性资格；memmap 也不是硬 RSS 上限。跨批结果归并、下游依赖闭合与磁盘回收尚未实现，评测不删除原始输出。
+
+`p4_offline_lpips.py selftest` 是独立 CPU 自检入口，尚未接入上述 stream 评测。它固定当前镜像的包版本、关键源码和两份本地权重哈希，以 `pretrained=False, pnet_rand=True` 构造后严格装载全部特征层及五个标定头，防止 torchvision 隐式下载；评分前须通过真实权重的精确对照、扰动、对称性及独立公式复算。Python 网络/子进程拦截用于专用单线程 Python 进程，不是 OS 沙箱或全部 native 依赖认证。本地缺少 torch 时必须返回 unknown，mock 测试不能代替固定镜像中的实际自检。它不授予 P4 或 VBench 资格，也不闭合原始数据的清理依赖。
 
 `native_metrics.py` 的释放容量与图像重叠改为按 GPU 合并时间区间，batch 成员不重复累计 GPU 时间；使用最近一次 full-CFG 布局，无法追溯的换组不获得释放额度。该指标仍是 placement/window proxy，`reuse_qualified=false`，尚缺 release ACK、epoch 生命周期、真实受益执行与 fold-only/forced/demand 因果对照。不同 attempt/order 的请求分母不得合并，缺身份的多臂旧记录拒绝推断。
 
