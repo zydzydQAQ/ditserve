@@ -35,6 +35,20 @@ class OperatorPreparationTest(unittest.TestCase):
         core = root / 'ditserve'; core.write_bytes(b'fixture native executable')
         operator = root / 'release/scripts/kairos_formal_benchmark.sh'
         operator.parent.mkdir(parents=True); operator.write_text('# frozen operator\n')
+        benchmarks = root / 'release/benchmarks'
+        for source in (ROOT/'benchmarks').rglob('*.py'):
+            target = benchmarks / source.relative_to(ROOT/'benchmarks')
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source, target)
+        # Unit fixtures model imports from the byte-identical copied snapshot.
+        # A separate subprocess test below exercises real fresh imports.
+        for name in job.benchmark_inventory(benchmarks):
+            module_name = name.removesuffix('.py').replace('/', '.')
+            module = sys.modules.get(module_name)
+            if module is not None and module is not job:
+                replacement = patch.object(module, '__file__', str(benchmarks/name))
+                replacement.start()
+                self.addCleanup(replacement.stop)
         build = dict(commit='a'*40, core_sha256=job.file_hash(core))
         env = dict(DITSERVE_BUILD='a'*7, DITSERVE_TEST_REVISION='a'*40,
             DITSERVE_RUN_ID='d20261103-formal-p1iso-' + model + '-aaaaaaa-r1',
@@ -47,8 +61,9 @@ class OperatorPreparationTest(unittest.TestCase):
             DITSERVE_EXPECTED_PYTHON_SHA256=canonical_hash(job.inventory(package)),
             DITSERVE_P1_HELPER_SHA256=job.file_hash(job.__file__),
             DITSERVE_P1_OPERATOR_SHA256=job.file_hash(operator),
-            DITSERVE_EXPECTED_BENCHMARKS_SHA256=canonical_hash(job.benchmark_inventory(ROOT/'benchmarks')),
+            DITSERVE_EXPECTED_BENCHMARKS_SHA256=canonical_hash(job.benchmark_inventory(benchmarks)),
             DITSERVE_KAIROS_RUNTIME_ROOT=str(operator.parent.parent),
+            DITSERVE_BENCHMARK_ROOT=str(benchmarks),
             DITSERVE_JOB_SPEC_PATH=str(root/'job_spec.json'),
             DITSERVE_MODEL_MANIFESTS=str(root/'model_manifests.json'),
             DITSERVE_MODEL_MANIFESTS_SHA256=canonical_hash(first['model_manifests']),
@@ -72,12 +87,12 @@ class OperatorPreparationTest(unittest.TestCase):
         (root/'bundle.json').write_bytes(job.encoded(bundle))
         (root/'runtime-facts.json').write_bytes(job.encoded(first['runtime_facts']))
         kwargs = dict(model=model, sources=sources, package=package, core=core,
-            operator_script=operator, gpu_uuids=first['gpu_uuids'], environment=env)
+            operator_script=operator, benchmark_root=benchmarks, gpu_uuids=first['gpu_uuids'], environment=env)
         checked = job.preflight(**kwargs)
         (root/'preflight.json').write_bytes(job.encoded(checked))
         prepare = dict(bundle_path=root/'bundle.json', runtime_facts_path=root/'runtime-facts.json',
             calibration_paths=paths, package=package, core=core, gpu_uuids=first['gpu_uuids'],
-            output_dir=root/'prepared')
+            benchmark_root=benchmarks, output_dir=root/'prepared')
         return kwargs, prepare
 
     def test_both_models_prepare_both_complete_pairs_with_portable_sources(self):
@@ -86,6 +101,9 @@ class OperatorPreparationTest(unittest.TestCase):
                 root = Path(directory); _, kwargs = self.fixture(root, model)
                 preflight = json.loads((root/'preflight.json').read_bytes())
                 self.assertEqual(preflight['expected_requests'], 192)
+                self.assertEqual(preflight['operator']['benchmark_root'], str(root/'release/benchmarks'))
+                self.assertEqual(preflight['core_sha256'], job.file_hash(kwargs['core']))
+                self.assertIn('stage_gates', preflight['operator']['benchmark_imports'])
                 self.assertEqual([v['expected_requests'] for v in preflight['planned_cases']], [96, 96])
                 result = job.prepare_inputs(root/'preflight.json', **kwargs)
                 self.assertEqual(result['expected_requests'], 192)
@@ -177,7 +195,7 @@ class OperatorPreparationTest(unittest.TestCase):
             env.pop('DITSERVE_BENCHMARK_MODE')
             base['env']=[dict(name=k,value=v) for k,v in env.items()]
             kwargs=dict(model='wan21',date='20261103',operator_root='/shared/data/DITSERVE/scripts/releases/new-operator',
-                operator_script=pre['operator_script'],benchmark_root=ROOT/'benchmarks')
+                operator_script=pre['operator_script'],benchmark_root=pre['benchmark_root'])
             receipt=root/'receipt.json'
             with self.assertRaises(FileNotFoundError): job.prepare_spec(base,protocol,plan,receipt,**kwargs)
             receipt.write_text('{}')
@@ -200,6 +218,8 @@ class OperatorPreparationTest(unittest.TestCase):
             self.assertEqual(actual['DITSERVE_BENCHMARK_MODE'],'formal')
             self.assertEqual(actual['DITSERVE_P0_GATE_SHA256'],job.file_hash(receipt))
             self.assertEqual(actual['DITSERVE_P1_HELPER_SHA256'],job.file_hash(job.__file__))
+            self.assertEqual(actual['DITSERVE_BENCHMARK_ROOT'], kwargs['operator_root']+'/benchmarks')
+            self.assertEqual(actual['DITSERVE_EXPECTED_BENCHMARKS_SHA256'],canonical_hash(job.benchmark_inventory(pre['benchmark_root'])))
             self.assertEqual(actual['DITSERVE_MODEL_MANIFESTS_SHA256'],canonical_hash(mapping))
             self.assertNotEqual(result['command'],base['command'])
             # Even with a rehashed manifest, inconsistent P0 role mappings
@@ -227,6 +247,53 @@ class OperatorPreparationTest(unittest.TestCase):
             with patch.object(job,'validate_plan'), self.assertRaisesRegex(ValueError,'required stage has not passed: P0'):
                 job.prepare_spec(base,protocol,{},path,model='wan21',date='20261103',
                     operator_root='/shared/data/DITSERVE/scripts/releases/new',operator_script=root/'unused',benchmark_root=root/'unused')
+
+    def test_actual_root_and_cached_dependency_must_match_explicit_snapshot(self):
+        with TemporaryDirectory() as directory:
+            root=Path(directory); pre, prepare=self.fixture(root)
+            changed=copy.deepcopy(pre); changed['benchmark_root']=ROOT/'benchmarks'
+            with self.assertRaisesRegex(ValueError,'benchmark import'):
+                job.preflight(**changed)
+            for name in ('formal_benchmark', 'p1_isolated_batch', 'stage_gates', 'native_exact', 'native_metrics'):
+                with self.subTest(module=name), patch.object(sys.modules[name], '__file__', str(ROOT/'benchmarks'/f'{name}.py')):
+                    with self.assertRaisesRegex(ValueError,'benchmark import'):
+                        job.preflight(**pre)
+                    with self.assertRaisesRegex(ValueError,'benchmark import'):
+                        job.prepare_inputs(root/'preflight.json', **prepare)
+            self.assertFalse(prepare['output_dir'].exists())
+
+    def test_full_snapshot_hash_and_submitted_root_are_checked_before_preparation(self):
+        with TemporaryDirectory() as directory:
+            root=Path(directory); pre, prepare=self.fixture(root)
+            path=pre['benchmark_root']/'p5_external_preflight.py'
+            path.write_text(path.read_text()+'\n# changed unused benchmark\n')
+            with self.assertRaisesRegex(ValueError,'benchmark sources'):
+                job.preflight(**pre)
+            with self.assertRaisesRegex(ValueError,'runtime changed'):
+                job.prepare_inputs(root/'preflight.json', **prepare)
+            self.assertFalse(prepare['output_dir'].exists())
+        with TemporaryDirectory() as directory:
+            root=Path(directory); pre, _=self.fixture(root)
+            spec=json.loads(pre['sources']['job_spec'].read_bytes())
+            for item in spec['env']:
+                if item['name']=='DITSERVE_BENCHMARK_ROOT': item['value']=str(ROOT/'benchmarks')
+            pre['environment']['DITSERVE_BENCHMARK_ROOT']=str(ROOT/'benchmarks')
+            pre['sources']['job_spec'].write_bytes(job.encoded(spec))
+            with self.assertRaisesRegex(ValueError,'benchmark sources'):
+                job.preflight(**pre)
+
+    def test_fresh_process_imports_only_the_copied_benchmark_snapshot(self):
+        with TemporaryDirectory() as directory:
+            root=Path(directory); pre, _=self.fixture(root)
+            environment=dict(os.environ, PYTHONDONTWRITEBYTECODE='1',
+                PYTHONPATH=os.pathsep.join((str(pre['benchmark_root']), str(ROOT/'workers'))))
+            code='import json,p1_isolated_job as j,sys; print(json.dumps(j.benchmark_identity(sys.argv[1])))'
+            result=subprocess.run([sys.executable,'-c',code,str(pre['benchmark_root'])],env=environment,
+                check=True,capture_output=True,text=True,timeout=30,cwd=root)
+            value=json.loads(result.stdout)
+            self.assertEqual(value['root'],str(pre['benchmark_root']))
+            self.assertEqual(value['sources'],job.benchmark_inventory(pre['benchmark_root']))
+            self.assertTrue({'formal_benchmark','p1_isolated_batch','stage_gates','native_exact','native_metrics'} <= set(value['imports']))
 
 
 if __name__ == '__main__':

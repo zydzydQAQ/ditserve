@@ -16,6 +16,7 @@ import hashlib
 import json
 from pathlib import Path, PurePosixPath
 import re
+import sys
 
 import formal_benchmark as formal
 import p1_isolated_batch as isolated
@@ -122,6 +123,7 @@ def prepare_spec(base_spec, protocol, plan, receipt_path, *, model, date, operat
     env.update(DITSERVE_RUN_ID=name, DITSERVE_FORMAL_ACTION='p1_isolated', DITSERVE_STAGE_ACTION='p1_diagnostics',
         DITSERVE_BENCHMARK_MODE='formal',
         DITSERVE_KAIROS_RUNTIME_ROOT=operator_root,
+        DITSERVE_BENCHMARK_ROOT=str(root / 'benchmarks'),
         DITSERVE_JOB_SPEC_PATH=f'/shared/data/DITSERVE/job-specs/{date}-p1iso-{commit[:7]}/{name}.json',
         DITSERVE_P1_PLAN_SHA256=canonical_hash(plan), DITSERVE_P0_GATE_SHA256=byte_hash(raw),
         DITSERVE_MODEL_MANIFESTS_SHA256=canonical_hash(p0_model_mapping(receipt_path, receipt, model)),
@@ -129,7 +131,7 @@ def prepare_spec(base_spec, protocol, plan, receipt_path, *, model, date, operat
         DITSERVE_EXPECTED_PYTHON_SHA256=fresh['stages']['CONTRACT']['python_sources_sha256'],
         DITSERVE_P1_HELPER_SHA256=file_hash(__file__),
         DITSERVE_P1_OPERATOR_SHA256=file_hash(operator_script),
-        DITSERVE_EXPECTED_BENCHMARKS_SHA256=canonical_hash(benchmark_inventory(benchmark_root)))
+        DITSERVE_EXPECTED_BENCHMARKS_SHA256=canonical_hash(benchmark_identity(benchmark_root)['sources']))
     result['env'] = [dict(name=key, value=value) for key, value in env.items()]
     return result
 
@@ -153,13 +155,43 @@ def benchmark_inventory(root):
     return {path.relative_to(root).as_posix(): file_hash(path) for path in paths}
 
 
-def operator_identity(script):
+def benchmark_identity(root):
+    """Bind disk inventory AND already imported benchmark modules to one root.
+
+    A new CLI process must set PYTHONPATH to this explicit snapshot followed
+    by the old installed worker package. Inventory alone cannot detect an old
+    compiler/module left in Python's import cache.
+    """
+    root = Path(root)
+    if root.is_symlink() or not root.is_dir():
+        raise ValueError('missing or linked explicit benchmark snapshot')
+    root = root.resolve()
+    sources = benchmark_inventory(root)
+    imported = {}
+    required = {formal.__name__, isolated.__name__, validate_plan.__module__,
+                read_json.__module__, allocated_uuids.__module__}
+    modules = {name.removesuffix('.py').replace('/', '.'): name for name in sources}
+    for name in sorted(required | (set(modules) & set(sys.modules))):
+        if name == __name__:  # This helper belongs to operator/tools, not benchmarks.
+            continue
+        module = sys.modules.get(name)
+        path = getattr(module, '__file__', None)
+        relative = modules.get(name)
+        if not path or relative is None or Path(path).resolve() != root / relative:
+            raise ValueError('benchmark import is outside the explicit snapshot: ' + name)
+        imported[name] = relative
+    return dict(root=str(root), sources=sources, imports=imported)
+
+
+def operator_identity(script, benchmark_root):
+    benchmarks = benchmark_identity(benchmark_root)
     return dict(helper_sha256=file_hash(__file__), operator_sha256=file_hash(script),
         operator_path=str(Path(script).resolve()),
-        benchmark_sources=benchmark_inventory(Path(formal.__file__).parent))
+        benchmark_root=benchmarks['root'], benchmark_sources=benchmarks['sources'],
+        benchmark_imports=benchmarks['imports'])
 
 
-def preflight(*, model, sources, package, core, operator_script, gpu_uuids, environment):
+def preflight(*, model, sources, package, core, operator_script, benchmark_root, gpu_uuids, environment):
     """Bind actual installed files and allocation before calibration starts."""
     documents, references = {}, {}
     for key, path in sources.items():
@@ -172,7 +204,7 @@ def preflight(*, model, sources, package, core, operator_script, gpu_uuids, envi
         'DITSERVE_FORMAL_ACTION', 'DITSERVE_STAGE_ACTION', 'DITSERVE_P0_GATE_SHA256', 'DITSERVE_BENCHMARK_MODE',
         'DITSERVE_EXPECTED_CORE_SHA256', 'DITSERVE_EXPECTED_PYTHON_SHA256',
         'DITSERVE_P1_HELPER_SHA256', 'DITSERVE_P1_OPERATOR_SHA256', 'DITSERVE_EXPECTED_BENCHMARKS_SHA256',
-        'DITSERVE_KAIROS_RUNTIME_ROOT', 'DITSERVE_TEST_REVISION', 'DITSERVE_IMAGE_DIGEST', 'WAN_MODEL',
+        'DITSERVE_KAIROS_RUNTIME_ROOT', 'DITSERVE_BENCHMARK_ROOT', 'DITSERVE_TEST_REVISION', 'DITSERVE_IMAGE_DIGEST', 'WAN_MODEL',
         'DITSERVE_MODEL_MANIFESTS', 'DITSERVE_MODEL_MANIFESTS_SHA256', 'DITSERVE_JOB_SPEC_PATH')
     if any(environment.get(key) != env.get(key) for key in expected):
         raise ValueError('execution environment differs from submitted spec')
@@ -194,11 +226,13 @@ def preflight(*, model, sources, package, core, operator_script, gpu_uuids, envi
     if (core_digest != build.get('core_sha256') or core_digest != env['DITSERVE_EXPECTED_CORE_SHA256']
             or canonical_hash(python_sources) != env['DITSERVE_EXPECTED_PYTHON_SHA256']):
         raise ValueError('installed core/Python differs from verified P0 runtime')
-    operator = operator_identity(operator_script)
+    operator = operator_identity(operator_script, benchmark_root)
     expected_script = Path(env['DITSERVE_KAIROS_RUNTIME_ROOT']) / 'scripts/kairos_formal_benchmark.sh'
     if (operator['helper_sha256'] != env['DITSERVE_P1_HELPER_SHA256']
             or operator['operator_sha256'] != env['DITSERVE_P1_OPERATOR_SHA256']
             or canonical_hash(operator['benchmark_sources']) != env['DITSERVE_EXPECTED_BENCHMARKS_SHA256']
+            or env.get('DITSERVE_BENCHMARK_ROOT') != str(Path(env['DITSERVE_KAIROS_RUNTIME_ROOT']) / 'benchmarks')
+            or Path(operator['benchmark_root']) != Path(env['DITSERVE_BENCHMARK_ROOT']).resolve()
             or Path(operator['operator_path']) != expected_script.resolve()
             or spec.get('command') != 'bash ' + str(expected_script)
             or Path(sources['job_spec']).resolve() != Path(env['DITSERVE_JOB_SPEC_PATH']).resolve()
@@ -222,13 +256,13 @@ def preflight(*, model, sources, package, core, operator_script, gpu_uuids, envi
 
 
 def prepare_inputs(preflight_path, *, bundle_path, runtime_facts_path, calibration_paths,
-                   package, core, gpu_uuids, output_dir):
+                   package, core, benchmark_root, gpu_uuids, output_dir):
     """Validate everything before writing two reviewable, relative-path bundles."""
     checked, checked_raw = checked_json(preflight_path)
     verify_seal(checked)
     if (checked.get('schema') != PREFLIGHT or checked['gpu_uuids'] != gpu_uuids or len(gpu_uuids) != 2
             or file_hash(core) != checked['core_sha256'] or inventory(Path(package)) != checked['python_sources']
-            or operator_identity(checked['operator']['operator_path']) != checked['operator']):
+            or operator_identity(checked['operator']['operator_path'], benchmark_root) != checked['operator']):
         raise ValueError('allocation or deployed runtime changed since preflight')
     docs, blobs = {}, {'preflight.json': checked_raw}
     for key, source in checked['sources'].items():
@@ -305,10 +339,10 @@ def main(argv=None):
         spec.add_argument('--' + name.replace('_', '-'), required=True)
     first = sub.add_parser('preflight')
     first.add_argument('--model', choices=['wan21', 'wan22'], required=True)
-    for name in ('protocol', 'pair_plan', 'model_manifests', 'build', 'job_spec', 'datasets', 'output', 'package', 'core', 'operator_script'):
+    for name in ('protocol', 'pair_plan', 'model_manifests', 'build', 'job_spec', 'datasets', 'output', 'package', 'core', 'operator_script', 'benchmark_root'):
         first.add_argument('--' + name.replace('_', '-'), type=Path, required=True)
     prepare = sub.add_parser('prepare')
-    for name in ('preflight', 'bundle', 'runtime_facts', 'output_dir', 'package', 'core'):
+    for name in ('preflight', 'bundle', 'runtime_facts', 'output_dir', 'package', 'core', 'benchmark_root'):
         prepare.add_argument('--' + name.replace('_', '-'), type=Path, required=True)
     prepare.add_argument('--calibrations', nargs='+', type=Path, required=True)
     args = parser.parse_args(argv)
@@ -323,12 +357,13 @@ def main(argv=None):
         sources = {key: getattr(args, key) for key in ('protocol', 'pair_plan', 'model_manifests', 'build', 'job_spec')}
         sources.update({'pool_' + kind: args.datasets / (protocol['datasets'][kind]['kind'] + '.json') for kind in ('video', 'image')})
         result = preflight(model=args.model, sources=sources, package=args.package, core=args.core,
-            operator_script=args.operator_script, gpu_uuids=allocated_uuids(), environment=os.environ)
+            operator_script=args.operator_script, benchmark_root=args.benchmark_root,
+            gpu_uuids=allocated_uuids(), environment=os.environ)
         formal.write_new(args.output, result)
     else:
         result = prepare_inputs(args.preflight, bundle_path=args.bundle, runtime_facts_path=args.runtime_facts,
             calibration_paths=args.calibrations, package=args.package, core=args.core,
-            gpu_uuids=allocated_uuids(), output_dir=args.output_dir)
+            benchmark_root=args.benchmark_root, gpu_uuids=allocated_uuids(), output_dir=args.output_dir)
     print(json.dumps(dict(command=args.command, schema=result.get('schema'), submitted=False, qualification_eligible=False)))
 
 
