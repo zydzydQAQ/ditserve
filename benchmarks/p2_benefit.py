@@ -25,7 +25,7 @@ import statistics
 from formal_benchmark import input_shape, shape_spec
 from native_exact import checked_digest, stop_samples, validate_pair_identity
 from native_metrics import percentile
-from p2_contrasts import AUDITED_NATIVE_SOURCES, CONTRASTS, canonical_policy, validate_contrast
+from p2_contrasts import CONTRASTS, audit_native_sources, canonical_policy, validate_contrast
 from stage_gates import canonical_hash, read_json, source_file
 
 
@@ -209,7 +209,7 @@ def produced_identity(row, planned, arm, protocol):
 
 
 def audit_arm(record, arm, protocol, *, audited_native_sources=None):
-    """Retain frozen denominators; an internal caller may add reviewed source pins."""
+    """Retain frozen denominators; an internal caller may provide singleton pins."""
     selector, workload = arm['selector'], arm['workload']
     rows, result = [], dict(status='not_started', by_kind=counts(workload, [], 'not_started'),
                            metrics={}, identities={}, outputs={}, stops=0, forms=[])
@@ -227,11 +227,7 @@ def audit_arm(record, arm, protocol, *, audited_native_sources=None):
         source = record.get('source', {})
         if not sha(source.get('core_sha256')) or not source.get('files') or not all(sha(h) for h in source['files'].values()):
             raise ValueError('run lacks C++ and Python source identity')
-        allowed = AUDITED_NATIVE_SOURCES if audited_native_sources is None else audited_native_sources
-        if (not isinstance(allowed, dict) or not set(AUDITED_NATIVE_SOURCES) <= set(allowed)
-                or any(not hashes or not all(sha(value) for value in hashes) for hashes in allowed.values())
-                or any(source.get('native_files', {}).get(path) not in hashes for path, hashes in allowed.items())):
-            raise ValueError('native option resolver has not been audited for this source revision')
+        result['native_source_audit'] = audit_native_sources(source.get('native_files'), audited_native_sources)
         phases = [phase for phase in record.get('phases', [])
                   if phase.get('id') == selector['phase'] and phase.get('attempt') == selector['attempt']]
         if len(phases) > 1:

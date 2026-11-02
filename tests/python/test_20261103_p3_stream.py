@@ -14,7 +14,7 @@ import p3_window_review as review
 import test_20261102_formal_benchmark as formal_fixtures
 import test_20261103_p2_benefit as p2_fixtures
 from formal_benchmark import split_pools
-from p2_contrasts import AUDITED_NATIVE_SOURCES
+from p2_contrasts import AUDITED_NATIVE_BUNDLES
 from stage_gates import canonical_hash
 from ditserve.runtime.client import CoreBridge
 
@@ -123,7 +123,7 @@ class P3StreamTest(unittest.TestCase):
         run_id, session = f'p3-{seed}', f'p3-session-{seed}'
         record = dict(schema='ditserve.run.v1', run_id=run_id, status='completed', config=config,
             source=dict(core_sha256='c'*64, files={'ditserve/runtime/worker.py': 'b'*64},
-                        native_files={path: hashes[0] for path, hashes in AUDITED_NATIVE_SOURCES.items()}),
+                        native_files=copy.deepcopy(AUDITED_NATIVE_BUNDLES['f79f6fb-cf46c3b'])),
             budget=dict(sessions=[dict(session_id=session, phase=phase['id'], devices=len(self.f.uuids),
                 identity=dict(attempt=1, run_id=run_id, gpu_uuids=self.f.uuids))]),
             phases=[dict(id=phase['id'], attempt=1, session_id=session, cells=[])], requests=[])

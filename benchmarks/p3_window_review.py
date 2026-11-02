@@ -15,7 +15,7 @@ from pathlib import Path
 
 from native_metrics import percentile
 from p2_benefit import audit_arm, counts, expanded, finite, interval, planned_arm, sha
-from p2_contrasts import AUDITED_NATIVE_SOURCES
+from p2_contrasts import AUDITED_NATIVE_BUNDLES
 from p3_stream import arrivals, execution_settings, prompt_hash, validate_requests, validate_structure
 from stage_gates import canonical_hash, read_json, source_file
 
@@ -23,15 +23,7 @@ from stage_gates import canonical_hash, read_json, source_file
 # This opt-in path has its own reviewed source pins. It must not silently bless
 # whichever source happens to be installed on the review machine. These pins
 # cover the separately reviewed cutoff, deadline, cleanup and settlement paths.
-CUTOFF_NATIVE_SOURCES = dict(AUDITED_NATIVE_SOURCES, **{
-    'src/ditserve/control/study.cpp': ('20193ea379745bc79b56e3448f72b10ea51e61e60943da0aebe0273010c213bb',),
-    'src/ditserve/control/cluster.cpp': ('eded7812a8400430f0a1fc97d6ad9f4769c29a211deca7288b4a30d11b9b6ffd',),
-    'src/ditserve/control/budget.cpp': ('c1b1f3dce50073f8f3a858b33382d2c0991af4059eb2c6999b357caafe4f0eb2',),
-    'src/ditserve/control/dispatch.cpp': ('fa9ff789cefc8c095a08121d18d6bb62cf7352d623112af08c7bf518fec7d5a6',),
-    'src/ditserve/runtime/process.cpp': ('30c36b89ef5b69d6fe44910099f6921d581846692e8acc11f7ba76198af0d4ce',),
-    'src/ditserve/interface/command.cpp': ('52f3a18f7b423ff949cedf5b50da0eaa704fd71a3dfea03b89405b4de7c85a42',),
-    'include/ditserve/runtime/process.hpp': ('cb410642d81d755e16cab9ba842ce0e9d6a768d0735a23907d48d95aff84d4ca',),
-})
+CUTOFF_NATIVE_SOURCES = {path: (digest,) for path, digest in AUDITED_NATIVE_BUNDLES['97f0713'].items()}
 TERMINAL_STATES = ('completed', 'failed', 'censored', 'not_executed', 'interrupted')
 
 

@@ -42,7 +42,7 @@ class P2BenefitTest(unittest.TestCase):
             result[arm] = dict(schema='ditserve.run.v1', status='completed', run_id=run_id,
                 config=configs[arm], requests=rows,
                 source=dict(core_sha256='c' * 64, files=self.f.python,
-                            native_files={path: hashes[0] for path, hashes in contrasts.AUDITED_NATIVE_SOURCES.items()}),
+                            native_files=copy.deepcopy(contrasts.AUDITED_NATIVE_BUNDLES['f79f6fb-cf46c3b'])),
                 budget=dict(sessions=[dict(session_id=session_id, phase='cluster', devices=len(self.f.f.uuids),
                     identity=dict(gpu_uuids=self.f.f.uuids, attempt=1, run_id=run_id))]),
                 phases=[dict(id='cluster', attempt=1, session_id=session_id, status='completed', cells=[dict(

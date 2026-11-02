@@ -10,21 +10,85 @@ import copy
 import hashlib
 import json
 from pathlib import Path
+import re
 
 from native_serving import FORM_DEGREES
 from stage_gates import canonical_hash, read_json
 
 
-AUDITED_NATIVE_SOURCES = {
-    'src/ditserve/control/policy.cpp': ('6a52ff3a2caabd73ccf076a9158050fa8765d772ffedad498ffe4a18f1e1d2fb',),
-    'include/ditserve/control/policy.hpp': ('10d5ed4df6da5c8a9151a3adcbea76d16bf5a435b8daaf99968ec4114f51b9c8',),
-    'src/ditserve/control/study.cpp': ('34582d968cd1558e826849c86d408f958b9217825b7486f942d2b4e1ecc10374',
-                                    'c7f104e0cc6da4e0ffd7fae4d4f3cefcb1706bf20efe5f7a32b6145c40ad02f4'),
-    # The ownership fix changes correctness, not option resolution. Keeping
-    # the prior hash permits honest analysis of its failed runs, not promotion.
-    'src/ditserve/control/cluster.cpp': ('6cf1044cc837e26ba5bfb4e1b83870a10709e6e989cb58662e8bbf4d46287d0e',
-                                      '5c2054931ec6d1b8c5dfa3c50f781e0f57594783633494b64f409adad7a5ed54'),
+_POLICY_SOURCES = {
+    'src/ditserve/control/policy.cpp': '6a52ff3a2caabd73ccf076a9158050fa8765d772ffedad498ffe4a18f1e1d2fb',
+    'include/ditserve/control/policy.hpp': '10d5ed4df6da5c8a9151a3adcbea76d16bf5a435b8daaf99968ec4114f51b9c8',
 }
+_LEGACY_RUNTIME_SOURCES = {
+    'src/ditserve/control/budget.cpp': 'a0ebe611274ad2d76436cd0a8a550e8039e571ae9d4f0c1d5bc2d2399cda6537',
+    'src/ditserve/control/dispatch.cpp': '3c9bdd18f9d48c708922831bd3e543de3ea232d25bf92236b07c1ced5b2e2f59',
+    'src/ditserve/runtime/process.cpp': 'b632695f39bc692e2474c258c33f6423dfbe32486e64258b837f4dd23c708105',
+    'include/ditserve/runtime/process.hpp': '8af98ae7fd383d8c1ce4e010477bd198ba8eabda40576cf5a6a20305697014f4',
+    'src/ditserve/interface/command.cpp': 'bae8e76882f6efe55c9b50a7a802b55da7f9fc56bc6535c2f4e4038f74bb0a57',
+}
+
+
+def _native_bundle(cluster, study, header, runtime=None):
+    return dict(_POLICY_SOURCES, **(_LEGACY_RUNTIME_SOURCES if runtime is None else runtime), **{
+        'src/ditserve/control/cluster.cpp': cluster, 'src/ditserve/control/study.cpp': study,
+        'include/ditserve/control/cluster.hpp': header})
+
+
+# These are reviewed combinations, never a Cartesian product of file versions.
+# The three historical bundles are present in retained 12b/cf46/92b raw records,
+# including all headers/runtime files. They remain analyzable, not promoted.
+# c4/517 keep policy defaults but change native per-rank progress/cost units.
+# 97f keeps those defaults; cutoff is opt-in, while typed RPC expiry and fanout
+# fault preservation also affect supervision without cutoff. Pin them together.
+AUDITED_NATIVE_BUNDLES = {
+    '12b0918': _native_bundle('5c2054931ec6d1b8c5dfa3c50f781e0f57594783633494b64f409adad7a5ed54',
+        '34582d968cd1558e826849c86d408f958b9217825b7486f942d2b4e1ecc10374',
+        '38856fb9c9a8f2812bfd9a06e3bc048038e509b051f68d92b78b4e91ae37d34e'),
+    'f79f6fb-cf46c3b': _native_bundle('6cf1044cc837e26ba5bfb4e1b83870a10709e6e989cb58662e8bbf4d46287d0e',
+        '34582d968cd1558e826849c86d408f958b9217825b7486f942d2b4e1ecc10374',
+        '38856fb9c9a8f2812bfd9a06e3bc048038e509b051f68d92b78b4e91ae37d34e'),
+    '92b72ff': _native_bundle('6cf1044cc837e26ba5bfb4e1b83870a10709e6e989cb58662e8bbf4d46287d0e',
+        'c7f104e0cc6da4e0ffd7fae4d4f3cefcb1706bf20efe5f7a32b6145c40ad02f4',
+        '38856fb9c9a8f2812bfd9a06e3bc048038e509b051f68d92b78b4e91ae37d34e'),
+    'c4b9e26-51740c0': _native_bundle('eded7812a8400430f0a1fc97d6ad9f4769c29a211deca7288b4a30d11b9b6ffd',
+        '0b64d3f11b1a90174b77f3297e9536b465f359ce4e8a5365dec7610d4732525a',
+        '5a9c3dff8df8d78df5f16618c8b13057e4d20857f6e0916923b715fda22866f3'),
+    '97f0713': _native_bundle('eded7812a8400430f0a1fc97d6ad9f4769c29a211deca7288b4a30d11b9b6ffd',
+        '20193ea379745bc79b56e3448f72b10ea51e61e60943da0aebe0273010c213bb',
+        '5a9c3dff8df8d78df5f16618c8b13057e4d20857f6e0916923b715fda22866f3', runtime={
+            'src/ditserve/control/budget.cpp': 'c1b1f3dce50073f8f3a858b33382d2c0991af4059eb2c6999b357caafe4f0eb2',
+            'src/ditserve/control/dispatch.cpp': 'fa9ff789cefc8c095a08121d18d6bb62cf7352d623112af08c7bf518fec7d5a6',
+            'src/ditserve/runtime/process.cpp': '30c36b89ef5b69d6fe44910099f6921d581846692e8acc11f7ba76198af0d4ce',
+            'include/ditserve/runtime/process.hpp': 'cb410642d81d755e16cab9ba842ce0e9d6a768d0735a23907d48d95aff84d4ca',
+            'src/ditserve/interface/command.cpp': '52f3a18f7b423ff949cedf5b50da0eaa704fd71a3dfea03b89405b4de7c85a42'}),
+}
+REQUIRED_NATIVE_SOURCES = frozenset(AUDITED_NATIVE_BUNDLES['97f0713'])
+# Compatibility for callers of the old constant: one actual historical bundle,
+# not the default audit selection and never a union of independently valid files.
+AUDITED_NATIVE_SOURCES = {path: (digest,) for path, digest in AUDITED_NATIVE_BUNDLES['f79f6fb-cf46c3b'].items()}
+
+
+def audit_native_sources(native, explicit_pins=None):
+    """Bind one reviewed bundle, or one complete internal-caller pin mapping."""
+    if not isinstance(native, dict):
+        raise ValueError('native source snapshot is missing')
+    if explicit_pins is None:
+        for name, pins in AUDITED_NATIVE_BUNDLES.items():
+            if all(native.get(path) == digest for path, digest in pins.items()):
+                return dict(bundle=name, pins_sha256=canonical_hash(pins), qualification_eligible=False,
+                            scope='reviewed native source combination only; core, execution and scientific gates remain independent')
+        raise ValueError('native option resolver has not been audited for this source bundle')
+    if (not isinstance(explicit_pins, dict) or not REQUIRED_NATIVE_SOURCES <= set(explicit_pins)
+            or any(not isinstance(path, str) or not path or not isinstance(hashes, (tuple, list))
+                   or len(hashes) != 1 or not isinstance(hashes[0], str)
+                   or re.fullmatch(r'[0-9a-f]{64}', hashes[0]) is None for path, hashes in explicit_pins.items())):
+        raise ValueError('explicit native source pins require a complete singleton hash map')
+    pins = {path: hashes[0] for path, hashes in explicit_pins.items()}
+    if any(native.get(path) != digest for path, digest in pins.items()):
+        raise ValueError('native source snapshot differs from explicit singleton pins')
+    return dict(bundle='explicit-singleton-map', pins_sha256=canonical_hash(pins), qualification_eligible=False,
+                scope='explicit internal-caller pins; caller owns source review, independent of all qualification gates')
 
 CONTRASTS = {
     'block-fixed': dict(reference='edf-cfg2', candidate='block-cfg2', mechanism='block preemption', field='blocks'),
