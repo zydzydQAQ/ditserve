@@ -631,7 +631,10 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     if(!fixtures&&approximate&&transport!="pinned")throw std::invalid_argument("dynamic cache currently requires SP1 pinned whole-step execution");
     if(!fixtures&&number_field(phase.at("profile"),"ring_quant_scale",1.)!=1.)
         throw std::invalid_argument("INT8 Ring cost discounts are not supported by the real executor");
-    const fs::path transfer_dir=options.contains("transfer_dir")?fs::path(string_field(options,"transfer_dir","")):work/"transfer";
+    const char* env_transfer=std::getenv("DITSERVE_TRANSFER_DIR");
+    const fs::path transfer_dir=options.contains("transfer_dir")?fs::path(string_field(options,"transfer_dir",""))
+                               :(env_transfer&&*env_transfer?fs::path(env_transfer):work/"transfer");
+    const int doorbell_check_blocks=int_field(options,"check_blocks",1,1);
     // Continuous execution (options.doorbell): a video block quantum runs to its step end and stops early only when
     // the controller rings its GPUs' doorbells, 8-byte counters in shared files the workers map. The controller
     // rings when a decision could change (an image waits), so no-op quantum round trips disappear.
@@ -958,9 +961,9 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 if(!pair.empty())advance["pair_state_id"]=pair;
                 if(quantum=="step")advance["quantum"]="step";else advance["blocks"]=quantum;
                 if(doorbell&&pair.empty()&&quantum.is_number_integer()){
-                    // Run to the step end, checking this GPU's doorbell about twice per planned quantum.
+                    // Run to the step end, checking this GPU's doorbell at every check_blocks boundary (default 1).
                     advance.erase("blocks");advance["quantum"]="step";
-                    advance["check_blocks"]=std::max(1,quantum.get<int>()/2);
+                    advance["check_blocks"]=doorbell_check_blocks;
                     advance["doorbell"]=bells.path.at(gpu);advance["doorbell_epoch"]=bells.epoch.at(gpu);
                     continuous=true;
                 }
@@ -1402,7 +1405,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                     // Match advance.check_blocks and Wan's one-checkpoint-late
                     // group flag. Single-rank Wan and mock poll immediately.
                     const auto timing=estimate_preemption_timing(block,blocks_total,state.blocks,instant-task.started,
-                        std::max(1,task.assignment.at("quantum").get<int>()/2),blocks_per_iteration,wan&&form.degree()>1);
+                        doorbell_check_blocks,blocks_per_iteration,wan&&form.degree()>1);
                     candidates.push_back({row.at("request_id").get<std::string>(),state.group,timing.stop_ms,timing.remaining_ms,cost.resume_ms(klass),task.rung});
                 }
                 const auto selected=select_preemption_groups(waiting,candidates);

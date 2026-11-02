@@ -368,6 +368,12 @@ class WanBlockExecutor:
         device = next(self.model.parameters()).device
         cuda = device.type == "cuda"
         group = self.parallel is not None and self.parallel.handle.current.degree > 1
+        previous = pending[0]
+        if previous is not None and previous[0] is not None:
+            previous[0].synchronize()
+        if group and previous is not None and bool(int(previous[1][0])):
+            pending[0] = None
+            return True
         flag = None
         if group:
             # Every rank reaches the same check points; the reduction runs in stream order.
@@ -381,12 +387,10 @@ class WanBlockExecutor:
         if cuda:
             event = torch.cuda.Event()
             event.record()
-        previous, pending[0] = pending[0], (event, flag)
-        if previous is not None and previous[0] is not None:
-            previous[0].synchronize()
+        pending[0] = (event, flag)
         if not group:
             return bool(doorbell())
-        return previous is not None and bool(int(previous[1][0]))
+        return False
 
     def advance_pair(self, first, second, blocks=1, *, observe=False, check_budget=lambda: None):
         """Advance two requests of one layout in lockstep: block i of each back to back, the

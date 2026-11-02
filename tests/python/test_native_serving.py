@@ -183,6 +183,13 @@ class NativeServingTest(unittest.TestCase):
             self.assertEqual(curve["cfg_damping"], fixed["cfg_damping"])
             self.assertEqual(curve["max_folded_steps"], len(fixed["folded_steps"]))
             self.assertEqual(fixed["max_folded_steps"], 7)
+            with patch.object(sys, "argv", common + ["--curvature", "--min-full-cfg-steps", "5", "--max-folded-steps", "7",
+                                                     "--cfg-vel-alpha", "0.15", "--output", str(root / "wide_curve.json")]):
+                native_serving.main()
+            wide = json.loads((root / "wide_curve.json").read_text())["workers"]["wan0"]["config"]["options"]["cfg_fold"]
+            self.assertEqual(wide["folded_steps"], list(range(5, 19)))
+            self.assertEqual(wide["max_folded_steps"], 7)
+            self.assertEqual(wide["cfg_vel_alpha"], 0.15)
 
     def test_quality_arms_hold_form_and_resources_fixed(self):
         with TemporaryDirectory() as directory:

@@ -259,6 +259,10 @@ def main():
     parser.add_argument("--image-slo-scale", type=float, default=2.5)
     parser.add_argument("--quality-per-kind", type=int, default=0)
     parser.add_argument("--curvature", action="store_true")
+    parser.add_argument("--curvature-threshold", type=float, default=0.30)
+    parser.add_argument("--min-full-cfg-steps", type=int, default=12)
+    parser.add_argument("--max-folded-steps", type=int, default=7)
+    parser.add_argument("--cfg-vel-alpha", type=float, default=0.0)
     parser.add_argument("--fold-steps", help="comma-separated fixed CFG folding steps")
     parser.add_argument("--doorbell", action="store_true")
     parser.add_argument("--no-preemption-diagnostic", action="store_true",
@@ -295,8 +299,17 @@ def main():
         if args.no_preemption_diagnostic:
             args.video_fraction, args.load, args.pattern = 1.0, 0.1, "poisson"
     if args.quality_arm:
-        if args.suite or args.no_preemption_diagnostic or args.policies or args.fold_steps or args.curvature:
+        if args.suite or args.no_preemption_diagnostic or args.policies or args.curvature:
             parser.error("--quality-arm selects its own policy and CFG-fold configuration")
+        if args.fold_steps is not None:
+            if args.quality_arm != "fixed":
+                parser.error("only --quality-arm fixed accepts --fold-steps")
+            try:
+                quality_steps = [int(value) for value in args.fold_steps.split(",")]
+            except ValueError:
+                parser.error("fixed quality --fold-steps must be an integer prefix of 12..18")
+            if not 1 <= len(quality_steps) <= 7 or quality_steps != list(range(12, 12 + len(quality_steps))):
+                parser.error("fixed quality --fold-steps must be a contiguous prefix of 12..18")
         if args.forms and forms != ["cfg2sp3"]:
             parser.error("controlled quality arms require --forms cfg2sp3")
         if len(uuids) < 6:
@@ -305,17 +318,18 @@ def main():
         forms, args.video_fraction, args.quality_per_kind = ["cfg2sp3"], 1.0, args.count
         args.doorbell, args.output_mode = True, "check"
         args.curvature = args.quality_arm == "curvature"
-        args.fold_steps = "12,13,14,15,16,17,18" if args.quality_arm == "fixed" else None
+        if args.quality_arm == "fixed" and args.fold_steps is None:
+            args.fold_steps = "12,13,14,15,16,17,18"
     cfg_fold = None
     if args.curvature:
         cfg_fold = {
-            "curvature_threshold": 0.30,
-            "min_full_cfg_steps": 12,
+            "curvature_threshold": args.curvature_threshold,
+            "min_full_cfg_steps": args.min_full_cfg_steps,
             "max_curvature_guard": 1.65,
-            "cfg_vel_alpha": 0.0,
+            "cfg_vel_alpha": args.cfg_vel_alpha,
             "cfg_damping": 0.96,
-            "folded_steps": list(range(12, 19)),
-            "max_folded_steps": 7,
+            "folded_steps": list(range(args.min_full_cfg_steps, 19)),
+            "max_folded_steps": args.max_folded_steps,
             "final_step_exact_anchor": True,
             "force_exact_cond_on_fold": True,
         }
@@ -328,7 +342,7 @@ def main():
             "max_folded_steps": len(fixed_steps),
             "final_step_exact_anchor": True,
             "force_exact_cond_on_fold": True,
-            "cfg_vel_alpha": 0.0,
+            "cfg_vel_alpha": args.cfg_vel_alpha,
             "cfg_damping": 0.96,
         }
     config = build_serving_config(

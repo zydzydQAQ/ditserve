@@ -202,6 +202,23 @@ class BlockExecutorTests(unittest.TestCase):
         self.assertTrue(self.torch.equal(state.latents, reference.latents))
         with self.assertRaises(ValueError):
             executor.advance(continuation, 60, doorbell=lambda: False, check_every=0)
+        # In a multi-rank group, a rung flag observed at check point 1 stops at check point 2
+        # without issuing an extra collective reduction at check point 2.
+        grouped_state = prepare("grouped")
+        grouped_state.request_id = "grouped"
+        grouped_cont = executor.attach(grouped_state)
+        layout = SimpleNamespace(degree=2, cfg=1, cfg_role=lambda rank: None)
+        parallel = Mock()
+        parallel.handle = SimpleNamespace(current=layout, rank=0)
+        parallel.reduce_flag.side_effect = lambda flag: flag
+        executor.parallel = parallel
+        try:
+            row = executor.advance(grouped_cont, 60, doorbell=lambda: True, check_every=1)
+            self.assertTrue(row["doorbell_stop"])
+            self.assertEqual(row["blocks"], 2)
+            self.assertEqual(parallel.reduce_flag.call_count, 1)
+        finally:
+            executor.parallel = None
 
     def test_interleaved_branches_match_sequential_execution_bit_exactly(self):
         worker, executor, prepare = fixture(interleave=True)
