@@ -1,6 +1,8 @@
 import copy
+from contextlib import redirect_stderr, redirect_stdout
 import hashlib
 import importlib.util
+import io
 import json
 import os
 import subprocess
@@ -211,6 +213,49 @@ class BenchmarkIntegrityTest(unittest.TestCase):
             self.assertEqual(controlled["phases"][0]["options"]["forms"], ["cfg2"])
             self.assertEqual(controlled["benchmark"]["output_mode"], "digest")
             self.assertEqual(controlled["experiment"], "kairos-wan22-native-serving-s201-l1p0")
+
+    def test_fixed_quality_budget_cli_preserves_controls_and_rejects_invalid_steps(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "profile.json").write_text(json.dumps(profile()))
+            for name in ("diffusiondb", "vidprom"):
+                (root / f"{name}.json").write_text(json.dumps(pool(name)))
+            common = ["native_serving.py", "--model", "wan22", "--profile", str(root / "profile.json"),
+                      "--datasets", str(root), "--gpu-uuids", ",".join(f"GPU-{i}" for i in range(8)),
+                      "--forms", "cfg2sp3", "--count", "4", "--seed", "205"]
+
+            def invoke(name, arm, steps=None):
+                destination = root / f"{name}.json"
+                argv = common + ["--quality-arm", arm, "--output", str(destination)]
+                if steps is not None:
+                    argv += ["--fold-steps", steps]
+                with patch.object(sys, "argv", argv), redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                    native_serving.main()
+                return json.loads(destination.read_text())
+
+            exact = invoke("exact", "exact")
+            default = invoke("default", "fixed")
+            for budget in range(1, 8):
+                with self.subTest(budget=budget):
+                    steps = list(range(12, 12 + budget))
+                    config = invoke(f"fixed{budget}", "fixed", ",".join(map(str, steps)))
+                    self.assertEqual(config["benchmark"]["trace"], exact["benchmark"]["trace"])
+                    self.assertEqual(config["phases"][0]["options"], exact["phases"][0]["options"])
+                    self.assertEqual(config["benchmark"]["policies"], ["fold-cfg2sp3"])
+                    self.assertFalse(config["benchmark"]["exact_mode"])
+                    self.assertEqual(config["workers"]["wan0"]["config"]["options"]["cfg_fold"],
+                        {"folded_steps": steps, "max_folded_steps": budget, "final_step_exact_anchor": True,
+                         "force_exact_cond_on_fold": True, "cfg_vel_alpha": 0.0, "cfg_damping": 0.96})
+                    if budget == 7:
+                        self.assertEqual(config, default)
+            for index, (arm, steps) in enumerate(
+                    [("fixed", value) for value in ("", "x", "12,12", "11", "13", "12,14", "12,13,14,15,16,17,18,19")]
+                    + [("exact", "12"), ("curvature", "12")]):
+                name = f"invalid{index}"
+                with self.subTest(arm=arm, steps=steps), self.assertRaises(SystemExit) as caught:
+                    invoke(name, arm, steps)
+                self.assertEqual(caught.exception.code, 2)
+                self.assertFalse((root / f"{name}.json").exists())
 
     def test_local_wrappers_keep_controlled_arms_and_evaluate_both_candidates(self):
         runtime_root = Path(os.environ.get("DITSERVE_KAIROS_RUNTIME_ROOT",
