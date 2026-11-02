@@ -65,7 +65,11 @@ Step-level preemption and elastic parallelism already appear in
 TetriServe, GenServe, and GF-DiT~\cite{lu2026tetriserve,ye2026genserve,gfdit2026};
 generic GPU preemption is also established~\cite{han2022reef}. The candidate
 contribution is the distributed sub-step continuation and its scheduling value,
-not preemption or elastic SP in general.
+not preemption or elastic SP in general. Lazy doorbells fire only when the
+estimated safe-point response changes a waiting image from late to on time;
+patient and unsalvageable images do not interrupt video work. Victim selection
+then minimizes displaced GPU time using stop, remaining-step and resume costs.
+This utility filter is evaluated separately from the worker safe-point protocol.
 
 \paragraph{Definition of ``exact.''}
 Exact is a comparison against uninterrupted execution on the same optimized
@@ -109,6 +113,10 @@ accuracy. A profile records the GPU UUIDs from its calibration
 budget identity. Formal native runs require these UUIDs to match the current
 allocation; otherwise the run is rejected or explicitly labelled as a diagnostic.
 Approximate arms share one such calibration but retain independent run records.
+Widening is priced over all remaining steps, dispatch quanta and migration cost,
+rather than a single-step speedup. A widening decision is rejected when its
+unamortized regrouping cost loses work-neutrality or turns a currently feasible
+video into a late one; this is the static-form fallback under negative elasticity.
 
 \subsection{Quality-guarded approximation}
 Late-step CFG folding and elastic subgroup fission are a separate approximate
@@ -119,6 +127,10 @@ presented as lossless. CFG reuse itself has prior art such as
 FasterCache~\cite{lyu2025fastercache}; a new guard must improve the quality--compute
 tradeoff over such alternatives. Taylor/feature caching and INT8 Ring communication are
 optional independent ablations, not prerequisites for the primary mechanism.
+The main Approx policy fissions only when another waiting request can use the
+released GPUs; otherwise it keeps the CFG group and avoids a regroup. Fission is
+legal down to one conditional GPU, including CFG2 to SP1. Explicit forced-fission
+and fold-only arms isolate this resource mechanism from the numerical gate.
 
 Approximate results report quality distributions and failures across prompts
 and seeds. A single sample or a PSNR threshold on one video does not establish

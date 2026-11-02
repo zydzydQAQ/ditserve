@@ -25,7 +25,8 @@ FIT_POLICIES = ["static_sp1", "static_cfg2", "static_sp2", "static_cfg2sp2", "st
 HELD_OUT_POLICIES = [name for name in CALIBRATION_POLICIES if name not in FIT_POLICIES]
 
 
-def build_calibration_config(model, gpu_uuids, *, image_batch_calibration=1):
+def build_calibration_config(model, gpu_uuids, *, image_batch_calibration=1,
+                             video_spec_override=None, image_spec_override=None):
     if not isinstance(image_batch_calibration, int) or not 1 <= image_batch_calibration <= 8:
         raise ValueError("image_batch_calibration must be in [1, 8]")
     if model == "wan21":
@@ -65,6 +66,13 @@ def build_calibration_config(model, gpu_uuids, *, image_batch_calibration=1):
         "prompt": "A lighthouse at dusk.",
         "seed": 202,
     }
+    # Formal callers supply complete frozen shapes; the legacy development
+    # defaults above remain explicit and never stand in for another resolution.
+    if video_spec_override is not None:
+        video_spec.update(copy.deepcopy(video_spec_override))
+    if image_spec_override is not None:
+        image_spec.update(copy.deepcopy(image_spec_override))
+    frames, steps, image_steps = video_spec["frames"], video_spec["steps"], image_spec["steps"]
     selected, workers, slots, warmup = make_workers(
         model, gpu_uuids, video_spec=video_spec, image_spec=image_spec,
     )

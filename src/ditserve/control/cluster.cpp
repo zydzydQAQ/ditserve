@@ -23,6 +23,41 @@ std::string placement_key(const std::vector<int>& group) {
     return std::to_string(group.front()) + "-" + std::to_string(group.back());
 }
 
+void validate_links(const Json& links) {
+    if (!links.is_object()) throw std::invalid_argument("links must be an object");
+    for (auto it = links.begin(); it != links.end(); ++it) {
+        const auto& link = it.value();
+        if (it.key() == "groups") {
+            if (!link.is_object()) throw std::invalid_argument("links.groups must map aligned groups to link rates");
+            for (auto entry = link.begin(); entry != link.end(); ++entry) {
+                const auto dash = entry.key().find('-');
+                int first = -1, last = -1;
+                try { first = std::stoi(entry.key().substr(0, dash)); last = std::stoi(entry.key().substr(dash + 1)); } catch (...) {}
+                const int size = last - first + 1;
+                if (dash == std::string::npos || first < 0 || size < 2 || !power_of_two(size) || first % size != 0)
+                    throw std::invalid_argument("links.groups keys name aligned groups as first-last, e.g. 0-1 or 4-7");
+                if (!entry.value().is_object()) throw std::invalid_argument("links.groups entries are objects");
+                if (entry.value().contains("gbps")) number_field(entry.value(), "gbps", 0, true);
+                if (number_field(entry.value(), "sp_overlap") > 1) throw std::invalid_argument("sp_overlap must be in [0, 1]");
+            }
+            continue;
+        }
+        if (!link.is_object()) throw std::invalid_argument("link entries must be objects");
+        if (link.contains("gbps")) number_field(link, "gbps", 0, true);
+        if (link.contains("latency_ms")) number_field(link, "latency_ms");
+        if (number_field(link, "sp_overlap") > 1) throw std::invalid_argument("sp_overlap must be in [0, 1]");
+        if (!link.contains("concurrent_gbps")) continue;
+        const auto& rates = link.at("concurrent_gbps");
+        if (!rates.is_object()) throw std::invalid_argument("concurrent_gbps must map a number of concurrent SP groups to a rate");
+        for (auto rate = rates.begin(); rate != rates.end(); ++rate) {
+            const auto& key = rate.key();
+            if (key.empty() || key.size() > 3 || !std::all_of(key.begin(), key.end(), [](char c) { return c >= '0' && c <= '9'; }) || std::stoi(key) < 2)
+                throw std::invalid_argument("concurrent_gbps keys must count at least 2 SP groups");
+            number(rate.value(), "concurrent_gbps", true);
+        }
+    }
+}
+
 // Policy behaviour comes from the registry (policy.hpp); see PolicyTraits.
 using Policy = PolicyTraits;
 const Policy& parse(const std::string& name) { return policy_traits(name); }
@@ -104,6 +139,17 @@ PreemptionTiming estimate_preemption_timing(double block_ms, int blocks_total, i
     return {stop, left};
 }
 
+bool preemption_converts_deadline(double now_ms, double deadline_ms, double service_ms,
+                                  double stop_ms, double boundary_ms) {
+    if (!std::isfinite(now_ms) || !std::isfinite(deadline_ms) || !std::isfinite(service_ms)
+        || !std::isfinite(stop_ms) || !std::isfinite(boundary_ms) || now_ms < 0
+        || service_ms < 0 || stop_ms < 0 || boundary_ms < 0)
+        throw std::invalid_argument("invalid deadline preemption decision");
+    const double patient_finish = now_ms + boundary_ms + service_ms;
+    const double preempted_finish = now_ms + std::min(stop_ms, boundary_ms) + service_ms;
+    return patient_finish > deadline_ms && preempted_finish <= deadline_ms;
+}
+
 std::vector<std::string> select_preemption_groups(const std::vector<int>& image_affinities,
                                                  const std::vector<PreemptionGroup>& running) {
     std::set<int> pinned, occupied, released;
@@ -160,6 +206,64 @@ std::vector<std::string> select_preemption_groups(const std::vector<int>& image_
         if (choices[count].cost < choices[best].cost) best = count;
     selected.insert(selected.end(), choices[best].ids.begin(), choices[best].ids.end());
     return selected;
+}
+
+DeadlinePreemptionSelection select_deadline_preemption_groups(double now_ms,
+    const std::vector<PreemptionDemand>& waiting, const std::vector<PreemptionGroup>& running) {
+    select_preemption_groups({}, running);  // Validate disjoint groups and finite costs.
+    auto demands = waiting;
+    for (const auto& demand : demands) {
+        if (demand.affinity < -1) throw std::invalid_argument("invalid image affinity");
+        preemption_converts_deadline(now_ms, demand.deadline_ms, demand.service_ms, 0, 0);
+    }
+    std::stable_sort(demands.begin(), demands.end(), [](const auto& a, const auto& b) {
+        if (a.deadline_ms != b.deadline_ms) return a.deadline_ms < b.deadline_ms;
+        return a.affinity >= 0 && b.affinity < 0;
+    });
+    auto groups = running;
+    std::set<int> reserved;
+    DeadlinePreemptionSelection result;
+    for (const auto& demand : demands) {
+        auto available = [&](const PreemptionGroup& group) {
+            for (int gpu : group.group)
+                if (!reserved.count(gpu) && (demand.affinity < 0 || gpu == demand.affinity)) return gpu;
+            return -1;
+        };
+        double boundary = std::numeric_limits<double>::infinity();
+        int reused = -1;
+        double reuse_stop = std::numeric_limits<double>::infinity();
+        for (std::size_t i = 0; i < groups.size(); ++i) {
+            const auto& group = groups[i];
+            if (available(group) < 0) continue;
+            const double response = group.rung ? std::min(group.stop_ms, group.remaining_ms) : group.remaining_ms;
+            boundary = std::min(boundary, response);
+            if (group.rung && now_ms + response + demand.service_ms <= demand.deadline_ms && response < reuse_stop) {
+                reused = static_cast<int>(i); reuse_stop = response;
+            }
+        }
+        if (reused >= 0) {
+            reserved.insert(available(groups[reused]));
+            continue;
+        }
+        int best = -1;
+        double best_cost = std::numeric_limits<double>::infinity();
+        if (std::isfinite(boundary) && now_ms + boundary + demand.service_ms > demand.deadline_ms) {
+            for (std::size_t i = 0; i < groups.size(); ++i) {
+                const auto& group = groups[i];
+                if (group.rung || available(group) < 0 || !preemption_converts_deadline(
+                        now_ms, demand.deadline_ms, demand.service_ms, group.stop_ms, group.remaining_ms)) continue;
+                const double cost = group.group.size() * (std::min(group.stop_ms, group.remaining_ms) + group.resume_ms);
+                if (cost < best_cost || (cost == best_cost && best >= 0 && group.group.size() < groups[best].group.size())) {
+                    best = static_cast<int>(i); best_cost = cost;
+                }
+            }
+        }
+        if (best < 0) { ++result.deadline_skips; continue; }
+        result.selected.push_back(groups[best].request_id);
+        groups[best].rung = true;
+        reserved.insert(available(groups[best]));
+    }
+    return result;
 }
 
 ClusterCost::ClusterCost(const Json& profile) : profile_(profile) {
@@ -244,34 +348,9 @@ ClusterCost::ClusterCost(const Json& profile) : profile_(profile) {
     if (overlap_ > 1) throw std::invalid_argument("sp_overlap must be in [0, 1]");
     pair_overlap_ = number_field(profile, "pair_overlap");
     if (pair_overlap_ > 1) throw std::invalid_argument("pair_overlap must be in [0, 1]");
-    const auto links = profile.value("links", Json::object());
-    for (auto it = links.begin(); it != links.end(); ++it) {
-        const auto& link = it.value();
-        if (it.key() == "groups") {
-            if (!link.is_object()) throw std::invalid_argument("links.groups must map aligned groups to link rates");
-            for (auto entry = link.begin(); entry != link.end(); ++entry) {
-                const auto dash = entry.key().find('-');
-                int first = -1, last = -1;
-                try { first = std::stoi(entry.key().substr(0, dash)); last = std::stoi(entry.key().substr(dash + 1)); } catch (...) {}
-                const int size = last - first + 1;
-                if (dash == std::string::npos || first < 0 || size < 2 || !power_of_two(size) || first % size != 0)
-                    throw std::invalid_argument("links.groups keys name aligned groups as first-last, e.g. 0-1 or 4-7");
-                if (!entry.value().is_object()) throw std::invalid_argument("links.groups entries are objects");
-                if (entry.value().contains("gbps")) number_field(entry.value(), "gbps", 0, true);
-                if (number_field(entry.value(), "sp_overlap") > 1) throw std::invalid_argument("sp_overlap must be in [0, 1]");
-            }
-            continue;
-        }
-        if (!link.is_object() || !link.contains("concurrent_gbps")) continue;
-        const auto& rates = link.at("concurrent_gbps");
-        if (!rates.is_object()) throw std::invalid_argument("concurrent_gbps must map a number of concurrent SP groups to a rate");
-        for (auto rate = rates.begin(); rate != rates.end(); ++rate) {
-            const auto& key = rate.key();
-            if (key.empty() || key.size() > 3 || !std::all_of(key.begin(), key.end(), [](char c) { return c >= '0' && c <= '9'; }) || std::stoi(key) < 2)
-                throw std::invalid_argument("concurrent_gbps keys must count at least 2 SP groups");
-            number(rate.value(), "concurrent_gbps", true);
-        }
-    }
+    validate_links(profile.value("links", Json::object()));
+    for (const auto& row : classes)
+        if (row.contains("links")) validate_links(row.at("links"));
 }
 
 const Json& ClusterCost::klass(const std::string& name) const {
@@ -281,11 +360,11 @@ const Json& ClusterCost::klass(const std::string& name) const {
 }
 
 bool ClusterCost::placement_invariant(const std::string& name) const {
-    const auto& links = profile_.value("links", Json::object());
+    const auto& row = klass(name);
+    const auto links = row.contains("links") ? row.at("links") : profile_.value("links", Json::object());
     if (links.contains("groups") && !links.at("groups").empty()) return false;
     for (const auto& link : links)
         if (link.contains("concurrent_gbps") && !link.at("concurrent_gbps").empty()) return false;
-    const auto& row = klass(name);
     if (row.contains("forms")) for (const auto& form : row.at("forms"))
         if (form.contains("group") || form.contains("placements")) return false;
     return true;
@@ -316,7 +395,10 @@ ClusterCost::Terms ClusterCost::terms(const std::string& name, const Form& form,
     form_name(form);   // validates
     if (group && group->size() != static_cast<std::size_t>(form.degree()))
         throw std::invalid_argument("group size does not match the form");
-    const auto& links = profile_.value("links", Json::object());
+    // Each resolution has its own calibrated communication model. An explicit
+    // class table replaces the global table; missing entries must not borrow a
+    // fit from another shape.
+    const auto links = row.contains("links") ? row.at("links") : profile_.value("links", Json::object());
     auto link_of = [&](int sp) -> const Json& {
         if (!links.contains(degree_key(sp))) throw std::invalid_argument("cost profile has no link model for SP degree " + degree_key(sp));
         return links.at(degree_key(sp));
@@ -979,7 +1061,9 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                 Json assignment = {{"request_id", id}, {"group", current}, {"degree", form.degree()}, {"form", form_name(form)},
                                    {"quantum", video_quantum(klass, form, sp_groups(form), &current)},
                                    {"resize", false}, {"reason", "resume"}};
-                if (fold_eligible || (blocks_done > 0 && r.value("cfg_folded", false))) assignment["cfg_folded"] = true;
+                if (fold_eligible || (blocks_done > 0 && r.value("cfg_folded", false))) {
+                    assignment["cfg_folded"] = true; assignment["fission"] = policy.fission && form.cfg == 1;
+                }
                 if (policy.approx) {
                     double threshold = 0.0;
                     for (double tau : cache_thresholds) {
@@ -1238,17 +1322,28 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                 const Form form = form_for(klass, d);
                 if (now + estimate(r, form, sp_groups(form)) + extra <= number_field(r, "deadline_ms")) { target = d; break; }
             }
-            // Work-neutral widening: a wider form that keeps at least widen_efficiency of the
-            // single-GPU throughput (CFG halves do; PCIe sequence parallelism does not) finishes
-            // the video sooner and returns its GPUs sooner, so it costs the queue nothing.
+            // Work-neutral widening prices all remaining steps and regrouping, not just the
+            // next step. Never turn a currently feasible video into a late one.
             if (widen > 0) {
+                const bool remaining_work = bool_field(options, "widen_remaining_work", true);
                 const double single = cost.step_ms(klass, Form{}, 1);
+                const double single_remaining = cost.remaining_ms(r, Form{}, 1);
                 for (int d : order) {
                     const Form form = form_for(klass, d);
-                    if (d > target && single / (d * cost.step_ms(klass, form, sp_groups(form))) >= widen) target = d;
-                    // With pairing, a wide SP form can be work-neutral for two requests together:
-                    // widen when some waiting video could join and the pair's per-GPU efficiency qualifies.
-                    else if (d > target && pairing && cost.pair_overlap() > 0 && form.sp >= 2) {
+                    const double extra = prepared && static_cast<int>(current.size()) != d ? cost.resize_ms() : 0;
+                    const double candidate = estimate(r, form, sp_groups(form)) + extra;
+                    const Form target_form = form_for(klass, target);
+                    const double target_extra = prepared && static_cast<int>(current.size()) != target ? cost.resize_ms() : 0;
+                    const bool target_meets = now + estimate(r, target_form, sp_groups(target_form)) + target_extra
+                                              <= number_field(r, "deadline_ms");
+                    const bool candidate_meets = now + candidate <= number_field(r, "deadline_ms");
+                    const double efficiency = remaining_work ? single_remaining / (d * candidate)
+                                                             : single / (d * cost.step_ms(klass, form, sp_groups(form)));
+                    if (d > target && efficiency >= widen && (!remaining_work || !target_meets || candidate_meets)) target = d;
+                    // The legacy single-step ablation may widen on a pair estimate.
+                    // A pair that is not yet assigned cannot justify remaining-work
+                    // widening or bypass its regroup/deadline protection.
+                    else if (!remaining_work && d > target && pairing && cost.pair_overlap() > 0 && form.sp >= 2) {
                         for (std::size_t j = index + 1; j < rows.size(); ++j) {
                             const Json& q = *rows[j];
                             if (q.at("kind") != "video" || taken.count(&q) || pair_of.count(&q) || int_field(q, "blocks_done", 0, 0) > 0
@@ -1289,13 +1384,16 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         if (chosen.empty()) continue;
         const bool cfg_folded = policy.v5 && r.value("cfg_fold_eligible", false)
                                 && int_field(r, "steps_done", 0, 0) < steps;
-        if (cfg_folded && policy.fission && chosen.size() >= 2) {
-            const int half = static_cast<int>(chosen.size()) / 2;
-            if (half >= min_degree) chosen.resize(half);
-        }
+        const bool fission_on_demand = bool_field(options, "fission_on_demand", policy.id == "ditserve-approx");
+        // The class minimum is a memory/shape constraint; the policy's CFG-pair
+        // minimum is not. Thus min_degree=1 still permits CFG2 to SP1.
+        const bool release = cfg_folded && policy.fission && chosen.size() >= 2
+                             && static_cast<int>(chosen.size() / 2) >= min_degree
+                             && (!fission_on_demand || others_waiting);
+        if (release) chosen.resize(static_cast<int>(chosen.size()) / 2);
         take(chosen);
         Form form = form_for(klass, static_cast<int>(chosen.size()), &chosen);
-        if (cfg_folded && policy.fission && form.cfg == 2) form = Form{1, form.sp * 2, form.ring};
+        if (release && form.cfg == 2) form = Form{1, form.sp * 2, form.ring};
         if (policy.approx && chosen_tau == 0.0 && now + estimate(r, form, sp_groups(form), &chosen, 0.0) > number_field(r, "deadline_ms")) {
             for (double tau : cache_thresholds) {
                 chosen_tau = tau;
@@ -1305,7 +1403,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         Json assignment = {{"request_id", id}, {"group", chosen}, {"degree", form.degree()}, {"form", form_name(form)},
                            {"quantum", video_quantum(klass, form, sp_groups(form), &chosen, chosen_tau)},
                            {"resize", prepared && chosen != current}, {"reason", prepared ? "regroup" : "admit"}};
-        if (cfg_folded) assignment["cfg_folded"] = true;
+        if (cfg_folded) { assignment["cfg_folded"] = true; assignment["fission"] = release; }
         if (policy.approx || chosen_tau > 0.0) assignment["cache_threshold"] = chosen_tau;
         // Request-level interleaving: a waiting video at a step boundary joins this one on the
         // group when the pair's step is cheaper than the two in sequence and both still make

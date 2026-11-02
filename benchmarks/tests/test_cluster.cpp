@@ -58,6 +58,78 @@ Json trace_row(const std::string& id, const std::string& kind, double arrival, d
 }
 
 int main() {
+    check("20261103 deadline doorbells select only a group that saves its reserved image", [] {
+        const std::vector<PreemptionGroup> heterogeneous = {
+            {"fast-expensive", {0}, 10, 100, 1000, false},
+            {"slow-cheap", {1}, 30, 200, 0, false}};
+        auto selected = select_deadline_preemption_groups(0, {{-1, 60, 40}}, heterogeneous);
+        require(selected.selected == std::vector<std::string>{"fast-expensive"},
+                "a cheap group cannot borrow another group's faster stop estimate");
+        require(select_deadline_preemption_groups(0, {{1, 60, 40}}, heterogeneous).selected.empty(),
+                "an image pinned to the slow group cannot use the fast group's timing");
+        const auto patient = select_deadline_preemption_groups(0, {{-1, 60, 40}}, {
+            {"natural-boundary", {0}, 5, 5, 0, false}, {"interrupt", {1}, 10, 100, 0, false}});
+        require(patient.selected.empty(), "an available natural boundary avoids an unnecessary interruption");
+        const std::vector<PreemptionGroup> pending = {
+            {"already-rung", {0, 1}, 5, 100, 0, true}, {"extra", {2}, 5, 100, 0, false}};
+        require(select_deadline_preemption_groups(0, {{-1, 50, 40}, {-1, 50, 40}}, pending).selected.empty(),
+                "already-rung capacity covers two waiting images without another interruption");
+        require(select_deadline_preemption_groups(0, {{-1, 50, 40}, {-1, 50, 40}, {-1, 50, 40}}, pending).selected
+                    == std::vector<std::string>{"extra"}, "already-rung capacity is not reused for a third image");
+        const auto deadlines = select_deadline_preemption_groups(0, {{-1, 70, 40}, {-1, 50, 40}}, {
+            {"slow", {0}, 20, 100, 0, false}, {"fast", {1}, 5, 100, 100, false}});
+        require(deadlines.selected == std::vector<std::string>{"fast", "slow"},
+                "each differently constrained image receives its own feasible stop capacity");
+        require(select_deadline_preemption_groups(0, {{-1, 30, 40}}, heterogeneous).deadline_skips == 1,
+                "unsalvageable demand remains a recorded skip");
+    });
+    check("20261103 remaining-work widening cannot use a single-step pair exemption", [] {
+        Json prof = profile(); prof["resize_ms"] = 10000; prof["pair_overlap"] = 1;
+        const Json finishing = video("a", 1100, {{"status", "suspended"}, {"prepared", true},
+            {"steps_done", 3}, {"group", {0}}, {"form", "sp1"}});
+        const Json state = {{"now_ms", 0}, {"gpus", 2}, {"busy", Json::array()},
+                            {"requests", {finishing, video("b", 1e9)}}};
+        Json options = {{"forms", {"sp1", "sp2"}}, {"pairing", true}, {"widen_efficiency", 0.99}};
+        const auto safe = cluster_plan(state, "step_elastic", ClusterCost(prof), options).at("assignments");
+        require(safe[0].at("form") == "sp1" && !safe[0].at("resize").get<bool>(),
+                "pair speculation cannot make a feasible last step late through regrouping");
+        options["widen_remaining_work"] = false;
+        const auto legacy = cluster_plan(state, "step_elastic", ClusterCost(prof), options).at("assignments");
+        require(legacy[0].at("form") == "sp2" && legacy[0].at("resize").get<bool>(),
+                "the explicitly requested single-step pair ablation remains available");
+    });
+    check("20261103 fission respects the model memory minimum while permitting CFG2 to SP1", [] {
+        Json request = video("fold", 1e9, {{"status", "suspended"}, {"prepared", true},
+            {"steps_done", 2}, {"group", {0, 1}}, {"form", "cfg2"}, {"cfg_fold_eligible", true}});
+        const Json state = {{"now_ms", 0}, {"gpus", 2}, {"busy", Json::array()},
+                            {"requests", {request, image("image", 2e9)}}};
+        Json prof = profile(); prof["classes"]["video"]["min_degree"] = 2;
+        auto held = cluster_plan(state, "ditserve-approx", ClusterCost(prof), {{"forms", {"cfg2"}}}).at("assignments");
+        require(held[0].at("degree") == 2 && !held[0].value("fission", true),
+                "folding does not establish that a memory-constrained model fits half as many GPUs");
+        prof["classes"]["video"]["min_degree"] = 1;
+        auto released = cluster_plan(state, "ditserve-approx", ClusterCost(prof), {{"forms", {"cfg2"}}}).at("assignments");
+        require(released[0].at("form") == "sp1" && released[0].value("fission", false) && released.size() == 2,
+                "a verified single-GPU class may release its CFG companion to the waiting image");
+    });
+    check("20261102 mixed resolutions retain independent communication fits", [] {
+        Json measured = profile();
+        measured["classes"]["large"] = measured["classes"]["video"];
+        measured["classes"]["large"]["links"] = {{"2", {{"gbps", 10}, {"latency_ms", 0.1}}}};
+        const ClusterCost cost(measured);
+        near(cost.step_ms("video",parse_form("sp2")),511);
+        near(cost.step_ms("large",parse_form("sp2")),521);
+        rejects([&]{ cost.step_ms("large",parse_form("sp4")); });
+        measured["classes"]["large"]["links"]["groups"]["0-1"]={{"gbps",5}};
+        const std::vector<int> pair{0,1};
+        near(ClusterCost(measured).step_ms("large",parse_form("sp2"),1,&pair),541);
+        require(!ClusterCost(measured).placement_invariant("large"),"class topology must disable global pruning");
+        require(ClusterCost(measured).placement_invariant("video"),"unrelated class keeps its own topology");
+        measured["classes"]["large"]["links"]["2"]["gbps"]=-1;
+        rejects([&]{ClusterCost invalid(measured);});
+        measured["classes"]["large"]["links"]=Json::array();
+        rejects([&]{ClusterCost invalid(measured);});
+    });
     check("measured forms bind to placements and keep homogeneous compatibility", [] {
         Json measured = profile();
         measured["classes"]["video"]["forms"]["sp2"] = {{"step_ms", 123}};
@@ -112,6 +184,11 @@ int main() {
         near(estimate_preemption_timing(10,60,28,5,2,1,true).remaining_ms,315);
         near(estimate_preemption_timing(10,30,28,100,2,1,true).remaining_ms,10);
         rejects([]{estimate_preemption_timing(10,30,0,0,0,1,true);});
+        require(preemption_converts_deadline(0,90,40,20,60),"urgent image becomes on time");
+        require(!preemption_converts_deadline(0,100,40,20,30),"patient image waits for the step boundary");
+        require(!preemption_converts_deadline(0,100,100,20,60),"unsalvageable image does not interrupt video");
+        require(!preemption_converts_deadline(0,100,40,60,60),"stopping no sooner than the boundary has no benefit");
+        rejects([]{preemption_converts_deadline(0,100,-1,20,60);});
     });
     check("selective doorbells cover demand without repeated global interruption", [] {
         const std::vector<PreemptionGroup> pairs = {
@@ -314,6 +391,17 @@ int main() {
         auto widened = run(two, "step_elastic", 4, {{"forms", {"sp1", "sp2", "cfg2", "sp4"}}, {"widen_efficiency", 0.97}}, prof);
         require(widened.size() == 2 && widened[0].at("form") == "cfg2" && widened[1].at("form") == "cfg2", "widened to CFG pairs");
         require(run(two, "step_elastic", 4, {{"forms", {"sp1", "sp2", "cfg2", "sp4"}}, {"widen_efficiency", 0.999}}, prof)[0].at("degree") == 1, "threshold respected");
+        Json costly_resize = prof; costly_resize["resize_ms"] = 10000;
+        const Json finishing = video("a", 1e9, {{"status", "suspended"}, {"prepared", true}, {"steps_done", 3},
+                                               {"group", {0}}, {"form", "sp1"}});
+        const auto held = run(Json::array({finishing, video("b", 1e9)}), "step_elastic", 2,
+                              {{"forms", {"sp1", "cfg2"}}, {"widen_efficiency", 0.97}}, costly_resize);
+        require(held[0].at("form") == "sp1" && !held[0].at("resize").get<bool>(),
+                "remaining-work pricing refuses an unamortized final-step regroup");
+        const auto legacy = run(Json::array({finishing, video("b", 1e9)}), "step_elastic", 2,
+                                {{"forms", {"sp1", "cfg2"}}, {"widen_efficiency", 0.97}, {"widen_remaining_work", false}}, costly_resize);
+        require(legacy[0].at("form") == "cfg2" && legacy[0].at("resize").get<bool>(),
+                "single-step ablation retains the negative regroup for comparison");
         rejects([&] { run(two, "step_elastic", 4, {{"widen_efficiency", 1.5}}); });
         // prefer_exact: the CFG pair (501.1 ms, output-preserving) wins over SP2 at 511 ms either way;
         // with a dear exchange (520.1 ms) SP2 is 1.7% faster, which a 5% preference forgoes and a 1% one takes.
@@ -949,12 +1037,21 @@ int main() {
         require(!anchor.value("cfg_folded", false) && anchor.at("form") == "cfg2sp3",
                 "fold-only re-evaluates eligibility and executes the final exact anchor");
         const auto released = cluster_plan(state, "approx-cfg2sp3", cost, options).at("assignments")[0];
-        require(released.at("form") == "sp3" && released.at("group").size() == 3 && released.value("cfg_folded", false),
-                "fission contracts the conditional subgroup");
+        require(released.at("form") == "sp3" && released.at("group").size() == 3 && released.value("cfg_folded", false)
+                && released.value("fission", false), "fission contracts the conditional subgroup");
+        const auto idle = cluster_plan(state, "ditserve-approx", cost, options).at("assignments")[0];
+        require(idle.at("form") == "cfg2sp3" && idle.at("group").size() == 6 && idle.value("cfg_folded", false)
+                && !idle.value("fission", true) && !idle.at("resize").get<bool>(),
+                "without demand, folding avoids a pointless regroup");
         request["group"] = {0, 1}; request["form"] = "cfg2";
-        const auto pair = cluster_plan({{"now_ms", 0}, {"gpus", 2}, {"busy", Json::array()}, {"requests", {request}}},
-            "ditserve-approx", ClusterCost(profile()), {{"forms", {"cfg2"}}}).at("assignments")[0];
-        require(pair.at("form") == "sp1" && pair.at("group") == Json::array({0}), "a CFG pair can fission to one GPU");
+        const auto pair_plan = cluster_plan({{"now_ms", 0}, {"gpus", 2}, {"busy", Json::array()}, {"requests", {request, image("i", 2e9)}}},
+            "ditserve-approx", ClusterCost(profile()), {{"forms", {"cfg2"}}}).at("assignments");
+        require(pair_plan.size() == 2, "fission releases capacity for a real subsequent assignment");
+        const auto pair = pair_plan[0];
+        require(pair.at("form") == "sp1" && pair.at("group") == Json::array({0}) && pair.value("fission", false),
+                "a CFG pair can fission to one GPU when another request needs capacity");
+        require(pair_plan[1].at("request_id") == "i" && pair_plan[1].at("group") == Json::array({1}),
+                "the waiting image consumes the released companion GPU");
         require(!policy_traits("fold-cfg2sp3").fission && policy_traits("approx-cfg2sp3").fission,
                 "policy identity records the resource mechanism");
     });

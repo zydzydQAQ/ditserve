@@ -44,21 +44,23 @@ def runtime_identity():
                 cuda=getattr(getattr(torch, "version", None), "cuda", None))
 
 
-def bind_generation_identity(result, config):
+def bind_generation_identity(result, config, verified_model=None):
     """Bind single and batched outputs without retaining per-kernel telemetry."""
     generation = result.get("generation")
     if isinstance(generation, dict):
         generation["runtime_identity"] = runtime_identity()
-        for key in ("dtype", "vae_dtype", "text_encoder_dtype", "attention"):
+        for key in ("model_path", "revision", "dtype", "vae_dtype", "text_encoder_dtype", "attention"):
             if key in config:
                 generation.setdefault(key, config[key])
-        # A supplied manifest binds identity; it is not a claim that this worker
-        # rehashed the weights. A separate verified handoff establishes that fact.
+        # A supplied digest alone is not proof. Only the completed pre-load
+        # inventory check below grants manifest_verified.
         if config.get("model_manifest_sha256"):
             generation["model_manifest_sha256"] = config["model_manifest_sha256"]
+        if verified_model is not None:
+            generation.update(verified_model)
     for item in result.get("results", []):
         if isinstance(item, dict):
-            bind_generation_identity(item, config)
+            bind_generation_identity(item, config, verified_model)
 
 
 def _model_capabilities(name, config, backend):
@@ -163,6 +165,7 @@ class Worker:
         self.name = backend
         self.config = dict(config, backend=backend)
         self.backend = None
+        self._verified_model = None
         self.closed = False
         self._occupancy_probe = None   # resident NVML owner, opened on the first nvml observation
         self._green = None
@@ -244,6 +247,15 @@ class Worker:
         load_ms = 0.
         if self.backend is None:
             started = time.perf_counter()
+            if self.name in ("wan", "wan_pipeline", "sd35") and self.config.get("model_manifest_path"):
+                from .model_integrity import verify_model_manifest
+                self._verified_model = verify_model_manifest(
+                    self.config["model_path"], self.config["model_manifest_path"],
+                    self.config.get("model_manifest_sha256"))
+                revision = self._verified_model["model_verified_revision"]
+                if self.config.get("revision") not in (None, revision):
+                    raise ValueError("configured model revision differs from verified manifest")
+                self.config["revision"] = revision
             self.backend = cls(self.config)
             load_ms = (time.perf_counter() - started) * 1000
         started = time.perf_counter()
@@ -252,7 +264,7 @@ class Worker:
         if not isinstance(result, dict):
             raise TypeError("backend operation must return an object")
         if self.name in ("wan", "wan_pipeline", "sd35"):
-            bind_generation_identity(result, self.config)
+            bind_generation_identity(result, self.config, self._verified_model)
         return dict(result, load_ms=load_ms, worker_operation_ms=elapsed)
 
     def _evaluation_device(self, request):

@@ -169,8 +169,9 @@ def build_trace(classes, prompt_pools, windows, *, slots, seed, quality_per_kind
                 if slo_by_class[name]["fast"]["source"] == "window.fast_slo_scale":
                     slo_by_class[name]["fast"]["source"] = "default.fast_slo_scale"
         load = _positive(window.get("load", 1.0), "load")
+        image_classes = [name for name, klass in classes.items() if klass["kind"] == "image"]
         class_counts = {"video": _quota(video_count, len(video_classes)) if video_classes else [],
-                        "image": [image_count]}
+                        "image": _quota(image_count, len(image_classes))}
         class_names = {"video": video_classes, "image": [name for name, klass in classes.items() if klass["kind"] == "image"]}
         if any(len(class_names[kind]) != len(class_counts[kind]) for kind in ("image", "video")):
             raise ValueError("each modality needs its own class quota")
@@ -199,7 +200,7 @@ def build_trace(classes, prompt_pools, windows, *, slots, seed, quality_per_kind
         duration = 0.0 if pattern in ("offline", "offline_all") else bursts * period
         assignments = []
         for kind in ("image", "video"):
-            quotas = _quota(class_counts[kind][0] if kind == "image" else video_count, bursts)
+            quotas = _quota(image_count if kind == "image" else video_count, bursts)
             for period_index, amount in enumerate(quotas):
                 assignments.append((kind, period_index, amount))
         period_events = {(kind, index): [] for kind in kinds for index in range(bursts)}

@@ -45,6 +45,10 @@ def number(value, digits=2):
     return "---" if value is None else f"{value:.{digits}f}"
 
 
+def seconds(value):
+    return number(None if value is None else value / 1000)
+
+
 def sar_text(metrics):
     attainment = metrics["deadline_attainment"]
     percent = "---" if attainment is None else f"{100 * attainment:.1f}\\%"
@@ -58,8 +62,8 @@ def tex_row(row):
     preempt = f'{cell["preempting_request_count"]} / {stop["count"]}'
     values = [
         label, sar_text(video), sar_text(image),
-        f'{number(video["latency_ms"]["p50"] / 1000)} / {number(video["latency_ms"]["p95"] / 1000)}',
-        f'{number(image["latency_ms"]["p50"] / 1000)} / {number(image["latency_ms"]["p99"] / 1000)}',
+        f'{seconds(video["latency_ms"]["p50"])} / {seconds(video["latency_ms"]["p95"])}',
+        f'{seconds(image["latency_ms"]["p50"])} / {seconds(image["latency_ms"]["p99"])}',
         preempt, f'{number(stop["p50"])} / {number(stop["p95"])}',
         number(cell["gpu_seconds_per_ontime_request"]),
     ]
@@ -111,7 +115,7 @@ def build(manifest, manifest_path):
     rows = [paper_row(manifest_path.parent, row) for row in specifications]
     return {
         "schema": "ditserve.paper-results.v1",
-        "scope": "one complete native policy cell per row; no field-level source composition",
+        "scope": "one complete native policy cell per row; no field-level source composition; not scientific qualification",
         "manifest_sha256": file_hash(manifest_path),
         "rows": rows,
     }

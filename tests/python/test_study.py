@@ -558,6 +558,9 @@ class NativeStudyTest(unittest.TestCase):
     def test_fixed_cfg2_block_preemption_preserves_mock_outputs(self):
         phase = self.cluster_phase("block_cfg2", gpus=2, output_mode="digest", options=dict(
             sp_transport="export", doorbell=True, transfer_dir=str(self.root / "shm-fixed-cfg2")))
+        for row in phase["workload"]:
+            if row["kind"] == "image":
+                row["slo_ms"] = 150
         value = self.run_study(self.config([phase], workers=self.cluster_workers(gpus=2)), name="fixed-cfg2-block")
         self.assert_completed(value)
         cell = value["phases"][0]["cells"][0]
@@ -569,6 +572,17 @@ class NativeStudyTest(unittest.TestCase):
         baseline = {row["request_id"]: row["outputs"][-1]["output"]["sha256"]
                     for row in reference["requests"] if row["kind"] == "video"}
         self.assertEqual({row["request_id"]: row["outputs"][-1]["output"]["sha256"] for row in videos}, baseline)
+
+        patient = self.cluster_phase("block_cfg2", gpus=2, options=dict(
+            sp_transport="export", doorbell=True, transfer_dir=str(self.root / "shm-patient-cfg2")))
+        for row in patient["workload"]:
+            if row["kind"] == "image":
+                row["slo_ms"] = 20000
+        quiet = self.run_study(self.config([patient], workers=self.cluster_workers(gpus=2)), name="patient-cfg2")
+        self.assert_completed(quiet)
+        doorbell = quiet["phases"][0]["cells"][0]["doorbell"]
+        self.assertEqual(doorbell["rings"], 0)
+        self.assertGreater(doorbell["deadline_skip_events"], 0)
 
     def test_cluster_export_transport_runs_cfg_forms(self):
         # Only CFG pairs beyond SP1: the two videos take a pair each and the ranks receive cfg=2.

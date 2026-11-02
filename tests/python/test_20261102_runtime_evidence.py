@@ -89,13 +89,15 @@ class RuntimeEvidenceTests(unittest.TestCase):
                 if method == "POST":
                     self.submitted = True
                     return 201, {}
-                return 200, ([{"name": "d20261102-contract", "state": "Succeeded"}] if self.submitted else [])
+                return 200, ([{"name": "d20261102-contract", "namespace": "user-jjjkairos", "state": "Succeeded"}] if self.submitted else [])
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "job.json"
             path.write_text(json.dumps(dict(name="d20261102-contract", mount_shared=True,
                 workers=1, gpus_per_worker=1, env=[{"name": "DITSERVE_RUN_ID", "value": "d20261102-contract"}])) )
             with patch.object(queue, "load_api", return_value=API()), patch.object(queue, "storage_gate"), \
                  patch.object(queue, "build_gate", return_value={}), patch.object(queue.time, "sleep"), \
+                 patch.object(queue, "live_capacity", return_value={"quota": 16, "account_free_gpus": 16, \
+                     "unplaced_account_jobs": [], "nodes": [{"free_gpus": 8}]}), \
                  patch("sys.argv", ["queue", str(path), "--submit"]):
                 queue.main()
 
@@ -139,6 +141,8 @@ class RuntimeEvidenceTests(unittest.TestCase):
             api = API()
             with patch.object(queue, "load_api", return_value=api), patch.object(queue, "storage_gate"), \
                  patch.object(queue, "build_gate", return_value={}), patch.object(queue.time, "sleep"), \
+                 patch.object(queue, "live_capacity", return_value={"quota": 16, "account_free_gpus": 16, \
+                     "unplaced_account_jobs": [], "nodes": [{"free_gpus": 8}]}), \
                  patch("sys.argv", ["queue", *paths, "--submit", "--max-active-jobs", "1"]):
                 queue.main()
             self.assertEqual(len(api.names), 2)

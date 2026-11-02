@@ -147,6 +147,9 @@ struct PreemptionTiming {
 PreemptionTiming estimate_preemption_timing(double block_ms, int blocks_total, int blocks_done,
                                             double elapsed_ms, int check_blocks,
                                             int blocks_per_iteration, bool delayed_group_check);
+// True only when stopping before the step boundary changes this image from late to on time.
+bool preemption_converts_deadline(double now_ms, double deadline_ms, double service_ms,
+                                  double stop_ms, double boundary_ms);
 
 // Disjoint running groups that can stop at a block boundary. Already-rung groups
 // reserve their future capacity; do not interrupt another video for the same demand.
@@ -161,4 +164,16 @@ struct PreemptionGroup {
 // safe point plus measured resume overhead, with fewer interrupted GPUs on ties.
 std::vector<std::string> select_preemption_groups(const std::vector<int>& image_affinities,
                                                  const std::vector<PreemptionGroup>& running);
+struct PreemptionDemand {
+    int affinity = -1;
+    double deadline_ms = 0, service_ms = 0;
+};
+struct DeadlinePreemptionSelection {
+    std::vector<std::string> selected;
+    std::size_t deadline_skips = 0;
+};
+// EDF demand matching: every newly selected group must save the image assigned
+// to its reserved capacity. Already-rung capacity is consumed at most once.
+DeadlinePreemptionSelection select_deadline_preemption_groups(double now_ms,
+    const std::vector<PreemptionDemand>& waiting, const std::vector<PreemptionGroup>& running);
 }

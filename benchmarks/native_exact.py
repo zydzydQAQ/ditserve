@@ -4,6 +4,7 @@
 import argparse
 import hashlib
 import json
+import math
 import re
 from pathlib import Path
 
@@ -22,13 +23,15 @@ def same_policy(name, wanted):
 
 
 def rows_for(record, policy):
-    cells = [cell for cell in record["phases"][0]["cells"] if same_policy(cell["policy"], policy)]
+    cells = [(phase.get("id", "cluster"), cell) for phase in record["phases"]
+             for cell in phase.get("cells", []) if same_policy(cell["policy"], policy)]
     if len(cells) != 1:
         raise ValueError("expected exactly one cell for policy " + policy)
-    cell = cells[0]
+    phase_id, cell = cells[0]
     if cell["status"] != "completed":
         raise ValueError("policy cell did not complete: " + policy)
-    rows = [row for row in record["requests"] if row["cell"] == cell["cell"] and row["kind"] == "video"]
+    rows = [row for row in record["requests"] if row.get("phase", "cluster") == phase_id
+            and row["cell"] == cell["cell"] and row["kind"] == "video"]
     indexed = {row["request_id"]: row for row in rows}
     if len(indexed) != len(rows):
         raise ValueError("duplicate video request identity in " + policy)
@@ -101,6 +104,18 @@ def validate_run(record):
     return benchmark
 
 
+def stop_samples(rows):
+    """A recorded event is evidence only when its duration is finite and valid."""
+    values = []
+    for row in rows:
+        for sample in row.get("preemption_stop_samples", []):
+            value = sample.get("stop_ms")
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
+                raise ValueError("invalid preemption stop duration")
+            values.append(value)
+    return values
+
+
 def compare(record, reference_policy="edf-cfg2", candidate_policy="block-cfg2", form="cfg2", *,
             require_preemption=True, allow_legacy_runtime=False):
     benchmark = validate_run(record)
@@ -116,24 +131,32 @@ def compare(record, reference_policy="edf-cfg2", candidate_policy="block-cfg2", 
         if ref["forms"] != [form] or other["forms"] != [form]:
             raise ValueError("parallel form differs from the controlled form: " + request_id)
         identity = validate_pair_identity(ref, other, allow_legacy_runtime=allow_legacy_runtime)
+        for field in ("arrival_ms", "deadline_ms", "slo_ms", "dataset_sample_id"):
+            if ref.get(field) != other.get(field):
+                raise ValueError("controlled trace identity differs: " + field)
         ref_hash, other_hash = checked_digest(ref), checked_digest(other)
         pairs.append({"request_id": request_id, "reference_sha256": ref_hash, "candidate_sha256": other_hash,
                       **identity})
         if ref_hash != other_hash:
             mismatches.append(request_id)
-    stops = [sample["stop_ms"] for row in candidate.values() for sample in row.get("preemption_stop_samples", [])]
+    stops = stop_samples(candidate.values())
+    if stop_samples(reference.values()):
+        raise ValueError("whole-step reference unexpectedly recorded block preemption")
     mechanism_observed = bool(stops) if require_preemption else not stops
     status = "completed" if pairs and not missing and not mismatches and mechanism_observed else "incomplete"
     deltas = [(candidate[key]["finish_ms"] - candidate[key]["arrival_ms"])
               - (reference[key]["finish_ms"] - reference[key]["arrival_ms"])
               for key in reference.keys() & candidate.keys()
               if all("finish_ms" in row and "arrival_ms" in row for row in (reference[key], candidate[key]))]
+    runtime_verified = bool(pairs) and all(row["runtime_verified"] for row in pairs)
+    weights_verified = bool(pairs) and all(row["weights_verified"] for row in pairs)
     return {
         "schema": "ditserve.native-exact.v1",
         "status": status,
         "scope": "same fixed form digest comparison; runtime and weight identity reported separately; not an FP32 or cross-SP claim",
-        "identity_qualification": "verified" if pairs and all(row["runtime_verified"] for row in pairs) else "unverified",
-        "weights_verified": bool(pairs) and all(row["weights_verified"] for row in pairs),
+        "identity_qualification": "verified" if runtime_verified else "unverified",
+        "weights_verified": weights_verified,
+        "qualification_eligible": status == "completed" and runtime_verified and weights_verified,
         "run_id": record["run_id"],
         "reference": {"policy": reference_policy, "cell": reference_cell["cell"]},
         "candidate": {"policy": candidate_policy, "cell": candidate_cell["cell"]},

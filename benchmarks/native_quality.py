@@ -56,7 +56,8 @@ def output_index(run):
     for row in run["requests"]:
         if row["kind"] != "video":
             continue
-        key = (row.get("dataset_sample_id"), row["spec"].get("seed"), row["spec"].get("prompt"))
+        key = (row.get("dataset_sample_id"), row["spec"].get("seed"), row["spec"].get("prompt"),
+               tuple(row["spec"].get(k) for k in ("frames", "height", "width", "steps")))
         if key in rows:
             raise ValueError("duplicate video identity: " + repr(key))
         rows[key] = row
@@ -127,7 +128,7 @@ def paired_bootstrap(candidate, control, *, resamples=2000):
     def index(result):
         rows = {}
         for row in result["pairs"]:
-            key = (row["dataset_sample_id"], row["seed"], row.get("prompt"))
+            key = quality_pair_key(row)
             if key in rows:
                 raise ValueError("duplicate quality pair")
             rows[key] = row
@@ -162,6 +163,10 @@ def paired_bootstrap(candidate, control, *, resamples=2000):
     }
 
 
+def quality_pair_key(row):
+    return (row["dataset_sample_id"], row["seed"], row.get("prompt"), tuple(row.get("shape", [])))
+
+
 def matched_fold_bootstrap(candidate, controls, *, resamples=2000):
     if not isinstance(controls, dict) or any(type(count) is not int or count < 0 for count in controls):
         raise ValueError("matched-fold controls must be indexed by nonnegative actual fold counts")
@@ -173,11 +178,19 @@ def matched_fold_bootstrap(candidate, controls, *, resamples=2000):
         if count not in controls:
             strata[str(count)] = {"status": "unverified", "reason": "no fixed-N control", "matched_pairs": 0}
             continue
-        result = paired_bootstrap(dict(candidate, pairs=pairs), controls[count], resamples=resamples)
+        # A fixed-N run normally contains the entire test set. Select the same
+        # prompt/seed/shape members, not only the candidate's fold-count stratum.
+        # Missing members and duplicates still fail in paired_bootstrap.
+        keys = {quality_pair_key(row) for row in pairs}
+        control = controls[count]
+        matched_control = [row for row in control.get("pairs", []) if quality_pair_key(row) in keys]
+        result = paired_bootstrap(dict(candidate, pairs=pairs), dict(control, pairs=matched_control), resamples=resamples)
         strata[str(count)] = result
         matched += result["matched_pairs"]
     return {
-        "status": "measured" if candidate.get("pairs") and matched == len(candidate["pairs"]) else "unverified",
+        "status": "measured" if candidate.get("pairs") and matched == len(candidate["pairs"])
+                  and all(metric.get("status") == "measured" for stratum in strata.values()
+                          for metric in stratum.get("metrics", {}).values()) else "unverified",
         "scope": "pair adaptive and fixed arms only within identical per-video actual fold-count strata",
         "matched_pairs": matched, "candidate_pairs": len(candidate.get("pairs", [])),
         "strata": strata,
@@ -218,6 +231,7 @@ def compare_runs(reference_run, candidate_run, *, with_lpips=True, lpips_device=
             score = ssim(ref, other)
             pairs.append({
                 "dataset_sample_id": key[0], "seed": key[1], "prompt": key[2],
+                "shape": list(key[3]),
                 "psnr_db": metrics["psnr_db"], "psnr_is_infinite": metrics["psnr_is_infinite"],
                 "ssim": score, "lpips_mean": metrics["lpips_mean"],
                 "temporal_delta_rmse": metrics["temporal_delta_rmse"],

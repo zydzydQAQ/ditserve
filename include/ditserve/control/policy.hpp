@@ -34,7 +34,7 @@ struct PolicyTraits {
     bool approx = false;      // whole-step feature-cache research path
     bool v3 = false;          // INT8 Ring + Taylor research path
     bool v5 = false;          // late-step CFG folding (approximate)
-    bool fission = false;     // release the unconditional CFG subgroup when folding
+    bool fission = false;     // release the unconditional CFG subgroup; main Approx does so on demand
     // Defaults that options may override.
     double widen = 0.0;                    // options.widen_efficiency
     std::string image_placement = "first"; // options.image_placement

@@ -636,8 +636,8 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                                :(env_transfer&&*env_transfer?fs::path(env_transfer):work/"transfer");
     const int doorbell_check_blocks=int_field(options,"check_blocks",1,1);
     // Continuous execution (options.doorbell): a video block quantum runs to its step end and stops early only when
-    // the controller rings its GPUs' doorbells, 8-byte counters in shared files the workers map. The controller
-    // rings when a decision could change (an image waits), so no-op quantum round trips disappear.
+    // the controller rings its GPUs' doorbells, 8-byte counters in shared files the workers map. Lazy mode
+    // rings only when an early stop changes an image from late to on time, so no-op quantum round trips disappear.
     // Data-path collectives of the video workers: NCCL, or group-free collectives (GF-DiT's GFC).
     const auto collective_backend=string_field(options,"collective_backend","nccl");
     if(collective_backend!="nccl"&&collective_backend!="gfc")throw std::invalid_argument("collective_backend must be nccl or gfc");
@@ -645,7 +645,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     const bool doorbell=bool_field(options,"doorbell",false);
     if(doorbell&&transport!="export")throw std::invalid_argument("doorbell needs the export transport");
     struct Bells{
-        fs::path dir;std::vector<std::string> path;std::vector<int> fd;std::vector<std::uint64_t> epoch;std::uint64_t rings=0,continuous=0;
+        fs::path dir;std::vector<std::string> path;std::vector<int> fd;std::vector<std::uint64_t> epoch;std::uint64_t rings=0,continuous=0,deadline_skips=0;
         ~Bells(){for(int f:fd)if(f>=0)::close(f);std::error_code ignored;if(!dir.empty())fs::remove_all(dir,ignored);}
         void ring(int gpu){
             const std::uint64_t value=++epoch.at(gpu);unsigned char bytes[8];
@@ -783,7 +783,8 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         if(form.degree()!=degree)throw std::logic_error("assignment form does not match its group");
         if(form.cfg>1&&transport=="pinned")throw std::invalid_argument("pinned cluster workers run SP1 only");
         const bool cfg_folded=assignment.value("cfg_folded",false);
-        if(cfg_folded&&(!traits.v5||(traits.fission&&form.cfg!=1)))throw std::invalid_argument("CFG-fold execution form differs from its resource mode");
+        const bool fission=assignment.value("fission",traits.fission);
+        if(cfg_folded&&(!traits.v5||(fission&&form.cfg!=1)))throw std::invalid_argument("CFG-fold execution form differs from its resource mode");
         state.cfg_folded=cfg_folded;
         const auto form_label=form_name(form);
         if(std::find(row["degrees"].begin(),row["degrees"].end(),degree)==row["degrees"].end())row["degrees"].push_back(degree);
@@ -1379,36 +1380,53 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             }
         }
         if(doorbell){
+            std::vector<PreemptionGroup> candidates;
+            const double instant=now();
+            int sp_running=0;
+            for(const auto& task:tasks)if(task.continuous&&parse_form(task.assignment.at("form").get<std::string>()).sp>=2)++sp_running;
+            for(const auto& task:tasks)if(task.continuous){
+                const auto& row=rows[task.row];const auto& state=live[task.row];
+                const auto klass=row.at("class").get<std::string>();
+                const auto form=parse_form(task.assignment.at("form").get<std::string>());
+                const bool wan=workers.backend(video(state.group.front()))=="wan";
+                // Mock progress uses the spec's full block counter. Wan
+                // splits CFG branches across ranks, or omits one when folded.
+                const int rank_blocks=wan?std::max(1,cost.blocks_per_step(klass)/form.cfg)
+                                         :int_field(row.at("spec"),"blocks_per_step",1);
+                const double block=cost.step_ms(klass,form,std::max(1,sp_running),&state.group)/rank_blocks;
+                const bool folded=wan&&task.assignment.value("cfg_folded",false);
+                const int blocks_total=folded?std::max(1,rank_blocks/2):rank_blocks;
+                int blocks_per_iteration=1;
+                if(wan&&form.cfg==1&&!folded&&number_field(row.at("spec"),"guidance_scale",5.)>1.)
+                    for(int gpu:state.group)if(interleaved_workers.count(video(gpu)))blocks_per_iteration=2;
+                // Match advance.check_blocks and Wan's one-checkpoint-late
+                // group flag. Single-rank Wan and mock poll immediately.
+                const auto timing=estimate_preemption_timing(block,blocks_total,state.blocks,instant-task.started,
+                    doorbell_check_blocks,blocks_per_iteration,wan&&form.degree()>1);
+                candidates.push_back({row.at("request_id").get<std::string>(),state.group,timing.stop_ms,timing.remaining_ms,cost.resume_ms(klass),task.rung});
+            }
             std::vector<int> waiting;
-            for(std::size_t k=0;k<rows.size();++k)if((live[k].status=="waiting"||live[k].status=="suspended")&&rows[k].at("kind")=="image")
-                waiting.push_back(live[k].prepared&&!live[k].group.empty()?live[k].group.front():-1);
-            if(!waiting.empty()){
-                std::vector<PreemptionGroup> candidates;
-                const double instant=now();
-                int sp_running=0;
-                for(const auto& task:tasks)if(task.continuous&&parse_form(task.assignment.at("form").get<std::string>()).sp>=2)++sp_running;
-                for(const auto& task:tasks)if(task.continuous){
-                    const auto& row=rows[task.row];const auto& state=live[task.row];
-                    const auto klass=row.at("class").get<std::string>();
-                    const auto form=parse_form(task.assignment.at("form").get<std::string>());
-                    const bool wan=workers.backend(video(state.group.front()))=="wan";
-                    // Mock progress uses the spec's full block counter. Wan
-                    // splits CFG branches across ranks, or omits one when folded.
-                    const int rank_blocks=wan?std::max(1,cost.blocks_per_step(klass)/form.cfg)
-                                             :int_field(row.at("spec"),"blocks_per_step",1);
-                    const double block=cost.step_ms(klass,form,std::max(1,sp_running),&state.group)/rank_blocks;
-                    const bool folded=wan&&task.assignment.value("cfg_folded",false);
-                    const int blocks_total=folded?std::max(1,rank_blocks/2):rank_blocks;
-                    int blocks_per_iteration=1;
-                    if(wan&&form.cfg==1&&!folded&&number_field(row.at("spec"),"guidance_scale",5.)>1.)
-                        for(int gpu:state.group)if(interleaved_workers.count(video(gpu)))blocks_per_iteration=2;
-                    // Match advance.check_blocks and Wan's one-checkpoint-late
-                    // group flag. Single-rank Wan and mock poll immediately.
-                    const auto timing=estimate_preemption_timing(block,blocks_total,state.blocks,instant-task.started,
-                        doorbell_check_blocks,blocks_per_iteration,wan&&form.degree()>1);
-                    candidates.push_back({row.at("request_id").get<std::string>(),state.group,timing.stop_ms,timing.remaining_ms,cost.resume_ms(klass),task.rung});
+            std::vector<PreemptionDemand> deadline_waiting;
+            const bool lazy=bool_field(options,"lazy_preemption",true);
+            for(std::size_t k=0;k<rows.size();++k){
+                const auto& row=rows[k];const auto& state=live[k];
+                if((state.status!="waiting"&&state.status!="suspended")||row.at("kind")!="image")continue;
+                const int affinity=state.prepared&&!state.group.empty()?state.group.front():-1;
+                if(lazy){
+                    Json view={{"class",row.at("class")},{"prepared",state.prepared},{"steps_done",state.steps},
+                               {"continuous_batch",continuous_batch>0}};
+                    if(state.total>0)view["steps_total"]=state.total;
+                    const double service=cost.remaining_ms(view,Form{},1)+cost.quantum_overhead_ms();
+                    deadline_waiting.push_back({affinity,number_field(row,"deadline_ms"),service});
                 }
-                const auto selected=select_preemption_groups(waiting,candidates);
+                waiting.push_back(affinity);
+            }
+            if(!waiting.empty()){
+                std::vector<std::string> selected;
+                if(lazy){
+                    const auto decision=select_deadline_preemption_groups(instant,deadline_waiting,candidates);
+                    selected=decision.selected;bells.deadline_skips+=decision.deadline_skips;
+                }else selected=select_preemption_groups(waiting,candidates);
                 for(auto& task:tasks)if(task.continuous&&!task.rung&&std::find(selected.begin(),selected.end(),rows[task.row].at("request_id").get<std::string>())!=selected.end()){
                     for(const auto& gpu:task.assignment.at("group"))bells.ring(gpu.get<int>());
                     task.rung=true;task.rung_ms=now();
@@ -1435,7 +1453,8 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             {"by_kind",{{"video",kind_summary(rows,"video")},{"image",kind_summary(rows,"image")}}},
             {"policy",policy},{"gpus",gpus},{"sp_transport",transport},{"real_backends_pinned_sp1",!fixtures&&transport=="pinned"},
             {"async_rank0_decode",async_decode},{"continuous_batch",cb_stats},
-            {"doorbell",{{"enabled",doorbell},{"continuous_quanta",bells.continuous},{"rings",bells.rings}}}};
+            {"doorbell",{{"enabled",doorbell},{"continuous_quanta",bells.continuous},{"rings",bells.rings},
+                          {"deadline_skip_events",bells.deadline_skips}}}};
 }
 
 Json operations(const Json& phase,Workers& workers,Budget& budget,Json& record,const fs::path& work,const fs::path& cell_dir){
