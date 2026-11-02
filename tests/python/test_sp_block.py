@@ -546,6 +546,22 @@ class LayoutTests(unittest.TestCase):
             backend._adopt(dict(group=[0, 1], epoch=1), state, "r")
 
     @unittest.skipUnless(PINNED, "pinned CPU dependencies required")
+    def test_folded_prediction_broadcast_uses_worker_torch(self):
+        from unittest.mock import Mock
+        from ditserve.models.wan.parallel import FixedLayout
+        from ditserve.models.xdit.wan import XDitWanParallelBackend
+
+        backend = XDitWanParallelBackend.__new__(XDitWanParallelBackend)
+        backend.worker = SimpleNamespace(torch=Mock())
+        backend.groups = SimpleNamespace(backend="nccl", group=Mock(return_value="cfg-group"))
+        backend.handle = SimpleNamespace(current=FixedLayout((0, 1), cfg=2))
+        backend._require_active = Mock()
+        prediction = object()
+        self.assertIs(backend.broadcast_folded_prediction(prediction), prediction)
+        backend.worker.torch.distributed.broadcast.assert_called_once_with(
+            prediction, src=0, group="cfg-group")
+
+    @unittest.skipUnless(PINNED, "pinned CPU dependencies required")
     def test_nccl_is_rejected_before_activation_without_a_real_gpu(self):
         import torch
         from ditserve.models.wan.parallel import LayoutHandle, ParallelContractError

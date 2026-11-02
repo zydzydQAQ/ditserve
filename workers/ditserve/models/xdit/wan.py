@@ -208,6 +208,7 @@ class XDitWanParallelBackend:
         layout = self.handle.current
         if layout.cfg != 2 or self.groups.backend != "nccl":
             raise ParallelContractError("fold-only CFG2 execution requires an NCCL prediction broadcast")
+        torch = self.worker.torch
         try:
             torch.distributed.broadcast(prediction, src=layout.ranks[0], group=self.groups.group(layout.ranks))
         except Exception as error:
