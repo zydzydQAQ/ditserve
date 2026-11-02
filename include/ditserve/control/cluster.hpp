@@ -63,12 +63,12 @@ public:
     // group: the GPUs the form runs on, for per-group link rates (optional).
     // cache_threshold: dynamic residual feature cache threshold in [0, 1); >0 skips redundant DiT blocks.
     double step_ms(const std::string& klass, const Form& form, int sp_groups = 1, const std::vector<int>* group = nullptr,
-                   double cache_threshold = 0.0) const;
+                   double cache_threshold = 0.0, const char** source = nullptr) const;
     double block_ms(const std::string& klass, const Form& form, int sp_groups = 1, const std::vector<int>* group = nullptr,
                     double cache_threshold = 0.0, bool rank_local_blocks = false, bool cfg_folded = false) const;
     // Remaining GPU time on `form` from the request's current progress.
     double remaining_ms(const Json& request, const Form& form, int sp_groups = 1, const std::vector<int>* group = nullptr,
-                        double cache_threshold = 0.0) const;
+                        double cache_threshold = 0.0, const char** source = nullptr) const;
     // Fraction of DiT blocks skipped (compute + communication) at `cache_threshold`.
     double cache_skip_ratio(const std::string& klass, double cache_threshold) const;
     // One step of two requests advancing in lockstep on `form` (request-level interleaving):
@@ -109,7 +109,7 @@ public:
 private:
     struct Terms { double compute = 0, comm = 0, latency = 0, exchange = 0, overlap = 0, blocks = 0; };
     Terms terms(const std::string& klass, const Form& form, int sp_groups, const std::vector<int>* group,
-                double cache_threshold = 0.0) const;
+                double cache_threshold = 0.0, const char** source = nullptr) const;
     Json profile_;
     double efficiency_ = 1, resize_ms_ = 0, overhead_ms_ = 0, block_overhead_ms_ = 0, overlap_ = 0, pair_overlap_ = 0;
 };
@@ -142,7 +142,19 @@ private:
 // Returns {assignments:[{request_id, group, degree, form, quantum, resize, reason, pair?, pair_resize?}]}
 // where quantum is "atomic" (image), "continuous_batch" (explicit-step image),
 // "finish" (with decode_frames when the decode is chunked), "step" or a block count.
-Json cluster_plan(const Json& state, const std::string& policy, const ClusterCost& cost, const Json& options = Json::object());
+// Optional diagnostic sink. A null pointer does not construct diagnostic JSON
+// or perform additional cost estimates. Rows describe the real ranking pass,
+// not placement feasibility or actual worker RPCs. Retained row bytes are bounded.
+struct ClusterPlanTrace {
+    std::size_t max_rows = 64, max_bytes = 65536, row_bytes = 0;
+    std::vector<std::string> focus;
+    Json rows = Json::array();
+    std::size_t candidates = 0, filtered_rows = 0, dropped_rows = 0;
+    // Reapply after caller-added diagnostic fields; count every discarded row.
+    void enforce_bounds();
+};
+Json cluster_plan(const Json& state, const std::string& policy, const ClusterCost& cost,
+                  const Json& options = Json::object(), ClusterPlanTrace* trace = nullptr);
 bool cluster_policy(const std::string& policy);
 
 struct PreemptionTiming {

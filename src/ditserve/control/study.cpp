@@ -633,6 +633,100 @@ Json replay(const Json& phase,Workers& workers,Budget& budget,Json& record,const
     return {{"requests",rows},{"metrics",request_summary(rows)},{"elapsed_ms",now()},{"warmup",warmed}};
 }
 
+// Bounded opt-in diagnostics. The disabled path owns no journal or per-plan
+// trace. These are controller observations and model estimates, not GPU/RPC
+// measurements, an exhaustive decision chain, or a change to scheduling policy.
+void validate_controller_decisions(const Json& config) {
+    if (!config.is_object()) throw std::invalid_argument("controller_decisions must be an object");
+    for (auto item=config.begin();item!=config.end();++item)
+        if (item.key()!="enabled"&&item.key()!="max_events"&&item.key()!="max_rows"&&item.key()!="max_bytes"&&item.key()!="focus")
+            throw std::invalid_argument("unknown controller_decisions field: "+item.key());
+    bool_field(config,"enabled",false);
+    const int events=int_field(config,"max_events",256), rows=int_field(config,"max_rows",64), bytes=int_field(config,"max_bytes",4194304);
+    if(events>256||rows>64||bytes<4096||bytes>4194304)
+        throw std::invalid_argument("controller_decisions limits exceed 256 events / 64 rows / 4 MiB (minimum 4096 bytes)");
+    if(config.contains("focus")){
+        const auto& focus=config.at("focus");std::set<std::string> seen;
+        if(!focus.is_array()||focus.size()>4)throw std::invalid_argument("controller_decisions focus must have at most four IDs");
+        for(const auto& value:focus){
+            if(!value.is_string()||value.get_ref<const std::string&>().empty()||value.get_ref<const std::string&>().size()>128
+                ||!seen.insert(value.get<std::string>()).second)throw std::invalid_argument("invalid controller_decisions focus ID");
+        }
+    }
+}
+struct ControllerDecisions {
+    Json base, events=Json::array();
+    std::vector<std::string> focus;
+    std::size_t max_events,max_rows,max_bytes,bytes=0,reserve;
+    std::uint64_t calls=0,dropped_calls=0,dropped_rows=0,filtered_rows=0,deduplicated_calls=0,failed_calls=0,omitted_context_records=0,filtered_calls=0;
+    bool byte_exhausted=false;
+    std::string last_idle_signature,stop_reason;
+    ControllerDecisions(const Json& config,const Json& phase,const Json& record,const ClusterCost& cost,const Json& options)
+        :max_events(int_field(config,"max_events",256)),max_rows(int_field(config,"max_rows",64)),max_bytes(int_field(config,"max_bytes",4194304)){
+        validate_controller_decisions(config);
+        if(config.contains("focus"))focus=config.at("focus").get<std::vector<std::string>>();
+        base={{"schema","ditserve.controller-decisions.v1"},{"clock","controller_replay_monotonic_ms"},
+            {"observation_id",phase.at("_observation_id")},{"phase",phase.at("id")},{"attempt",phase.at("_attempt")},
+            {"cell",phase.at("_cell")},{"order",phase.at("_order")},{"policy",phase.at("policy")},
+            {"config_sha256",record.at("config_sha256")},{"profile_sha256",digest(cost.profile().dump())},
+            {"effective_options_sha256",digest(options.dump())},{"hash_encoding","sha256(nlohmann_json.dump())"},
+            {"limits",{{"max_events",max_events},{"max_rows_per_event",max_rows},{"max_bytes",max_bytes},{"max_event_bytes",65536}}},
+            {"focus",focus},{"scope","ranking candidates and selected assignments; estimates are not actual RPC counts or placement feasibility"},
+            {"step_estimator_source_scope","nominal video step_ms coefficient only; excludes prepare/decode, completed-block subtraction and dispatch overhead; may be multiplied by zero"},
+            {"occupancy_scope","controller-observed tasks and decode ownership; not measured GPU occupancy"},
+            {"byte_encoding","compact UTF-8 JSON; formatted run.json may be larger"}};
+        // Covers fixed report keys and all uint64 counters. The total compact
+        // report (not just its event array) stays below the configured budget.
+        reserve=base.dump().size()+2048;
+        if(reserve>max_bytes)throw std::invalid_argument("controller_decisions identity exceeds byte budget");
+    }
+    bool matches(const Json& id)const{
+        const auto& value=id.get_ref<const std::string&>();
+        return std::find(focus.begin(),focus.end(),value)!=focus.end();
+    }
+    std::unique_ptr<ClusterPlanTrace> begin(bool relevant){
+        ++calls;
+        if(!relevant){++filtered_calls;return nullptr;}
+        if(events.size()>=max_events||byte_exhausted){
+            if(stop_reason.empty())stop_reason="event_limit";
+            ++dropped_calls;return nullptr;
+        }
+        auto trace=std::make_unique<ClusterPlanTrace>();trace->max_rows=max_rows;trace->focus=focus;
+        return trace;
+    }
+    std::string retain(Json event,const ClusterPlanTrace& trace){
+        dropped_rows+=trace.dropped_rows;filtered_rows+=trace.filtered_rows;
+        event["candidate_count"]=trace.candidates;event["dropped_rows"]=trace.dropped_rows;event["filtered_rows"]=trace.filtered_rows;
+        event["rows"]=trace.rows;
+        omitted_context_records+=event.at("omitted_owners").get<std::size_t>()+event.at("omitted_assignments").get<std::size_t>();
+        // Only identical idle snapshots are suppressed. Keep rank/late/owner
+        // transitions; now and time margins alone drift on every poll. Dispatch snapshots
+        // are never deduplicated so retained IDs identify a single plan call.
+        if(event.at("assignments").empty()){
+            auto stable=event;stable.erase("now_ms");
+            for(auto& row:stable["rows"]){row.erase("deadline_remaining_ms");row.erase("laxity_ms");}
+            const auto signature=digest(stable.dump());
+            if(signature==last_idle_signature){++deduplicated_calls;return {};}
+            last_idle_signature=signature;
+        }else last_idle_signature.clear();
+        const auto id=base.at("observation_id").get<std::string>()+"/decision/"+std::to_string(calls);
+        event["decision_id"]=id;event["plan_call"]=calls;
+        const auto size=event.dump().size()+1;
+        if(size>65536||reserve+bytes+size>max_bytes){
+            stop_reason=size>65536?"single_event_byte_limit":"total_byte_limit";
+            ++dropped_calls;byte_exhausted=true;return {};
+        }
+        bytes+=size;events.push_back(std::move(event));return id;
+    }
+    Json report()const{
+        auto out=base;
+        out.update({{"events",events},{"plan_calls",calls},{"dropped_plan_calls",dropped_calls},{"dropped_rows",dropped_rows},
+            {"filtered_rows",filtered_rows},{"deduplicated_idle_calls",deduplicated_calls},{"retained_event_bytes",bytes},
+            {"failed_plan_calls",failed_calls},{"filtered_plan_calls",filtered_calls},{"omitted_context_records",omitted_context_records},{"capture_stopped_reason",stop_reason},
+            {"truncated",dropped_calls>0||dropped_rows>0||failed_calls>0||omitted_context_records>0},{"exhaustive",false}});
+        return out;
+    }
+};
 // Concurrent multi-GPU replay. Each GPU runs at most one quantum; between
 // quanta the shared cluster_plan decides placement, SP degree and preemption.
 // Worker calls run on std::async threads and every rank of an SP group runs
@@ -781,7 +875,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     };
     int epochs=0,transfers=0,timing_sequence=0;   // placement, packet and timing identities within this cell
     struct Task{std::size_t row;Json assignment;std::future<Json> result;double started,scheduling_started;bool after_other=false,continuous=false,rung=false;double rung_ms=-1;
-                std::shared_ptr<ControllerTiming> timing;bool timing_recorded=false;};
+                std::shared_ptr<ControllerTiming> timing;bool timing_recorded=false;std::string diagnostic_event_id;};
     std::vector<Live> live(rows.size());
     std::vector<Task> tasks;
     std::vector<bool> busy(gpus,false);
@@ -798,6 +892,9 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     }
     auto video=[&](int gpu){return slots.at(gpu).at("video").get<std::string>();};
     auto image=[&](int gpu){return slots.at(gpu).at("image").get<std::string>();};
+    std::unique_ptr<ControllerDecisions> decisions;
+    if(phase.contains("controller_decisions")&&bool_field(phase.at("controller_decisions"),"enabled",false))
+        decisions=std::make_unique<ControllerDecisions>(phase.at("controller_decisions"),phase,record,cost,options);
     const double origin=monotonic_seconds();
     auto now=[&](){return (monotonic_seconds()-origin)*1000;};
     const bool cutoff_enabled=phase.contains("replay_cutoff");
@@ -854,6 +951,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         auto item=planning;
         for(const auto* key:{"phase","attempt","cell","order"})item[key]=rows.front().at(key);
         record["controller_planning"].push_back(std::move(item));
+        if(decisions)record["controller_decisions"].push_back(decisions->report());
     };
     auto spec_of=[&](const Json& row){Json spec=row.at("spec");spec["request_id"]=row.at("request_id");return spec;};
     for(auto& row:rows){row["generation"]=spec_of(row);row["output_mode"]=row.value("output_mode",output_mode);}
@@ -877,7 +975,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         row["state_moves"].push_back(result);
         row["state_move_ms"]=number_field(row,"state_move_ms")+number_field(result,"ms");
     };
-    auto launch=[&](const Json& assignment){
+    auto launch=[&](const Json& assignment,const std::string* decision_id){
         check();
         bool continuous=false;
         const auto id=assignment.at("request_id").get<std::string>();const std::size_t i=index.at(id);
@@ -892,6 +990,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         const Form form=parse_form(assignment.value("form","sp"+std::to_string(degree)));
         if(form.degree()!=degree)throw std::logic_error("assignment form does not match its group");
         const auto timing=new_timing(row);
+        if(decision_id&&!decision_id->empty())timing->value["decision_id"]=*decision_id;
         timing->value.update({{"selected_ms",now()},{"group_before",state.group},{"group_after",group},
             {"form_before",state.form},{"form_after",form_name(form)},{"step_before",state.steps},{"block_before",state.blocks},
             {"epoch_before",state.epoch},{"first",!state.prepared},{"transport",transport},{"quantum",assignment.at("quantum")}});
@@ -1176,6 +1275,10 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         timing->value["epoch_after"]=state.epoch;
         if(!pair.empty())timing->value["pair_request_id"]=pair;
         // Capture before async launch; a fast task may otherwise precede its own start timestamp.
+        // Async work mutates timing->value; snapshot this identity before
+        // launch so diagnostics never read that shared JSON root in flight.
+        std::string diagnostic_event_id;
+        if(decisions)diagnostic_event_id=timing->value.at("event_id").get<std::string>();
         const double started=now();timing->value["start_ms"]=started;
         auto observed_work=[work_unit,timing]{
             timing->value["async_begin_ms"]=timing->now();
@@ -1184,7 +1287,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         };
         // Preserve the scheduler's pre-telemetry anchor after async launch.
         // The earlier observation start must not alter preemption estimates.
-        Task task{i,assignment,std::async(std::launch::async,observed_work),started,now(),after_other,false,false,-1,timing,false};
+        Task task{i,assignment,std::async(std::launch::async,observed_work),started,now(),after_other,false,false,-1,timing,false,std::move(diagnostic_event_id)};
         tasks.push_back(std::move(task));
         tasks.back().continuous=continuous;if(continuous)++bells.continuous;
     };
@@ -1536,13 +1639,66 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 for(const auto& task:tasks){const auto& a=task.assignment;sp_running+=parse_form(a.value("form","sp"+std::to_string(a.at("degree").get<int>()))).sp>=2&&a.at("quantum")!="atomic"&&a.at("quantum")!="finish";}
                 const Json plan_input={{"now_ms",now()},{"gpus",gpus},{"busy",flags},{"async_decoding",decode_flags},
                     {"requests",requests},{"sp_groups_running",sp_running}};
-                const double planning_start=now();Json plan;
+                Json plan;
+                bool relevant=true;
+                if(decisions&&!decisions->focus.empty()){
+                    relevant=false;
+                    // Match the planner's actual candidate filter before any
+                    // diagnostic row/byte truncation. Every assignment member
+                    // (including pair/batch partners) comes from this set.
+                    const double plan_now=plan_input.at("now_ms").get<double>();
+                    for(const auto& candidate:requests){
+                        const auto status=candidate.value("status",std::string());
+                        if((status=="waiting"||status=="suspended")&&candidate.value("ready",true)
+                            &&number_field(candidate,"arrival_ms")<=plan_now&&decisions->matches(candidate.at("request_id")))relevant=true;
+                    }
+                    for(const auto& task:tasks){
+                        if(decisions->matches(rows[task.row].at("request_id")))relevant=true;
+                        if(task.assignment.contains("pair")&&decisions->matches(task.assignment.at("pair")))relevant=true;
+                        if(task.assignment.contains("batch"))for(const auto& id:task.assignment.at("batch"))if(decisions->matches(id))relevant=true;
+                    }
+                    for(std::size_t i=0;i<live.size();++i)
+                        if(live[i].status=="decoding"&&decisions->matches(rows[i].at("request_id")))relevant=true;
+                }
+                auto trace=decisions?decisions->begin(relevant):nullptr;
+                const double planning_start=now();
                 auto account_plan=[&](bool failed){const double elapsed=now()-planning_start;
                     planning["calls"]=planning.at("calls").get<int>()+1;planning["failed"]=planning.at("failed").get<int>()+int(failed);
                     planning["total_ms"]=number_field(planning,"total_ms")+elapsed;
                     planning["max_ms"]=std::max(number_field(planning,"max_ms"),elapsed);};
-                try{plan=cluster_plan(plan_input,policy,cost,options);}catch(...){account_plan(true);throw;}
+                try{plan=cluster_plan(plan_input,policy,cost,options,trace.get());}catch(...){account_plan(true);if(decisions&&trace)++decisions->failed_calls;throw;}
                 account_plan(false);
+                std::string decision_id;
+                if(trace){
+                    Json running=Json::array(),decoding=Json::array();std::size_t omitted_owners=0;
+                    for(const auto& task:tasks){
+                        if(running.size()>=64){++omitted_owners;continue;}
+                        Json owner={{"event_id",task.diagnostic_event_id},{"request_id",rows[task.row].at("request_id")},
+                            {"group",task.assignment.at("group")},{"continuous",task.continuous},{"quantum",task.assignment.at("quantum")}};
+                        if(task.assignment.contains("pair"))owner["pair"]=task.assignment.at("pair");
+                        running.push_back(std::move(owner));
+                    }
+                    for(std::size_t i=0;i<live.size();++i)if(live[i].status=="decoding"){
+                        if(decoding.size()>=64){++omitted_owners;continue;}
+                        decoding.push_back({{"request_id",rows[i].at("request_id")},{"gpu",live[i].decode_gpu}});
+                    }
+                    for(auto& row:trace->rows){
+                        const auto& spec=rows[index.at(row.at("request_id").get<std::string>())].at("spec");
+                        Json shape=Json::object();
+                        for(const auto* field:{"height","width","num_frames","frames","steps"})if(spec.contains(field))shape[field]=spec.at(field);
+                        row["generation_shape"]=std::move(shape);
+                    }
+                    trace->enforce_bounds();
+                    Json selected=Json::array();std::size_t omitted_assignments=0;
+                    for(const auto& assignment:plan.at("assignments")){
+                        if(selected.size()>=64){++omitted_assignments;continue;}
+                        selected.push_back(assignment);
+                    }
+                    decision_id=decisions->retain({{"now_ms",plan_input.at("now_ms")},{"busy",flags},{"async_decoding",decode_flags},
+                        {"sp_groups_running",sp_running},{"running_tasks",running},{"decoding",decoding},{"omitted_owners",omitted_owners},
+                        {"assignments",selected},{"omitted_assignments",omitted_assignments},
+                        {"control_mode",doorbell?"doorbell_may_expand_numeric_quantum_to_continuous_step":"planner_quantum"}},*trace);
+                }
                 if(tiered&&plan.contains("tiered_hints")){
                     std::set<std::size_t> offloaded;
                     std::set<int> assigned;
@@ -1560,7 +1716,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                             move_state(k,false);
                     }
                 }
-                for(const auto& assignment:plan.at("assignments")){launch(assignment);progressed=true;}
+                for(const auto& assignment:plan.at("assignments")){launch(assignment,decisions?&decision_id:nullptr);progressed=true;}
             }
         }
         if(doorbell){
@@ -2033,6 +2189,11 @@ void validate(const Json& config){
             if(cell.contains("occupancy_backend")&&(!cell.at("occupancy_backend").is_string()||
                 (cell.at("occupancy_backend")!="nvidia_smi"&&cell.at("occupancy_backend")!="nvml")))
                 throw std::invalid_argument("occupancy_backend must be nvidia_smi or nvml");
+            if(cell.contains("controller_decisions")){
+                if(cell.value("kind",std::string())!="cluster"||cell.contains("actions"))
+                    throw std::invalid_argument("controller_decisions requires cluster execution");
+                validate_controller_decisions(cell.at("controller_decisions"));
+            }
             if(cell.contains("occupancy_thread")&&!cell.at("occupancy_thread").is_boolean())throw std::invalid_argument("occupancy_thread must be a boolean");
             if(cell.contains("video_worker_options")){
                 if(!cell.at("video_worker_options").is_object())throw std::invalid_argument("video_worker_options must be an object");

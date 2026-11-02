@@ -389,8 +389,9 @@ double ClusterCost::cache_skip_ratio(const std::string& name, double cache_thres
 }
 
 ClusterCost::Terms ClusterCost::terms(const std::string& name, const Form& form, int sp_groups, const std::vector<int>* group,
-                                      double cache_threshold) const {
+                                      double cache_threshold, const char** source) const {
     const auto& row = klass(name);
+    if (source) *source = cache_threshold > 0 ? "analytic_cache" : sp_groups > 1 ? "analytic_contention" : "analytic_no_matching_table";
     if (row.at("kind") != "video") throw std::invalid_argument("image classes have no solver steps");
     form_name(form);   // validates
     if (group && group->size() != static_cast<std::size_t>(form.degree()))
@@ -413,13 +414,20 @@ ClusterCost::Terms ClusterCost::terms(const std::string& name, const Form& form,
             const Json* match = nullptr;
             if (group && entry.contains("placements")) {
                 const auto place = placement_key(*group);
-                if (entry.at("placements").contains(place)) match = &entry.at("placements").at(place);
+                if (entry.at("placements").contains(place)) {
+                    match = &entry.at("placements").at(place);
+                    if (source) *source = "placement_table";
+                }
             }
-            if (!match && entry.contains("group") && group && group_of(entry) == *group) match = &entry;
+            if (!match && entry.contains("group") && group && group_of(entry) == *group) {
+                match = &entry; if (source) *source = "group_scoped_table";
+            }
             // Legacy tables remain valid for homogeneous profiles only. A missing
             // placement is unknown, not permission to reuse another group's sample.
             if (!match && entry.contains("step_ms") && !entry.contains("group") && !entry.contains("placements")
-                && (!links.contains("groups") || links.at("groups").empty())) match = &entry;
+                && (!links.contains("groups") || links.at("groups").empty())) {
+                match = &entry; if (source) *source = "legacy_table";
+            }
             if (match) {
                 t.compute = number_field(*match, "step_ms", 0, true);
                 t.blocks = block_overhead_ms_ * blocks_per_step(name) / form.cfg;
@@ -496,8 +504,8 @@ ClusterCost::Terms ClusterCost::terms(const std::string& name, const Form& form,
 }
 
 double ClusterCost::step_ms(const std::string& name, const Form& form, int sp_groups, const std::vector<int>* group,
-                            double cache_threshold) const {
-    const Terms t = terms(name, form, sp_groups, group, cache_threshold);
+                            double cache_threshold, const char** source) const {
+    const Terms t = terms(name, form, sp_groups, group, cache_threshold, source);
     return t.compute + t.comm - t.overlap * std::min(t.compute, t.comm) + t.latency + t.exchange + t.blocks;
 }
 
@@ -580,10 +588,11 @@ double ClusterCost::block_ms(const std::string& name, const Form& form, int sp_g
 }
 
 double ClusterCost::remaining_ms(const Json& request, const Form& form, int sp_groups, const std::vector<int>* group,
-                                 double cache_threshold) const {
+                                 double cache_threshold, const char** source) const {
     const auto name = request.at("class").get<std::string>();
     const auto& row = klass(name);
     if (row.at("kind") == "image") {
+        if (source) *source = request.value("continuous_batch", false) ? "image_continuous" : "image_service";
         if (!request.value("continuous_batch", false)) return number_field(row, "service_ms");
         const int steps = int_field(request, "steps_total", int_field(row, "steps", 2), 1);
         const int done = int_field(request, "steps_done", 0, 0);
@@ -594,13 +603,28 @@ double ClusterCost::remaining_ms(const Json& request, const Form& form, int sp_g
     const int steps = int_field(request, "steps_total", int_field(row, "steps", 0), 1), done = int_field(request, "steps_done", 0, 0);
     const double blocks = completed_blocks(request, form);
     double total = request.value("prepared", false) ? 0 : number_field(row, "prepare_ms");
-    total += std::max(0, steps - done) * step_ms(name, form, sp_groups, group, cache_threshold)
+    total += std::max(0, steps - done) * step_ms(name, form, sp_groups, group, cache_threshold, source)
            - blocks * block_ms(name, form, sp_groups, group, cache_threshold, bool_field(request, "rank_local_blocks", false),
                                int_field(request, "blocks_done", 0, 0) > 0 && bool_field(request, "cfg_folded", false));
     return total + (decode_chunks(name) - std::min(int_field(request, "decode_done", 0, 0), decode_chunks(name))) * chunk_ms(name);
 }
 
-Json cluster_plan(const Json& state, const std::string& name, const ClusterCost& cost, const Json& options) {
+void ClusterPlanTrace::enforce_bounds() {
+    Json kept = Json::array(); row_bytes = 0;
+    for (auto& row : rows) {
+        const auto bytes = row.dump().size();
+        if (kept.size() >= max_rows || row_bytes + bytes > max_bytes) { ++dropped_rows; continue; }
+        row_bytes += bytes; kept.push_back(std::move(row));
+    }
+    rows = std::move(kept);
+}
+
+Json cluster_plan(const Json& state, const std::string& name, const ClusterCost& cost, const Json& options, ClusterPlanTrace* trace) {
+    if (trace) {
+        if (trace->max_rows < 1 || trace->max_rows > 64 || trace->max_bytes < 1 || trace->max_bytes > 65536 || trace->focus.size() > 4)
+            throw std::invalid_argument("invalid cluster decision trace bounds");
+        trace->rows.clear(); trace->row_bytes = trace->candidates = trace->filtered_rows = trace->dropped_rows = 0;
+    }
     const Policy& policy = parse(name);
     const double now = number(state.at("now_ms"), "now_ms");
     const int gpus = static_cast<int>(integer(state.at("gpus"), "gpus"));
@@ -759,15 +783,21 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         return quanta + (chunks <= 0 ? 0 : frames > 0 ? ceil_div(chunks, frames) : 1);
     };
     // Remaining GPU time plus the fixed dispatch cost of every quantum still to come.
-    auto estimate = [&](const Json& r, const Form& form, int n, const std::vector<int>* group = nullptr, double cache_threshold = 0.0) {
-        const double remaining = cost.remaining_ms(r, form, n, group, cache_threshold);
+    struct EstimateEvidence { double remaining = 0; int quanta = -1; const char* source = nullptr; };
+    auto estimate = [&](const Json& r, const Form& form, int n, const std::vector<int>* group = nullptr, double cache_threshold = 0.0,
+                        EstimateEvidence* evidence = nullptr) {
+        const double remaining = cost.remaining_ms(r, form, n, group, cache_threshold, evidence ? &evidence->source : nullptr);
+        if (evidence) evidence->remaining = remaining;
         if (cost.quantum_overhead_ms() <= 0) return remaining;
         if (r.at("kind") == "image" && r.value("continuous_batch", false)) {
             const int steps = int_field(r, "steps_total", int_field(cost.klass(r.at("class").get<std::string>()), "steps", 2), 1);
             const int rounds = std::max(0, steps - int_field(r, "steps_done", 0, 0));
+            if (evidence) evidence->quanta = rounds;
             return remaining + cost.quantum_overhead_ms() * rounds;
         }
-        return remaining + cost.quantum_overhead_ms() * (r.at("kind") == "image" ? 1 : quanta_left(r, form, n, group));
+        const int quanta = r.at("kind") == "image" ? 1 : quanta_left(r, form, n, group);
+        if (evidence) evidence->quanta = quanta;
+        return remaining + cost.quantum_overhead_ms() * quanta;
     };
     const bool lazy = bool_field(options, "lazy_preemption", true);
     // Minimum per-GPU efficiency (SP1 step time / (GPUs x form step time)) at which a video
@@ -888,15 +918,48 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         const auto group = group_of(*r);
         const bool mid_step = r->value("prepared", false) && int_field(*r, "blocks_done", 0, 0) > 0;
         const Form form = r->at("kind") == "image" ? Form{} : mid_step ? form_of(*r, group) : form_for(klass, degree);
-        const double remaining = estimate(*r, form, sp_groups(form), mid_step ? &group : nullptr);
+        bool capture = false;
+        if (trace) {
+            ++trace->candidates;
+            const auto& id = r->at("request_id").get_ref<const std::string&>();
+            if (!trace->focus.empty() && std::find(trace->focus.begin(), trace->focus.end(), id) == trace->focus.end()) ++trace->filtered_rows;
+            else if (trace->rows.size() >= trace->max_rows || trace->row_bytes >= trace->max_bytes) ++trace->dropped_rows;
+            else capture = true;
+        }
+        EstimateEvidence evidence;
+        const double remaining = estimate(*r, form, sp_groups(form), mid_step ? &group : nullptr, 0., capture ? &evidence : nullptr);
         late[r] = demote_late && remaining > late_short_ms && now + remaining > number_field(*r, "deadline_ms");
         rank_key[r] = order_rule == "edf" ? number_field(*r, "deadline_ms")
                     : order_rule == "srtf" ? estimate(*r, Form{}, 1) : number_field(*r, "arrival_ms");
+        if (capture) {
+            const double deadline = number_field(*r, "deadline_ms");
+            Json row = {{"request_id",r->at("request_id")},{"kind",r->at("kind")},{"class",klass},
+                {"prepared",r->value("prepared",false)},{"steps_done",int_field(*r,"steps_done",0,0)},
+                {"steps_total",r->value("steps_total",cost.klass(klass).value("steps",0))},
+                {"blocks_done",int_field(*r,"blocks_done",0,0)},{"decode_done",int_field(*r,"decode_done",0,0)},
+                {"rank_local_blocks",r->value("rank_local_blocks",false)},{"cfg_folded",r->value("cfg_folded",false)},
+                {"resident_group",group},{"estimate_form",form_name(form)},{"estimate_group",mid_step?Json(group):Json()},
+                {"sp_groups",sp_groups(form)},
+                {"step_estimator_source",r->at("kind")=="video"?Json(evidence.source):Json()},
+                {"image_estimator_source",r->at("kind")=="image"?Json(evidence.source):Json()},
+                {"remaining_without_dispatch_ms",evidence.remaining},
+                {"modeled_dispatch_quanta",evidence.quanta < 0 ? Json() : Json(evidence.quanta)},
+                {"quantum_overhead_ms",cost.quantum_overhead_ms()},{"estimated_remaining_ms",remaining},
+                {"deadline_ms",deadline},{"deadline_remaining_ms",deadline-now},{"laxity_ms",deadline-now-remaining},
+                {"estimated_feasible",now+remaining<=deadline},{"demote_late",demote_late},
+                {"late_short_ms",late_short_ms},{"demoted_late",late.at(r)},{"order_rule",order_rule},
+                {"rank_tuple",Json::array({late.at(r),rank_key.at(r),number_field(*r,"arrival_ms"),r->at("request_id")})}};
+            const auto bytes = row.dump().size();
+            if (trace->row_bytes + bytes <= trace->max_bytes) { trace->row_bytes += bytes; trace->rows.push_back(std::move(row)); }
+            else ++trace->dropped_rows;
+        }
     }
     auto edf = [&](const Json* r) {
         return std::make_tuple(late.at(r), rank_key.at(r), number_field(*r, "arrival_ms"), r->at("request_id").get<std::string>());
     };
     std::sort(rows.begin(), rows.end(), [&](const Json* a, const Json* b) { return edf(a) < edf(b); });
+    if (trace) for (std::size_t position = 0; position < rows.size(); ++position)
+        for (auto& row : trace->rows) if (row.at("request_id") == rows[position]->at("request_id")) row["rank_position"] = position;
     // Round-based regrouping: a placed video keeps its group until it has completed a multiple of
     // round_steps steps, like TetriServe's rounds; other elastic policies regroup at every step.
     const int round_steps = int_field(options, "round_steps", policy.round_steps);
@@ -1512,6 +1575,15 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             }
         }
     }
+    if (trace) for (auto& row : trace->rows) {
+        row["selected"] = false;
+        for (const auto& a : assignments) {
+            const auto& id = row.at("request_id");
+            if (a.at("request_id") == id || a.value("pair",Json()) == id
+                || (a.contains("batch") && std::find(a.at("batch").begin(),a.at("batch").end(),id) != a.at("batch").end())) row["selected"] = true;
+        }
+    }
+    if (trace) trace->enforce_bounds();
     Json result = {{"assignments", assignments}, {"policy", policy.id}};
     if (policy.id != name) result["policy_alias_of"] = name;
     const bool tiered_memory = bool_field(options, "tiered_memory", policy.tiered_memory || (policy.knapsack && policy.v5));
