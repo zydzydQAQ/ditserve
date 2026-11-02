@@ -14,6 +14,7 @@ import math
 from pathlib import Path
 
 from native_metrics import percentile
+from native_config_identity import config_identity, match_native_config
 from p2_benefit import audit_arm, counts, expanded, finite, interval, planned_arm, sha
 from p2_contrasts import AUDITED_NATIVE_BUNDLES
 from p3_stream import arrivals, execution_settings, prompt_hash, validate_requests, validate_structure
@@ -33,11 +34,11 @@ def cutoff_receipt(record, arm, cell, rows):
     receipt = cell.get('replay_cutoff')
     if not isinstance(receipt, dict):
         raise ValueError('runtime cutoff lacks its observation receipt')
-    config_hash = canonical_hash(arm['config'])
+    config_binding = config_identity(record, arm['config'])
+    match_native_config(config_binding, receipt)
     observation = f"{arm['selector']['phase']}/{arm['selector']['attempt']}/{arm['position']}"
-    if (record.get('config') != arm['config'] or record.get('config_sha256') != config_hash
-            or any(receipt.get(key) != value for key, value in expected.items())
-            or receipt.get('config_sha256') != config_hash or receipt.get('observation_id') != observation
+    if (any(receipt.get(key) != value for key, value in expected.items())
+            or receipt.get('observation_id') != observation
             or receipt.get('policy') != arm['phase']['policy']
             or cell.get('policy') != arm['phase']['policy']
             or receipt.get('clock') != 'controller_replay_monotonic_ms'
@@ -58,6 +59,9 @@ def cutoff_receipt(record, arm, cell, rows):
             or charge.get('session_id') != phase.get('session_id')
             or ('identity' in charge and charge['identity'] != sessions[0].get('identity'))):
         raise ValueError('runtime cutoff lacks settled session cleanup')
+    match_native_config(config_binding, sessions[0].get('identity', {}))
+    if 'identity' in charge:
+        match_native_config(config_binding, charge['identity'])
     for owner in (cell, phase):
         occupancy = owner.get('final_occupancy', {})
         if (occupancy.get('status') not in ('exclusive_observed', 'busy')
@@ -76,6 +80,7 @@ def cutoff_receipt(record, arm, cell, rows):
         earlier = previous.get('replay_cutoff', {})
         if previous.get('status') not in ('completed', 'censored') or not earlier:
             raise ValueError('a later cutoff replay follows a failed or unstarted cell')
+        match_native_config(config_binding, earlier)
         earlier_end = (finite(earlier.get('replay_origin_monotonic_seconds'), 'earlier replay origin')
                        + finite(earlier.get('termination_finished_ms'), 'earlier termination time') / 1000)
         if origin + 1e-6 < earlier_end:
@@ -133,9 +138,9 @@ def audit_replay(record, arm, protocol):
     rows = [row for row in record.get('requests', []) if all(row.get(key) == arm['selector'][key]
             for key in ('phase', 'attempt', 'cell', 'order'))]
     try:
+        config_identity(record, arm['config'])
         source = record.get('source', {})
-        if (record.get('config') != arm['config'] or record.get('config_sha256') != canonical_hash(arm['config'])
-                or not sha(source.get('core_sha256')) or not source.get('files')
+        if (not sha(source.get('core_sha256')) or not source.get('files')
                 or not all(sha(value) for value in source['files'].values())
                 or any(source.get('native_files', {}).get(path) not in hashes for path, hashes in CUTOFF_NATIVE_SOURCES.items())):
             raise ValueError('cutoff evidence lacks its frozen configuration or reviewed source identity')

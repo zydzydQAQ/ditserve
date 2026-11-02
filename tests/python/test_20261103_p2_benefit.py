@@ -206,7 +206,7 @@ class P2BenefitTest(unittest.TestCase):
             with self.subTest(mutate=mutate), self.assertRaisesRegex(ValueError, 'bundle hash'):
                 p2.planned_arm(changed, selector, self.f.f.p, 201)
 
-    def test_supplied_run_and_session_config_hashes_bind_actual_configuration(self):
+    def test_supplied_native_config_hashes_are_valid_and_consistent(self):
         record = self.records()['candidate']
         selector = dict(phase='cluster', attempt=1, cell=0, order='forward')
         arm = p2.planned_arm(record['config'], selector, self.f.f.p, 201)
@@ -216,11 +216,16 @@ class P2BenefitTest(unittest.TestCase):
         valid['config_sha256'] = canonical_hash(valid['config'])
         valid['budget']['sessions'][0]['identity']['config_sha256'] = valid['config_sha256']
         self.assertEqual(p2.audit_arm(valid, arm, self.f.f.p)['status'], 'completed')
+        # Native dump() is not Python's float serializer. A consistent opaque
+        # native digest is not rejected merely for differing from Python SHA.
+        valid['config_sha256'] = '2' * 64
+        valid['budget']['sessions'][0]['identity']['config_sha256'] = '2' * 64
+        audit = p2.audit_arm(valid, arm, self.f.f.p)
+        self.assertEqual(audit['status'], 'completed')
+        self.assertFalse(audit['config_identity']['native_digest_recomputed'])
         mutations = [
             lambda r: r.__setitem__('config_sha256', '0' * 64),
             lambda r: r['budget']['sessions'][0]['identity'].__setitem__('config_sha256', '1' * 64),
-            lambda r: (r.__setitem__('config_sha256', '2' * 64),
-                       r['budget']['sessions'][0]['identity'].__setitem__('config_sha256', '2' * 64)),
             lambda r: r['phases'][0].__setitem__('charge', {'identity': {'config_sha256': '3' * 64}}),
         ]
         for mutate in mutations:

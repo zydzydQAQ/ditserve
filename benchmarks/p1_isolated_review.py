@@ -13,6 +13,7 @@ import argparse
 import copy
 import hashlib
 import json
+from native_config_identity import config_identity, match_native_config
 from pathlib import Path
 import statistics
 
@@ -63,8 +64,12 @@ def session_for(record, phase, config, inputs):
     if not phase.get('session_id') or len(sessions) != 1:
         raise ValueError('phase lacks a unique allocation session')
     session = sessions[0]
+    config_binding = config_identity(record, config)
+    match_native_config(config_binding, session.get('identity', {}))
+    if 'identity' in phase.get('charge', {}):
+        match_native_config(config_binding, phase['charge']['identity'])
     expected = dict(run_id=record['run_id'], attempt=phase['attempt'],
-        gpu_uuids=inputs['gpu_uuids'], config_sha256=canonical_hash(config),
+        gpu_uuids=inputs['gpu_uuids'],
         source_sha256=canonical_hash(record['source']))
     if (session.get('phase') != phase['id'] or session.get('devices') != 2
             or any(session.get('identity', {}).get(k) != v for k, v in expected.items())):

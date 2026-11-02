@@ -24,6 +24,7 @@ import statistics
 
 from formal_benchmark import input_shape, shape_spec
 from native_exact import checked_digest, stop_samples, validate_pair_identity
+from native_config_identity import config_identity, match_native_config
 from native_metrics import percentile
 from p2_contrasts import CONTRASTS, audit_native_sources, canonical_policy, validate_contrast
 from stage_gates import canonical_hash, read_json, source_file
@@ -219,11 +220,11 @@ def audit_arm(record, arm, protocol, *, audited_native_sources=None):
     try:
         if record.get('schema') != 'ditserve.run.v1' or record.get('config') != arm['config'] or not record.get('run_id'):
             raise ValueError('run differs from frozen planned configuration')
-        config_hash = canonical_hash(arm['config'])
-        # Older evidence may omit redundant hashes; a supplied hash must bind
-        # the actual frozen config, rather than merely agree with another tag.
-        if 'config_sha256' in record and record['config_sha256'] != config_hash:
-            raise ValueError('run config hash differs from the frozen configuration')
+        # Legacy records may omit this redundant native digest, but a supplied
+        # digest must be valid and agree with the selected session/charge. The
+        # frozen parsed configuration and raw evidence SHA remain independent.
+        config_binding = config_identity(record, arm['config'], require_native=False)
+        result['config_identity'] = config_binding
         source = record.get('source', {})
         if not sha(source.get('core_sha256')) or not source.get('files') or not all(sha(h) for h in source['files'].values()):
             raise ValueError('run lacks C++ and Python source identity')
@@ -266,9 +267,11 @@ def audit_arm(record, arm, protocol, *, audited_native_sources=None):
             raise ValueError('selected attempt has no unique measured allocation session')
         session = sessions[0]
         identity = session.get('identity', {})
-        for owner in (identity, phase.get('charge', {}).get('identity', {})):
-            if 'config_sha256' in owner and owner['config_sha256'] != config_hash:
-                raise ValueError('session config hash differs from the frozen configuration')
+        match_native_config(config_binding, identity,
+                            required=config_binding['native_config_sha256'] is not None)
+        if 'identity' in phase.get('charge', {}):
+            match_native_config(config_binding, phase['charge']['identity'],
+                                required=config_binding['native_config_sha256'] is not None)
         if (identity.get('gpu_uuids') != arm['gpu_uuids'] or identity.get('attempt') != selector['attempt']
                 or identity.get('run_id') != record['run_id'] or session.get('phase') != selector['phase']
                 or session.get('devices') != len(arm['gpu_uuids'])

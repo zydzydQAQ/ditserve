@@ -18,6 +18,7 @@ import argparse
 import copy
 import hashlib
 import json
+from native_config_identity import config_identity, match_native_config
 import math
 from pathlib import Path, PurePosixPath
 
@@ -91,7 +92,6 @@ def validate_sources(inputs):
         raise ValueError('raw calibration source records required')
     for record in records:
         if (record.get('status') != 'completed' or record.get('failures')
-                or record.get('config_sha256') != canonical_hash(record['config'])
                 or record.get('source', {}).get('core_sha256') != identity['core_sha256']
                 or record['source'].get('files') != files):
             raise ValueError('calibration runtime/source/config differs or did not complete')
@@ -99,8 +99,12 @@ def validate_sources(inputs):
         if len(ids) != 2 or any(p['shapes'][sid]['scope'] != 'formal' for sid in ids):
             raise ValueError('calibration must execute formal pair shapes')
         expected_config = formal.calibration(p, pair['model'], uuids, inputs['pools'], manifests, *ids)
-        if record['config'] != expected_config:
-            raise ValueError('calibration controls differ from the frozen formal compiler')
+        config_binding = config_identity(record, expected_config)
+        for session in record.get('budget', {}).get('sessions', []):
+            match_native_config(config_binding, session.get('identity', {}))
+        for phase in record.get('phases', []):
+            if 'identity' in phase.get('charge', {}):
+                match_native_config(config_binding, phase['charge']['identity'])
         cal_phase = expected_config['phases'][0]
         phases = record.get('phases', [])
         if (len(phases) != 1 or phases[0].get('id') != cal_phase['id']
@@ -266,16 +270,19 @@ def coverage(config, record=None, *, attempt=1):
     """Coverage only; completion is never numerical or scientific acceptance."""
     if type(attempt) is not int or attempt < 1:
         raise ValueError('select one explicit positive attempt')
-    if record is not None and (record.get('config') != config
-            or record.get('config_sha256') != canonical_hash(config)):
-        raise ValueError('run does not bind this exact configuration')
     if record is not None:
+        config_binding = config_identity(record, config)
         identity = config['benchmark']['isolated_batch']['identity']
         source = record.get('source', {})
         if (source.get('core_sha256') != identity['core_sha256']
                 or source.get('files') != identity['python_sources']):
             raise ValueError('executed runtime source differs from frozen inputs')
         sessions = record.get('budget', {}).get('sessions', [])
+        for session in sessions:
+            match_native_config(config_binding, session.get('identity', {}))
+        for phase in record.get('phases', []):
+            if 'identity' in phase.get('charge', {}):
+                match_native_config(config_binding, phase['charge']['identity'])
         if (record.get('requests') and not sessions) or any(
                 s.get('identity', {}).get('gpu_uuids') != config['benchmark']['profile_placement']['gpu_uuids']
                 for s in sessions):
@@ -347,6 +354,7 @@ def coverage(config, record=None, *, attempt=1):
                           failed_or_incomplete=len(rows)-complete, unexecuted=COUNT-len(rows)))
     return dict(schema='ditserve.p1-isolated-coverage.v1', diagnostic_only=True, qualification_eligible=False,
         scope='coverage only; outputs, zero stops, timing and P0 submission eligibility are not accepted here',
+        config_identity=config_binding if record is not None else None,
         attempt=attempt, cells=cells, failures=copy.deepcopy((record or {}).get('failures', [])),
         abba_cells_completed=sum(c['execution_status'] == 'completed' for c in cells),
         expected_requests=96, completed=sum(c['completed'] for c in cells),

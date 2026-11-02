@@ -74,7 +74,7 @@ class IsolatedBatchTest(unittest.TestCase):
             status='completed', failures=[], config=config, config_sha256=canonical_hash(config),
             source=dict(core_sha256=identity['core_sha256'], files=identity['python_sources']),
             phases=[dict(id='cluster', attempt=1, status='completed', cells=cells)], requests=rows,
-            budget=dict(sessions=[dict(identity=dict(gpu_uuids=uuids))]))
+            budget=dict(sessions=[dict(identity=dict(gpu_uuids=uuids, config_sha256=canonical_hash(config)))]))
         bundle = formal.assemble(cls.f.p, pair['model'], [record], facts)
         return dict(protocol=cls.f.p, pair_plan=cls.plan, pair_id=pair['id'], gpu_uuids=uuids,
             pools=cls.f.pools, model_manifests=manifests, identity=identity, bundle=bundle,
@@ -255,6 +255,7 @@ class IsolatedBatchTest(unittest.TestCase):
         record['config'] = formal.calibration(inputs['protocol'], pair['model'], inputs['gpu_uuids'],
             inputs['pools'], inputs['model_manifests'], pair['video_shape'], pair['image_shape'])
         record['config_sha256'] = canonical_hash(record['config'])
+        record['budget']['sessions'][0]['identity']['config_sha256'] = record['config_sha256']
         inputs['bundle'] = formal.assemble(inputs['protocol'], pair['model'], [record], inputs['runtime_facts'])
         with self.assertRaisesRegex(ValueError, 'insufficient distinct development'):
             isolated.compile_case(inputs)
@@ -279,7 +280,7 @@ class IsolatedBatchTest(unittest.TestCase):
         identity = config['benchmark']['isolated_batch']['identity']
         record = dict(config=config, config_sha256=canonical_hash(config), requests=[row],
             source=dict(core_sha256=identity['core_sha256'], files=identity['python_sources']),
-            budget=dict(sessions=[dict(identity=dict(gpu_uuids=['GPU-a', 'GPU-b']))]),
+            budget=dict(sessions=[dict(identity=dict(gpu_uuids=['GPU-a', 'GPU-b'], config_sha256=canonical_hash(config)))]),
             phases=[dict(id='seed-201', attempt=1, status='failed', cells=[dict(cell=0, status='failed')])])
         result = isolated.coverage(config, record)
         self.assertEqual((result['expected_requests'], result['failed_or_incomplete'], result['unexecuted']), (96, 1, 95))
@@ -293,7 +294,7 @@ class IsolatedBatchTest(unittest.TestCase):
         identity = config['benchmark']['isolated_batch']['identity']
         record = dict(config=config, config_sha256=canonical_hash(config), requests=[], phases=[],
             source=dict(core_sha256=identity['core_sha256'], files=identity['python_sources']),
-            budget=dict(sessions=[dict(identity=dict(gpu_uuids=['GPU-a', 'GPU-b']))]))
+            budget=dict(sessions=[dict(identity=dict(gpu_uuids=['GPU-a', 'GPU-b'], config_sha256=canonical_hash(config)))]))
         for phase in config['phases']:
             executed = dict(id=phase['id'], attempt=1, status='completed', cells=[])
             for plan in [p for p in isolated.planned_cells(config) if p['phase'] == phase['id']]:

@@ -183,7 +183,6 @@ class IsolatedReviewTest(unittest.TestCase):
                      lambda s: s.__setitem__('cleanup_verified', False),
                      lambda s: s.__setitem__('phase', 'other'),
                      lambda s: s['identity'].__setitem__('source_sha256', 'b'*64),
-                     lambda s: s['identity'].__setitem__('config_sha256', 'b'*64),
                      lambda s: s['identity'].__setitem__('run_id', 'other')]
         for mutate in mutations:
             record = self.fresh(); mutate(record['budget']['sessions'][0])
@@ -191,6 +190,9 @@ class IsolatedReviewTest(unittest.TestCase):
                 self.assertEqual(self.run_review(record)['timing_eligible_requests'], 64)
         record = self.fresh(); record['budget']['sessions'][0]['identity']['gpu_uuids'] = ['GPU-c', 'GPU-d']
         with self.assertRaises(ValueError):
+            self.run_review(record)
+        record = self.fresh(); record['budget']['sessions'][0]['identity']['config_sha256'] = 'b'*64
+        with self.assertRaisesRegex(ValueError, 'native config hash'):
             self.run_review(record)
 
     def test_failed_prefix_preserves_all_96_and_excludes_incomplete_seed_estimates(self):
