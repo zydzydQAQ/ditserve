@@ -208,8 +208,8 @@ def produced_identity(row, planned, arm, protocol):
                 generation={key: value for key, value in generation.items() if key != 'request_id'})
 
 
-def audit_arm(record, arm, protocol):
-    """Always retain config-derived denominators, even when evidence is invalid."""
+def audit_arm(record, arm, protocol, *, audited_native_sources=None):
+    """Retain frozen denominators; an internal caller may add reviewed source pins."""
     selector, workload = arm['selector'], arm['workload']
     rows, result = [], dict(status='not_started', by_kind=counts(workload, [], 'not_started'),
                            metrics={}, identities={}, outputs={}, stops=0, forms=[])
@@ -227,7 +227,10 @@ def audit_arm(record, arm, protocol):
         source = record.get('source', {})
         if not sha(source.get('core_sha256')) or not source.get('files') or not all(sha(h) for h in source['files'].values()):
             raise ValueError('run lacks C++ and Python source identity')
-        if any(source.get('native_files', {}).get(path) not in hashes for path, hashes in AUDITED_NATIVE_SOURCES.items()):
+        allowed = AUDITED_NATIVE_SOURCES if audited_native_sources is None else audited_native_sources
+        if (not isinstance(allowed, dict) or not set(AUDITED_NATIVE_SOURCES) <= set(allowed)
+                or any(not hashes or not all(sha(value) for value in hashes) for hashes in allowed.values())
+                or any(source.get('native_files', {}).get(path) not in hashes for path, hashes in allowed.items())):
             raise ValueError('native option resolver has not been audited for this source revision')
         phases = [phase for phase in record.get('phases', [])
                   if phase.get('id') == selector['phase'] and phase.get('attempt') == selector['attempt']]

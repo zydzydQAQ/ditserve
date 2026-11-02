@@ -4,9 +4,20 @@
 #include <filesystem>
 #include <functional>
 #include <map>
+#include <stdexcept>
 
 namespace ditserve {
 double monotonic_seconds();
+
+// Keep an RPC deadline distinct from model failures and phase watchdogs.
+class WorkerDeadlineExceeded : public std::runtime_error {
+public:
+    explicit WorkerDeadlineExceeded(double deadline)
+        :std::runtime_error("worker action timed out"), deadline_(deadline) {}
+    double deadline() const { return deadline_; }
+private:
+    double deadline_;
+};
 
 // Captures SIGINT/SIGTERM for one command and restores prior handlers on exit.
 class CancelScope {

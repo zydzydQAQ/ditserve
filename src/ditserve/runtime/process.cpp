@@ -173,8 +173,12 @@ bool WorkerProcess::stop() noexcept {
 
 Json WorkerProcess::call(const Json& request, double deadline) {
     try {
-        if (input_ < 0 || output_ < 0 || reaped_) throw std::runtime_error("worker is closed");
         if (!std::isfinite(deadline)) throw std::invalid_argument("worker deadline must be finite");
+        // A serialized caller may acquire its Worker mutex only after the
+        // preceding call timed out and stopped this process. Expiry remains a
+        // typed deadline, not a synthetic model fault from the closed pipes.
+        if (monotonic_seconds() >= deadline) throw WorkerDeadlineExceeded(deadline);
+        if (input_ < 0 || output_ < 0 || reaped_) throw std::runtime_error("worker is closed");
         if (!request.is_object() || !request.contains("version") || !request["version"].is_number_integer() || request["version"] != Json(1) ||
             !request.contains("id") || !request["id"].is_number_integer() ||
             !request.contains("op") || !request["op"].is_string() || request["op"].get<std::string>().empty())
@@ -186,14 +190,14 @@ Json WorkerProcess::call(const Json& request, double deadline) {
         double next_heartbeat = monotonic_seconds();
         for (;;) {
             double now = monotonic_seconds();
-            if (now >= deadline) throw std::runtime_error("worker action timed out");
+            if (now >= deadline) throw WorkerDeadlineExceeded(deadline);
             if (heartbeat_ && now >= next_heartbeat) {
                 heartbeat_();
                 now = monotonic_seconds();
                 next_heartbeat = now + .5;
             }
             const double remaining = deadline - now;
-            if (remaining <= 0) throw std::runtime_error("worker action timed out");
+            if (remaining <= 0) throw WorkerDeadlineExceeded(deadline);
             const auto newline = buffered_.find('\n');
             if (newline != std::string::npos) {
                 if (sent != encoded.size()) throw std::runtime_error("unsolicited worker response");
@@ -222,6 +226,9 @@ Json WorkerProcess::call(const Json& request, double deadline) {
             const int ready = poll(descriptors, 2, timeout);
             if (ready < 0) { if (errno == EINTR) continue; throw system_error("poll worker"); }
             if (ready == 0) continue;
+            // poll may return after its rounded timeout or a scheduling delay.
+            // Never send another RPC byte or accept a response after expiry.
+            if (monotonic_seconds() >= deadline) throw WorkerDeadlineExceeded(deadline);
             if (descriptors[1].revents & POLLOUT) {
                 const auto count = write(input_, encoded.data() + sent, encoded.size() - sent);
                 if (count > 0) sent += static_cast<std::size_t>(count);

@@ -2,8 +2,8 @@
 """Freeze genuine fixed-horizon Poisson arrivals for the existing native replay.
 
 Only prepares local files. Runtime warmup precedes replay time zero; traffic
-warmup is real offered work. The declared drain horizon is an analysis cutoff,
-not a claim that the current phase watchdog stops at that replay-relative time.
+warmup is real offered work. Runtime cutoff is opt-in and limits controller
+observation/submission; its cleanup budget is not a GPU stop-time guarantee.
 """
 
 import argparse
@@ -22,6 +22,51 @@ from stage_gates import canonical_hash, read_json
 
 
 SCHEMA = 'ditserve.p3-stream-plan.v1'
+
+
+def execution_settings(plan):
+    value = plan.get('execution', {})
+    if not isinstance(value, dict):
+        raise ValueError('P3 execution must be an object')
+    if not value:
+        return {}
+    if (set(value) != {'drain_cutoff', 'cleanup_allowance_seconds'}
+            or value['drain_cutoff'] != 'cancel_and_censor'):
+        raise ValueError('unknown P3 execution cutoff controls')
+    finite(value['cleanup_allowance_seconds'], 'cleanup allowance', positive=True)
+    return dict(value)
+
+
+def replay_cutoff(plan):
+    if not execution_settings(plan):
+        return None
+    after = sum(finite(plan['windows'][name], name) for name in
+                ('traffic_warmup_ms', 'measurement_ms', 'drain_ms'))
+    return dict(schema='ditserve.replay-cutoff.v1', after_ms=finite(after, 'replay cutoff', positive=True),
+                mode='cancel_and_censor')
+
+
+def validate_execution(plan, config):
+    """The phase control is derived from the hashed plan, never its own label."""
+    expected = replay_cutoff(plan)
+    phase = config['phases'][0]
+    if expected is None:
+        if 'replay_cutoff' in phase:
+            raise ValueError('unplanned runtime replay cutoff')
+    elif phase.get('replay_cutoff') != expected:
+        raise ValueError('runtime replay cutoff differs from the frozen P3 plan')
+    else:
+        finite(phase['replay_cutoff']['after_ms'], 'runtime replay cutoff', positive=True)
+    if config['benchmark']['p3'].get('execution', {}) != execution_settings(plan):
+        raise ValueError('configuration does not bind P3 execution controls')
+    if expected is not None:
+        cells = len(expanded(phase)) * (2 if phase.get('paired', False) else 1)
+        allowance = math.ceil(cells * (plan['startup_allowance_seconds'] + expected['after_ms'] / 1000
+                                      + execution_settings(plan)['cleanup_allowance_seconds']))
+        if (phase.get('watchdog_seconds') != allowance
+                or config.get('budget', {}).get('watchdog_seconds') != allowance
+                or config['budget'].get('limit_gpu_seconds') != allowance * config['benchmark']['gpus']):
+            raise ValueError('runtime cutoff cleanup budget differs from the frozen plan')
 
 
 def rng(seed, purpose):
@@ -55,6 +100,7 @@ def validate_structure(plan, protocol, config=None):
     windows, arrival = plan['windows'], plan['arrival']
     for key in ('traffic_warmup_ms', 'measurement_ms', 'drain_ms', 'bin_ms'):
         finite(windows[key], key, positive=key in ('measurement_ms', 'bin_ms'))
+    execution_settings(plan)
     if windows['bin_ms'] > windows['measurement_ms'] or windows['measurement_ms'] / windows['bin_ms'] > 1000:
         raise ValueError('measurement needs between one and 1000 aggregate time bins')
     if arrival.get('kind') != 'poisson':
@@ -89,9 +135,13 @@ def validate_structure(plan, protocol, config=None):
             or config['benchmark'].get('exact_mode') is not True):
         raise ValueError('base configuration lacks the planned exact protocol/split/shapes')
     phase = config['phases'][0]
+    if execution_settings(plan) and (phase.get('kind') != 'cluster' or 'actions' in phase or phase.get('mps')):
+        raise ValueError('runtime replay cutoff requires a cluster phase without scripted actions or shared MPS')
     if (set(phase.get('matrix', {})) != {'/policy', '/trace_provenance', '/workload'}
             or len(phase['matrix']['/workload']) != 1 or len(phase['matrix']['/trace_provenance']) != 1):
         raise ValueError('P3 needs the native policy/single frozen trace matrix only')
+    if formal.get('role') == 'p3_sustained':
+        validate_execution(plan, config)
 
 
 def service_times(protocol, profile, sid):
@@ -238,16 +288,24 @@ def prepare(config, protocol, plan, pools, usage):
             p3=dict(plan_sha256=canonical_hash(plan), parent_formal_protocol=parent,
                     source_config_sha256=canonical_hash(config), windows=plan['windows'],
                     arrival=plan['arrival'], prompt_reuse=plan['prompt_reuse'],
+                    execution=execution_settings(plan),
                     generator_source_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
                     predicted_gpu_work_load=plan['arrival']['rate_rps'] * (probability * expected_work['video']
                         + (1-probability) * expected_work['image']) / 1000 / value['benchmark']['gpus']))
         value['benchmark']['partition_image_gpus'] = dict(value=image_share, rule='expected calibrated GPU work under frozen P3 probabilities')
         n_cells = len(expanded(current)) * (2 if current.get('paired', False) else 1)
-        bound = math.ceil(n_cells * (plan['startup_allowance_seconds'] + (end + plan['windows']['drain_ms']) / 1000))
+        current.pop('replay_cutoff', None)
+        cutoff = replay_cutoff(plan)
+        if cutoff is not None:
+            current['replay_cutoff'] = cutoff
+        cleanup = execution_settings(plan).get('cleanup_allowance_seconds', 0)
+        bound = math.ceil(n_cells * (plan['startup_allowance_seconds'] + (end + plan['windows']['drain_ms']) / 1000 + cleanup))
         current['watchdog_seconds'] = bound
         value['budget']['watchdog_seconds'] = bound
         value['budget']['limit_gpu_seconds'] = bound * value['benchmark']['gpus']
-        value['benchmark']['p3']['budget_scope'] = 'phase wall-time bound includes startup; not a replay-relative drain cutoff or completion guarantee'
+        value['benchmark']['p3']['budget_scope'] = ('phase wall-time allowance includes startup, replay and declared cleanup; '
+            'only replay_cutoff controls observation, with no physical-stop or completion guarantee'
+            if cutoff is not None else 'phase wall-time bound includes startup; not a replay-relative drain cutoff or completion guarantee')
         value['experiment'] = f'p3-{plan["model"]}-{plan["split"]}-s{seed}'
         results[seed] = value
     reservation = dict(schema='ditserve.prompt-usage.v1', protocol_sha256=canonical_hash(protocol),

@@ -364,7 +364,7 @@ Json dispatch(const std::string& command, Json request) {
 
 bool failed(const Json& result) {
     if (!result.is_object()) return false;
-    const std::set<std::string> failures = {"failed", "incomplete", "unsettled", "blocked", "deferred", "protected"};
+    const std::set<std::string> failures = {"failed", "incomplete", "unsettled", "blocked", "deferred", "protected", "censored", "not_executed"};
     if (result.contains("status") && result.at("status").is_string() && failures.count(result.at("status").get<std::string>())) return true;
     for (const auto* key : {"archive", "cleanup"}) if (result.contains(key) && failed(result.at(key))) return true;
     return false;

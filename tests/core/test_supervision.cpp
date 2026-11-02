@@ -6,7 +6,9 @@
 #include <filesystem>
 #include <fstream>
 #include <functional>
+#include <future>
 #include <iostream>
+#include <mutex>
 #include <signal.h>
 #include <stdexcept>
 #include <sys/wait.h>
@@ -127,6 +129,32 @@ void processes(const std::filesystem::path& root) {
     missing.argv = {"/not/a/worker"};
     fails([&] { WorkerProcess absent(missing); }, "missing worker executable accepted");
 }
+void replay_deadline_20261103(const std::filesystem::path& root) {
+    ProcessOptions options{{executable(), "--child", "cutoff"}, {}, root / "queued-deadline.log"};
+    options.cleanup_timeout_seconds = .3;
+    WorkerProcess worker(options);
+    std::mutex serial;
+    std::promise<void> entered;
+    const double deadline = monotonic_seconds() + .08;
+    auto invoke = [&](int id, const std::string& operation) {
+        std::lock_guard<std::mutex> lock(serial); // Same request/reply ownership as Worker::call.
+        if(id == 1) entered.set_value();
+        try { worker.call(request(id, operation), deadline); }
+        catch(const WorkerDeadlineExceeded& error) { return error.deadline() == deadline; }
+        return false;
+    };
+    auto first = std::async(std::launch::async, [&] { return invoke(1, "wait"); });
+    entered.get_future().wait();
+    auto queued = std::async(std::launch::async, [&] { return invoke(2, "echo"); });
+    require(first.get() && queued.get() && worker.cleanup_verified(),
+            "20261103 serialized RPC after cutoff became a synthetic worker-closed failure");
+    // A closed worker with an unexpired deadline is still a genuine failure.
+    bool closed = false;
+    try { worker.call(request(3), monotonic_seconds() + 1); }
+    catch(const WorkerDeadlineExceeded&) { throw std::runtime_error("early worker closure became deadline censoring"); }
+    catch(const std::runtime_error& error) { closed = std::string(error.what()) == "worker is closed"; }
+    require(closed, "20261103 genuine early closure was hidden");
+}
 BudgetLimits limits(const std::string& carry = "none") {
     BudgetLimits value;
     value.total_gpu_seconds = 100;
@@ -229,6 +257,7 @@ int main(int argc, char** argv) {
     if (!mkdtemp(directory)) return 1;
     try {
         processes(directory);
+        replay_deadline_20261103(directory);
         budgets(directory);
         std::filesystem::remove_all(directory);
         std::cout << "supervision contracts passed\n";

@@ -57,7 +57,7 @@ bool same_charge(double left, double right) {
     return std::abs(left - right) <= std::max(1e-6, 1e-12 * std::max(left, right));
 }
 bool completion_status(const std::string& status) {
-    static const std::set<std::string> statuses{"completed", "failed", "interrupted", "timed_out", "cancelled", "incomplete"};
+    static const std::set<std::string> statuses{"completed", "failed", "interrupted", "timed_out", "cancelled", "incomplete", "censored"};
     return statuses.count(status);
 }
 int phase_index(const BudgetLimits& limits, const std::string& phase) {

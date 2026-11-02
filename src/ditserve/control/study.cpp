@@ -84,6 +84,21 @@ void wait_until(double deadline) {
 }
 std::string environment(const char* name) { const auto* v=std::getenv(name);return v?v:""; }
 
+class ReplayCutoffReached : public std::runtime_error {
+public:
+    ReplayCutoffReached():std::runtime_error("replay observation cutoff reached") {}
+};
+
+// A real model/RPC fault must survive when another fanout rank merely reaches
+// its deadline while peers are being joined.
+void keep_failure(std::exception_ptr& prior, std::exception_ptr next) {
+    if(!prior){prior=next;return;}
+    try{std::rethrow_exception(prior);}
+    catch(const WorkerDeadlineExceeded&){
+        try{std::rethrow_exception(next);}catch(const WorkerDeadlineExceeded&){}catch(...){prior=next;}
+    }catch(...){}
+}
+
 struct Worker {
     std::unique_ptr<WorkerProcess> process;
     std::uint64_t sequence=0;
@@ -752,7 +767,6 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         for(auto& rank:ranks){try{rank.get();}catch(const std::exception& failure){error=failure.what();}}
         if(!error.empty())throw std::runtime_error("SP process group initialization failed: "+error);
     }
-    auto check=[&](){if(cancelled())throw std::runtime_error("run cancelled");budget.check(number_field(phase,"cleanup_reserve_seconds",0));};
     // steady_*: block quanta that followed this request's own previous quantum on the same GPUs;
     // resumed_*: block quanta that followed another request there (the first quantum and regroups excluded).
     struct Live{
@@ -786,6 +800,36 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     auto image=[&](int gpu){return slots.at(gpu).at("image").get<std::string>();};
     const double origin=monotonic_seconds();
     auto now=[&](){return (monotonic_seconds()-origin)*1000;};
+    const bool cutoff_enabled=phase.contains("replay_cutoff");
+    const double cutoff_ms=cutoff_enabled?number_field(phase.at("replay_cutoff"),"after_ms",0,true):0.;
+    const double cutoff_deadline=origin+cutoff_ms/1000.;
+    auto action_deadline=[&](){return cutoff_enabled?std::min(budget.deadline(),cutoff_deadline):budget.deadline();};
+    auto check=[&](){
+        if(cancelled())throw std::runtime_error("run cancelled");
+        // A phase watchdog/budget limit remains a failure, never normal censoring.
+        budget.check(number_field(phase,"cleanup_reserve_seconds",0));
+        if(cutoff_enabled&&monotonic_seconds()>=cutoff_deadline)throw ReplayCutoffReached();
+    };
+    auto is_cutoff=[&](std::exception_ptr error){
+        try{std::rethrow_exception(error);}
+        catch(const ReplayCutoffReached&){return cutoff_enabled;}
+        catch(const WorkerDeadlineExceeded& e){return cutoff_enabled&&e.deadline()==cutoff_deadline&&budget.deadline()>cutoff_deadline;}
+        catch(...){return false;}
+    };
+    bool cutoff_triggered=false;
+    double observation_end=-1,cutoff_observed=-1;
+    std::exception_ptr replay_error;
+    auto note_rpc_failure=[&](Json& row,std::exception_ptr error){
+        if(!cutoff_enabled||is_cutoff(error)||row.value("status",std::string())=="completed")return;
+        try{std::rethrow_exception(error);}catch(const std::exception& failure){
+            row["status"]="failed";row["error"]=failure.what();row["failure_observed_ms"]=now();
+            record["failures"].push_back({{"request_id",row.at("request_id")},{"error",failure.what()}});
+        }
+    };
+    auto invoke=[&](const std::string& name,Json action,Json& row){
+        try{return workers.get(name).call(std::move(action),action_deadline());}
+        catch(...){note_rpc_failure(row,std::current_exception());throw;}
+    };
     auto new_timing=[&](const Json& row){
         return std::make_shared<ControllerTiming>(origin,Json{
             {"event_id",phase.at("_observation_id").get<std::string>()+"/"+std::to_string(++timing_sequence)},
@@ -824,8 +868,8 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         timing->value["group"]=state.group;
         Json result;
         try{result=timing->call(workers.get(video(state.group.front())),video(state.group.front()),operation,
-                              {{"op",operation},{"state_id",row.at("request_id")}},budget.deadline());}
-        catch(...){timing->value["observed_ms"]=now();timing->value["status"]="failed";row["controller_timing"].push_back(timing->value);throw;}
+                              {{"op",operation},{"state_id",row.at("request_id")}},action_deadline());}
+        catch(...){timing->value["observed_ms"]=now();timing->value["status"]="failed";row["controller_timing"].push_back(timing->value);note_rpc_failure(row,std::current_exception());throw;}
         timing->value["observed_ms"]=now();timing->value["status"]="completed";row["controller_timing"].push_back(timing->value);
         if(!offload)state.last_restore_event=timing->value.at("event_id").get<std::string>();
         state.offloaded=offload;
@@ -834,6 +878,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         row["state_move_ms"]=number_field(row,"state_move_ms")+number_field(result,"ms");
     };
     auto launch=[&](const Json& assignment){
+        check();
         bool continuous=false;
         const auto id=assignment.at("request_id").get<std::string>();const std::size_t i=index.at(id);
         auto& row=rows[i];auto& state=live[i];
@@ -861,7 +906,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         if(std::find(row["degrees"].begin(),row["degrees"].end(),degree)==row["degrees"].end())row["degrees"].push_back(degree);
         if(assignment.at("quantum")!="atomic"&&assignment.at("quantum")!="finish"&&std::find(row["forms"].begin(),row["forms"].end(),form_label)==row["forms"].end())row["forms"].push_back(form_label);
         if(assignment.at("reason")=="block_preempt")row["preempting"]=true;
-        const auto quantum=assignment.at("quantum");const double deadline=budget.deadline();
+        const auto quantum=assignment.at("quantum");const double deadline=action_deadline();
         // Request-level interleaving: the partner advances in lockstep on the same group.
         const std::string pair=assignment.value("pair",std::string());
         const std::size_t j=pair.empty()?rows.size():index.at(pair);
@@ -1056,11 +1101,11 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                         for(const auto& name:st.targets)imports.push_back(std::async(std::launch::async,[&workers,name,rid,st,exported,deadline,timing]{
                             return timing->call(workers.get(name),name,"import",{{"op","block_import"},{"state_id",rid},{"path",st.transfer},{"sha256",exported.at("sha256")}},deadline);
                         }));
-                        Json imported=Json::array();std::string error;
-                        for(auto& rank:imports){try{imported.push_back(rank.get());}catch(const std::exception& failure){error=failure.what();}}
-                        timing->span("imports_all_ready",imports_begin,error.empty()?"completed":"failed","",rid);
+                        Json imported=Json::array();std::exception_ptr error;
+                        for(auto& rank:imports){try{imported.push_back(rank.get());}catch(...){keep_failure(error,std::current_exception());}}
+                        timing->span("imports_all_ready",imports_begin,!error?"completed":"failed","",rid);
                         std::error_code ignored;fs::remove(st.transfer,ignored);
-                        if(!error.empty())throw std::runtime_error(error);
+                        if(error)std::rethrow_exception(error);
                         out[transfer_key]={{"bytes",exported.value("bytes",0)},{"export_ms",number_field(exported,"export_ms")},
                                            {"write_ms",number_field(exported,"write_ms")},{"targets",st.targets.size()},{"imports",imported}};
                     }
@@ -1070,10 +1115,10 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 for(const auto& item:advances)ranks.push_back(std::async(std::launch::async,[&workers,item,deadline,timing]{
                     return timing->call(workers.get(item.first),item.first,"advance",item.second,deadline);
                 }));
-                std::string error;
-                for(auto& rank:ranks){try{out["ranks"].push_back(rank.get());}catch(const std::exception& failure){error=failure.what();}}
-                timing->span("advances_all_done",advances_begin,error.empty()?"completed":"failed");
-                if(!error.empty())throw std::runtime_error(error);
+                std::exception_ptr error;
+                for(auto& rank:ranks){try{out["ranks"].push_back(rank.get());}catch(...){keep_failure(error,std::current_exception());}}
+                timing->span("advances_all_done",advances_begin,!error?"completed":"failed");
+                if(error)std::rethrow_exception(error);
                 return out;
             };
         }else{
@@ -1112,10 +1157,10 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                     return last;
                 }));
                 Json out={{"ranks",Json::array()}};
-                std::string error;
-                for(auto& rank:ranks){try{out["ranks"].push_back(rank.get());}catch(const std::exception& failure){error=failure.what();}}
-                timing->span("prepare_and_advances_all_done",advances_begin,error.empty()?"completed":"failed");
-                if(!error.empty())throw std::runtime_error(error);
+                std::exception_ptr error;
+                for(auto& rank:ranks){try{out["ranks"].push_back(rank.get());}catch(...){keep_failure(error,std::current_exception());}}
+                timing->span("prepare_and_advances_all_done",advances_begin,!error?"completed":"failed");
+                if(error)std::rethrow_exception(error);
                 return out;
             };
         }
@@ -1211,7 +1256,9 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                     add_artifacts(record,finished,work,phase.value("artifact_dependencies",Json::array()));
                     if(!mrow.contains("outputs"))mrow["outputs"]=Json::array();
                     mrow["outputs"].push_back(finished);decoded=true;
-                    mrow["finish_ms"]=finished.value("completed_at_ms",now());
+                // The cutoff observes controller acceptance, never a worker or
+                // async-thread completion timestamp received after the window.
+                mrow["finish_ms"]=cutoff_enabled?now():finished.value("completed_at_ms",now());
                 }
                 if(decoded!=progress->at("progress").value("done",false))
                     throw std::runtime_error("continuous batch progress and decode completion disagree");
@@ -1393,8 +1440,10 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         bool progressed=false;
         for(auto it=tasks.begin();it!=tasks.end();){
             if(it->result.wait_for(std::chrono::seconds(0))!=std::future_status::ready){++it;continue;}
+            if(cutoff_enabled)check();
             Json out;
-            try{out=it->result.get();}catch(const std::exception& error){
+            try{out=it->result.get();if(cutoff_enabled)check();}catch(const std::exception& error){
+                if(is_cutoff(std::current_exception()))throw;
                 auto& row=rows[it->row];row["status"]="failed";row["error"]=error.what();row["finish_ms"]=now();++terminal;
                 record["failures"].push_back({{"request_id",row.at("request_id")},{"error",error.what()}});
                 if(it->assignment.contains("batch"))for(const auto& member:it->assignment.at("batch")){
@@ -1402,15 +1451,17 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                     auto& mrow=rows[m];mrow["status"]="failed";mrow["error"]=error.what();mrow["finish_ms"]=now();++terminal;
                     record["failures"].push_back({{"request_id",mrow.at("request_id")},{"error",error.what()}});
                 }
+                if(cutoff_enabled&&it->assignment.contains("pair"))
+                    note_rpc_failure(rows[index.at(it->assignment.at("pair").get<std::string>())],std::current_exception());
                 throw;
             }
-            finish_task(*it,out);persist_timing(*it,"completed");it=tasks.erase(it);progressed=true;
+            try{finish_task(*it,out);}catch(...){note_rpc_failure(rows[it->row],std::current_exception());throw;}
+            persist_timing(*it,"completed");it=tasks.erase(it);progressed=true;
         }
         for(std::size_t i=0;i<rows.size();++i){
             auto& state=live[i];
             if(state.status!="decoding")continue;
-            auto& worker=workers.get(video(state.decode_gpu));
-            auto polled=worker.call({{"op","decode_poll"},{"ticket",state.decode_ticket},{"wait",false}},budget.deadline());
+            auto polled=invoke(video(state.decode_gpu),{{"op","decode_poll"},{"ticket",state.decode_ticket},{"wait",false}},rows[i]);
             if(!polled.value("ready",false))continue;
             auto& row=rows[i];
             row["model_ms"]=number_field(row,"model_ms")+number_field(polled,"model_ms");
@@ -1420,13 +1471,13 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             add_artifacts(record,polled,work,phase.value("artifact_dependencies",Json::array()));
             if(!row.contains("outputs"))row["outputs"]=Json::array();
             row["outputs"].push_back(polled);
-            worker.call({{"op","release"},{"state_id",row.at("request_id")}},budget.deadline());
+            invoke(video(state.decode_gpu),{{"op","release"},{"state_id",row.at("request_id")}},row);
             row["status"]="completed";row["finish_ms"]=now();
             state.status="completed";state.group.clear();state.resident.clear();state.decode_ticket.clear();state.decode_gpu=-1;
             ++terminal;progressed=true;
         }
         const double instant=now();
-        for(int gpu=0;gpu<gpus;++gpu)if(!busy[gpu])for(const auto& id:stale[gpu]){workers.get(video(gpu)).call({{"op","release"},{"state_id",id}},budget.deadline());}
+        for(int gpu=0;gpu<gpus;++gpu)if(!busy[gpu])for(const auto& id:stale[gpu])invoke(video(gpu),{{"op","release"},{"state_id",id}},rows[index.at(id)]);
         for(int gpu=0;gpu<gpus;++gpu)if(!busy[gpu])stale[gpu].clear();
         for(std::size_t i=0;i<rows.size();++i){
             auto& state=live[i];auto& row=rows[i];
@@ -1436,10 +1487,9 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 progressed=true;
             }
             if(state.status!="encoding"||busy[state.encode_gpu])continue;
-            auto& w=workers.get(video(state.encode_gpu));
-            if(state.ticket.empty()){state.ticket=w.call({{"op","encode_start"},{"spec",spec_of(row)}},budget.deadline()).at("ticket").get<std::string>();row["encode_submit_ms"]=now();}
+            if(state.ticket.empty()){state.ticket=invoke(video(state.encode_gpu),{{"op","encode_start"},{"spec",spec_of(row)}},row).at("ticket").get<std::string>();row["encode_submit_ms"]=now();}
             else{
-                const auto polled=w.call({{"op","encode_poll"},{"ticket",state.ticket}},budget.deadline());
+                const auto polled=invoke(video(state.encode_gpu),{{"op","encode_poll"},{"ticket",state.ticket}},row);
                 if(polled.value("ready",false)){
                     state.status="waiting";row["encode_ready_ms"]=now();progressed=true;
                     // CPU encoding time and, with the negative-prompt cache, whether it hit.
@@ -1569,11 +1619,55 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         }
         if(!progressed)wait_until(monotonic_seconds()+.0005);
     }}catch(...){
-        for(auto& task:tasks)if(task.result.valid())task.result.wait();
-        for(auto& task:tasks)persist_timing(task,"aborted");
-        save_planning();
-        for(auto& row:rows){if(!row.contains("status")||row["status"]=="pending")row["status"]="interrupted";if(!row.contains("finish_ms"))row["finish_ms"]=now();row["observation_ms"]=now();}
-        record["requests"].insert(record["requests"].end(),rows.begin(),rows.end());throw;
+        const auto error=std::current_exception();
+        if(!cutoff_enabled){
+            for(auto& task:tasks)if(task.result.valid())task.result.wait();
+            for(auto& task:tasks)persist_timing(task,"aborted");
+            save_planning();
+            for(auto& row:rows){if(!row.contains("status")||row["status"]=="pending")row["status"]="interrupted";if(!row.contains("finish_ms"))row["finish_ms"]=now();row["observation_ms"]=now();}
+            record["requests"].insert(record["requests"].end(),rows.begin(),rows.end());throw;
+        }
+        cutoff_observed=now();cutoff_triggered=is_cutoff(error);
+        observation_end=cutoff_triggered?cutoff_ms:std::min(cutoff_observed,cutoff_ms);
+        if(!cutoff_triggered)replay_error=error;
+        // RPC threads own their process/pipe state. Their replay-bound deadline
+        // terminates them; never race a controller stop() against an active call.
+        for(auto& task:tasks)if(task.result.valid()){
+            try{task.result.get();}catch(...){
+                const auto pending=std::current_exception();
+                if(!is_cutoff(pending)){
+                    keep_failure(replay_error,pending);
+                    std::string reason;
+                    try{std::rethrow_exception(pending);}catch(const std::exception& failure){reason=failure.what();}
+                    auto fail=[&](std::size_t k){
+                        auto& row=rows[k];if(row.value("status","")=="completed")return;
+                        row["status"]="failed";row["error"]=reason;row["failure_observed_ms"]=now();
+                        record["failures"].push_back({{"request_id",row.at("request_id")},{"error",reason}});
+                    };
+                    fail(task.row);
+                    if(task.assignment.contains("batch"))for(const auto& member:task.assignment.at("batch"))fail(index.at(member.get<std::string>()));
+                    if(task.assignment.contains("pair"))fail(index.at(task.assignment.at("pair").get<std::string>()));
+                }
+            }
+        }
+        for(auto& task:tasks)persist_timing(task,cutoff_triggered?"censored":"aborted");
+    }
+    if(cutoff_enabled){
+        if(observation_end<0){
+            observation_end=std::min(now(),cutoff_ms);cutoff_observed=now();
+            cutoff_triggered=std::any_of(rows.begin(),rows.end(),[&](const Json& row){
+                return row.value("status","")!="completed"||number_field(row,"finish_ms")>cutoff_ms;});
+        }
+        for(auto& row:rows){
+            const auto status=row.value("status","");
+            if(status!="failed"&&(status!="completed"||number_field(row,"finish_ms")>observation_end)){
+                row["status"]=number_field(row,"arrival_ms")>observation_end?"not_executed":cutoff_triggered?"censored":"interrupted";
+                if(row.contains("finish_ms")){row["completion_observed_after_window_ms"]=row.at("finish_ms");row.erase("finish_ms");}
+            }else if(status=="failed"&&row.contains("finish_ms")&&number_field(row,"finish_ms")>observation_end){
+                row["failure_observed_ms"]=row.at("finish_ms");row.erase("finish_ms");
+            }
+            row["observation_ms"]=observation_end;
+        }
     }
     for(std::size_t i=0;i<rows.size();++i){
         auto& row=rows[i];
@@ -1586,12 +1680,25 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         if(st.resumed_blocks>0){row["block_ms_resumed"]=st.resumed_ms/st.resumed_blocks;row["resume_extra_ms"]=st.resumed_ms-st.resumed_blocks*steady;}
     }
     save_planning();
-    return {{"requests",rows},{"metrics",request_summary(rows)},{"elapsed_ms",now()},{"warmup",warmed},{"controller_planning",planning},
+    Json result={{"requests",rows},{"metrics",request_summary(rows)},{"elapsed_ms",cutoff_enabled?observation_end:now()},{"warmup",warmed},{"controller_planning",planning},
             {"by_kind",{{"video",kind_summary(rows,"video")},{"image",kind_summary(rows,"image")}}},
             {"policy",policy},{"gpus",gpus},{"sp_transport",transport},{"real_backends_pinned_sp1",!fixtures&&transport=="pinned"},
             {"async_rank0_decode",async_decode},{"continuous_batch",cb_stats},
             {"doorbell",{{"enabled",doorbell},{"continuous_quanta",bells.continuous},{"rings",bells.rings},
                           {"deadline_skip_events",bells.deadline_skips}}}};
+    if(cutoff_enabled){
+        Json counts={{"planned",rows.size()},{"completed",0},{"failed",0},{"censored",0},{"not_executed",0},{"interrupted",0}};
+        for(const auto& row:rows){const auto status=row.at("status").get<std::string>();counts[status]=counts.at(status).get<int>()+1;}
+        auto receipt=phase.at("replay_cutoff");
+        receipt.update({{"clock","controller_replay_monotonic_ms"},{"status",cutoff_triggered?"triggered":"not_reached"},
+            {"observation_horizon_ms",observation_end},{"observed_at_ms",cutoff_observed},{"replay_origin_monotonic_seconds",origin},
+            {"config_sha256",record.at("config_sha256")},{"observation_id",phase.at("_observation_id")},{"policy",policy},
+            {"counts",counts},{"cleanup_verified",false},{"physical_stop_bound",false}});
+        result["replay_cutoff"]=receipt;
+        result["status"]=replay_error?"failed":cutoff_triggered?"censored":"completed";
+        if(replay_error)try{std::rethrow_exception(replay_error);}catch(const std::exception& failure){result["error"]=failure.what();}
+    }
+    return result;
 }
 
 Json operations(const Json& phase,Workers& workers,Budget& budget,Json& record,const fs::path& work,const fs::path& cell_dir){
@@ -1656,10 +1763,23 @@ bool execute_cells(const Json& phase,const Json& request,const Json& devices,
         if(!mps.empty())pids.push_back(mps.at("server_pid").get<int>());
         return pids;
     };
-    bool cleanup=true;std::string error;std::vector<int> attempt_pids;
+    bool cleanup=true,censored=false;std::string error;std::vector<int> attempt_pids;
     auto cells=expand_matrix(phase);
     std::vector<std::size_t> order;for(std::size_t i=0;i<cells.size();++i)order.push_back(i);
     if(phase.value("paired",false))for(std::size_t i=cells.size();i>0;--i)order.push_back(i-1);
+    auto preserve_unstarted=[&](std::size_t position,const std::string& reason){
+        const auto& cell=cells[order[position]];
+        if(!cell.contains("replay_cutoff"))return;
+        const auto observation=id+"/"+std::to_string(attempt_number)+"/"+std::to_string(position);
+        auto rows=study_workload(cell);
+        for(auto& row:rows){
+            row.update({{"phase",id},{"attempt",attempt_number},{"cell",order[position]},
+                {"order",position<cells.size()?"forward":"reverse"},{"observation_id",observation},
+                {"status","not_executed"},{"observation_ms",0.},{"not_executed_reason",reason}});
+            record["requests"].push_back(row);
+        }
+        return;
+    };
     for(std::size_t position=0;position<order.size();++position){
         auto cell=cells[order[position]];const auto cell_dir=attempt_dir/("cell-"+std::to_string(position));
         cell["_observation_id"]=id+"/"+std::to_string(attempt_number)+"/"+std::to_string(position);
@@ -1764,7 +1884,8 @@ bool execute_cells(const Json& phase,const Json& request,const Json& devices,
         try{
             const auto kind=cell.value("kind","online");
             Json result=cell.contains("actions")?operations(cell,workers,budget,record,work,cell_dir):kind=="cluster"?cluster(cell,workers,budget,record,work):replay(cell,workers,budget,record,work,cell_dir);
-            result["cell"]=order[position];result["order"]=position<cells.size()?"forward":"reverse";result["status"]="completed";
+            result["cell"]=order[position];result["order"]=position<cells.size()?"forward":"reverse";
+            result["status"]=cell.contains("replay_cutoff")?result.value("status",std::string("completed")):"completed";
             if(!result.contains("policy")&&cell.contains("policy"))result["policy"]=cell.at("policy");
             if(!tolerated.empty())result["unknown_observations"]=tolerated;
             result["guard_telemetry"]=telemetry();
@@ -1772,13 +1893,54 @@ bool execute_cells(const Json& phase,const Json& request,const Json& devices,
                 row["observation_id"]=id+"/"+std::to_string(attempt_number)+"/"+std::to_string(position);
                 row["observation_ms"]=result.value("elapsed_ms",number_field(row,"finish_ms"));record["requests"].push_back(row);}
             attempt["cells"].push_back(result);
-            workers.shutdown(std::min(budget.deadline(),monotonic_seconds()+5));
-        }catch(const std::exception& failure){error=failure.what();attempt["cells"].push_back({{"cell",order[position]},{"status","failed"},{"error",error},{"guard_telemetry",telemetry()}});}
+            if(result.at("status")=="completed")workers.shutdown(std::min(budget.deadline(),monotonic_seconds()+5));
+            else if(result.at("status")=="censored")censored=true;
+            else error=result.value("error",std::string("cell failed"));
+        }catch(const std::exception& failure){
+            error=failure.what();
+            if(cell.contains("replay_cutoff")){
+                // Startup/warmup failure precedes replay time zero; it is not a
+                // typed drain cutoff and cannot consume the offered cohort.
+                const auto obs=cell.at("_observation_id");
+                const bool materialized=std::any_of(record["requests"].begin(),record["requests"].end(),
+                    [&](const Json& row){return row.value("observation_id",Json())==obs;});
+                if(!materialized)preserve_unstarted(position,"cell failed before replay: "+error);
+            }
+            if(!cell.contains("replay_cutoff"))attempt["cells"].push_back({{"cell",order[position]},
+                {"status","failed"},{"error",error},{"guard_telemetry",telemetry()}});
+            else if(attempt["cells"].size()<=position)attempt["cells"].push_back({{"cell",order[position]},
+                {"order",cell.at("_order")},{"policy",cell.at("policy")},{"status","failed"},{"error",error},{"guard_telemetry",telemetry()}});
+            else{attempt["cells"].back()["status"]="failed";attempt["cells"].back()["error"]=error;}
+        }
         stop_prober();
         const auto pids=owned_pids(workers);attempt_pids.insert(attempt_pids.end(),pids.begin(),pids.end());
         const auto unverified=workers.stop();
         if(!unverified.empty()){cleanup=false;attempt["unverified_workers"].push_back({{"cell",order[position]},{"workers",unverified}});}
-        if(!error.empty() || !cleanup)break;
+        if(cell.contains("replay_cutoff")){
+            // Reusing workers/GPU allocations is permitted only after this
+            // cell's process groups and owned GPU occupancy have been checked.
+            const auto final_cell=gpu_observation(request,cell_dir/"cleanup",devices,pids);
+            const auto status=final_cell.value("status",std::string());
+            const bool verified=unverified.empty()&&(status=="exclusive_observed"||status=="busy")
+                                &&final_cell.value("owned",Json::array()).empty()&&final_cell.value("foreign",Json::array()).empty();
+            cleanup=cleanup&&verified;
+            if(!final_cell.value("foreign",Json::array()).empty()&&error.empty())error="GPU isolation lost during cell cleanup";
+            auto& saved=attempt["cells"].back();saved["cleanup_verified"]=verified;saved["final_occupancy"]=final_cell;
+            if(saved.contains("replay_cutoff")){
+                auto& receipt=saved["replay_cutoff"];receipt["cleanup_verified"]=verified;
+                receipt["termination_finished_ms"]=(monotonic_seconds()-receipt.at("replay_origin_monotonic_seconds").get<double>())*1000.;
+            }
+        }
+        if(!error.empty() || !cleanup){
+            for(std::size_t pending=position+1;pending<order.size();++pending){
+                if(!cells[order[pending]].contains("replay_cutoff"))continue;
+                preserve_unstarted(pending,"earlier cell failed or cleanup was unverified");
+                attempt["cells"].push_back({{"cell",order[pending]},{"order",pending<cells.size()?"forward":"reverse"},
+                    {"policy",cells[order[pending]].at("policy")},{"status","not_executed"},
+                    {"reason","earlier cell failed or cleanup was unverified"}});
+            }
+            break;
+        }
     }
     if(!mps.empty())try {
         attempt["mps_control"]=control_mps(request,attempt_dir/"mps-control",mps);
@@ -1793,7 +1955,7 @@ bool execute_cells(const Json& phase,const Json& request,const Json& devices,
     if(observed && !final_gpu.value("foreign",Json::array()).empty() && error.empty())
         error="GPU isolation lost before final cleanup";
     attempt["final_occupancy"]=final_gpu;
-    attempt["status"]=error.empty() && cleanup?"completed":"failed";
+    attempt["status"]=error.empty() && cleanup?(censored?"censored":"completed"):"failed";
     if(!error.empty()){attempt["error"]=error;record["failures"].push_back({{"phase",id},{"attempt",attempt_number},{"error",error}});}
     return cleanup;
 }
@@ -1823,6 +1985,17 @@ void validate(const Json& config){
     for(const auto& phase:phases){
         const auto id=segment(phase.at("id").get<std::string>());if(seen.count(id))throw std::invalid_argument("duplicate phase");
         if(!kinds.count(phase.value("kind","online")))throw std::invalid_argument("unknown executor kind");
+        if(phase.contains("replay_cutoff")){
+            const auto& cutoff=phase.at("replay_cutoff");
+            if(phases.size()!=1||phase.value("kind",std::string())!="cluster"||phase.contains("actions"))
+                throw std::invalid_argument("replay cutoff currently requires one cluster phase without scripted actions");
+            if(!phase.value("mps",Json::object()).empty())
+                throw std::invalid_argument("replay cutoff requires per-cell worker cleanup without a shared MPS server");
+            if(!cutoff.is_object()||cutoff.size()!=3||cutoff.value("schema",std::string())!="ditserve.replay-cutoff.v1"
+                ||cutoff.value("mode",std::string())!="cancel_and_censor"||!cutoff.contains("after_ms"))
+                throw std::invalid_argument("invalid replay cutoff schema or mode");
+            number_field(cutoff,"after_ms",0,true);
+        }
         for(const auto& dependency:phase.value("requires",Json::array())){
             const auto parent=dependency.is_string()?dependency.get<std::string>():dependency.at("phase").get<std::string>();
             if(!seen.count(parent))throw std::invalid_argument("phase dependency must precede its consumer");
@@ -1850,6 +2023,10 @@ void validate(const Json& config){
             throw std::invalid_argument("admission wait must be <=24h and poll in (0,60] seconds");
         evaluate_gates(Json::object(),phase.value("gates",Json::array()));
         for(const auto& cell:expand_matrix(phase)){
+            if(cell.value("replay_cutoff",Json())!=phase.value("replay_cutoff",Json()))
+                throw std::invalid_argument("matrix cannot change the frozen replay cutoff");
+            if(cell.contains("replay_cutoff")&&(cell.value("kind",std::string())!="cluster"||cell.contains("actions")))
+                throw std::invalid_argument("replay cutoff matrix cells require cluster execution without scripted actions");
             if(cell.at("id")!=id || !kinds.count(cell.value("kind","online")))throw std::invalid_argument("matrix cannot change phase identity or introduce an unknown executor");
             if(cell.value("mps",Json::object())!=mps)throw std::invalid_argument("matrix cannot change the MPS control identity");
             if(cell.contains("worker_config")&&!cell.at("worker_config").is_object())throw std::invalid_argument("worker_config must be an object");
@@ -1973,7 +2150,7 @@ Json run_study(const Json& original_request){
     }
     std::map<std::string,Json> completed;
     for(const auto& attempt:record["phases"])if(attempt.value("status","")=="completed")completed[attempt.at("id").get<std::string>()]=attempt;
-    const auto only=request.value("phase","");bool matched=only.empty(),failed=false;
+    const auto only=request.value("phase","");bool matched=only.empty(),failed=false,censored=false;
     for(const auto& phase:config.at("phases")){
         const auto id=phase.at("id").get<std::string>();if(!only.empty() && id!=only)continue;matched=true;
         if(completed.count(id))continue;
@@ -2031,10 +2208,14 @@ Json run_study(const Json& original_request){
         const bool cleanup=execute_cells(phase,request,devices,budget,record,attempt);
         try{attempt["charge"]=budget.finish(attempt.at("status").get<std::string>(),cleanup);}catch(const std::exception& failure){attempt["status"]="unsettled";attempt["cleanup_error"]=failure.what();}
         attempt["qualification"]=evaluate_gates(attempt,phase.value("gates",Json::array()));
+        if(attempt.at("status")=="censored")attempt["qualification"]={{"qualified",false},{"status","censored"},
+            {"reason","finite replay observation cutoff; not a completed or capacity-qualified run"}};
         record["phases"].back()=attempt;record["budget"]=budget.snapshot();
-        if(attempt.at("status")=="completed")completed[id]=attempt;else failed=true;
-        record["status"]=failed?"failed":"incomplete";write(run_path,record);
-        if(failed)break;
+        if(attempt.at("status")=="completed")completed[id]=attempt;
+        else if(attempt.at("status")=="censored")censored=true;
+        else failed=true;
+        record["status"]=failed?"failed":censored?"censored":"incomplete";write(run_path,record);
+        if(failed||censored)break;
     }
     if(!matched)throw std::invalid_argument("unknown selected phase");
     if(completed.size()==config.at("phases").size())record["status"]="completed";

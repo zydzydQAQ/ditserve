@@ -236,7 +236,7 @@ Json study_workload(const Json& phase) {
 
 Json request_summary(const Json& rows) {
     if (!rows.is_array()) throw std::invalid_argument("metric rows must be an array");
-    std::size_t complete=0,failed=0,ontime=0,quality=0,qualified_evidence=0;
+    std::size_t complete=0,failed=0,ontime=0,quality=0,qualified_evidence=0,censored=0,not_executed=0;
     double exposure=0,work=0,control=0;
     std::map<std::string,double> windows;
     std::set<std::pair<std::string,std::string>> identities;
@@ -270,12 +270,14 @@ Json request_summary(const Json& rows) {
             const bool timely=finish<=deadline; ontime+=timely;
             if(timely && qualified) ++quality;
         } else if(status=="failed" || status=="interrupted") ++failed;
+        else if(status=="censored")++censored;
+        else if(status=="not_executed")++not_executed;
     }
     for (const auto& window:windows) exposure+=window.second;
     if (!std::isfinite(exposure) || !std::isfinite(work) || !std::isfinite(control))
         throw std::invalid_argument("metric totals overflowed");
     auto pct=[&](std::size_t n)->Json{return rows.empty()?Json(nullptr):Json(double(n)/rows.size());};
-    return {{"requests",rows.size()},{"completed",complete},{"failed",failed},{"incomplete",rows.size()-complete-failed},
+    Json result={{"requests",rows.size()},{"completed",complete},{"failed",failed},{"incomplete",rows.size()-complete-failed},
             {"ontime",ontime},{"deadline_attainment",pct(ontime)},
             {"qualified_goodput_rps",qualified_evidence && exposure>0?Json(quality*1000/exposure):Json(nullptr)},
             {"qualification_status",!qualified_evidence?"unverified":qualified_evidence==rows.size()?"verified":"partial"},
@@ -286,6 +288,8 @@ Json request_summary(const Json& rows) {
             {"communication_p50_ms",overhead.empty()?Json(nullptr):Json(quantile(overhead,.5))},
             {"communication_p99_ms",overhead.empty()?Json(nullptr):Json(quantile(overhead,.99))},
             {"model_ms",work},{"control_ms",control},{"denominator","all frozen requests, including failed and blocked"}};
+    if(censored||not_executed){result["censored"]=censored;result["not_executed"]=not_executed;}
+    return result;
 }
 
 Json kind_summary(const Json& rows, const std::string& kind) {
