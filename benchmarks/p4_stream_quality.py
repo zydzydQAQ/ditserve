@@ -2,8 +2,9 @@
 """Offline P4 quality measurement, one pair and frame at a time.
 
 Reads existing hash-bound runs/NPY files; never launches workers, downloads
-models, deletes artifacts, or closes retention dependencies. LPIPS and VBench
-remain unknown until independently implemented offline metric adapters exist.
+models, deletes artifacts, or closes retention dependencies. LPIPS is opt-in,
+using only the strict offline adapter after a real CPU checkpoint selftest.
+VBench remains unknown. Sealed v2 batches support source-bound offline merging.
 
 The sealed evidence manifest uses schema ditserve.p4-pair-evidence.v1 and binds
 plan_sha256, runtime_source_sha256, runtime_identity_sha256, and runs containing
@@ -34,11 +35,119 @@ from native_metrics import percentile
 from native_quality import fold_count, ssim
 from p2_benefit import expanded
 from p4_quality_plan import SCHEMA as PLAN_SCHEMA, quality_arms, shape_ids, validate_rule
+import p4_offline_lpips as offline_lpips
 
-SCHEMA = 'ditserve.p4-stream-quality.v1'
+SCHEMA = 'ditserve.p4-stream-quality.v2'
 EVIDENCE_SCHEMA = 'ditserve.p4-pair-evidence.v1'
 CHUNK_BYTES = 256 * 1024
 INVALID_EVIDENCE = (ValueError, KeyError, TypeError, OSError, AttributeError, IndexError, EOFError)
+METRIC_ERRORS = (ValueError, ImportError, OSError, RuntimeError, AttributeError, TypeError, KeyError)
+LPIPS_TRANSFORM = 'RGB float32 [0,1] -> NCHW float32 [-1,1] by 2*x-1; no resize/crop; frame arithmetic mean'
+LPIPS_PREPROCESSING = 'RGB HWC float, explicit range -> NCHW float32 [-1,1]; no resize/crop'
+# Deterministic 64x64 RGB pair from the source-pinned adapter's real selftest.
+LPIPS_SELFTEST_INPUT_SHA256 = '5d617b3e5ccbc641f574f73343b8140914a1d0745f1eef1badff84f772f611e5'
+
+
+def lpips_receipt_identity(receipt):
+    """Check the adapter's own seal and exact checkpoint/runtime contract."""
+    body = {key: value for key, value in receipt.items() if key != 'sha256'}
+    if receipt.get('sha256') != offline_lpips.canonical_hash(body):
+        raise ValueError('offline LPIPS selftest receipt hash differs')
+    if (receipt.get('schema') != offline_lpips.SCHEMA or receipt.get('status') != 'ready'
+            or receipt.get('metric') != 'lpips-alex-v0.1' or receipt.get('device') != 'cpu'
+            or receipt.get('preprocessing') != LPIPS_PREPROCESSING
+            or receipt.get('adapter_sha256') != file_hash(Path(offline_lpips.__file__))
+            or receipt.get('p4_qualification_eligible') is not False
+            or receipt.get('retention_dependencies_closed') is not False):
+        raise ValueError('offline LPIPS adapter is not verified and ready')
+    test = receipt['selftest']
+    if (test.get('status') != 'passed_real_cpu_weights'
+            or type(test.get('exact_distance')) not in (int, float) or test['exact_distance'] != 0.
+            or type(test.get('network_attempts')) is not int or test['network_attempts'] != 0
+            or test.get('input_sha256') != LPIPS_SELFTEST_INPUT_SHA256):
+        raise ValueError('real CPU LPIPS selftest is missing')
+    for key in ('perturbed_distance', 'symmetric_distance', 'independent_reference_distance'):
+        value = test.get(key)
+        if type(value) not in (int, float) or not math.isfinite(value) or value <= 0:
+            raise ValueError('LPIPS selftest needs positive finite perturbed distances')
+    if (not math.isclose(test['perturbed_distance'], test['symmetric_distance'], rel_tol=1e-6, abs_tol=1e-8)
+            or not math.isclose(test['perturbed_distance'], test['independent_reference_distance'], rel_tol=1e-5, abs_tol=1e-7)):
+        raise ValueError('LPIPS selftest reference/symmetry differs')
+    weights = {}
+    for key, expected in (('backbone', offline_lpips.BACKBONE), ('calibrated_head', offline_lpips.HEAD)):
+        value = receipt['weights'][key]
+        if value.get('sha256') != expected.sha256 or value.get('bytes') != expected.size:
+            raise ValueError('LPIPS checkpoint identity differs')
+        weights[key] = dict(bytes=expected.size, sha256=expected.sha256)
+    runtime = receipt['runtime']
+    if any(runtime['packages'].get(key) != value for key, value in offline_lpips.PACKAGES.items()):
+        raise ValueError('LPIPS package identity differs')
+    sources = {}
+    for (_, member), expected in offline_lpips.SOURCES.items():
+        value = runtime['sources'][member]
+        if value.get('sha256') != expected.sha256 or value.get('bytes') != expected.size:
+            raise ValueError('LPIPS package source identity differs')
+        sources[member] = dict(bytes=expected.size, sha256=expected.sha256)
+    # Paths and tiny selftest rounding differences are receipt provenance, not
+    # alternative metric definitions. Every batch still carries its full receipt.
+    return dict(metric=receipt['metric'], adapter_sha256=receipt['adapter_sha256'], device='cpu',
+        packages=runtime['packages'], python=runtime['python'], sources=sources, weights=weights,
+        unit='dimensionless perceptual distance; lower is better', transform=LPIPS_TRANSFORM)
+
+
+def prepare_lpips(enabled=False, *, backbone=None, head=None):
+    if type(enabled) is not bool or not enabled and (backbone is not None or head is not None):
+        raise ValueError('LPIPS needs an explicit Boolean opt-in before weight paths')
+    state = dict(requested=enabled, status='unknown', receipt=None, metric_identity=None,
+                 reason='offline LPIPS was not requested')
+    if not enabled:
+        return None, state
+    try:
+        adapter = offline_lpips.OfflineLPIPS(backbone or offline_lpips.DEFAULT_BACKBONE, head)
+        receipt = adapter.selftest()
+        identity = lpips_receipt_identity(receipt)
+        if adapter.receipt() != receipt:
+            raise ValueError('LPIPS adapter changed after selftest')
+        state.update(status='ready', receipt=receipt, metric_identity=identity, reason=None)
+        return adapter, state
+    except METRIC_ERRORS as error:
+        state['reason'] = f'{type(error).__name__}: {error}'
+        return None, state
+
+
+def metric_identity(lpips):
+    return dict(implementation=dict(module_sha256=file_hash(Path(__file__)),
+        ssim_module_sha256=file_hash(Path(ssim.__code__.co_filename)),
+        matrix_expansion_module_sha256=file_hash(Path(expanded.__code__.co_filename)),
+        offline_lpips_module_sha256=file_hash(Path(offline_lpips.__file__)),
+        numpy=np.__version__, scipy=scipy.__version__),
+        pixels=dict(range=[0., 1.], layout='[1,T,H,W,3]', dtype='float32',
+                    mse='all pixels', psnr='10*log10(1/MSE); infinity encoded as null plus flag',
+                    ssim='per-frame/channel Gaussian sigma1.5 truncate3 mean',
+                    temporal='RMSE of consecutive reference-relative error frames'),
+        lpips=dict(requested=lpips['requested'], status=lpips['status'], identity=lpips['metric_identity']))
+
+
+def source_binding(plan, evidence, metrics):
+    return dict(plan_sha256=plan['sha256'], protocol_sha256=plan['protocol_sha256'],
+        core_sha256=next(iter(plan['calibration_sources'].values()))['core_sha256'],
+        runtime_source_sha256=evidence['runtime_source_sha256'],
+        runtime_identity_sha256=evidence['runtime_identity_sha256'],
+        model_mapping_sha256=canonical_hash(plan['model_manifests']),
+        calibration_bundle_sha256=plan['calibration_bundle_sha256'], gpu_uuids=plan['gpu_uuids'],
+        metric_identity_sha256=canonical_hash(metrics))
+
+
+def source_entry(entry):
+    return None if entry is None else dict(run_sha256=entry['sha256'], request_id=entry['request_id'])
+
+
+def output_receipt(row):
+    output = row['outputs'][0]
+    artifact = output['output']
+    return dict(artifact_sha256=artifact['sha256'], array_sha256=artifact['array_sha256'],
+        shape=artifact['shape'], dtype=artifact['dtype'], generation_sha256=canonical_hash(output['generation']),
+        path_history_sha256=canonical_hash(output['path_history']))
 
 
 def hex_hash(value):
@@ -340,13 +449,15 @@ def checked_array(row, pair, entry, root):
             array.close()
 
 
-def frame_metrics(reference, candidate):
+def frame_metrics(reference, candidate, *, lpips_adapter=None, lpips_reason=None):
     """Global pixel MSE/PSNR and framewise SSIM; O(one frame) working arrays."""
     if (reference.shape != candidate.shape or reference.ndim != 5 or reference.shape[0] != 1
             or reference.shape[-1] != 3 or min(reference.shape) < 1
             or not np.issubdtype(reference.dtype, np.floating) or not np.issubdtype(candidate.dtype, np.floating)):
         raise ValueError('matching nonempty floating [1,T,H,W,3] arrays are required')
-    error = temporal = score = 0.
+    error = temporal = score = lpips_total = 0.
+    lpips_failure = lpips_reason or 'verified offline LPIPS adapter unavailable'
+    lpips_available = lpips_adapter is not None
     previous = None
     count = reference.shape[1]
     for index in range(count):
@@ -361,12 +472,23 @@ def frame_metrics(reference, candidate):
             temporal += float(np.sum(change * change))
         previous = delta
         score += ssim(ref[None, None], other[None, None])
+        if lpips_available:
+            try:
+                distance = lpips_adapter.score_frame(ref, other, input_range='zero_one')
+                if type(distance) not in (float, int) or not math.isfinite(distance) or distance < 0:
+                    raise ValueError('LPIPS frame distance must be finite and nonnegative')
+                lpips_total += distance
+            except METRIC_ERRORS as failure:
+                lpips_available = False
+                lpips_failure = f'frame {index}: {type(failure).__name__}: {failure}'
     mse = error / reference.size
     return dict(mse=mse, psnr_db=None if mse == 0 else -10 * math.log10(mse),
         psnr_is_infinite=mse == 0, exact_match=mse == 0, ssim=score / count,
         temporal_delta_rmse=None if count == 1 else math.sqrt(temporal / ((count - 1) * reference[0, 0].size)),
-        lpips_mean=None, lpips_status='unknown',
-        lpips_reason='no verified offline checkpoint adapter; network-capable LPIPS constructors are never called')
+        lpips_mean=lpips_total / count if lpips_available else None,
+        lpips_status='measured' if lpips_available else 'unknown',
+        lpips_frames=count if lpips_available else 0,
+        lpips_reason=None if lpips_available else lpips_failure)
 
 
 def cluster_bootstrap(rows, *, samples, seed):
@@ -418,6 +540,8 @@ def matched_comparisons(plan, results):
         rows.append(dict(pair_id=pair['id'], shape_id=pair['shape_id'], actual_fold_count=count,
             prompt_sha256=plan['prompts'][pair['prompt_index']]['normalized_prompt_sha256'],
             mse_difference=a['mse'] - b['mse'], ssim_difference=a['ssim'] - b['ssim'],
+            lpips_difference=(a['lpips_mean'] - b['lpips_mean'] if
+                a['lpips_status'] == b['lpips_status'] == 'measured' else None),
             zero_fold_exact_self_control=count == 0 and a['exact_match'] and b['exact_match']))
     groups = {'all': rows}
     for sid in plan['shape_ids']:
@@ -430,20 +554,26 @@ def matched_comparisons(plan, results):
     summaries = {}
     for name, selected in groups.items():
         summaries[name] = {metric: cluster_bootstrap(
-            [dict(prompt_sha256=row['prompt_sha256'], difference=row[metric + '_difference']) for row in selected],
-            samples=stats['bootstrap_samples'], seed=stats['bootstrap_seed']) for metric in ('mse', 'ssim')}
+            [dict(prompt_sha256=row['prompt_sha256'], difference=row[metric + '_difference'])
+             for row in selected if row[metric + '_difference'] is not None],
+            samples=stats['bootstrap_samples'], seed=stats['bootstrap_seed']) for metric in ('mse', 'ssim', 'lpips')}
     return dict(status='complete' if not missing else 'incomplete', expected_pairs=len(plan['pairs']),
         matched_pairs=len(rows), missing_pair_ids=missing, groups=summaries,
         psnr=dict(status='exact_relations_and_mse_domain', relations=dict(relations), mean_difference=None, ci95=None,
                   scope='never subtract infinity; MSE candidate-minus-control is finite and lower favors candidate'),
         zero_fold_exact_self_controls=sum(row['zero_fold_exact_self_control'] for row in rows),
         zero_fold_scope='no unconditional-forward reduction; not adaptive superiority',
-        lpips=dict(status='unknown'), superiority_qualified=False)
+        lpips=dict(status='measured' if rows and all(r['lpips_difference'] is not None for r in rows) else 'unknown',
+            measured_matched_pairs=sum(r['lpips_difference'] is not None for r in rows),
+            expected_pairs=len(plan['pairs']), unit='candidate-minus-control perceptual distance; lower favors candidate'),
+        superiority_qualified=False)
 
 
-def evaluate(plan, protocol, evidence, *, root=Path('.')):
+def evaluate(plan, protocol, evidence, *, root=Path('.'), lpips=False, lpips_backbone=None, lpips_head=None):
     validate_plan(plan, protocol)
     index = index_evidence(evidence, plan)
+    lpips_adapter, lpips_state = prepare_lpips(lpips, backbone=lpips_backbone, head=lpips_head)
+    metrics_identity = metric_identity(lpips_state)
     arms = {arm['id']: arm for arm in plan['arms']}
     results = {}
     for pair in plan['pairs']:
@@ -451,7 +581,11 @@ def evaluate(plan, protocol, evidence, *, root=Path('.')):
         reference_entry = index.get(reference_key)
         for arm_id in arms:
             results[(pair['id'], arm_id)] = dict(pair_id=pair['id'], arm_id=arm_id,
-                shape_id=pair['shape_id'], status='missing', reason='no submitted run for planned pair/arm')
+                shape_id=pair['shape_id'], status='missing', reason='no submitted run for planned pair/arm',
+                prompt_sha256=plan['prompts'][pair['prompt_index']]['normalized_prompt_sha256'],
+                generation_seed=pair['generation_seed'], spec_sha256=canonical_hash(pair['spec']),
+                submitted_source=source_entry(index.get((pair['id'], arm_id))),
+                reference_source=source_entry(reference_entry), evidence_sha256=evidence['sha256'])
         if reference_entry is None:
             for arm_id in arms:
                 if (pair['id'], arm_id) in index:
@@ -463,9 +597,10 @@ def evaluate(plan, protocol, evidence, *, root=Path('.')):
             if not all(identity.values()):
                 raise ValueError('reference identity/weights unverified')
             with checked_array(reference, pair, reference_entry, root) as ref:
-                exact_metrics = frame_metrics(ref, ref)
+                exact_metrics = frame_metrics(ref, ref, lpips_adapter=lpips_adapter, lpips_reason=lpips_state['reason'])
                 results[reference_key].update(status='measured', actual_fold_count=0, metrics=exact_metrics,
-                    run_sha256=reference_entry['sha256'], artifact_sha256=reference['outputs'][0]['output']['sha256'])
+                    run_sha256=reference_entry['sha256'], artifact_sha256=reference['outputs'][0]['output']['sha256'],
+                    verified_output=output_receipt(reference), reference_output=output_receipt(reference))
                 for arm_id, arm in arms.items():
                     if arm_id == 'exact' or (pair['id'], arm_id) not in index:
                         continue
@@ -477,9 +612,10 @@ def evaluate(plan, protocol, evidence, *, root=Path('.')):
                         if not all(identity.values()):
                             raise ValueError('paired runtime/weight identity unverified')
                         with checked_array(candidate, pair, entry, root) as other:
-                            metrics = frame_metrics(ref, other)
+                            metrics = frame_metrics(ref, other, lpips_adapter=lpips_adapter, lpips_reason=lpips_state['reason'])
                         target.update(status='measured', actual_fold_count=count, metrics=metrics,
-                            run_sha256=entry['sha256'], artifact_sha256=candidate['outputs'][0]['output']['sha256'])
+                            run_sha256=entry['sha256'], artifact_sha256=candidate['outputs'][0]['output']['sha256'],
+                            verified_output=output_receipt(candidate), reference_output=output_receipt(reference))
                     except INVALID_EVIDENCE as error:
                         target.update(status='failed', reason=str(error))
         except INVALID_EVIDENCE as error:
@@ -487,6 +623,21 @@ def evaluate(plan, protocol, evidence, *, root=Path('.')):
             for arm_id in arms:
                 if (pair['id'], arm_id) in index:
                     results[(pair['id'], arm_id)].update(status='failed', reason='exact reference: ' + str(error))
+    for row in results.values():
+        if row['status'] != 'measured':
+            for key in ('metrics', 'actual_fold_count', 'verified_output', 'reference_output', 'run_sha256', 'artifact_sha256'):
+                row.pop(key, None)
+    result = summarize_results(plan, results, lpips_state)
+    result.update(schema=SCHEMA, plan_sha256=plan['sha256'], evidence_sha256=evidence['sha256'],
+        protocol_sha256=plan['protocol_sha256'], evidence=copy.deepcopy(evidence),
+        metric_identity=metrics_identity, source_binding=source_binding(plan, evidence, metrics_identity),
+        implementation=metrics_identity['implementation'])
+    return seal(result)
+
+
+def summarize_results(plan, results, lpips_state):
+    """Recompute summaries from full-denominator observations, also after merging."""
+    arms = {arm['id']: arm for arm in plan['arms']}
     counts = Counter(row['status'] for row in results.values())
     thresholds = plan['acceptance']['numeric_thresholds']
     by_arm = {}
@@ -495,34 +646,44 @@ def evaluate(plan, protocol, evidence, *, root=Path('.')):
         measured = [row for row in rows if row['status'] == 'measured']
         failed_numeric = sum((not row['metrics']['psnr_is_infinite'] and row['metrics']['psnr_db'] < thresholds['min_psnr'])
                              or row['metrics']['ssim'] < thresholds['min_ssim'] for row in measured)
+        known_lpips = [row for row in measured if row['metrics']['lpips_status'] == 'measured']
+        failed_lpips = sum(row['metrics']['lpips_mean'] > thresholds['max_lpips'] for row in known_lpips)
+        numeric = ('failed' if failed_numeric or failed_lpips else
+                   'passed_numeric_only' if len(known_lpips) == len(rows) else 'unknown')
         by_arm[arm_id] = dict(expected_pairs=len(rows), measured_pairs=len(measured),
             missing_or_failed_pairs=len(rows) - len(measured), psnr_ssim_threshold_failures=failed_numeric,
-            numeric_qualification='failed' if failed_numeric else 'unknown',
-            unknown_reason='LPIPS unknown; missing/failed evidence stays in the denominator',
+            lpips_measured_pairs=len(known_lpips), lpips_unknown_or_missing_pairs=len(rows) - len(known_lpips),
+            lpips_threshold_failures=failed_lpips,
+            lpips_mean=sum(row['metrics']['lpips_mean'] for row in known_lpips) / len(known_lpips) if known_lpips else None,
+            numeric_qualification=numeric,
+            unknown_reason='full planned evidence and LPIPS required; semantic/P4 acceptance remains separate',
             mse_mean=sum(row['metrics']['mse'] for row in measured) / len(measured) if measured else None,
             exact_matches=sum(row['metrics']['exact_match'] for row in measured))
-    return seal(dict(schema=SCHEMA, status='complete' if counts['measured'] == len(results) else 'incomplete',
-        plan_sha256=plan['sha256'], evidence_sha256=evidence['sha256'], protocol_sha256=plan['protocol_sha256'],
-        implementation=dict(module_sha256=file_hash(Path(__file__)),
-            ssim_module_sha256=file_hash(Path(ssim.__code__.co_filename)),
-            matrix_expansion_module_sha256=file_hash(Path(expanded.__code__.co_filename)), numpy=np.__version__, scipy=scipy.__version__),
+    lpips_count = sum(row['status'] == 'measured' and row['metrics']['lpips_status'] == 'measured' for row in results.values())
+    return dict(status='complete' if counts['measured'] == len(results) else 'incomplete',
         denominator=dict(planned_pairs=len(plan['pairs']), planned_pair_arms=len(results),
-            submitted_pair_arms=len(index), statuses=dict(counts),
+            submitted_pair_arms=sum(row['submitted_source'] is not None for row in results.values()), statuses=dict(counts),
             scope='missing, failed and blocked arms remain in the original planned denominator'),
         by_arm=by_arm, pair_results=list(results.values()), matched_fold_comparison=matched_comparisons(plan, results),
-        lpips=dict(status='unknown', reason='verified offline checkpoint adapter not implemented; no model constructor invoked'),
+        lpips=dict(status='measured' if lpips_count == len(results) else 'partial' if lpips_count else 'unknown',
+            measured_pair_arms=lpips_count, expected_pair_arms=len(results),
+            unknown_or_missing_pair_arms=len(results) - lpips_count,
+            unit='dimensionless perceptual distance; lower is better', transform=LPIPS_TRANSFORM,
+            adapter=copy.deepcopy(lpips_state)),
         semantic_qualification='unknown', vbench=dict(status='unknown', reason='no pinned complete official VBench evidence consumed'),
         qualification_eligible=False, superiority_qualified=False,
         resource_scope=dict(artifact_maps_at_once=2, file_hash_chunk_bytes=CHUNK_BYTES,
-            metric_working_set='frame-sized float64/SSIM arrays, independent of frame count; OS memmap page cache is not a hard RSS cap',
+            metric_working_set='frame-sized float64/SSIM arrays and optional CPU LPIPS activations; no full-video copies',
+            lpips_model_scope='one persistent CPU model; startup/selftest also loads the full AlexNet checkpoint and reference model',
+            memory_limit='RSS/allocator peaks are unmeasured; memmap OS page cache is not a hard RSS cap',
             artifact_bytes_written=0, raw_artifacts_deleted=0, gpu_operations=0),
         retention=dict(dependencies_closed=False, deletion_authorized=False,
-            reason='numerical partial measurement only; LPIPS/semantic/replay and other declared consumers remain open'),
+            reason='measurement/merge does not close raw consumers; semantic/replay and stage acceptance remain open'),
         limitations=['No runtime configuration generator or GPU runner is implemented here.',
             'Input runs require explicit p4_quality plan/arm binding; legacy unbound runs cannot be relabelled.',
-            'Bounded evaluation memory does not reclaim disk space. Cross-batch immutable receipt aggregation is not implemented.',
+            'Bounded evaluation memory and receipt merging do not reclaim disk space or authorize cleanup.',
             'Bootstrap intervals describe available matched pairs; incomplete evidence does not acquire qualification.',
-            'LPIPS, semantic quality, fission/reuse causality and full stage acceptance remain unverified.']))
+            'Semantic quality, fission/reuse causality and full stage acceptance remain unverified.'])
 
 
 def main():
@@ -531,9 +692,15 @@ def main():
     parser.add_argument('--protocol', type=Path, default=formal.DEFAULT_PROTOCOL)
     parser.add_argument('--evidence', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--lpips', action='store_true', help='require real offline CPU selftest before LPIPS scores')
+    parser.add_argument('--lpips-backbone', type=Path)
+    parser.add_argument('--lpips-head', type=Path)
     args = parser.parse_args()
     inputs = {name: bound_json(getattr(args, name)) for name in ('plan', 'evidence', 'protocol')}
-    result = evaluate(inputs['plan'][0], inputs['protocol'][0], inputs['evidence'][0], root=args.evidence.parent)
+    if (args.lpips_backbone or args.lpips_head) and not args.lpips:
+        parser.error('explicit LPIPS weight paths require --lpips')
+    result = evaluate(inputs['plan'][0], inputs['protocol'][0], inputs['evidence'][0], root=args.evidence.parent,
+                      lpips=args.lpips, lpips_backbone=args.lpips_backbone, lpips_head=args.lpips_head)
     if any(fingerprint(getattr(args, name)) != value[2] for name, value in inputs.items()):
         raise ValueError('input plan/evidence/protocol changed during evaluation')
     result['input_file_sha256'] = {name: value[1] for name, value in inputs.items()}
