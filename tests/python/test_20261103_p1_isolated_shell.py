@@ -25,11 +25,14 @@ mode=os.environ['CASE']
 if name=='kairos_runtime_audit.py':
     log('runtime');write(pathlib.Path(os.environ['RUN_DIR'])/'runtime-facts.json',{})
 elif name=='formal_benchmark.py':
+    assert pathlib.Path(__file__).parent==pathlib.Path(os.environ['DITSERVE_BENCHMARK_ROOT'])
     action=next(v for v in args if v in ('preflight','calibrate','assemble','serve'))
     log('formal-'+action)
     write(arg('--output'),dict(experiment='fixture'))
 elif name=='p1_isolated_job.py':
     action=args[0];log('helper-'+action)
+    assert arg('--benchmark-root')==os.environ['DITSERVE_BENCHMARK_ROOT']
+    assert os.environ['PYTHONPATH'].split(':')[0]==os.environ['DITSERVE_BENCHMARK_ROOT']
     if action=='preflight':
         if mode=='preflight': sys.exit(17)
         write(arg('--output'),{})
@@ -43,6 +46,7 @@ elif name=='p1_isolated_job.py':
             write(root/case['inputs'],{});write(root/(pair+'-planned-coverage.json'),dict(unexecuted=96))
         write(root/'execution-plan.json',dict(cases=cases))
 elif name=='p1_isolated_batch.py':
+    assert pathlib.Path(__file__).parent==pathlib.Path(os.environ['DITSERVE_BENCHMARK_ROOT'])
     log('coverage-'+pathlib.Path(arg('--output')).stem)
     write(arg('--output'),dict(had_run='--run' in args))
 elif name=='ditserve':
@@ -64,6 +68,7 @@ class ShellIntegration(unittest.TestCase):
             root=Path(directory)
             scripts=root/'release/scripts';scripts.mkdir(parents=True)
             tools=root/'release/tools';tools.mkdir()
+            benchmarks=root/'release/benchmarks';benchmarks.mkdir()
             package=root/'package';(package/'benchmarks').mkdir(parents=True)
             (package/'configs/benchmarks').mkdir(parents=True)
             protocol=json.loads((ROOT/'configs/benchmarks/formal-mixed-v1.json').read_bytes())
@@ -80,8 +85,11 @@ trap 'echo trap-shared-write >> "$MOCK_LOG"' EXIT
 '''
             (scripts/'kairos_common.sh').write_text(common)
             for path in (scripts/'kairos_runtime_audit.py',tools/'p1_isolated_job.py',
-                         package/'benchmarks/formal_benchmark.py',package/'benchmarks/p1_isolated_batch.py'):
+                         benchmarks/'formal_benchmark.py',benchmarks/'p1_isolated_batch.py'):
                 path.write_text(STUB)
+            # Using the old build's benchmark scripts must fail this fixture.
+            for filename in ('formal_benchmark.py','p1_isolated_batch.py'):
+                (package/'benchmarks'/filename).write_text('raise RuntimeError("stale benchmark source loaded")\n')
             binpath=root/'bin';binpath.mkdir()
             core=binpath/'ditserve';core.write_text('#!'+sys.executable+'\n'+STUB);core.chmod(0o755)
             df=binpath/'df';df.write_text('#!'+sys.executable+'\n'+'''import os,pathlib,sys
@@ -102,7 +110,10 @@ print(f'fixture 1000G {used}G 300G {percent}% /shared')
             env=dict(os.environ,CASE=mode,MOCK_ROOT=str(root),MOCK_LOG=str(root/'events'),
                 PATH=str(binpath)+':'+os.environ['PATH'],WAN_MODEL='wan',DITSERVE_RUN_ID='fixture',
                 DITSERVE_MODEL_MANIFESTS=str(root/'models.json'),DITSERVE_PROTOCOL_SHA256=canonical_hash(protocol),
-                DITSERVE_FORMAL_ACTION='p1_isolated',DITSERVE_JOB_SPEC_PATH=str(root/'spec.json'))
+                DITSERVE_FORMAL_ACTION='p1_isolated',DITSERVE_JOB_SPEC_PATH=str(root/'spec.json'),
+                DITSERVE_KAIROS_RUNTIME_ROOT=str(root/'release'),DITSERVE_BENCHMARK_ROOT=str(benchmarks))
+            if mode=='wrong-benchmark-root': env['DITSERVE_BENCHMARK_ROOT']=str(package/'benchmarks')
+            if mode=='missing-benchmark-root': env.pop('DITSERVE_BENCHMARK_ROOT')
             result=subprocess.run(['bash',str(scripts/OPERATOR.name)],env=env,capture_output=True,text=True)
             events=(root/'events').read_text().splitlines() if (root/'events').exists() else []
             if mode.startswith('storage-initial-'):
@@ -119,6 +130,14 @@ print(f'fixture 1000G {used}G 300G {percent}% /shared')
         self.assertLess(events.index('helper-preflight'),events.index('formal-calibrate'))
         self.assertLess(events.index('verify-fixture-cal1'),events.index('helper-prepare'))
         self.assertEqual(len(coverage),4)
+
+    def test_missing_or_old_benchmark_root_cannot_begin_calibration(self):
+        for mode in ('wrong-benchmark-root','missing-benchmark-root'):
+            with self.subTest(mode=mode):
+                result,events,coverage=self.run_case(mode)
+                self.assertNotEqual(result.returncode,0)
+                self.assertFalse(any(v.startswith(('formal-','helper-','run-')) for v in events))
+                self.assertFalse(coverage)
 
     def test_preflight_or_calibration_failure_cannot_start_abba(self):
         for mode,code in [('preflight',17),('calibration',19)]:
