@@ -228,7 +228,7 @@ PYTHONPATH=workers python3 benchmarks/collect_stage_evidence.py \
 
 `benchmarks/p1_costs.py --manifest <cost-evidence.json> --output <new-summary.json>` 读取 `{schema: ditserve.p1-cost-evidence.v1, runs: [{path,sha256}]}`。只报告原始时序诊断；导出到所有新 target 就绪不代表所有旧副本回收，停止到下一 dispatch 包含排队与其他请求服务，下一次 advance 完成还包括有用模型计算。原始 `run.json` 是该分析的未闭合依赖，不能在分析前删除。
 
-P3 的 `p3_stream.py` 生成固定 warmup/measurement/drain 观察窗内不归一化的 Poisson 到达，请求数自然随机，模态与分辨率按冻结概率取样；全计划 prompt 余量不足即拒绝。`p3_window_review.py` 复算到达、SLO 和输入规格，保留失败、未开始和右删失分母，分别统计 arrival cohort 与完成窗口，按 seed 给区间。当前 drain 是分析截止，未实现核心精确停止；有限窗口与相关 queue bins 不授予稳定容量资格。
+P3 的 `p3_stream.py` 生成固定 warmup/measurement/drain 观察窗内不归一化的 Poisson 到达，请求数自然随机，模态与分辨率按冻结概率取样；全计划 prompt 余量不足即拒绝。`p3_window_review.py` 复算到达、SLO 和输入规格，保留失败、未开始和右删失分母，分别统计 arrival cohort 与完成窗口，按 seed 给区间。默认仍只做分析截止；plan 显式设置 `execution={drain_cutoff:"cancel_and_censor", cleanup_allowance_seconds:N}` 后，核心在每个 cluster cell 的 warmup/分布式初始化后独立计时，以 warmup traffic + measurement + drain 为观察上限。截止后不接纳完成结果，保留 censored、真实 failure 和后续 not_executed 分母，逐 cell 核验所属进程与 GPU 清理后才启动下一策略。仅支持单个 cluster phase，不允许 scripted actions、矩阵替换执行器或共享 MPS；真实故障和更早的 watchdog 不转成正常删失。receipt 绑定源码、配置、观察及清理时序。`censored` 仍为 CLI 非零退出，operator 必须显式审查，不能按成功实验处理。这是控制器观察截止，不是 GPU 在该瞬间停止的物理上界；有限窗口与相关 queue bins 不授予稳定容量资格。
 
 P4 的 `p4_quality_plan.py prepare` 固定同一组每模型至少 32 prompt × 3 个 generation seed，并将提示词选择 seed 与生成 seed 分离。正式 50 步的 late-window、折叠预算与质量阈值需独立开发证据；固定 N=1..K、adaptive 与 exact 的控制保持实际 unconditional-forward 数量可比，N=0 复用 exact 且不记为算法收益。它检查官方模型映射、同分配每档校准与完整/逐配对临时存储预算，尚不生成可执行作业或质量 receipt。LPIPS 权重、完整 VBench 和依赖闭合仍待完成。PSNR 的无限值以 exact-match 关系报告，不做 ∞−∞ 或任意截顶。
 
