@@ -224,7 +224,9 @@ PYTHONPATH=workers python3 benchmarks/collect_stage_evidence.py \
 
 P3 的 `p3_stream.py` 生成固定 warmup/measurement/drain 观察窗内不归一化的 Poisson 到达，请求数自然随机，模态与分辨率按冻结概率取样；全计划 prompt 余量不足即拒绝。`p3_window_review.py` 复算到达、SLO 和输入规格，保留失败、未开始和右删失分母，分别统计 arrival cohort 与完成窗口，按 seed 给区间。当前 drain 是分析截止，未实现核心精确停止；有限窗口与相关 queue bins 不授予稳定容量资格。
 
-P4 的 `p4_quality_plan.py prepare` 固定同一组每模型至少 32 prompt × 3 个 generation seed，并将提示词选择 seed 与生成 seed 分离。正式 50 步的 late-window、折叠预算与质量阈值需独立开发证据；固定 N=1..K、adaptive 与 exact 的控制保持实际 unconditional-forward 数量可比，N=0 复用 exact 且不记为算法收益。它检查官方模型映射、同分配每档校准与完整/逐配对临时存储预算，尚不生成可执行作业或质量 receipt。LPIPS 权重、完整 VBench、流式评测和依赖闭合仍待完成。PSNR 的无限值以 exact-match 关系报告，不做 ∞−∞ 或任意截顶。
+P4 的 `p4_quality_plan.py prepare` 固定同一组每模型至少 32 prompt × 3 个 generation seed，并将提示词选择 seed 与生成 seed 分离。正式 50 步的 late-window、折叠预算与质量阈值需独立开发证据；固定 N=1..K、adaptive 与 exact 的控制保持实际 unconditional-forward 数量可比，N=0 复用 exact 且不记为算法收益。它检查官方模型映射、同分配每档校准与完整/逐配对临时存储预算，尚不生成可执行作业或质量 receipt。LPIPS 权重、完整 VBench 和依赖闭合仍待完成。PSNR 的无限值以 exact-match 关系报告，不做 ∞−∞ 或任意截顶。
+
+`p4_stream_quality.py --plan ... --evidence ... --output ...` 现可离线读取已绑定该计划的成对 NPY：最多同时打开两份只读 memmap，以逐帧工作数组计算 MSE、PSNR、SSIM 和时序差分误差。文件与数组 SHA256、实际 matrix/worker_config/video_worker_options 合并顺序、模型、输入、GPU 放置与完整折叠历史都须核验；旧的未绑定输出不能直接改名进入此计划。所有缺失、失败项保留在计划分母，按 prompt 聚类重采样并保留 seed/shape 关联，另按 shape 与实际折叠 N 分层。无限 PSNR 以精确关系和有限 MSE 差分处理。该工具没有 GPU runner，LPIPS/VBench 仍为 unknown，不能授予 P4 或算法优越性资格；memmap 也不是硬 RSS 上限。跨批结果归并、下游依赖闭合与磁盘回收尚未实现，评测不删除原始输出。
 
 `native_metrics.py` 的释放容量与图像重叠改为按 GPU 合并时间区间，batch 成员不重复累计 GPU 时间；使用最近一次 full-CFG 布局，无法追溯的换组不获得释放额度。该指标仍是 placement/window proxy，`reuse_qualified=false`，尚缺 release ACK、epoch 生命周期、真实受益执行与 fold-only/forced/demand 因果对照。不同 attempt/order 的请求分母不得合并，缺身份的多臂旧记录拒绝推断。
 
