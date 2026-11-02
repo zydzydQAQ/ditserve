@@ -2,6 +2,7 @@
 
 import importlib.util
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -10,7 +11,8 @@ from unittest.mock import patch
 from ditserve.runtime.worker import bind_generation_identity, runtime_identity
 
 
-LOCAL = Path(__file__).resolve().parents[3] / ".local/ditserve-kairos-rewrite-runtime"
+LOCAL = Path(os.environ.get("DITSERVE_KAIROS_RUNTIME_ROOT",
+    Path(__file__).resolve().parents[3] / ".local/ditserve-kairos-rewrite-runtime"))
 
 
 def module_at(name, path):

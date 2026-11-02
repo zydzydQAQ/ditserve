@@ -14,7 +14,8 @@ from unittest.mock import patch
 from ditserve import results
 
 
-SCRIPT = Path(__file__).resolve().parents[3] / ".local/ditserve-kairos-rewrite-runtime/scripts/ditserve_output_retention.py"
+SCRIPT = Path(os.environ.get("DITSERVE_KAIROS_RUNTIME_ROOT",
+    Path(__file__).resolve().parents[3] / ".local/ditserve-kairos-rewrite-runtime")) / "scripts/ditserve_output_retention.py"
 if not SCRIPT.is_file():
     raise unittest.SkipTest("local operator retention script is not distributed with the package")
 SPEC = importlib.util.spec_from_file_location("retention_20261102", SCRIPT)

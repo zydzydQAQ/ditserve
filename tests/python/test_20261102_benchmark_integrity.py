@@ -213,7 +213,9 @@ class BenchmarkIntegrityTest(unittest.TestCase):
             self.assertEqual(controlled["experiment"], "kairos-wan22-native-serving-s201-l1p0")
 
     def test_local_wrappers_keep_controlled_arms_and_evaluate_both_candidates(self):
-        scripts = Path(__file__).resolve().parents[3] / ".local/ditserve-kairos-rewrite-runtime/scripts"
+        runtime_root = Path(os.environ.get("DITSERVE_KAIROS_RUNTIME_ROOT",
+            Path(__file__).resolve().parents[3] / ".local/ditserve-kairos-rewrite-runtime"))
+        scripts = runtime_root / "scripts"
         with TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "scripts").mkdir()
@@ -289,12 +291,15 @@ a.output.write_text(json.dumps({'run': str(a.run)}))
             self.assertIn("requires policy static-cfg2sp3", result.stderr)
 
     def test_generated_gfc_spec_includes_both_fixed_comparison_policies(self):
-        script = Path(__file__).resolve().parents[3] / ".local/ditserve-kairos-rewrite-runtime/tools/generate_batch_20261102.py"
+        runtime_root = Path(os.environ.get("DITSERVE_KAIROS_RUNTIME_ROOT",
+            Path(__file__).resolve().parents[3] / ".local/ditserve-kairos-rewrite-runtime"))
+        script = runtime_root / "tools/generate_batch_20261102.py"
         spec = importlib.util.spec_from_file_location("job_generator", script)
         generator = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(generator)
         with TemporaryDirectory() as directory:
-            with patch.object(generator, "ROOT", Path(directory)), patch.object(sys, "argv", [str(script), "HEAD", "--stage", "gfc"]):
+            with patch.object(generator, "ROOT", Path(directory)), patch.object(generator, "resolve_sha", lambda ref: "0123456"), \
+                    patch.object(sys, "argv", [str(script), "HEAD", "--stage", "gfc"]):
                 generator.main()
             jobs = [json.loads(path.read_text()) for path in Path(directory).rglob("*.json")]
             serving = next(job for job in jobs if "gfc-serve" in job["name"])
