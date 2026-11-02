@@ -283,10 +283,11 @@ class OperatorPreparationTest(unittest.TestCase):
                 job.preflight(**pre)
 
     def test_fresh_process_imports_only_the_copied_benchmark_snapshot(self):
+        from ditserve.runtime import PACKAGE_ROOT
         with TemporaryDirectory() as directory:
             root=Path(directory); pre, _=self.fixture(root)
             environment=dict(os.environ, PYTHONDONTWRITEBYTECODE='1',
-                PYTHONPATH=os.pathsep.join((str(pre['benchmark_root']), str(ROOT/'workers'))))
+                PYTHONPATH=os.pathsep.join((str(pre['benchmark_root']), str(PACKAGE_ROOT))))
             code='import json,p1_isolated_job as j,sys; print(json.dumps(j.benchmark_identity(sys.argv[1])))'
             result=subprocess.run([sys.executable,'-c',code,str(pre['benchmark_root'])],env=environment,
                 check=True,capture_output=True,text=True,timeout=30,cwd=root)
