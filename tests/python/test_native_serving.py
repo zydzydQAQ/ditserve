@@ -182,6 +182,25 @@ class NativeServingTest(unittest.TestCase):
             self.assertEqual(curve["cfg_vel_alpha"], fixed["cfg_vel_alpha"])
             self.assertEqual(curve["cfg_damping"], fixed["cfg_damping"])
             self.assertEqual(curve["max_folded_steps"], len(fixed["folded_steps"]))
+            self.assertEqual(fixed["max_folded_steps"], 7)
+
+    def test_quality_arms_hold_form_and_resources_fixed(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "profile.json").write_text(json.dumps(profile()), encoding="utf-8")
+            for kind, name in (("image", "diffusiondb"), ("video", "vidprom")):
+                (root / (name + ".json")).write_text(json.dumps(pool(kind)), encoding="utf-8")
+            for arm in ("exact", "fixed", "curvature"):
+                argv = ["native_serving.py", "--model", "wan22", "--profile", str(root / "profile.json"),
+                        "--datasets", str(root), "--gpu-uuids", ",".join(f"GPU-{i}" for i in range(8)),
+                        "--quality-arm", arm, "--count", "2", "--output", str(root / (arm + ".json"))]
+                with patch.object(sys, "argv", argv):
+                    native_serving.main()
+                config = json.loads((root / (arm + ".json")).read_text())
+                expected = "block-cfg2sp3" if arm == "exact" else "fold-cfg2sp3"
+                self.assertEqual(config["phases"][0]["matrix"]["/policy"], [expected])
+                self.assertEqual(config["phases"][0]["options"]["forms"], ["cfg2sp3"])
+                self.assertEqual(config["benchmark"]["quality_arm"], arm)
 
 
 if __name__ == "__main__":

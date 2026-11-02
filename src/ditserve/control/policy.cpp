@@ -43,7 +43,7 @@ const std::map<std::string, PolicyTraits>& named() {
         {
             auto t = ditserve_row("ditserve-approx", "DitServe-Approx", "ours",
                 "this work, approximate mode: DitServe plus worker-driven late-step CFG folding");
-            t.v5 = true;
+            t.v5 = t.fission = true;
             add(t);
         }
 
@@ -127,7 +127,7 @@ const std::map<std::string, PolicyTraits>& named() {
         {
             auto t = v1_row("ditserve-v1-approx", "DitServe-v1-Approx", "ablation",
                 "earlier approximate planner: knapsack + late-step CFG folding");
-            t.blocks = t.v5 = true;
+            t.blocks = t.v5 = t.fission = true;
             add(t);
         }
         {
@@ -193,9 +193,9 @@ const std::set<std::string>& retired() {
     return names;
 }
 
-// static-<form>, block-<form>, xdit-<form> (and legacy static_<form>, block_<form>).
+// Fixed-form execution controls and explicit approximate resource arms.
 bool parameterised(const std::string& name, std::string& kind, Form& form) {
-    for (const char* prefix : {"static-", "block-", "xdit-", "static_", "block_"}) {
+    for (const char* prefix : {"static-", "block-", "xdit-", "fold-", "approx-", "static_", "block_"}) {
         const std::string p(prefix);
         if (name.rfind(p, 0) != 0) continue;
         try { form = parse_form(name.substr(p.size())); }
@@ -242,6 +242,11 @@ const PolicyTraits& policy_traits(const std::string& raw) {
     } else if (kind == "block") {
         t = row(name, "Block-" + form_text, "control", "fixed parallel form with block quanta and sub-step preemption");
         t.fixed_form = form; t.fixed_degree = form.degree(); t.blocks = true;
+    } else if (kind == "fold" || kind == "approx") {
+        t = row(name, (kind == "fold" ? "Fold-" : "Approx-") + form_text, "ablation",
+            kind == "fold" ? "fixed-form CFG folding with the unconditional subgroup reserved but idle"
+                           : "fixed initial CFG form with folding and subgroup fission");
+        t.fixed_form = form; t.fixed_degree = form.degree(); t.blocks = t.v5 = true; t.fission = kind == "approx";
     } else {
         t = row(name, form_text == "cfg2" ? "xDiT" : "xDiT-" + form_text, "baseline",
             "xDiT engine (arXiv:2411.01738) deployed as usual: each model on its own GPUs, fixed parallel form, "
@@ -259,11 +264,12 @@ Json policy_catalog() {
                     {"fixed_form", t.fixed_degree ? form_name(t.fixed_form) : ""},
                     {"elastic", t.elastic}, {"blocks", t.blocks}, {"rounds", t.rounds}, {"knapsack", t.knapsack},
                     {"deadline_dp", t.deadline_dp}, {"best_fit", t.best_fit}, {"approximate", t.approx || t.v3 || t.v5},
-                    {"prune_dominated", t.prune_dominated}, {"min_video_degree", t.min_video_degree},
+                    {"fission", t.fission}, {"prune_dominated", t.prune_dominated}, {"min_video_degree", t.min_video_degree},
                     {"order", t.order}, {"hold_diffuse", t.hold_diffuse}, {"partition_divisor", t.partition_divisor}};
     };
     for (const auto& item : named()) out.push_back(describe(item.second));
-    for (const char* name : {"xdit-cfg2", "static-cfg2", "block-cfg2"}) out.push_back(describe(policy_traits(name)));
+    for (const char* name : {"xdit-cfg2", "static-cfg2", "block-cfg2", "fold-cfg2sp3", "approx-cfg2sp3"})
+        out.push_back(describe(policy_traits(name)));
     return out;
 }
 }

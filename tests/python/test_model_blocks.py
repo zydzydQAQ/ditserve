@@ -296,6 +296,32 @@ class BlockExecutorTests(unittest.TestCase):
         self.assertEqual(continuation.stepper.stats["full_cfg_steps"], 3)
         self.assertEqual(continuation.stepper.stats["folded_cfg_steps"], 1)
 
+    def test_fold_only_cfg2_skips_uncond_but_preserves_group_state(self):
+        options = dict(folded_steps={1}, final_step_exact_anchor=True, cfg_vel_alpha=0.0)
+        latents, transmitted = [], []
+        for rank in (0, 1):
+            worker, executor, prepare = fixture(steps=3, cfg_fold_options=options)
+            state = prepare("fold-only-" + str(rank))
+            continuation = executor.attach(state)
+            executor.advance(continuation, 60, cfg_folded=False)
+            layout = SimpleNamespace(cfg=2, cfg_role=lambda value: value)
+            parallel = Mock()
+            parallel.handle = SimpleNamespace(current=layout, rank=rank)
+            if rank == 0:
+                parallel.broadcast_folded_prediction.side_effect = lambda value: transmitted.append(value.clone()) or value
+            else:
+                parallel.broadcast_folded_prediction.side_effect = lambda value: transmitted[0].clone()
+            executor.parallel = parallel
+            executor._forward_block = Mock(wraps=executor._forward_block)
+            executor._prediction = Mock(wraps=executor._prediction)
+            executor.advance(continuation, 30, cfg_folded=True)
+            self.assertEqual(executor._forward_block.call_count, 0 if rank else 30)
+            self.assertEqual(executor._prediction.call_count, 0 if rank else 1)
+            parallel.broadcast_folded_prediction.assert_called_once()
+            self.assertEqual(continuation.stepper.stats["folded_cfg_steps"], 1)
+            latents.append(state.latents)
+        self.assertTrue(self.torch.equal(*latents))
+
     def test_cfg_fold_cannot_change_between_sequential_branches(self):
         options = dict(folded_steps={1, 2}, final_step_exact_anchor=True)
         worker, executor, prepare = fixture(cfg_fold_options=options)

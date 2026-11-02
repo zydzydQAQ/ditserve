@@ -928,6 +928,26 @@ int main() {
         require(pcie_plan(Json::array({video("v1", 1e9), video("v2", 1e9), video("v3", 1e9), video("v4", 1e9)}), "edf-cfg2").at("assignments").size() == 4,
                 "EDF-CFG2 uses every GPU");
     });
+    check("fold-only and fission resource arms remain distinct", [] {
+        Json request = video("fold", 1e9, {{"status", "suspended"}, {"prepared", true}, {"steps_done", 12}, {"steps_total", 20},
+            {"group", {0, 1, 2, 3, 4, 5}}, {"form", "cfg2sp3"}, {"cfg_fold_eligible", true}});
+        const Json state = {{"now_ms", 0}, {"gpus", 8}, {"busy", Json::array()}, {"requests", {request}}};
+        const Json options = {{"forms", {"cfg2sp3"}}};
+        Json prof = profile(); prof["links"]["3"] = {{"gbps", 15}, {"latency_ms", 0.1}};
+        const ClusterCost cost(prof);
+        const auto held = cluster_plan(state, "fold-cfg2sp3", cost, options).at("assignments")[0];
+        require(held.at("form") == "cfg2sp3" && held.at("group").size() == 6 && held.value("cfg_folded", false),
+                "fold-only keeps the complete CFG2 group reserved");
+        const auto released = cluster_plan(state, "approx-cfg2sp3", cost, options).at("assignments")[0];
+        require(released.at("form") == "sp3" && released.at("group").size() == 3 && released.value("cfg_folded", false),
+                "fission contracts the conditional subgroup");
+        request["group"] = {0, 1}; request["form"] = "cfg2";
+        const auto pair = cluster_plan({{"now_ms", 0}, {"gpus", 2}, {"busy", Json::array()}, {"requests", {request}}},
+            "ditserve-approx", ClusterCost(profile()), {{"forms", {"cfg2"}}}).at("assignments")[0];
+        require(pair.at("form") == "sp1" && pair.at("group") == Json::array({0}), "a CFG pair can fission to one GPU");
+        require(!policy_traits("fold-cfg2sp3").fission && policy_traits("approx-cfg2sp3").fission,
+                "policy identity records the resource mechanism");
+    });
     check("new policies simulate to completion", [&] {
         Json trace = Json::array();
         for (int i = 0; i < 12; ++i) trace.push_back(trace_row("v" + std::to_string(i), "video", i * 3000.0, i * 3000.0 + 60000));

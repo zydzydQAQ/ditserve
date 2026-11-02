@@ -45,6 +45,80 @@ def kind_summary(rows, elapsed_ms):
     }
 
 
+def approximation_summary(rows):
+    videos = [row for row in rows if row["kind"] == "video" and row.get("cfg_fold")]
+    if not videos:
+        return None
+    folded_quanta = fission_quanta = 0
+    release_windows, image_users = {}, set()
+    released_gpu_ms = 0.0
+    gate_ms = []
+    state_bytes = []
+    for row in videos:
+        stats = row["cfg_fold"]
+        folded = stats.get("folded_cfg_steps")
+        full = stats.get("full_cfg_steps")
+        indices = stats.get("folded_step_indices")
+        if type(folded) is not int or type(full) is not int or full + folded != row["spec"]["steps"]:
+            raise ValueError("full and folded step counts do not cover the completed request")
+        if type(indices) is not list or len(indices) != folded or len(set(indices)) != folded:
+            raise ValueError("actual folded-step evidence is missing or ambiguous")
+        if stats.get("final_step_exact_anchor") and row["spec"]["steps"] - 1 in indices:
+            raise ValueError("final exact-anchor contract was violated")
+        if stats.get("curvature_gate_ms") is not None:
+            gate_ms.append(stats["curvature_gate_ms"])
+        if stats.get("cfg_state_bytes") is not None:
+            state_bytes.append(stats["cfg_state_bytes"])
+        samples = row.get("advance_samples", [])
+        full_group = next((sample["group"] for sample in samples
+                           if not sample.get("cfg_folded") and sample.get("form", "").startswith("cfg2")), None)
+        for sample in samples:
+            if not sample.get("cfg_folded"):
+                continue
+            folded_quanta += 1
+            if full_group is None:
+                raise ValueError("folded execution lacks a full-CFG placement reference")
+            if sample.get("start_ms") is None or sample.get("finish_ms") is None:
+                raise ValueError("fission accounting requires timed execution intervals")
+            released = sorted(set(full_group) - set(sample["group"]))
+            if released:
+                fission_quanta += 1
+                released_gpu_ms += len(released) * sample["elapsed_ms"]
+                for gpu in released:
+                    release_windows.setdefault(gpu, []).append((sample["start_ms"], sample["finish_ms"]))
+    merged = {}
+    for gpu, intervals in release_windows.items():
+        ordered = sorted(intervals)
+        current = [list(ordered[0])]
+        for start, finish in ordered[1:]:
+            if start <= current[-1][1]:
+                current[-1][1] = max(current[-1][1], finish)
+            else:
+                current.append([start, finish])
+        merged[gpu] = current
+    image_overlap_ms = 0.0
+    for row in rows:
+        if row["kind"] != "image" or row.get("status") != "completed" or not row.get("gpu_group"):
+            continue
+        overlap = 0.0
+        for gpu in row["gpu_group"]:
+            for start, finish in merged.get(gpu, []):
+                overlap += max(0.0, min(finish, row["finish_ms"]) - max(start, row["start_ms"]))
+        if overlap > 0:
+            image_overlap_ms += overlap
+            image_users.add(row["request_id"])
+    return {
+        "video_count": len(videos), "folded_quanta": folded_quanta, "fission_quanta": fission_quanta,
+        "folded_steps": sum(row["cfg_fold"]["folded_cfg_steps"] for row in videos),
+        "full_cfg_steps": sum(row["cfg_fold"]["full_cfg_steps"] for row in videos),
+        "released_gpu_ms_capacity": released_gpu_ms,
+        "image_overlap_on_released_gpu_ms": image_overlap_ms,
+        "image_requests_on_released_gpus": len(image_users),
+        "curvature_gate_ms": distribution(gate_ms), "cfg_state_bytes": distribution(state_bytes),
+        "accounting_scope": "timed worker quanta and observed image overlap; capacity is not a measured utilization gain",
+    }
+
+
 def summarize_run(record):
     cells = [(phase.get("id", "cluster"), cell) for phase in record["phases"] for cell in phase["cells"]]
     summaries = []
@@ -73,6 +147,7 @@ def summarize_run(record):
             "image_batch": cell.get("image_batch"),
             "doorbell": cell.get("doorbell"),
             "observed_transfers": sum(row.get("transfers", 0) for row in rows),
+            "approximation": approximation_summary(rows),
             "block_quantum_elapsed_ms": distribution(block_samples),
             "advance_sample_count": len(block_samples),
             "preemption_response_ms": distribution([

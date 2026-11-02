@@ -19,9 +19,10 @@ POLICY_DISPLAY = {
     "xdit": "xDiT", "tetriserve": "TetriServe (re-impl.)", "sbp-esp": "SBP-ESP", "edf-bestfit": "EDF-BF",
     "edf-cfg2": "EDF-CFG2", "cfg2-first": "CFG2-First", "partition": "Static-Partition",
     "ditserve": "DitServe", "ditserve-approx": "DitServe-Approx",
+    "fold-cfg2sp3": "CFG2SP3 fold only", "approx-cfg2sp3": "CFG2SP3 fold + fission",
     "abl-no-block": "DitServe w/o block preemption", "abl-no-prune": "DitServe w/o form pruning",
     "abl-no-mindeg": "DitServe w/o CFG-pair admission", "abl-first-fit": "DitServe w/o pair-fit placement",
-    "ditserve-v1": "DitServe-v1 (knapsack)", "block-cfg2": "Block-cfg2",
+    "ditserve-v1": "DitServe-v1 (knapsack)", "block-cfg2": "Block-cfg2", "block-cfg2sp3": "Block-cfg2sp3",
 }
 SUITES = {
     # External methods and simple heuristics against DitServe.
@@ -36,7 +37,8 @@ SUITES = {
 }
 SUITES["main+ablation"] = list(dict.fromkeys(SUITES["main"] + SUITES["ablation"]))
 DEFAULT_POLICIES = SUITES["main"]
-APPROXIMATE_POLICIES = ("ditserve-approx", "ditserve-v1-approx", "heterodit_v5")
+APPROXIMATE_POLICIES = ("ditserve-approx", "ditserve-v1-approx", "heterodit_v5",
+                        "fold-cfg2sp3", "approx-cfg2sp3")
 FORMS = ["sp1", "cfg2", "sp2", "cfg2sp2", "sp3", "cfg2sp3", "sp4", "cfg2sp4", "sp6", "sp8"]
 FORM_DEGREES = {"sp1": 1, "cfg2": 2, "sp2": 2, "sp3": 3, "cfg2sp2": 4,
                 "sp4": 4, "cfg2sp3": 6, "sp6": 6, "cfg2sp4": 8, "sp8": 8}
@@ -299,7 +301,7 @@ def main():
             parser.error("controlled quality arms require --forms cfg2sp3")
         if len(uuids) < 6:
             parser.error("controlled cfg2sp3 quality arms require at least 6 GPUs")
-        policies = ["block-cfg2sp3" if args.quality_arm == "exact" else "ditserve-approx"]
+        policies = ["block-cfg2sp3" if args.quality_arm == "exact" else "fold-cfg2sp3"]
         forms, args.video_fraction, args.quality_per_kind = ["cfg2sp3"], 1.0, args.count
         args.doorbell, args.output_mode = True, "check"
         args.curvature = args.quality_arm == "curvature"
@@ -318,8 +320,12 @@ def main():
             "force_exact_cond_on_fold": True,
         }
     elif args.fold_steps:
+        fixed_steps = [int(value) for value in args.fold_steps.split(",")]
+        if len(set(fixed_steps)) != len(fixed_steps):
+            parser.error("--fold-steps must not contain duplicates")
         cfg_fold = {
-            "folded_steps": [int(value) for value in args.fold_steps.split(",")],
+            "folded_steps": fixed_steps,
+            "max_folded_steps": len(fixed_steps),
             "final_step_exact_anchor": True,
             "force_exact_cond_on_fold": True,
             "cfg_vel_alpha": 0.0,

@@ -773,13 +773,14 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         std::vector<int> group;for(const auto& gpu:assignment.at("group"))group.push_back(gpu.get<int>());
         for(int gpu:group)busy[gpu]=true;
         if(!row.contains("start_ms"))row["start_ms"]=now();
+        if(row.at("kind")=="image")row["gpu_group"]=group;
         const int degree=static_cast<int>(group.size());
         // The group's parallel form: CFG branches on separate halves (cfg) and SP inside each.
         const Form form=parse_form(assignment.value("form","sp"+std::to_string(degree)));
         if(form.degree()!=degree)throw std::logic_error("assignment form does not match its group");
         if(form.cfg>1&&transport=="pinned")throw std::invalid_argument("pinned cluster workers run SP1 only");
         const bool cfg_folded=assignment.value("cfg_folded",false);
-        if(cfg_folded&&(!traits.v5||form.cfg!=1))throw std::invalid_argument("CFG folding requires the v5 single-branch form");
+        if(cfg_folded&&(!traits.v5||(traits.fission&&form.cfg!=1)))throw std::invalid_argument("CFG-fold execution form differs from its resource mode");
         state.cfg_folded=cfg_folded;
         const auto form_label=form_name(form);
         if(std::find(row["degrees"].begin(),row["degrees"].end(),degree)==row["degrees"].end())row["degrees"].push_back(degree);
@@ -1231,6 +1232,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             {"form",form_name(expected_form)},{"group",task.assignment.at("group")},{"cfg_folded",expected_folded},
             {"reason",task.assignment.at("reason")},{"first",first},{"transfer",out.contains("transfer")},
             {"steady",!first&&!out.contains("transfer")&&task.assignment.value("pair",std::string()).empty()},
+            {"start_ms",now()-elapsed},{"finish_ms",now()},
             {"elapsed_ms",elapsed},{"model_ms",model},{"worker_operation_ms",operation_ms}
         });
         const int executed_main=reported>=0?reported:quantum=="step"?cost.blocks_per_step(row.at("class").get<std::string>())-state.blocks:quantum.get<int>();

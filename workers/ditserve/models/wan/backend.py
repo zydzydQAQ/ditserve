@@ -96,12 +96,7 @@ class WanBackend(Backend):
                 cfg_folded=continuation.folded,
                 cfg_fold_eligible=bool(ready and state.step_index < state.spec["steps"]
                                        and stepper.should_fold(state.step_index, state.spec["steps"])),
-                cfg_fold={
-                    "last_curvature": stepper._last_curvature,
-                    "full_cfg_steps": stepper.stats["full_cfg_steps"],
-                    "folded_cfg_steps": stepper.stats["folded_cfg_steps"],
-                    "dynamic_fold_start_step": stepper.dynamic_fold_start_step,
-                },
+                cfg_fold=stepper.summary(),
             )
         return result
 

@@ -202,6 +202,19 @@ class XDitWanParallelBackend:
             raise ParallelContractError("CFG prediction exchange failed: " + str(error)) from error
         return chunks[0], chunks[layout.sp_degree]
 
+    def broadcast_folded_prediction(self, prediction):
+        from ..wan.parallel import ParallelContractError
+        self._require_active()
+        layout = self.handle.current
+        if layout.cfg != 2 or self.groups.backend != "nccl":
+            raise ParallelContractError("fold-only CFG2 execution requires an NCCL prediction broadcast")
+        try:
+            torch.distributed.broadcast(prediction, src=layout.ranks[0], group=self.groups.group(layout.ranks))
+        except Exception as error:
+            self._abort(error)
+            raise ParallelContractError("folded CFG prediction broadcast failed: " + str(error)) from error
+        return prediction
+
     def begin_step(self, state, *, pair=False):
         from ..wan.parallel import ParallelContractError, cache_manager_manifest
         if self.worker is None:

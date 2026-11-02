@@ -89,8 +89,24 @@ def checked_digest(row):
     return artifact["array_sha256"]
 
 
+def validate_run(record):
+    if record.get("schema") != "ditserve.run.v1" or record.get("status") != "completed":
+        raise ValueError("comparison requires a completed ditserve.run.v1 record")
+    benchmark = record.get("config", {}).get("benchmark", {})
+    if benchmark.get("native_serving") is not True:
+        raise ValueError("comparison requires native GPU serving evidence")
+    source = record.get("source", {})
+    if not re.fullmatch(r"[0-9a-f]{64}", source.get("core_sha256", "")):
+        raise ValueError("comparison requires a frozen runtime core identity")
+    return benchmark
+
+
 def compare(record, reference_policy="edf-cfg2", candidate_policy="block-cfg2", form="cfg2", *,
             require_preemption=True, allow_legacy_runtime=False):
+    benchmark = validate_run(record)
+    expected_diagnostic = "contention" if require_preemption else "no_preemption"
+    if benchmark.get("preemption_diagnostic") != expected_diagnostic or benchmark.get("output_mode") != "digest":
+        raise ValueError("run is not the requested controlled digest preemption experiment")
     reference_cell, reference = rows_for(record, reference_policy)
     candidate_cell, candidate = rows_for(record, candidate_policy)
     missing = sorted(set(reference) ^ set(candidate))

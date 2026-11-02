@@ -98,13 +98,14 @@ def extract_measurements(record):
 
 def architecture(model, spec):
     tokens, dim, layers, out_channels = tokens_and_dim(model, spec)
+    patch_volume = math.prod(model["transformer_config"]["patch_size"])
     return {
         "tokens": tokens,
         "dim": dim,
         "layers": layers,
         "comm_mb_per_step": 4.0 * tokens * dim * 2.0 * layers * 2.0 / 1e6,
         "collectives_per_step": layers * 8,
-        "cfg_exchange_mb": tokens * out_channels * 2.0 / 1e6,
+        "cfg_exchange_mb": tokens * patch_volume * out_channels * 2.0 / 1e6,
     }
 
 

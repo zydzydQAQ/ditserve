@@ -24,6 +24,8 @@ class FitNativeProfileTest(unittest.TestCase):
         }
         facts = {"models": {"Wan2.2-TI2V-5B": model}}
         arch = MODULE.architecture(model, spec)
+        self.assertEqual(arch["tokens"], 5824)
+        self.assertAlmostEqual(arch["cfg_exchange_mb"], 2.236416)
         requests = []
         for index, policy in enumerate(policies):
             step_ms = MODULE.predict(500.0, arch, *MODULE.form_of(policy), 12.0, 1.0, 0.05)

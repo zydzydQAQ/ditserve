@@ -10,7 +10,7 @@ import numpy as np
 from scipy.ndimage import gaussian_filter
 
 from ditserve.evaluation.quality import evaluate_quality
-from native_exact import validate_pair_identity
+from native_exact import validate_pair_identity, validate_run
 from native_metrics import distribution, percentile
 
 
@@ -81,15 +81,123 @@ def checked_array(row):
     return array
 
 
+def fold_count(row, expected=None):
+    produced = row["outputs"][-1]
+    generation = produced["generation"]
+    count = generation.get("cfg_folded_steps", 0)
+    if type(count) is not int or count < 0:
+        raise ValueError("actual CFG fold count is missing or invalid")
+    statistics = row.get("cfg_fold")
+    if statistics is None:
+        if count != 0 or generation.get("approximate") is not False:
+            raise ValueError("approximate output is missing worker CFG-fold statistics")
+    else:
+        if statistics.get("folded_cfg_steps") != count:
+            raise ValueError("generation and worker fold counts differ")
+        full = statistics.get("full_cfg_steps")
+        if type(full) is not int or full + count != row["spec"]["steps"]:
+            raise ValueError("worker full and folded steps do not cover the request")
+    history = produced.get("path_history")
+    steps = row["spec"]["steps"]
+    if not isinstance(history, list) or len(history) != steps:
+        raise ValueError("complete solver-step history is required for fold accounting")
+    if any(event.get("step_index") != index for index, event in enumerate(history)):
+        raise ValueError("solver-step history is incomplete or out of order")
+    folded_indices = [index for index, event in enumerate(history) if event.get("cfg_folded", False)]
+    if len(folded_indices) != count:
+        raise ValueError("step history and actual fold count differ")
+    if statistics is not None and statistics.get("folded_step_indices") != folded_indices:
+        raise ValueError("worker and step-history folded indices differ")
+    if history[-1].get("cfg_folded"):
+        raise ValueError("final solver step is not an exact anchor")
+    if expected is not None and count != expected:
+        raise ValueError(f"actual fold count {count} does not match required fixed count {expected}")
+    return count
+
+
+def paired_bootstrap(candidate, control, *, resamples=2000):
+    if type(resamples) is not int or resamples < 100:
+        raise ValueError("paired bootstrap requires at least 100 resamples")
+    for result in (candidate, control):
+        if result.get("status") != "completed" or not result.get("pairs"):
+            raise ValueError("matched-fold comparison requires complete retained pairs")
+    if (candidate.get("source", {}).get("reference_run_sha256")
+            != control.get("source", {}).get("reference_run_sha256")):
+        raise ValueError("candidate arms do not share the same exact reference run")
+    def index(result):
+        rows = {}
+        for row in result["pairs"]:
+            key = (row["dataset_sample_id"], row["seed"], row.get("prompt"))
+            if key in rows:
+                raise ValueError("duplicate quality pair")
+            rows[key] = row
+        return rows
+    left, right = index(candidate), index(control)
+    if left.keys() != right.keys():
+        raise ValueError("candidate arms have different prompt or seed identities")
+    keys = sorted(left, key=repr)
+    mismatched = [key for key in keys
+                  if left[key]["candidate_cfg_folded_steps"] != right[key]["candidate_cfg_folded_steps"]]
+    if mismatched:
+        raise ValueError("adaptive and fixed arms differ in actual fold counts; compare within each count stratum")
+    rng = np.random.default_rng(20261102)
+    metrics = {}
+    for name in ("psnr_db", "ssim", "lpips_mean"):
+        a = np.asarray([left[key][name] for key in keys], dtype=np.float64)
+        b = np.asarray([right[key][name] for key in keys], dtype=np.float64)
+        if not np.isfinite(a).all() or not np.isfinite(b).all():
+            metrics[name] = {"status": "unverified", "reason": "non-finite or missing paired metric"}
+            continue
+        delta = a - b
+        draws = delta[rng.integers(0, len(keys), size=(resamples, len(keys)))].mean(axis=1)
+        metrics[name] = {
+            "status": "measured", "mean_candidate": float(a.mean()), "mean_control": float(b.mean()),
+            "mean_difference": float(delta.mean()),
+            "ci95": [float(np.quantile(draws, 0.025)), float(np.quantile(draws, 0.975))],
+        }
+    return {
+        "method": "paired prompt/seed bootstrap; candidate minus fixed; positive PSNR/SSIM and negative LPIPS favor candidate",
+        "matched_pairs": len(keys), "actual_fold_count_per_pair": "identical", "resamples": resamples,
+        "metrics": metrics,
+    }
+
+
+def matched_fold_bootstrap(candidate, controls, *, resamples=2000):
+    if not isinstance(controls, dict) or any(type(count) is not int or count < 0 for count in controls):
+        raise ValueError("matched-fold controls must be indexed by nonnegative actual fold counts")
+    counts = {row["candidate_cfg_folded_steps"] for row in candidate.get("pairs", [])}
+    strata = {}
+    matched = 0
+    for count in sorted(counts):
+        pairs = [row for row in candidate["pairs"] if row["candidate_cfg_folded_steps"] == count]
+        if count not in controls:
+            strata[str(count)] = {"status": "unverified", "reason": "no fixed-N control", "matched_pairs": 0}
+            continue
+        result = paired_bootstrap(dict(candidate, pairs=pairs), controls[count], resamples=resamples)
+        strata[str(count)] = result
+        matched += result["matched_pairs"]
+    return {
+        "status": "measured" if candidate.get("pairs") and matched == len(candidate["pairs"]) else "unverified",
+        "scope": "pair adaptive and fixed arms only within identical per-video actual fold-count strata",
+        "matched_pairs": matched, "candidate_pairs": len(candidate.get("pairs", [])),
+        "strata": strata,
+    }
+
+
 def compare_runs(reference_run, candidate_run, *, with_lpips=True, lpips_device="cpu",
-                 min_psnr=None, min_ssim=None, allow_legacy_runtime=False):
-    if not reference_run.get("source") or reference_run.get("source") != candidate_run.get("source"):
-        raise ValueError("runtime source identity differs or is missing")
-    if any(run.get("status") != "completed" for run in (reference_run, candidate_run)):
-        raise ValueError("quality comparison requires completed runs")
-    for name, threshold in (("min_psnr", min_psnr), ("min_ssim", min_ssim)):
+                 min_psnr=None, min_ssim=None, max_lpips=None, expected_fold_count=None,
+                 allow_legacy_runtime=False):
+    for run in (reference_run, candidate_run):
+        validate_run(run)
+    if reference_run["source"] != candidate_run["source"]:
+        raise ValueError("runtime source identity differs")
+    for name, threshold in (("min_psnr", min_psnr), ("min_ssim", min_ssim), ("max_lpips", max_lpips)):
         if threshold is not None and not np.isfinite(threshold):
             raise ValueError(name + " must be finite")
+    if max_lpips is not None and not with_lpips:
+        raise ValueError("an LPIPS upper bound cannot be checked with --no-lpips")
+    if expected_fold_count is not None and (type(expected_fold_count) is not int or expected_fold_count < 0):
+        raise ValueError("expected_fold_count must be a nonnegative integer")
     reference, candidate = output_index(reference_run), output_index(candidate_run)
     missing = sorted(set(reference) ^ set(candidate), key=repr)
     pairs, failures = [], []
@@ -101,9 +209,12 @@ def compare_runs(reference_run, candidate_run, *, with_lpips=True, lpips_device=
                 raise ValueError("quality reference must be an exact output")
             if reference[key].get("forms") != candidate[key].get("forms") or len(reference[key].get("forms", [])) != 1:
                 raise ValueError("controlled quality comparison requires the same single parallel form")
+            actual_folds = fold_count(candidate[key], expected_fold_count)
             ref = checked_array(reference[key])
             other = checked_array(candidate[key])
             metrics = evaluate_quality(ref, other, with_lpips=with_lpips, lpips_device=lpips_device)
+            if with_lpips and metrics["lpips_mean"] is None:
+                raise ValueError("LPIPS is required but unavailable")
             score = ssim(ref, other)
             pairs.append({
                 "dataset_sample_id": key[0], "seed": key[1], "prompt": key[2],
@@ -111,7 +222,7 @@ def compare_runs(reference_run, candidate_run, *, with_lpips=True, lpips_device=
                 "ssim": score, "lpips_mean": metrics["lpips_mean"],
                 "temporal_delta_rmse": metrics["temporal_delta_rmse"],
                 "exact_match": metrics["exact_match"], "quality_status": metrics["status"],
-                "candidate_cfg_folded_steps": candidate[key]["outputs"][-1]["generation"].get("cfg_folded_steps", 0),
+                "candidate_cfg_folded_steps": actual_folds,
                 "candidate_cfg_fold": candidate[key].get("cfg_fold"),
                 **identity,
             })
@@ -136,6 +247,8 @@ def compare_runs(reference_run, candidate_run, *, with_lpips=True, lpips_device=
             "exact_match_count": sum(bool(row["exact_match"]) for row in pairs),
             "candidate_cfg_folded_steps": summary([row["candidate_cfg_folded_steps"] for row in pairs]),
         },
+        "fold_count_histogram": {str(count): sum(row["candidate_cfg_folded_steps"] == count for row in pairs)
+                                 for count in sorted({row["candidate_cfg_folded_steps"] for row in pairs})},
         "pairs": pairs,
     }
     if min_psnr is not None:
@@ -143,7 +256,12 @@ def compare_runs(reference_run, candidate_run, *, with_lpips=True, lpips_device=
             row["psnr_is_infinite"] or row["psnr_db"] is not None and row["psnr_db"] >= min_psnr for row in pairs)}
     if min_ssim is not None:
         result["ssim_threshold"] = {"value": min_ssim, "passed": sum(row["ssim"] >= min_ssim for row in pairs)}
-    configured = [result[key] for key in ("psnr_threshold", "ssim_threshold") if key in result]
+    if max_lpips is not None:
+        result["lpips_threshold"] = {"value": max_lpips, "passed": sum(
+            row["lpips_mean"] is not None and row["lpips_mean"] <= max_lpips for row in pairs)}
+    if expected_fold_count is not None:
+        result["fold_count_requirement"] = {"value": expected_fold_count, "matched": len(pairs)}
+    configured = [result[key] for key in ("psnr_threshold", "ssim_threshold", "lpips_threshold") if key in result]
     passed = result["status"] == "completed" and all(gate["passed"] == len(pairs) for gate in configured)
     result["numeric_qualification"] = "unverified" if not configured else "passed" if passed else "failed"
     result["semantic_qualification"] = "unverified"
@@ -159,6 +277,11 @@ def main():
     parser.add_argument("--lpips-device", default="cpu")
     parser.add_argument("--min-psnr", type=float)
     parser.add_argument("--min-ssim", type=float)
+    parser.add_argument("--max-lpips", type=float)
+    parser.add_argument("--expected-fold-count", type=int)
+    parser.add_argument("--control-quality", type=Path, action="append",
+                        help="fixed-N quality JSON with retained pairs and fold_count_requirement; repeat for every available N")
+    parser.add_argument("--bootstrap-samples", type=int, default=2000)
     parser.add_argument("--allow-legacy-runtime", action="store_true", help="diagnostic only when historical runtime metadata is absent")
     parser.add_argument("--keep-pairs", action="store_true", help="retain per-video prompts and quality metrics; default keeps aggregate and failure evidence")
     args = parser.parse_args()
@@ -166,12 +289,25 @@ def main():
     reference, candidate = json.loads(reference_raw), json.loads(candidate_raw)
     result = compare_runs(reference, candidate, with_lpips=not args.no_lpips,
                           lpips_device=args.lpips_device, min_psnr=args.min_psnr, min_ssim=args.min_ssim,
+                          max_lpips=args.max_lpips, expected_fold_count=args.expected_fold_count,
                           allow_legacy_runtime=args.allow_legacy_runtime)
     result["source"] = {
         "reference_run_sha256": hashlib.sha256(reference_raw).hexdigest(),
         "candidate_run_sha256": hashlib.sha256(candidate_raw).hexdigest(),
         "runtime_source": reference.get("source"),
     }
+    if args.control_quality:
+        controls = {}
+        for path in args.control_quality:
+            control = json.loads(path.read_text(encoding="utf-8"))
+            requirement = control.get("fold_count_requirement", {})
+            count = requirement.get("value")
+            if type(count) is not int or count < 0 or requirement.get("matched") != control.get("matched_pairs"):
+                raise ValueError("fixed-N control lacks a complete actual fold-count requirement: " + str(path))
+            if count in controls:
+                raise ValueError("duplicate fixed-N control: " + str(count))
+            controls[count] = control
+        result["matched_fold_comparison"] = matched_fold_bootstrap(result, controls, resamples=args.bootstrap_samples)
     result["preemption_stop_ms"] = {name: distribution([sample["stop_ms"] for row in run["requests"]
         for sample in row.get("preemption_stop_samples", [])]) for name, run in (("reference", reference), ("candidate", candidate))}
     if not args.keep_pairs:
@@ -179,13 +315,16 @@ def main():
             for row in result.pop("pairs") if
             (args.min_psnr is not None and not row["psnr_is_infinite"] and
              (row["psnr_db"] is None or row["psnr_db"] < args.min_psnr)) or
-            (args.min_ssim is not None and row["ssim"] < args.min_ssim)]
+            (args.min_ssim is not None and row["ssim"] < args.min_ssim) or
+            (args.max_lpips is not None and (row["lpips_mean"] is None or row["lpips_mean"] > args.max_lpips)) or
+            (args.expected_fold_count is not None and row["candidate_cfg_folded_steps"] != args.expected_fold_count)]
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("x", encoding="utf-8") as stream:
         json.dump(result, stream, indent=2, ensure_ascii=False)
         stream.write("\n")
     print(json.dumps({"output": str(args.output), "status": result["status"], "metrics": result["metrics"]}, ensure_ascii=False, indent=2))
-    if result["status"] != "completed" or result["numeric_qualification"] == "failed":
+    if (result["status"] != "completed" or result["numeric_qualification"] == "failed"
+            or result.get("matched_fold_comparison", {}).get("status") == "unverified"):
         raise SystemExit(1)
 
 

@@ -144,8 +144,8 @@ class WanBlockExecutor:
         if state.folded:
             if state.stepper is None:
                 raise ValueError("CFG folding requires cfg_fold worker options")
-            if self.parallel is not None and self.parallel.handle.current.cfg != 1:
-                raise ValueError("CFG folding requires a single-branch execution form")
+            if self.parallel is not None and self.parallel.handle.current.cfg not in (1, 2):
+                raise ValueError("CFG folding requires a supported CFG execution form")
             if not state.stepper.should_fold(base.step_index, base.spec["steps"]):
                 raise ValueError("CFG-fold request is not eligible at this solver boundary")
         from .runtime import model_timestep
@@ -200,9 +200,16 @@ class WanBlockExecutor:
 
     def _finish_branch(self, state):
         base = state.base
-        prediction = self._prediction(state.packet)
-        state.packet, state.next_block = None, 0
         layout = self.parallel.handle.current if self.parallel is not None else None
+        if state.folded and layout is not None and layout.cfg == 2:
+            if layout.cfg_role(self.parallel.handle.rank) == 0:
+                prediction = self._prediction(state.packet)
+            else:
+                prediction = self.worker.torch.empty_like(base.latents, dtype=self.model.dtype)
+            prediction = self.parallel.broadcast_folded_prediction(prediction)
+        else:
+            prediction = self._prediction(state.packet)
+        state.packet, state.next_block = None, 0
         guidance = base.spec["guidance_scale"]
         if state.folded:
             prediction = state.stepper.fold_prediction(base.step_index, prediction, guidance)
@@ -289,12 +296,16 @@ class WanBlockExecutor:
                         if side is not None:
                             side.wait_stream(torch.cuda.current_stream())
                     packet, index, branch = state.packet, state.next_block, state.branch
-                    if observe:
+                    idle_fold = (state.folded and self.parallel is not None
+                                 and self.parallel.handle.current.cfg == 2
+                                 and self.parallel.handle.current.cfg_role(self.parallel.handle.rank) == 1)
+                    if observe and not idle_fold:
                         start, end = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
                         start.record()
-                    packet["hidden"] = self._forward_block(packet, index, packet["hidden"], packet["encoder"],
-                                                                 packet["projected"], packet["rotary"])
-                    if observe:
+                    if not idle_fold:
+                        packet["hidden"] = self._forward_block(packet, index, packet["hidden"], packet["encoder"],
+                                                               packet["projected"], packet["rotary"])
+                    if observe and not idle_fold:
                         end.record()
                         events.append((branch, index, start, end))
                     executed += 1

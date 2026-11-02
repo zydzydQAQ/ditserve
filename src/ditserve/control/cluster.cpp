@@ -965,7 +965,12 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             }
             continue;
         }
-        const bool fixed = prepared && (int_field(r, "blocks_done", 0, 0) > 0 || !policy.elastic || pin_started
+        const int blocks_done = int_field(r, "blocks_done", 0, 0);
+        const bool fold_eligible = policy.v5 && r.value("cfg_fold_eligible", false)
+                                   && int_field(r, "steps_done", 0, 0) < steps;
+        const bool resource_transition = policy.fission && prepared && blocks_done == 0
+                                         && (fold_eligible || r.value("cfg_folded", false));
+        const bool fixed = prepared && !resource_transition && (blocks_done > 0 || !policy.elastic || pin_started
                                         || (policy.rounds && int_field(r, "steps_done", 0, 0) % round_steps != 0));
         if (fixed) {
             if (all_free(current)) {
@@ -974,7 +979,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                 Json assignment = {{"request_id", id}, {"group", current}, {"degree", form.degree()}, {"form", form_name(form)},
                                    {"quantum", video_quantum(klass, form, sp_groups(form), &current)},
                                    {"resize", false}, {"reason", "resume"}};
-                if (r.value("cfg_folded", false)) assignment["cfg_folded"] = true;
+                if (fold_eligible || r.value("cfg_folded", false)) assignment["cfg_folded"] = true;
                 if (policy.approx) {
                     double threshold = 0.0;
                     for (double tau : cache_thresholds) {
@@ -1284,13 +1289,13 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         if (chosen.empty()) continue;
         const bool cfg_folded = policy.v5 && r.value("cfg_fold_eligible", false)
                                 && int_field(r, "steps_done", 0, 0) < steps;
-        if (cfg_folded && chosen.size() >= 2) {
+        if (cfg_folded && policy.fission && chosen.size() >= 2) {
             const int half = static_cast<int>(chosen.size()) / 2;
             if (half >= min_degree) chosen.resize(half);
         }
         take(chosen);
         Form form = form_for(klass, static_cast<int>(chosen.size()), &chosen);
-        if (cfg_folded && form.cfg == 2) form = Form{1, form.sp * 2, form.ring};
+        if (cfg_folded && policy.fission && form.cfg == 2) form = Form{1, form.sp * 2, form.ring};
         if (policy.approx && chosen_tau == 0.0 && now + estimate(r, form, sp_groups(form), &chosen, 0.0) > number_field(r, "deadline_ms")) {
             for (double tau : cache_thresholds) {
                 chosen_tau = tau;

@@ -27,7 +27,10 @@ def record(candidate_hash="a" * 64, stops=True):
             "preemption_stop_samples": [{"stop_ms": 11.0}] if cell and stops else [],
         }
     return {
-        "run_id": "r1",
+        "schema": "ditserve.run.v1", "run_id": "r1", "status": "completed",
+        "source": {"core_sha256": "c" * 64},
+        "config": {"benchmark": {"native_serving": True, "output_mode": "digest",
+                                "preemption_diagnostic": "contention"}},
         "phases": [{"cells": [
             {"cell": 0, "policy": "static_cfg2", "status": "completed"},
             {"cell": 1, "policy": "block_cfg2", "status": "completed"},
@@ -46,6 +49,19 @@ class NativeExactTest(unittest.TestCase):
         changed = MODULE.compare(record(candidate_hash="b" * 64))
         self.assertEqual(changed["status"], "incomplete")
         self.assertEqual(changed["mismatches"], ["v0"])
+
+    def test_no_preemption_overhead_requires_an_explicit_zero_stop_run(self):
+        value = record(stops=False)
+        value["config"]["benchmark"]["preemption_diagnostic"] = "no_preemption"
+        result = MODULE.compare(value, require_preemption=False)
+        self.assertEqual(result["status"], "completed")
+        self.assertTrue(result["mechanism_observed"])
+        with self.assertRaisesRegex(ValueError, "controlled digest"):
+            MODULE.compare(value)
+        missing = record()
+        missing.pop("source")
+        with self.assertRaisesRegex(ValueError, "core identity"):
+            MODULE.compare(missing)
 
 
 if __name__ == "__main__":

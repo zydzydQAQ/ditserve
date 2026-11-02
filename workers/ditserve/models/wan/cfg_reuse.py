@@ -71,9 +71,15 @@ class AsymmetricCFGStepper:
             "folded_cfg_steps": 0,
             "saved_uncond_forwards": 0,
             "curvature_triggered_folds": 0,
+            "curvature_metric_evals": 0,
+            "curvature_gate_ms": 0.0,
+            "folded_step_indices": [],
         }
 
     def summary(self) -> dict:
+        state_bytes = sum(value.numel() * value.element_size()
+                          for value in (self._last_delta_cfg, self._delta_velocity)
+                          if hasattr(value, "numel") and hasattr(value, "element_size"))
         return {
             "enabled": self.enabled,
             "folded_steps": sorted(self.folded_steps),
@@ -85,6 +91,7 @@ class AsymmetricCFGStepper:
             "max_folded_steps": self.max_folded_steps,
             "dynamic_fold_start_step": self.dynamic_fold_start_step,
             "curvature_history": list(self.curvature_history),
+            "cfg_state_bytes": state_bytes,
             **self.stats,
         }
 
@@ -108,6 +115,7 @@ class AsymmetricCFGStepper:
             self.stats["curvature_triggered_folds"] += 1
         self.stats["folded_cfg_steps"] += 1
         self.stats["saved_uncond_forwards"] += 1
+        self.stats["folded_step_indices"].append(int(step_index))
         return prediction
 
     def export_state(self) -> tuple[dict, dict]:
@@ -227,8 +235,14 @@ class AsymmetricCFGStepper:
     def observe_cfg_pair(self, index: int, pred_cond: "torch.Tensor", pred_uncond: "torch.Tensor") -> None:
         """Record an exact (pred_cond, pred_uncond) pair from a CFG=2 parallel step."""
         torch = self.torch
+        started = time.perf_counter()
         delta_f32 = pred_cond.detach().to(torch.float32) - pred_uncond.detach().to(torch.float32)
         self._update_curvature_metrics(int(index), delta_f32)
+        elapsed_ms = (time.perf_counter() - started) * 1000.0
+        self.stats["curvature_metric_evals"] += 1
+        self.stats["curvature_gate_ms"] += elapsed_ms
+        if self.curvature_history and self.curvature_history[-1]["step"] == int(index):
+            self.curvature_history[-1]["gate_ms"] = elapsed_ms
         self.stats["full_cfg_steps"] += 1
 
     def step(
@@ -319,10 +333,8 @@ class AsymmetricCFGStepper:
 
                 if g > 1.0:
                     if not fold_this_step and pred_uncond is not None:
-                        delta_f32 = pred_cond.detach().to(torch.float32) - pred_uncond.detach().to(torch.float32)
-                        self._update_curvature_metrics(index, delta_f32)
+                        self.observe_cfg_pair(index, pred_cond, pred_uncond)
                         prediction = pred_uncond + g * (pred_cond - pred_uncond)
-                        self.stats["full_cfg_steps"] += 1
                         if state.cache_enabled:
                             for context in state.contexts.values():
                                 context.executed_steps = index + 1

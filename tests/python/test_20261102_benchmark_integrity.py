@@ -85,8 +85,14 @@ class BenchmarkIntegrityTest(unittest.TestCase):
         changed["requests"].append(copy.deepcopy(changed["requests"][0]))
         with self.assertRaisesRegex(ValueError, "duplicate"):
             native_exact.compare(changed)
-        self.assertEqual(native_exact.compare(record(stops=False), require_preemption=False)["status"], "completed")
-        self.assertEqual(native_exact.compare(record(), require_preemption=False)["status"], "incomplete")
+        no_preemption = record(stops=False)
+        no_preemption["config"]["benchmark"]["preemption_diagnostic"] = "no_preemption"
+        self.assertEqual(native_exact.compare(no_preemption, require_preemption=False)["status"], "completed")
+        unexpected_stops = copy.deepcopy(no_preemption)
+        unexpected_stops["requests"][1]["preemption_stop_samples"] = [{"stop_ms": 11.0}]
+        self.assertEqual(native_exact.compare(unexpected_stops, require_preemption=False)["status"], "incomplete")
+        with self.assertRaisesRegex(ValueError, "controlled digest"):
+            native_exact.compare(record(), require_preemption=False)
         old = record()
         for row in old["requests"]:
             row["outputs"][-1]["generation"].pop("runtime_identity")
@@ -233,9 +239,25 @@ p = argparse.ArgumentParser()
 p.add_argument('--reference-run', type=Path)
 p.add_argument('--candidate-run', type=Path)
 p.add_argument('--output', type=Path)
+p.add_argument('--expected-fold-count', type=int)
+p.add_argument('--max-lpips', type=float)
+p.add_argument('--keep-pairs', action='store_true')
+p.add_argument('--control-quality', action='append')
 a, unused = p.parse_known_args()
 assert a.reference_run.is_file() and a.candidate_run.is_file()
-a.output.write_text(json.dumps({'reference': str(a.reference_run), 'candidate': str(a.candidate_run)}))
+assert a.max_lpips == 0.1
+a.output.write_text(json.dumps({'reference': str(a.reference_run), 'candidate': str(a.candidate_run),
+    'expected_fold_count': a.expected_fold_count, 'keep_pairs': a.keep_pairs,
+    'controls': a.control_quality or []}))
+''')
+            (root / "package/benchmarks/native_metrics.py").write_text('''import argparse, json
+from pathlib import Path
+p = argparse.ArgumentParser()
+p.add_argument('--run', type=Path)
+p.add_argument('--output', type=Path)
+a = p.parse_args()
+assert a.run.is_file()
+a.output.write_text(json.dumps({'run': str(a.run)}))
 ''')
             environment = {**os.environ, "TEST_ROOT": str(root), "DITSERVE_RUN_ID": "controlled",
                 "DITSERVE_EXPERIMENT": "custom.experiment", "DITSERVE_CALIBRATE": "0", "DITSERVE_PROFILE": "fixture"}
@@ -243,11 +265,19 @@ a.output.write_text(json.dumps({'reference': str(a.reference_run), 'candidate': 
                                     capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual([line.split()[0] for line in (root / "arms").read_text().splitlines()],
-                             ["exact", "fixed", "curvature"])
-            for name in ("fixed7", "curvature"):
+                             ["exact"] + ["fixed"] * 7 + ["curvature"] + ["none"] * 4)
+            for count in range(8):
+                name = f"fixed{count}"
                 summary = json.loads((root / f"output/acceptance/controlled/quality-{name}.json").read_text())
                 self.assertIn("custom.experiment/controlled-exact/run.json", summary["reference"])
-                self.assertIn(f"custom.experiment/controlled-{name}/run.json", summary["candidate"])
+                expected_run = "controlled-exact" if count == 0 else f"controlled-{name}"
+                self.assertIn(f"custom.experiment/{expected_run}/run.json", summary["candidate"])
+                self.assertEqual(summary["expected_fold_count"], count)
+                self.assertTrue(summary["keep_pairs"])
+            curvature = json.loads((root / "output/acceptance/controlled/quality-curvature.json").read_text())
+            self.assertEqual(len(curvature["controls"]), 8)
+            self.assertFalse(curvature["keep_pairs"])
+            self.assertEqual(len(list((root / "output/acceptance/controlled").glob("metrics-*.json"))), 13)
             result = subprocess.run(["bash", str(root / "scripts/kairos_native_approx.sh")],
                 env={**environment, "DITSERVE_RUN_ID": "missing", "SKIP_SOURCE": "1"}, capture_output=True, text=True)
             self.assertNotEqual(result.returncode, 0)

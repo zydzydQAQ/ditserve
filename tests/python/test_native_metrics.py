@@ -39,6 +39,30 @@ class NativeMetricsTest(unittest.TestCase):
         self.assertEqual(cell["preemption_stop_ms"]["p50"], 7.5)
         self.assertEqual(result["used_gpu_seconds"], 40.0)
 
+    def test_fission_records_capacity_and_actual_image_overlap(self):
+        video = {
+            "cell": 0, "kind": "video", "status": "completed", "arrival_ms": 0, "start_ms": 0,
+            "deadline_ms": 100, "finish_ms": 40, "spec": {"steps": 20},
+            "cfg_fold": {"full_cfg_steps": 19, "folded_cfg_steps": 1, "folded_step_indices": [12],
+                         "final_step_exact_anchor": True, "curvature_gate_ms": 2.5, "cfg_state_bytes": 64},
+            "advance_samples": [
+                {"form": "cfg2sp3", "group": [0, 1, 2, 3, 4, 5], "cfg_folded": False,
+                 "start_ms": 0, "finish_ms": 10, "elapsed_ms": 10},
+                {"form": "sp3", "group": [0, 1, 2], "cfg_folded": True,
+                 "start_ms": 10, "finish_ms": 30, "elapsed_ms": 20},
+            ],
+        }
+        image = {"cell": 0, "request_id": "i0", "kind": "image", "status": "completed", "gpu_group": [4],
+                 "arrival_ms": 0, "start_ms": 15, "deadline_ms": 100, "finish_ms": 25}
+        result = MODULE.approximation_summary([video, image])
+        self.assertEqual(result["released_gpu_ms_capacity"], 60)
+        self.assertEqual(result["image_overlap_on_released_gpu_ms"], 10)
+        self.assertEqual(result["image_requests_on_released_gpus"], 1)
+        self.assertEqual(result["curvature_gate_ms"]["p50"], 2.5)
+        video["advance_samples"][1].pop("start_ms")
+        with self.assertRaisesRegex(ValueError, "timed execution"):
+            MODULE.approximation_summary([video, image])
+
 
 if __name__ == "__main__":
     unittest.main()
