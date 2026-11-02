@@ -58,6 +58,67 @@ Json trace_row(const std::string& id, const std::string& kind, double arrival, d
 }
 
 int main() {
+    check("20261103 fixed-form resume waits for an interrupted solver-step owner", [] {
+        // Reduced from the failed 12b0918 P0 contention cell: v0012 completed
+        // one step, then feasible-first EDF admitted v0013 on the same CFG pair.
+        // Its ninth quantum stopped early for an image; afterward both videos
+        // were late and the earlier deadline selected v0012 again. The raw run
+        // records no final block counter, so cover every possible stopped block.
+        Json prof = profile();
+        auto& klass = prof["classes"]["video"];
+        klass["steps"] = 20; klass["blocks_per_step"] = 60;
+        klass["step_compute_ms"] = 1158.2064293324947;
+        klass["finish_ms"] = 1867.474514991045;
+        klass["forms"]["cfg2"]["placements"]["0-1"]["step_ms"] = 582.8467737883329;
+        prof["quantum_overhead_ms"] = 1.2567808018311073;
+        const ClusterCost cost(prof);
+        Json earlier = video("w0-v0012", 533208.9355873662,
+            {{"arrival_ms", 473466.1357828203}, {"status", "suspended"}, {"prepared", true},
+             {"steps_done", 1}, {"blocks_done", 0}, {"group", {0, 1}}, {"form", "cfg2"}});
+        Json owner = video("w0-v0013", 534618.0826134813, {{"arrival_ms", 474875.2828089354}});
+        const Json options = {{"forms", {"cfg2"}}, {"quantum_blocks", 4}, {"doorbell", true}, {"lazy_preemption", false}};
+        auto dispatch = [&](double now) {
+            return cluster_plan({{"now_ms", now}, {"gpus", 2}, {"busy", {false, false}},
+                                 {"requests", {earlier, owner}}}, "block-cfg2", cost, options).at("assignments");
+        };
+        const auto admitted = dispatch(520274.0100566298);
+        require(admitted.size() == 1 && admitted[0].at("request_id") == "w0-v0013",
+                "the measured lateness crossover admits the later feasible video");
+        owner.merge_patch({{"status", "suspended"}, {"prepared", true}, {"steps_done", 8},
+                           {"group", {0, 1}}, {"form", "cfg2"}});
+        for (int block = 1; block < 60; ++block) {
+            owner["blocks_done"] = block;
+            const auto resumed = dispatch(527733.4191929549);
+            require(resumed.size() == 1 && resumed[0].at("request_id") == "w0-v0013"
+                    && resumed[0].at("group") == Json::array({0, 1}) && !resumed[0].at("resize").get<bool>(),
+                    "a fixed placement is not permission to enter another video's unfinished step");
+        }
+        owner["blocks_done"] = 0; owner["steps_done"] = 9;
+        const auto boundary = dispatch(527733.4191929549);
+        require(boundary.size() == 1 && boundary[0].at("request_id") == "w0-v0012",
+                "ordinary EDF resumes once the worker is back at a solver-step boundary");
+    });
+    check("20261103 fixed and round-held boundary resumes honor solver ownership", [] {
+        const Json rows = {
+            video("boundary", 100, {{"status", "suspended"}, {"prepared", true}, {"group", {0, 1}},
+                                    {"form", "cfg2"}, {"steps_done", 1}}),
+            video("owner", 200, {{"status", "suspended"}, {"prepared", true}, {"group", {0, 1}},
+                                 {"form", "cfg2"}, {"blocks_done", 4}})};
+        for (const auto* policy : {"block-cfg2", "edf-cfg2", "tetriserve"}) {
+            const auto result = plan(rows, policy, 2, Json::array(), {{"forms", {"cfg2"}}, {"round_steps", 5}});
+            require(result.size() == 1 && result[0].at("request_id") == "owner",
+                    std::string(policy) + " must defer a fixed boundary resume to the unfinished step");
+        }
+        Json partial = rows; partial[0]["group"] = {1}; partial[0]["form"] = "sp1";
+        const auto overlap = plan(partial, "tetriserve", 2, Json::array(), {{"forms", {"sp1", "cfg2"}}, {"round_steps", 5}});
+        require(overlap.size() == 1 && overlap[0].at("request_id") == "owner",
+                "a round-held single GPU must not split a suspended CFG pair");
+        Json demand = rows; demand.push_back(image("urgent-image", 80));
+        const auto preempt = plan(demand, "block-cfg2", 2, Json::array(), {{"lazy_preemption", false}});
+        require(preempt.size() == 1 && preempt[0].at("request_id") == "urgent-image"
+                && preempt[0].at("reason") == "block_preempt",
+                "the solver hold still permits an image on its separate worker after the video stops");
+    });
     check("20261103 deadline doorbells select only a group that saves its reserved image", [] {
         const std::vector<PreemptionGroup> heterogeneous = {
             {"fast-expensive", {0}, 10, 100, 1000, false},

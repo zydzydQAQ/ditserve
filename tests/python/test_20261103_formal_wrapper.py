@@ -83,13 +83,47 @@ if args[1] == 'run':
         path.write_text(content)
         path.chmod(0o755)
 
+    def test_p1_runs_one_formal_pair_and_all_frozen_seeds(self):
+        import ditserve
+        (self.package / 'python').symlink_to(Path(ditserve.__file__).resolve().parents[1], target_is_directory=True)
+        plan = dict(schema='ditserve.p1-plan.v1', seeds=[201, 202, 203],
+                    roles={'contention': {}, 'no_preemption': {}}, shape_pairs=[dict(
+                        id='pair-a', model='wan21', video_shape='new-long-video', image_shape='new-large-image')])
+        (self.package / 'configs/benchmarks/p1-qualification-v1.json').write_text(json.dumps(plan))
+        # The actual plan validator/generator has separate adversarial tests.
+        # Here the stub records shell routing and preserves exact arguments.
+        (self.package / 'benchmarks/p1_benchmark.py').write_text('''def validate_plan(plan, protocol):
+    assert plan['schema'] == 'ditserve.p1-plan.v1'
+if __name__ == '__main__':
+    import json, os, pathlib, sys
+    root = pathlib.Path(os.environ['FIXTURE'])
+    args = sys.argv
+    with (root/'p1-calls.jsonl').open('a') as stream:
+        stream.write(json.dumps(args[1:])+'\\n')
+    pathlib.Path(args[args.index('--output')+1]).write_text(json.dumps({'experiment': 'p1-fixture'}))
+''')
+        digest = hashlib.sha256(json.dumps(plan, sort_keys=True, ensure_ascii=False,
+                                separators=(',', ':'), allow_nan=False).encode()).hexdigest()
+        result = self.run_wrapper(DITSERVE_FORMAL_ACTION='p1', DITSERVE_P1_PAIR='pair-a',
+                                  DITSERVE_P1_ROLE='contention', DITSERVE_P1_PLAN_SHA256=digest)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        calls = [json.loads(line) for line in (self.root / 'calls.jsonl').read_text().splitlines()]
+        calibrations = [row for row in calls if 'calibrate' in row]
+        self.assertEqual(len(calibrations), 1)
+        self.assertIn('new-long-video', calibrations[0])
+        self.assertIn('new-large-image', calibrations[0])
+        p1_calls = [json.loads(line) for line in (self.root / 'p1-calls.jsonl').read_text().splitlines()]
+        self.assertEqual([row[row.index('--seed')+1] for row in p1_calls], ['201', '202', '203'])
+        self.assertTrue(all(row[row.index('--role')+1] == 'contention' for row in p1_calls))
+
     def run_wrapper(self, **extra):
         (self.package / 'configs/benchmarks/formal-mixed-v1.json').write_text(json.dumps(self.protocol))
         digest = hashlib.sha256(json.dumps(self.protocol, sort_keys=True, ensure_ascii=False,
                                 separators=(',', ':'), allow_nan=False).encode()).hexdigest()
         env = dict(os.environ, FIXTURE=str(self.root), PATH=str(self.root/'bin')+os.pathsep+os.environ['PATH'],
                    DITSERVE_MODEL_MANIFESTS='fixture', DITSERVE_PROTOCOL_SHA256=digest,
-                   DITSERVE_RUN_ID='parent', WAN_MODEL='wan', DITSERVE_FORMAL_ACTION='calibration', **extra)
+               DITSERVE_RUN_ID='parent', WAN_MODEL='wan', DITSERVE_FORMAL_ACTION='calibration')
+        env.update(extra)
         return subprocess.run(['bash', str(self.scripts / SOURCE.name)], env=env,
                               text=True, capture_output=True, timeout=30)
 

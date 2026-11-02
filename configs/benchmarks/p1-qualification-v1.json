@@ -1,0 +1,92 @@
+{
+  "schema": "ditserve.p1-plan.v1",
+  "id": "p1-qualification-v1",
+  "protocol_sha256": "6bcefd0a15088214dcde21c787007f52cfe79fbb262532a5d5c3682bcb0e801c",
+  "prompt_split": "development",
+  "seeds": [
+    201,
+    202,
+    203
+  ],
+  "shape_pairs": [
+    {
+      "id": "wan21-0",
+      "model": "wan21",
+      "video_shape": "wan21-480p",
+      "image_shape": "sd35-512"
+    },
+    {
+      "id": "wan21-1",
+      "model": "wan21",
+      "video_shape": "wan21-720p",
+      "image_shape": "sd35-1024"
+    },
+    {
+      "id": "wan22-0",
+      "model": "wan22",
+      "video_shape": "wan22-small",
+      "image_shape": "sd35-512"
+    },
+    {
+      "id": "wan22-1",
+      "model": "wan22",
+      "video_shape": "wan22-720p",
+      "image_shape": "sd35-1024"
+    }
+  ],
+  "roles": {
+    "contention": {
+      "count": 40,
+      "video_fraction": 0.5,
+      "pattern": "bursty",
+      "load": 1.2,
+      "image_slo_scale": 2.5,
+      "video_slo_scale": 1.5,
+      "lazy_preemption": true,
+      "require_observed_stops": true
+    },
+    "no_preemption": {
+      "count": 40,
+      "video_fraction": 1.0,
+      "pattern": "poisson",
+      "load": 0.1,
+      "image_slo_scale": 2.5,
+      "video_slo_scale": 1.5,
+      "lazy_preemption": true,
+      "require_observed_stops": false
+    }
+  },
+  "policies": [
+    "edf-cfg2",
+    "block-cfg2"
+  ],
+  "forms": [
+    "cfg2"
+  ],
+  "output_mode": "digest",
+  "statistics": {
+    "confidence": 0.95,
+    "resampling_unit": "seed",
+    "bootstrap_samples": 10000,
+    "bootstrap_seed": 20261103,
+    "minimum_independent_seeds": 3
+  },
+  "scope": "Formal spatial/temporal shapes, development prompts, fixed CFG2 and lazy deadline filtering. Preserve failures and negative effects. Does not establish cross-form accuracy, semantic quality, sustained capacity or complete P1 cost decomposition. Null benefit thresholds mean descriptive intervals only, not a performance pass.",
+  "unresolved_requirements": [
+    "SP1 and every admitted parallel form need separate shape/memory/numerical qualification",
+    "Separate orchestration, stop, restore and migration costs with explicit unavailable phases",
+    "Lazy preemption must be observed under the frozen formal SLO; zero stops is not success",
+    "Semantic quality is evaluated separately; digest equality is limited to fixed CFG2"
+  ],
+  "thresholds": {
+    "max_no_preemption_latency_ratio": null,
+    "max_stop_ms": null,
+    "minimum_per_modality_attainment_delta": null
+  },
+  "budget_rule": {
+    "schema": "ditserve.trace-budget.v1",
+    "per_cell_startup_seconds": 600,
+    "timing_margin": 1.5,
+    "drain_basis": "sum of per-request calibrated SP1 service; conservative planning estimate, not a measured upper bound"
+  }
+}

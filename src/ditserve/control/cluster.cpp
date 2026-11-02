@@ -1055,7 +1055,13 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         const bool fixed = prepared && !resource_transition && (blocks_done > 0 || !policy.elastic || pin_started
                                         || (policy.rounds && int_field(r, "steps_done", 0, 0) % round_steps != 0));
         if (fixed) {
-            if (all_free(current)) {
+            // A fixed placement can share its workers over time with another
+            // video. At a step boundary it must wait for that video's current
+            // solver step (or chunked decode), even when no quantum is running.
+            // Mid-step owners, including lockstep pairs, resume as before; the
+            // post-condition below still rejects conflicting solver ownership.
+            // Pinned SP1 workers explicitly permit request interleaving.
+            if (all_free(current) && (blocks_done > 0 || pin_started || !held_by_other(current, &r))) {
                 take(current);
                 const Form form = form_of(r, current);
                 Json assignment = {{"request_id", id}, {"group", current}, {"degree", form.degree()}, {"form", form_name(form)},

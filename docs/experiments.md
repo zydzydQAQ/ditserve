@@ -191,3 +191,17 @@ PYTHONPATH=workers python3 benchmarks/collect_stage_evidence.py \
 恢复访问后的实际输入核验：两个 sealed pool 各 4096 条，image 排除后 development/calibration/test 为 947/769/2380，video 为 865/795/2436，满足输入容量门槛。Wan2.1 与 SD3.5 的既有清单对应固定上游 revision；Wan2.2 旧目录明确复用 Wan2.1 的文本编码器，属于组合快照，不能当成完整官方 Wan2.2 模型。正式 Wan2.2 将使用新路径 `wan2.2-ti2v-5b-official-b8fff731`，补齐固定 revision 的 3 个官方 encoder 权重分片及 2 个配置文件（共 11,361,874,539 字节），保留原目录。`model_manifests` 映射可显式指定新 `model_path`，实际 worker 仍需全清单验证。输入就绪前先运行 Wan2.1；P0 的 contention/no-preemption 可生成两个独立 2 卡作业，各自在自身分配校准，不把不同分配的画像混用。
 
 本次冻结前另修复三处控制器边界：lazy 门铃按同一候选组核对每个图像的 deadline，并预留已经响铃的可用容量；remaining-work 扩组禁止单步 pairing 收益绕过整体成本保护；CFG fission 保留 class 最小并行度的安全约束。该门铃是逐图像 EDF 可行性启发式，不是全局最优求解。fission 按需求触发仍待 P4 证明释放容量的实际复用与布局往返收益。
+
+### P1 固定形态诊断的准备入口（2026-11-03）
+
+`configs/benchmarks/p1-qualification-v1.json` 单独绑定原正式协议，保留全部六档正式 shape、开发 prompt 分区、三个开发 seed。四个 video/image pair 分别运行 contention 与 no-preemption，共 24 个源记录、1920 个策略请求。两臂固定 CFG2、digest，lazy 均开启，SLO 使用正式 video×1.5/image×2.5；不沿用 P0 关闭 lazy 的压力条件。
+
+`benchmarks/p1_benchmark.py --pair wan21-0 --role contention --seed 201 --bundle <same-allocation-bundle> --datasets <sealed-pools> --model-manifests <frozen-mapping> --output <new-config>` 生成单个 case。稀疏到达的时间预算按冻结规则使用实际 trace horizon、校准服务时间及启动余量计算，避免正式高分辨率 trace 超过开发预算；这只是执行预算估算，不是实测性能。
+
+操作工具 `tools/generate_p1_batch.py <commit> --gpus 2 --model-manifests <remote-mapping>` 只导出不可覆盖的规格。每作业独立校准一个正式 pair，再运行三个 seed；提交仍要求 `--required-stage P0`。不得为跳过这项门槛把 P1 标为 calibration 或直接使用 CONTRACT receipt。
+
+`benchmarks/p1_qualification.py --manifest <evidence.json> --output <new-review.json>` 接收 `ditserve.p1-evidence.v1`：protocol、plan、p0_receipt 均为路径与 SHA256 引用，runs 明确列出 pair_id/role/seed/path/sha256。它重验原始 P0、实际 GPU 分配、完整运行时与模型身份、实际 trace/SLO/shape，以及两模态有限 digest。缺失、执行失败和零停止不从计划分母中删除；误差区间按独立 seed 聚合。
+
+该入口目前仅评审固定 CFG2 子资格，不生成 P1 晋级 receipt。完整 P1 还缺所有允许形态的资格和独立恢复/导入/编排计时；语义质量归属独立评测。三个 seed 的区间是小样本负载变化估计，不是同输入计时重复性证明。阈值为 null 时只报告效果区间，不能事后挑阈值宣布收益。
+
+2026-11-03 的 `12b0918` P0 contention 在第一个 Block-CFG2 cell 暴露固定形态恢复漏洞：step 边界请求的 GPU 虽空闲，仍可能保留另一视频未完成的 solver step。最终互斥检查正确拒绝计划；30 请求完成、10 中断，另一策略 40 请求尚未执行，不能授予资格。修复在固定恢复分支补充已有 owner 筛选，保留 mid-step/合法 lockstep 及 pinned 路径；用真实到达/截止时间与所有 59 个可能的中途 block 位置做回归。新核心需要新的 CONTRACT/P0；旧失败数据和仍未闭合的原始依赖继续保留。

@@ -21,6 +21,27 @@ from ditserve.evaluation.workloads import build_trace, validate_trace
 DEFAULT_PROTOCOL = Path(__file__).resolve().parents[1] / 'configs/benchmarks/formal-mixed-v1.json'
 BUNDLE_SCHEMA = 'ditserve.shape-profiles.v1'
 HEX64 = re.compile(r'[0-9a-f]{64}')
+TRACE_BUDGET_RULE = dict(schema='ditserve.trace-budget.v1', per_cell_startup_seconds=600,
+    timing_margin=1.5,
+    drain_basis='sum of per-request calibrated SP1 service; conservative planning estimate, not a measured upper bound')
+
+
+def apply_trace_budget(config, rule=TRACE_BUDGET_RULE):
+    """Keep long, low-load traces inside the budget without altering arrivals."""
+    phase = config['phases'][0]
+    trace = phase['matrix']['/workload'][0]
+    horizon = max(row['arrival_ms'] for row in trace)
+    serial_work = sum(row['service_ms'] for row in trace)
+    per_cell_seconds = (horizon + serial_work) / 1000 * rule['timing_margin'] + rule['per_cell_startup_seconds']
+    wall_seconds = math.ceil(per_cell_seconds * len(phase['matrix']['/policy']))
+    config['budget']['watchdog_seconds'] = max(config['budget']['watchdog_seconds'], wall_seconds)
+    config['budget']['limit_gpu_seconds'] = config['budget']['watchdog_seconds'] * config['benchmark']['gpus']
+    planning = dict(trace_horizon_ms=horizon, serial_service_estimate_ms=serial_work,
+        rule=copy.deepcopy(rule), watchdog_seconds=config['budget']['watchdog_seconds'],
+        allocated_gpu_hour_limit=config['budget']['limit_gpu_seconds'] / 3600,
+        scope='calibration-based execution budget; not measured performance or guaranteed completion')
+    config['benchmark']['time_planning'] = planning
+    return planning
 
 
 def protocol(path=DEFAULT_PROTOCOL):
@@ -214,7 +235,8 @@ def assemble(p, model, records, runtime_facts):
 
 
 def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301,
-            load=0.6, video_fraction=0.2, pattern='poisson', suite='main', diagnostic=None):
+            load=0.6, video_fraction=0.2, pattern='poisson', suite='main', diagnostic=None,
+            p1_plan=None, p1_pair=None):
     verify_seal(bundle)
     if bundle.get('schema') != BUNDLE_SCHEMA or bundle.get('model') != model or bundle.get('protocol_sha256') != canonical_hash(p):
         raise ValueError('profile bundle does not match model/protocol')
@@ -234,10 +256,23 @@ def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301
     if diagnostic and split != 'development':
         raise ValueError('P0 diagnostics use development shapes; formal qualification must be a separate stage')
     diagnostic_controls = p['p0_diagnostics'][diagnostic] if diagnostic else None
+    pair = None
+    if p1_plan is not None:
+        from p1_benchmark import validate_plan
+        validate_plan(p1_plan, p)
+        pair = next((item for item in p1_plan['shape_pairs'] if item['id'] == p1_pair), None)
+        if (pair is None or pair['model'] != model or split != p1_plan['prompt_split']
+                or seed not in p1_plan['seeds'] or diagnostic not in p1_plan['roles']):
+            raise ValueError('P1 pair/model/split/seed/role differs from frozen plan')
+        diagnostic_controls = p1_plan['roles'][diagnostic]
+    elif p1_pair is not None:
+        raise ValueError('P1 pair requires a frozen plan')
     image_scale = diagnostic_controls['image_slo_scale'] if diagnostic else p['slo']['image_scale']
     video_scale = diagnostic_controls['video_slo_scale'] if diagnostic else p['slo']['video_scale']
     scope = 'development' if split == 'development' else 'formal'
     ids = [sid for sid, shape in p['shapes'].items() if shape['scope'] == scope and shape['model'] in (model, 'sd35')]
+    if pair is not None:
+        ids = [pair['video_shape'], pair['image_shape']]
     if any(sid not in bundle['classes'] for sid in ids):
         raise ValueError('every frozen shape needs its own measured calibration; no shape may be silently omitted')
     selected = split_pools(pools, p, split)
@@ -311,12 +346,22 @@ def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301
         preemption_diagnostic=diagnostic, mixed_resolution=True,
         partition_image_gpus=dict(value=image_share, rule='mean measured GPU work across equally weighted shape classes'),
         scope='finite public-prompt trace; not sustained-capacity or semantic qualification')
-    if diagnostic:
+    if diagnostic and p1_plan is None:
         config['benchmark']['p0_diagnostic_controls'] = copy.deepcopy(diagnostic_controls)
         config['benchmark']['scope'] = p['p0_diagnostics']['scope']
         config['benchmark']['requested_workload_before_diagnostic_override'] = dict(
             load=load, video_fraction=video_fraction, pattern=pattern)
+    if p1_plan is not None:
+        case_id = f'{p1_pair}-{diagnostic}-s{seed}'
+        config['experiment'] = 'p1-' + case_id
+        config['benchmark']['formal_protocol']['role'] = 'p1_' + diagnostic
+        config['benchmark']['mixed_resolution'] = False
+        config['benchmark']['scope'] = p1_plan['scope']
+        config['benchmark']['p1'] = dict(plan_sha256=canonical_hash(p1_plan), case_id=case_id,
+            pair_id=p1_pair, model=model, shape_ids=ids, seed=seed, role=diagnostic,
+            controls=copy.deepcopy(diagnostic_controls))
     bind_manifests(config, model, manifests)
+    apply_trace_budget(config)
     return config
 
 
