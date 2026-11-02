@@ -205,3 +205,13 @@ PYTHONPATH=workers python3 benchmarks/collect_stage_evidence.py \
 该入口目前仅评审固定 CFG2 子资格，不生成 P1 晋级 receipt。完整 P1 还缺所有允许形态的资格和独立恢复/导入/编排计时；语义质量归属独立评测。三个 seed 的区间是小样本负载变化估计，不是同输入计时重复性证明。阈值为 null 时只报告效果区间，不能事后挑阈值宣布收益。
 
 2026-11-03 的 `12b0918` P0 contention 在第一个 Block-CFG2 cell 暴露固定形态恢复漏洞：step 边界请求的 GPU 虽空闲，仍可能保留另一视频未完成的 solver step。最终互斥检查正确拒绝计划；30 请求完成、10 中断，另一策略 40 请求尚未执行，不能授予资格。修复在固定恢复分支补充已有 owner 筛选，保留 mid-step/合法 lockstep 及 pinned 路径；用真实到达/截止时间与所有 59 个可能的中途 block 位置做回归。新核心需要新的 CONTRACT/P0；旧失败数据和仍未闭合的原始依赖继续保留。
+
+### P2 配对比较与单机制消融（2026-11-03）
+
+`benchmarks/p2_contrasts.py` 从至少三个 seed 的冻结配置准备 reference/candidate 两臂、计划和空证据模板。支持固定/弹性 block 对照、pruning、minimum-pair、placement、lazy、remaining-work 和 continuous doorbell；也可准备与指定系统策略的同框架比较。它审查实际 policy/options 默认值，拒绝被显式 options 抹成同臂的消融。doorbell 对照统一 block 检查间隔；仅 CFG2 的配置不能用于证明形态剪枝/扩组收益。xDiT 分区基线若没有 image 分区外的合法 CFG2 组（例如两卡）直接标为不可支持，不能将其不可执行算成 DitServe 的胜出。
+
+示例：`PYTHONPATH=workers python benchmarks/p2_contrasts.py --protocol configs/benchmarks/formal-mixed-v1.json --workload-id <name> --config <seed301.json> --config <seed302.json> --config <seed303.json> --contrast block-elastic --contrast lazy --output-dir <new-dir>`。这些是可执行配置，工具本身不提交作业，也不绕过阶段资格。
+
+`benchmarks/p2_benefit.py --manifest <evidence.json> --output <new-summary.json>` 明确读取每个 case/arm 的哈希绑定 raw run；selector 包含 phase、attempt、cell 和执行 order。按冻结配置枚举请求分母，保留失败、中断以及未开始的策略 cell；没有测得 cell 耗时时不补造零吞吐或速度比。模态分别统计并按独立 seed 聚合，不以总均值掩盖视频退化。它还检查源码/核心/运行时/模型/分配/实际输入一致性，摘要不替代跨形态数值或语义质量资格。
+
+开发 P0/P1 来源的 split、role、SLO 和诊断 controls 都保留，不能因派生 P2 配置而变为正式测试主表。已用实际失败的 `12b0918` 原始记录验证审查器：Block 的 30 完成/10 中断与尚未启动 EDF 的 40 项分别保留；该结果仅用于验证分析工具，不能作为收益比较。P2 阶段仍需要真实受控测量及独立质量证据。

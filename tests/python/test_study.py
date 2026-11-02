@@ -395,18 +395,58 @@ class NativeStudyTest(unittest.TestCase):
         return workers
 
     def test_cluster_executor_runs_gpus_concurrently_with_sp_groups(self):
-        value = self.run_study(self.config([self.cluster_phase("block_elastic")], workers=self.cluster_workers()), name="cluster")
+        # Exercise the executor with an explicit group size. Elastic admission
+        # may legitimately keep one video on SP1 as encoder completions vary.
+        # Disable prefetch here: its initial GPU affinity is a separate contract.
+        phase = self.cluster_phase("block-sp2", text_prefetch=0)
+        value = self.run_study(self.config([phase], workers=self.cluster_workers()), name="cluster")
         self.assert_completed(value)
         cell = value["phases"][0]["cells"][0]
         self.assertEqual(cell["metrics"]["completed"], 6)
         rows = {row["request_id"]: row for row in cell["requests"]}
-        # Two 3-step videos at 400 ms/step on four GPUs: SP2 each, not 2.4 s serial.
-        self.assertLess(cell["elapsed_ms"], 2400)
-        self.assertTrue(all(max(rows[v]["degrees"]) >= 2 for v in ("v0", "v1")))
+        for video in ("v0", "v1"):
+            self.assertEqual(rows[video]["forms"], ["sp2"])
+            # Decode may use one rank; every denoising advance must use SP2.
+            self.assertTrue(rows[video]["advance_samples"])
+            for sample in rows[video]["advance_samples"]:
+                self.assertEqual(sample["form"], "sp2")
+                self.assertEqual(len(set(sample["group"])), 2)
+        # Subsequent advances exclude initial preparation and group transfers.
+        # Their intervals must overlap on disjoint GPU groups; a total runtime
+        # threshold alone cannot establish concurrent execution on a busy host.
+        advances = {video: [sample for sample in rows[video]["advance_samples"]
+                            if not sample["first"] and not sample["transfer"]]
+                    for video in ("v0", "v1")}
+        overlaps = [min(left["finish_ms"], right["finish_ms"]) - max(left["start_ms"], right["start_ms"])
+                    for left in advances["v0"] for right in advances["v1"]
+                    if set(left["group"]).isdisjoint(right["group"])]
+        self.assertGreater(max(overlaps, default=0), 0, json.dumps(advances, indent=2))
         self.assertEqual(cell["by_kind"]["image"]["completed"], 4)
         self.assertFalse(cell["real_backends_pinned_sp1"])
         # Block quanta after the request's own previous quantum are "steady"; those behind another request count as resumes.
         self.assertTrue(any("block_ms_steady" in rows[v] and rows[v]["resumes"] >= 0 for v in ("v0", "v1")))
+
+    def test_20261103_elastic_executor_preserves_outputs_without_fixed_degree(self):
+        phase = self.cluster_phase("block_elastic", output_mode="digest",
+                                   options=dict(sp_transport="export", transfer_dir=str(self.root / "elastic-transfer")),
+                                   matrix={"/policy": ["static-sp1", "block_elastic"]})
+        value = self.run_study(self.config([phase], workers=self.cluster_workers()), name="elastic-groups")
+        self.assert_completed(value)
+        reference, elastic = value["phases"][0]["cells"]
+        for cell in (reference, elastic):
+            self.assertEqual(cell["metrics"]["completed"], 6)
+        def digests(cell):
+            return {row["request_id"]: row["outputs"][-1]["output"]["sha256"] for row in cell["requests"]}
+
+        self.assertEqual(digests(elastic), digests(reference))
+        for row in elastic["requests"]:
+            if row["kind"] != "video":
+                continue
+            self.assertTrue(row["advance_samples"])
+            for sample in row["advance_samples"]:
+                self.assertIn(sample["form"], ("sp1", "sp2", "sp4"))
+                self.assertEqual(len(set(sample["group"])), int(sample["form"][2:]))
+                self.assertTrue(set(sample["group"]).issubset(range(4)))
 
     def test_mps_configuration_is_validated_before_execution(self):
         for mps in ([], dict(server_pid=0, pipe_directory="/tmp"),
