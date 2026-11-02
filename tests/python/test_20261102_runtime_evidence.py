@@ -33,7 +33,9 @@ class RuntimeEvidenceTests(unittest.TestCase):
                 paths = list(jobs.ROOT.rglob("*.json"))
                 self.assertEqual(len(paths), 5)
                 for path in paths:
-                    self.assertTrue(json.loads(path.read_text())["name"].startswith("20261102-"))
+                    name = json.loads(path.read_text())["name"]
+                    self.assertTrue(name.startswith("d20261102-"))
+                    self.assertLessEqual(len(name), 52)
                 paths[0].write_text("changed")
                 with self.assertRaises(ValueError):
                     jobs.main()
@@ -85,15 +87,59 @@ class RuntimeEvidenceTests(unittest.TestCase):
                 if method == "POST":
                     self.submitted = True
                     return 201, {}
-                return 200, ([{"name": "20261102-contract", "state": "Succeeded"}] if self.submitted else [])
+                return 200, ([{"name": "d20261102-contract", "state": "Succeeded"}] if self.submitted else [])
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "job.json"
-            path.write_text(json.dumps(dict(name="20261102-contract", mount_shared=True,
-                workers=1, gpus_per_worker=1, env=[{"name": "DITSERVE_RUN_ID", "value": "20261102-contract"}])) )
+            path.write_text(json.dumps(dict(name="d20261102-contract", mount_shared=True,
+                workers=1, gpus_per_worker=1, env=[{"name": "DITSERVE_RUN_ID", "value": "d20261102-contract"}])) )
             with patch.object(queue, "load_api", return_value=API()), patch.object(queue, "storage_gate"), \
                  patch.object(queue, "build_gate", return_value={}), patch.object(queue.time, "sleep"), \
                  patch("sys.argv", ["queue", str(path), "--submit"]):
                 queue.main()
+
+    @unittest.skipUnless((LOCAL / "tools/kairos_queue.py").is_file(), "local operator scripts")
+    def test_numeric_job_name_is_rejected_before_login(self):
+        queue = module_at("kairos_queue_names", LOCAL / "tools/kairos_queue.py")
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "job.json"
+            path.write_text(json.dumps({"name": "20261102-invalid"}))
+            with patch.object(queue, "load_api", side_effect=AssertionError("must reject before network")), \
+                 patch("sys.argv", ["queue", str(path), "--submit"]):
+                with self.assertRaisesRegex(ValueError, "start with a letter"):
+                    queue.main()
+
+    @unittest.skipUnless((LOCAL / "tools/kairos_queue.py").is_file(), "local operator scripts")
+    def test_serial_queue_waits_for_completion_despite_spare_gpu_quota(self):
+        queue = module_at("kairos_queue_serial", LOCAL / "tools/kairos_queue.py")
+        class API:
+            names = []
+            polls = 0
+            first_done = False
+            def req(self, method, path, payload=None):
+                if method == "POST":
+                    if self.names and not self.first_done:
+                        raise AssertionError("second job overlapped the first")
+                    self.names.append(payload["name"])
+                    return 201, {}
+                self.polls += 1
+                if self.polls > 8:
+                    raise AssertionError("serial queue did not complete")
+                self.first_done = bool(self.names) and self.polls >= 4
+                return 200, [dict(name=name, state="Succeeded" if self.first_done else "Running",
+                                 namespace="user-jjjkairos", total_gpus=1) for name in self.names]
+        with tempfile.TemporaryDirectory() as directory:
+            paths = []
+            for name in ("d20261102-one", "d20261102-two"):
+                path = Path(directory) / (name + ".json")
+                path.write_text(json.dumps(dict(name=name, mount_shared=True, workers=1, gpus_per_worker=1,
+                    env=[{"name": "DITSERVE_RUN_ID", "value": name}])))
+                paths.append(str(path))
+            api = API()
+            with patch.object(queue, "load_api", return_value=api), patch.object(queue, "storage_gate"), \
+                 patch.object(queue, "build_gate", return_value={}), patch.object(queue.time, "sleep"), \
+                 patch("sys.argv", ["queue", *paths, "--submit", "--max-active-jobs", "1"]):
+                queue.main()
+            self.assertEqual(len(api.names), 2)
 
 
 if __name__ == "__main__":

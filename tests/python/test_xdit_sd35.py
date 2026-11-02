@@ -37,13 +37,21 @@ def tiny_pipeline(torch):
             self.image_processor = SimpleNamespace(
                 postprocess=lambda image, output_type: image.detach().cpu().permute(0, 2, 3, 1).numpy().copy())
 
-        def encode_prompt(self, prompt, **kwargs):
-            count = len(prompt) if isinstance(prompt, list) else 1
-            embeds = torch.arange(count * 72, dtype=torch.float32).reshape(count, 3, 24) / 256
-            pooled = torch.full((count, 8), .25)
-            if self.do_classifier_free_guidance:
-                return embeds, -embeds, pooled, -pooled
-            return embeds, None, pooled, None
+        def encode_prompt(self, prompt=None, *, do_classifier_free_guidance=True,
+                          num_images_per_prompt=1, prompt_embeds=None,
+                          negative_prompt_embeds=None, pooled_prompt_embeds=None,
+                          negative_pooled_prompt_embeds=None, **kwargs):
+            # Like diffusers, encoding may precede __call__ and may receive an
+            # already encoded batch. Repeated prompts have identical embeddings.
+            if prompt_embeds is None:
+                count = (len(prompt) if isinstance(prompt, list) else 1) * num_images_per_prompt
+                prompt_embeds = (torch.arange(72, dtype=torch.float32).reshape(1, 3, 24) / 256).repeat(count, 1, 1)
+                pooled_prompt_embeds = torch.full((count, 8), .25)
+            if do_classifier_free_guidance and negative_prompt_embeds is None:
+                negative_prompt_embeds = -prompt_embeds
+                negative_pooled_prompt_embeds = -pooled_prompt_embeds
+            return (prompt_embeds, negative_prompt_embeds, pooled_prompt_embeds,
+                    negative_pooled_prompt_embeds)
 
         def progress_bar(self, **kwargs):
             return nullcontext(SimpleNamespace(update=lambda: None))
@@ -72,6 +80,17 @@ class XDitSD35Tests(unittest.TestCase):
         import numpy as np
         import torch
         from ditserve.models.xdit.sd35 import attach
+
+        pipeline = tiny_pipeline(torch)
+        unguided = pipeline.encode_prompt("kettle", do_classifier_free_guidance=False)
+        self.assertIsNone(unguided[1])
+        self.assertIsNone(unguided[3])
+        guided = pipeline.encode_prompt(["kettle", "kettle"], do_classifier_free_guidance=True)
+        self.assertTrue(torch.equal(guided[0][0], unguided[0][0]))
+        self.assertTrue(torch.equal(guided[0][0], guided[0][1]))
+        encoded = pipeline.encode_prompt(prompt_embeds=guided[0], negative_prompt_embeds=guided[1],
+            pooled_prompt_embeds=guided[2], negative_pooled_prompt_embeds=guided[3])
+        self.assertTrue(all(actual is expected for actual, expected in zip(encoded, guided)))
 
         expected = generate(torch, tiny_pipeline(torch))
         engine = attach(tiny_pipeline(torch), "cpu")
@@ -155,10 +174,21 @@ class XDitSD35Tests(unittest.TestCase):
         backend.torch, backend.device = proxy, "cuda:0"
         backend.xdit = attach(tiny_pipeline(torch), "cpu")
         backend.pipe, backend._cache_recipe = backend.xdit.pipe, None
+        backend.pipe.module.encode_prompt = Mock(wraps=backend.pipe.module.encode_prompt)
         self.addCleanup(backend.close)
         backend.prepare(dict(state_id="profile", spec=dict(
             prompt="kettle", negative_prompt="blurry", steps=2, height=16, width=16,
             batch_size=2, max_sequence_length=8)))
+        staged_call = backend.pipe.module.encode_prompt.call_args.kwargs
+        self.assertEqual(staged_call["negative_prompt"], "blurry")
+        self.assertTrue(staged_call["do_classifier_free_guidance"])
+        # Events are fake CUDA in this CPU contract; keep embedding transfers on
+        # CPU as well, while checking the backend requested its configured device.
+        fetch = backend.encoder_pool.fetch_to_device
+        def cpu_fetch(key, device, stream=None):
+            self.assertEqual(device, "cuda:0")
+            return fetch(key, "cpu", stream=stream)
+        backend.encoder_pool.fetch_to_device = cpu_fetch
         result = backend.advance(dict(state_id="profile"))
         self.assertEqual(backend.states["profile"]["output"].shape[0], 2)
         self.assertEqual(set(result["phase_ms"]),
