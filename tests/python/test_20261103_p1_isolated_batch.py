@@ -16,6 +16,7 @@ import formal_benchmark as formal
 import p1_isolated_batch as isolated
 import test_20261102_formal_benchmark as fixtures
 from ditserve.evaluation.common import canonical_hash, read_json, seal
+from ditserve.runtime import PACKAGE_ROOT
 from ditserve.runtime.client import CoreBridge
 
 
@@ -147,8 +148,12 @@ class IsolatedBatchTest(unittest.TestCase):
             root = Path(directory)
             package = root / 'python'
             for name in ('ditserve', 'xfuser'):
-                for source in (ROOT/'workers'/name).rglob('*.py'):
-                    target = package/name/source.relative_to(ROOT/'workers'/name)
+                # CONTRACT tests are staged separately from the installed
+                # Python package; a source checkout's workers/ is not present.
+                sources = list((PACKAGE_ROOT/name).rglob('*.py'))
+                self.assertTrue(sources, 'installed fixture package is missing: ' + name)
+                for source in sources:
+                    target = package/name/source.relative_to(PACKAGE_ROOT/name)
                     target.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copyfile(source, target)
             # Freeze the CPU fixture identity before execution. This projection
