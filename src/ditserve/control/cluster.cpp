@@ -979,7 +979,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                 Json assignment = {{"request_id", id}, {"group", current}, {"degree", form.degree()}, {"form", form_name(form)},
                                    {"quantum", video_quantum(klass, form, sp_groups(form), &current)},
                                    {"resize", false}, {"reason", "resume"}};
-                if (fold_eligible || r.value("cfg_folded", false)) assignment["cfg_folded"] = true;
+                if (fold_eligible || (blocks_done > 0 && r.value("cfg_folded", false))) assignment["cfg_folded"] = true;
                 if (policy.approx) {
                     double threshold = 0.0;
                     for (double tau : cache_thresholds) {

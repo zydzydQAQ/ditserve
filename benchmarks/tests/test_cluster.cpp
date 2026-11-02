@@ -938,6 +938,16 @@ int main() {
         const auto held = cluster_plan(state, "fold-cfg2sp3", cost, options).at("assignments")[0];
         require(held.at("form") == "cfg2sp3" && held.at("group").size() == 6 && held.value("cfg_folded", false),
                 "fold-only keeps the complete CFG2 group reserved");
+        Json continuation = request;
+        continuation["cfg_folded"] = true; continuation["cfg_fold_eligible"] = false; continuation["blocks_done"] = 4;
+        const auto resumed = cluster_plan({{"now_ms", 0}, {"gpus", 8}, {"busy", Json::array()}, {"requests", {continuation}}},
+            "fold-cfg2sp3", cost, options).at("assignments")[0];
+        require(resumed.value("cfg_folded", false), "fold-only preserves the mode inside an interrupted solver step");
+        continuation["blocks_done"] = 0; continuation["steps_done"] = 19;
+        const auto anchor = cluster_plan({{"now_ms", 0}, {"gpus", 8}, {"busy", Json::array()}, {"requests", {continuation}}},
+            "fold-cfg2sp3", cost, options).at("assignments")[0];
+        require(!anchor.value("cfg_folded", false) && anchor.at("form") == "cfg2sp3",
+                "fold-only re-evaluates eligibility and executes the final exact anchor");
         const auto released = cluster_plan(state, "approx-cfg2sp3", cost, options).at("assignments")[0];
         require(released.at("form") == "sp3" && released.at("group").size() == 3 && released.value("cfg_folded", false),
                 "fission contracts the conditional subgroup");
