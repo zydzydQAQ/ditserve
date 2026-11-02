@@ -18,7 +18,8 @@ from stage_gates import canonical_hash, read_json
 AUDITED_NATIVE_SOURCES = {
     'src/ditserve/control/policy.cpp': ('6a52ff3a2caabd73ccf076a9158050fa8765d772ffedad498ffe4a18f1e1d2fb',),
     'include/ditserve/control/policy.hpp': ('10d5ed4df6da5c8a9151a3adcbea76d16bf5a435b8daaf99968ec4114f51b9c8',),
-    'src/ditserve/control/study.cpp': ('34582d968cd1558e826849c86d408f958b9217825b7486f942d2b4e1ecc10374',),
+    'src/ditserve/control/study.cpp': ('34582d968cd1558e826849c86d408f958b9217825b7486f942d2b4e1ecc10374',
+                                    'c7f104e0cc6da4e0ffd7fae4d4f3cefcb1706bf20efe5f7a32b6145c40ad02f4'),
     # The ownership fix changes correctness, not option resolution. Keeping
     # the prior hash permits honest analysis of its failed runs, not promotion.
     'src/ditserve/control/cluster.cpp': ('6cf1044cc837e26ba5bfb4e1b83870a10709e6e989cb58662e8bbf4d46287d0e',

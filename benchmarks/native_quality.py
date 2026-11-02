@@ -144,6 +144,35 @@ def paired_bootstrap(candidate, control, *, resamples=2000):
     rng = np.random.default_rng(20261102)
     metrics = {}
     for name in ("psnr_db", "ssim", "lpips_mean"):
+        if name == "psnr_db":
+            # JSON represents exact-output PSNR as null plus explicit flags.
+            # Never subtract infinities or turn them into an arbitrary ceiling.
+            # A flag without exact-match evidence remains missing evidence.
+            def psnr_kind(row):
+                value = row.get("psnr_db")
+                if (value is None and row.get("psnr_is_infinite") is True
+                        and row.get("exact_match") is True):
+                    return "exact"
+                if (type(value) in (int, float) and np.isfinite(value)
+                        and not row.get("psnr_is_infinite", False)):
+                    return "finite"
+                return "invalid"
+            kinds = [(psnr_kind(left[key]), psnr_kind(right[key])) for key in keys]
+            if any("invalid" in pair for pair in kinds):
+                metrics[name] = {"status": "unverified", "reason": "missing or inconsistent PSNR/exact-match evidence"}
+                continue
+            if any("exact" in pair for pair in kinds):
+                metrics[name] = {
+                    "status": "exact_relation", "mean_difference": None, "ci95": None,
+                    "relations": {
+                        "both_exact": kinds.count(("exact", "exact")),
+                        "candidate_exact_control_finite": kinds.count(("exact", "finite")),
+                        "candidate_finite_control_exact": kinds.count(("finite", "exact")),
+                        "both_finite": kinds.count(("finite", "finite")),
+                    },
+                    "scope": "non-numeric PSNR relation; no mean delta or confidence interval involving infinity",
+                }
+                continue
         a = np.asarray([left[key][name] for key in keys], dtype=np.float64)
         b = np.asarray([right[key][name] for key in keys], dtype=np.float64)
         if not np.isfinite(a).all() or not np.isfinite(b).all():
@@ -156,9 +185,15 @@ def paired_bootstrap(candidate, control, *, resamples=2000):
             "mean_difference": float(delta.mean()),
             "ci95": [float(np.quantile(draws, 0.025)), float(np.quantile(draws, 0.975))],
         }
+    zero_self_control = all(left[key]["candidate_cfg_folded_steps"] == 0
+                            and left[key].get("exact_match") is True
+                            and right[key].get("exact_match") is True for key in keys)
     return {
         "method": "paired prompt/seed bootstrap; candidate minus fixed; positive PSNR/SSIM and negative LPIPS favor candidate",
         "matched_pairs": len(keys), "actual_fold_count_per_pair": "identical", "resamples": resamples,
+        "interpretation": ("zero-fold/no-compute-reduction self-control; not adaptive superiority"
+                           if zero_self_control else "matched actual-fold quality evidence; not a superiority decision"),
+        "zero_fold_exact_self_control": zero_self_control,
         "metrics": metrics,
     }
 
@@ -189,9 +224,11 @@ def matched_fold_bootstrap(candidate, controls, *, resamples=2000):
         matched += result["matched_pairs"]
     return {
         "status": "measured" if candidate.get("pairs") and matched == len(candidate["pairs"])
-                  and all(metric.get("status") == "measured" for stratum in strata.values()
+                  and all(metric.get("status") in ("measured", "exact_relation") for stratum in strata.values()
                           for metric in stratum.get("metrics", {}).values()) else "unverified",
         "scope": "pair adaptive and fixed arms only within identical per-video actual fold-count strata",
+        "zero_fold_scope": "N=0 exact-output pairs are no-compute-reduction self-controls, never evidence of adaptive gain",
+        "superiority_qualified": False,
         "matched_pairs": matched, "candidate_pairs": len(candidate.get("pairs", [])),
         "strata": strata,
     }

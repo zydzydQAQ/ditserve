@@ -45,13 +45,26 @@ def kind_summary(rows, elapsed_ms):
     }
 
 
+def merged_intervals(intervals):
+    result = []
+    for start, finish in sorted(intervals):
+        if (type(start) not in (int, float) or type(finish) not in (int, float)
+                or not math.isfinite(start) or not math.isfinite(finish) or start < 0 or finish < start):
+            raise ValueError("invalid timed execution interval")
+        if result and start <= result[-1][1]:
+            result[-1][1] = max(result[-1][1], finish)
+        else:
+            result.append([start, finish])
+    return result
+
+
 def approximation_summary(rows):
     videos = [row for row in rows if row["kind"] == "video" and row.get("cfg_fold")]
     if not videos:
         return None
     folded_quanta = fission_quanta = 0
     release_windows, image_users = {}, set()
-    released_gpu_ms = 0.0
+    unattributed_quanta = 0
     gate_ms = []
     state_bytes = []
     for row in videos:
@@ -70,43 +83,56 @@ def approximation_summary(rows):
         if stats.get("cfg_state_bytes") is not None:
             state_bytes.append(stats["cfg_state_bytes"])
         samples = row.get("advance_samples", [])
-        full_group = next((sample["group"] for sample in samples
-                           if not sample.get("cfg_folded") and sample.get("form", "").startswith("cfg2")), None)
+        full_group = None
+        full_reference_seen = False
         for sample in samples:
             if not sample.get("cfg_folded"):
+                if sample.get("form", "").startswith("cfg2"):
+                    full_group = set(sample["group"])
+                    full_reference_seen = True
+                else:
+                    # A previous contraction in exact SP execution is not a
+                    # release caused by the later folded quantum.
+                    full_group = None
                 continue
             folded_quanta += 1
             if full_group is None:
-                raise ValueError("folded execution lacks a full-CFG placement reference")
+                if full_reference_seen:
+                    unattributed_quanta += 1
+                    continue
+                raise ValueError("folded execution lacks a prior full-CFG placement reference")
             if sample.get("start_ms") is None or sample.get("finish_ms") is None:
                 raise ValueError("fission accounting requires timed execution intervals")
-            released = sorted(set(full_group) - set(sample["group"]))
+            interval = merged_intervals([(sample["start_ms"], sample["finish_ms"])])[0]
+            # A folded group moved outside the latest full group cannot be
+            # interpreted as contraction of that group without a layout epoch.
+            if not set(sample["group"]).issubset(full_group):
+                unattributed_quanta += 1
+                continue
+            released = sorted(full_group - set(sample["group"]))
             if released:
                 fission_quanta += 1
-                released_gpu_ms += len(released) * sample["elapsed_ms"]
                 for gpu in released:
-                    release_windows.setdefault(gpu, []).append((sample["start_ms"], sample["finish_ms"]))
-    merged = {}
-    for gpu, intervals in release_windows.items():
-        ordered = sorted(intervals)
-        current = [list(ordered[0])]
-        for start, finish in ordered[1:]:
-            if start <= current[-1][1]:
-                current[-1][1] = max(current[-1][1], finish)
-            else:
-                current.append([start, finish])
-        merged[gpu] = current
-    image_overlap_ms = 0.0
+                    release_windows.setdefault(gpu, []).append(interval)
+    merged = {gpu: merged_intervals(intervals) for gpu, intervals in release_windows.items()}
+    released_gpu_ms = sum(finish - start for intervals in merged.values() for start, finish in intervals)
+    image_windows = {}
     for row in rows:
         if row["kind"] != "image" or row.get("status") != "completed" or not row.get("gpu_group"):
             continue
-        overlap = 0.0
-        for gpu in row["gpu_group"]:
+        interval = merged_intervals([(row["start_ms"], row["finish_ms"])])[0]
+        for gpu in set(row["gpu_group"]):
             for start, finish in merged.get(gpu, []):
-                overlap += max(0.0, min(finish, row["finish_ms"]) - max(start, row["start_ms"]))
-        if overlap > 0:
-            image_overlap_ms += overlap
-            image_users.add(row["request_id"])
+                left, right = max(start, interval[0]), min(finish, interval[1])
+                if right > left:
+                    image_windows.setdefault(gpu, []).append((left, right))
+                    image_users.add(row["request_id"])
+    # Batch members share an execution interval. Count GPU time once, while
+    # retaining the number of distinct requests that overlap that interval.
+    image_overlap_ms = sum(finish - start for intervals in image_windows.values()
+                           for start, finish in merged_intervals(intervals))
+    missing_image_placement = sum(row['kind'] == 'image' and row.get('status') == 'completed'
+                                  and not row.get('gpu_group') for row in rows)
     return {
         "video_count": len(videos), "folded_quanta": folded_quanta, "fission_quanta": fission_quanta,
         "folded_steps": sum(row["cfg_fold"]["folded_cfg_steps"] for row in videos),
@@ -114,17 +140,32 @@ def approximation_summary(rows):
         "released_gpu_ms_capacity": released_gpu_ms,
         "image_overlap_on_released_gpu_ms": image_overlap_ms,
         "image_requests_on_released_gpus": len(image_users),
+        "image_requests_missing_placement": missing_image_placement,
+        "overlap_attribution_complete": not missing_image_placement and not unattributed_quanta,
+        "unattributed_folded_quanta": unattributed_quanta,
+        "reuse_qualified": False,
         "curvature_gate_ms": distribution(gate_ms), "cfg_state_bytes": distribution(state_bytes),
-        "accounting_scope": "timed worker quanta and observed image overlap; capacity is not a measured utilization gain",
+        "accounting_scope": "per-GPU union of inferred contraction windows and image start-to-finish intervals; placement/overlap proxy only, without release ACK, utilization or causal reuse qualification",
     }
 
 
 def summarize_run(record):
-    cells = [(phase.get("id", "cluster"), cell) for phase in record["phases"] for cell in phase["cells"]]
+    cells = [(phase.get("id", "cluster"), phase.get("attempt", 1), cell)
+             for phase in record["phases"] for cell in phase["cells"]]
+    selectors = [(phase, attempt, cell['cell'], cell.get('order')) for phase, attempt, cell in cells]
+    if len(selectors) != len(set(selectors)):
+        raise ValueError('duplicate native cell identity')
+    for row in record['requests']:
+        possible = [key for key in selectors if key[0] == row.get('phase', 'cluster') and key[2] == row['cell']
+                    and ('attempt' not in row or key[1] == row['attempt'])
+                    and ('order' not in row or key[3] == row['order'])]
+        if len(possible) > 1:
+            raise ValueError('legacy request lacks an unambiguous attempt/order cell identity')
     summaries = []
-    for phase, cell in cells:
+    for phase, attempt, cell in cells:
         rows = [row for row in record["requests"]
-                if row.get("phase", "cluster") == phase and row["cell"] == cell["cell"]]
+                if row.get("phase", "cluster") == phase and row["cell"] == cell["cell"]
+                and row.get("attempt", attempt) == attempt and row.get("order", cell.get("order")) == cell.get("order")]
         elapsed_ms = cell["elapsed_ms"]
         gpus = cell["gpus"]
         allocated_gpu_seconds = gpus * elapsed_ms / 1000
@@ -135,7 +176,7 @@ def summarize_run(record):
             for sample in row.get("advance_samples", []) if sample.get("steady") is True
         ]
         summaries.append({
-            "phase": phase, "cell": cell["cell"], "policy": cell["policy"], "order": cell.get("order"),
+            "phase": phase, "attempt": attempt, "cell": cell["cell"], "policy": cell["policy"], "order": cell.get("order"),
             "status": cell["status"], "elapsed_ms": elapsed_ms,
             "by_kind": {
                 kind: kind_summary([row for row in rows if row["kind"] == kind], elapsed_ms)

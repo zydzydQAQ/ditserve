@@ -96,6 +96,38 @@ struct Worker {
         return process->call(action,deadline);
     }
 };
+// Controller wall-clock spans are nested observations, not additive worker costs.
+// Shared only by a task's rank futures; no worker synchronization is introduced.
+struct ControllerTiming {
+    double origin;
+    std::mutex mutex;
+    Json value;
+    ControllerTiming(double origin_,Json identity):origin(origin_),value(std::move(identity)){
+        value["schema"]="ditserve.controller-timing.v1";
+        value["clock"]="controller_replay_monotonic_ms";
+        value["stages"]=Json::array();
+    }
+    double now()const{return (monotonic_seconds()-origin)*1000;}
+    void span(const std::string& stage,double begin,const std::string& status,
+              const std::string& worker="",const std::string& request="",Json details=Json::object()){
+        const double end=now();
+        Json entry={{"stage",stage},{"start_ms",begin},{"finish_ms",end},{"elapsed_ms",end-begin},{"status",status}};
+        if(!worker.empty())entry["worker"]=worker;
+        if(!request.empty())entry["request_id"]=request;
+        if(!details.empty())entry["worker_details"]=std::move(details);
+        std::lock_guard<std::mutex> guard(mutex);value["stages"].push_back(std::move(entry));
+    }
+    Json call(Worker& worker,const std::string& name,const std::string& stage,Json action,double deadline){
+        const auto request=action.value("state_id",std::string());const double begin=now();
+        try{
+            auto result=worker.call(std::move(action),deadline);
+            Json details=Json::object();
+            for(const auto* key:{"worker_operation_ms","load_ms","model_ms","export_ms","write_ms","read_ms","import_ms","bytes"})
+                if(result.contains(key))details[key]=result.at(key);
+            span(stage,begin,"completed",name,request,std::move(details));return result;
+        }catch(...){span(stage,begin,"failed",name,request);throw;}
+    }
+};
 class Workers {
 public:
     Workers(const Json& definitions,const Json& request,const fs::path& work):definitions_(definitions),request_(request),work_(work){}
@@ -728,13 +760,14 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         bool prepared=false,offloaded=false,cfg_folded=false,cfg_fold_eligible=false;
         int steps=0,blocks=0,total=0,encode_gpu=-1,decode_gpu=-1,decode_done=0,epoch=0;
         std::vector<int> group;
-        std::string form="sp1",ticket,pair,decode_ticket;
+        std::string form="sp1",ticket,pair,decode_ticket,last_stop_event,last_restore_event;
         std::set<int> resident;
         double steady_ms=0,resumed_ms=0,decode_started=0;
         int steady_blocks=0,resumed_blocks=0,resumes=0;
     };
-    int epochs=0,transfers=0;   // export transport: placement epochs and transfer file names
-    struct Task{std::size_t row;Json assignment;std::future<Json> result;double started;bool after_other=false,continuous=false,rung=false;double rung_ms=-1;};
+    int epochs=0,transfers=0,timing_sequence=0;   // placement, packet and timing identities within this cell
+    struct Task{std::size_t row;Json assignment;std::future<Json> result;double started,scheduling_started;bool after_other=false,continuous=false,rung=false;double rung_ms=-1;
+                std::shared_ptr<ControllerTiming> timing;bool timing_recorded=false;};
     std::vector<Live> live(rows.size());
     std::vector<Task> tasks;
     std::vector<bool> busy(gpus,false);
@@ -753,6 +786,31 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     auto image=[&](int gpu){return slots.at(gpu).at("image").get<std::string>();};
     const double origin=monotonic_seconds();
     auto now=[&](){return (monotonic_seconds()-origin)*1000;};
+    auto new_timing=[&](const Json& row){
+        return std::make_shared<ControllerTiming>(origin,Json{
+            {"event_id",phase.at("_observation_id").get<std::string>()+"/"+std::to_string(++timing_sequence)},
+            {"request_id",row.at("request_id")},{"phase",phase.at("id")},{"attempt",phase.at("_attempt")},
+            {"cell",phase.at("_cell")},{"order",phase.at("_order")}});
+    };
+    auto persist_timing=[&](Task& task,const std::string& status){
+        if(task.timing_recorded)return;
+        auto& value=task.timing->value;
+        value["observed_ms"]=now();value["controller_status"]=status;
+        // Persist only after the future settles; async telemetry may still be
+        // writing this JSON object between launch and completion.
+        value["scheduling_start_ms"]=task.scheduling_started;
+        if(status=="completed"){
+            value["step_after"]=live[task.row].steps;value["block_after"]=live[task.row].blocks;
+        }
+        rows[task.row]["controller_timing"].push_back(value);task.timing_recorded=true;
+    };
+    Json planning={{"calls",0},{"failed",0},{"total_ms",0.},{"max_ms",0.},
+                   {"scope","cluster_plan call only; excludes view construction, dispatch, RPC and polling"}};
+    auto save_planning=[&](){
+        auto item=planning;
+        for(const auto* key:{"phase","attempt","cell","order"})item[key]=rows.front().at(key);
+        record["controller_planning"].push_back(std::move(item));
+    };
     auto spec_of=[&](const Json& row){Json spec=row.at("spec");spec["request_id"]=row.at("request_id");return spec;};
     for(auto& row:rows){row["generation"]=spec_of(row);row["output_mode"]=row.value("output_mode",output_mode);}
     Json cb_stats={{"rounds",0},{"late_joins",0},{"early_exits",0},{"batch_sizes",Json::object()},{"samples",Json::array()}};
@@ -762,7 +820,14 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         if(!state.prepared||state.group.size()!=1||state.blocks!=0||state.decode_done!=0||state.steps>=state.total)
             throw std::runtime_error("tiered move requires an unfinished SP1 solver boundary");
         const auto operation=offload?"tiered_offload":"tiered_prefetch";
-        const auto result=workers.get(video(state.group.front())).call({{"op",operation},{"state_id",row.at("request_id")}},budget.deadline());
+        const auto timing=new_timing(row);timing->value["transition"]=offload?"tiered_offload":"tiered_restore";
+        timing->value["group"]=state.group;
+        Json result;
+        try{result=timing->call(workers.get(video(state.group.front())),video(state.group.front()),operation,
+                              {{"op",operation},{"state_id",row.at("request_id")}},budget.deadline());}
+        catch(...){timing->value["observed_ms"]=now();timing->value["status"]="failed";row["controller_timing"].push_back(timing->value);throw;}
+        timing->value["observed_ms"]=now();timing->value["status"]="completed";row["controller_timing"].push_back(timing->value);
+        if(!offload)state.last_restore_event=timing->value.at("event_id").get<std::string>();
         state.offloaded=offload;
         if(!row.contains("state_moves"))row["state_moves"]=Json::array();
         row["state_moves"].push_back(result);
@@ -781,6 +846,12 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         // The group's parallel form: CFG branches on separate halves (cfg) and SP inside each.
         const Form form=parse_form(assignment.value("form","sp"+std::to_string(degree)));
         if(form.degree()!=degree)throw std::logic_error("assignment form does not match its group");
+        const auto timing=new_timing(row);
+        timing->value.update({{"selected_ms",now()},{"group_before",state.group},{"group_after",group},
+            {"form_before",state.form},{"form_after",form_name(form)},{"step_before",state.steps},{"block_before",state.blocks},
+            {"epoch_before",state.epoch},{"first",!state.prepared},{"transport",transport},{"quantum",assignment.at("quantum")}});
+        if(!state.last_stop_event.empty()){timing->value["resume_from_stop_event_id"]=state.last_stop_event;state.last_stop_event.clear();}
+        if(!state.last_restore_event.empty()){timing->value["restore_event_id"]=state.last_restore_event;state.last_restore_event.clear();}
         if(form.cfg>1&&transport=="pinned")throw std::invalid_argument("pinned cluster workers run SP1 only");
         const bool cfg_folded=assignment.value("cfg_folded",false);
         const bool fission=assignment.value("fission",traits.fission);
@@ -952,6 +1023,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             const bool unprepared=!state.prepared,pair_unprepared=j<rows.size()&&!live[j].prepared;
             std::vector<Staging> stagings={stage(id,row,state)};
             if(j<rows.size())stagings.push_back(stage(pair,rows[j],live[j]));
+            timing->value["transfer_targets"]=stagings[0].targets.size();
             if(unprepared)row["prompt_reencoded"]=stagings[0].reencode;
             if(pair_unprepared)rows[j]["prompt_reencoded"]=stagings[1].reencode;
             std::vector<std::pair<std::string,Json>> advances;
@@ -970,32 +1042,37 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 }
                 advances.emplace_back(video(gpu),advance);
             }
-            work_unit=[&workers,stagings,advances,deadline]{
+            work_unit=[&workers,stagings,advances,deadline,timing]{
                 Json out={{"ranks",Json::array()}};
                 for(std::size_t k=0;k<stagings.size();++k){
                     const auto& st=stagings[k];const auto& rid=st.id;
                     const char* prepare_key=k?"pair_prepare":"prepare";const char* transfer_key=k?"pair_transfer":"transfer";
-                    if(!st.prepare.is_null())out[prepare_key]=workers.get(st.source_name).call(st.prepare,deadline);
+                    if(!st.prepare.is_null())out[prepare_key]=timing->call(workers.get(st.source_name),st.source_name,"prepare",st.prepare,deadline);
                     if(!st.targets.empty()){
-                        const auto exported=workers.get(st.source_name).call({{"op","block_export"},{"state_id",rid},{"path",st.transfer},{"release",st.release_source}},deadline);
+                        const auto exported=timing->call(workers.get(st.source_name),st.source_name,"export",
+                            {{"op","block_export"},{"state_id",rid},{"path",st.transfer},{"release",st.release_source}},deadline);
+                        const double imports_begin=timing->now();
                         std::vector<std::future<Json>> imports;
-                        for(const auto& name:st.targets)imports.push_back(std::async(std::launch::async,[&workers,name,rid,st,exported,deadline]{
-                            return workers.get(name).call({{"op","block_import"},{"state_id",rid},{"path",st.transfer},{"sha256",exported.at("sha256")}},deadline);
+                        for(const auto& name:st.targets)imports.push_back(std::async(std::launch::async,[&workers,name,rid,st,exported,deadline,timing]{
+                            return timing->call(workers.get(name),name,"import",{{"op","block_import"},{"state_id",rid},{"path",st.transfer},{"sha256",exported.at("sha256")}},deadline);
                         }));
                         Json imported=Json::array();std::string error;
                         for(auto& rank:imports){try{imported.push_back(rank.get());}catch(const std::exception& failure){error=failure.what();}}
+                        timing->span("imports_all_ready",imports_begin,error.empty()?"completed":"failed","",rid);
                         std::error_code ignored;fs::remove(st.transfer,ignored);
                         if(!error.empty())throw std::runtime_error(error);
                         out[transfer_key]={{"bytes",exported.value("bytes",0)},{"export_ms",number_field(exported,"export_ms")},
                                            {"write_ms",number_field(exported,"write_ms")},{"targets",st.targets.size()},{"imports",imported}};
                     }
                 }
+                const double advances_begin=timing->now();
                 std::vector<std::future<Json>> ranks;
-                for(const auto& item:advances)ranks.push_back(std::async(std::launch::async,[&workers,item,deadline]{
-                    return workers.get(item.first).call(item.second,deadline);
+                for(const auto& item:advances)ranks.push_back(std::async(std::launch::async,[&workers,item,deadline,timing]{
+                    return timing->call(workers.get(item.first),item.first,"advance",item.second,deadline);
                 }));
                 std::string error;
                 for(auto& rank:ranks){try{out["ranks"].push_back(rank.get());}catch(const std::exception& failure){error=failure.what();}}
+                timing->span("advances_all_done",advances_begin,error.empty()?"completed":"failed");
                 if(!error.empty())throw std::runtime_error(error);
                 return out;
             };
@@ -1026,23 +1103,44 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 calls.emplace_back(video(gpu),actions);
             }
             for(const auto& member:members){member.second->resident=std::set<int>(group.begin(),group.end());member.second->ticket.clear();}
-            work_unit=[&workers,calls,deadline]{
+            work_unit=[&workers,calls,deadline,timing]{
+                const double advances_begin=timing->now();
                 std::vector<std::future<Json>> ranks;
-                for(const auto& item:calls)ranks.push_back(std::async(std::launch::async,[&workers,item,deadline]{
+                for(const auto& item:calls)ranks.push_back(std::async(std::launch::async,[&workers,item,deadline,timing]{
                     auto& w=workers.get(item.first);Json last;
-                    for(const auto& action:item.second)last=w.call(action,deadline);
+                    for(const auto& action:item.second)last=timing->call(w,item.first,action.at("op").get<std::string>(),action,deadline);
                     return last;
                 }));
                 Json out={{"ranks",Json::array()}};
                 std::string error;
                 for(auto& rank:ranks){try{out["ranks"].push_back(rank.get());}catch(const std::exception& failure){error=failure.what();}}
+                timing->span("prepare_and_advances_all_done",advances_begin,error.empty()?"completed":"failed");
                 if(!error.empty())throw std::runtime_error(error);
                 return out;
             };
         }
         state.status="running";state.group=group;state.form=form_label;
         bool after_other=false;for(int gpu:group){if(last_on_gpu[gpu]!=id)after_other=true;last_on_gpu[gpu]=id;}
-        tasks.push_back({i,assignment,std::async(std::launch::async,work_unit),now(),after_other});
+        const bool first=timing->value.at("first").get<bool>();
+        const bool regroup=timing->value.at("group_before")!=timing->value.at("group_after")
+                            ||timing->value.at("form_before")!=timing->value.at("form_after");
+        const std::string transition=row.at("kind")=="image"?"image_service":quantum=="finish"?"finish":
+            first?(timing->value.value("transfer_targets",0)>0?"initial_distribution":"initial_prepare"):
+            regroup?"regroup":after_other?"resident_resume":"continuation";
+        timing->value["transition"]=transition;
+        timing->value["epoch_after"]=state.epoch;
+        if(!pair.empty())timing->value["pair_request_id"]=pair;
+        // Capture before async launch; a fast task may otherwise precede its own start timestamp.
+        const double started=now();timing->value["start_ms"]=started;
+        auto observed_work=[work_unit,timing]{
+            timing->value["async_begin_ms"]=timing->now();
+            try{auto out=work_unit();timing->value["all_done_ms"]=timing->now();timing->value["status"]="completed";return out;}
+            catch(...){timing->value["all_done_ms"]=timing->now();timing->value["status"]="failed";throw;}
+        };
+        // Preserve the scheduler's pre-telemetry anchor after async launch.
+        // The earlier observation start must not alter preemption estimates.
+        Task task{i,assignment,std::async(std::launch::async,observed_work),started,now(),after_other,false,false,-1,timing,false};
+        tasks.push_back(std::move(task));
         tasks.back().continuous=continuous;if(continuous)++bells.continuous;
     };
     auto finish_task=[&](Task& task,const Json& out){
@@ -1057,7 +1155,13 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             bool stopped=false;
             for(const auto& rank:out.value("ranks",Json::array()))for(const auto& event:rank.value("events",Json::array()))
                 stopped=stopped||event.value("doorbell_stop",false);
-            if(stopped)row["preemption_stop_samples"].push_back({{"stop_ms",now()-task.rung_ms}});
+            if(stopped){
+                const double observed=now();
+                state.last_stop_event=task.timing->value.at("event_id").get<std::string>()+"/stop";
+                row["preemption_stop_samples"].push_back({{"stop_ms",observed-task.rung_ms},{"ring_ms",task.rung_ms},
+                    {"observed_ms",observed},{"event_id",state.last_stop_event},{"task_event_id",task.timing->value.at("event_id")},
+                    {"group",task.assignment.at("group")},{"scope","ring_to_controller_confirmed_stop"}});
+            }
         }
         if(out.contains("async_decode")){
             state.decode_ticket=out.at("async_decode").at("ticket").get<std::string>();
@@ -1233,10 +1337,11 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         for(const auto& rank:ranks)operation_ms=std::max(operation_ms,number_field(rank,"worker_operation_ms"));
         if(!row.contains("advance_samples"))row["advance_samples"]=Json::array();
         row["advance_samples"].push_back({
+            {"event_id",task.timing->value.at("event_id")},
             {"form",form_name(expected_form)},{"group",task.assignment.at("group")},{"cfg_folded",expected_folded},
             {"reason",task.assignment.at("reason")},{"first",first},{"transfer",out.contains("transfer")},
             {"steady",!first&&!out.contains("transfer")&&task.assignment.value("pair",std::string()).empty()},
-            {"start_ms",now()-elapsed},{"finish_ms",now()},
+            {"start_ms",task.started},{"finish_ms",task.started+elapsed},
             {"elapsed_ms",elapsed},{"model_ms",model},{"worker_operation_ms",operation_ms}
         });
         const int executed_main=reported>=0?reported:quantum=="step"?cost.blocks_per_step(row.at("class").get<std::string>())-state.blocks:quantum.get<int>();
@@ -1278,7 +1383,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 }
                 throw;
             }
-            finish_task(*it,out);it=tasks.erase(it);progressed=true;
+            finish_task(*it,out);persist_timing(*it,"completed");it=tasks.erase(it);progressed=true;
         }
         for(std::size_t i=0;i<rows.size();++i){
             auto& state=live[i];
@@ -1357,8 +1462,15 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 for(const auto& state:live)if(state.status=="decoding")decode_flags[state.decode_gpu]=true;
                 int sp_running=0;   // SP advances in flight contend for the host bridge
                 for(const auto& task:tasks){const auto& a=task.assignment;sp_running+=parse_form(a.value("form","sp"+std::to_string(a.at("degree").get<int>()))).sp>=2&&a.at("quantum")!="atomic"&&a.at("quantum")!="finish";}
-                const auto plan=cluster_plan({{"now_ms",now()},{"gpus",gpus},{"busy",flags},{"async_decoding",decode_flags},
-                    {"requests",requests},{"sp_groups_running",sp_running}},policy,cost,options);
+                const Json plan_input={{"now_ms",now()},{"gpus",gpus},{"busy",flags},{"async_decoding",decode_flags},
+                    {"requests",requests},{"sp_groups_running",sp_running}};
+                const double planning_start=now();Json plan;
+                auto account_plan=[&](bool failed){const double elapsed=now()-planning_start;
+                    planning["calls"]=planning.at("calls").get<int>()+1;planning["failed"]=planning.at("failed").get<int>()+int(failed);
+                    planning["total_ms"]=number_field(planning,"total_ms")+elapsed;
+                    planning["max_ms"]=std::max(number_field(planning,"max_ms"),elapsed);};
+                try{plan=cluster_plan(plan_input,policy,cost,options);}catch(...){account_plan(true);throw;}
+                account_plan(false);
                 if(tiered&&plan.contains("tiered_hints")){
                     std::set<std::size_t> offloaded;
                     std::set<int> assigned;
@@ -1401,7 +1513,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                     for(int gpu:state.group)if(interleaved_workers.count(video(gpu)))blocks_per_iteration=2;
                 // Match advance.check_blocks and Wan's one-checkpoint-late
                 // group flag. Single-rank Wan and mock poll immediately.
-                const auto timing=estimate_preemption_timing(block,blocks_total,state.blocks,instant-task.started,
+                const auto timing=estimate_preemption_timing(block,blocks_total,state.blocks,instant-task.scheduling_started,
                     doorbell_check_blocks,blocks_per_iteration,wan&&form.degree()>1);
                 candidates.push_back({row.at("request_id").get<std::string>(),state.group,timing.stop_ms,timing.remaining_ms,cost.resume_ms(klass),task.rung});
             }
@@ -1436,6 +1548,8 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         if(!progressed)wait_until(monotonic_seconds()+.0005);
     }}catch(...){
         for(auto& task:tasks)if(task.result.valid())task.result.wait();
+        for(auto& task:tasks)persist_timing(task,"aborted");
+        save_planning();
         for(auto& row:rows){if(!row.contains("status")||row["status"]=="pending")row["status"]="interrupted";if(!row.contains("finish_ms"))row["finish_ms"]=now();row["observation_ms"]=now();}
         record["requests"].insert(record["requests"].end(),rows.begin(),rows.end());throw;
     }
@@ -1449,7 +1563,8 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         row["block_ms_steady"]=steady;row["resumes"]=st.resumes;
         if(st.resumed_blocks>0){row["block_ms_resumed"]=st.resumed_ms/st.resumed_blocks;row["resume_extra_ms"]=st.resumed_ms-st.resumed_blocks*steady;}
     }
-    return {{"requests",rows},{"metrics",request_summary(rows)},{"elapsed_ms",now()},{"warmup",warmed},
+    save_planning();
+    return {{"requests",rows},{"metrics",request_summary(rows)},{"elapsed_ms",now()},{"warmup",warmed},{"controller_planning",planning},
             {"by_kind",{{"video",kind_summary(rows,"video")},{"image",kind_summary(rows,"image")}}},
             {"policy",policy},{"gpus",gpus},{"sp_transport",transport},{"real_backends_pinned_sp1",!fixtures&&transport=="pinned"},
             {"async_rank0_decode",async_decode},{"continuous_batch",cb_stats},

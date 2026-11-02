@@ -1,0 +1,643 @@
+{
+  "schema": "ditserve.p5-preflight-plan.v1",
+  "id": "p5-external-v1",
+  "protocol_sha256": "6bcefd0a15088214dcde21c787007f52cfe79fbb262532a5d5c3682bcb0e801c",
+  "scope": "Offline, declared-subset compatibility/applicability review and evidence completion plan. No official external baseline performance or P5 qualification.",
+  "runtime_snapshot": {
+    "sha256": "2c64a4a789b7b583c9e714f287a076c2cf591b7fcceaeb89bd62d43acc5ff7e0",
+    "run_id": "d20261103-formal-contract-runtime-f79f6fb-r1",
+    "inventory_scope": "Seven observed packages only; omission is unknown, not absent. This historical runtime snapshot is not evidence that the full CONTRACT passed or that official Wan22 replacement files were used."
+  },
+  "projects": [
+    {
+      "id": "TetriServe",
+      "repository": "DiT-Serving/TetriServe",
+      "commit": "414ec2956c09466ccd7842fda9851511462bd42a",
+      "source_manifest_sha256": "8563fb0a3ed1135768231c4f7fbef85eed571794616d7a5d16568af1c7319bae",
+      "files": {
+        "README.md": {
+          "url": "https://raw.githubusercontent.com/DiT-Serving/TetriServe/414ec2956c09466ccd7842fda9851511462bd42a/README.md",
+          "sha256": "ff950e6faa5f4ce3b8a6e3441bd403b37774445d9c783616f8b61159352c4600",
+          "bytes": 6300
+        },
+        "pyproject.toml": {
+          "url": "https://raw.githubusercontent.com/DiT-Serving/TetriServe/414ec2956c09466ccd7842fda9851511462bd42a/pyproject.toml",
+          "sha256": "2541dac00cc852b3f7de31075f62266eed8beb2b80060e3c1b408f0fc1592a16",
+          "bytes": 1015
+        }
+      },
+      "requires_python": ">=3.10",
+      "dependency_groups": [
+        {
+          "file": "pyproject.toml",
+          "section": "project",
+          "key": "dependencies",
+          "activation": "base",
+          "requirements": [
+            "torch>=2.1.0",
+            "accelerate>=0.33.0",
+            "transformers>=4.39.1,<5",
+            "sentencepiece>=0.1.99",
+            "distvae",
+            "pytest",
+            "einops",
+            "pandas",
+            "pyzmq",
+            "protobuf",
+            "numpy<2",
+            "diffusers==0.33.0"
+          ]
+        },
+        {
+          "file": "pyproject.toml",
+          "section": "project.optional-dependencies",
+          "key": "flash-attn",
+          "activation": "README installation path; optional extra, availability unverified",
+          "requirements": [
+            "flash-attn==2.6.3"
+          ]
+        }
+      ],
+      "interfaces": [
+        {
+          "kind": "launch",
+          "url": "https://github.com/DiT-Serving/TetriServe/blob/414ec2956c09466ccd7842fda9851511462bd42a/README.md#quick-start",
+          "documented_text": "python -m tetriserve.server.launcher",
+          "evidence": "documented in pinned README; referenced implementation file not yet fetched or executed"
+        },
+        {
+          "kind": "request_api",
+          "url": "https://github.com/DiT-Serving/TetriServe/blob/414ec2956c09466ccd7842fda9851511462bd42a/README.md#quick-start",
+          "documented_text": "/v1/generate",
+          "evidence": "documented in pinned README; referenced implementation file not yet fetched or executed"
+        },
+        {
+          "kind": "benchmark",
+          "url": "https://github.com/DiT-Serving/TetriServe/blob/414ec2956c09466ccd7842fda9851511462bd42a/benchmark/serving_benchmark/benchmark_serving.py",
+          "documented_text": "benchmark/serving_benchmark/benchmark_serving.py",
+          "evidence": "documented in pinned README; referenced implementation file not yet fetched or executed"
+        }
+      ],
+      "applicability": {
+        "readme_models": [
+          "FLUX.1-dev",
+          "stabilityai/stable-diffusion-3-medium-diffusers"
+        ],
+        "formal_models": {
+          "sd35": "unknown: README SD3 medium is not SD3.5 medium",
+          "wan21": "unknown: no exact-model evidence in audited README",
+          "wan22": "unknown: no exact-model evidence in audited README"
+        },
+        "scope": "Official serving framework comparison requires its own pinned implementation and validated request adapter. A DITSERVE policy inspired by TetriServe is an in-framework policy comparison."
+      },
+      "unaudited": [
+        "Transitive and unselected optional dependencies; build backend and editable-install behavior",
+        "Package importability, CUDA/C++ ABI, NCCL, flash-attn kernel and attention dispatch",
+        "Exact model revision, scheduler/solver semantics, memory fit and request lifecycle",
+        "Official source-tree and submodule identities beyond the saved documentation/dependency files",
+        "No pip resolver or installation was executed"
+      ]
+    },
+    {
+      "id": "GF-DiT",
+      "repository": "SJTU-Liquid/GF-DiT",
+      "commit": "442531e499891d4ffa654e87c076f03326a37b98",
+      "source_manifest_sha256": "d23bc7a227091e2abf4e7cfc09be50f05742165bfbcff15a1840a94e491683dd",
+      "files": {
+        "README.md": {
+          "url": "https://raw.githubusercontent.com/SJTU-Liquid/GF-DiT/442531e499891d4ffa654e87c076f03326a37b98/README.md",
+          "sha256": "eff21212cd312defbc162140191f8e66e5497d4c403b7ab9ba56d1379cb33b5a",
+          "bytes": 8759
+        },
+        "pyproject.toml": {
+          "url": "https://raw.githubusercontent.com/SJTU-Liquid/GF-DiT/442531e499891d4ffa654e87c076f03326a37b98/pyproject.toml",
+          "sha256": "aacb9890744395533ea43f82f411bdf1cfa2d7632b7f8afd23e7338e7189a57d",
+          "bytes": 6353
+        },
+        "requirements/common.txt": {
+          "url": "https://raw.githubusercontent.com/SJTU-Liquid/GF-DiT/442531e499891d4ffa654e87c076f03326a37b98/requirements/common.txt",
+          "sha256": "2d50c99826da306e3bc4dbb2cc7a684270174dc99ebada1a75312f49a4a93239",
+          "bytes": 346
+        },
+        "requirements/cuda.txt": {
+          "url": "https://raw.githubusercontent.com/SJTU-Liquid/GF-DiT/442531e499891d4ffa654e87c076f03326a37b98/requirements/cuda.txt",
+          "sha256": "ccd2da1164490378a2a80c7d024c460e4e5cb6ba5d8274eaf9b8b57dd2225d98",
+          "bytes": 215
+        }
+      },
+      "requires_python": ">=3.10,<3.14",
+      "dependency_groups": [
+        {
+          "file": "requirements/common.txt",
+          "activation": "declared CUDA requirements subset; dynamic full environment not resolved",
+          "includes": [],
+          "requirements": [
+            "omegaconf>=2.3.0",
+            "librosa>=0.11.0",
+            "resampy>=0.4.3",
+            "diffusers>=0.36.0",
+            "accelerate==1.12.0",
+            "gradio==5.50",
+            "soundfile>=0.13.1",
+            "cache-dit==1.3.0",
+            "tqdm>=4.66.0",
+            "torchsde>=0.2.6",
+            "openai-whisper>=20250625",
+            "imageio[ffmpeg]>=2.37.2",
+            "sox>=1.5.0",
+            "x-transformers>=2.12.2",
+            "einops>=0.8.1",
+            "prettytable>=3.8.0",
+            "aenum==3.1.16",
+            "pyzmq>=25.0.0"
+          ]
+        },
+        {
+          "file": "requirements/cuda.txt",
+          "activation": "declared CUDA requirements subset; dynamic full environment not resolved",
+          "includes": [
+            "common.txt"
+          ],
+          "requirements": [
+            "onnxruntime>=1.23.2",
+            "fa3-fwd==0.0.2"
+          ]
+        }
+      ],
+      "interfaces": [
+        {
+          "kind": "launch",
+          "url": "https://github.com/SJTU-Liquid/GF-DiT/blob/442531e499891d4ffa654e87c076f03326a37b98/scripts/serve-edf-best.sh",
+          "documented_text": "serve-edf-best.sh",
+          "evidence": "documented in pinned README; referenced implementation file not yet fetched or executed"
+        },
+        {
+          "kind": "launch_flags",
+          "url": "https://github.com/SJTU-Liquid/GF-DiT/blob/442531e499891d4ffa654e87c076f03326a37b98/README.md#quickstart",
+          "documented_text": "--enable-runtime-v2",
+          "evidence": "documented in pinned README; referenced implementation file not yet fetched or executed"
+        },
+        {
+          "kind": "request_api",
+          "url": "https://github.com/SJTU-Liquid/GF-DiT/blob/442531e499891d4ffa654e87c076f03326a37b98/README.md#quickstart",
+          "documented_text": "/v1/images/generations",
+          "evidence": "documented in pinned README; referenced implementation file not yet fetched or executed"
+        },
+        {
+          "kind": "benchmark",
+          "url": "https://github.com/SJTU-Liquid/GF-DiT/blob/442531e499891d4ffa654e87c076f03326a37b98/benchmarks/diffusion/diffusion_benchmark_serving.py",
+          "documented_text": "benchmarks/diffusion/diffusion_benchmark_serving.py",
+          "evidence": "documented in pinned README; referenced implementation file not yet fetched or executed"
+        },
+        {
+          "kind": "profiling",
+          "url": "https://github.com/SJTU-Liquid/GF-DiT/blob/442531e499891d4ffa654e87c076f03326a37b98/scripts/profile-stages.sh",
+          "documented_text": "scripts/profile-stages.sh",
+          "evidence": "documented in pinned README; referenced implementation file not yet fetched or executed"
+        }
+      ],
+      "applicability": {
+        "readme_models": [
+          "Qwen-Image",
+          "WAN (family-level statement)"
+        ],
+        "formal_models": {
+          "sd35": "unknown: upstream broad support does not certify this model/revision",
+          "wan21": "unknown: WAN family mention does not certify this exact model/revision",
+          "wan22": "unknown: WAN family mention does not certify this exact model/revision"
+        },
+        "scope": "Official runtime_v2 must be explicitly enabled and policy/backend recorded. The torch backend lacks the online group reconfiguration path described for gfc; neither a vendored gfc library nor an EDF-like DITSERVE policy constitutes official GF-DiT."
+      },
+      "unaudited": [
+        "Transitive and unselected optional dependencies; build backend and editable-install behavior",
+        "Package importability, CUDA/C++ ABI, NCCL, flash-attn kernel and attention dispatch",
+        "Exact model revision, scheduler/solver semantics, memory fit and request lifecycle",
+        "Official source-tree and submodule identities beyond the saved documentation/dependency files",
+        "No pip resolver or installation was executed",
+        "Dynamic vLLM-Omni/base framework requirements and exact gfc source pin remain unknown",
+        "requirements/cuda.txt comments describe cublas override; no Dockerfile or full resolver validation was performed"
+      ]
+    },
+    {
+      "id": "xDiT",
+      "repository": "xdit-project/xDiT",
+      "commit": "16c34e7f070de65d9d2c67a6d74e0007dd8b426a",
+      "source_manifest_sha256": "afb96b9309706d7d3e9feb34b4c19f8f8899689cca722371f501369d3dbbc8ad",
+      "files": {
+        "README.md": {
+          "url": "https://raw.githubusercontent.com/xdit-project/xDiT/16c34e7f070de65d9d2c67a6d74e0007dd8b426a/README.md",
+          "sha256": "07bfd6874db892623db179ca9cc7e51d3b7c2036bf624e50b7a6e314081979e9",
+          "bytes": 34445
+        },
+        "pyproject.toml": {
+          "url": "https://raw.githubusercontent.com/xdit-project/xDiT/16c34e7f070de65d9d2c67a6d74e0007dd8b426a/pyproject.toml",
+          "sha256": "6272cc1c9f322d4db44a36b58f6023c16dfee57bf282b9a1b5ce07ac2327556a",
+          "bytes": 1959
+        }
+      },
+      "requires_python": ">=3.10",
+      "dependency_groups": [
+        {
+          "file": "pyproject.toml",
+          "section": "project",
+          "key": "dependencies",
+          "activation": "base",
+          "requirements": [
+            "torch>=2.4.1",
+            "accelerate>=0.33.0",
+            "transformers>=4.39.1",
+            "sentencepiece>=0.1.99",
+            "beautifulsoup4>=4.12.3",
+            "distvae>=0.1.0",
+            "yunchang>=0.6.0",
+            "einops",
+            "diffusers>=0.33.0",
+            "av",
+            "peft",
+            "numpy",
+            "PyYAML>=6.0"
+          ]
+        },
+        {
+          "file": "pyproject.toml",
+          "section": "project.optional-dependencies",
+          "key": "flash-attn",
+          "activation": "conditional extra: ring_degree > 1 needs flash-attn; dbcache needs cache-dit",
+          "requirements": [
+            "flash-attn>=2.7.0"
+          ]
+        },
+        {
+          "file": "pyproject.toml",
+          "section": "project.optional-dependencies",
+          "key": "cache-dit",
+          "activation": "conditional extra: ring_degree > 1 needs flash-attn; dbcache needs cache-dit",
+          "requirements": [
+            "cache-dit>=1.5.0,<1.6.0"
+          ]
+        }
+      ],
+      "interfaces": [
+        {
+          "kind": "model_runner",
+          "url": "https://github.com/xdit-project/xDiT/blob/16c34e7f070de65d9d2c67a6d74e0007dd8b426a/docs/runner/runner.md",
+          "documented_text": "xdit --model FLUX.1-dev",
+          "evidence": "documented in pinned README; referenced implementation file not yet fetched or executed"
+        },
+        {
+          "kind": "launch_examples",
+          "url": "https://github.com/xdit-project/xDiT/blob/16c34e7f070de65d9d2c67a6d74e0007dd8b426a/examples/run.sh",
+          "documented_text": "examples/run.sh",
+          "evidence": "documented in pinned README; referenced implementation file not yet fetched or executed"
+        },
+        {
+          "kind": "http_service",
+          "url": "https://github.com/xdit-project/xDiT/blob/16c34e7f070de65d9d2c67a6d74e0007dd8b426a/docs/developer/Http_Service.md",
+          "documented_text": "docs/developer/Http_Service.md",
+          "evidence": "documented in pinned README; referenced implementation file not yet fetched or executed"
+        }
+      ],
+      "applicability": {
+        "readme_models": [
+          "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+          "Wan-AI/Wan2.2-I2V-A14B-Diffusers"
+        ],
+        "formal_models": {
+          "sd35": "unknown: no exact-model execution evidence in this preflight",
+          "wan21": "documented model identifier; actual precision/attention/shape/serving execution unverified",
+          "wan22": "unknown: documented I2V-A14B is not TI2V-5B"
+        },
+        "scope": "The audited official commit is not established as the version in DITSERVE. An in-process xDiT kernel/backend or fixed-SP policy is not an official external-system serving measurement. The model runner provides inference profiling; matched serving arrival semantics still need a reviewed client."
+      },
+      "unaudited": [
+        "Transitive and unselected optional dependencies; build backend and editable-install behavior",
+        "Package importability, CUDA/C++ ABI, NCCL, flash-attn kernel and attention dispatch",
+        "Exact model revision, scheduler/solver semantics, memory fit and request lifecycle",
+        "Official source-tree and submodule identities beyond the saved documentation/dependency files",
+        "No pip resolver or installation was executed"
+      ]
+    }
+  ],
+  "claim_limits": [
+    "Policies implemented in the DITSERVE framework are in-framework comparisons, not executions of TetriServe or GF-DiT official implementations.",
+    "README references to SD3 do not establish support or correctness for SD3.5 medium.",
+    "Wan2.1 and Wan2.2 are two versions within the Wan family; they do not demonstrate generalization across video-model families.",
+    "Two independent 8-GPU jobs are two replicas, not a single 16-GPU, cross-node distributed experiment.",
+    "Version constraints satisfied in the observed subset do not prove installation feasibility, API compatibility, runnable kernels, correctness or comparable performance.",
+    "The seven-package runtime snapshot predates the official Wan22 directory replacement; its model root/config readout is not a complete verified model manifest.",
+    "Published README performance numbers are not measurements in this environment and are never copied into local benchmark results."
+  ],
+  "execution_policy": {
+    "offline_only": true,
+    "install": false,
+    "download": false,
+    "build_image": false,
+    "remote_write": false,
+    "submit_job": false,
+    "environment_change": "If required dependencies cannot coexist in the current image, obtain an explicitly user-approved new environment/image source. Local WSL and cluster image building remain prohibited. Do not silently downgrade packages or substitute policy implementations.",
+    "future_remote_guard": "Before every authorized future write/transfer/submission check df -h /data; stop all project work above 790G used or at 80 percent. Re-check active long jobs. Job submission remains with the designated operator."
+  },
+  "completion_plan": [
+    {
+      "id": "external_code_identity",
+      "status": "pending",
+      "depends_on": [],
+      "required_evidence": [
+        "Full official repository and 40-character commit; source inventory hash, clean-tree status and any patch hash; exact launcher and benchmark-client source hashes.",
+        "Pin all submodules, gfc, vLLM/base framework and xDiT component revisions; distinguish upstream official code, compatibility patch and reimplementation.",
+        "Record actual command, resolved config hash, effective policy and collective backend; GF-DiT runtime_v2 must be enabled. A README link is not execution evidence."
+      ]
+    },
+    {
+      "id": "environment_and_dependencies",
+      "status": "pending",
+      "depends_on": [
+        "external_code_identity"
+      ],
+      "required_evidence": [
+        "User-approved environment/image source and immutable digest; full package inventory/lock, Python/CUDA/driver/NCCL versions and import locations.",
+        "Resolve audited TetriServe diffusers==0.33.0 vs 0.36.0 and numpy<2 vs 2.2.6; GF-DiT cache-dit==1.3.0 vs 1.5.0. Preserve incompatible environment comparisons as a documented limitation.",
+        "Run authorized import, kernel and official single-request smoke only after source/environment provenance is complete; a package version match alone is insufficient."
+      ]
+    },
+    {
+      "id": "exact_inputs",
+      "status": "pending",
+      "depends_on": [
+        "external_code_identity"
+      ],
+      "required_evidence": [
+        "Freeze request manifest bytes/SHA256, ordered IDs, prompts/negative prompts, prompt-source identity and normalized-prompt split membership for every arm.",
+        "Exclude known exploration prompts and record split leakage checks; reuse the exact same prompt and inference seed per paired request across systems.",
+        "Hash adapter-transformed request payloads and prove they preserve all generation parameters and requested outputs; do not silently drop unsupported inputs."
+      ],
+      "frozen_values": {
+        "datasets": {
+          "image": {
+            "kind": "diffusiondb",
+            "repository": "https://huggingface.co/datasets/poloclub/diffusiondb",
+            "revision": "fb620fbe49fa4420e0734bd9c0df11f51176b61f",
+            "sha256": "eecd341187bc91c07f5994ad0660d40228ea025616fd57a509bef8323677c68f"
+          },
+          "video": {
+            "kind": "vidprom",
+            "repository": "https://huggingface.co/datasets/WenhaoWang/VidProM",
+            "revision": "0c0900e6a037b058b1903bc1de9bcb6037d9fc24",
+            "sha256": "7668b87803b67638fa899b69f3a2a298ea13daffe508ce625e21937bff958b6e"
+          }
+        },
+        "prompt_split": "test",
+        "inference_seeds": [
+          301,
+          302,
+          303
+        ],
+        "requests_per_cell": 200,
+        "prior_exposure": {
+          "manifest_file": "known-exploration-prompts-v1.json",
+          "manifest_sha256": "19edbc0cde6a27bf9e6203e8e0525e37298139e64c0450efa618fb69d8daa7cf",
+          "also_exclude_existing_pool_roles": [
+            "dev",
+            "development"
+          ],
+          "scope": "Excludes all known local exploration and all source-pool dev prompts; unknown prior exposure is not ruled out"
+        }
+      }
+    },
+    {
+      "id": "trace_and_arrival_semantics",
+      "status": "pending",
+      "depends_on": [
+        "exact_inputs"
+      ],
+      "required_evidence": [
+        "Freeze exact arrival/deadline trace bytes and canonical SHA256, load definition, offered rates, duration, request order and all formal matrix cells before observing results.",
+        "Use open-loop arrivals measured by one documented monotonic clock; record actual dispatch skew and backpressure, concurrency caps, batching and reject/timeout policy.",
+        "A serial/model-runner throughput loop is not a matched serving workload; unsupported mixed-model/mixed-resolution cases remain explicitly not applicable, with no substitution."
+      ],
+      "frozen_values": {
+        "video_fractions": [
+          0.2,
+          0.5
+        ],
+        "patterns": [
+          {
+            "name": "poisson"
+          },
+          {
+            "name": "gamma",
+            "cv": 2.0
+          },
+          {
+            "name": "bursty",
+            "bursts": 2,
+            "burst_active_fraction": 0.25
+          }
+        ],
+        "loads": [
+          0.6,
+          0.9,
+          1.2
+        ],
+        "shape_distribution": "uniform within modality, integer remainder assigned in shape_ids order",
+        "batch_limit": 1
+      }
+    },
+    {
+      "id": "slo_basis",
+      "status": "pending",
+      "depends_on": [
+        "trace_and_arrival_semantics"
+      ],
+      "required_evidence": [
+        "Freeze identical per-request absolute deadlines using the same per-shape SP1 end-to-end reference calibration and its measured source/GPU identity.",
+        "Record deadline start/finish boundaries including queue, text encoder, diffusion and decode. No system-specific re-scaling of SLOs after observing performance.",
+        "Report SAR separately for image/video and each formal shape; publish the complete planned denominator."
+      ],
+      "frozen_values": {
+        "video_scale": 1.5,
+        "image_scale": 2.5,
+        "target_attainment_per_modality": 0.95,
+        "basis": "per-shape measured SP1 end-to-end service, frozen across all policies"
+      }
+    },
+    {
+      "id": "models_and_quality",
+      "status": "pending",
+      "depends_on": [
+        "environment_and_dependencies",
+        "exact_inputs"
+      ],
+      "required_evidence": [
+        "Pin exact model repositories/revisions and verified per-file size/SHA256 inventories, tokenizer/text-encoder/VAE/scheduler configuration, solver steps and guidance.",
+        "Use the verified official Wan22 component directory and bind its manifest; the historical runtime-facts model root is insufficient.",
+        "Demonstrate actual support for each exact model/shape, including text-to-video vs image-conditioned mode; README SD3, generic WAN or Wan2.2 A14B labels cannot fill missing evidence.",
+        "Run paired output/quality checks across systems; report acceptable numeric tolerances and separate serving-prompt quality from the complete pinned official VBench protocol."
+      ],
+      "frozen_values": {
+        "model_repositories": {
+          "wan21": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+          "wan22": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+          "sd35": "stabilityai/stable-diffusion-3.5-medium"
+        },
+        "formal_shapes": {
+          "wan21-480p": {
+            "model": "wan21",
+            "kind": "video",
+            "scope": "formal",
+            "role": "recommended-resolution",
+            "height": 480,
+            "width": 832,
+            "frames": 81,
+            "steps": 50,
+            "guidance_scale": 5.0
+          },
+          "wan21-720p": {
+            "model": "wan21",
+            "kind": "video",
+            "scope": "formal",
+            "role": "higher-resolution-stress-requires-qualification",
+            "height": 720,
+            "width": 1280,
+            "frames": 81,
+            "steps": 50,
+            "guidance_scale": 5.0
+          },
+          "wan22-small": {
+            "model": "wan22",
+            "kind": "video",
+            "scope": "formal",
+            "role": "lower-resolution-heterogeneity-requires-qualification",
+            "height": 512,
+            "width": 896,
+            "frames": 121,
+            "steps": 50,
+            "guidance_scale": 5.0
+          },
+          "wan22-720p": {
+            "model": "wan22",
+            "kind": "video",
+            "scope": "formal",
+            "role": "official-example-resolution",
+            "height": 704,
+            "width": 1280,
+            "frames": 121,
+            "steps": 50,
+            "guidance_scale": 5.0
+          },
+          "sd35-512": {
+            "model": "sd35",
+            "kind": "image",
+            "scope": "formal",
+            "height": 512,
+            "width": 512,
+            "frames": 1,
+            "steps": 28,
+            "guidance_scale": 4.5
+          },
+          "sd35-1024": {
+            "model": "sd35",
+            "kind": "image",
+            "scope": "formal",
+            "height": 1024,
+            "width": 1024,
+            "frames": 1,
+            "steps": 28,
+            "guidance_scale": 4.5
+          }
+        },
+        "quality": {
+          "serving_prompts_are_not_vbench": true,
+          "paired_prompts_per_model_minimum": 32,
+          "paired_seeds": [
+            301,
+            302,
+            303
+          ],
+          "vbench_repository": "https://github.com/Vchitect/VBench",
+          "vbench_revision": "1039fe66d7aa2f4b214003ca2d35f5011c48bfee",
+          "official_protocol": "complete pinned dimension/prompt manifest; 5 seeds, temporal flickering 25; no replacement with VidProM"
+        }
+      }
+    },
+    {
+      "id": "precision_attention_and_approximation",
+      "status": "pending",
+      "depends_on": [
+        "models_and_quality"
+      ],
+      "required_evidence": [
+        "Freeze and record actual transformer/text-encoder/VAE dtypes, autocast/TF32/determinism flags, quantization and compilation for each component in every arm.",
+        "Force and attest the effective attention backend/kernel, version and fallback behavior; xDiT auto-selection must not make systems differ silently.",
+        "Exact-mode comparison disables approximate caching, skipped steps, sparsity and unsupported mixed-precision tricks; separately labelled quality-matched approximate arms require fresh evidence.",
+        "Record SP/CFG/TP/PP degrees and allowed rank sets; match output semantics and solver progression. Resolve any impossible matching constraint before measured comparisons."
+      ]
+    },
+    {
+      "id": "compute_and_warmup",
+      "status": "pending",
+      "depends_on": [
+        "environment_and_dependencies",
+        "precision_attention_and_approximation"
+      ],
+      "required_evidence": [
+        "Record allocated GPU UUIDs/model/memory, node IDs, interconnect/topology, CPU/RAM/thread/affinity caps, co-tenants, power/clocks and actual reservation duration.",
+        "Match device count and compute entitlement, not just number of launched processes. Charge residency and idle reservations as GPU-seconds.",
+        "Predeclare model-loading, compilation, profiling and per-shape warmup requests/seeds/counts; log completion and cost. Publish cold-start and warmed service boundaries separately.",
+        "Use interleaved/randomized arm order with matched seeds and resource conditions; profile and warmup data must not leak test prompts into tuning."
+      ]
+    },
+    {
+      "id": "failures_and_statistics",
+      "status": "pending",
+      "depends_on": [
+        "compute_and_warmup",
+        "slo_basis"
+      ],
+      "required_evidence": [
+        "Publish every planned system/seed/shape/load cell and every planned request, including unstarted, rejected, timed-out, OOM, interrupted and failed requests.",
+        "Retain raw failure evidence and reason; never omit failed cells or encode unstarted counterfactuals as measured zero-throughput.",
+        "Measure E2E p50/p95/p99, per-modality/shape SLO attainment, goodput and reserved/active GPU-seconds with exact observation windows; drain/censor rules frozen before runs.",
+        "Report paired effects and confidence intervals over independent seeds/runs, not request-level pseudoreplication; publish all selected cells and quality qualifications."
+      ]
+    },
+    {
+      "id": "additional_model_family",
+      "status": "pending",
+      "depends_on": [
+        "models_and_quality"
+      ],
+      "required_evidence": [
+        "Select at least one non-Wan video family supported by the compared systems (candidate only: HunyuanVideo or CogVideoX; exact variant not yet selected/approved).",
+        "Before downloading anything, freeze exact official model revision, licensing/access and disk/memory estimate, approved acquisition/environment source and representative quality/shape protocol.",
+        "Collect full correctness, exact-model compatibility, performance and failure evidence for the new family; two Wan versions alone remain within-family coverage."
+      ]
+    },
+    {
+      "id": "hardware_and_cross_node_scale",
+      "status": "pending",
+      "depends_on": [
+        "compute_and_warmup"
+      ],
+      "required_evidence": [
+        "Declare and qualify each hardware topology separately. Current A100 PCIe measurements cannot be relabelled as the H100/A40 evidence quoted in external READMEs.",
+        "For a 16-GPU claim require a single job/session, world_size=16, complete global rank-to-GPU UUID/node map, at least two node identities and the exact global launch command.",
+        "Measure actual cross-node collective/resharding traffic, network backend and communication time, plus matched 1/2/4/8/16-GPU sweeps with the same workload/model semantics.",
+        "Two separately scheduled 8-GPU jobs may provide independent repetitions only; queue capacity and two allocations do not demonstrate distributed scaling."
+      ]
+    },
+    {
+      "id": "review_and_qualification",
+      "status": "pending",
+      "depends_on": [
+        "failures_and_statistics",
+        "additional_model_family",
+        "hardware_and_cross_node_scale"
+      ],
+      "required_evidence": [
+        "Independent review verifies external-code provenance, applicability, fair controls, complete raw evidence and stated claim scope before considering a P5 stage gate.",
+        "This preflight tool always emits allows=[] and p5_qualified=false, even when all observed declaration checks are compatible; it does not implement or grant that future gate."
+      ]
+    }
+  ]
+}

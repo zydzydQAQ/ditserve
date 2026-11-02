@@ -215,3 +215,17 @@ PYTHONPATH=workers python3 benchmarks/collect_stage_evidence.py \
 `benchmarks/p2_benefit.py --manifest <evidence.json> --output <new-summary.json>` 明确读取每个 case/arm 的哈希绑定 raw run；selector 包含 phase、attempt、cell 和执行 order。按冻结配置枚举请求分母，保留失败、中断以及未开始的策略 cell；没有测得 cell 耗时时不补造零吞吐或速度比。模态分别统计并按独立 seed 聚合，不以总均值掩盖视频退化。它还检查源码/核心/运行时/模型/分配/实际输入一致性，摘要不替代跨形态数值或语义质量资格。
 
 开发 P0/P1 来源的 split、role、SLO 和诊断 controls 都保留，不能因派生 P2 配置而变为正式测试主表。已用实际失败的 `12b0918` 原始记录验证审查器：Block 的 30 完成/10 中断与尚未启动 EDF 的 40 项分别保留；该结果仅用于验证分析工具，不能作为收益比较。P2 阶段仍需要真实受控测量及独立质量证据。
+
+### 成本观测与后续阶段工具（2026-11-03）
+
+原始 cluster request 增加 `controller_timing`，记录同一控制器回放时钟上的任务启动、prepare/export、并发 import 就绪、advance 完成与控制器观察时间，并保留异常前缀。独立调度计时锚保留原有抢占估计语义。停止和下一次恢复通过 event ID 关联，首次分发、换组、原地恢复及 tiered restore 分开；规划计时只包 `cluster_plan`。这些是嵌套区间，rank RPC 并行；stop 与原 advance 重叠，不能相加成迁移/恢复开销。新测量没有增加 worker RPC、CUDA 同步或 barrier，但真实观测开销仍须测量。
+
+`benchmarks/p1_costs.py --manifest <cost-evidence.json> --output <new-summary.json>` 读取 `{schema: ditserve.p1-cost-evidence.v1, runs: [{path,sha256}]}`。只报告原始时序诊断；导出到所有新 target 就绪不代表所有旧副本回收，停止到下一 dispatch 包含排队与其他请求服务，下一次 advance 完成还包括有用模型计算。原始 `run.json` 是该分析的未闭合依赖，不能在分析前删除。
+
+P3 的 `p3_stream.py` 生成固定 warmup/measurement/drain 观察窗内不归一化的 Poisson 到达，请求数自然随机，模态与分辨率按冻结概率取样；全计划 prompt 余量不足即拒绝。`p3_window_review.py` 复算到达、SLO 和输入规格，保留失败、未开始和右删失分母，分别统计 arrival cohort 与完成窗口，按 seed 给区间。当前 drain 是分析截止，未实现核心精确停止；有限窗口与相关 queue bins 不授予稳定容量资格。
+
+P4 的 `p4_quality_plan.py prepare` 固定同一组每模型至少 32 prompt × 3 个 generation seed，并将提示词选择 seed 与生成 seed 分离。正式 50 步的 late-window、折叠预算与质量阈值需独立开发证据；固定 N=1..K、adaptive 与 exact 的控制保持实际 unconditional-forward 数量可比，N=0 复用 exact 且不记为算法收益。它检查官方模型映射、同分配每档校准与完整/逐配对临时存储预算，尚不生成可执行作业或质量 receipt。LPIPS 权重、完整 VBench、流式评测和依赖闭合仍待完成。PSNR 的无限值以 exact-match 关系报告，不做 ∞−∞ 或任意截顶。
+
+`native_metrics.py` 的释放容量与图像重叠改为按 GPU 合并时间区间，batch 成员不重复累计 GPU 时间；使用最近一次 full-CFG 布局，无法追溯的换组不获得释放额度。该指标仍是 placement/window proxy，`reuse_qualified=false`，尚缺 release ACK、epoch 生命周期、真实受益执行与 fold-only/forced/demand 因果对照。不同 attempt/order 的请求分母不得合并，缺身份的多臂旧记录拒绝推断。
+
+P5 的 `p5_external_preflight.py` 对照固定官方源码声明和已测运行环境，仅检查选定依赖子集；未观测包保持 unknown，不等于未安装或可运行。`p5-external-v1.json` 固定 TetriServe、GF-DiT、xDiT 来源和接口，并列出模型、输入、算力、质量、计时与规模证据要求。当前已知 TetriServe 的 diffusers/NumPy 和 GF-DiT 的 cache-dit 与现有镜像冲突；不得安装替换或自行构建镜像来绕过项目限制。同框架策略仍标为重实现，SD3 不自动代表 SD3.5、两个 Wan 版本不代表跨家族、两个独立 8 卡作业不代表跨节点 16 卡。工具输出始终是预审，不能提升 P5。

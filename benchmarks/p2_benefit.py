@@ -88,6 +88,31 @@ def planned_arm(config, selector, protocol, seed):
             or benchmark.get('exact_mode') is not True or benchmark.get('seed') != seed
             or formal.get('sha256') != canonical_hash(protocol) or formal.get('schema') != protocol.get('schema')):
         raise ValueError('configuration lacks frozen formal native/exact/seed identity')
+    split, role = formal.get('split'), formal.get('role')
+    if (split not in ('development', 'test') or type(seed) is not int
+            or seed not in protocol.get('seeds', {}).get(split, [])):
+        raise ValueError('seed/split is outside the frozen formal protocol')
+    if role == 'serving':
+        shape_scope = 'development' if split == 'development' else 'formal'
+    elif (role == 'p3_sustained' and isinstance(benchmark.get('p3'), dict)
+          and sha(benchmark['p3'].get('plan_sha256'))):
+        # P3's caller separately verifies the bound plan, windows and arrivals.
+        shape_scope = 'development' if split == 'development' else 'formal'
+    elif role in ('preemption', 'no_preemption', 'p1_contention', 'p1_no_preemption') and split == 'development':
+        shape_scope = 'formal' if role.startswith('p1_') else 'development'
+    else:
+        raise ValueError('formal role is inconsistent with its prompt split')
+    if 'p2' in benchmark and benchmark['p2'].get('parent_role') != role:
+        raise ValueError('formal role differs from the frozen parent role')
+    shape_ids = formal.get('shape_ids')
+    shapes = protocol.get('shapes', {})
+    if (not isinstance(shape_ids, list) or not shape_ids or not all(isinstance(sid, str) for sid in shape_ids)
+            or len(set(shape_ids)) != len(shape_ids)
+            or any(sid not in shapes or shapes[sid].get('scope') != shape_scope for sid in shape_ids)):
+        raise ValueError('formal shape scope is inconsistent with its split/role')
+    bundle_hash = formal.get('profile_bundle_sha256')
+    if not sha(bundle_hash) or phase.get('profile', {}).get('source', {}).get('bundle_sha256') != bundle_hash:
+        raise ValueError('formal/profile bundle hash bindings differ')
     workload = phase.get('workload')
     provenance = phase.get('trace_provenance', {})
     if (not isinstance(workload, list) or not workload or benchmark.get('trace') != provenance
@@ -194,6 +219,11 @@ def audit_arm(record, arm, protocol):
     try:
         if record.get('schema') != 'ditserve.run.v1' or record.get('config') != arm['config'] or not record.get('run_id'):
             raise ValueError('run differs from frozen planned configuration')
+        config_hash = canonical_hash(arm['config'])
+        # Older evidence may omit redundant hashes; a supplied hash must bind
+        # the actual frozen config, rather than merely agree with another tag.
+        if 'config_sha256' in record and record['config_sha256'] != config_hash:
+            raise ValueError('run config hash differs from the frozen configuration')
         source = record.get('source', {})
         if not sha(source.get('core_sha256')) or not source.get('files') or not all(sha(h) for h in source['files'].values()):
             raise ValueError('run lacks C++ and Python source identity')
@@ -237,6 +267,9 @@ def audit_arm(record, arm, protocol):
             raise ValueError('selected attempt has no unique measured allocation session')
         session = sessions[0]
         identity = session.get('identity', {})
+        for owner in (identity, phase.get('charge', {}).get('identity', {})):
+            if 'config_sha256' in owner and owner['config_sha256'] != config_hash:
+                raise ValueError('session config hash differs from the frozen configuration')
         if (identity.get('gpu_uuids') != arm['gpu_uuids'] or identity.get('attempt') != selector['attempt']
                 or identity.get('run_id') != record['run_id'] or session.get('phase') != selector['phase']
                 or session.get('devices') != len(arm['gpu_uuids'])

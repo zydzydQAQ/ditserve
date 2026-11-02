@@ -168,6 +168,69 @@ class P2BenefitTest(unittest.TestCase):
                 result = p2.evaluate(manifest, root)
                 self.assertNotEqual(result['cases'][0]['comparison']['status'], 'measured')
 
+    def test_formal_split_seed_role_and_shape_scope_cannot_be_relabelled(self):
+        config = self.records()['candidate']['config']
+        selector = dict(phase='cluster', attempt=1, cell=0, order='forward')
+        mutations = [
+            lambda c: c['benchmark']['formal_protocol'].__setitem__('split', 'test'),
+            lambda c: c['benchmark']['formal_protocol'].__setitem__('split', 'unknown'),
+            lambda c: c['benchmark'].__setitem__('seed', 301),
+            lambda c: c['benchmark']['formal_protocol'].__setitem__('role', 'calibration'),
+            lambda c: c['benchmark']['formal_protocol'].__setitem__('role', 'p3_sustained'),
+            lambda c: c['benchmark']['formal_protocol']['shape_ids'].append('wan21-dev'),
+            lambda c: c['benchmark']['p2'].__setitem__('parent_role', 'serving'),
+        ]
+        for mutate in mutations:
+            changed = copy.deepcopy(config); mutate(changed)
+            with self.subTest(mutate=mutate), self.assertRaisesRegex(ValueError, 'seed/split|role|shape scope'):
+                p2.planned_arm(changed, selector, self.f.f.p, changed['benchmark']['seed'])
+        # A development serving source remains valid, with development shapes;
+        # formal-shape P1 sources retain their distinct p1_* role.
+        development = self.f.f.build(split='development', seed=201)
+        self.assertEqual(p2.planned_arm(development, selector, self.f.f.p, 201)['phase']['kind'], 'cluster')
+        self.assertEqual(p2.planned_arm(config, selector, self.f.f.p, 201)['phase']['kind'], 'cluster')
+        development['benchmark']['formal_protocol']['role'] = 'p3_sustained'
+        development['benchmark']['p3'] = dict(plan_sha256='f' * 64)
+        self.assertEqual(p2.planned_arm(development, selector, self.f.f.p, 201)['phase']['kind'], 'cluster')
+
+    def test_formal_profile_bundle_cross_references_must_agree(self):
+        config = self.records()['candidate']['config']
+        selector = dict(phase='cluster', attempt=1, cell=0, order='forward')
+        mutations = [
+            lambda c: c['benchmark']['formal_protocol'].__setitem__('profile_bundle_sha256', '0' * 64),
+            lambda c: c['phases'][0]['profile']['source'].__setitem__('bundle_sha256', '1' * 64),
+            lambda c: c['phases'][0]['profile']['source'].pop('bundle_sha256'),
+        ]
+        for mutate in mutations:
+            changed = copy.deepcopy(config); mutate(changed)
+            with self.subTest(mutate=mutate), self.assertRaisesRegex(ValueError, 'bundle hash'):
+                p2.planned_arm(changed, selector, self.f.f.p, 201)
+
+    def test_supplied_run_and_session_config_hashes_bind_actual_configuration(self):
+        record = self.records()['candidate']
+        selector = dict(phase='cluster', attempt=1, cell=0, order='forward')
+        arm = p2.planned_arm(record['config'], selector, self.f.f.p, 201)
+        # Legacy records without these redundant fields are still reviewable.
+        self.assertEqual(p2.audit_arm(record, arm, self.f.f.p)['status'], 'completed')
+        valid = copy.deepcopy(record)
+        valid['config_sha256'] = canonical_hash(valid['config'])
+        valid['budget']['sessions'][0]['identity']['config_sha256'] = valid['config_sha256']
+        self.assertEqual(p2.audit_arm(valid, arm, self.f.f.p)['status'], 'completed')
+        mutations = [
+            lambda r: r.__setitem__('config_sha256', '0' * 64),
+            lambda r: r['budget']['sessions'][0]['identity'].__setitem__('config_sha256', '1' * 64),
+            lambda r: (r.__setitem__('config_sha256', '2' * 64),
+                       r['budget']['sessions'][0]['identity'].__setitem__('config_sha256', '2' * 64)),
+            lambda r: r['phases'][0].__setitem__('charge', {'identity': {'config_sha256': '3' * 64}}),
+        ]
+        for mutate in mutations:
+            changed = copy.deepcopy(record); mutate(changed)
+            with self.subTest(mutate=mutate):
+                audit = p2.audit_arm(changed, arm, self.f.f.p)
+                self.assertEqual(audit['status'], 'invalid')
+                self.assertIn('config hash', audit['reason'])
+                self.assertEqual(sum(row['planned'] for row in audit['by_kind'].values()), 40)
+
     def test_missing_completed_rows_or_changed_actual_inputs_are_invalid(self):
         mutations = [lambda r: r['requests'].pop(),
                      lambda r: r['requests'][0]['spec'].__setitem__('seed', 999),
@@ -322,11 +385,8 @@ class P2ContrastTest(unittest.TestCase):
             contrasts.make_configs(config, 'minimum-pair')
 
     def test_p0_diagnostic_controls_and_population_are_preserved(self):
-        config = self.f.run_record()['config']
-        config['benchmark']['formal_protocol']['role'] = 'preemption'
-        controls = dict(config['benchmark']['p1']['controls'], image_slo_scale=1.1, lazy_preemption=False)
-        config['benchmark']['p0_diagnostic_controls'] = controls
-        config['phases'][0]['options']['lazy_preemption'] = False
+        config = self.f.f.build(split='development', seed=201, diagnostic='contention')
+        controls = config['benchmark']['p0_diagnostic_controls']
         generated = contrasts.make_configs(config, 'block-fixed')['candidate']
         self.assertEqual(generated['benchmark']['formal_protocol']['role'], 'preemption')
         self.assertEqual(generated['benchmark']['p2']['parent_controls'], controls)
