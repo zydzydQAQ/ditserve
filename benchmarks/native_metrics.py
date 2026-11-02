@@ -11,7 +11,16 @@ def percentile(values, fraction):
     if not values:
         return None
     ordered = sorted(values)
-    return ordered[min(len(ordered) - 1, max(0, math.ceil(fraction * len(ordered)) - 1))]
+    if not 0 <= fraction <= 1:
+        raise ValueError("quantile fraction must be in [0, 1]")
+    position = (len(ordered) - 1) * fraction
+    lower = math.floor(position)
+    return ordered[lower] + (ordered[min(lower + 1, len(ordered) - 1)] - ordered[lower]) * (position - lower)
+
+
+def ontime(row):
+    return (row.get("status") == "completed" and row.get("finish_ms") is not None
+            and row["finish_ms"] <= row["deadline_ms"])
 
 
 def distribution(values):
@@ -24,33 +33,35 @@ def distribution(values):
 
 
 def kind_summary(rows, elapsed_ms):
-    latencies = [row["finish_ms"] - row["arrival_ms"] for row in rows if row.get("finish_ms") is not None]
-    ontime = sum(row.get("finish_ms") is not None and row["finish_ms"] <= row["deadline_ms"] for row in rows)
+    latencies = [row["finish_ms"] - row["arrival_ms"] for row in rows
+                 if row.get("status") == "completed" and row.get("finish_ms") is not None]
+    timely = sum(ontime(row) for row in rows)
     completed = sum(row.get("status") == "completed" for row in rows)
     return {
-        "requests": len(rows), "completed": completed, "ontime": ontime,
-        "deadline_attainment": ontime / len(rows) if rows else None,
-        "goodput_rps": ontime / (elapsed_ms / 1000) if elapsed_ms > 0 else None,
+        "requests": len(rows), "completed": completed, "ontime": timely,
+        "deadline_attainment": timely / len(rows) if rows else None,
+        "goodput_rps": timely / (elapsed_ms / 1000) if elapsed_ms > 0 else None,
         "latency_ms": distribution(latencies),
     }
 
 
 def summarize_run(record):
-    cells = record["phases"][0]["cells"]
+    cells = [(phase.get("id", "cluster"), cell) for phase in record["phases"] for cell in phase["cells"]]
     summaries = []
-    for cell in cells:
-        rows = [row for row in record["requests"] if row["cell"] == cell["cell"]]
+    for phase, cell in cells:
+        rows = [row for row in record["requests"]
+                if row.get("phase", "cluster") == phase and row["cell"] == cell["cell"]]
         elapsed_ms = cell["elapsed_ms"]
         gpus = cell["gpus"]
         allocated_gpu_seconds = gpus * elapsed_ms / 1000
         completed = sum(row.get("status") == "completed" for row in rows)
-        ontime = sum(row.get("finish_ms") is not None and row["finish_ms"] <= row["deadline_ms"] for row in rows)
+        timely = sum(ontime(row) for row in rows)
         block_samples = [
             sample["elapsed_ms"] for row in rows
             for sample in row.get("advance_samples", []) if sample.get("steady") is True
         ]
         summaries.append({
-            "cell": cell["cell"], "policy": cell["policy"], "order": cell.get("order"),
+            "phase": phase, "cell": cell["cell"], "policy": cell["policy"], "order": cell.get("order"),
             "status": cell["status"], "elapsed_ms": elapsed_ms,
             "by_kind": {
                 kind: kind_summary([row for row in rows if row["kind"] == kind], elapsed_ms)
@@ -58,7 +69,10 @@ def summarize_run(record):
             },
             "allocated_gpu_seconds": allocated_gpu_seconds,
             "gpu_seconds_per_completed_request": allocated_gpu_seconds / completed if completed else None,
-            "gpu_seconds_per_ontime_request": allocated_gpu_seconds / ontime if ontime else None,
+            "gpu_seconds_per_ontime_request": allocated_gpu_seconds / timely if timely else None,
+            "image_batch": cell.get("image_batch"),
+            "doorbell": cell.get("doorbell"),
+            "observed_transfers": sum(row.get("transfers", 0) for row in rows),
             "block_quantum_elapsed_ms": distribution(block_samples),
             "advance_sample_count": len(block_samples),
             "preemption_response_ms": distribution([
@@ -79,6 +93,8 @@ def summarize_run(record):
         "used_gpu_seconds": record["budget"].get("used_gpu_seconds"),
         "cells": summaries,
         "notes": {
+            "quantiles": "linear interpolation at (n-1)*p, matching the native controller",
+            "goodput_rps": "completed and on-time requests divided by the finite cell wall time; not quality-qualified or sustained capacity",
             "allocated_gpu_seconds": "sum over native cell elapsed time times registered GPUs; budget.used_gpu_seconds additionally includes process startup and cleanup",
             "block_quantum_elapsed_ms": "steady quantum wall time, not a direct preemption-wait CDF",
             "preemption_response_ms": "arrival-to-first-start response of requests marked block_preempt; includes scheduling and queueing, not only the boundary stop",

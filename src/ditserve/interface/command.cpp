@@ -200,7 +200,7 @@ Arguments parse(int argc, char** argv) {
     if (result.command == "run") allowed = {"config", "run-id", "work-dir", "results-root", "ledger", "phase", "resume", "allow-gpu", "repair", "retry-of"};
     else if (result.command == "simulate") allowed = {"config", "run-id", "work-dir", "results-root", "count", "seed", "keep-raw"};
     else if (result.command == "doctor") {}
-    else if (result.command == "report") { allowed = {"output", "keep-raw"}; path_required = true; }
+    else if (result.command == "report") { allowed = {"output", "keep-raw", "format"}; path_required = true; }
     else if (result.command == "compact-results") {
         result.command = "results"; result.request["op"] = "compact";
         allowed = {"destination", "prune-raw"}; path_required = true;
@@ -259,7 +259,7 @@ void help() {
         "           [--run-id ID] [--work-dir PATH] [--results-root PATH]\n"
         "  run --config PATH [--run-id ID] [--work-dir PATH] [--results-root PATH]\n"
         "      [--ledger PATH] [--phase ID] [--resume] [--allow-gpu] [--repair --retry-of ID]\n"
-        "  report WORK_DIR [--output PATH] [--keep-raw]\n"
+        "  report WORK_DIR [--output PATH] [--keep-raw] [--format summary|full]\n"
         "  results inspect|verify PATH\n"
         "  results compact ROOT [--destination PATH] [--prune-raw]\n"
         "  compact-results ROOT [--destination PATH] [--prune-raw]\n"
@@ -351,6 +351,7 @@ Json dispatch(const std::string& command, Json request) {
     if (command == "report") {
         Json action = {{"op", "finalize"}, {"work_dir", request.at("work_dir")}, {"prune", request.at("prune")}};
         if (request.contains("output")) action["output"] = request.at("output");
+        if (request.contains("format")) action["format"] = request.at("format");
         return service(request, "results", action);
     }
     Json action = {{"op", request.at("op")}};
@@ -375,6 +376,10 @@ Json normalize_request(const std::string& command, Json request) {
     normalize_environment(request);
     if (command == "run" || command == "simulate-study") normalize_study(command, request);
     else if (command == "report") {
+        if (request.contains("format")) {
+            const auto format = string_field(request, "format", "");
+            if (format != "summary" && format != "full") throw std::invalid_argument("report format must be summary or full");
+        }
         request["work_dir"] = absolute(string_field(request, "work_dir", "")).string();
         request["output"] = request.contains("output") ? absolute(request.at("output").get<std::string>()).string()
             : report_output(request.at("work_dir").get<std::string>(), request.at("root").get<std::string>()).string();

@@ -134,6 +134,21 @@ void invalid_metrics() {
     rows = measured_rows(); rows[1]["request_id"] = rows[0]["request_id"];
     rejects([&] { request_summary(rows); });
 }
+void failed_modality_metrics() {
+    Json rows = {
+        {{"request_id","ok"},{"kind","image"},{"status","completed"},{"arrival_ms",0},{"finish_ms",10},{"deadline_ms",20}},
+        {{"request_id","early-failure"},{"kind","image"},{"status","failed"},{"arrival_ms",0},{"finish_ms",5},{"deadline_ms",20}},
+        {{"request_id","interrupted"},{"kind","image"},{"status","interrupted"},{"arrival_ms",0},{"finish_ms",100},{"deadline_ms",20}},
+        {{"request_id","blocked"},{"kind","image"},{"status","blocked"},{"arrival_ms",0},{"deadline_ms",20}},
+        {{"request_id","video"},{"kind","video"},{"status","failed"},{"arrival_ms",0},{"finish_ms",200},{"deadline_ms",300}}
+    };
+    const auto total=request_summary(rows), images=kind_summary(rows,"image"), videos=kind_summary(rows,"video");
+    near(total.at("deadline_attainment"),.2);near(images.at("attainment"),.25);near(videos.at("attainment"),0);
+    require(total.at("ontime")==1 && images.at("ontime")==1 && videos.at("ontime")==0,
+            "a failure before its deadline must never count as on time");
+    near(total.at("observation_ms"),200);
+    require(videos.at("latency_p99_ms").is_null(),"failed requests must not invent completed latency samples");
+}
 void multiple_observations() {
     auto first = measured_rows(), second = measured_rows();
     for (auto& row:first) { row["observation_id"]="online/1/0"; row["observation_ms"]=120; }
@@ -194,6 +209,7 @@ int main() {
     check("gates", gates);
     check("summary", summary);
     check("invalid metrics", invalid_metrics);
+    check("failed modality metrics", failed_modality_metrics);
     check("multiple observations", multiple_observations);
     check("workloads", workloads);
     std::cout << checks - failures << '/' << checks << " control contracts passed\n";

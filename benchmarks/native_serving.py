@@ -5,6 +5,7 @@ import argparse
 import json
 import math
 import random
+import re
 from pathlib import Path
 
 from cluster_config import MODELS, allocated_uuids, make_workers
@@ -264,7 +265,10 @@ def main():
     parser.add_argument("--require-profile-match", action="store_true")
     parser.add_argument("--collective-backend", choices=["nccl", "gfc"], default="nccl")
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--experiment", help="result and ledger identity; default derives from model, seed and load")
     args = parser.parse_args()
+    if args.experiment is not None and not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", args.experiment):
+        parser.error("--experiment must be a safe nonempty result identity")
     if args.curvature and args.fold_steps:
         parser.error("--curvature and --fold-steps are mutually exclusive")
     uuids = args.gpu_uuids.split(",") if args.gpu_uuids else allocated_uuids()
@@ -331,6 +335,8 @@ def main():
         image_batch=args.image_batch, policy_order=args.policy_order, order_seed=args.order_seed,
     )
     config["benchmark"]["quality_arm"] = args.quality_arm
+    if args.experiment is not None:
+        config["experiment"] = args.experiment
     config["benchmark"]["preemption_diagnostic"] = ("no_preemption" if args.no_preemption_diagnostic
                                                      else "contention" if args.suite == "preempt" else None)
     args.output.parent.mkdir(parents=True, exist_ok=True)

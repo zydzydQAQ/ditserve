@@ -4,13 +4,14 @@
 import argparse
 import hashlib
 import json
-import math
 from pathlib import Path
 
 import numpy as np
 from scipy.ndimage import gaussian_filter
 
 from ditserve.evaluation.quality import evaluate_quality
+from native_exact import validate_pair_identity
+from native_metrics import distribution, percentile
 
 
 def sha256(path):
@@ -22,7 +23,7 @@ def sha256(path):
 
 
 def ssim(reference, candidate):
-    if reference.shape != candidate.shape or reference.ndim != 5 or reference.shape[-1] != 3:
+    if reference.shape != candidate.shape or reference.ndim != 5 or reference.shape[0] != 1 or reference.shape[-1] != 3:
         raise ValueError("SSIM expects matching [1,T,H,W,3] videos")
     values = []
     for ref_frame, candidate_frame in zip(reference[0], candidate[0]):
@@ -39,13 +40,6 @@ def ssim(reference, candidate):
                      / ((mu_ref * mu_ref + mu_other * mu_other + c1) * (var_ref + var_other + c2)))
             values.append(float(np.mean(score)))
     return float(np.mean(values))
-
-
-def percentile(values, fraction):
-    if not values:
-        return None
-    ordered = sorted(values)
-    return ordered[min(len(ordered) - 1, max(0, math.ceil(fraction * len(ordered)) - 1))]
 
 
 def summary(values):
@@ -82,16 +76,31 @@ def checked_array(row):
         raise ValueError("output shape or dtype mismatch: " + str(path))
     if hashlib.sha256(np.ascontiguousarray(array).tobytes()).hexdigest() != artifact["array_sha256"]:
         raise ValueError("output array hash mismatch: " + str(path))
+    if not np.isfinite(array).all():
+        raise ValueError("non-finite output: " + str(path))
     return array
 
 
 def compare_runs(reference_run, candidate_run, *, with_lpips=True, lpips_device="cpu",
-                 min_psnr=None, min_ssim=None):
+                 min_psnr=None, min_ssim=None, allow_legacy_runtime=False):
+    if not reference_run.get("source") or reference_run.get("source") != candidate_run.get("source"):
+        raise ValueError("runtime source identity differs or is missing")
+    if any(run.get("status") != "completed" for run in (reference_run, candidate_run)):
+        raise ValueError("quality comparison requires completed runs")
+    for name, threshold in (("min_psnr", min_psnr), ("min_ssim", min_ssim)):
+        if threshold is not None and not np.isfinite(threshold):
+            raise ValueError(name + " must be finite")
     reference, candidate = output_index(reference_run), output_index(candidate_run)
     missing = sorted(set(reference) ^ set(candidate), key=repr)
     pairs, failures = [], []
     for key in sorted(set(reference) & set(candidate), key=repr):
         try:
+            identity = validate_pair_identity(reference[key], candidate[key], allow_approximate=True,
+                                              allow_legacy_runtime=allow_legacy_runtime)
+            if reference[key]["outputs"][-1]["generation"].get("approximate") is not False:
+                raise ValueError("quality reference must be an exact output")
+            if reference[key].get("forms") != candidate[key].get("forms") or len(reference[key].get("forms", [])) != 1:
+                raise ValueError("controlled quality comparison requires the same single parallel form")
             ref = checked_array(reference[key])
             other = checked_array(candidate[key])
             metrics = evaluate_quality(ref, other, with_lpips=with_lpips, lpips_device=lpips_device)
@@ -104,6 +113,7 @@ def compare_runs(reference_run, candidate_run, *, with_lpips=True, lpips_device=
                 "exact_match": metrics["exact_match"], "quality_status": metrics["status"],
                 "candidate_cfg_folded_steps": candidate[key]["outputs"][-1]["generation"].get("cfg_folded_steps", 0),
                 "candidate_cfg_fold": candidate[key].get("cfg_fold"),
+                **identity,
             })
         except Exception as error:
             failures.append({"dataset_sample_id": key[0], "seed": key[1], "error": str(error)})
@@ -115,6 +125,8 @@ def compare_runs(reference_run, candidate_run, *, with_lpips=True, lpips_device=
         "reference": {"experiment": reference_run["experiment"], "run_id": reference_run["run_id"]},
         "candidate": {"experiment": candidate_run["experiment"], "run_id": candidate_run["run_id"]},
         "matched_pairs": len(pairs),
+        "identity_qualification": "verified" if pairs and all(row["runtime_verified"] for row in pairs) else "unverified",
+        "weights_verified": bool(pairs) and all(row["weights_verified"] for row in pairs),
         "missing_identities": [{"dataset_sample_id": key[0], "seed": key[1]} for key in missing],
         "failures": failures,
         "metrics": {
@@ -127,9 +139,14 @@ def compare_runs(reference_run, candidate_run, *, with_lpips=True, lpips_device=
         "pairs": pairs,
     }
     if min_psnr is not None:
-        result["psnr_threshold"] = {"value": min_psnr, "passed": sum(value >= min_psnr for value in finite_psnr)}
+        result["psnr_threshold"] = {"value": min_psnr, "passed": sum(
+            row["psnr_is_infinite"] or row["psnr_db"] is not None and row["psnr_db"] >= min_psnr for row in pairs)}
     if min_ssim is not None:
         result["ssim_threshold"] = {"value": min_ssim, "passed": sum(row["ssim"] >= min_ssim for row in pairs)}
+    configured = [result[key] for key in ("psnr_threshold", "ssim_threshold") if key in result]
+    passed = result["status"] == "completed" and all(gate["passed"] == len(pairs) for gate in configured)
+    result["numeric_qualification"] = "unverified" if not configured else "passed" if passed else "failed"
+    result["semantic_qualification"] = "unverified"
     return result
 
 
@@ -142,20 +159,34 @@ def main():
     parser.add_argument("--lpips-device", default="cpu")
     parser.add_argument("--min-psnr", type=float)
     parser.add_argument("--min-ssim", type=float)
+    parser.add_argument("--allow-legacy-runtime", action="store_true", help="diagnostic only when historical runtime metadata is absent")
+    parser.add_argument("--keep-pairs", action="store_true", help="retain per-video prompts and quality metrics; default keeps aggregate and failure evidence")
     args = parser.parse_args()
-    reference = json.loads(args.reference_run.read_text(encoding="utf-8"))
-    candidate = json.loads(args.candidate_run.read_text(encoding="utf-8"))
+    reference_raw, candidate_raw = args.reference_run.read_bytes(), args.candidate_run.read_bytes()
+    reference, candidate = json.loads(reference_raw), json.loads(candidate_raw)
     result = compare_runs(reference, candidate, with_lpips=not args.no_lpips,
-                          lpips_device=args.lpips_device, min_psnr=args.min_psnr, min_ssim=args.min_ssim)
+                          lpips_device=args.lpips_device, min_psnr=args.min_psnr, min_ssim=args.min_ssim,
+                          allow_legacy_runtime=args.allow_legacy_runtime)
     result["source"] = {
-        "reference_run_sha256": sha256(args.reference_run),
-        "candidate_run_sha256": sha256(args.candidate_run),
+        "reference_run_sha256": hashlib.sha256(reference_raw).hexdigest(),
+        "candidate_run_sha256": hashlib.sha256(candidate_raw).hexdigest(),
+        "runtime_source": reference.get("source"),
     }
+    result["preemption_stop_ms"] = {name: distribution([sample["stop_ms"] for row in run["requests"]
+        for sample in row.get("preemption_stop_samples", [])]) for name, run in (("reference", reference), ("candidate", candidate))}
+    if not args.keep_pairs:
+        result["threshold_failures"] = [{key: value for key, value in row.items() if key != "prompt"}
+            for row in result.pop("pairs") if
+            (args.min_psnr is not None and not row["psnr_is_infinite"] and
+             (row["psnr_db"] is None or row["psnr_db"] < args.min_psnr)) or
+            (args.min_ssim is not None and row["ssim"] < args.min_ssim)]
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("x", encoding="utf-8") as stream:
         json.dump(result, stream, indent=2, ensure_ascii=False)
         stream.write("\n")
     print(json.dumps({"output": str(args.output), "status": result["status"], "metrics": result["metrics"]}, ensure_ascii=False, indent=2))
+    if result["status"] != "completed" or result["numeric_qualification"] == "failed":
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

@@ -13,10 +13,17 @@ SPEC.loader.exec_module(MODULE)
 
 def record(candidate_hash="a" * 64, stops=True):
     def row(cell, digest):
+        spec = dict(prompt="a kettle", negative_prompt="", seed=7, frames=33, height=480, width=832,
+                    steps=20, guidance_scale=5.0)
+        generation = dict(spec, model_path="/models/wan", revision="revision", dtype="float16",
+                          vae_dtype="bfloat16", text_encoder_dtype="float32", attention="flash",
+                          engine="xdit", xdit_revision="xdit-revision", approximate=False,
+                          runtime_identity={"torch": "test", "cuda": "test"})
         return {
             "cell": cell, "request_id": "v0", "kind": "video", "status": "completed",
-            "forms": ["cfg2"], "spec": {"prompt": "a kettle", "seed": 7},
-            "outputs": [{"generation": {"approximate": False}, "output": {"output_mode": "digest", "array_sha256": digest}}],
+            "forms": ["cfg2"], "spec": spec,
+            "outputs": [{"generation": generation, "output": {"output_mode": "digest", "array_sha256": digest,
+                                                                    "shape": [1, 33, 480, 832, 3], "dtype": "float32", "finite": True}}],
             "preemption_stop_samples": [{"stop_ms": 11.0}] if cell and stops else [],
         }
     return {

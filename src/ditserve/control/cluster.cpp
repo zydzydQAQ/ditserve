@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <map>
+#include <limits>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -14,6 +15,13 @@ namespace {
 bool power_of_two(int value) { return value > 0 && (value & (value - 1)) == 0; }
 bool supported_degree(int value) { return value == 1 || value == 2 || value == 3 || value == 4 || value == 6 || value == 8; }
 std::string degree_key(int degree) { return std::to_string(degree); }
+std::string placement_key(const std::vector<int>& group) {
+    if (group.empty()) throw std::invalid_argument("empty measured placement");
+    for (std::size_t i = 0; i < group.size(); ++i)
+        if (group[i] < 0 || (i && group[i] != group[i-1] + 1))
+            throw std::invalid_argument("measured placement must name consecutive ranks in topology order");
+    return std::to_string(group.front()) + "-" + std::to_string(group.back());
+}
 
 // Policy behaviour comes from the registry (policy.hpp); see PolicyTraits.
 using Policy = PolicyTraits;
@@ -85,6 +93,75 @@ std::vector<std::vector<int>> cluster_groups(int gpus, const std::vector<int>& d
     return groups;
 }
 
+PreemptionTiming estimate_preemption_timing(double block_ms, int blocks_total, int blocks_done,
+                                            double elapsed_ms, int check_blocks,
+                                            int blocks_per_iteration, bool delayed_group_check) {
+    if (!std::isfinite(block_ms) || block_ms <= 0 || blocks_total <= 0 || blocks_done < 0
+        || !std::isfinite(elapsed_ms) || elapsed_ms < 0 || check_blocks <= 0 || blocks_per_iteration <= 0)
+        throw std::invalid_argument("invalid block preemption timing");
+    const double stop = block_ms * check_blocks * blocks_per_iteration * (delayed_group_check ? 2 : 1);
+    const double left = std::max(block_ms, std::max(0, blocks_total - blocks_done) * block_ms - elapsed_ms);
+    return {stop, left};
+}
+
+std::vector<std::string> select_preemption_groups(const std::vector<int>& image_affinities,
+                                                 const std::vector<PreemptionGroup>& running) {
+    std::set<int> pinned, occupied, released;
+    std::set<std::string> ids;
+    std::size_t flexible = 0;
+    for (int gpu : image_affinities) {
+        if (gpu < -1) throw std::invalid_argument("invalid image affinity");
+        if (gpu < 0) ++flexible; else pinned.insert(gpu);
+    }
+    std::vector<std::string> selected;
+    std::vector<const PreemptionGroup*> optional;
+    int total = 0;
+    for (const auto& item : running) {
+        if (item.request_id.empty() || !ids.insert(item.request_id).second || item.group.empty()
+            || !std::isfinite(item.stop_ms) || item.stop_ms < 0 || !std::isfinite(item.remaining_ms) || item.remaining_ms < 0
+            || !std::isfinite(item.resume_ms) || item.resume_ms < 0)
+            throw std::invalid_argument("invalid preemption group");
+        bool needed = item.rung;
+        for (int gpu : item.group) {
+            if (gpu < 0 || !occupied.insert(gpu).second) throw std::invalid_argument("preemption groups must be disjoint");
+            needed = needed || pinned.count(gpu);
+        }
+        if (needed) {
+            released.insert(item.group.begin(), item.group.end());
+            if (!item.rung) selected.push_back(item.request_id);
+        } else {
+            optional.push_back(&item);
+            total += static_cast<int>(item.group.size());
+        }
+    }
+    std::size_t reserved = 0;
+    for (int gpu : released) reserved += pinned.count(gpu) != 0;
+    const auto available = released.size() - reserved;
+    if (flexible <= available) return selected;
+    const auto need = std::min<std::size_t>(flexible - available, total);
+    if (!need) return selected;  // Remaining pinned requests await their own busy worker.
+    struct Choice { double cost = std::numeric_limits<double>::infinity(); std::vector<std::string> ids; };
+    std::vector<Choice> choices(total + 1);
+    choices[0].cost = 0;
+    for (const auto* item : optional) {
+        const int width = static_cast<int>(item->group.size());
+        const double cost = width * (std::min(item->stop_ms, item->remaining_ms) + item->resume_ms);
+        for (int count = total - width; count >= 0; --count) {
+            if (!std::isfinite(choices[count].cost)) continue;
+            const double next = choices[count].cost + cost;
+            auto& target = choices[count + width];
+            if (next < target.cost || (next == target.cost && choices[count].ids.size() + 1 < target.ids.size())) {
+                target = choices[count]; target.cost = next; target.ids.push_back(item->request_id);
+            }
+        }
+    }
+    std::size_t best = need;
+    for (std::size_t count = need + 1; count < choices.size(); ++count)
+        if (choices[count].cost < choices[best].cost) best = count;
+    selected.insert(selected.end(), choices[best].ids.begin(), choices[best].ids.end());
+    return selected;
+}
+
 ClusterCost::ClusterCost(const Json& profile) : profile_(profile) {
     static const std::set<std::string> provenance = {"measured", "extrapolated", "synthetic", "mixed"};
     if (!profile.is_object() || !provenance.count(profile.value("provenance", "")))
@@ -131,8 +208,30 @@ ClusterCost::ClusterCost(const Json& profile) : profile_(profile) {
         if (row.contains("forms")) {
             if (!row.at("forms").is_object()) throw std::invalid_argument("forms must map parallel-form names to measured costs");
             for (auto entry = row.at("forms").begin(); entry != row.at("forms").end(); ++entry) {
-                parse_form(entry.key());
-                number_field(entry.value(), "step_ms", 0, true);
+                const auto form = parse_form(entry.key());
+                const auto& measured = entry.value();
+                if (!measured.is_object() || (!measured.contains("step_ms") && !measured.contains("placements")))
+                    throw std::invalid_argument("measured form requires step_ms or placements");
+                if (measured.contains("step_ms")) number_field(measured, "step_ms", 0, true);
+                if (measured.contains("group")) {
+                    const auto group = group_of(measured);
+                    if (group.size() != static_cast<std::size_t>(form.degree()) || !measured.contains("step_ms"))
+                        throw std::invalid_argument("measured form group must match its degree and step_ms");
+                    placement_key(group);
+                }
+                if (measured.contains("placements")) {
+                    const auto& placements = measured.at("placements");
+                    if (!placements.is_object() || placements.empty()) throw std::invalid_argument("placements must map rank ranges to measured costs");
+                    for (auto place = placements.begin(); place != placements.end(); ++place) {
+                        const auto dash = place.key().find('-');
+                        int first = -1, last = -1;
+                        try { first = std::stoi(place.key().substr(0,dash)); last = std::stoi(place.key().substr(dash+1)); } catch (...) {}
+                        if (first < 0 || last-first+1 != form.degree()
+                            || place.key() != std::to_string(first)+"-"+std::to_string(last))
+                            throw std::invalid_argument("placement range must match measured form degree");
+                        number_field(place.value(), "step_ms", 0, true);
+                    }
+                }
             }
         }
     }
@@ -181,6 +280,17 @@ const Json& ClusterCost::klass(const std::string& name) const {
     return classes.at(name);
 }
 
+bool ClusterCost::placement_invariant(const std::string& name) const {
+    const auto& links = profile_.value("links", Json::object());
+    if (links.contains("groups") && !links.at("groups").empty()) return false;
+    for (const auto& link : links)
+        if (link.contains("concurrent_gbps") && !link.at("concurrent_gbps").empty()) return false;
+    const auto& row = klass(name);
+    if (row.contains("forms")) for (const auto& form : row.at("forms"))
+        if (form.contains("group") || form.contains("placements")) return false;
+    return true;
+}
+
 double ClusterCost::cache_skip_ratio(const std::string& name, double cache_threshold) const {
     if (cache_threshold < 0.0 || cache_threshold >= 1.0)
         throw std::invalid_argument("cache_threshold must be in [0, 1)");
@@ -204,6 +314,8 @@ ClusterCost::Terms ClusterCost::terms(const std::string& name, const Form& form,
     const auto& row = klass(name);
     if (row.at("kind") != "video") throw std::invalid_argument("image classes have no solver steps");
     form_name(form);   // validates
+    if (group && group->size() != static_cast<std::size_t>(form.degree()))
+        throw std::invalid_argument("group size does not match the form");
     const auto& links = profile_.value("links", Json::object());
     auto link_of = [&](int sp) -> const Json& {
         if (!links.contains(degree_key(sp))) throw std::invalid_argument("cost profile has no link model for SP degree " + degree_key(sp));
@@ -215,9 +327,22 @@ ClusterCost::Terms ClusterCost::terms(const std::string& name, const Form& form,
         const auto& measured = row.at("forms");
         const auto key = form_name(form);
         if (measured.is_object() && measured.contains(key)) {
-            t.compute = number_field(measured.at(key), "step_ms", 0, true);
-            t.blocks = block_overhead_ms_ * blocks_per_step(name) / form.cfg;
-            return t;
+            const auto& entry = measured.at(key);
+            const Json* match = nullptr;
+            if (group && entry.contains("placements")) {
+                const auto place = placement_key(*group);
+                if (entry.at("placements").contains(place)) match = &entry.at("placements").at(place);
+            }
+            if (!match && entry.contains("group") && group && group_of(entry) == *group) match = &entry;
+            // Legacy tables remain valid for homogeneous profiles only. A missing
+            // placement is unknown, not permission to reuse another group's sample.
+            if (!match && entry.contains("step_ms") && !entry.contains("group") && !entry.contains("placements")
+                && (!links.contains("groups") || links.at("groups").empty())) match = &entry;
+            if (match) {
+                t.compute = number_field(*match, "step_ms", 0, true);
+                t.blocks = block_overhead_ms_ * blocks_per_step(name) / form.cfg;
+                return t;
+            }
         }
     }
     t.compute = number_field(row, "step_compute_ms", 0, true) / (cfg * sp_tot * efficiency_);
@@ -432,15 +557,16 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     };
     // CFG-aware pruning: a listed form is dominated for a video class when another listed
     // form the class may use takes no more GPUs and is no slower, and is better in one of
-    // the two. Priced uncontended, independent of placement. On PCIe nodes this removes
-    // sequence-parallel forms that cost GPUs without saving time.
+    // the two. Global pruning is valid only for homogeneous, uncontended profiles:
+    // placement-scoped measurements and contention may reverse the ordering.
     const bool prune = bool_field(options, "prune_dominated", policy.prune_dominated);
     std::map<std::string, std::vector<bool>> kept_forms;
     auto kept = [&](const std::string& klass) -> const std::vector<bool>& {
         auto found = kept_forms.find(klass);
         if (found != kept_forms.end()) return found->second;
         std::vector<bool> keep(forms.size(), true);
-        if (prune && !policy.fixed_degree && cost.klass(klass).at("kind") == "video") {
+        if (prune && !policy.fixed_degree && cost.klass(klass).at("kind") == "video"
+            && cost.placement_invariant(klass) && int_field(state, "sp_groups_running", 0, 0) == 0) {
             const int lowest = min_video_degree(klass);
             std::vector<double> ms(forms.size());
             for (std::size_t i = 0; i < forms.size(); ++i) ms[i] = cost.step_ms(klass, forms[i], 1);

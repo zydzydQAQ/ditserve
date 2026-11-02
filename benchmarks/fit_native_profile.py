@@ -46,22 +46,43 @@ def tokens_and_dim(model, spec):
 
 
 def extract_measurements(record):
-    cells = record["phases"][0]["cells"]
+    cells = {(phase.get("id", "cluster"), cell.get("cell", index)): cell
+             for phase in record["phases"] for index, cell in enumerate(phase["cells"])}
     videos, images = [], []
     for row in record["requests"]:
         if row.get("status") != "completed":
             continue
-        policy = cells[row["cell"]].get("policy") or cells[row["cell"]]["config"]["policy"]
+        cell = cells[(row.get("phase", "cluster"), row["cell"])]
+        policy = cell.get("policy") or cell["config"]["policy"]
         if row["kind"] == "image":
-            images.append({"policy": policy, "service_ms": row["model_ms"]})
+            size = row.get("batch_size", 1)
+            if row.get("model_time_scope") == "amortized_batch_cost" and "batch_size" not in row:
+                raise ValueError("image batch measurement lacks actual batch_size")
+            if size > 1 and len(set(row.get("batch_request_ids", []))) != size:
+                raise ValueError("image batch measurement lacks complete member identity")
+            images.append({"policy": policy, "batch_size": size,
+                           "batch_identity": (row.get("phase", "cluster"), row["cell"],
+                                              tuple(row.get("batch_request_ids", [row.get("request_id")]))),
+                           "service_ms": row["batch_model_ms"] if size > 1 else row["model_ms"]})
             continue
         decode_ms = math.fsum(output.get("model_ms", 0.0) for output in row.get("outputs", []))
         steps = row["spec"]["steps"]
         steady = [sample for sample in row.get("advance_samples", []) if sample.get("steady") is True]
         step_ms = median(sample["model_ms"] for sample in steady) if steady else (row["model_ms"] - decode_ms) / steps
+        if not math.isfinite(step_ms) or step_ms <= 0:
+            raise ValueError("calibration step time must be finite and positive")
+        groups = {tuple(sample["group"]) for sample in steady if "group" in sample}
+        if len(groups) > 1:
+            raise ValueError("static calibration changed placement within a request")
+        group = list(next(iter(groups))) if groups and all("group" in sample for sample in steady) else None
+        if group is not None and (len(group) != math.prod(form_of(policy)) or len(set(group)) != len(group)):
+            raise ValueError("calibration group does not match its parallel form")
+        if group is not None and group != list(range(group[0], group[0] + len(group))):
+            raise ValueError("calibration placement must use consecutive ranks in topology order")
         videos.append({
             "policy": policy,
             "form": form_of(policy),
+            "group": group,
             "step_ms": step_ms,
             "steady_samples": len(steady),
             "timing_scope": "median_steady_advance" if steady else "includes_initial_layout_overhead",
@@ -103,8 +124,10 @@ def predict(step_compute, arch, cfg, sp, bandwidth_inf, gamma, latency):
 
 
 def fit_links(videos, arch):
-    sp1 = next(row for row in videos if row["policy"] == "static_sp1")
-    step_compute = sp1["step_ms"]
+    sp1 = [row["step_ms"] for row in videos if row["policy"] == "static_sp1"]
+    if not sp1:
+        raise ValueError("calibration requires an SP1 reference")
+    step_compute = median(sp1)
     training = [row for row in videos if row["policy"] in FIT_POLICIES]
     best = None
     for bandwidth_inf in [0.25 * index for index in range(1, 201)]:
@@ -133,9 +156,14 @@ def fit_links(videos, arch):
 
 
 def build_profile(record, runtime_facts, model_name):
+    if record.get("status") != "completed" or any(row.get("status") != "completed" for row in record["requests"]):
+        raise ValueError("calibration requires a completed run with no failed or incomplete requests")
     videos, images = extract_measurements(record)
     if not videos or not images:
         raise ValueError("calibration requires completed video and image requests")
+    shape_keys = ("frames", "steps", "height", "width", "guidance_scale")
+    if any(any(row["spec"].get(key) != videos[0]["spec"].get(key) for key in shape_keys) for row in videos):
+        raise ValueError("calibration mixes incompatible generation shapes")
     model = runtime_facts["models"][model_name]
     arch = architecture(model, videos[0]["spec"])
     step_compute, (bandwidth_inf, gamma, latency), predictions = fit_links(videos, arch)
@@ -166,14 +194,33 @@ def build_profile(record, runtime_facts, model_name):
                 "finish_ms": mean(row["decode_ms"] for row in videos),
                 "decode_chunks": (spec["frames"] - 1) // 4 + 1,
             },
-            "sd35-preflight": {"kind": "image", "service_ms": mean(row["service_ms"] for row in images)},
+            "sd35-preflight": {"kind": "image"},
         },
         "links": {},
     }
-    profile["classes"][class_name]["forms"] = {
-        row["policy"].removeprefix("static_"): {"step_ms": row["step_ms"]}
-        for row in videos
-    }
+    image_batches = {}
+    seen_batches = set()
+    for row in images:
+        if row["batch_identity"] in seen_batches:
+            continue
+        seen_batches.add(row["batch_identity"])
+        image_batches.setdefault(row["batch_size"], []).append(row["service_ms"])
+    if 1 not in image_batches:
+        raise ValueError("calibration requires unbatched image measurements")
+    image_cost = profile["classes"]["sd35-preflight"]
+    image_cost["service_ms"] = median(image_batches[1])
+    if any(size > 1 for size in image_batches):
+        image_cost["batch_ms"] = {str(size): median(values) for size, values in image_batches.items()}
+    placements = {}
+    for row in videos:
+        if row["group"] is not None:
+            key = (row["policy"].removeprefix("static_"), f'{row["group"][0]}-{row["group"][-1]}')
+            placements.setdefault(key, []).append(row["step_ms"])
+    forms = {}
+    for (form, group), values in placements.items():
+        forms.setdefault(form, {"placements": {}})["placements"][group] = {"step_ms": median(values)}
+    if forms:
+        profile["classes"][class_name]["forms"] = forms
     for degree in (2, 3, 4, 6, 8):
         profile["links"][str(degree)] = {
             "gbps": bandwidth_inf * degree / (degree + gamma),
@@ -197,10 +244,13 @@ def build_profile(record, runtime_facts, model_name):
         "bandwidth_gamma": gamma,
         "fit_policies": sorted(FIT_POLICIES),
         "fit_mean_relative_error_pct": mean(fit),
-        "held_out_mean_relative_error_pct": mean(held_out),
-        "held_out_max_relative_error_pct": max(held_out),
+        "held_out_mean_relative_error_pct": mean(held_out) if held_out else None,
+        "held_out_max_relative_error_pct": max(held_out) if held_out else None,
         "predictions": predictions,
-        "execution_cost_mode": "measured_form_table_with_analytical_fallback",
+        "execution_cost_mode": "placement_bound_form_table_with_analytical_fallback" if forms else "analytical_fallback_only",
+        "unbound_measurements": sum(row["group"] is None for row in videos),
+        "image_batch_samples": {str(size): len(values) for size, values in image_batches.items()},
+        "validation_scope": "held-out forms on calibration hardware and shape; not held-out request, placement or workload validation",
         "method": "single constrained saturation model fitted once; no per-form bandwidth or overlap overrides",
     }
     return profile

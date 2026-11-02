@@ -48,11 +48,17 @@ std::string form_name(const Form& form);
 // quantum_overhead_ms is the fixed end-to-end cost of dispatching one quantum;
 // block_overhead_ms is the executor's extra time per executed block outside
 // measured model time, so a step costs blocks_per_step / cfg of it per rank.
+// classes.<name>.forms.<form>.placements maps "first-last" rank ranges to
+// {step_ms}; alternatively {step_ms, group:[ranks]} binds one calibration.
+// Unmatched placements and concurrent SP execution use the analytical model.
+// Legacy {step_ms} entries apply across homogeneous, unscoped placements only.
 class ClusterCost {
 public:
     explicit ClusterCost(const Json& profile);
     const Json& profile() const { return profile_; }
     const Json& klass(const std::string& name) const;
+    // Whether global dominance can be inferred from one uncontended placement.
+    bool placement_invariant(const std::string& name) const;
     // sp_groups: SP groups (sp >= 2) advancing concurrently, this one included.
     // group: the GPUs the form runs on, for per-group link rates (optional).
     // cache_threshold: dynamic residual feature cache threshold in [0, 1); >0 skips redundant DiT blocks.
@@ -130,4 +136,29 @@ private:
 // "finish" (with decode_frames when the decode is chunked), "step" or a block count.
 Json cluster_plan(const Json& state, const std::string& policy, const ClusterCost& cost, const Json& options = Json::object());
 bool cluster_policy(const std::string& policy);
+
+struct PreemptionTiming {
+    double stop_ms = 0, remaining_ms = 0;
+};
+// Rank-local executed blocks, matching the worker's progress counter. A Wan
+// multi-GPU poll consumes the preceding checkpoint's flag; interleaved CFG
+// executes two blocks per iteration. These are ranking estimates, not bounds
+// on collective, synchronization or worker queueing latency.
+PreemptionTiming estimate_preemption_timing(double block_ms, int blocks_total, int blocks_done,
+                                            double elapsed_ms, int check_blocks,
+                                            int blocks_per_iteration, bool delayed_group_check);
+
+// Disjoint running groups that can stop at a block boundary. Already-rung groups
+// reserve their future capacity; do not interrupt another video for the same demand.
+struct PreemptionGroup {
+    std::string request_id;
+    std::vector<int> group;
+    double stop_ms = 0, remaining_ms = 0, resume_ms = 0;
+    bool rung = false;
+};
+// One entry per waiting image: -1 for any GPU, otherwise its resident GPU.
+// Returns only newly selected request IDs. Cost is displaced GPU time at the
+// safe point plus measured resume overhead, with fewer interrupted GPUs on ties.
+std::vector<std::string> select_preemption_groups(const std::vector<int>& image_affinities,
+                                                 const std::vector<PreemptionGroup>& running);
 }

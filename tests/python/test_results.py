@@ -1,4 +1,4 @@
-"""Small CPU contracts for precise archives and recoverable cleanup."""
+"""Compatibility contracts for explicitly requested full Excel archives."""
 
 import copy
 import hashlib
@@ -37,6 +37,7 @@ class ResultsTests(unittest.TestCase):
 
     def final(self, **options):
         self.write()
+        options.setdefault("format", "full")
         return results.finalize(self.work, self.output, **options)
 
     def test_optional_report_tools_do_not_shadow_the_model_environment(self):
@@ -207,7 +208,7 @@ class ResultsTests(unittest.TestCase):
                 raise KeyboardInterrupt("crash after unlink")
             return original_save(work, journal)
         with patch.object(results, "_save", crash), self.assertRaises(KeyboardInterrupt):
-            results.finalize(self.work, self.output)
+            results.finalize(self.work, self.output, format="full")
         self.assertFalse(raw.exists())
         self.assertIn("pending_delete", json.loads((self.work / results.JOURNAL).read_text()))
         self.assertEqual(results.finalize(self.work, self.output)["status"], "completed")

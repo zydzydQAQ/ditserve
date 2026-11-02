@@ -1,5 +1,6 @@
 import hashlib
 import importlib.util
+import sys
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -8,6 +9,7 @@ import numpy as np
 
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "benchmarks"))
 SPEC = importlib.util.spec_from_file_location("native_quality", ROOT / "benchmarks" / "native_quality.py")
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
@@ -23,12 +25,19 @@ def artifact(path, array):
 
 
 def run(path, array, *, fold=0):
+    spec = dict(seed=201, prompt="a kettle", negative_prompt="", steps=20,
+                frames=array.shape[1], height=array.shape[2], width=array.shape[3], guidance_scale=5.0)
+    generation = dict(spec, model_path="/models/wan", revision="revision", dtype="float16",
+                      vae_dtype="bfloat16", text_encoder_dtype="float32", attention="flash",
+                      engine="xdit", xdit_revision="xdit-revision", approximate=bool(fold), cfg_folded_steps=fold,
+                      runtime_identity={"torch": "test", "cuda": "test"})
     return {
         "experiment": "fixture", "run_id": "exact" if not fold else "approx",
+        "status": "completed", "source": {"core_sha256": "a" * 64},
         "requests": [{
             "kind": "video", "status": "completed", "dataset_sample_id": "sample-0",
-            "spec": {"seed": 201, "prompt": "a kettle"},
-            "outputs": [{"generation": {"cfg_folded_steps": fold}, "output": artifact(path, array)}],
+            "spec": spec, "forms": ["cfg2sp3"],
+            "outputs": [{"generation": generation, "output": artifact(path, array)}],
             "cfg_fold": {"folded_cfg_steps": fold},
         }],
     }

@@ -58,6 +58,90 @@ Json trace_row(const std::string& id, const std::string& kind, double arrival, d
 }
 
 int main() {
+    check("measured forms bind to placements and keep homogeneous compatibility", [] {
+        Json measured = profile();
+        measured["classes"]["video"]["forms"]["sp2"] = {{"step_ms", 123}};
+        const std::vector<int> first{0,1}, second{2,3};
+        near(ClusterCost(measured).step_ms("video",parse_form("sp2"),1,&second),123);
+        measured["classes"]["video"]["forms"]["sp2"]["group"] = first;
+        const ClusterCost bound(measured);
+        near(bound.step_ms("video",parse_form("sp2"),1,&first),123);
+        near(bound.step_ms("video",parse_form("sp2"),1,&second),511);
+        near(bound.step_ms("video",parse_form("sp2")),511);
+        require(!bound.placement_invariant("video"),"bound measurement cannot justify global pruning");
+        measured["classes"]["video"]["forms"]["sp2"]["placements"] = {{"2-3",{{"step_ms",234}}}};
+        near(ClusterCost(measured).step_ms("video",parse_form("sp2"),1,&second),234);
+        near(ClusterCost(measured).step_ms("video",parse_form("sp2"),2,&second),511);
+        auto placements_only=measured;
+        placements_only["classes"]["video"]["forms"]["sp2"].erase("group");
+        placements_only["classes"]["video"]["forms"]["sp2"].erase("step_ms");
+        near(ClusterCost(placements_only).step_ms("video",parse_form("sp2"),1,&second),234);
+        near(ClusterCost(placements_only).step_ms("video",parse_form("sp2"),1,&first),511);
+        measured["classes"]["video"]["forms"]["sp2"].erase("group");
+        measured["classes"]["video"]["forms"]["sp2"].erase("placements");
+        measured["links"]["groups"]["2-3"] = {{"gbps",10}};
+        near(ClusterCost(measured).step_ms("video",parse_form("sp2"),1,&second),521);
+        measured["classes"]["video"]["forms"]["sp2"]["placements"] = {{"0-2",{{"step_ms",100}}}};
+        rejects([&]{ClusterCost invalid(measured);});
+        measured["classes"]["video"]["forms"]["sp2"]["placements"] = {{"0-1",{{"step_ms",0}}}};
+        rejects([&]{ClusterCost invalid(measured);});
+    });
+    check("20261102 doorbell timing follows rank-local worker checkpoints", [] {
+        // A flag raised immediately after a poll is seen at the next local
+        // checkpoint, and one checkpoint later by Wan's pipelined group poll.
+        const auto local=estimate_preemption_timing(10,60,0,0,1,1,false);
+        const auto grouped=estimate_preemption_timing(10,30,0,0,1,1,true);
+        near(local.stop_ms,10);near(grouped.stop_ms,20);
+        const std::vector<PreemptionGroup> quantum_one={
+            {"cfg2",{0,1},grouped.stop_ms,grouped.remaining_ms,0,false},
+            {"sp1",{2},30,600,0,false}};
+        require(select_preemption_groups({-1},quantum_one)==std::vector<std::string>{"sp1"},
+                "quantum=1 must price the second group checkpoint before choosing a victim");
+        const auto sequential=estimate_preemption_timing(10,60,0,0,2,1,true);
+        const auto interleaved=estimate_preemption_timing(8,60,0,0,2,2,true);
+        near(sequential.stop_ms,40);near(interleaved.stop_ms,64);
+        const std::vector<PreemptionGroup> branches={
+            {"interleaved",{0,1},interleaved.stop_ms,interleaved.remaining_ms,0,false},
+            {"sequential",{2,3},sequential.stop_ms,sequential.remaining_ms,0,false}};
+        require(select_preemption_groups({-1},branches)==std::vector<std::string>{"sequential"},
+                "two interleaved branch blocks per iteration must not look cheaper than one");
+        // A folded or CFG-parallel rank has 30 units; 28 units are already
+        // complete. Keep the same per-block price when shortening the step.
+        const auto finishing=estimate_preemption_timing(10,30,28,5,2,1,true);
+        near(finishing.remaining_ms,15);
+        near(estimate_preemption_timing(10,60,28,5,2,1,true).remaining_ms,315);
+        near(estimate_preemption_timing(10,30,28,100,2,1,true).remaining_ms,10);
+        rejects([]{estimate_preemption_timing(10,30,0,0,0,1,true);});
+    });
+    check("selective doorbells cover demand without repeated global interruption", [] {
+        const std::vector<PreemptionGroup> pairs = {
+            {"slow",{0,1},20,100,1,false}, {"fast",{2,3},2,100,1,false},
+            {"finishing",{4,5},20,1,0,false}, {"last",{6,7},10,100,1,false}};
+        require(select_preemption_groups({},pairs).empty(),"idle queue rang videos");
+        require(select_preemption_groups({-1},pairs)==std::vector<std::string>{"finishing"},"one image must stop only the cheapest group");
+        require(select_preemption_groups({-1,-1,-1},pairs)==std::vector<std::string>({"fast","finishing"}),"three images need two pairs");
+        auto rung=pairs;rung[0].rung=true;
+        require(select_preemption_groups({-1,-1},rung).empty(),"already-rung capacity must be reserved");
+        require(select_preemption_groups({-1,-1,-1},rung)==std::vector<std::string>{"finishing"},"new demand needs only incremental capacity");
+        require(select_preemption_groups({0},pairs)==std::vector<std::string>{"slow"},"resident image must reclaim its own GPU");
+        require(select_preemption_groups({0,0},pairs)==std::vector<std::string>{"slow"},"same-GPU images must not interrupt unrelated groups");
+        require(select_preemption_groups({99},pairs).empty(),"unavailable resident worker cannot use other video GPUs");
+        require(select_preemption_groups(std::vector<int>(10,-1),pairs).size()==4,"saturated queue must release all useful capacity");
+        auto overlap=pairs;overlap[1].group={1,2};
+        rejects([&]{select_preemption_groups({-1},overlap);});
+    });
+    check("placement-dependent forms are not globally pruned", [] {
+        Json measured=profile();
+        measured["classes"]["video"]["forms"] = {
+            {"cfg2",{{"step_ms",500}}}, {"sp2",{{"step_ms",700},{"placements",{{"2-3",{{"step_ms",100}}}}}}}};
+        const auto result=cluster_plan({{"now_ms",0},{"gpus",4},{"busy",{true,true,false,false}},
+            {"requests",{video("v",1e9)}}},"ditserve",ClusterCost(measured),{{"forms",{"cfg2","sp2"}}});
+        require(result.at("assignments")[0].at("form")=="sp2","globally slower form must remain usable on its fast placement");
+        measured["classes"]["video"]["forms"]["sp2"].erase("placements");
+        require(ClusterCost(measured).placement_invariant("video"),"homogeneous legacy profile remains prunable");
+        measured["links"]["2"]["concurrent_gbps"]={{"2",1}};
+        require(!ClusterCost(measured).placement_invariant("video"),"isolated dominance does not prove contended dominance");
+    });
     check("aligned groups", [] {
         const auto groups = cluster_groups(8, {1, 2, 3, 4, 6, 8});
         require(groups.size() == 18, "8+4+2+2+1+1 groups");

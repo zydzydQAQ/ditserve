@@ -3,6 +3,8 @@
 import argparse
 import contextlib
 import importlib
+from importlib import metadata
+from functools import lru_cache
 import json
 import os
 from pathlib import Path
@@ -26,6 +28,37 @@ BACKENDS = {
 }
 SERVICE_OPERATIONS = {"results": ("finalize", "verify", "inspect", "compact"),
                       "evaluation": ("evaluate",), "environment": ("inspect",)}
+
+
+@lru_cache(maxsize=1)
+def runtime_identity():
+    """Small execution identity; metadata lookup never imports or initializes CUDA."""
+    packages = {}
+    for name in ("torch", "diffusers", "transformers", "numpy", "cache-dit"):
+        try:
+            packages[name] = metadata.version(name)
+        except metadata.PackageNotFoundError:
+            packages[name] = None
+    torch = sys.modules.get("torch")
+    return dict(python=sys.version.split()[0], packages=packages,
+                cuda=getattr(getattr(torch, "version", None), "cuda", None))
+
+
+def bind_generation_identity(result, config):
+    """Bind single and batched outputs without retaining per-kernel telemetry."""
+    generation = result.get("generation")
+    if isinstance(generation, dict):
+        generation["runtime_identity"] = runtime_identity()
+        for key in ("dtype", "vae_dtype", "text_encoder_dtype", "attention"):
+            if key in config:
+                generation.setdefault(key, config[key])
+        # A supplied manifest binds identity; it is not a claim that this worker
+        # rehashed the weights. A separate verified handoff establishes that fact.
+        if config.get("model_manifest_sha256"):
+            generation["model_manifest_sha256"] = config["model_manifest_sha256"]
+    for item in result.get("results", []):
+        if isinstance(item, dict):
+            bind_generation_identity(item, config)
 
 
 def _model_capabilities(name, config, backend):
@@ -218,6 +251,8 @@ class Worker:
         elapsed = (time.perf_counter() - started) * 1000
         if not isinstance(result, dict):
             raise TypeError("backend operation must return an object")
+        if self.name in ("wan", "wan_pipeline", "sd35"):
+            bind_generation_identity(result, self.config)
         return dict(result, load_ms=load_ms, worker_operation_ms=elapsed)
 
     def _evaluation_device(self, request):

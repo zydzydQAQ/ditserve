@@ -88,11 +88,39 @@ class NativeStudyTest(unittest.TestCase):
     def assert_archive(self, value, experiment="native", name="run"):
         destination = self.root / "results" / experiment / name
         self.assertEqual(value["archive"]["status"], "completed", value["archive"])
-        self.assertEqual({path.name for path in destination.iterdir()}, {"results.xlsx", "REPORT.md"})
         saved = results.load(destination)
-        self.assertEqual(saved["schema"], "ditserve.results.v1")
+        self.assertEqual(saved["schema"], "ditserve.results-summary.v1")
+        self.assertRegex(saved["report_name"], r"^\d{8}-" + name + r"\.md$")
+        self.assertEqual({path.name for path in destination.iterdir()}, {"summary.json", saved["report_name"]})
         self.assertEqual(saved["run"]["status"], value["status"])
-        self.assertEqual(results.verify(destination)["status"], "verified")
+        self.assertEqual(saved["run"]["metrics"], value.get("metrics", {}))
+        self.assertEqual(saved["run"]["request_count"], len(value.get("requests", [])))
+        self.assertNotIn("requests", saved["run"])
+        self.assertNotIn("config", saved["run"])
+        self.assertEqual(len(saved["run"]["phases"]), len(value["phases"]))
+        for actual, expected in zip(saved["run"]["phases"], value["phases"]):
+            self.assertEqual(actual["id"], expected["id"])
+            self.assertEqual(actual["status"], expected["status"])
+            self.assertEqual(len(actual.get("cells", [])), len(expected.get("cells", [])))
+            for compact_cell, full_cell in zip(actual.get("cells", []), expected.get("cells", [])):
+                for field in ("cell", "order", "status", "policy", "metrics", "by_kind"):
+                    if field in full_cell:
+                        self.assertEqual(compact_cell[field], full_cell[field])
+                self.assertEqual(compact_cell["request_count"], len(full_cell.get("requests", [])))
+                self.assertNotIn("requests", compact_cell)
+            if "result" in expected:
+                self.assertEqual(actual["policy"], expected["policy"])
+                self.assertEqual(actual["result"]["metrics"], expected["result"]["metrics"])
+                self.assertEqual(actual["result"]["provenance"], expected["result"]["provenance"])
+                for field in ("by_kind", "makespan_ms", "gpus"):
+                    if field in expected["result"]:
+                        self.assertEqual(actual["result"][field], expected["result"][field])
+                self.assertNotIn("requests", actual["result"])
+        verified = results.verify(destination)
+        self.assertEqual(verified["status"], "verified")
+        self.assertEqual(verified["format"], "ditserve.results-summary.v1")
+        self.assertFalse(verified["raw_re_evaluated"])
+        self.assertFalse(verified["raw_re_evaluable"])
         return saved["run"]
 
     def test_paired_matrix_counts_resident_workers_and_completed_resume(self):
@@ -114,7 +142,9 @@ class NativeStudyTest(unittest.TestCase):
             self.assertEqual(len({row["worker_pids"]["model"] for row in cell["requests"]}), 1)
             for row in cell["requests"]:
                 self.assertEqual(row["operation_counts"], dict(prepare=1, advance=2, finish=1, release=1))
-        self.assertEqual(self.assert_archive(value)["metrics"], value["metrics"])
+        summary = self.assert_archive(value)
+        self.assertEqual([cell["policy"] for cell in summary["phases"][0]["cells"]],
+                         ["edf", "srtf", "srtf", "edf"])
         ledger = self.root / "run-budget.json"
         before = ledger.read_bytes()
         resumed = self.run_study(config, resume=True)

@@ -2,6 +2,7 @@
 """Generate native-cluster calibration and serving studies without historical measurements."""
 
 import argparse
+import copy
 import json
 from pathlib import Path
 
@@ -24,14 +25,19 @@ FIT_POLICIES = ["static_sp1", "static_cfg2", "static_sp2", "static_cfg2sp2", "st
 HELD_OUT_POLICIES = [name for name in CALIBRATION_POLICIES if name not in FIT_POLICIES]
 
 
-def build_calibration_config(model, gpu_uuids):
+def build_calibration_config(model, gpu_uuids, *, image_batch_calibration=1):
+    if not isinstance(image_batch_calibration, int) or not 1 <= image_batch_calibration <= 8:
+        raise ValueError("image_batch_calibration must be in [1, 8]")
     if model == "wan21":
         frames = 33
     elif model == "wan22":
         frames = 49
     else:
         raise ValueError("unknown model: " + model)
-    policies = [name for name in CALIBRATION_POLICIES if model != "wan21" or name != "static_sp8"]
+    from native_serving import FORM_DEGREES
+    policies = [name for name in CALIBRATION_POLICIES
+                if (model != "wan21" or name != "static_sp8")
+                and FORM_DEGREES[name.removeprefix("static_")] <= len(gpu_uuids)]
     held_out = [name for name in policies if name not in FIT_POLICIES]
     steps, image_steps = 20, 28
     video_spec = {
@@ -85,14 +91,14 @@ def build_calibration_config(model, gpu_uuids):
         "spec": image_spec,
         "output_mode": "check",
     }
-    return {
+    config = {
         "schema": "ditserve.study.v1",
         "experiment": f"kairos-{model}-native-calibration",
         "note": "Native per-form calibration. Synthetic fields are scheduling placeholders, not measured results.",
         "workers": workers,
         "budget": {
-            "limit_gpu_seconds": len(policies) * gpus * 7200,
-            "watchdog_seconds": len(policies) * 7200,
+            "limit_gpu_seconds": (len(policies) + image_batch_calibration - 1) * gpus * 7200,
+            "watchdog_seconds": (len(policies) + image_batch_calibration - 1) * 7200,
             "repair_reserve_gpu_seconds": 0,
             "carry": "none",
         },
@@ -154,16 +160,29 @@ def build_calibration_config(model, gpu_uuids):
             "shape": {"frames": frames, "steps": steps, "image_steps": image_steps},
         },
     }
+    for size in range(2, image_batch_calibration + 1):
+        phase = copy.deepcopy(config["phases"][0])
+        phase["id"] = f"image-batch-{size}"
+        phase.pop("matrix")
+        phase["options"]["image_batch"] = size
+        phase["warmup"] = [item for item in phase["warmup"] if item["worker"].startswith("image")]
+        phase["workload"] = [dict(image_row, request_id=f"image-batch-{size}-{index}", arrival_ms=0,
+                                  spec=dict(image_spec, seed=202 + index)) for index in range(size)]
+        config["phases"].append(phase)
+    config["benchmark"]["image_batch_calibration"] = image_batch_calibration
+    return config
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", choices=sorted(MODELS), required=True)
     parser.add_argument("--gpu-uuids", help="comma-separated UUIDs; defaults to nvidia-smi in this job")
+    parser.add_argument("--image-batch-calibration", type=int, default=1,
+                        help="add real SD3.5 atomic-batch calibration for every size 2..N (up to 8)")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     uuids = args.gpu_uuids.split(",") if args.gpu_uuids else allocated_uuids()
-    config = build_calibration_config(args.model, uuids)
+    config = build_calibration_config(args.model, uuids, image_batch_calibration=args.image_batch_calibration)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("x", encoding="utf-8") as stream:
         json.dump(config, stream, indent=2)

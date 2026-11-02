@@ -6,7 +6,7 @@ jjjkairos 当前使用既有镜像 `192.168.1.114:30500/jjjkairos/ditserve:xdit-
 
 ## 日常代码发布
 
-日常修改不重建镜像。代码在本地 `8a100` 分支提交后，使用项目既有 `.local/ditserve-kairos-rewrite-runtime/tools/deploy_build.sh [COMMIT]`：本地编译并运行 CTest，再发布到 `/data/share/jjjkairos/code/DITSERVE/builds/<commit>/`。同一提交不覆盖，脚本不拉取或构建镜像。
+日常修改不重建镜像。代码在本地 `8a100` 分支提交后，使用项目既有 `.local/ditserve-kairos-rewrite-runtime/tools/deploy_build.sh [COMMIT]`：本地编译并运行 CTest，在本机已有运行镜像中以 `--pull=never` 冒烟，再发布到 `/data/share/jjjkairos/code/DITSERVE/builds/<commit>/`。同一提交不覆盖，脚本不拉取或构建镜像。既有本地镜像缺失或 Docker 不可访问时停止发布；不能用本地 doctor 代替容器冒烟。发布前脚本复查 `/data` 停止线。
 
 每个作业必须显式设置 `DITSERVE_BUILD=<commit>`，挂载共享盘，并将产物写到 `/shared/output/DITSERVE/`。作业开头的 `build=... core=...` 和运行目录 `BUILD_INFO.json` 用来核对实际代码；未设置该变量会错误回退到镜像内置代码。
 

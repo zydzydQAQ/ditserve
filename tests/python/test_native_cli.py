@@ -69,9 +69,12 @@ class NativeCliTests(unittest.TestCase):
         for arguments in (["--help"], ["--version"], ["run", "--help"], ["results", "--help"]):
             with self.subTest(arguments=arguments):
                 self.assertTrue(self.invoke(arguments, python=False, environment=environment).stdout.strip())
+        self.assertIn("--format summary|full", self.invoke(["report", "--help"], python=False, environment=environment).stdout)
         for arguments in ([], ["unknown"], ["run"], ["results", "unknown"],
                           ["simulate", "--count", "bad"], ["rpc", "unknown"],
-                          ["simulate", "--unexpected"], ["report"]):
+                          ["simulate", "--unexpected"], ["report"],
+                          ["report", str(self.root / "unused"), "--format", "invalid"],
+                          ["report", str(self.root / "unused"), "--format"]):
             with self.subTest(arguments=arguments):
                 self.invoke(arguments, code=2, python=False, environment=environment)
         cases = [
@@ -113,17 +116,55 @@ class NativeCliTests(unittest.TestCase):
         self.structured(["doctor"], python=False, environment=environment)
         self.assertEqual(marker.read_text(), "selected")
 
-    def test_simulate_publishes_verifiable_two_file_archive(self):
+    def test_20261102_simulate_publishes_verifiable_dated_summary(self):
         value = self.structured(["--json", "simulate", "--count", "2", "--seed", "9", "--run-id", "sim"])
         self.assertEqual(value["status"], "completed")
         self.assertEqual(value["budget"]["gpu_seconds"], 0)
         destination = self.root / "results/synthetic/sim"
-        self.assertEqual({path.name for path in destination.iterdir()}, {"results.xlsx", "REPORT.md"})
         verified = self.structured(["results", "verify", str(destination)])
         saved = self.structured(["results", "inspect", str(destination)])
         self.assertEqual(verified["status"], "verified")
+        self.assertEqual(verified["format"], "ditserve.results-summary.v1")
+        self.assertFalse(verified["raw_re_evaluable"])
+        self.assertRegex(saved["report_name"], r"^\d{8}-sim\.md$")
+        self.assertEqual({path.name for path in destination.iterdir()}, {"summary.json", saved["report_name"]})
         self.assertEqual(saved["run"]["run_id"], "sim")
-        self.assertEqual(saved["run"]["phases"], value["phases"])
+        self.assertEqual(len(saved["run"]["phases"]), len(value["phases"]))
+        for actual, expected in zip(saved["run"]["phases"], value["phases"]):
+            self.assertEqual(actual["id"], expected["id"])
+            self.assertEqual(actual["policy"], expected["policy"])
+            self.assertEqual(actual["result"]["metrics"], expected["result"]["metrics"])
+            self.assertEqual(actual["result"]["provenance"], "synthetic")
+            self.assertNotIn("requests", actual["result"])
+        self.assertNotIn("requests", saved["run"])
+        self.assertNotIn("config", saved["run"])
+
+    def test_20261102_report_format_selection_and_immutable_history(self):
+        for output_format, schema in (("summary", "ditserve.results-summary.v1"), ("full", "ditserve.results.v1")):
+            with self.subTest(format=output_format):
+                run = dict(schema="ditserve.run.v1", experiment="cli-report", run_id=output_format,
+                           status="completed", config={}, phases=[], requests=[], failures=[], artifacts=[],
+                           budget=dict(active=None), metrics=dict(requests=0, qualified_goodput_rps=None))
+                work = self.write(output_format + "-work/run.json", run).parent
+                destination = self.root / (output_format + "-published")
+                arguments = ["report", str(work), "--output", str(destination), "--keep-raw"]
+                published = self.structured(arguments + ["--format", output_format])
+                self.assertEqual(published["status"], "completed")
+                saved = self.structured(["results", "inspect", str(destination)])
+                self.assertEqual(saved["schema"], schema)
+                self.assertEqual(saved["run"]["metrics"], run["metrics"])
+                if output_format == "full":
+                    self.assertEqual({path.name for path in destination.iterdir()}, {"results.xlsx", "REPORT.md"})
+                    self.assertEqual(saved["run"], run)
+                else:
+                    self.assertEqual({path.name for path in destination.iterdir()}, {"summary.json", saved["report_name"]})
+                before = {path.name: path.read_bytes() for path in destination.iterdir()}
+                self.assertEqual(self.structured(arguments)["status"], "completed")
+                other = "summary" if output_format == "full" else "full"
+                rejected = self.structured(arguments + ["--format", other], code=1)
+                self.assertEqual(rejected["status"], "deferred")
+                self.assertEqual({path.name: path.read_bytes() for path in destination.iterdir()}, before)
+                self.assertEqual(self.structured(["results", "verify", str(destination)])["format"], schema)
 
     def test_mock_resume_report_and_new_compact_preserve_completed_evidence(self):
         config = self.write("study.json", self.study())

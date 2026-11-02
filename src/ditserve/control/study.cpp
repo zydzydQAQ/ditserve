@@ -670,6 +670,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         const auto backend=workers.backend(name);
         if(backend!="mock"&&backend!="sd35")throw std::invalid_argument("continuous_batch requires an explicit-step mock or sd35 worker");
     }
+    std::set<std::string> interleaved_workers;
     for(const auto& slot:slots)for(const auto* role:{"video","image"}){
         const auto name=slot.at(role).get<std::string>();
         const auto backend=workers.backend(name);
@@ -678,6 +679,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         if(std::string(role)=="image"&&batch_requested&&backend!="mock"&&!capabilities.value("request_batch",false))
             throw std::invalid_argument("image batching requires a per-request batch output capability");
         if(std::string(role)=="video"&&backend=="wan"){
+            if(capabilities.value("execution",std::string())=="block_interleaved")interleaved_workers.insert(name);
             const auto quanta=capabilities.value("quanta",Json::array());
             const auto migration=capabilities.value("migration",Json::array());
             const auto degrees=capabilities.value("parallel",Json::object()).value("sp_degrees",Json::array());
@@ -1384,11 +1386,22 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                     const auto& row=rows[task.row];const auto& state=live[task.row];
                     const auto klass=row.at("class").get<std::string>();
                     const auto form=parse_form(task.assignment.at("form").get<std::string>());
-                    const int rank_blocks=std::max(1,cost.blocks_per_step(klass)/form.cfg);
+                    const bool wan=workers.backend(video(state.group.front()))=="wan";
+                    // Mock progress uses the spec's full block counter. Wan
+                    // splits CFG branches across ranks, or omits one when folded.
+                    const int rank_blocks=wan?std::max(1,cost.blocks_per_step(klass)/form.cfg)
+                                             :int_field(row.at("spec"),"blocks_per_step",1);
                     const double block=cost.step_ms(klass,form,std::max(1,sp_running),&state.group)/rank_blocks;
-                    const double stop=block*task.assignment.at("quantum").get<int>();
-                    const double left=std::max(block,(rank_blocks-state.blocks)*block-(instant-task.started));
-                    candidates.push_back({row.at("request_id").get<std::string>(),state.group,stop,left,cost.resume_ms(klass),task.rung});
+                    const bool folded=wan&&task.assignment.value("cfg_folded",false);
+                    const int blocks_total=folded?std::max(1,rank_blocks/2):rank_blocks;
+                    int blocks_per_iteration=1;
+                    if(wan&&form.cfg==1&&!folded&&number_field(row.at("spec"),"guidance_scale",5.)>1.)
+                        for(int gpu:state.group)if(interleaved_workers.count(video(gpu)))blocks_per_iteration=2;
+                    // Match advance.check_blocks and Wan's one-checkpoint-late
+                    // group flag. Single-rank Wan and mock poll immediately.
+                    const auto timing=estimate_preemption_timing(block,blocks_total,state.blocks,instant-task.started,
+                        std::max(1,task.assignment.at("quantum").get<int>()/2),blocks_per_iteration,wan&&form.degree()>1);
+                    candidates.push_back({row.at("request_id").get<std::string>(),state.group,timing.stop_ms,timing.remaining_ms,cost.resume_ms(klass),task.rung});
                 }
                 const auto selected=select_preemption_groups(waiting,candidates);
                 for(auto& task:tasks)if(task.continuous&&!task.rung&&std::find(selected.begin(),selected.end(),rows[task.row].at("request_id").get<std::string>())!=selected.end()){
@@ -1591,6 +1604,7 @@ bool execute_cells(const Json& phase,const Json& request,const Json& devices,
             const auto kind=cell.value("kind","online");
             Json result=cell.contains("actions")?operations(cell,workers,budget,record,work,cell_dir):kind=="cluster"?cluster(cell,workers,budget,record,work):replay(cell,workers,budget,record,work,cell_dir);
             result["cell"]=order[position];result["order"]=position<cells.size()?"forward":"reverse";result["status"]="completed";
+            if(!result.contains("policy")&&cell.contains("policy"))result["policy"]=cell.at("policy");
             if(!tolerated.empty())result["unknown_observations"]=tolerated;
             result["guard_telemetry"]=telemetry();
             for(auto row:result.value("requests",Json::array())){row["phase"]=id;row["attempt"]=attempt_number;row["cell"]=order[position];row["order"]=result["order"];

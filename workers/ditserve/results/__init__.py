@@ -1,15 +1,17 @@
-"""Verified Excel + Markdown results, with resumable, explicit artifact cleanup.
+"""Compact verified results with resumable, explicit artifact cleanup.
 
 ``run.json`` contains JSON metadata, never raw tensors or event bodies. Artifact
 ``dependencies`` lists outstanding consumers; an empty list closes that file's
 dependencies. A closed dependency can instead be ``{closed: true, reason: ...}``.
 Control files, models and frozen sources remain outside the deletion whitelist.
-The workbook stores typed JSON nodes, not JSON blobs, and is independently
-readable after the work directory is retired. Old archives are read-only.
+New runs publish one dated report and a small JSON summary. Full typed Excel
+archives remain an explicit opt-in; historical archives are read-only. Neither
+summary publication nor a successful run closes outstanding evaluation needs.
 """
 
 from contextlib import contextmanager
 import copy
+from datetime import datetime, timezone
 import fcntl
 import hashlib
 import importlib
@@ -26,6 +28,8 @@ from ..runtime import ROOT
 
 
 SCHEMA = "ditserve.results.v1"
+SUMMARY_SCHEMA = "ditserve.results-summary.v1"
+SUMMARY_FILE = "summary.json"
 JOURNAL = ".finalization.json"
 MAX_JSON_BYTES = 64 * 1024 * 1024
 MAX_SHEET_ROWS = 1048576
@@ -37,7 +41,7 @@ RAW_KINDS = {"raw", "array", "media"}
 LOG_KINDS = {"log", "trace", "summarized_log"}
 PROTECTED_PARTS = {"sources", "source-snapshots", "models", "weights", ".git", ".retention"}
 PROTECTED_NAMES = {"run.json", JOURNAL, "budget.json", "gpu-budget.json", "ledger.json",
-                   "config.json", "protocol.json", "manifest.json", "results.xlsx", "REPORT.md"}
+                   "config.json", "protocol.json", "manifest.json", "results.xlsx", "REPORT.md", SUMMARY_FILE}
 LIVE = {"running", "admitted", "stopping", "unsettled", "waiting_resource"}
 
 
@@ -316,6 +320,242 @@ def _report_errors(run, retention):
     return errors
 
 
+def _key_metrics(value):
+    """Retain scalar aggregates, not observations, tensor data or event arrays."""
+    if not isinstance(value, dict):
+        return {}
+    result = {}
+    for key, item in value.items():
+        if isinstance(item, dict):
+            child = _key_metrics(item)
+            if child:
+                result[key] = child
+        elif item is None or type(item) in (bool, int, float):
+            result[key] = item
+        elif isinstance(item, str) and len(item) <= 400:
+            result[key] = item
+    return result
+
+
+def _summary_run(run):
+    """A deliberately lossy projection; hashes bind the omitted full records."""
+    result = {key: run[key] for key in ("experiment", "run_id", "status", "measurement_scope", "notice") if key in run}
+    config = run.get("config", {})
+    result.update(config_sha256=run.get("config_sha256", _digest(config)),
+                  config_content_sha256=_digest(config), source_sha256=_digest(run.get("source", {})),
+                  source=_key_metrics({k: v for k, v in run.get("source", {}).items()
+                                       if k not in ("files", "native_files")}),
+                  metrics=_key_metrics(run.get("metrics", {})), phases=[],
+                  request_count=len(run.get("requests", [])), failures=[])
+    # Deduplicate replica configuration; the frozen trace/profile is hash-bound,
+    # not copied into the long-term result or spreadsheet.
+    models = {}
+    workers = config.get("workers", {})
+    for worker in workers.values() if isinstance(workers, dict) else workers:
+        if not isinstance(worker, dict):
+            continue
+        model = {k: v for k, v in worker.items() if k in ("backend", "model", "model_path", "revision", "dtype", "config")}
+        model = _key_metrics(model)
+        if model:
+            models[_digest(model)] = model
+    result["models"] = list(models.values())
+    for phase in run.get("phases", []):
+        item = {k: phase[k] for k in ("id", "status", "attempt", "policy", "cell", "reason") if k in phase}
+        item["qualification"] = phase.get("qualification", "unverified")
+        item["metrics"] = _key_metrics(phase.get("metrics", {}))
+        if isinstance(phase.get("result"), dict):
+            item["result"] = _key_metrics(phase["result"])
+        item["cells"] = []
+        for cell in phase.get("cells", []):
+            selected = {k: cell[k] for k in ("cell", "policy", "status", "gpus", "elapsed_ms",
+                "order", "sp_transport", "async_rank0_decode") if k in cell}
+            for key in ("metrics", "by_kind", "doorbell", "continuous_batch", "guard_telemetry"):
+                if key in cell:
+                    selected[key] = _key_metrics(cell[key])
+            if "image_batch" in cell:
+                selected["image_batch"] = (_key_metrics(cell["image_batch"]) if isinstance(cell["image_batch"], dict)
+                                           else cell["image_batch"] if type(cell["image_batch"]) is int else None)
+            selected["request_count"] = len(cell.get("requests", []))
+            if isinstance(cell.get("requests"), list):
+                selected["execution_summary"] = _execution_summary(cell)
+            item["cells"].append(selected)
+        result["phases"].append(item)
+    # Coalesce repeated errors. The count is exact; bounded text is labelled.
+    failures = {}
+    for where, reason in _report_errors(run, {}):
+        key = _digest(reason)
+        row = failures.setdefault(key, dict(error_sha256=key, error=reason[:400],
+            text_truncated=len(reason) > 400, count=0, first_location=where))
+        row["count"] += 1
+    result["failures"] = list(failures.values())
+    result["log_summaries"] = [dict(path=item["path"], **{k: item["summary"][k]
+        for k in ("source_sha256", "source_bytes", "total_records", "aggregation", "omitted_fields")
+        if k in item["summary"]}, metrics=_key_metrics(item["summary"].get("metrics", {})))
+        for item in run.get("artifacts", []) if item.get("kind") in LOG_KINDS and isinstance(item.get("summary"), dict)]
+    budget = run.get("budget", {})
+    result["budget"] = {k: budget[k] for k in ("used_gpu_seconds", "used_regular_gpu_seconds",
+        "used_repair_gpu_seconds", "phase_usage") if k in budget}
+    result["gpu_uuids"] = sorted({gpu for session in budget.get("sessions", [])
+        for gpu in session.get("identity", {}).get("gpu_uuids", [])})
+    result["summary_limits"] = dict(resumable=False, raw_re_evaluable=False,
+        omitted=["full configuration/trace", "per-request records", "events and samples", "source file manifests"],
+        notice="Preserved aggregates only. Full run.json and raw inputs stay in the work directory until their consumers close.")
+    return result
+
+
+def _execution_summary(cell):
+    """Bounded mechanism/cost aggregates, preserving the absence of samples."""
+    rows = cell["requests"]
+    def distribution(values, missing=0):
+        samples = sorted(values)
+        def quantile(fraction):
+            if not samples:
+                return None
+            position = (len(samples) - 1) * fraction
+            lower = math.floor(position)
+            return samples[lower] + (samples[min(lower + 1, len(samples) - 1)] - samples[lower]) * (position - lower)
+        return dict(count=len(samples), missing_count=missing, p50=quantile(.5), p95=quantile(.95), p99=quantile(.99),
+                    min=samples[0] if samples else None, max=samples[-1] if samples else None,
+                    total=sum(samples) if samples else None)
+    video_rows = [row for row in rows if row.get("kind") == "video" or "resumes" in row or "resume_extra_ms" in row]
+    recovery = {}
+    for field in ("resumes", "resume_extra_ms"):
+        values = [row[field] for row in video_rows if type(row.get(field)) in (int, float)
+                  and math.isfinite(row[field])]
+        recovery[field] = distribution(values, len(video_rows) - len(values))
+    images = [row for row in rows if row.get("kind") == "image" or "batch_request_ids" in row]
+    groups, request_histogram, identity_counts = {}, {}, {}
+    for row in images:
+        if isinstance(row.get("request_id"), str):
+            identity_counts[row["request_id"]] = identity_counts.get(row["request_id"], 0) + 1
+        size, members = row.get("batch_size"), row.get("batch_request_ids")
+        if type(size) is not int or size < 1:
+            continue
+        key = str(size)
+        request_histogram[key] = request_histogram.get(key, 0) + 1
+        if (not isinstance(members, list) or len(members) != size
+                or any(not isinstance(member, str) or not member for member in members)
+                or len(set(members)) != size or row.get("request_id") not in members):
+            continue
+        groups.setdefault(tuple(sorted(members)), []).append(row["request_id"])
+    histogram, covered, batches = {}, 0, 0
+    for members, observed in groups.items():
+        # A partial or inconsistent membership is unknown, not an executed batch.
+        if (len(observed) != len(members) or set(observed) != set(members)
+                or any(identity_counts[member] != 1 for member in members)):
+            continue
+        key = str(len(members))
+        histogram[key] = histogram.get(key, 0) + 1
+        covered += len(observed)
+        batches += 1
+    batch_evidence = dict(image_request_records=len(images), request_size_histogram=request_histogram,
+        batch_size_histogram=histogram, verified_batches=batches, covered_requests=covered,
+        unknown_requests=len(images) - covered, total_batches=batches if covered == len(images) and images else None,
+        status="not_applicable" if not images else "complete" if covered == len(images) else "partial" if covered else "unknown",
+        scope="actual per-request batch_size; atomic batches deduplicated only with complete matching batch_request_ids; configured limits are not measurements")
+    completed = sum(row.get("status") == "completed" for row in rows)
+    timely = sum(row.get("status") == "completed" and row.get("finish_ms") is not None
+        and row.get("deadline_ms") is not None and row["finish_ms"] <= row["deadline_ms"] for row in rows)
+    elapsed, gpus = cell.get("elapsed_ms"), cell.get("gpus")
+    gpu_seconds = gpus * elapsed / 1000 if type(gpus) is int and type(elapsed) in (int, float) else None
+    return dict(request_records=len(rows), observed_transfers=sum(row.get("transfers", 0) for row in rows),
+        preempting_request_count=sum(row.get("preemption_reason") == "block_preempt" for row in rows),
+        preemption_stop_ms=distribution(sample["stop_ms"] for row in rows for sample in row.get("preemption_stop_samples", [])),
+        atomic_batch=batch_evidence, **recovery,
+        allocated_gpu_seconds=gpu_seconds,
+        gpu_seconds_per_completed_request=gpu_seconds / completed if gpu_seconds is not None and completed else None,
+        gpu_seconds_per_ontime_request=gpu_seconds / timely if gpu_seconds is not None and timely else None,
+        scope="cell wall time * allocated GPUs; startup/cleanup excluded; linear-interpolated quantiles; resumes and resume_extra_ms summarize observed per-request values (negative extra time preserved)")
+
+
+def _summary_report(value):
+    run, retention = value["run"], value["finalization"]
+    def cell(item):
+        if item is None:
+            return "未记录"
+        if type(item) is float:
+            return format(item, ".6g")
+        return str(item).replace("|", "\\|").replace("\n", " ").replace("\r", " ")
+    def first(values, *keys):
+        return next((values[key] for key in keys if values.get(key) is not None), None)
+    def metric_row(label, kind, status, metrics, elapsed=None, request_count=None):
+        attainment = first(metrics, "deadline_attainment", "slo_attainment", "attainment")
+        p95 = first(metrics, "latency_p95_ms")
+        if p95 is None and isinstance(metrics.get("latency_ms"), dict):
+            p95 = first(metrics["latency_ms"], "p95", "p95_ms")
+        goodput = metrics.get("goodput_rps")
+        duration = first(metrics, "observation_ms")
+        duration = elapsed if duration is None else duration
+        if goodput is None and type(metrics.get("ontime")) in (int, float) and type(duration) in (int, float) and duration > 0:
+            goodput = metrics["ontime"] * 1000 / duration
+        qualified = metrics.get("qualified_goodput_rps")
+        return "| " + " | ".join(cell(x) for x in (
+            label, kind, status, metrics.get("requests", request_count), attainment, p95,
+            goodput, qualified if qualified is not None else "未验证")) + " |"
+    lines = ["# " + value["report_name"][:-3], "",
+        "实验 `%s`，运行 `%s`：执行 `%s`，归档 `%s`。" %
+        (run["experiment"], run["run_id"], run.get("status", "unverified"), retention["status"]), "",
+        "[关键摘要](summary.json) 保存来源/配置哈希、各策略指标、资格、失败摘要与清理凭据。",
+        "completed 仅表示执行完成；缺失不是零，未验证不是通过。摘要不能用于续跑或原始重评。", "",
+        "证据范围：%s。" % cell(run.get("measurement_scope", run.get("notice", "未记录"))), "",
+        "配置 SHA256：`%s`。" % run["config_content_sha256"], "",
+        "| 阶段 / 策略 | 模态 | 状态 | 请求数 | SLO 达成率 | p95 延迟 ms | 按时 goodput req/s | 资格通过 goodput req/s |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- |"]
+    has_metrics = False
+    for phase in run["phases"]:
+        entries = phase.get("cells", [])
+        if "result" in phase:
+            entries = entries + [dict(phase["result"], policy=phase.get("policy", ""), status=phase.get("status", "unverified"))]
+        if not entries:
+            entries = [phase]
+        for item in entries:
+            metrics = item.get("metrics", {})
+            label = str(phase.get("id", "")) + " / " + str(item.get("policy", item.get("cell", "")))
+            status = item.get("status", "unverified")
+            elapsed = first(item, "elapsed_ms", "makespan_ms")
+            lines.append(metric_row(label, "全部", status, metrics, elapsed, item.get("request_count")))
+            has_metrics = has_metrics or bool(metrics)
+            for kind, kind_metrics in item.get("by_kind", {}).items():
+                if isinstance(kind_metrics, dict):
+                    lines.append(metric_row(label, kind, status, kind_metrics, elapsed))
+    if not has_metrics and run.get("metrics"):
+        lines.append(metric_row("运行合计", "全部", run.get("status", "unverified"), run["metrics"]))
+    lines += ["", "SLO 达成率为 0–1 比例。按时 goodput 只统计完成且按时的请求；资格通过 goodput 还要求已配置资格通过。",
+              "二者都使用所记录的观测窗口，有限 trace 的值不代表稳定容量；资格缺失不能用按时 goodput 代替。"]
+    for phase in run["phases"]:
+        qualification = phase.get("qualification")
+        scopes = qualification.get("scopes", {}) if isinstance(qualification, dict) else {}
+        lines += ["", "阶段 `%s` 资格：%s。" % (phase.get("id", ""), ", ".join(
+            name + "=" + str(scopes.get(name, {}).get("status", "unverified"))
+            for name in ("numeric", "semantic", "performance")))]
+    if run["failures"]:
+        lines += ["", "失败与未通过门槛（重复错误合并，文本最多 400 字，完整错误以 SHA256 绑定）：", ""]
+        lines += ["- %s（%d 次）：%s" % (cell(f["first_location"]), f["count"], cell(f["error"])) for f in run["failures"]]
+    lines += ["", "清理：确认删除 %d 个文件，回收 %d 字节，保留 %d 个文件。" %
+        (len(retention["deleted"]), retention["reclaimed_bytes"], len(retention["retained"])),
+        "运行原始记录及未闭合依赖仍保留在工作目录；此摘要不包含逐请求、事件、采样序列或源码。"]
+    if retention["retained"]:
+        lines += ["", "保留原因："] + ["- `%s`：%s" % (cell(item["path"]), cell(item["reason"])) for item in retention["retained"]]
+    if not _closed(retention.get("pending_dependencies", [])):
+        lines += ["", "未闭合依赖：" + _json(retention["pending_dependencies"])]
+    if retention.get("error"):
+        lines += ["", "收尾待重试：" + cell(retention["error"])]
+    return "\n".join(lines) + "\n"
+
+
+def _read_summary(root, *, check_report=True):
+    value, unused = _document(root / SUMMARY_FILE)
+    if value.get("schema") != SUMMARY_SCHEMA or value.get("sha256") != _digest(
+            {k: v for k, v in value.items() if k != "sha256"}):
+        raise ValueError("summary schema or checksum differs")
+    name = value.get("report_name", "")
+    if not re.fullmatch(r"[0-9]{8}-[A-Za-z0-9][A-Za-z0-9_.-]*\.md", name):
+        raise ValueError("unsafe dated report name")
+    if check_report and _path(root / name).read_text(encoding="utf-8") != _summary_report(value):
+        raise ValueError("report differs from summary metadata")
+    return value
+
+
 def _report(value):
     run, retention = value["run"], value["finalization"]
     scoped = retention.get("report_version", 1) >= 2
@@ -380,11 +620,21 @@ def _publish(work, destination, value):
     destination.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".publish-", dir=destination) as temporary:
         staging = Path(temporary)
-        _write_book(staging / "results.xlsx", value)
-        (staging / "REPORT.md").write_text(_report(value), encoding="utf-8")
-        if _digest(_read_book(staging / "results.xlsx")) != _digest(value):
-            raise ValueError("Excel readback changed metadata")
-        for name in ("results.xlsx", "REPORT.md"):
+        if value["schema"] == SUMMARY_SCHEMA:
+            value = {k: v for k, v in value.items() if k != "sha256"}
+            value["sha256"] = _digest(value)
+            _atomic_json(staging / SUMMARY_FILE, value)
+            (staging / value["report_name"]).write_text(_summary_report(value), encoding="utf-8")
+            if _read_summary(staging) != value:
+                raise ValueError("summary readback changed metadata")
+            names = (SUMMARY_FILE, value["report_name"])
+        else:
+            _write_book(staging / "results.xlsx", value)
+            (staging / "REPORT.md").write_text(_report(value), encoding="utf-8")
+            if _digest(_read_book(staging / "results.xlsx")) != _digest(value):
+                raise ValueError("Excel readback changed metadata")
+            names = ("results.xlsx", "REPORT.md")
+        for name in names:
             _path(destination / name)
             with (staging / name).open("rb") as stream:
                 os.fsync(stream.fileno())
@@ -507,6 +757,29 @@ def _dependency_revision(previous, current):
     return changes
 
 
+def _evidence_binding(run):
+    """Bind full scientific records without storing them in the summary/journal."""
+    stable, dependencies = copy.deepcopy(run), {}
+    dependencies["run"] = stable.setdefault("retention", {}).pop("pending_dependencies", [])
+    for item in stable.get("artifacts", []):
+        dependencies["artifact:" + item["path"]] = item.pop("dependencies", [])
+    return _digest(stable), dependencies
+
+
+def _summary_dependency_revision(journal, run):
+    digest, dependencies = _evidence_binding(run)
+    if journal.get("evidence_sha256") != digest or set(journal["dependency_state"]) != set(dependencies):
+        raise ValueError("input changed after cleanup began; preserve measured evidence")
+    changes = []
+    for path, before in journal["dependency_state"].items():
+        after = dependencies[path]
+        if before != after:
+            if not _closed(after):
+                raise ValueError("dependency revision must explicitly close the consumer")
+            changes.append(dict(path=path, previous=before, closed=after))
+    return changes
+
+
 def _snapshot(run, source, journal, retained, status, error=None):
     deleted = copy.deepcopy(journal.get("deleted", []))
     finalization = dict(status=status, report_version=2, input=source, work_dir=journal["work_dir"], destination=journal["destination"],
@@ -518,19 +791,27 @@ def _snapshot(run, source, journal, retained, status, error=None):
         storage_scope="work directory measured before the final publication/journal write; shared links excluded")
     if error:
         finalization["error"] = error
+    if journal.get("format") == "summary":
+        finalization["raw_re_evaluable"] = False
+        return dict(schema=SUMMARY_SCHEMA, report_name=journal["report_name"],
+                    run=_summary_run(run), finalization=finalization)
     return dict(schema=SCHEMA, run=run, finalization=finalization)
 
 
-def finalize(work_dir, destination=None, *, prune=True):
+def finalize(work_dir, destination=None, *, prune=True, format=None):
     """Publish verified metadata, then prune only closed, exact artifact entries.
 
     Returns completed/deferred/protected. A deferred result is retryable and
     preserves its input, prior deletion receipts and any remaining artifacts.
-    Existing historical destinations are never replaced.
+    New publications default to a dated Markdown report plus summary.json.
+    ``format="full"`` opts into the legacy full Excel metadata archive. Existing
+    journalled destinations retain their format; history is never converted.
     """
     work = _path(work_dir)
     journal, destination_path, trusted, handles = None, None, False, []
     try:
+        if format not in (None, "summary", "full"):
+            raise ValueError("results format must be summary or full")
         run, source = _document(work / "run.json")
         if run.get("schema") != "ditserve.run.v1":
             raise ValueError("unsupported run metadata schema")
@@ -550,20 +831,25 @@ def finalize(work_dir, destination=None, *, prune=True):
                     raise ValueError("finalization destination or work identity changed")
                 if journal.get("schema") != SCHEMA:
                     raise ValueError("unsupported finalization journal")
+                if format is not None and format != journal.get("format", "full"):
+                    raise ValueError("existing result format is immutable")
                 if journal["input_sha256"] != source["sha256"]:
                     if journal.get("pending_delete"):
                         raise ValueError("recover pending cleanup before changing dependencies")
-                    if journal.get("deleted"):
+                    if journal.get("deleted") or journal.get("status") == "completed":
                         previous = load(destination_path)
-                        changes = _dependency_revision(previous["run"], run)
+                        changes = (_summary_dependency_revision(journal, run) if journal.get("format") == "summary"
+                                   else _dependency_revision(previous["run"], run))
                         journal.setdefault("input_revisions", []).append(dict(
                             previous=previous["finalization"]["input"], current=source, dependency_closures=changes))
                     journal["input_sha256"] = source["sha256"]
                     journal["status"] = "preparing"
+                    if journal.get("format") == "summary":
+                        journal["evidence_sha256"], journal["dependency_state"] = _evidence_binding(run)
                 trusted = True
                 if journal.get("pending_delete"):
                     pending = journal["pending_delete"]
-                    archived = _read_book(destination_path / "results.xlsx")
+                    archived = load(destination_path)
                     if archived["finalization"]["input"] != source or pending not in archived["finalization"]["planned"]:
                         raise ValueError("pending deletion has no verified archived evidence")
                     if not _path(pending["path"]).exists():
@@ -578,7 +864,16 @@ def finalize(work_dir, destination=None, *, prune=True):
                     raise ValueError("existing results are immutable without this run's finalization journal")
                 journal = dict(schema=SCHEMA, work_dir=str(work), destination=str(destination_path),
                     input_sha256=source["sha256"], status="preparing", deleted=[], errors=[], prune=prune,
-                    work_usage_before=_usage(work))
+                    work_usage_before=_usage(work), format=format or "summary")
+                if journal["format"] == "summary":
+                    dates = [s.get("ended_at") for s in run.get("budget", {}).get("sessions", [])
+                             if type(s.get("ended_at")) in (int, float)]
+                    date = datetime.fromtimestamp(max(dates), timezone.utc) if dates else datetime.now(timezone.utc)
+                    stem = run["run_id"]
+                    if not re.match(r"[0-9]{8}-[A-Za-z0-9]", stem):
+                        stem = date.strftime("%Y%m%d") + "-" + stem
+                    journal["report_name"] = stem + ".md"
+                    journal["evidence_sha256"], journal["dependency_state"] = _evidence_binding(run)
                 trusted = True
                 _save(work, journal)
             candidates, retained = _artifacts(work, run, journal)
@@ -625,9 +920,9 @@ def finalize(work_dir, destination=None, *, prune=True):
             journal.setdefault("errors", []).append(reason)
             try:
                 _save(work, journal)
-                # Keep the last good workbook if a fresh export cannot succeed.
-                if destination_path and (destination_path / "results.xlsx").exists():
-                    snapshot = _read_book(destination_path / "results.xlsx")
+                # Keep the last good publication if a fresh export cannot succeed.
+                if destination_path and any((destination_path / name).exists() for name in (SUMMARY_FILE, "results.xlsx")):
+                    snapshot = load(destination_path)
                     snapshot["finalization"].update(status="deferred", error=reason,
                         deleted=copy.deepcopy(journal.get("deleted", [])), errors=journal["errors"])
                     deleted_paths = {item["path"] for item in journal.get("deleted", [])}
@@ -647,6 +942,8 @@ def finalize(work_dir, destination=None, *, prune=True):
 def load(directory):
     """Read preserved values only; never rebuild, refresh or reevaluate history."""
     root = _path(directory)
+    if (root / SUMMARY_FILE).exists():
+        return _read_summary(root)
     if (root / "manifest.json").exists():
         manifest, unused = _document(root / "manifest.json")
         if manifest.get("schema") == "ditserve.compact-results.v1":
@@ -677,6 +974,12 @@ def verify(directory):
         from . import legacy
         return legacy.verify(root)
     value = load(root)
+    if value.get("schema") == SUMMARY_SCHEMA:
+        return dict(status="verified", format=SUMMARY_SCHEMA, summary=str(root / SUMMARY_FILE),
+                    report=str(root / value["report_name"]),
+                    scope="summary checksum and report consistency; aggregates only, no scientific qualification",
+                    raw_re_evaluated=False, resumable=False, raw_re_evaluable=False,
+                    summary_sha256=_read(root / SUMMARY_FILE)[0]["sha256"])
     return dict(status="verified", format=value.get("schema", value.get("summary", {}).get("schema_version")),
                 workbook=str(root / "results.xlsx"), report=str(root / "REPORT.md"),
                 scope="typed workbook values and report consistency" if value.get("schema") == SCHEMA else
@@ -690,7 +993,7 @@ def dispatch(request, config):
     if operation == "finalize":
         return finalize(request.get("work_dir", config.get("work_dir")),
                         request.get("output", request.get("destination")),
-                        prune=request.get("prune", True))
+                        prune=request.get("prune", True), format=request.get("format"))
     if operation == "verify":
         return verify(request["path"])
     if operation == "inspect":
@@ -703,7 +1006,7 @@ def dispatch(request, config):
         destination = request.get("destination")
         prune = request.get("prune_raw", False)
         if isinstance(metadata, dict) and metadata.get("schema") == "ditserve.run.v1":
-            return finalize(root, destination, prune=prune)
+            return finalize(root, destination, prune=prune, format=request.get("format"))
         destination = Path(destination) if destination else root / "excel"
         result = compact.export(root, destination, replace_existing=True)
         if prune and result.get("status") == "verified":

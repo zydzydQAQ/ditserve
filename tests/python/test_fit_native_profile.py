@@ -1,4 +1,6 @@
 import importlib.util
+import math
+import copy
 import unittest
 from pathlib import Path
 
@@ -30,14 +32,14 @@ class FitNativeProfileTest(unittest.TestCase):
                 "outputs": [{"model_ms": 100.0}], "spec": spec, "encode_model_ms": 20.0,
                 "advance_samples": [
                     {"steady": False, "model_ms": 999999.0},
-                    {"steady": True, "model_ms": step_ms},
-                    {"steady": True, "model_ms": step_ms},
+                    {"steady": True, "model_ms": step_ms, "group": list(range(math.prod(MODULE.form_of(policy))))},
+                    {"steady": True, "model_ms": step_ms, "group": list(range(math.prod(MODULE.form_of(policy))))},
                 ],
                 "transfer_export_ms": 2.0, "dispatch_gap_ms": 4.0, "timed_quanta": 2,
             })
         requests.append({"cell": 0, "kind": "image", "status": "completed", "model_ms": 250.0})
         record = {
-            "experiment": "kairos-wan22-native-calibration", "run_id": "fixture",
+            "experiment": "kairos-wan22-native-calibration", "run_id": "fixture", "status": "completed",
             "phases": [{"cells": [{"config": {"policy": policy}} for policy in policies]}],
             "requests": requests,
             "budget": {"sessions": [{"identity": {"gpu_uuids": [f"GPU-{i}" for i in range(8)]}}]},
@@ -51,9 +53,29 @@ class FitNativeProfileTest(unittest.TestCase):
         self.assertTrue(all(value == 2 for value in profile["source"]["steady_samples"].values()))
         self.assertEqual(profile["provenance"], "mixed")
         self.assertIn("cfg2sp3", profile["classes"]["wan22-preflight"]["forms"])
-        self.assertEqual(profile["source"]["execution_cost_mode"], "measured_form_table_with_analytical_fallback")
+        self.assertEqual(profile["source"]["execution_cost_mode"], "placement_bound_form_table_with_analytical_fallback")
+        for form, key in (("sp1", "0-0"), ("sp3", "0-2"), ("sp4", "0-3"), ("cfg2sp3", "0-5")):
+            self.assertIn(key, profile["classes"]["wan22-preflight"]["forms"][form]["placements"])
         self.assertNotIn("groups", profile["links"])
         self.assertNotIn("sp_overlap", profile["links"]["2"])
+        batch_record = copy.deepcopy(record)
+        for index in range(3):
+            batch_record["requests"].append({
+                "cell": 0, "kind": "image", "status": "completed", "request_id": f"b{index}",
+                "model_ms": 150.0, "batch_model_ms": 450.0, "batch_size": 3,
+                "batch_request_ids": ["b0", "b1", "b2"], "model_time_scope": "amortized_batch_cost",
+            })
+        batched = MODULE.build_profile(batch_record, facts, "Wan2.2-TI2V-5B")
+        self.assertEqual(batched["classes"]["sd35-preflight"]["batch_ms"]["3"], 450.0)
+        self.assertEqual(batched["source"]["image_batch_samples"]["3"], 1)
+        legacy = copy.deepcopy(record)
+        for row in legacy["requests"]:
+            for sample in row.get("advance_samples", []):
+                sample.pop("group", None)
+        unbound = MODULE.build_profile(legacy, facts, "Wan2.2-TI2V-5B")
+        self.assertNotIn("forms", unbound["classes"]["wan22-preflight"])
+        self.assertEqual(unbound["source"]["execution_cost_mode"], "analytical_fallback_only")
+        self.assertEqual(unbound["source"]["unbound_measurements"], len(policies))
 
 
 if __name__ == "__main__":
