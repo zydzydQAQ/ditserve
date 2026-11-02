@@ -228,9 +228,11 @@ PYTHONPATH=workers python3 benchmarks/collect_stage_evidence.py \
 
 `benchmarks/p1_costs.py --manifest <cost-evidence.json> --output <new-summary.json>` 读取 `{schema: ditserve.p1-cost-evidence.v1, runs: [{path,sha256}]}`。只报告原始时序诊断；导出到所有新 target 就绪不代表所有旧副本回收，停止到下一 dispatch 包含排队与其他请求服务，下一次 advance 完成还包括有用模型计算。原始 `run.json` 是该分析的未闭合依赖，不能在分析前删除。
 
+P2 的 native 来源审查使用5组已审完整源码组合，每组同时固定policy、cluster、study、header与监督路径的10文件；不接受逐文件白名单的任意拼接。内部P3覆盖映射也必须完整且每文件只有一个哈希。历史失败仍可分析，source审查本身不授予执行或科学资格。
+
 P3 的 `p3_stream.py` 生成固定 warmup/measurement/drain 观察窗内不归一化的 Poisson 到达，请求数自然随机，模态与分辨率按冻结概率取样；全计划 prompt 余量不足即拒绝。`p3_window_review.py` 复算到达、SLO 和输入规格，保留失败、未开始和右删失分母，分别统计 arrival cohort 与完成窗口，按 seed 给区间。默认仍只做分析截止；plan 显式设置 `execution={drain_cutoff:"cancel_and_censor", cleanup_allowance_seconds:N}` 后，核心在每个 cluster cell 的 warmup/分布式初始化后独立计时，以 warmup traffic + measurement + drain 为观察上限。截止后不接纳完成结果，保留 censored、真实 failure 和后续 not_executed 分母，逐 cell 核验所属进程与 GPU 清理后才启动下一策略。仅支持单个 cluster phase，不允许 scripted actions、矩阵替换执行器或共享 MPS；真实故障和更早的 watchdog 不转成正常删失。receipt 绑定源码、配置、观察及清理时序。`censored` 仍为 CLI 非零退出，operator 必须显式审查，不能按成功实验处理。这是控制器观察截止，不是 GPU 在该瞬间停止的物理上界；有限窗口与相关 queue bins 不授予稳定容量资格。
 
-P4 的 `p4_quality_plan.py prepare` 固定同一组每模型至少 32 prompt × 3 个 generation seed，并将提示词选择 seed 与生成 seed 分离。正式 50 步的 late-window、折叠预算与质量阈值需独立开发证据；固定 N=1..K、adaptive 与 exact 的控制保持实际 unconditional-forward 数量可比，N=0 复用 exact 且不记为算法收益。它检查官方模型映射、同分配每档校准与完整/逐配对临时存储预算，尚不生成可执行作业或质量 receipt。LPIPS 权重、完整 VBench 和依赖闭合仍待完成。PSNR 的无限值以 exact-match 关系报告，不做 ∞−∞ 或任意截顶。
+P4 的 `p4_quality_plan.py prepare` 固定同一组每模型至少 32 prompt × 3 个 generation seed，并将提示词选择 seed 与生成 seed 分离。正式 50 步的 late-window、折叠预算与质量阈值需独立开发证据；固定 N=1..K、adaptive 与 exact 的控制保持实际 unconditional-forward 数量可比，N=0 复用 exact 且不记为算法收益。它检查官方模型映射、同分配每档校准与完整/逐配对临时存储预算，尚不生成可执行作业或质量 receipt。真实生成输出质量、完整 VBench 和依赖闭合仍待完成。PSNR 的无限值以 exact-match 关系报告，不做 ∞−∞ 或任意截顶。
 
 `p4_stream_quality.py --plan ... --evidence ... --output ...` 现可离线读取已绑定该计划的成对 NPY：最多同时打开两份只读 memmap，以逐帧工作数组计算 MSE、PSNR、SSIM 和时序差分误差。文件与数组 SHA256、实际 matrix/worker_config/video_worker_options 合并顺序、模型、输入、GPU 放置与完整折叠历史都须核验；旧的未绑定输出不能直接改名进入此计划。所有缺失、失败项保留在计划分母，按 prompt 聚类重采样并保留 seed/shape 关联，另按 shape 与实际折叠 N 分层。无限 PSNR 以精确关系和有限 MSE 差分处理。该工具没有 GPU runner；v2 通过显式 `--lpips` 接入离线适配器，实际包、源码、权重与真实 CPU selftest 均通过后才逐帧评分，任一帧异常则该对 LPIPS 为 unknown，不只平均成功帧。VBench 仍为 unknown，不能授予 P4 或算法优越性资格；memmap 也不是硬 RSS 上限。`p4_quality_batches.py --plan ... --batches ... --output ...` 只归并原始封存 v2 批次，核对同一计划、核心、模型、运行时及指标身份，重新按 prompt 聚类计算统计量。完全相同且已核验的 exact 参考可跨批复用并只计一次；重复候选、冲突参考和不同 LPIPS 可用状态拒绝合并。完整分母保留，原始输出依赖继续开放，不执行删除或磁盘回收。
 
@@ -239,3 +241,5 @@ P4 的 `p4_quality_plan.py prepare` 固定同一组每模型至少 32 prompt × 
 `native_metrics.py` 的释放容量与图像重叠改为按 GPU 合并时间区间，batch 成员不重复累计 GPU 时间；使用最近一次 full-CFG 布局，无法追溯的换组不获得释放额度。该指标仍是 placement/window proxy，`reuse_qualified=false`，尚缺 release ACK、epoch 生命周期、真实受益执行与 fold-only/forced/demand 因果对照。不同 attempt/order 的请求分母不得合并，缺身份的多臂旧记录拒绝推断。
 
 P5 的 `p5_external_preflight.py` 对照固定官方源码声明和已测运行环境，仅检查选定依赖子集；未观测包保持 unknown，不等于未安装或可运行。`p5-external-v1.json` 固定 TetriServe、GF-DiT、xDiT 来源和接口，并列出模型、输入、算力、质量、计时与规模证据要求。当前已知 TetriServe 的 diffusers/NumPy 和 GF-DiT 的 cache-dit 与现有镜像冲突；不得安装替换或自行构建镜像来绕过项目限制。同框架策略仍标为重实现，SD3 不自动代表 SD3.5、两个 Wan 版本不代表跨家族、两个独立 8 卡作业不代表跨节点 16 卡。工具输出始终是预审，不能提升 P5。
+
+`p1_isolated_job.py` 准备同分配2卡诊断：只有重算完整P0且允许 `p1_diagnostics` 才生成新规格。GPU核心/worker保持指定旧发布，operator/helper另用新不可变快照，分别绑定源码哈希；模型映射必须与该模型两种P0角色一致。作业先完成本模型两档正式校准，再冻结实际两UUID和原始cal/bundle，运行每档96请求的ABBA；校准未成功也保留192计划请求分母。新入口在加载会创建共享文件的common脚本前检查存储，之后在运行/覆盖报告前复查。覆盖报告只记分母，不授予输出一致性、零抢占、性能或P1资格。配额保护仍使用明确的formal作业名单，独立校准作业不能保证后续复用同一UUID。

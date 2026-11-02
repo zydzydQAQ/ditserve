@@ -37,7 +37,7 @@ class OperatorPreparationTest(unittest.TestCase):
         operator.parent.mkdir(parents=True); operator.write_text('# frozen operator\n')
         build = dict(commit='a'*40, core_sha256=job.file_hash(core))
         env = dict(DITSERVE_BUILD='a'*7, DITSERVE_TEST_REVISION='a'*40,
-            DITSERVE_RUN_ID='d20261103-p1iso-' + model + '-aaaaaaa-r1',
+            DITSERVE_RUN_ID='d20261103-formal-p1iso-' + model + '-aaaaaaa-r1',
             DITSERVE_PROTOCOL_SHA256=canonical_hash(first['protocol']),
             DITSERVE_P1_PLAN_SHA256=canonical_hash(first['pair_plan']),
             DITSERVE_FORMAL_ACTION='p1_isolated', DITSERVE_STAGE_ACTION='p1_diagnostics',
@@ -193,7 +193,7 @@ class OperatorPreparationTest(unittest.TestCase):
                 result=job.prepare_spec(base,protocol,plan,receipt,**kwargs)
             verify.assert_called_once_with(receipt,build_commit='a'*7,protocol_sha256=canonical_hash(protocol),
                 required_stage='P0',action='p1_diagnostics')
-            self.assertEqual(result['name'],'d20261103-p1iso-wan21-aaaaaaa-r1')
+            self.assertEqual(result['name'],'d20261103-formal-p1iso-wan21-aaaaaaa-r1')
             actual=job.env_values(result)
             self.assertEqual(actual['DITSERVE_BUILD'],env['DITSERVE_BUILD'])
             self.assertEqual(actual['DITSERVE_STAGE_ACTION'],'p1_diagnostics')

@@ -115,7 +115,8 @@ def prepare_spec(base_spec, protocol, plan, receipt_path, *, model, date, operat
             or not base_spec['image'].endswith('@' + fresh['build']['image_digest'])
             or env.get('DITSERVE_TEST_REVISION') != fresh['build']['commit']):
         raise ValueError('P0/build/image permission differs')
-    name = f'd{date}-p1iso-{model}-{commit[:7]}-r1'
+    # Keep the explicit formal-job namespace accepted by the storage guard.
+    name = f'd{date}-formal-p1iso-{model}-{commit[:7]}-r1'
     result = copy.deepcopy(base_spec)
     result.update(name=name, command='bash ' + operator_root + '/scripts/kairos_formal_benchmark.sh')
     env.update(DITSERVE_RUN_ID=name, DITSERVE_FORMAL_ACTION='p1_isolated', DITSERVE_STAGE_ACTION='p1_diagnostics',
