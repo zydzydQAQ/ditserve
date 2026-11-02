@@ -172,6 +172,8 @@ class XDitSD35Tests(unittest.TestCase):
         backend = SD35Backend.__new__(SD35Backend)
         Backend.__init__(backend, dict(options={"profile": True}))
         backend.torch, backend.device = proxy, "cuda:0"
+        # The loader-free fixture retains SD35Backend.__init__'s default policy.
+        backend.attention = "math"
         backend.xdit = attach(tiny_pipeline(torch), "cpu")
         backend.pipe, backend._cache_recipe = backend.xdit.pipe, None
         backend.pipe.module.encode_prompt = Mock(wraps=backend.pipe.module.encode_prompt)
@@ -190,6 +192,7 @@ class XDitSD35Tests(unittest.TestCase):
             return fetch(key, "cpu", stream=stream)
         backend.encoder_pool.fetch_to_device = cpu_fetch
         result = backend.advance(dict(state_id="profile"))
+        self.assertEqual(result["attention"], "math")
         self.assertEqual(backend.states["profile"]["output"].shape[0], 2)
         self.assertEqual(set(result["phase_ms"]),
                          {"text_encode", "latent_init", "transformer", "scheduler", "vae_decode", "postprocess"})
