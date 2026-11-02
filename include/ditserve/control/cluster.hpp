@@ -65,7 +65,7 @@ public:
     double step_ms(const std::string& klass, const Form& form, int sp_groups = 1, const std::vector<int>* group = nullptr,
                    double cache_threshold = 0.0) const;
     double block_ms(const std::string& klass, const Form& form, int sp_groups = 1, const std::vector<int>* group = nullptr,
-                    double cache_threshold = 0.0) const;
+                    double cache_threshold = 0.0, bool rank_local_blocks = false, bool cfg_folded = false) const;
     // Remaining GPU time on `form` from the request's current progress.
     double remaining_ms(const Json& request, const Form& form, int sp_groups = 1, const std::vector<int>* group = nullptr,
                         double cache_threshold = 0.0) const;
@@ -89,6 +89,13 @@ public:
     double block_ms(const std::string& klass, int degree, int sp_groups = 1) const { return block_ms(klass, Form{1, degree}, sp_groups); }
     double remaining_ms(const Json& request, int degree, int sp_groups = 1) const { return remaining_ms(request, Form{1, degree}, sp_groups); }
     int blocks_per_step(const std::string& klass) const;
+    // Profiles count all guidance branches. Native Wan reports/accepts per-rank
+    // blocks; generic/mock executors and the simulator retain profile units.
+    // Folding changes counts, not step_ms: no uncalibrated folded speedup is assumed.
+    int execution_blocks_per_step(const std::string& klass, const Form& form, bool rank_local_blocks, bool cfg_folded = false) const;
+    // Progress expressed in the target form's execution units. The observed
+    // form remains authoritative when pricing a mid-step request on another form.
+    double completed_blocks(const Json& request, const Form& form) const;
     // VAE decode splits into decode_chunks latent-frame chunks (1 = atomic).
     int decode_chunks(const std::string& klass) const;
     double chunk_ms(const std::string& klass) const;
@@ -111,7 +118,8 @@ private:
 // advances still running, default 0)}; request fields:
 //   request_id, kind (video|image), class, arrival_ms, deadline_ms,
 //   status waiting|suspended, ready (encoded), prepared, steps_done,
-//   blocks_done (inside the current step), group ([] when unplaced), form (the
+//   blocks_done (inside the current step), rank_local_blocks (default false;
+//   Wan rank units rather than the profile's full-guidance units), group ([] when unplaced), form (the
 //   group's parallel form, default sp<group size>), optional steps_total
 //   (overrides the class), affinity (GPU that must host prepare) and
 //   decode_done (latent-frame chunks already decoded), pair (the request this

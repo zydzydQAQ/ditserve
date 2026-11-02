@@ -208,6 +208,10 @@ PYTHONPATH=workers python3 benchmarks/collect_stage_evidence.py \
 
 2026-11-03 的 `12b0918` P0 contention 在第一个 Block-CFG2 cell 暴露固定形态恢复漏洞：step 边界请求的 GPU 虽空闲，仍可能保留另一视频未完成的 solver step。最终互斥检查正确拒绝计划；30 请求完成、10 中断，另一策略 40 请求尚未执行，不能授予资格。修复在固定恢复分支补充已有 owner 筛选，保留 mid-step/合法 lockstep 及 pinned 路径；用真实到达/截止时间与所有 59 个可能的中途 block 位置做回归。新核心需要新的 CONTRACT/P0；旧失败数据和仍未闭合的原始依赖继续保留。
 
+同日成本审查发现另一独立问题：profile 的 `blocks_per_step=60` 计完整 CFG 双分支，真实 Wan CFG2 每 rank 执行 30 个。原 planner 将 rank 的 `blocks_done` 当完整分支计数，600 ms 步执行一半时估余下 450 ms 而非 300 ms；时间量子也可能下发约两倍实际 block。修复显式区分 native rank 计数与 mock/simulator 原计数，按观测形态换算已完成比例，并统一剩余工作、边界等待、量子及配对计数。实际 folded 步的计数同样只有 30；边界上上一轮的 folded 状态不证明下一轮已折叠。这里只修正计数，仍沿用完整 CFG 步时估计，未授予 folded 成本准确性或性能上界。新 core 须独立 CONTRACT/P0 和同核心校准，旧 bundle 不直接继承资格。
+
+`92b72ff` 的两组开发抢占诊断均为 80/80 请求完成、20 视频摘要配对一致，完整 P0 仍缺无抢占用例。其 Wan2.2 最大停止 370.45 ms 的 controller 时间线表明：ring 后约 26.63 ms 导入才就绪，约 1.74 ms 后开始 advance，rank advance 联合跨度约 341.85 ms，最终观察约 0.23 ms。该相邻 wall 分解不相加并行 rank RPC，也不代表完整恢复成本；advance 内部前导与 kernel 尚未细分。导入就绪后、advance 前的可取消边界是后续独立机制实验，不能把稳态 block 估计当作首量子的总停止保证。
+
 ### P2 配对比较与单机制消融（2026-11-03）
 
 `benchmarks/p2_contrasts.py` 从至少三个 seed 的冻结配置准备 reference/candidate 两臂、计划和空证据模板。支持固定/弹性 block 对照、pruning、minimum-pair、placement、lazy、remaining-work 和 continuous doorbell；也可准备与指定系统策略的同框架比较。它审查实际 policy/options 默认值，拒绝被显式 options 抹成同臂的消融。doorbell 对照统一 block 检查间隔；仅 CFG2 的配置不能用于证明形态剪枝/扩组收益。xDiT 分区基线若没有 image 分区外的合法 CFG2 组（例如两卡）直接标为不可支持，不能将其不可执行算成 DitServe 的胜出。

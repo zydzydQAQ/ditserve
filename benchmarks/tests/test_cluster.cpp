@@ -58,6 +58,93 @@ Json trace_row(const std::string& id, const std::string& kind, double arrival, d
 }
 
 int main() {
+    check("20261103 native CFG2 counters price the executed half-step", [] {
+        Json p=profile();auto& c=p["classes"]["video"];
+        c["steps"]=1;c["blocks_per_step"]=60;c["finish_ms"]=0;
+        c["forms"]={{"sp1",{{"step_ms",1200}}},{"cfg2",{{"step_ms",600}}}};
+        const ClusterCost cost(p);const auto cfg=parse_form("cfg2");
+        Json native=video("v",10000,{{"status","suspended"},{"prepared",true},{"form","cfg2"},
+            {"group",{0,1}},{"blocks_done",15},{"rank_local_blocks",true}});
+        near(cost.block_ms("video",cfg),10);near(cost.block_ms("video",cfg,1,nullptr,0,true),20);
+        require(cost.execution_blocks_per_step("video",cfg,true)==30,"CFG2 has 30 rank blocks");
+        require(cost.execution_blocks_per_step("video",cfg,false)==60,"mock/simulator retain 60 profile blocks");
+        near(cost.remaining_ms(native,cfg),300);
+        near(cost.remaining_ms(native,Form{}),600); // SRTF must retain the observed CFG2 progress fraction.
+        Json generic=native;generic.erase("rank_local_blocks");near(cost.remaining_ms(generic,cfg),450);
+        native["blocks_done"]=0;near(cost.remaining_ms(native,cfg),600);
+        native["blocks_done"]=29;near(cost.remaining_ms(native,cfg),20);
+        native["blocks_done"]=31;rejects([&]{cost.remaining_ms(native,cfg);});
+        native["blocks_done"]=15;
+        Json ambiguous=native;ambiguous.erase("form");rejects([&]{cost.remaining_ms(ambiguous,cfg);});
+        p["classes"]["video"]["blocks_per_step"]=61;
+        const ClusterCost odd(p);
+        rejects([&]{odd.execution_blocks_per_step("video",cfg,true);});
+        require(odd.execution_blocks_per_step("video",cfg,false)==61,"generic counters need no CFG divisibility");
+        auto run=[&](const Json& rows,const Json& options){return cluster_plan(
+            {{"now_ms",0},{"gpus",2},{"busy",Json::array()},{"requests",rows}},"block-cfg2",cost,options).at("assignments");};
+        require(run(Json::array({native}),{{"quantum_ms",100}})[0].at("quantum")==5,"100ms equals five native rank blocks");
+        require(run(Json::array({generic}),{{"quantum_ms",100}})[0].at("quantum")==10,"generic quantum units stay unchanged");
+        require(run(Json::array({native}),{{"quantum_ms",1e100}})[0].at("quantum")==30,"time quantum clamps before integer conversion");
+        require(run(Json::array({native}),{{"quantum_blocks",4}})[0].at("quantum")==4,"explicit block quanta retain worker units");
+        auto native_plan=run({native,image("i",400)},{{"lazy_preemption",true}});
+        require(native_plan[0].at("request_id")=="v","image can wait 300ms then finish at 350ms before deadline");
+        require(run({generic,image("i",400)},{{"lazy_preemption",true}})[0].at("request_id")=="i",
+                "the same numeric generic counter represents only one quarter step");
+    });
+    check("20261103 native CFG2 boundary and remaining quantum overhead", [] {
+        Json p=profile();auto& c=p["classes"]["video"];
+        c["steps"]=2;c["blocks_per_step"]=60;c["finish_ms"]=0;c["forms"]["cfg2"]["step_ms"]=600;
+        p["quantum_overhead_ms"]=10;
+        const ClusterCost cost(p);
+        const Json options={{"quantum_blocks",4},{"lazy_preemption",true},{"late_short_ms",0},{"demote_late",true}};
+        auto run=[&](const Json& rows){return cluster_plan({{"now_ms",0},{"gpus",2},{"busy",Json::array()},{"requests",rows}},
+            "block-cfg2",cost,options).at("assignments");};
+        Json a=video("a",1400,{{"rank_local_blocks",true}}),b=video("b",1600,{{"rank_local_blocks",true}});
+        require(run({a,b})[0].at("request_id")=="a","two CFG2 steps need 16, not 30, four-block dispatches");
+        a.erase("rank_local_blocks");b.erase("rank_local_blocks");
+        require(run({a,b})[0].at("request_id")=="b","generic 60-block counters still include 30 dispatches");
+        Json mid=video("v",10000,{{"rank_local_blocks",true},{"status","suspended"},{"prepared",true},
+            {"steps_done",1},{"blocks_done",15},{"group",{0,1}},{"form","cfg2"}});
+        require(run({mid,image("i",400)})[0].at("request_id")=="v",
+                "remaining 15 native blocks cost 300ms plus four dispatches, leaving image on time");
+    });
+    check("20261103 CFG2 SP pairs keep per-rank quantum units", [] {
+        Json p=profile();p["classes"]["video"]["blocks_per_step"]=60;
+        p["classes"]["video"]["forms"]["cfg2sp2"]["step_ms"]=600;p["pair_overlap"]=1;
+        const ClusterCost cost(p);
+        Json a=video("a",1e9,{{"status","suspended"},{"prepared",true},{"group",{0,1,2,3}},
+            {"form","cfg2sp2"},{"blocks_done",5},{"pair","b"},{"rank_local_blocks",true}});
+        Json b=a;b["request_id"]="b";b["pair"]="a";
+        auto run=[&]{return cluster_plan({{"now_ms",0},{"gpus",4},{"busy",Json::array()},{"requests",{a,b}}},
+            "block_elastic",cost,{{"forms",{"cfg2sp2"}},{"quantum_ms",200},{"pairing",true}}).at("assignments");};
+        auto assignments=run();require(assignments.size()==1&&assignments[0].at("pair")=="b","pair resumes once");
+        require(assignments[0].at("quantum")==5,"1200ms pair has 30 rank block pairs, not 60");
+        a.erase("rank_local_blocks");b.erase("rank_local_blocks");
+        require(run()[0].at("quantum")==10,"generic pair quantum remains in profile units");
+        a["rank_local_blocks"]=true;rejects([&]{run();});
+    });
+    check("20261103 actual folded counters do not invent a folded time model", [] {
+        Json p=profile();auto& c=p["classes"]["video"];
+        c["steps"]=1;c["blocks_per_step"]=60;c["finish_ms"]=0;
+        c["forms"]={{"sp1",{{"step_ms",1200}}},{"cfg2",{{"step_ms",600}}}};
+        const ClusterCost cost(p);const auto cfg=parse_form("cfg2");
+        require(cost.execution_blocks_per_step("video",Form{},true,true)==30,"folded SP1 has one branch");
+        require(cost.execution_blocks_per_step("video",cfg,true,true)==30,"folded CFG2 is not divided twice");
+        near(cost.step_ms("video",Form{}),1200); // No measured folded-time table exists.
+        Json mid=video("v",1e9,{{"rank_local_blocks",true},{"cfg_folded",true},{"prepared",true},
+            {"status","suspended"},{"group",{0}},{"form","sp1"},{"blocks_done",15}});
+        near(cost.completed_blocks(mid,Form{}),15);near(cost.completed_blocks(mid,cfg),15);
+        near(cost.remaining_ms(mid,Form{}),600);near(cost.remaining_ms(mid,cfg),300);
+        auto run=[&]{return cluster_plan({{"now_ms",0},{"gpus",1},{"busy",Json::array()},{"requests",{mid}}},
+            "block-sp1",cost,{{"quantum_ms",100}}).at("assignments")[0];};
+        require(run().at("quantum")==2,"actual folded progress uses 30 units with the unchanged full-step estimate");
+        mid["blocks_done"]=0;mid["cfg_fold_eligible"]=true;
+        require(run().at("quantum")==5,"last-step folded state and eligibility do not fold a future exact step");
+        near(cost.remaining_ms(mid,Form{}),1200);
+        const int rank_blocks=cost.execution_blocks_per_step("video",cfg,true,true);
+        const auto timing=estimate_preemption_timing(cost.step_ms("video",cfg)/rank_blocks,rank_blocks,28,0,1,1,true);
+        near(timing.remaining_ms,40);near(timing.stop_ms,40);
+    });
     check("20261103 fixed-form resume waits for an interrupted solver-step owner", [] {
         // Reduced from the failed 12b0918 P0 contention cell: v0012 completed
         // one step, then feasible-first EDF admitted v0013 on the same CFG pair.

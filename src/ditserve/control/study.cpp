@@ -1296,13 +1296,34 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         if(row["execution"].empty()||row["execution"].back()!=trace)row["execution"].push_back(trace);
         row["reused_forwards"]=row.value("reused_forwards",0)+applied.value("reused_forwards",0);
         double model=0;for(const auto& rank:ranks)model=std::max(model,number_field(rank,"model_ms"));
-        // A continuous quantum may stop before its step end: count the blocks the worker reports.
+        // Wan's counters are per rank (CFG2 runs half the profile's guidance
+        // blocks). Also use observed counts for non-continuous quanta: an odd
+        // interleaved request executes a complete two-branch block pair.
+        const bool rank_local_blocks=workers.backend(video(state.group.front()))=="wan";
         int reported=-1;
-        if(task.continuous&&!ranks.empty()){
-            const auto& rank=ranks.at(0);
-            if(rank.contains("executed_units"))reported=rank.at("executed_units").get<int>();
-            else if(rank.contains("events")&&!rank.at("events").empty())reported=rank.at("events").at(0).value("blocks",-1);
-            if(reported<0)throw std::runtime_error("continuous quantum without an executed block count");
+        if(task.continuous||rank_local_blocks){
+            auto count=[](const Json& rank,const char* key){
+                if(std::string(key)=="events"&&rank.contains("executed_units"))return int_field(rank,"executed_units",0,1);
+                int value=-1;
+                for(const auto& event:rank.value(key,Json::array()))if(event.contains("blocks")){
+                    if(value<0)value=0;
+                    value+=int_field(event,"blocks",0,1);
+                }
+                return value;
+            };
+            bool first_rank=true;
+            for(const auto& rank:ranks){
+                const int value=count(rank,"events");
+                if(value<0&&(task.continuous||quantum.is_number_integer()))
+                    throw std::runtime_error("block quantum without an executed block count");
+                if(!first_rank&&value!=reported)throw std::runtime_error("worker ranks disagree on executed block count");
+                if(value>=0&&!task.assignment.value("pair",std::string()).empty()&&count(rank,"pair_events")!=value)
+                    throw std::runtime_error("paired workers disagree on executed block count");
+                reported=value;first_rank=false;
+                // Mock ranks have no collective doorbell; retain their original
+                // rank-zero counter contract rather than imposing Wan consensus.
+                if(!rank_local_blocks)break;
+            }
         }
         // Time a quantum spends outside its slowest rank's worker operation: dispatch, RPC, queueing and the
         // controller noticing the reply. Regroup quanta (transfers) and lockstep pairs are left out.
@@ -1323,7 +1344,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             }
             arow["model_ms"]=number_field(arow,"model_ms")+model;
             if(progress.contains("cfg_fold"))arow["cfg_fold"]=progress.at("cfg_fold");
-            const int executed=reported>=0?reported:quantum=="step"?cost.blocks_per_step(arow.at("class").get<std::string>())-astate.blocks:quantum.get<int>();
+            const int executed=reported>=0?reported:quantum=="step"?cost.execution_blocks_per_step(arow.at("class").get<std::string>(),expected_form,rank_local_blocks,expected_folded)-astate.blocks:quantum.get<int>();
             const int previous_step=astate.steps;
             astate.steps=progress.value("step",0);astate.total=progress.value("steps",0);astate.prepared=true;
             astate.cfg_folded=progress.value("cfg_folded",expected_folded);
@@ -1344,7 +1365,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             {"start_ms",task.started},{"finish_ms",task.started+elapsed},
             {"elapsed_ms",elapsed},{"model_ms",model},{"worker_operation_ms",operation_ms}
         });
-        const int executed_main=reported>=0?reported:quantum=="step"?cost.blocks_per_step(row.at("class").get<std::string>())-state.blocks:quantum.get<int>();
+        const int executed_main=reported>=0?reported:quantum=="step"?cost.execution_blocks_per_step(row.at("class").get<std::string>(),expected_form,rank_local_blocks,expected_folded)-state.blocks:quantum.get<int>();
         settle(row,state,"progress");
         if(!first&&executed_main>0&&!out.contains("transfer")&&task.assignment.value("pair",std::string()).empty()){
             if(task.after_other){state.resumed_ms+=model;state.resumed_blocks+=executed_main;++state.resumes;}
@@ -1437,6 +1458,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                     {"arrival_ms",row.at("arrival_ms")},{"deadline_ms",row.at("deadline_ms")},{"status",state.status},{"ready",true},
                     {"prepared",state.prepared},{"steps_done",state.steps},{"blocks_done",state.blocks},{"group",state.group},{"decode_done",state.decode_done}};
                 if(row.at("kind")=="video"){
+                    view["rank_local_blocks"]=workers.backend(video(state.group.empty()?0:state.group.front()))=="wan";
                     view["cfg_folded"]=state.cfg_folded;
                     view["cfg_fold_eligible"]=state.cfg_fold_eligible;
                 }
@@ -1503,11 +1525,11 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 const bool wan=workers.backend(video(state.group.front()))=="wan";
                 // Mock progress uses the spec's full block counter. Wan
                 // splits CFG branches across ranks, or omits one when folded.
-                const int rank_blocks=wan?std::max(1,cost.blocks_per_step(klass)/form.cfg)
+                const bool folded=wan&&task.assignment.value("cfg_folded",false);
+                const int rank_blocks=wan?cost.execution_blocks_per_step(klass,form,true,folded)
                                          :int_field(row.at("spec"),"blocks_per_step",1);
                 const double block=cost.step_ms(klass,form,std::max(1,sp_running),&state.group)/rank_blocks;
-                const bool folded=wan&&task.assignment.value("cfg_folded",false);
-                const int blocks_total=folded?std::max(1,rank_blocks/2):rank_blocks;
+                const int blocks_total=rank_blocks;
                 int blocks_per_iteration=1;
                 if(wan&&form.cfg==1&&!folded&&number_field(row.at("spec"),"guidance_scale",5.)>1.)
                     for(int gpu:state.group)if(interleaved_workers.count(video(gpu)))blocks_per_iteration=2;
@@ -1871,6 +1893,11 @@ void validate(const Json& config){
                         const auto name=slot.at(role).get<std::string>();known(name);
                         if(!names.insert(name).second)throw std::invalid_argument("each cluster slot needs its own workers");
                     }
+                    std::set<bool> counter_domains;
+                    for(const auto& slot:slots)counter_domains.insert(
+                        config.at("workers").at(slot.at("video").get<std::string>()).at("backend")=="wan");
+                    if(counter_domains.size()>1)
+                        throw std::invalid_argument("cluster video slots cannot mix Wan rank-local and non-Wan block counters");
                     const ClusterCost cost(cell.at("profile"));
                     if(!cluster_policy(cell.at("policy").get<std::string>()))throw std::invalid_argument("unknown cluster policy");
                     const auto transport=string_field(cell.value("options",Json::object()),"sp_transport","default");

@@ -543,6 +543,31 @@ double ClusterCost::continuous_step_ms(const std::string& name, int size) const 
 
 int ClusterCost::blocks_per_step(const std::string& name) const { return int_field(klass(name), "blocks_per_step", 1); }
 
+int ClusterCost::execution_blocks_per_step(const std::string& name, const Form& form, bool rank_local_blocks, bool cfg_folded) const {
+    const int blocks = blocks_per_step(name);
+    if (!rank_local_blocks) return blocks;
+    const int divisor = cfg_folded ? 2 : form.cfg;
+    if ((form.cfg != 1 && form.cfg != 2) || blocks % divisor != 0)
+        throw std::invalid_argument("rank-local block count requires an integral CFG branch partition");
+    return blocks / divisor;
+}
+
+double ClusterCost::completed_blocks(const Json& request, const Form& form) const {
+    const int done = int_field(request, "blocks_done", 0, 0);
+    if (!bool_field(request, "rank_local_blocks", false)) return done;
+    const auto name = request.at("class").get<std::string>();
+    // At a boundary cfg_folded describes the previous step. Eligibility alone
+    // likewise cannot establish that the next step actually executes folded.
+    const bool folded = done > 0 && bool_field(request, "cfg_folded", false);
+    execution_blocks_per_step(name, form, true, folded);
+    if (done == 0) return 0;
+    if (!request.contains("form")) throw std::invalid_argument("rank-local mid-step progress needs its observed form");
+    const Form observed = parse_form(request.at("form").get<std::string>());
+    if (done > execution_blocks_per_step(name, observed, true, folded))
+        throw std::invalid_argument("rank-local progress exceeds one solver step");
+    return double(done) * (folded ? 2 : observed.cfg) / (folded ? 2 : form.cfg);
+}
+
 int ClusterCost::decode_chunks(const std::string& name) const { return int_field(klass(name), "decode_chunks", 1); }
 
 double ClusterCost::chunk_ms(const std::string& name) const { return number_field(klass(name), "finish_ms") / decode_chunks(name); }
@@ -550,8 +575,8 @@ double ClusterCost::chunk_ms(const std::string& name) const { return number_fiel
 double ClusterCost::resume_ms(const std::string& name) const { return number_field(klass(name), "resume_ms"); }
 
 double ClusterCost::block_ms(const std::string& name, const Form& form, int sp_groups, const std::vector<int>* group,
-                             double cache_threshold) const {
-    return step_ms(name, form, sp_groups, group, cache_threshold) / blocks_per_step(name);
+                             double cache_threshold, bool rank_local_blocks, bool cfg_folded) const {
+    return step_ms(name, form, sp_groups, group, cache_threshold) / execution_blocks_per_step(name, form, rank_local_blocks, cfg_folded);
 }
 
 double ClusterCost::remaining_ms(const Json& request, const Form& form, int sp_groups, const std::vector<int>* group,
@@ -567,10 +592,11 @@ double ClusterCost::remaining_ms(const Json& request, const Form& form, int sp_g
         return total;
     }
     const int steps = int_field(request, "steps_total", int_field(row, "steps", 0), 1), done = int_field(request, "steps_done", 0, 0);
-    const int blocks = int_field(request, "blocks_done", 0, 0);
+    const double blocks = completed_blocks(request, form);
     double total = request.value("prepared", false) ? 0 : number_field(row, "prepare_ms");
     total += std::max(0, steps - done) * step_ms(name, form, sp_groups, group, cache_threshold)
-           - blocks * block_ms(name, form, sp_groups, group, cache_threshold);
+           - blocks * block_ms(name, form, sp_groups, group, cache_threshold, bool_field(request, "rank_local_blocks", false),
+                               int_field(request, "blocks_done", 0, 0) > 0 && bool_field(request, "cfg_folded", false));
     return total + (decode_chunks(name) - std::min(int_field(request, "decode_done", 0, 0), decode_chunks(name))) * chunk_ms(name);
 }
 
@@ -614,12 +640,20 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     // Optional time target: blocks per quantum follow the class and parallel form,
     // so a preemption check happens about every quantum_ms of GPU work.
     const double quantum_ms = number_field(options, "quantum_ms", 0);
-    auto video_quantum = [&](const std::string& klass, const Form& form, int n, const std::vector<int>* group = nullptr,
-                             double cache_threshold = 0.0) -> Json {
+    auto active_fold = [&](const Json& request) {
+        return bool_field(request, "rank_local_blocks", false) && int_field(request, "blocks_done", 0, 0) > 0
+               && bool_field(request, "cfg_folded", false);
+    };
+    auto video_quantum = [&](const Json& request, const Form& form, int n, const std::vector<int>* group = nullptr,
+                             double cache_threshold = 0.0, bool dispatched_folded = false) -> Json {
         if (!policy.blocks) return "step";
         if (quantum_ms <= 0) return quantum_blocks;
-        const int blocks = static_cast<int>(std::floor(quantum_ms / cost.block_ms(klass, form, n, group, cache_threshold)));
-        return std::max(1, std::min(blocks, cost.blocks_per_step(klass)));
+        const auto klass = request.at("class").get<std::string>();
+        const bool rank_local = bool_field(request, "rank_local_blocks", false);
+        const bool folded = dispatched_folded || active_fold(request);
+        const int bps = cost.execution_blocks_per_step(klass, form, rank_local, folded);
+        const double blocks = std::floor(quantum_ms / cost.block_ms(klass, form, n, group, cache_threshold, rank_local, folded));
+        return static_cast<int>(std::max(1., std::min(blocks, double(bps))));
     };
     // SP advances already running plus those this plan hands out: with
     // concurrent link rates in the profile they slow each other down.
@@ -708,12 +742,17 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     auto quanta_left = [&](const Json& r, const Form& form, int n, const std::vector<int>* group = nullptr) {
         const auto klass = r.at("class").get<std::string>();
         const int steps = int_field(r, "steps_total", int_field(cost.klass(klass), "steps", 0), 1);
-        const int left = std::max(0, steps - int_field(r, "steps_done", 0, 0)), done = int_field(r, "blocks_done", 0, 0);
+        const int left = std::max(0, steps - int_field(r, "steps_done", 0, 0));
+        const double done = cost.completed_blocks(r, form);
         int quanta = left;
-        const auto quantum = video_quantum(klass, form, n, group);
+        const auto quantum = video_quantum(r, form, n, group);
         if (quantum.is_number_integer() && left > 0) {
-            const int per = quantum.get<int>(), bps = cost.blocks_per_step(klass);
-            quanta = ceil_div(bps - done, per) + (left - 1) * ceil_div(bps, per);
+            const bool rank_local = bool_field(r, "rank_local_blocks", false);
+            const int per = quantum.get<int>(), bps = cost.execution_blocks_per_step(klass, form, rank_local, active_fold(r));
+            Json future = r;future["blocks_done"] = 0;future["cfg_folded"] = false;
+            const int future_per = video_quantum(future, form, n, group).template get<int>();
+            quanta = static_cast<int>(std::ceil(std::max(0., bps - done) / per))
+                     + (left - 1) * ceil_div(cost.execution_blocks_per_step(klass, form, rank_local), future_per);
         }
         const int chunks = cost.decode_chunks(klass) - std::min(int_field(r, "decode_done", 0, 0), cost.decode_chunks(klass));
         const int frames = decode_frames(klass);
@@ -871,11 +910,13 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             return chunks * cost.chunk_ms(klass) + (overhead > 0 ? overhead * (frames > 0 ? ceil_div(chunks, frames) : 0) : 0.);
         }
         const Form form = form_of(*r, group);
-        const int blocks = cost.blocks_per_step(klass) - int_field(*r, "blocks_done", 0, 0);
-        const double work = blocks * cost.block_ms(klass, form, sp_groups(form), &group);
+        const bool rank_local = bool_field(*r, "rank_local_blocks", false);
+        const bool folded = active_fold(*r);
+        const double blocks = std::max(0., cost.execution_blocks_per_step(klass, form, rank_local, folded) - cost.completed_blocks(*r, form));
+        const double work = blocks * cost.block_ms(klass, form, sp_groups(form), &group, 0., rank_local, folded);
         if (overhead <= 0) return work;
-        const auto quantum = video_quantum(klass, form, sp_groups(form), &group);
-        return work + overhead * (quantum.is_number_integer() ? ceil_div(blocks, quantum.get<int>()) : 1);
+        const auto quantum = video_quantum(*r, form, sp_groups(form), &group);
+        return work + overhead * (quantum.is_number_integer() ? std::ceil(blocks / quantum.get<int>()) : 1);
     };
     auto all_free = [&](const std::vector<int>& group) {
         return std::all_of(group.begin(), group.end(), [&](int gpu) { return free[gpu] && !decode_hold[gpu]; });
@@ -887,11 +928,17 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     };
 
     // Blocks per quantum when two requests advance in lockstep on `form`.
-    auto pair_quantum = [&](const std::string& first, const std::string& second, const Form& form, int n, const std::vector<int>* group) -> Json {
+    auto pair_quantum = [&](const Json& first, const Json& second, const Form& form, int n, const std::vector<int>* group) -> Json {
+        const auto a = first.at("class").get<std::string>(), b = second.at("class").get<std::string>();
+        const bool rank_local = bool_field(first, "rank_local_blocks", false);
+        const int bps = cost.execution_blocks_per_step(a, form, rank_local);
+        if (rank_local != bool_field(second, "rank_local_blocks", false)
+            || bps != cost.execution_blocks_per_step(b, form, rank_local))
+            throw std::invalid_argument("paired requests must use matching block counters");
         if (!policy.blocks) return "step";
         if (quantum_ms <= 0) return quantum_blocks;
-        const double block = cost.pair_ms(first, second, form, n, group) / cost.blocks_per_step(first);
-        return std::max(1, std::min(static_cast<int>(std::floor(quantum_ms / block)), cost.blocks_per_step(first)));
+        const double block = cost.pair_ms(a, b, form, n, group) / bps;
+        return static_cast<int>(std::max(1., std::min(std::floor(quantum_ms / block), double(bps))));
     };
     const int image_batch = int_field(options, "image_batch", 1);
     const int continuous_batch = int_field(options, "continuous_batch", 0, 0);
@@ -1065,7 +1112,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                 take(current);
                 const Form form = form_of(r, current);
                 Json assignment = {{"request_id", id}, {"group", current}, {"degree", form.degree()}, {"form", form_name(form)},
-                                   {"quantum", video_quantum(klass, form, sp_groups(form), &current)},
+                                   {"quantum", video_quantum(r, form, sp_groups(form), &current, 0., fold_eligible || active_fold(r))},
                                    {"resize", false}, {"reason", "resume"}};
                 if (fold_eligible || (blocks_done > 0 && r.value("cfg_folded", false))) {
                     assignment["cfg_folded"] = true; assignment["fission"] = policy.fission && form.cfg == 1;
@@ -1082,7 +1129,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                     const Json* q = pair_of.at(&r);
                     assignment["pair"] = q->at("request_id");
                     assignment["pair_resize"] = false;
-                    assignment["quantum"] = pair_quantum(klass, q->at("class").get<std::string>(), form, sp_groups(form), &current);
+                    assignment["quantum"] = pair_quantum(r, *q, form, sp_groups(form), &current);
                     taken.insert(q);
                 }
                 assignments.push_back(assignment);
@@ -1407,7 +1454,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             }
         }
         Json assignment = {{"request_id", id}, {"group", chosen}, {"degree", form.degree()}, {"form", form_name(form)},
-                           {"quantum", video_quantum(klass, form, sp_groups(form), &chosen, chosen_tau)},
+                           {"quantum", video_quantum(r, form, sp_groups(form), &chosen, chosen_tau, cfg_folded)},
                            {"resize", prepared && chosen != current}, {"reason", prepared ? "regroup" : "admit"}};
         if (cfg_folded) { assignment["cfg_folded"] = true; assignment["fission"] = release; }
         if (policy.approx || chosen_tau > 0.0) assignment["cache_threshold"] = chosen_tau;
@@ -1422,7 +1469,8 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                 const auto qklass = q.at("class").get<std::string>();
                 const int qsteps = int_field(q, "steps_total", int_field(cost.klass(qklass), "steps", 0), 1);
                 if (q.value("prepared", false) && int_field(q, "steps_done", 0, 0) >= qsteps) continue;
-                if (cost.blocks_per_step(qklass) != cost.blocks_per_step(klass)) continue;
+                if (bool_field(q, "rank_local_blocks", false) != bool_field(r, "rank_local_blocks", false)
+                    || cost.blocks_per_step(qklass) != cost.blocks_per_step(klass)) continue;
                 if (!q.value("prepared", false) && q.contains("affinity")
                     && std::find(chosen.begin(), chosen.end(), static_cast<int>(integer(q.at("affinity"), "affinity"))) == chosen.end()) continue;
                 if (q.value("prepared", false) && !policy.elastic && group_of(q) != chosen) continue;
@@ -1437,7 +1485,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                 if (!((fits(r, klass) && fits(q, qklass)) || (late.at(&r) && late.at(&q)))) continue;
                 assignment["pair"] = q.at("request_id");
                 assignment["pair_resize"] = q.value("prepared", false) && group_of(q) != chosen;
-                assignment["quantum"] = pair_quantum(klass, qklass, form, sp_groups(form), &chosen);
+                assignment["quantum"] = pair_quantum(r, q, form, sp_groups(form), &chosen);
                 taken.insert(&q);
                 break;
             }
