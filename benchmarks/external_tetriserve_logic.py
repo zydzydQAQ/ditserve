@@ -149,6 +149,26 @@ def assess_scheduler(execution, evidence):
     records = evidence.get('records', [])
     covered = len(records) == 2 and {row.get('batch') for row in records} == {1, 2}
     for record in records:
+        rounds = record.get('rounds', [])
+        if len(rounds) < 3:
+            covered = False
+            issues.append('three native rounds through terminal completion were not covered')
+        cursor = {sid: 0 for sid in range(1, record.get('batch', 0) + 1)}
+        prompts = {1: 'fox', 2: 'hare'}
+        for rows in rounds:
+            if sorted(sid for row in rows for sid in row.get('sub_req_ids', [])) != sorted(cursor):
+                issues.append('a native round omitted or duplicated an offered request')
+            for row in rows:
+                if row.get('prompts') != [prompts.get(sid) for sid in row.get('sub_req_ids', [])]:
+                    issues.append('split prompt identity differs from its subrequest')
+                for sid in row.get('sub_req_ids', []):
+                    if row.get('start') != cursor.get(sid):
+                        issues.append('native round sequence is not contiguous')
+                    cursor[sid] = row.get('end')
+        if (not rounds or any(step != 28 for step in cursor.values())
+                or record.get('terminal_items') != record.get('batch')
+                or record.get('tracker_remaining') != 0 or record.get('complete_steps_covered') is not True):
+            issues.append('actual RequestTracker did not finish every original 28-step request')
         first, second = record.get('first', []), record.get('second', [])
         completed = record.get('completed_steps', {})
         if not first or not second or not completed:
@@ -156,7 +176,9 @@ def assess_scheduler(execution, evidence):
             issues.append('no continuation interval was produced')
             continue
         offered = set(range(1, record.get('batch', 0) + 1))
-        for label, rows in [('first', first), ('second', second)]:
+        if rounds[:2] != [first, second]:
+            issues.append('first/second views differ from the complete round sequence')
+        for ordinal, rows in enumerate(rounds):
             seen = [sid for row in rows for sid in row.get('sub_req_ids', [])]
             if sorted(seen) != sorted(offered):
                 covered = False
@@ -169,10 +191,13 @@ def assess_scheduler(execution, evidence):
                         or not 0 <= row['start'] < row['end'] <= 28
                         or row.get('steps') != row['end'] - row['start']):
                     issues.append('native step interval is invalid')
-                if label == 'first' and row.get('start') != 0:
+                if ordinal == 0 and row.get('start') != 0:
                     issues.append('first native interval does not begin at zero')
                 if any(total != 28 for total in row.get('origin_steps', [])):
                     issues.append('original step count changed')
+                if any(type(final) is not bool or final != (row.get('end') == total)
+                       for total, final in zip(row.get('origin_steps', []), row.get('final', []))):
+                    issues.append('native terminal marker differs from its original step count')
         if {int(sid) for sid in completed} != offered:
             covered = False
             issues.append('continuation does not cover every offered subrequest')

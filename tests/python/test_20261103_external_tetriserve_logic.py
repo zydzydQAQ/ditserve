@@ -19,9 +19,11 @@ def evidence():
     records = []
     for batch in (1, 2):
         row = dict(sub_req_ids=list(range(1, batch + 1)), ranks=[0, 1], start=10, end=20,
-                   steps=10, batch=batch, prompts=['fox']*batch, origin_steps=[28]*batch,
+                   steps=10, batch=batch, prompts=['fox','hare'][:batch], origin_steps=[28]*batch,
                    final=[False]*batch)
         records.append(dict(batch=batch, first=[dict(row, start=0, end=10)], second=[row],
+                            rounds=[[dict(row,start=0,end=10)],[row],[dict(row,start=20,end=28,steps=8,final=[True]*batch)]],
+                            terminal_items=batch,tracker_remaining=0,complete_steps_covered=True,
                             completed_steps={str(sid):10 for sid in row['sub_req_ids']},
                             cursor_contiguous=True, batch_metadata_aligned=True))
     return dict(schema='ditserve.tetriserve-native-scheduler-logic.v1',
@@ -39,8 +41,13 @@ class TetriLogicTests(unittest.TestCase):
         execution = dict(returncode=0, timed_out=False)
         self.assertTrue(logic.assess_scheduler(execution,evidence())['passed'])
         self.assertFalse(logic.assess_scheduler(execution,None)['passed'])
-        for mutation in ('missing','replay','omitted','batch','bad_prompts','costs'):
+        for mutation in ('missing','replay','omitted','batch','bad_prompts','unfinished','wrong_split_prompt','third_origin','third_steps','third_final','costs'):
             value = evidence()
+            if mutation == 'third_origin': value['records'][0]['rounds'][2][0]['origin_steps'] = [27]
+            if mutation == 'third_steps': value['records'][0]['rounds'][2][0]['steps'] = 7
+            if mutation == 'third_final': value['records'][0]['rounds'][2][0]['final'] = [False]
+            if mutation == 'unfinished': value['records'][0]['rounds'] = value['records'][0]['rounds'][:2]
+            if mutation == 'wrong_split_prompt': value['records'][1]['rounds'][2][0]['prompts'] = ['fox','fox']
             if mutation == 'missing': value['records'][0]['second'] = []
             if mutation == 'replay': value['records'][0]['second'][0]['start'] = 0
             if mutation == 'omitted': value['records'][1]['second'][0]['sub_req_ids'] = [1]
@@ -56,6 +63,11 @@ class TetriLogicTests(unittest.TestCase):
             if mutation == 'skip': value['tests']['skipped'] = [{'test':'gloo','reason':'no Torch'}]
             if mutation == 'failure': value['tests']['failures'] = [{'test':'gloo','traceback':'failed'}]
             if mutation == 'error': value['tests']['errors'] = [{'test':'gloo','traceback':'missing package'}]
+            if mutation == 'third_origin': value['records'][0]['rounds'][2][0]['origin_steps'] = [27]
+            if mutation == 'third_steps': value['records'][0]['rounds'][2][0]['steps'] = 7
+            if mutation == 'third_final': value['records'][0]['rounds'][2][0]['final'] = [False]
+            if mutation == 'unfinished': value['records'][0]['rounds'] = value['records'][0]['rounds'][:2]
+            if mutation == 'wrong_split_prompt': value['records'][1]['rounds'][2][0]['prompts'] = ['fox','fox']
             if mutation == 'missing': value['tests']['selected'] = ['unrelated']*5
             if mutation == 'exit': value['returncode'] = 1
             if mutation == 'timeout': value['timed_out'] = True

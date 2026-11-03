@@ -1,8 +1,9 @@
 """Reproduce the explicit SD3.5/shared-xfuser port in a new TetriServe tree.
 
 The frozen official source is never edited. Every replacement requires an exact
-upstream anchor and records before/after SHA256. Scheduler, request tracker,
-LatentManager, ZMQ and distributed group creation remain byte-identical. The
+upstream anchor and records before/after SHA256. LatentManager, ZMQ and
+distributed group creation remain byte-identical. Three scheduler/tracker
+continuation metadata fixes are explicit and preserve all other algorithm ASTs. The
 result is a port awaiting GPU validation, not a qualified system reproduction.
 """
 from __future__ import annotations
@@ -20,8 +21,7 @@ import external_tetriserve as upstream
 PORT_SCHEMA = 'ditserve.tetriserve-derived-source.v1'
 ADAPTER_FILES = ('external_tetriserve_bridge.py', 'external_sd35_round.py')
 PRESERVED = (
-    'tetriserve/scheduler/dyn_step_scheduler.py',
-    'tetriserve/scheduler/scheduler.py', 'tetriserve/engine/request_tracker.py',
+    'tetriserve/scheduler/scheduler.py',
     'tetriserve/light_ray/latent_manager.py', 'tetriserve/light_ray/latent_future.py',
     'tetriserve/zmq_utils/comm.py', 'tetriserve/distributed/globals.py',
     'tetriserve/distributed/distributed.py', 'tetriserve/engine/proc_launcher.py',
@@ -38,9 +38,88 @@ def replace_once(text, old, new, label):
     return text.replace(old, new, 1)
 
 
+METADATA_SCOPES = {
+    'tetriserve/scheduler/dyn_step_scheduler.py': '_build_schedule_DAG',
+    'tetriserve/engine/request_tracker.py': 'get_merged_requests',
+}
+
+
+class MetadataNormalizer(ast.NodeTransformer):
+    """Exclude only the explicit continuation metadata fields from comparison."""
+    def __init__(self, method):
+        self.method, self.active = method, False
+
+    def visit_FunctionDef(self, node):
+        previous = self.active
+        self.active = node.name == self.method
+        self.generic_visit(node)
+        self.active = previous
+        return node
+
+    def visit_Assign(self, node):
+        if self.active:
+            allowed = {'completed_steps', 'split_input_config', 'split_input_config.prompt'}
+            if self.method == 'get_merged_requests':
+                allowed = {'merged_req.origin_steps'}
+            if len(node.targets) == 1 and ast.unparse(node.targets[0]) in allowed:
+                return None
+        return self.generic_visit(node)
+
+    def visit_Call(self, node):
+        if self.active and self.method == '_build_schedule_DAG' and isinstance(node.func, ast.Name) and node.func.id == 'ScheduledRequests':
+            for item in node.keywords:
+                if item.arg in {'input_config', 'origin_steps', 'start_step', 'end_step'}:
+                    item.value = ast.Constant(value='<continuation metadata>')
+        return self.generic_visit(node)
+
+
+def metadata_algorithm_sha(before, after, method):
+    original = ast.dump(MetadataNormalizer(method).visit(ast.parse(before)), include_attributes=False)
+    patched = ast.dump(MetadataNormalizer(method).visit(ast.parse(after)), include_attributes=False)
+    if original != patched:
+        raise ValueError('metadata patch changed scheduling algorithms outside the explicit allowlist')
+    return sha(original.encode())
+
+
+def metadata_patches(root):
+    patches = {}
+    path = 'tetriserve/engine/request_tracker.py'
+    before = (root / path).read_text()
+    after = replace_once(before,
+        '            merged_req.input_config.prompt = [sub_req.input_config.prompt for sub_req in sub_reqs]\n',
+        '            merged_req.input_config.prompt = [sub_req.input_config.prompt for sub_req in sub_reqs]\n'
+        '            merged_req.origin_steps = [sub_req.origin_steps[0] for sub_req in sub_reqs]\n', path + ':merged-original-steps')
+    metadata_algorithm_sha(before, after, METADATA_SCOPES[path])
+    patches[path] = after
+    path = 'tetriserve/scheduler/dyn_step_scheduler.py'
+    before = (root / path).read_text()
+    after = replace_once(before, '            seq_len = unscheduled_reqs[req_idx].input_config.height * unscheduled_reqs[req_idx].input_config.width\n'
+        '            step_granularity = self._get_step_granularity(seq_len)\n',
+        '            completed_steps = unscheduled_reqs[req_idx].origin_steps[0] - unscheduled_reqs[req_idx].input_config.num_inference_steps\n'
+        '            seq_len = unscheduled_reqs[req_idx].input_config.height * unscheduled_reqs[req_idx].input_config.width\n'
+        '            step_granularity = self._get_step_granularity(seq_len)\n', path + ':absolute-offset')
+    after = replace_once(after, '                for i in range(0, split_batch_cnt):\n                    scheduled_reqs = ScheduledRequests(\n',
+        '                for i in range(0, split_batch_cnt):\n'
+        '                    split_input_config = deepcopy(new_input_config)\n'
+        '                    split_input_config.prompt = new_input_config.prompt[sub_req_degree * i : sub_req_degree * (i + 1)]\n'
+        '                    scheduled_reqs = ScheduledRequests(\n', path + ':split-prompts')
+    after = replace_once(after,
+        '                        input_config=new_input_config,\n'
+        '                        origin_steps=unscheduled_reqs[req_idx].origin_steps,\n'
+        '                        start_step=acc_dict[req_idx] - steps_in_block,\n'
+        '                        end_step=acc_dict[req_idx],\n',
+        '                        input_config=split_input_config,\n'
+        '                        origin_steps=unscheduled_reqs[req_idx].origin_steps[sub_req_degree * i : sub_req_degree * (i + 1)],\n'
+        '                        start_step=completed_steps + acc_dict[req_idx] - steps_in_block,\n'
+        '                        end_step=completed_steps + acc_dict[req_idx],\n', path + ':split-original-steps-and-cursor')
+    metadata_algorithm_sha(before, after, METADATA_SCOPES[path])
+    patches[path] = after
+    return patches
+
+
 def patched_sources(root):
     root = Path(root)
-    changed = {}
+    changed = metadata_patches(root)
     path = 'tetriserve/scheduler/perf_model.py'
     changed[path] = replace_once((root/path).read_text(), 'import pandas as pd\n',
         '# Unused pandas import removed by the explicit SD3.5 port.\n', path + ':unused-dependency')
@@ -142,10 +221,15 @@ def plan(source_root, source_manifest, source_manifest_sha256, *, adapter_root=N
               'patches': {name: {'before_sha256': original[name], 'after_sha256': sha(raw)}
                           for name, raw in patches.items()},
               'added_adapters': {name: sha(raw) for name, raw in additions.items()},
+              'metadata_compatibility_patches': {name: dict(method=method,
+                  unchanged_algorithm_ast_sha256=metadata_algorithm_sha((root/name).read_bytes(), patches[name], method),
+                  scope='original-step merge, per-split request metadata, absolute continuation offsets only')
+                  for name, method in METADATA_SCOPES.items()},
               'preserved_native_mechanisms': {name: original[name] for name in PRESERVED},
               'scope': 'Initial SD3.5-only port; native SP1/SP2, shared xfuser, real official transport',
               'constraints': ['sorted rank groups', 'one immutable guidance/text profile per server',
                   'aligned CFG pairs and identical complete schedules within each batch',
+                  'merged batches require identical original step counts and current cursors; arbitrary mixed-step batching is unsupported',
                   'native future step_range must match the next scheduled absolute step',
                   'calibrated cost-profile coverage required before launching the native scheduler'],
               'model_execution_verified': False, 'multi_gpu_numerical_verified': False,
@@ -240,29 +324,49 @@ def scheduler_check(derived_root, derived_manifest_sha256, output):
         config = InputConfig(prompt=['fox', 'hare'][:batch], negative_prompt='blurry, low quality',
                              height=512, width=512, num_inference_steps=28)
         scheduler.add_request(100, list(range(1, batch + 1)), config, arrival_time=0., latency_threshold=1000.)
-        first = scheduler.schedule()
-        if not first:
-            raise ValueError('native scheduler returned no first block')
-        completed = {}
-        for block in first:
-            for req in block.requests:
-                if req.end_step >= 28:
-                    raise ValueError('logic fixture did not leave a continuation to replan')
-                futures = [LatentFuture(sid, req.parallel_ranks[0], {},
-                    step_range=(req.start_step, req.end_step)) for sid in req.sub_req_ids]
-                scheduler.request_tracker.update_requests(RunnerOutput(sub_req_ids=req.sub_req_ids,
-                    images=futures, run_steps=req.input_config.num_inference_steps,
-                    parallel_ranks=req.parallel_ranks))
-                completed.update({sid: req.end_step for sid in req.sub_req_ids})
-        second = scheduler.schedule()
-        if not second:
-            raise ValueError('native scheduler returned no continuation block')
-        views = describe(first), describe(second)
+        from PIL import Image
+        rounds, completed, first_completed = [], {}, None
+        terminal_items = 0
+        for iteration in range(32):
+            if not scheduler.request_tracker.get_requests():
+                break
+            blocks = scheduler.schedule()
+            if not blocks:
+                raise ValueError('native scheduler returned no next block')
+            rounds.append(describe(blocks))
+            for block in blocks:
+                for req in block.requests:
+                    # Actual RequestTracker requires PIL images at terminal steps.
+                    # These tiny placeholders exercise only its completion logic;
+                    # no image is saved and they are not generated model outputs.
+                    items = [Image.new('RGB', (1, 1)) if final else
+                        LatentFuture(sid, req.parallel_ranks[0], {}, step_range=(req.start_step, req.end_step))
+                        for sid, final in zip(req.sub_req_ids, req.is_last_steps)]
+                    terminal = scheduler.request_tracker.update_requests(RunnerOutput(
+                        sub_req_ids=req.sub_req_ids, images=items,
+                        run_steps=req.input_config.num_inference_steps, parallel_ranks=req.parallel_ranks))
+                    terminal_items += sum(len(values) for values in terminal.values())
+                    completed.update({sid: req.end_step for sid in req.sub_req_ids})
+            if first_completed is None:
+                first_completed = dict(completed)
+        if len(rounds) < 3:
+            raise ValueError('logic fixture did not cover at least three real scheduling rounds')
+        if scheduler.request_tracker.get_requests():
+            raise ValueError('native scheduler did not finish within the bounded logic rounds')
         aligned = all(len(row['prompts']) == row['batch'] == len(row['origin_steps']) == len(row['sub_req_ids'])
-                      for view in views for row in view)
-        contiguous = all(row['start'] == completed[sid] for row in views[1] for sid in row['sub_req_ids'])
-        records.append(dict(batch=batch, first=views[0], second=views[1],
-            completed_steps=completed, cursor_contiguous=contiguous, batch_metadata_aligned=aligned,
+                      for view in rounds for row in view)
+        contiguous = True
+        cursors = {sid: 0 for sid in range(1, batch + 1)}
+        for view in rounds:
+            for row in view:
+                for sid in row['sub_req_ids']:
+                    contiguous &= row['start'] == cursors[sid]
+                    cursors[sid] = row['end']
+        records.append(dict(batch=batch, first=rounds[0], second=rounds[1], rounds=rounds,
+            completed_steps=first_completed, final_completed_steps=completed,
+            terminal_items=terminal_items, tracker_remaining=len(scheduler.request_tracker),
+            complete_steps_covered=contiguous and all(step == 28 for step in cursors.values()),
+            cursor_contiguous=contiguous, batch_metadata_aligned=aligned,
             cpp_optimizer_used=scheduler.use_cpp_optimizer))
     result = dict(schema='ditserve.tetriserve-native-scheduler-logic.v1',
         status='native_logic_observed', upstream_commit=upstream.COMMIT,
@@ -270,6 +374,7 @@ def scheduler_check(derived_root, derived_manifest_sha256, output):
         native_scheduler_sha256=manifest['files']['tetriserve/scheduler/dyn_step_scheduler.py'],
         native_tracker_sha256=manifest['files']['tetriserve/engine/request_tracker.py'],
         cost_fixture_sha256=sha(profile.read_bytes()), costs_are_measurements=False,
+        completion_payload_is_synthetic=True, model_loaded=False,
         records=records, qualification_eligible=False, allows=[])
     with (output / 'summary.json').open('x') as stream:
         json.dump(result, stream, sort_keys=True, indent=2, allow_nan=False)
