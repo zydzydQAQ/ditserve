@@ -1,6 +1,7 @@
 """P0-gated operator preparation keeps calibration and ABBA on one allocation."""
 
 import copy
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -223,6 +224,28 @@ class OperatorPreparationTest(unittest.TestCase):
             self.assertEqual(actual['DITSERVE_EXPECTED_BENCHMARKS_SHA256'],canonical_hash(job.benchmark_inventory(pre['benchmark_root'])))
             self.assertEqual(actual['DITSERVE_MODEL_MANIFESTS_SHA256'],canonical_hash(mapping))
             self.assertNotEqual(result['command'],base['command'])
+            with patch.object(job, 'verify_receipt', return_value=fresh) as verify:
+                explicit_first = job.prepare_spec(base, protocol, plan, receipt, attempt=1, **kwargs)
+                retry = job.prepare_spec(base, protocol, plan, receipt, attempt=2, **kwargs)
+            self.assertEqual(explicit_first, result)
+            expected_retry = copy.deepcopy(result)
+            expected_retry['name'] = 'd20261103-formal-p1iso-wan21-aaaaaaa-r2'
+            for item in expected_retry['env']:
+                if item['name'] == 'DITSERVE_RUN_ID':
+                    item['value'] = expected_retry['name']
+                elif item['name'] == 'DITSERVE_JOB_SPEC_PATH':
+                    item['value'] = ('/shared/data/DITSERVE/job-specs/20261103-p1iso-aaaaaaa-r2/'
+                                     + expected_retry['name'] + '.json')
+            self.assertEqual(retry, expected_retry)
+            self.assertEqual(verify.call_count, 2)
+            for call in verify.call_args_list:
+                self.assertEqual(call.kwargs, dict(build_commit='a'*7,
+                    protocol_sha256=canonical_hash(protocol), required_stage='P0', action='p1_diagnostics'))
+            for attempt in (True, False, 0, -1, '2', 2.0):
+                with self.subTest(attempt=repr(attempt)), patch.object(job, 'verify_receipt') as verify:
+                    with self.assertRaisesRegex(ValueError, 'attempt'):
+                        job.prepare_spec(base, protocol, plan, receipt, attempt=attempt, **kwargs)
+                    verify.assert_not_called()
             # Even with a rehashed manifest, inconsistent P0 role mappings
             # cannot authorize a differently weighted diagnostic.
             altered=copy.deepcopy(mapping);altered['wan21']['sha256']='f'*64
@@ -245,9 +268,10 @@ class OperatorPreparationTest(unittest.TestCase):
             base=dict(workers=1,gpus_per_worker=2,mount_shared=True,env=[dict(name=k,value=v) for k,v in dict(
                 DITSERVE_BUILD='a'*7, DITSERVE_FORMAL_ACTION='calibration', DITSERVE_STAGE_ACTION='shape_calibration',
                 WAN_MODEL='wan', DITSERVE_PROTOCOL_SHA256=canonical_hash(protocol)).items()])
-            with patch.object(job,'validate_plan'), self.assertRaisesRegex(ValueError,'required stage has not passed: P0'):
-                job.prepare_spec(base,protocol,{},path,model='wan21',date='20261103',
-                    operator_root='/shared/data/DITSERVE/scripts/releases/new',operator_script=root/'unused',benchmark_root=root/'unused')
+            for attempt in (1, 2):
+                with self.subTest(attempt=attempt), patch.object(job,'validate_plan'), self.assertRaisesRegex(ValueError,'required stage has not passed: P0'):
+                    job.prepare_spec(base,protocol,{},path,model='wan21',date='20261103',attempt=attempt,
+                        operator_root='/shared/data/DITSERVE/scripts/releases/new',operator_script=root/'unused',benchmark_root=root/'unused')
 
     def test_actual_root_and_cached_dependency_must_match_explicit_snapshot(self):
         with TemporaryDirectory() as directory:
@@ -296,6 +320,68 @@ class OperatorPreparationTest(unittest.TestCase):
             self.assertEqual(value['root'],str(pre['benchmark_root']))
             self.assertEqual(value['sources'],job.benchmark_inventory(pre['benchmark_root']))
             self.assertTrue({'formal_benchmark','p1_isolated_batch','stage_gates','native_exact','native_metrics'} <= set(value['imports']))
+
+    def test_installed_operator_preflight_keeps_frozen_relative_configs(self):
+        from ditserve.runtime import PACKAGE_ROOT
+        installed = os.environ.get('DITSERVE_KAIROS_RUNTIME_ROOT')
+        publisher = ((Path(installed) / 'tools') if installed else
+            ROOT.parent / '.local/ditserve-kairos-rewrite-runtime/tools') / 'prepare_formal_release.py'
+        spec = importlib.util.spec_from_file_location('release_layout_fixture', publisher)
+        release = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(release)
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            staged = root / 'operator'
+            release.stage_benchmark_snapshot(ROOT, staged)
+            for source in (ROOT / 'configs').rglob('*'):
+                if source.is_file():
+                    self.assertEqual((staged / 'configs' / source.relative_to(ROOT / 'configs')).read_bytes(),
+                                     source.read_bytes())
+            inputs = copy.deepcopy(fixtures.IsolatedBatchTest.examples['wan21-0'])
+            datasets = root / 'datasets'; datasets.mkdir()
+            for pool in inputs['pools'].values():
+                (datasets / (pool['kind'] + '.json')).write_bytes(job.encoded(pool))
+            manifests = root / 'models.json'; manifests.write_bytes(job.encoded(inputs['model_manifests']))
+            # The explicit CLI protocol cannot supply missing relative resources.
+            protocol = root / 'explicit-protocol.json'; protocol.write_bytes(job.encoded(inputs['protocol']))
+
+            def run(operator, model, scope, output):
+                environment = dict(os.environ, CUDA_VISIBLE_DEVICES='', PYTHONDONTWRITEBYTECODE='1',
+                    PYTHONPATH=os.pathsep.join((str(operator / 'benchmarks'), str(PACKAGE_ROOT))))
+                return subprocess.run([sys.executable, '-B', str(operator / 'benchmarks/formal_benchmark.py'),
+                    '--protocol', str(protocol), 'preflight', '--model', model, '--scope', scope,
+                    '--datasets', str(datasets), '--model-manifests', str(manifests), '--output', str(output)],
+                    env=environment, capture_output=True, text=True, timeout=30, cwd=root)
+
+            # GPU tooling runs this against the actual published operator as
+            # well as the independently staged layout, never just tests/benchmarks.
+            operators = [staged] + ([Path(installed)] if installed else [])
+            for index, operator in enumerate(operators):
+                for model in ('wan21', 'wan22'):
+                    for scope in ('development', 'formal'):
+                        with self.subTest(operator=str(operator), model=model, scope=scope):
+                            output = root / f'{index}-{model}-{scope}.json'
+                            result = run(operator, model, scope, output)
+                            self.assertEqual(result.returncode, 0, result.stderr)
+                            value = json.loads(output.read_bytes())
+                            self.assertEqual((value['status'], value['model'], value['scope']), ('passed', model, scope))
+                            self.assertEqual(value['protocol_sha256'], canonical_hash(inputs['protocol']))
+            exclusion = staged / 'configs/benchmarks' / inputs['protocol']['prior_exposure']['manifest_file']
+            original = exclusion.read_bytes()
+            exclusion.unlink()
+            missing = root / 'missing.json'
+            result = run(staged, 'wan21', 'development', missing)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('FileNotFoundError', result.stderr)
+            self.assertFalse(missing.exists())
+            changed = json.loads(original)
+            changed['sha256'] = '0' * 64
+            exclusion.write_bytes(job.encoded(changed))
+            altered = root / 'altered.json'
+            result = run(staged, 'wan21', 'development', altered)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('sealed object hash mismatch', result.stderr)
+            self.assertFalse(altered.exists())
 
 
 if __name__ == '__main__':
