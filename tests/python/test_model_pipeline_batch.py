@@ -24,6 +24,7 @@ class PipelineBatchTests(unittest.TestCase):
         backend = cls.__new__(cls)
         Backend.__init__(backend, config)
         backend.torch, backend.device = self.torch, "cpu"
+        backend.text_encoder_dtype = config.get("text_encoder_dtype", "bfloat16")
         from xdit_wan_fixtures import EngineDouble
         backend.xdit = EngineDouble()
         if cls is SD35Backend:
@@ -47,7 +48,7 @@ class PipelineBatchTests(unittest.TestCase):
                     def encode_prompt(self, **kwargs):
                         encodings.append(kwargs)
                         count = len(kwargs["prompt"])
-                        return torch.ones(count, 3, dtype=torch.float32), torch.zeros(count, 3, dtype=torch.float32)
+                        return torch.ones(count, 3, dtype=kwargs["dtype"]), torch.zeros(count, 3, dtype=kwargs["dtype"])
 
                     def __call__(self, **kwargs):
                         calls.append(kwargs)
@@ -80,7 +81,7 @@ class PipelineBatchTests(unittest.TestCase):
                         self.assertEqual(encodings[-1]["prompt"], ["kettle"] * size)
                         self.assertEqual(encodings[-1]["negative_prompt"], ["noise"] * size)
                         self.assertEqual(encodings[-1]["device"], "cpu")
-                        self.assertEqual(encodings[-1]["dtype"], torch.float32)
+                        self.assertEqual(encodings[-1]["dtype"], torch.bfloat16)
                         self.assertEqual(encodings[-1]["max_sequence_length"], 512)
                         self.assertEqual(kwargs["prompt_embeds"].dtype, torch.float16)
                         self.assertFalse(result["prompt_embeddings_reused"])

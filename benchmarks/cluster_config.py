@@ -58,6 +58,7 @@ def make_workers(model, gpu_uuids, *, video_spec, image_spec, cfg_fold=None):
                 "device": "cuda:0",
                 "attention": "flash",
                 "vae_dtype": "bfloat16",
+                "text_encoder_dtype": "bfloat16",
                 "options": options,
             },
         }

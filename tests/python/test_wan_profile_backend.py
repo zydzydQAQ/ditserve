@@ -124,6 +124,7 @@ class FakeProfiler:
 
 class FakeTorch:
     float32 = "float32"
+    bfloat16 = "bfloat16"
 
     def __init__(self):
         self.events, self.scopes, self.attention, self.transfers, self.seeds, self.syncs = [], [], [], [], [], []
@@ -185,6 +186,7 @@ class FakeTorch:
 def fixture(work):
     backend = WanProfileBackend.__new__(WanProfileBackend)
     backend.config = {"work_dir": work}
+    backend.text_encoder_dtype = "bfloat16"
     backend.torch = FakeTorch()
     backend.pipe = FakePipeline(backend.torch)
     backend.baselines, backend.versions = {}, {"fixture": "cpu"}
@@ -226,7 +228,8 @@ class WanProfileTests(unittest.TestCase):
         self.assertIsNot(initial, self.backend.pipe.scheduler)
         self.assertEqual(self.backend.pipe.scheduler.steps, 0)
         self.assertEqual(self.backend.pipe.encoding_calls[0]["device"], "cpu")
-        self.assertEqual(self.backend.pipe.encoding_calls[0]["dtype"], "float32")
+        self.assertEqual(self.backend.pipe.encoding_calls[0]["dtype"], "bfloat16")
+        self.assertEqual(first["text_encoder_dtype"], "bfloat16")
         self.assertEqual(list(Path(self.temp.name).iterdir()), [])
         self.assertNotIn("forward", vars(self.backend.pipe.transformer))
 

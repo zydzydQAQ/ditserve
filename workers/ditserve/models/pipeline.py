@@ -7,6 +7,7 @@ import time
 from types import SimpleNamespace
 
 from .base import Backend, positive_int, progress
+from .wan.precision import TEXT_ENCODER_DTYPE, text_encoder_dtype
 
 def _sdpa_math_context(torch):
     """Pin every GPU execution arm to SDPA MATH, including warmup/preflight."""
@@ -65,8 +66,8 @@ def _pipeline(torch, diffusers, args):
     else:
         vae_args = dict(load, torch_dtype=getattr(torch, args.vae_dtype))
         vae = diffusers.AutoencoderKLWan.from_pretrained(args.model_id, subfolder="vae", **vae_args)
-        # Load directly in the intended precision: FP16 loading followed by a
-        # cast back to FP32 would irreversibly round the encoder weights.
+        # Load directly in the intended encoder precision, independently of the
+        # FP16 DiT. An intermediate FP16 load would irreversibly round weights.
         transformers = importlib.import_module("transformers")
         encoder_args = dict(load, torch_dtype=getattr(torch, args.text_encoder_dtype))
         encoder = transformers.UMT5EncoderModel.from_pretrained(args.model_id, subfolder="text_encoder", **encoder_args)
@@ -181,6 +182,7 @@ class AtomicPipelineBackend(Backend):
 
     model = "sd35"
     output_field = "images"
+    text_encoder_dtype = TEXT_ENCODER_DTYPE
     defaults = dict(height=512, width=512, frames=1, steps=20, guidance_scale=3.5,
                     batch_size=1, seed=0, negative_prompt="")
 
@@ -196,7 +198,7 @@ class AtomicPipelineBackend(Backend):
             revision=config.get("revision"), local_files_only=True,
             dtype=config.get("dtype", "float16" if self.model == "wan" else "bfloat16"),
             vae_dtype=config.get("vae_dtype", "float32"),
-            text_encoder_dtype=config.get("text_encoder_dtype", "float32"),
+            text_encoder_dtype=config.get("text_encoder_dtype", TEXT_ENCODER_DTYPE),
             text_encoder_device=config.get("text_encoder_device", "cpu" if self.model == "wan" else "cuda"),
             engine="xdit")
         for value in (args.dtype, args.vae_dtype, args.text_encoder_dtype):
@@ -204,8 +206,11 @@ class AtomicPipelineBackend(Backend):
                 raise ValueError("unsupported model/component dtype: " + str(value))
         if args.text_encoder_device not in ("cpu", "cuda"):
             raise ValueError("text_encoder_device must be cpu or cuda")
-        if args.text_encoder_device == "cpu" and (self.model != "wan" or args.text_encoder_dtype != "float32"):
-            raise ValueError("CPU text encoding requires Wan and float32 encoder weights")
+        if self.model == "wan":
+            text_encoder_dtype(args.text_encoder_dtype)
+        if args.text_encoder_device == "cpu" and self.model != "wan":
+            raise ValueError("CPU text encoding requires Wan")
+        self.text_encoder_dtype = args.text_encoder_dtype
         gpu_dtypes = [args.dtype] + ([args.vae_dtype] if self.model == "wan" else [])
         if args.text_encoder_device == "cuda":
             gpu_dtypes.append(args.text_encoder_dtype)
@@ -320,6 +325,11 @@ class AtomicPipelineBackend(Backend):
                           revision=self.config.get("revision"), batch_protocol="fixed_repeated_prompt",
                           seed_protocol="single_cpu_generator_for_batch", engine=self.xdit.info(),
                           approximate=bool(self.config.get("options", {}).get("cache"))))
+        if self.model == "wan":
+            result["generation"].update(
+                dtype=self.config.get("dtype", "float16"), vae_dtype=self.config.get("vae_dtype", "float32"),
+                text_encoder_dtype=self.text_encoder_dtype,
+                text_encoder_device=self.config.get("text_encoder_device", "cpu"))
         self.release_cache()
         return result
 

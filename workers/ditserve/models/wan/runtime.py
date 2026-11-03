@@ -21,6 +21,7 @@ import threading
 import time
 from pathlib import Path
 
+from .precision import TEXT_ENCODER_DTYPE, text_encoder_dtype as validate_text_encoder_dtype
 from ...runtime import ROOT
 
 REVISION = "0fad780a534b6463e45facd96134c9f345acfa5b"
@@ -249,8 +250,11 @@ class RequestState:
 class WanStepWorker:
     """One resident model, independent request schedulers/RNG/cache state."""
 
+    text_encoder_dtype = TEXT_ENCODER_DTYPE
+
     def __init__(self, device="cuda:0", model_path=None, attention="math", vae_dtype="float32", *,
-                 engine="xdit", revision=None, negative_prompt_cache_entries=None, negative_prompt_cache_bytes=None):
+                 engine="xdit", revision=None, text_encoder_dtype=TEXT_ENCODER_DTYPE,
+                 negative_prompt_cache_entries=None, negative_prompt_cache_bytes=None):
         from .prompt_cache import cache_options
         # Validated before any weights load: both limits or neither.
         cache_config = cache_options({name: value for name, value in (
@@ -263,6 +267,7 @@ class WanStepWorker:
         # VAE dtype is explicit because a lower-precision decode changes the numerical mode.
         if vae_dtype not in ("float32", "bfloat16", "float16"):
             raise ValueError("vae_dtype must be float32, bfloat16 or float16")
+        self.text_encoder_dtype = validate_text_encoder_dtype(text_encoder_dtype)
         if engine not in ("xdit", "legacy"):
             raise ValueError("Wan engine must be xdit or legacy")
         self.attention, self.vae_dtype, self.engine_name = attention, vae_dtype, engine
@@ -287,7 +292,7 @@ class WanStepWorker:
             raise RuntimeError("CUDA is unavailable")
         from types import SimpleNamespace
         args = SimpleNamespace(model="wan", model_id=str(self.model_path), revision=self.model_revision,
-                               dtype="float16", vae_dtype=self.vae_dtype, text_encoder_dtype="float32",
+                               dtype="float16", vae_dtype=self.vae_dtype, text_encoder_dtype=self.text_encoder_dtype,
                                text_encoder_device="cpu", local_files_only=True, device=device, engine=engine)
         self.pipe = p._pipeline(self.torch, self.diffusers, args)
         # One transformer and the UniPC recipe: Wan2.1 T2V, or Wan2.2 TI2V used for
@@ -327,9 +332,9 @@ class WanStepWorker:
             self._negative_prompt_cache = NegativePromptCache(
                 entries=cache_config["negative_prompt_cache_entries"],
                 byte_limit=cache_config["negative_prompt_cache_bytes"],
-                recipe=dict(model_path=str(self.model_path), revision=REVISION,
+                recipe=dict(model_path=str(self.model_path), revision=self.model_revision,
                             diffusers=REQUIRED_VERSIONS["diffusers"], text_encoder="UMT5",
-                            device="cpu", dtype="torch.float32", max_sequence_length=512,
+                            device="cpu", dtype="torch." + self.text_encoder_dtype, max_sequence_length=512,
                             num_videos_per_prompt=1))
         self._detach_contexts()
         self.xdit = None
@@ -475,7 +480,7 @@ class WanStepWorker:
         global SDPA settings here would race a concurrently executing DiT/VAE.
         The positive prompt is always encoded. With the optional negative cache, the
         negative embedding of an exact negative prompt is reused within this worker
-        (the CPU FP32 encoder is deterministic, so a hit equals a fresh encode); every
+        (within the same CPU encoder precision, a hit equals a fresh encode); every
         request still receives its own tensors.
         """
         spec = normalize_spec(spec)
@@ -484,7 +489,8 @@ class WanStepWorker:
             arguments = dict(
                 prompt=spec["prompt"], negative_prompt=spec["negative_prompt"],
                 do_classifier_free_guidance=spec["guidance_scale"] > 1,
-                num_videos_per_prompt=1, max_sequence_length=512, device="cpu", dtype=self.torch.float32)
+                num_videos_per_prompt=1, max_sequence_length=512, device="cpu",
+                dtype=getattr(self.torch, self.text_encoder_dtype))
             cache = getattr(self, "_negative_prompt_cache", None)
             receipt = None
             if cache is None:
@@ -515,8 +521,9 @@ class WanStepWorker:
         for tensor in (prompt, negative):
             if tensor is None:
                 continue
-            if not self.torch.is_tensor(tensor) or tensor.device.type != "cpu" or tensor.dtype != self.torch.float32:
-                raise ValueError("encoded prompt payload requires CPU float32 tensors")
+            if (not self.torch.is_tensor(tensor) or tensor.device.type != "cpu"
+                    or tensor.dtype != getattr(self.torch, self.text_encoder_dtype)):
+                raise ValueError("encoded prompt payload requires CPU " + self.text_encoder_dtype + " tensors")
             if not bool(self.torch.isfinite(tensor).all()):
                 raise RuntimeError("nonfinite CPU prompt embeddings")
 

@@ -20,6 +20,7 @@ from types import SimpleNamespace
 
 from ..base import Backend, file_hash, positive_int
 from ..pipeline import _pipeline, _sdpa_math_context
+from .precision import TEXT_ENCODER_DTYPE, text_encoder_dtype
 
 
 PINNED_VERSIONS = {"torch": "2.10.0+cu126", "diffusers": "0.36.0", "transformers": "4.57.6"}
@@ -143,6 +144,7 @@ class WanProfileBackend(Backend):
 
     def __init__(self, config):
         super().__init__(config)
+        self.text_encoder_dtype = text_encoder_dtype(config.get("text_encoder_dtype", TEXT_ENCODER_DTYPE))
         self.pipe = None
         self.baselines = {}
         required_uid = config.get("required_uid")
@@ -163,7 +165,7 @@ class WanProfileBackend(Backend):
         self.torch.set_num_threads(positive_int(config.get("cpu_threads", 8), "cpu_threads"))
         started = time.perf_counter()
         args = SimpleNamespace(model="wan", model_id=str(model_path), revision=config.get("revision"),
-            dtype="float16", vae_dtype="float32", text_encoder_dtype="float32",
+            dtype="float16", vae_dtype="float32", text_encoder_dtype=self.text_encoder_dtype,
             text_encoder_device="cpu", device=self.device, local_files_only=True)
         self.pipe = _pipeline(self.torch, importlib.import_module("diffusers"), args)
         if type(self.pipe.transformer).__name__ != "WanTransformer3DModel":
@@ -221,7 +223,7 @@ class WanProfileBackend(Backend):
                         positive, negative = pipe.encode_prompt(prompt=spec["prompt"],
                             negative_prompt=spec["negative_prompt"],
                             do_classifier_free_guidance=spec["guidance_scale"] > 1,
-                            num_videos_per_prompt=1, device="cpu", dtype=torch.float32)
+                            num_videos_per_prompt=1, device="cpu", dtype=getattr(torch, self.text_encoder_dtype))
                     with scope("embedding_transfer"):
                         positive = positive.to(device=self.device, dtype=pipe.transformer.dtype)
                         if negative is not None:
@@ -247,6 +249,7 @@ class WanProfileBackend(Backend):
         if mode in ("trace", "hardware") and key not in self.baselines:
             raise ValueError(mode + " requires a successful clean request with identical inputs")
         result = dict(status="ok", mode=mode, spec=spec, artifacts=[], versions=self.versions,
+                      text_encoder_dtype=self.text_encoder_dtype, text_encoder_device="cpu",
                       model_load_ms=self.model_load_ms, hardware_counters="not_measured_by_torch_profiler")
         if mode == "hardware":
             result["nvtx_ranges"] = dict(request="wan_profile/request_%d" % spec["frames"],

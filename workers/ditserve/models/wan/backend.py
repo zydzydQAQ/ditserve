@@ -6,6 +6,7 @@ import copy
 import time
 
 from ..base import Backend, artifact, file_hash, positive_int, progress
+from .precision import TEXT_ENCODER_DTYPE
 
 
 class WanBackend(Backend):
@@ -24,6 +25,7 @@ class WanBackend(Backend):
         self.runtime = WanStepWorker(device=config.get("device", "cuda:0"),
             model_path=config.get("model_path"), attention=config.get("attention", "math"),
             vae_dtype=config.get("vae_dtype", "float32"), engine=self.options.get("engine", "xdit"),
+            text_encoder_dtype=config.get("text_encoder_dtype", TEXT_ENCODER_DTYPE),
             revision=config.get("revision"), **cache_config)
         self.tiered_manager = TieredVideoStateManager(
             self.runtime, max_pinned_mb=int(self.options.get("max_pinned_mb", 8192))
@@ -555,7 +557,8 @@ class WanBackend(Backend):
                 else str(self.runtime.model_path),
             revision=getattr(self.runtime, "model_revision", REVISION),
             model_path=str(self.runtime.model_path), model_integrity="local_snapshot_not_rehashed",
-            dtype="float16", vae_dtype=self.runtime.vae_dtype, text_encoder_dtype="float32", text_encoder_device="cpu",
+            dtype="float16", vae_dtype=self.runtime.vae_dtype,
+            text_encoder_dtype=self.runtime.text_encoder_dtype, text_encoder_device="cpu",
             fps=self.config.get("fps", 16), attention=self.runtime.attention,
             cache_enabled=spec["cache"], cache_threshold=spec["threshold"],
             approximate=bool(spec["cache"] or any(row.get("reused_forwards", 0) or row.get("cfg_folded", False) for row in paths)),

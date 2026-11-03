@@ -23,7 +23,8 @@ class WanPipelineBackend(AtomicPipelineBackend):
         prompt, negative = self.pipe.encode_prompt(prompt=arguments.pop("prompt"),
             negative_prompt=arguments.pop("negative_prompt"),
             do_classifier_free_guidance=arguments["guidance_scale"] > 1,
-            num_videos_per_prompt=1, max_sequence_length=512, device="cpu", dtype=self.torch.float32)
+            num_videos_per_prompt=1, max_sequence_length=512, device="cpu",
+            dtype=getattr(self.torch, self.text_encoder_dtype))
         for value in (prompt, negative):
             if value is not None and not bool(self.torch.isfinite(value).all()):
                 raise ValueError("nonfinite CPU prompt embeddings")

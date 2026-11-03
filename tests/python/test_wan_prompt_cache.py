@@ -272,7 +272,7 @@ class TinyUMT5Bridge(unittest.TestCase):
         with torch.random.fork_rng(devices=[]):
             torch.manual_seed(7103)
             cls.encoder = UMT5EncoderModel(UMT5Config(vocab_size=64, d_model=16, d_ff=32,
-                d_kv=8, num_heads=2, num_layers=1, dropout_rate=0.)).eval()
+                d_kv=8, num_heads=2, num_layers=1, dropout_rate=0.)).eval().to(torch.bfloat16)
         cls.cuda_was_initialized = torch.cuda.is_initialized()
 
     @classmethod
@@ -308,7 +308,7 @@ class TinyUMT5Bridge(unittest.TestCase):
         worker._scheduler_type = self.Scheduler
         worker._scheduler_config = dict(self.Scheduler().config)
         worker._negative_prompt_cache = (NegativePromptCache(entries=2, byte_limit=1024 * 1024,
-            recipe=dict(model="tiny-umt5", diffusers="0.36.0", max_sequence_length=512, dtype="torch.float32"))
+            recipe=dict(model="tiny-umt5", diffusers="0.36.0", max_sequence_length=512, dtype="torch.bfloat16"))
             if enabled else None)
         return worker
 
@@ -322,6 +322,8 @@ class TinyUMT5Bridge(unittest.TestCase):
             expected = reference.encode_prompt(value)
             before = len(calls)
             actual = candidate.encode_prompt(value)
+            self.assertEqual(self.encoder.dtype, self.torch.bfloat16)
+            self.assertEqual(actual.prompt_embeds.dtype, self.torch.bfloat16)
             self.assertEqual(len(calls) - before, 2 if index % 2 == 0 else 1)
             self.assertTrue(self.torch.equal(expected.prompt_embeds, actual.prompt_embeds))
             self.assertTrue(self.torch.equal(expected.negative_prompt_embeds, actual.negative_prompt_embeds))
@@ -359,6 +361,9 @@ class TinyUMT5Bridge(unittest.TestCase):
         value = spec()
         payload = worker.encode_prompt(value)
         state = worker.prepare_encoded(value, payload)
+        self.assertEqual(state.prompt_embeds.dtype, self.torch.float16)
+        self.assertEqual(state.negative_prompt_embeds.dtype, self.torch.float16)
+        self.assertEqual(state.latents.dtype, self.torch.float32)
         self.assertEqual(set(vars(state)), REQUEST_STATE_FIELDS)
         self.assertTrue(payload.consumed)
         self.assertEqual(state.events[-1]["negative_prompt_cache"], payload.negative_prompt_cache)

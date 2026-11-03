@@ -692,6 +692,7 @@ def request_engine(worker):
         model_class=None if model is None else type(model).__name__,
         model_config_sha256=config_hash,
         dtype=None if model is None else str(model.dtype),
+        text_encoder_dtype=getattr(worker, "text_encoder_dtype", None),
         attention=info.get("attention", getattr(worker, "attention", None)),
         layout=dict(sp_degree=len(ranks), cfg=getattr(getattr(engine, "_layout", None), "cfg", 1),
                     boundary="solver_step"),

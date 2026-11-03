@@ -29,7 +29,7 @@ worker 以完整 GPU UUID 绑定设备，模型使用 `cuda:0`。显式 `actions
 
 ## 当前模型边界
 
-- Wan2.1-T2V-1.3B 与 Wan2.2-TI2V-5B：`wan` 后端，xDiT/xFuser 固定 revision，DiT FP16、UMT5 CPU FP32，支持 step/block、CFG/USP、continuation 和显式 CFG fold。VAE dtype 与 attention 必须写入证据；BF16 VAE 不是 FP32 逐位一致。
+- Wan2.1-T2V-1.3B 与 Wan2.2-TI2V-5B：`wan` 后端，xDiT/xFuser 固定 revision，DiT FP16、UMT5 默认 CPU BF16，支持 step/block、CFG/USP、continuation 和显式 CFG fold。正式运行、参考管线和校准均直接按 BF16 加载编码器，CPU prompt embeddings 保持 BF16，到 DiT 前转为 FP16。显式 `text_encoder_dtype: "float32"` 仅用于精度/速度对照，不会自动回退。编码器 dtype、VAE dtype 与 attention 必须写入证据；BF16 不是 FP32 逐位一致，旧 FP32 校准与质量资格不能直接用于 BF16。此设置不改写磁盘权重；UMT5 CPU BF16 的速度需在实际作业节点上测量。
 - SD3.5-Medium：`sd35` 后端，BF16、Flash，具有原子生成、micro-batch、step-wise continuous batch 与 token packing 路径；后两者仍需独立 GPU 正确性/性能资格验证，不能因接口存在就算作已验证贡献。单请求多图与多请求批处理的 seed 协议不同，须记录实际执行方式。
 
 目标运行环境固定为 torch 2.10.0+cu126、diffusers 0.36.0、transformers 4.57.6、cache-dit 1.5.0 和 xDiT `16c34e7f070de65d9d2c67a6d74e0007dd8b426a`，实际版本须进入输出身份。CPU/mock/Gloo 契约不等于 CUDA/NCCL 资格或 GPU 加速结果。
