@@ -340,7 +340,9 @@ def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301
     image_average = sum(classes[sid]['service_ms'] for sid in images)/len(images)
     image_share = partition_image_gpus(len(uuids), actual_fraction, video_average, image_average)
     phase['options']['partition_image_gpus'] = image_share
-    config['experiment'] = f"formal-{model}-{split}-{actual_pattern}-s{seed}-l{str(actual_load).replace('.', 'p')}-v{str(actual_fraction).replace('.', 'p')}" + (f'-{diagnostic}' if diagnostic else f'-{suite}')
+    # Suite keys select policies above; only their result-directory suffix is encoded.
+    experiment_suite = suite.replace('+', '-')
+    config['experiment'] = f"formal-{model}-{split}-{actual_pattern}-s{seed}-l{str(actual_load).replace('.', 'p')}-v{str(actual_fraction).replace('.', 'p')}" + (f'-{diagnostic}' if diagnostic else f'-{experiment_suite}')
     role = 'preemption' if diagnostic == 'contention' else diagnostic or 'serving'
     config['benchmark'].update(trace=provenance, formal_protocol=binding(p, split, role, ids, selected, bundle),
         preemption_diagnostic=diagnostic, mixed_resolution=True,
