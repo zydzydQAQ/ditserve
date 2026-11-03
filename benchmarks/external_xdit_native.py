@@ -223,7 +223,9 @@ def attention_observation(pipeline, requested):
     def label(value):
         if value is None:
             return "unknown"
-        return getattr(value, "name", None) or str(value)
+        name = getattr(value, "name", None)
+        text = name if isinstance(name, str) else str(value)
+        return text if text.strip() else "unknown"
 
     def symbol(value):
         if value is None:

@@ -203,6 +203,18 @@ class NativeXDiTTests(unittest.TestCase):
         self.assertEqual(result["selected_registry_entries"], {})
         self.assertFalse(result["kernel_dispatch_verified"])
 
+    def test_empty_runtime_selector_is_unknown(self):
+        pipeline = SimpleNamespace(transformer=SimpleNamespace(named_modules=lambda: iter([])))
+        for value in (None, "", "   "):
+            state = SimpleNamespace(attention_backend=value, cross_attention_backend=None)
+            with patch.dict(native.sys.modules, {
+                    "xfuser.core.distributed.runtime_state": SimpleNamespace(get_runtime_state=lambda: state),
+                    "xfuser.core.attention.registry": None}):
+                result = native.attention_observation(pipeline, "CUDNN")
+            self.assertEqual(result["runtime_selector_after_request"], "unknown")
+            self.assertEqual(result["cross_attention_selector_after_request"], "unknown")
+            self.assertFalse(result["kernel_dispatch_verified"])
+
     def test_unavailable_runtime_inspection_preserves_unknown_and_reports_error(self):
         def unavailable():
             raise AssertionError("Runtime state has not been initialized")
