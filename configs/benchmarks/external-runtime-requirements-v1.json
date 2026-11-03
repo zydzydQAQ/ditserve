@@ -1,0 +1,857 @@
+{
+  "schema": "ditserve.external-runtime-requirements.v1",
+  "id": "external-runtime-requirements-v1",
+  "status": "reviewable_external_image_request_not_an_install_or_build_plan",
+  "observed_at_utc": "2026-11-03T07:37:36.025447+00:00",
+  "qualification_eligible": false,
+  "allows": [],
+  "environment_modified": false,
+  "evidence": {
+    "path": ".local/ditserve-kairos-rewrite-runtime/evidence/20261103-external-c18ee0b/r1-summary.json",
+    "sha256": "eaa15c5cd50aac2ba4f50ade292c1ccbe0850ac39e372429d4ade7ce0ac2555b",
+    "run_id": "d20261103-external-import-c18ee0b-r1",
+    "image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:2009ea26f63bcf0360ce7b4d71ed508c91c0702c97dd97e372cecfb672a818a1",
+    "image_identity_scope": "digest-pinned submitted spec, not independent pod imageID",
+    "core_sha256": "e358e29d1a3ca238bbf2b7f981db71e951519715aedf46d58454738aabcbd42b",
+    "worker_sources_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a",
+    "gfc_sources_sha256": "e6c7f47a26d02a8091463bf9cb8ca58835c2b07c3c2cd4827d1b319c3bebf6e6",
+    "scope": "actual one-A100 import/CUDA arithmetic probe only; no native model, multirank collective or full-system serving qualification"
+  },
+  "current_environment": {
+    "python": "3.10.20",
+    "packages": {
+      "torch": "2.10.0+cu126",
+      "diffusers": "0.36.0",
+      "transformers": "4.57.6",
+      "numpy": "2.2.6",
+      "cache-dit": "1.5.0",
+      "accelerate": "1.12.0",
+      "safetensors": "0.8.0",
+      "vllm": null,
+      "vllm-omni": null,
+      "group-free-collectives": null,
+      "gfc": null,
+      "ray": null,
+      "fastapi": null,
+      "uvicorn": null,
+      "distvae": "0.1.0",
+      "flash-attn": null,
+      "triton": "3.6.0",
+      "pyzmq": null,
+      "pandas": null,
+      "protobuf": "7.36.2",
+      "sentencepiece": "0.2.2",
+      "einops": "0.8.2",
+      "pybind11": null,
+      "huggingface-hub": "0.36.2",
+      "imageio": null,
+      "grpcio": null
+    },
+    "cuda": {
+      "available": true,
+      "count": 1,
+      "name": "NVIDIA A100-PCIE-40GB",
+      "torch_cuda": "12.6",
+      "arithmetic_pass": true,
+      "nvidia_smi": "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20"
+    },
+    "unprobed_packages": [
+      "numba",
+      "llvmlite",
+      "torchvision",
+      "torchaudio",
+      "fa3-fwd",
+      "flashinfer-python",
+      "onnxruntime",
+      "opencv-python-headless",
+      "pydantic"
+    ],
+    "null_distribution_note": "null means distribution metadata absent in this probe; gfc nevertheless imported from the separately pinned complete source tree"
+  },
+  "actual_import_observations": [
+    {
+      "system": "ditserve.external-tetriserve-probe.v1",
+      "mode": null,
+      "module": "tetriserve.server.launcher",
+      "status": "import_failed",
+      "error_type": "ModuleNotFoundError",
+      "error": "No module named 'uvicorn'"
+    },
+    {
+      "system": "ditserve.external-tetriserve-probe.v1",
+      "mode": null,
+      "module": "tetriserve.scheduler.dyn_step_scheduler",
+      "status": "import_failed",
+      "error_type": "ModuleNotFoundError",
+      "error": "No module named 'pandas'"
+    },
+    {
+      "system": "ditserve.external-tetriserve-probe.v1",
+      "mode": null,
+      "module": "tetriserve.engine.runner",
+      "status": "import_failed",
+      "error_type": "ModuleNotFoundError",
+      "error": "No module named 'zmq'"
+    },
+    {
+      "system": "ditserve.external-tetriserve-probe.v1",
+      "mode": null,
+      "module": "tetriserve.light_ray.latent_manager",
+      "status": "imported"
+    },
+    {
+      "system": "ditserve.external-tetriserve-probe.v1",
+      "mode": null,
+      "module": "xfuser",
+      "status": "imported"
+    },
+    {
+      "system": "ditserve.external-gfdit-probe.v1",
+      "mode": null,
+      "module": "torch",
+      "status": "imported"
+    },
+    {
+      "system": "ditserve.external-gfdit-probe.v1",
+      "mode": null,
+      "module": "triton",
+      "status": "imported"
+    },
+    {
+      "system": "ditserve.external-gfdit-probe.v1",
+      "mode": null,
+      "module": "gfc",
+      "status": "imported"
+    },
+    {
+      "system": "ditserve.external-gfdit-probe.v1",
+      "mode": null,
+      "module": "xfuser",
+      "status": "imported"
+    },
+    {
+      "system": "ditserve.external-gfdit-probe.v1",
+      "mode": null,
+      "module": "vllm",
+      "status": "import_failed",
+      "error_type": "ModuleNotFoundError",
+      "error": "No module named 'vllm'"
+    },
+    {
+      "system": "ditserve.external-gfdit-probe.v1",
+      "mode": null,
+      "module": "vllm_omni.diffusion.runtime_v2.registry",
+      "status": "import_failed",
+      "error_type": "ModuleNotFoundError",
+      "error": "No module named 'aenum'"
+    },
+    {
+      "system": "ditserve.external-gfdit-probe.v1",
+      "mode": null,
+      "module": "vllm_omni.diffusion.runtime_v2.policies.edf_best_fit",
+      "status": "import_failed",
+      "error_type": "ModuleNotFoundError",
+      "error": "No module named 'aenum'"
+    },
+    {
+      "system": "ditserve.external-gfdit-probe.v1",
+      "mode": null,
+      "module": "vllm_omni.diffusion.runtime_v2.runner",
+      "status": "import_failed",
+      "error_type": "ModuleNotFoundError",
+      "error": "No module named 'aenum'"
+    },
+    {
+      "system": "ditserve.external-gfdit-probe.v1",
+      "mode": null,
+      "module": "vllm_omni.diffusion.runtime_v2.multiproc_worker",
+      "status": "import_failed",
+      "error_type": "ModuleNotFoundError",
+      "error": "No module named 'aenum'"
+    },
+    {
+      "system": "ditserve.external-gfdit-probe.v1",
+      "mode": null,
+      "module": "vllm_omni.diffusion.distributed.collective_runtime",
+      "status": "import_failed",
+      "error_type": "ModuleNotFoundError",
+      "error": "No module named 'aenum'"
+    },
+    {
+      "system": "ditserve.external-xdit-probe.v1",
+      "mode": "official",
+      "module": "xfuser",
+      "status": "imported"
+    },
+    {
+      "system": "ditserve.external-xdit-probe.v1",
+      "mode": "official",
+      "module": "xfuser.runner",
+      "status": "imported"
+    },
+    {
+      "system": "ditserve.external-xdit-probe.v1",
+      "mode": "official",
+      "module": "xfuser.model_executor.models.runner_models.wan",
+      "status": "imported"
+    },
+    {
+      "system": "ditserve.external-xdit-probe.v1",
+      "mode": "official",
+      "module": "xfuser.model_executor.models.runner_models.stable_diffusion",
+      "status": "imported"
+    },
+    {
+      "system": "ditserve.external-xdit-probe.v1",
+      "mode": "official",
+      "module": "entrypoints.launch",
+      "status": "import_failed",
+      "error_type": "ModuleNotFoundError",
+      "error": "No module named 'ray'"
+    },
+    {
+      "system": "ditserve.external-xdit-probe.v1",
+      "mode": "shared",
+      "module": "xfuser",
+      "status": "imported"
+    },
+    {
+      "system": "ditserve.external-xdit-probe.v1",
+      "mode": "shared",
+      "module": "xfuser.model_executor.models.transformers.transformer_wan",
+      "status": "imported"
+    },
+    {
+      "system": "ditserve.external-xdit-probe.v1",
+      "mode": "shared",
+      "module": "xfuser.model_executor.models.transformers.transformer_sd3",
+      "status": "imported"
+    },
+    {
+      "system": "ditserve.external-xdit-probe.v1",
+      "mode": "shared",
+      "module": "xfuser.model_executor.pipelines.pipeline_stable_diffusion_3",
+      "status": "imported"
+    }
+  ],
+  "official_sources": {
+    "TetriServe": {
+      "repository": "DiT-Serving/TetriServe",
+      "commit": "414ec2956c09466ccd7842fda9851511462bd42a",
+      "manifest_sha256": "2d0d9f9efaf4b3749063458d56c74b0ef79ef72de22096b39889e798e792d027",
+      "files": {
+        "pyproject.toml": {
+          "sha256": "2541dac00cc852b3f7de31075f62266eed8beb2b80060e3c1b408f0fc1592a16",
+          "url": "https://github.com/DiT-Serving/TetriServe/blob/414ec2956c09466ccd7842fda9851511462bd42a/pyproject.toml"
+        },
+        "setup.py": {
+          "sha256": "adcb7715124dc3bbeafa1d084d07ca1cf138e4282b7f6a5a1bb8714496e5e8ae",
+          "url": "https://github.com/DiT-Serving/TetriServe/blob/414ec2956c09466ccd7842fda9851511462bd42a/setup.py"
+        },
+        "README.md": {
+          "sha256": "ff950e6faa5f4ce3b8a6e3441bd403b37774445d9c783616f8b61159352c4600",
+          "url": "https://github.com/DiT-Serving/TetriServe/blob/414ec2956c09466ccd7842fda9851511462bd42a/README.md"
+        }
+      }
+    },
+    "GF-DiT": {
+      "repository": "SJTU-Liquid/GF-DiT",
+      "commit": "442531e499891d4ffa654e87c076f03326a37b98",
+      "manifest_sha256": "e1b54cf09241ff70fc27e9d1666a44cbe38e00eaf1713b57cd5c9ade9c9db3f4",
+      "files": {
+        "docker/Dockerfile.ci": {
+          "sha256": "adf2ed10baffd9e3da05fffdaa95d51a5b038362fffc6a27694294c73b4938f8",
+          "url": "https://github.com/SJTU-Liquid/GF-DiT/blob/442531e499891d4ffa654e87c076f03326a37b98/docker/Dockerfile.ci"
+        },
+        "pyproject.toml": {
+          "sha256": "aacb9890744395533ea43f82f411bdf1cfa2d7632b7f8afd23e7338e7189a57d",
+          "url": "https://github.com/SJTU-Liquid/GF-DiT/blob/442531e499891d4ffa654e87c076f03326a37b98/pyproject.toml"
+        },
+        "requirements/common.txt": {
+          "sha256": "2d50c99826da306e3bc4dbb2cc7a684270174dc99ebada1a75312f49a4a93239",
+          "url": "https://github.com/SJTU-Liquid/GF-DiT/blob/442531e499891d4ffa654e87c076f03326a37b98/requirements/common.txt"
+        },
+        "requirements/cuda.txt": {
+          "sha256": "ccd2da1164490378a2a80c7d024c460e4e5cb6ba5d8274eaf9b8b57dd2225d98",
+          "url": "https://github.com/SJTU-Liquid/GF-DiT/blob/442531e499891d4ffa654e87c076f03326a37b98/requirements/cuda.txt"
+        },
+        "vllm_omni/diffusion/cache/cache_dit_backend.py": {
+          "sha256": "d4a1adaacd201574a8d6b30d83e24b769af7e087faa4c7c1a71f52b2b6696c65",
+          "url": "https://github.com/SJTU-Liquid/GF-DiT/blob/442531e499891d4ffa654e87c076f03326a37b98/vllm_omni/diffusion/cache/cache_dit_backend.py"
+        }
+      }
+    },
+    "xDiT": {
+      "repository": "xdit-project/xDiT",
+      "commit": "16c34e7f070de65d9d2c67a6d74e0007dd8b426a",
+      "manifest_sha256": "49595ace72ba61efd7c7ec9d28f11ed1c430a3848903031dcf9e0913925125e5",
+      "files": {
+        "pyproject.toml": {
+          "sha256": "6272cc1c9f322d4db44a36b58f6023c16dfee57bf282b9a1b5ce07ac2327556a",
+          "url": "https://github.com/xdit-project/xDiT/blob/16c34e7f070de65d9d2c67a6d74e0007dd8b426a/pyproject.toml"
+        }
+      }
+    }
+  },
+  "official_pypi_metadata": {
+    "numba": {
+      "url": "https://pypi.org/pypi/numba/0.61.2/json",
+      "raw_metadata_sha256": "d741d965652ee91ed6576e178a854aab27e78b6ff7a4f3272ed236c441e7448b",
+      "requires_python": ">=3.10",
+      "requires_dist": [
+        "llvmlite<0.45,>=0.44.0dev0",
+        "numpy<2.3,>=1.24"
+      ],
+      "selected_linux_x86_64_wheels": [
+        {
+          "filename": "numba-0.61.2-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+          "bytes": 3824054,
+          "sha256": "ae8c7a522c26215d5f62ebec436e3d341f7f590079245a2f1008dfd498cc1642"
+        }
+      ]
+    },
+    "vllm": {
+      "url": "https://pypi.org/pypi/vllm/0.17.0/json",
+      "raw_metadata_sha256": "9e6fcb7f452a755c0087d46eb040a8f5693c5edbee16d39644d161b88c85127c",
+      "requires_python": "<3.14,>=3.10",
+      "requires_dist": [
+        "regex",
+        "cachetools",
+        "psutil",
+        "sentencepiece",
+        "numpy",
+        "requests>=2.26.0",
+        "tqdm",
+        "blake3",
+        "py-cpuinfo",
+        "transformers<5,>=4.56.0",
+        "tokenizers>=0.21.1",
+        "protobuf!=6.30.*,!=6.31.*,!=6.32.*,!=6.33.0.*,!=6.33.1.*,!=6.33.2.*,!=6.33.3.*,!=6.33.4.*,>=5.29.6",
+        "fastapi[standard]>=0.115.0",
+        "aiohttp>=3.13.3",
+        "openai<2.25.0,>=1.99.1",
+        "pydantic>=2.12.0",
+        "prometheus_client>=0.18.0",
+        "pillow",
+        "prometheus-fastapi-instrumentator>=7.0.0",
+        "tiktoken>=0.6.0",
+        "lm-format-enforcer==0.11.3",
+        "llguidance<1.4.0,>=1.3.0; platform_machine == \"x86_64\" or platform_machine == \"arm64\" or platform_machine == \"aarch64\" or platform_machine == \"s390x\" or platform_machine == \"ppc64le\"",
+        "outlines_core==0.2.11",
+        "diskcache==5.6.3",
+        "lark==1.2.2",
+        "xgrammar==0.1.29; platform_machine == \"x86_64\" or platform_machine == \"aarch64\" or platform_machine == \"arm64\" or platform_machine == \"s390x\" or platform_machine == \"ppc64le\"",
+        "typing_extensions>=4.10",
+        "filelock>=3.16.1",
+        "partial-json-parser",
+        "pyzmq>=25.0.0",
+        "msgspec",
+        "gguf>=0.17.0",
+        "mistral_common[image]>=1.9.1",
+        "opencv-python-headless>=4.13.0",
+        "pyyaml",
+        "six>=1.16.0; python_version > \"3.11\"",
+        "setuptools<81.0.0,>=77.0.3; python_version > \"3.11\"",
+        "einops",
+        "compressed-tensors==0.13.0",
+        "depyf==0.20.0",
+        "cloudpickle",
+        "watchfiles",
+        "python-json-logger",
+        "ninja",
+        "pybase64",
+        "cbor2",
+        "ijson",
+        "setproctitle",
+        "openai-harmony>=0.0.3",
+        "anthropic>=0.71.0",
+        "model-hosting-container-standards<1.0.0,>=0.1.13",
+        "mcp",
+        "grpcio",
+        "grpcio-reflection",
+        "opentelemetry-sdk>=1.27.0",
+        "opentelemetry-api>=1.27.0",
+        "opentelemetry-exporter-otlp>=1.27.0",
+        "opentelemetry-semantic-conventions-ai>=0.4.1",
+        "kaldi-native-fbank>=1.18.7",
+        "numba==0.61.2",
+        "ray[cgraph]>=2.48.0",
+        "torch==2.10.0",
+        "torchaudio==2.10.0",
+        "torchvision==0.25.0",
+        "flashinfer-python==0.6.4",
+        "nvidia-cutlass-dsl>=4.4.0.dev1",
+        "quack-kernels>=0.2.7",
+        "pandas; extra == \"bench\"",
+        "matplotlib; extra == \"bench\"",
+        "seaborn; extra == \"bench\"",
+        "datasets; extra == \"bench\"",
+        "scipy; extra == \"bench\"",
+        "plotly; extra == \"bench\"",
+        "tensorizer==2.10.1; extra == \"tensorizer\"",
+        "fastsafetensors>=0.2.2; extra == \"fastsafetensors\"",
+        "runai-model-streamer[gcs,s3]>=0.15.3; extra == \"runai\"",
+        "librosa; extra == \"audio\"",
+        "scipy; extra == \"audio\"",
+        "soundfile; extra == \"audio\"",
+        "mistral_common[audio]; extra == \"audio\"",
+        "petit-kernel; extra == \"petit-kernel\"",
+        "helion; extra == \"helion\"",
+        "opentelemetry-sdk>=1.26.0; extra == \"otel\"",
+        "opentelemetry-api>=1.26.0; extra == \"otel\"",
+        "opentelemetry-exporter-otlp>=1.26.0; extra == \"otel\"",
+        "opentelemetry-semantic-conventions-ai>=0.4.1; extra == \"otel\""
+      ],
+      "selected_linux_x86_64_wheels": [
+        {
+          "filename": "vllm-0.17.0-cp38-abi3-manylinux_2_31_x86_64.whl",
+          "bytes": 432927988,
+          "sha256": "0296670a09d392ee43455d9bebf590d05a9bc2ebce5e25e2919222fc815158da"
+        }
+      ]
+    },
+    "opencv-python-headless": {
+      "url": "https://pypi.org/pypi/opencv-python-headless/4.13.0.92/json",
+      "raw_metadata_sha256": "c2660e2f27856a0c3f078f22979368ee2ededb22ae50524a8f298e715340cf72",
+      "requires_python": ">=3.6",
+      "requires_dist": [
+        "numpy<2.0; python_version < \"3.9\"",
+        "numpy>=2; python_version >= \"3.9\""
+      ],
+      "selected_linux_x86_64_wheels": [
+        {
+          "filename": "opencv_python_headless-4.13.0.92-cp37-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+          "bytes": 56016764,
+          "sha256": "0525a3d2c0b46c611e2130b5fdebc94cf404845d8fa64d2f3a3b679572a5bd22"
+        },
+        {
+          "filename": "opencv_python_headless-4.13.0.92-cp37-abi3-manylinux_2_28_x86_64.whl",
+          "bytes": 60391106,
+          "sha256": "0bd48544f77c68b2941392fcdf9bcd2b9cdf00e98cb8c29b2455d194763cf99e"
+        }
+      ]
+    },
+    "flashinfer-python": {
+      "url": "https://pypi.org/pypi/flashinfer-python/0.6.4/json",
+      "raw_metadata_sha256": "6e6a95e9002f4fa371b8b4a0798cc38dbf9df1c16d96a397617dae9d5ba6a1c1",
+      "requires_python": "<4.0,>=3.10",
+      "requires_dist": [
+        "apache-tvm-ffi!=0.1.8,!=0.1.8.post0,<0.2,>=0.1.6",
+        "click",
+        "einops",
+        "ninja",
+        "numpy",
+        "nvidia-cudnn-frontend>=1.13.0",
+        "nvidia-cutlass-dsl>=4.3.4",
+        "nvidia-ml-py",
+        "packaging>=24.2",
+        "requests",
+        "tabulate",
+        "torch",
+        "tqdm"
+      ],
+      "selected_linux_x86_64_wheels": []
+    },
+    "fa3-fwd": {
+      "url": "https://pypi.org/pypi/fa3-fwd/0.0.2/json",
+      "raw_metadata_sha256": "24ee246462030f9687b8585bb32739823a681b4e3815eca7e832800505dcb7e0",
+      "requires_python": ">=3.8",
+      "requires_dist": [
+        "torch",
+        "einops",
+        "packaging",
+        "ninja"
+      ],
+      "selected_linux_x86_64_wheels": [
+        {
+          "filename": "fa3_fwd-0.0.2-cp39-abi3-manylinux_2_24_x86_64.whl",
+          "bytes": 27354168,
+          "sha256": "1fddac2fb32bcb446ebef7359387e863b46323961e53c4975038eebb8b9f2ceb"
+        }
+      ]
+    }
+  },
+  "upstream_requirements": {
+    "TetriServe": {
+      "python": ">=3.10",
+      "dependencies": [
+        "torch>=2.1.0",
+        "accelerate>=0.33.0",
+        "transformers>=4.39.1,<5",
+        "sentencepiece>=0.1.99",
+        "distvae",
+        "pytest",
+        "einops",
+        "pandas",
+        "pyzmq",
+        "protobuf",
+        "numpy<2",
+        "diffusers==0.33.0"
+      ],
+      "optional_dependencies": {
+        "diffusers": [
+          "diffusers==0.33.0"
+        ],
+        "flash-attn": [
+          "flash-attn==2.6.3"
+        ]
+      },
+      "documented_reference": {
+        "torch": "2.6.0",
+        "torch_cuda": "12.4",
+        "flash-attn": "2.6.3",
+        "scope": "README installation example; torch packaging floor is >=2.1, so this is reference-environment divergence rather than a hard torch specifier conflict"
+      },
+      "undeclared_runtime_imports": [
+        "fastapi",
+        "uvicorn"
+      ],
+      "cpp_optimizer": "disabled in pinned setup.py; upstream Python fallback exists; pybind11 absence alone does not require compiling or replacing the scheduler"
+    },
+    "GF-DiT": {
+      "python": ">=3.10,<3.14",
+      "cuda_common": [
+        "omegaconf>=2.3.0",
+        "librosa>=0.11.0",
+        "resampy>=0.4.3",
+        "diffusers>=0.36.0",
+        "accelerate==1.12.0",
+        "gradio==5.50",
+        "soundfile>=0.13.1",
+        "cache-dit==1.3.0",
+        "tqdm>=4.66.0",
+        "torchsde>=0.2.6",
+        "openai-whisper>=20250625",
+        "imageio[ffmpeg]>=2.37.2",
+        "sox>=1.5.0",
+        "x-transformers>=2.12.2",
+        "einops>=0.8.1",
+        "prettytable>=3.8.0",
+        "aenum==3.1.16",
+        "pyzmq>=25.0.0"
+      ],
+      "cuda_additions": [
+        "onnxruntime>=1.23.2",
+        "fa3-fwd==0.0.2"
+      ],
+      "ci_base_image": "vllm/vllm-openai:v0.17.0",
+      "vllm_distribution": "vllm==0.17.0 is provided by the CI base and intentionally excluded from vllm-omni dependencies",
+      "fork_identity": "Use the pinned SJTU-Liquid/GF-DiT source; an arbitrary public vllm-omni wheel does not establish GF-DiT runtime_v2 identity",
+      "optional_dev_dependencies": [
+        "pytest>=7.0.0",
+        "pytest-asyncio>=0.21.0",
+        "pytest-cov>=4.0.0",
+        "pytest-mock>=3.10.0",
+        "mypy==1.11.1",
+        "pre-commit==4.0.1",
+        "openai-whisper>=20250625",
+        "psutil>=7.2.0",
+        "soundfile>=0.13.1",
+        "imageio[ffmpeg]>=0.6.0",
+        "opencv-python>=4.12.0.88",
+        "mooncake-transfer-engine==0.3.8.post1",
+        "av",
+        "openpyxl>=3.0.0",
+        "pyttsx3>=2.99"
+      ],
+      "cuda_comment_caveat": "requirements/cuda.txt mentions a cuBLAS 12.9.1.4 force-reinstall in Dockerfile.ci, but that command is absent from the pinned Dockerfile.ci; do not invent an observed cuBLAS pin"
+    },
+    "xDiT": {
+      "python": ">=3.10",
+      "dependencies": [
+        "torch>=2.4.1",
+        "accelerate>=0.33.0",
+        "transformers>=4.39.1",
+        "sentencepiece>=0.1.99",
+        "beautifulsoup4>=4.12.3",
+        "distvae>=0.1.0",
+        "yunchang>=0.6.0",
+        "einops",
+        "diffusers>=0.33.0",
+        "av",
+        "peft",
+        "numpy",
+        "PyYAML>=6.0"
+      ],
+      "optional_dependencies": {
+        "flash-attn": [
+          "flash-attn>=2.7.0"
+        ],
+        "optimum-quanto": [
+          "optimum-quanto"
+        ],
+        "torchao": [
+          "torchao"
+        ],
+        "flask": [
+          "flask"
+        ],
+        "ray": [
+          "ray"
+        ],
+        "opencv-python": [
+          "opencv-python-headless"
+        ],
+        "cache-dit": [
+          "cache-dit>=1.5.0,<1.6.0"
+        ],
+        "test": [
+          "pytest",
+          "pytest-timeout",
+          "imageio",
+          "imageio-ffmpeg"
+        ]
+      },
+      "ray_scope": "Missing Ray blocks the optional image HTTP entrypoint, not the already-imported official Wan model runner",
+      "ring_scope": "pinned optional flash-attn comment requires >=2.7.0 for ring_degree>1; current single-GPU/USP-math observations do not validate Ring attention"
+    }
+  },
+  "specifier_checks": [
+    {
+      "package": "numpy",
+      "current": "2.2.6",
+      "requirement": "numpy>=1.24,<2.3",
+      "upstream": "Numba 0.61.2",
+      "specifier_satisfied": true,
+      "assessment": "metadata_compatible",
+      "scope": "PEP 440 metadata only, not import or ABI validation"
+    },
+    {
+      "package": "numpy",
+      "current": "2.2.6",
+      "requirement": "numpy<2",
+      "upstream": "TetriServe",
+      "specifier_satisfied": false,
+      "assessment": "hard_conflict_with_current",
+      "scope": "PEP 440 metadata only, not import or ABI validation"
+    },
+    {
+      "package": "numpy",
+      "current": "2.2.6",
+      "requirement": "numpy>=2",
+      "upstream": "OpenCV headless 4.13.0.92 on Python>=3.9",
+      "specifier_satisfied": true,
+      "assessment": "metadata_compatible",
+      "scope": "PEP 440 metadata only, not import or ABI validation"
+    },
+    {
+      "package": "diffusers",
+      "current": "0.36.0",
+      "requirement": "diffusers==0.33.0",
+      "upstream": "TetriServe",
+      "specifier_satisfied": false,
+      "assessment": "hard_conflict_with_current",
+      "scope": "PEP 440 metadata only, not import or ABI validation"
+    },
+    {
+      "package": "diffusers",
+      "current": "0.36.0",
+      "requirement": "diffusers>=0.36.0",
+      "upstream": "GF-DiT",
+      "specifier_satisfied": true,
+      "assessment": "metadata_compatible",
+      "scope": "PEP 440 metadata only, not import or ABI validation"
+    },
+    {
+      "package": "cache-dit",
+      "current": "1.5.0",
+      "requirement": "cache-dit==1.3.0",
+      "upstream": "GF-DiT",
+      "specifier_satisfied": false,
+      "assessment": "hard_conflict_with_current",
+      "scope": "PEP 440 metadata only, not import or ABI validation"
+    },
+    {
+      "package": "cache-dit",
+      "current": "1.5.0",
+      "requirement": "cache-dit>=1.5.0,<1.6.0",
+      "upstream": "xDiT optional cache-dit extra",
+      "specifier_satisfied": true,
+      "assessment": "metadata_compatible",
+      "scope": "PEP 440 metadata only, not import or ABI validation"
+    },
+    {
+      "package": "torch",
+      "current": "2.10.0+cu126",
+      "requirement": "torch==2.10.0",
+      "upstream": "vLLM 0.17.0",
+      "specifier_satisfied": true,
+      "assessment": "metadata_compatible_abi_unverified",
+      "scope": "PEP 440 metadata only, not import or ABI validation"
+    },
+    {
+      "package": "transformers",
+      "current": "4.57.6",
+      "requirement": "transformers>=4.56.0,<5",
+      "upstream": "vLLM 0.17.0",
+      "specifier_satisfied": true,
+      "assessment": "metadata_compatible",
+      "scope": "PEP 440 metadata only, not import or ABI validation"
+    },
+    {
+      "package": "accelerate",
+      "current": "1.12.0",
+      "requirement": "accelerate==1.12.0",
+      "upstream": "GF-DiT",
+      "specifier_satisfied": true,
+      "assessment": "metadata_compatible",
+      "scope": "PEP 440 metadata only, not import or ABI validation"
+    },
+    {
+      "package": "einops",
+      "current": "0.8.2",
+      "requirement": "einops>=0.8.1",
+      "upstream": "GF-DiT",
+      "specifier_satisfied": true,
+      "assessment": "metadata_compatible",
+      "scope": "PEP 440 metadata only, not import or ABI validation"
+    }
+  ],
+  "constraint_conclusions": {
+    "numba_numpy": {
+      "conflict": false,
+      "requirement": "Numba 0.61.2 requires numpy>=1.24,<2.3 and llvmlite>=0.44.0dev0,<0.45",
+      "current_numpy": "2.2.6",
+      "numpy_2_2_support_officially_added": true,
+      "sources": [
+        "https://numba.readthedocs.io/en/0.61.2/release/0.61.2-notes.html",
+        "https://raw.githubusercontent.com/numba/numba/0.61.2/setup.py",
+        "https://pypi.org/pypi/numba/0.61.2/json"
+      ],
+      "runtime_status": "Numba/llvmlite imports and compilation not probed; metadata compatibility is not runtime validation"
+    },
+    "unmodified_native_packages_can_share_one_environment": false,
+    "proofs": [
+      {
+        "packages": [
+          "TetriServe",
+          "GF-DiT"
+        ],
+        "intersection": "empty",
+        "requirements": [
+          "diffusers==0.33.0",
+          "diffusers>=0.36.0"
+        ]
+      },
+      {
+        "packages": [
+          "TetriServe",
+          "selected vLLM OpenCV dependency"
+        ],
+        "intersection": "empty on Python3.10 for verified OpenCV4.13.0.92 candidate",
+        "requirements": [
+          "numpy<2",
+          "numpy>=2; python_version >= 3.9"
+        ],
+        "scope": "vLLM0.17 requires OpenCV headless>=4.13; only the explicitly named candidate metadata was checked, not every future release"
+      },
+      {
+        "packages": [
+          "GF-DiT",
+          "frozen common backend / xDiT cache extra"
+        ],
+        "intersection": "empty for these pinned cache requirements",
+        "requirements": [
+          "cache-dit==1.3.0",
+          "cache-dit>=1.5.0,<1.6.0"
+        ],
+        "scope": "xDiT cache extra is optional; this conflict concerns GF exact metadata versus the current installed1.5/common cache selection. Disabling approximate caching does not itself prove import API compatibility"
+      }
+    ]
+  },
+  "binary_and_api_validation_pending": [
+    {
+      "component": "vLLM 0.17.0 CUDA extensions",
+      "status": "not installed or imported",
+      "metadata": "torch2.10.0+cu126 satisfies torch==2.10.0 under PEP440",
+      "risk": "Official v0.17 documentation says default binaries use CUDA12.9 and warns that different CUDA/PyTorch build configurations can be binary-incompatible, even with equal public Torch versions",
+      "source": "https://docs.vllm.ai/en/v0.17.0/getting_started/installation/gpu/",
+      "required_evidence": "exact wheel or external build identity; linked CUDA/cuBLAS/cuDNN/NCCL versions, vllm._C load, selected operator numerical tests on A100 and current570.133.20 driver; manylinux2.31/glibc and C++ ABI compatibility, neither established by the r1 probe"
+    },
+    {
+      "component": "GF-DiT cache API",
+      "status": "unverified",
+      "required_evidence": "real runtime_v2/worker imports against chosen cache-dit; cache_dit_backend imports internal modules, so a version-specifier relaxation needs an explicit reviewed patch and tests"
+    },
+    {
+      "component": "GFC",
+      "status": "source import succeeded; distribution metadata absent",
+      "required_evidence": "real all-gather/all-to-all and regroup/state-migration checks with the pinned source; no GFC-to-NCCL substitution"
+    },
+    {
+      "component": "FlashInfer / FA3 / optional FlashAttention",
+      "status": "not inferred from Torch import",
+      "required_evidence": "candidate binary load, A100 capability gating, actual attention dispatch and reference numerics; FA3 package availability does not establish an A100 fast path"
+    },
+    {
+      "component": "TetriServe NumPy2 / Diffusers0.36 port",
+      "status": "explicit compatibility port needed",
+      "required_evidence": "retain original scheduler/batching/ZMQ/latent transfer/regroup; validate full versus segmented and migrated outputs with fixed common kernels"
+    }
+  ],
+  "reuse_and_additions": {
+    "retain_candidates": [
+      "current Python3.10.20",
+      "Torch2.10 public version",
+      "Triton3.6",
+      "NumPy2.2.6",
+      "Diffusers0.36",
+      "Transformers4.57.6",
+      "Accelerate1.12",
+      "frozen official model snapshots and benchmark requests"
+    ],
+    "scope": "Candidates for a disclosed common-backend port; not evidence that all untouched upstream dependency sets or binary extensions already work",
+    "mandatory_full_native_GF_additions": "pinned vllm0.17 dependency closure plus pinned GF-DiT common/CUDA requirements and real GFC runtime; selected runtime_v2-only simplification must be named as a port and cannot stub vllm APIs",
+    "mandatory_Tetri_additions": "pandas/pyzmq plus actual FastAPI/Uvicorn serving imports; retain native scheduler/control plane and dynamic batching",
+    "optional_or_path_specific": [
+      "Ray is optional for the native xDiT Wan runner but part of the declared default vLLM0.17 dependency closure; it is also required by the optional xDiT image server",
+      "pybind11 only if deliberately enabling upstream optional C++ optimizer",
+      "FlashAttention when the selected parallel/attention path actually requires it"
+    ],
+    "must_not_replace": [
+      "GF-DiT EDF-best-fit and migration/data plane",
+      "GFC online collective design",
+      "TetriServe scheduler and batching",
+      "TetriServe ZMQ/NCCL state transfer and communicator changes"
+    ],
+    "observed_missing_module_imports": [
+      "vllm",
+      "aenum",
+      "uvicorn",
+      "pandas",
+      "zmq",
+      "ray"
+    ],
+    "observed_absent_distribution_metadata": [
+      "vllm",
+      "aenum",
+      "uvicorn",
+      "pandas",
+      "pyzmq",
+      "ray",
+      "fastapi",
+      "grpcio",
+      "imageio"
+    ]
+  },
+  "external_image_request": {
+    "approval_required_for": "User-designated external image build source, because Python dependencies in /opt/venv must change",
+    "project_policy_source": "AGENTS.md: Python dependency changes require a new image source; container image builds are prohibited in WSL and on all Kairos nodes",
+    "actions_performed": [],
+    "local_or_kairos_build_allowed": false,
+    "dependency_overlay_allowed_as_workaround": false,
+    "preferred_target": "One externally produced replacement image that preserves the chosen common Torch/CUDA/kernel stack, supplies native control-plane dependencies, and records every reviewed compatibility patch",
+    "unresolved_choice": "Either provide an externally built vLLM0.17 artifact against the retained cu126 Torch build, or explicitly change the shared CUDA stack for every compared system and revalidate all existing numerical/kernel evidence",
+    "deliverables": [
+      "immutable image repository/tag and manifest digest",
+      "complete resolved dependency lock and hashes with no unresolved latest packages",
+      "exact GF-DiT/TetriServe/xDiT/GFC source and patch inventories",
+      "compiled extension/CUDA/NCCL/driver compatibility evidence on A100",
+      "pip check plus actual source-bound imports and native numerical/collective smoke summaries",
+      "archive byte size and SHA256 plus temporary-storage estimate before any large transfer"
+    ],
+    "handoff": "Existing tar archive provided from the authorized external source; upload only through the documented Kairos web-console tar path after storage checks. No registry push or SSH image synchronization.",
+    "archive_size_and_transitive_closure": "not yet known; the432927988-byte vLLM wheel is not an estimate of complete image or temporary disk requirements",
+    "qualification": "Adding dependencies, successful imports, or a generated image alone do not qualify full-system comparison"
+  }
+}
