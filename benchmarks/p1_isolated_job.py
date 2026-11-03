@@ -86,8 +86,10 @@ def p0_model_mapping(receipt_path, receipt, model):
 
 
 def prepare_spec(base_spec, protocol, plan, receipt_path, *, model, date, operator_root,
-                 operator_script, benchmark_root):
+                 operator_script, benchmark_root, attempt=1):
     """Reuse the formal generator's shape-calibration spec; never overwrite it."""
+    if type(attempt) is not int or attempt < 1:
+        raise ValueError("job attempt must be a positive integer")
     validate_plan(plan, protocol)
     datetime.strptime(date, '%Y%m%d')
     env = env_values(base_spec)
@@ -117,14 +119,15 @@ def prepare_spec(base_spec, protocol, plan, receipt_path, *, model, date, operat
             or env.get('DITSERVE_TEST_REVISION') != fresh['build']['commit']):
         raise ValueError('P0/build/image permission differs')
     # Keep the explicit formal-job namespace accepted by the storage guard.
-    name = f'd{date}-formal-p1iso-{model}-{commit[:7]}-r1'
+    name = f'd{date}-formal-p1iso-{model}-{commit[:7]}-r{attempt}'
+    spec_directory = f'{date}-p1iso-{commit[:7]}' + (f'-r{attempt}' if attempt > 1 else '')
     result = copy.deepcopy(base_spec)
     result.update(name=name, command='bash ' + operator_root + '/scripts/kairos_formal_benchmark.sh')
     env.update(DITSERVE_RUN_ID=name, DITSERVE_FORMAL_ACTION='p1_isolated', DITSERVE_STAGE_ACTION='p1_diagnostics',
         DITSERVE_BENCHMARK_MODE='formal',
         DITSERVE_KAIROS_RUNTIME_ROOT=operator_root,
         DITSERVE_BENCHMARK_ROOT=str(root / 'benchmarks'),
-        DITSERVE_JOB_SPEC_PATH=f'/shared/data/DITSERVE/job-specs/{date}-p1iso-{commit[:7]}/{name}.json',
+        DITSERVE_JOB_SPEC_PATH=f'/shared/data/DITSERVE/job-specs/{spec_directory}/{name}.json',
         DITSERVE_P1_PLAN_SHA256=canonical_hash(plan), DITSERVE_P0_GATE_SHA256=byte_hash(raw),
         DITSERVE_MODEL_MANIFESTS_SHA256=canonical_hash(p0_model_mapping(receipt_path, receipt, model)),
         DITSERVE_EXPECTED_CORE_SHA256=fresh['build']['core_sha256'],
@@ -337,6 +340,7 @@ def main(argv=None):
         spec.add_argument('--' + name.replace('_', '-'), type=Path, required=True)
     for name in ('model', 'date', 'operator_root'):
         spec.add_argument('--' + name.replace('_', '-'), required=True)
+    spec.add_argument('--attempt', type=int, default=1)
     first = sub.add_parser('preflight')
     first.add_argument('--model', choices=['wan21', 'wan22'], required=True)
     for name in ('protocol', 'pair_plan', 'model_manifests', 'build', 'job_spec', 'datasets', 'output', 'package', 'core', 'operator_script', 'benchmark_root'):
@@ -349,7 +353,7 @@ def main(argv=None):
     if args.command == 'spec':
         result = prepare_spec(*(checked_json(getattr(args, key))[0] for key in ('base_spec', 'protocol', 'pair_plan')),
             args.p0_receipt, model=args.model, date=args.date, operator_root=args.operator_root,
-            operator_script=args.operator_script, benchmark_root=args.benchmark_root)
+            operator_script=args.operator_script, benchmark_root=args.benchmark_root, attempt=args.attempt)
         formal.write_new(args.output, result)
     elif args.command == 'preflight':
         import os
