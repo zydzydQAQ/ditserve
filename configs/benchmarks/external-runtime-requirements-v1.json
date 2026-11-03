@@ -965,6 +965,16 @@
           80,
           97
         ]
+      },
+      "formal_p0_wan21": {
+        "path": ".local/ditserve-kairos-rewrite-runtime/evidence/20261103-formal-51740c0/completed-jobs/d20261103-formal-p0-wan21-stop-51740c0-r1/raw/contention/run.json",
+        "sha256": "6379c66761839553dd6561576f867b499ff059498754d44e0940a57d4955325f",
+        "scope": "Actual published formal worker config: attention flash and VAE BF16; not a native/common numerical equivalence test"
+      },
+      "formal_p0_wan22": {
+        "path": ".local/ditserve-kairos-rewrite-runtime/evidence/20261103-formal-51740c0/completed-jobs/d20261103-formal-p0-wan22-stop-51740c0-r1/raw/contention/run.json",
+        "sha256": "bf5001137711155bcdbdf8d32660a4b2fb8fc3c4a13a812bcfa36ebd008674c9",
+        "scope": "Actual published formal worker config: attention flash and VAE BF16; not a native/common numerical equivalence test"
       }
     },
     "diffusers_reference": {
@@ -1014,7 +1024,7 @@
         "shared_517": "Transformer FP16; UMT5 CPU FP32, max_sequence_length=512; prompt embeddings cast to GPU FP16",
         "official_native_observed": "Transformer, UMT5 and VAE GPU BF16; max_sequence_length=512 from WanPipeline.__call__",
         "required_change": "Add explicit transformer dtype to shared worker/loader/casts and runtime identity; choose one encoder dtype and placement profile for every common-backend port. Preserve original native runs separately.",
-        "not_sufficient": "Undeployed47a98a7 makes the CPU text encoder BF16 but leaves the DiT and GPU prompt embeddings FP16; it does not establish an all-BF16 or CPU/GPU numerical equivalence."
+        "not_sufficient": "Change47a98a7 makes the CPU text encoder BF16 but leaves the DiT and GPU prompt embeddings FP16; it is not present in frozen517 and does not establish an all-BF16 or CPU/GPU numerical equivalence."
       },
       {
         "field": "initial_noise",
