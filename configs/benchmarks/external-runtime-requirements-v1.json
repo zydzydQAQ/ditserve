@@ -853,5 +853,262 @@
     "handoff": "Existing tar archive provided from the authorized external source; upload only through the documented Kairos web-console tar path after storage checks. No registry push or SSH image synchronization.",
     "archive_size_and_transitive_closure": "not yet known; the432927988-byte vLLM wheel is not an estimate of complete image or temporary disk requirements",
     "qualification": "Adding dependencies, successful imports, or a generated image alone do not qualify full-system comparison"
+  },
+  "backend_compatibility": {
+    "status": "not_numerically_aligned_no_common_backend_comparison_qualified",
+    "audit_date": "2026-11-03",
+    "runtime_modified": false,
+    "qualification_eligible": false,
+    "frozen_shared_build": "51740c05944b063e39bc325b64241cd611a73b41",
+    "official_xdit_commit": "16c34e7f070de65d9d2c67a6d74e0007dd8b426a",
+    "sources": {
+      "shared_wan_runtime": {
+        "path": ".local/ditserve-kairos-rewrite-runtime/builds/51740c0/share/ditserve/python/ditserve/models/wan/runtime.py",
+        "sha256": "42559d5cea5e9d665484d5efbfe4525e94f21bb5be34499a857bf744ac51c8da",
+        "lines": [
+          290,
+          487,
+          547,
+          552,
+          556,
+          559,
+          604,
+          787,
+          853
+        ]
+      },
+      "shared_loader_decode": {
+        "path": ".local/ditserve-kairos-rewrite-runtime/builds/51740c0/share/ditserve/python/ditserve/models/pipeline.py",
+        "sha256": "6cebebdcbb606fb95848627eb616c81c1b94dc45ec74efca91071c7440fa932e",
+        "lines": [
+          59,
+          97,
+          103,
+          107,
+          127,
+          137,
+          168
+        ]
+      },
+      "shared_attention_runtime": {
+        "path": ".local/ditserve-kairos-rewrite-runtime/builds/51740c0/share/ditserve/python/ditserve/models/xdit/runtime.py",
+        "sha256": "0fd9ba416d7a964073a2e2a084ddc30d7d755074686a46440abbf477999eb456",
+        "lines": [
+          7,
+          48,
+          49,
+          109
+        ]
+      },
+      "shared_wan_transformer": {
+        "path": ".local/ditserve-kairos-rewrite-runtime/builds/51740c0/share/ditserve/python/xfuser/model_executor/models/transformers/transformer_wan.py",
+        "sha256": "4b78eb61ad29c9e9e8264116c9588c8d937d0a6ea6cfa55858e204e21511e32b",
+        "lines": [
+          1
+        ]
+      },
+      "official_runner_wan": {
+        "path": ".local/ditserve-kairos-rewrite-runtime/external-systems/20261103/xDiT/xfuser/model_executor/models/runner_models/wan.py",
+        "sha256": "5ad9e77c967ec4b460cb3912d931dc2c4a4dd39b41a88bdb4fedef54d1d1ac94",
+        "lines": [
+          698,
+          715,
+          722,
+          880,
+          911,
+          916,
+          979,
+          986
+        ]
+      },
+      "official_runner_rng": {
+        "path": ".local/ditserve-kairos-rewrite-runtime/external-systems/20261103/xDiT/xfuser/model_executor/models/runner_models/base_model.py",
+        "sha256": "abe1b1d25827a1057ed536e64250a82118f6514f2bf9dd6cbac24e36ed825890",
+        "lines": [
+          1148,
+          1369
+        ]
+      },
+      "official_attention_state": {
+        "path": ".local/ditserve-kairos-rewrite-runtime/external-systems/20261103/xDiT/xfuser/core/distributed/runtime_state.py",
+        "sha256": "4499534add25f0fe833436fb069c56fa44499d37f3cb6fe722184010a56d7fe3",
+        "lines": [
+          81,
+          100,
+          175,
+          256
+        ]
+      },
+      "official_wan_transformer": {
+        "path": ".local/ditserve-kairos-rewrite-runtime/external-systems/20261103/xDiT/xfuser/model_executor/models/transformers/transformer_wan.py",
+        "sha256": "ae22e1a3728c39ae0d9a8435949c808fb99eb0f1aa9ac961c7793a2158a258a9",
+        "lines": [
+          1
+        ]
+      },
+      "native_adapter": {
+        "path": "ditserve/benchmarks/external_xdit_native.py",
+        "sha256": "a5637ba6606449e97ebb7172a6180b0ff623080df486feae6ddbe30acd0f1777",
+        "lines": [
+          115,
+          133,
+          154,
+          171,
+          180
+        ]
+      },
+      "comparison_contract": {
+        "path": "ditserve/configs/benchmarks/external-reproduction-v1.json",
+        "sha256": "464b979d84340a716f48b232039d0d6d3da98124cbc70903798fce8fc03836a6",
+        "lines": [
+          73,
+          80,
+          97
+        ]
+      }
+    },
+    "diffusers_reference": {
+      "version": "0.36.0",
+      "url": "https://raw.githubusercontent.com/huggingface/diffusers/v0.36.0/src/diffusers/pipelines/wan/pipeline_wan.py",
+      "lines": [
+        370,
+        453,
+        493,
+        501,
+        507,
+        536,
+        561,
+        563,
+        581,
+        593
+      ],
+      "scope": "Official version-tag source inspection; actual installed pipeline/scheduler file hashes are still required, package metadata alone is insufficient"
+    },
+    "xfuser_python_inventory": {
+      "official_files": 283,
+      "shared_files": 148,
+      "identical_files": 134,
+      "modified_files": [
+        "__init__.py",
+        "core/distributed/fp8_comms.py",
+        "core/distributed/group_coordinator.py",
+        "model_executor/cache/adapters/__init__.py",
+        "model_executor/layers/attention_processor.py",
+        "model_executor/layers/conv.py",
+        "model_executor/layers/usp.py",
+        "model_executor/models/transformers/__init__.py",
+        "model_executor/models/transformers/base_transformer.py",
+        "model_executor/models/transformers/transformer_sd3.py",
+        "model_executor/models/transformers/transformer_wan.py",
+        "model_executor/pipelines/__init__.py",
+        "model_executor/pipelines/pipeline_stable_diffusion_3.py",
+        "model_executor/schedulers/__init__.py"
+      ],
+      "omitted_count": 135,
+      "shared_only_count": 0,
+      "meaning": "Same base revision is not byte-identical code. Shared Wan wrapper adds packet/block execution and disables the optional FlyDSL import. Do not replace a complete official tree with the reduced vendor tree and call it native."
+    },
+    "differences": [
+      {
+        "field": "transformer_and_prompt_precision",
+        "shared_517": "Transformer FP16; UMT5 CPU FP32, max_sequence_length=512; prompt embeddings cast to GPU FP16",
+        "official_native_observed": "Transformer, UMT5 and VAE GPU BF16; max_sequence_length=512 from WanPipeline.__call__",
+        "required_change": "Add explicit transformer dtype to shared worker/loader/casts and runtime identity; choose one encoder dtype and placement profile for every common-backend port. Preserve original native runs separately.",
+        "not_sufficient": "Undeployed47a98a7 makes the CPU text encoder BF16 but leaves the DiT and GPU prompt embeddings FP16; it does not establish an all-BF16 or CPU/GPU numerical equivalence."
+      },
+      {
+        "field": "initial_noise",
+        "shared_517": "CPU torch.Generator(seed), FP32 latents transferred to GPU",
+        "official_native_observed": "Generator on pipe._execution_device, currently CUDA with no offload; FP32 latents",
+        "required_change": "The disclosed common port must use the same CPU generator/FP32 latent preparation as the shared worker, or receive the same prepared latent; record initial latent SHA. The same integer seed on CPU and CUDA is insufficient."
+      },
+      {
+        "field": "attention",
+        "shared_517": "Actual formal P0 configs select flash -> SDPA_FLASH for DiT; finish/async VAE uses a MATH context; chunked low-precision VAE permits flash/efficient/math",
+        "official_native_observed": "r3 post-request self/cross selector CUDNN; declared SDPA_EFFICIENT fallback. No per-call dispatch proof and no explicit common VAE context.",
+        "required_change": "Pin the same self/cross backend and VAE context in every common port; run a MATH diagnostic when needed and the intended SDPA_FLASH production path. Record fallback/actual selector separately from requested configuration; require dispatch evidence before claiming identical kernels."
+      },
+      {
+        "field": "vae_arithmetic",
+        "shared_517": "Formal P0 VAE BF16. latent/mean/std FP32 inverse-normalization then cast to VAE dtype; decoded tensor cast to FP32 before postprocessing. Chunked and whole decode use this same recipe.",
+        "official_native_observed": "VAE BF16. Diffusers0.36 casts latent and mean/std to VAE dtype before inverse-normalization and forwards the VAE result to postprocessing.",
+        "required_change": "Use one explicitly versioned decode recipe for common whole/segmented/native ports; compare raw final latent, inverse-normalized VAE input, raw decoded tensor and postprocessed frames. The shared helper docstring claiming exact official arithmetic is not valid for low-precision VAE normalization.",
+        "finite_boundary": "Finite postprocessed float frames can hide pre-clamp infinities; uint8 finiteness proves still less. Check pre-clamp decoded tensors and latent separately."
+      },
+      {
+        "field": "scheduler_and_guidance",
+        "shared_517": "Request-local UniPC cloned from bound checkpoint; solver_order2; separate conditional/unconditional forwards; CFG u+g*(c-u)",
+        "official_native_observed": "Single-transformer WanPipeline/UniPC; checkpoint-bound flow_shift explicitly supplied by adapter, Wan21=3 and Wan22=5; same CFG formula",
+        "required_change": "Keep full scheduler config and record actual timesteps/sigmas and installed scheduler source SHA. Preserve complete UniPC solver history across pause/migration. Do not silently change Wan21 720p flow_shift to5 from an example; a change requires a separately versioned model recipe."
+      },
+      {
+        "field": "geometry_and_text_contract",
+        "shared_517": "Formal shapes are480x832x81,720x1280x81,512x896x121,704x1280x121;50steps,G5; model-specific spatial multiple checked",
+        "official_native_observed": "Adapter passes exact formal shape, explicit negative prompt and step/guidance/seed; official Wan22 defaults736-high but adapter overrides to704. Diffusers can round invalid temporal lengths.",
+        "required_change": "Freeze actual geometry and model temporal factors, not only the generic4k+1 check: Wan22 requires8k+1. Validate preprocessed and decoded shape, prompt/negative bytes,512-token limit and attention masks. The existing native CLI uses explicit empty negative for its single-request diagnostic; a replay port must preserve each exported request negative verbatim."
+      },
+      {
+        "field": "source_and_execution_path",
+        "shared_517": "Reduced/modified xfuser wrapper supports block execution, request-local state, regroup and pipeline references fed with shared prepared embeddings/latents",
+        "official_native_observed": "Complete official runner and monolithic pipeline, no DitServe scheduler",
+        "required_change": "Keep the native oracle immutable. Build a separately named common-backend port with complete original/derived inventories and imported-file hashes; preserve each external scheduler/batching/communication. Internal reference with shared embeddings/latents is an arithmetic check, not independent native preprocessing validation."
+      }
+    ],
+    "proposed_common_profile": {
+      "status": "proposal_requires_explicit_source_port_and_numerical_validation_not_deployed",
+      "preferred_precision": "BF16 transformer and BF16 UMT5; BF16 VAE with one chosen normalization/decode recipe; FP32 solver latents and CPU RNG",
+      "encoder_placement": "Choose one placement for the controlled common-backend comparison. A CPU/GPU placement optimization may be evaluated separately with the same precision, numerical tolerance, and full host/GPU time and memory accounting.",
+      "compatibility_profile": "If retaining517 unchanged for an immediate common-backend port, every port must instead adopt its FP16 DiT / CPU FP32 encoder / BF16 VAE recipe and label it explicitly. Do not mix this with native BF16 results.",
+      "runtime_identity": "Pin model manifest, protocol, full scheduler config, tokenizer files, dtype/device per component, RNG device, attention selector/fallback, decode recipe, shared source inventory and actual installed library file hashes.",
+      "dependencies": "No new package or image is implied by these source-level alignment changes; existing fixed-image numerical validation is still required."
+    },
+    "minimum_validation_sequence": [
+      {
+        "stage": "prepare",
+        "scope": "Both Wan models, one fixed development request each, SP1 and caching disabled",
+        "checks": "Hash prompt/negative embeddings, initial FP32 noise, timesteps/sigmas; assert exact shape/dtype/config and finite values before denoising. Different embedding placement requires measured error, not assumed equality."
+      },
+      {
+        "stage": "first_step",
+        "scope": "Same two model cells and shared prepared inputs; native-common whole forward versus packet/block path",
+        "checks": "Compare conditional/unconditional predictions, CFG and first UniPC latent; collect numerical errors under MATH diagnostic and intended SDPA_FLASH path before any full replay."
+      },
+      {
+        "stage": "full_and_segmented",
+        "scope": "All four frozen formal shapes, one preselected seed initially,50 steps; extend to the protocol three seeds after initial cases pass",
+        "checks": "Continuous versus2+48 and a block-boundary pause; exact scheduler history retained. Report latent and raw decoded finite/error/hash summaries plus exact frame count. Tolerances must be frozen before observed full-run errors."
+      },
+      {
+        "stage": "migration_and_isolation",
+        "scope": "Both models at representative small shapes with SP1->SP2->SP1, then formal large shapes; two overlapping requests with different seeds/resolutions",
+        "checks": "Whole solver/packet state and request identity move correctly; compare to uninterrupted common-backend reference; no request-state leakage. Validate real communication, not only serialized fixture tensors."
+      },
+      {
+        "stage": "serving_qualification",
+        "scope": "Only after numerical gates: common held-out quality validation, calibration-only tuning and the identical frozen mixed trace",
+        "checks": "Re-freeze shared per-shape SLO references and source-bound cost profiles for the changed runtime. Existing517 P0/calibration evidence cannot automatically qualify a new dtype/decode build; all offered requests remain in denominator."
+      }
+    ],
+    "verified_native_diagnostic": {
+      "run_id": "d20261103-xdit-wan21-480p-02f3ffb-r3",
+      "path": ".local/ditserve-kairos-rewrite-runtime/evidence/d20261103-xdit-wan21-480p-02f3ffb-r3/summary.json",
+      "sha256": "152165f971d76b66d9770bd860be717e8e5d89df6d64a011d7523d58ff32a0cc",
+      "child_sha256": "c4eddec21b0300e87cae831b52df00f470bea8714cbf53b75cc004480b4ce224",
+      "source_package_commit": "02f3ffb23ebbf30544cbdf53cc20c61226b8aafb",
+      "loaded_xfuser_files_independently_matched": 184,
+      "completed_requests": 1,
+      "shape": [
+        81,
+        480,
+        832,
+        3
+      ],
+      "steps": 50,
+      "dtype": "float32",
+      "finite_scope": "returned decoded frames after pipeline postprocessing",
+      "formal_benchmark_executed": false,
+      "shared_backend_comparison": false,
+      "qualification_eligible": false
+    }
   }
 }
