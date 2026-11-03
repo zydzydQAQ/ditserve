@@ -66,7 +66,7 @@ def verify_inventory(root, files):
         raise ValueError('unmanifested or linked probe package file')
 
 
-def bind_sources():
+def bind_sources(expected_entrypoint="external_runtime_probe.py", expected_gpus=1):
     root = Path(os.environ['DITSERVE_EXTERNAL_PROBE_ROOT'])
     if root.parent != DATA / 'external-probes' or Path(__file__).resolve() != root / 'external_runtime_probe.py':
         raise ValueError('unexpected immutable probe root')
@@ -97,9 +97,9 @@ def bind_sources():
         if env.get(key) != os.environ[key]:
             raise ValueError('submitted environment differs: '+key)
     if (spec['name'] != os.environ['DITSERVE_RUN_ID'] or spec['workers'] != 1
-            or spec['gpus_per_worker'] != 1 or spec['mount_shared'] is not True
+            or spec['gpus_per_worker'] != expected_gpus or spec['mount_shared'] is not True
             or not spec['image'].endswith('@'+IMAGE_DIGEST)
-            or spec['command'] != '/opt/venv/bin/python -B '+str(root/'external_runtime_probe.py')):
+            or spec['command'] != '/opt/venv/bin/python -B '+str(root/expected_entrypoint)):
         raise ValueError('submitted diagnostic spec differs')
     gfc_inventory = {p.relative_to(package/'gfc').as_posix():sha(p)
         for p in sorted((package/'gfc').rglob('*.py'))}
