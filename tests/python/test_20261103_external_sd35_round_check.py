@@ -16,6 +16,17 @@ class SD35RoundCheckTests(unittest.TestCase):
     def protocol(self):
         return json.loads(check.DEFAULT_PROTOCOL.read_bytes())
 
+    def test_formal_1024_selection_and_geometry_binding(self):
+        req = check.request_plan(self.protocol(), 'A red fox in snow.', 101, 'sd35-1024')
+        self.assertEqual((req.height, req.width, req.steps, req.seed, req.guidance_scale),
+                         (1024, 1024, 28, 101, 4.5))
+        protocol = self.protocol()
+        protocol['shapes']['sd35-1024']['width'] = 512
+        with self.assertRaisesRegex(ValueError, 'shape differs'):
+            check.request_plan(protocol, 'A fox.', 101, 'sd35-1024')
+        with self.assertRaisesRegex(ValueError, 'unsupported frozen'):
+            check.request_plan(self.protocol(), 'A fox.', 101, 'wan21-480p')
+
     def test_shape_is_frozen_512_28_steps_and_cpu_pairing(self):
         req = check.request_plan(self.protocol(), 'A red fox in snow.', 101)
         self.assertEqual((req.height, req.width, req.steps, req.seed, req.guidance_scale),

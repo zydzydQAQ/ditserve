@@ -53,19 +53,23 @@ def storage_watchdog(stop):
             os._exit(75)
 
 
-def request_plan(protocol, prompt, seed):
+def request_plan(protocol, prompt, seed, shape_id='sd35-512'):
     if protocol.get('schema') != 'ditserve.formal-protocol.v1' or protocol.get('id') != 'formal-mixed-v1':
         raise ValueError('formal protocol identity differs')
-    shape = protocol['shapes']['sd35-512']
-    expected = {'model': 'sd35', 'kind': 'image', 'height': 512, 'width': 512,
+    sizes = {'sd35-512': 512, 'sd35-1024': 1024}
+    if shape_id not in sizes:
+        raise ValueError('unsupported frozen SD3.5 shape')
+    size = sizes[shape_id]
+    shape = protocol['shapes'][shape_id]
+    expected = {'model': 'sd35', 'kind': 'image', 'height': size, 'width': size,
                 'frames': 1, 'steps': 28, 'guidance_scale': 4.5, 'scope': 'formal'}
     if any(shape.get(k) != v for k, v in expected.items()):
-        raise ValueError('frozen SD3.5 512 shape differs')
+        raise ValueError('frozen SD3.5 ' + str(size) + ' shape differs')
     if not isinstance(prompt, str) or not prompt.strip():
         raise ValueError('a nonempty explicit prompt is required')
     # Matches frozen formal_benchmark.shape_spec for image requests.
     return adapter.ImageRequest(prompt, negative_prompt='blurry, low quality',
-                                height=512, width=512, steps=28, seed=seed,
+                                height=size, width=size, steps=28, seed=seed,
                                 guidance_scale=4.5, max_sequence_length=256)
 
 
@@ -196,6 +200,7 @@ def main(argv=None):
     parser.add_argument('--protocol-sha256', required=True)
     parser.add_argument('--prompt', required=True)
     parser.add_argument('--seed', type=int, default=101)
+    parser.add_argument('--shape-id', choices=('sd35-512', 'sd35-1024'), default='sd35-512')
     parser.add_argument('--output-dir', type=Path, required=True)
     args = parser.parse_args(argv)
     result = {'schema': 'ditserve.external-sd35-round-check.v1', 'status': 'not_started',
@@ -214,11 +219,11 @@ def main(argv=None):
         if digest(args.protocol) != args.protocol_sha256:
             raise ValueError('protocol SHA256 differs')
         protocol = json.loads(args.protocol.read_bytes())
-        request = request_plan(protocol, args.prompt, args.seed)
+        request = request_plan(protocol, args.prompt, args.seed, args.shape_id)
         adapter.verify_shared_sources(args.shared_python_root)
         if digest(args.model_manifest) != args.model_manifest_sha256:
             raise ValueError('model manifest SHA256 differs')
-        result.update(status='planned', request=dict(vars(request)), intervals=[[0, 2], [2, 28]],
+        result.update(status='planned', shape_id=args.shape_id, request=dict(vars(request)), intervals=[[0, 2], [2, 28]],
             protocol_sha256=args.protocol_sha256, model_manifest_sha256=args.model_manifest_sha256,
             adapter_sha256=digest(adapter.__file__), checker_sha256=digest(__file__),
             shared_worker_sha256=adapter.FROZEN_WORKER_SHA256,
