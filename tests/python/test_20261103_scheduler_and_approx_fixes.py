@@ -19,7 +19,8 @@ except ImportError:
     _REAL_TORCH = None
 
 import p4_stream_quality
-from ditserve.evaluation.common import seal
+from ditserve.evaluation.common import file_hash, seal
+from ditserve.models.base import artifact as persist_artifact
 from ditserve.models.wan.cfg_reuse import AsymmetricCFGStepper
 
 
@@ -219,6 +220,17 @@ class SchedulerAndApproxFixesTests(unittest.TestCase):
         unverified = seal({**{k: v for k, v in vbench_receipt.items() if k != "sha256"}, "verified": False})
         with self.assertRaisesRegex(ValueError, "not verified"):
             p4_stream_quality.validate_vbench_receipt(unverified)
+
+    def test_base_artifact_file_mode_records_file_sha256(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_path = Path(tmpdir) / "video.npy"
+            arr = np.linspace(0.0, 1.0, 24, dtype=np.float32).reshape(1, 2, 2, 2, 3)
+            meta = persist_artifact(arr, path=str(out_path), mode="file")
+            self.assertEqual(meta["path"], str(out_path.resolve()))
+            self.assertIn("array_sha256", meta)
+            self.assertIn("sha256", meta)
+            self.assertEqual(meta["sha256"], file_hash(out_path))
 
 
 import test_study as fixtures

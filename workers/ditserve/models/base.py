@@ -68,6 +68,7 @@ def artifact(value, path=None, mode="file"):
             np.save(stream, array, allow_pickle=False)
         result["path"] = str(destination)
         result["bytes"] = destination.stat().st_size
+        result["sha256"] = file_hash(destination)
     result["persistence_ms"] = (time.perf_counter() - started) * 1000
     return result
 
