@@ -138,6 +138,23 @@ class NativeXDiTTests(unittest.TestCase):
         self.assertEqual(config["num_iterations"], 1)
         self.assertEqual(config["warmup_calls"], 0)
 
+    def test_native_t2v_media_contract_matches_official_cli_empty_images(self):
+        # Actual r1 GPU failures: Wan21 iterated None; Wan22 called len(None).
+        # Explicit [] restores the pinned official CLI default before the real
+        # dataclass/runner is constructed, without altering generation controls.
+        configs = []
+        for model, shape in (("wan21", "wan21-dev"), ("wan22", "wan22-dev")):
+            request = native.request_plan(self.protocol(), model, shape, "quick", "a dog", 42)
+            config = native.runner_config(model, request, {"flow_shift": 3 if model == "wan21" else 5},
+                                          "/shared/output/DITSERVE/unit-contract-only")
+            self.assertIsInstance(config["input_images"], list)
+            self.assertEqual(list(config["input_images"]), [])
+            self.assertEqual(len(config["input_images"]), 0)
+            for key in ("height", "width", "num_frames", "num_inference_steps", "guidance_scale", "negative_prompt", "prompt", "seed"):
+                self.assertEqual(config[key], request[key])
+            configs.append(config)
+        self.assertIsNot(configs[0]["input_images"], configs[1]["input_images"])
+
     def test_output_digest_has_geometry_finite_dtype_and_complete_frame_checks(self):
         import numpy as np
         request = {"num_frames": 2, "height": 3, "width": 4}

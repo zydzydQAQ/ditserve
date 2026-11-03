@@ -154,8 +154,10 @@ def request_plan(protocol, model, shape_id, mode, prompt, seed):
 def runner_config(model, request, identity, output_dir, cpu_offload=False):
     config = {k: request[k] for k in ("height", "width", "num_frames", "num_inference_steps",
                                     "guidance_scale", "negative_prompt", "prompt", "seed")}
+    # Match the official CLI default: the dataclass alone defaults to None,
+    # but both native Wan preprocessors require an iterable image collection.
     config.update(model=source.MODEL_IDS[model], task="t2v" if model == "wan22" else None,
-                  flow_shift=identity["flow_shift"], output_directory=str(output_dir),
+                  input_images=[], flow_shift=identity["flow_shift"], output_directory=str(output_dir),
                   ulysses_degree=1, ring_degree=1, data_parallel_degree=1,
                   tensor_parallel_degree=1, pipefusion_parallel_degree=1, fully_shard_degree=1,
                   use_cfg_parallel=False, use_torch_compile=False, cache_method=None,
