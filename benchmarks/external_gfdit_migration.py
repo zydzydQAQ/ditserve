@@ -423,12 +423,17 @@ def edge_counts(schedule,rank):
 def migrate(control,worker,case,index,dist,rank,record):
     specs = groups(control)
     plan = plan_for(control,case,index)
+    mid = case['id']+'-move-'+str(index)
+    return migrate_plan(control,worker,plan,specs,mid,dist,rank,record)
+
+
+def migrate_plan(control,worker,plan,specs,mid,dist,rank,record):
+    """Run the same original-engine transport loop for an explicit artifact plan."""
     src,dst = specs[plan.src_group_id],specs[plan.dst_group_id]
     participants = tuple(sorted(set(src.ranks)|set(dst.ranks)))
     queued,done,failed = deque(),[],[]
     engine = control.migration_engine.MigrationEngine(build_command=lambda job,phase:build_command(control,job,phase),
         send=lambda command,ranks:queued.append((command,ranks))) if rank==0 else None
-    mid = case['id']+'-move-'+str(index)
     if engine:
         engine.begin(plan=plan,src_group=src,dst_group=dst,participant_ranks=participants,
             src_leader_rank=src.ranks[0],on_done=done.append,on_error=lambda exc:failed.append(str(exc)),
