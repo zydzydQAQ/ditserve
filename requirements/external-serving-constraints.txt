@@ -18,7 +18,7 @@ sentencepiece==0.2.2
 einops==0.8.2
 huggingface-hub==0.36.2
 
-# Five functional additions and their non-extra CPython3.10/Linux closure.
+# Five functional candidates and their non-extra CPython3.10/Linux closure.
 # exceptiongroup is explicit in the common file for cross-host resolver safety.
 # Validation: official metadata closure (23 nodes including existing NumPy,
 # 27 active dependency edges) and pip dry-run both passed; nothing installed.
@@ -27,9 +27,19 @@ huggingface-hub==0.36.2
 # Dry-run report: dependency-resolve-20261103/pip-report-r2.json
 # report SHA256 bb56d32c03ce13e812fa15421655f3b00b2397860e42be6df0b0578ad1fe714c
 # All downloads in the dry run were metadata, not binary wheel payloads.
+# Separately inspected 805,722 bytes of four official SHA-verified pure Python
+# wheels as ZIP/AST only (not imported/installed): FastAPI, Starlette, Uvicorn,
+# Pydantic. Actual TetriServe constructor/decorator/middleware/response APIs and
+# Config/Server/async serve/BaseModel surfaces exist in these pinned versions.
+# FastAPI retains on_event; native TetriServe uses no on_event/startup/lifespan
+# hook. Its APIRouter forwards only supported Starlette lifecycle keywords.
+# API surface report: dependency-api-sources-20261103/api-surface.json
+# SHA256 813508f7b52cf078c81291b885a23c3afeeb07b39a58ae8b6fe4387750c85b7a
+# Source/API checks do not replace an actual import and service startup check.
 # Every Requires-Python and active Requires-Dist edge was checked using the
 # official release JSON at https://pypi.org/pypi/<name>/<version>/json.
-# A CPython3.10 manylinux x86_64 or universal wheel exists for all 22 additions.
+# A CPython3.10 manylinux x86_64 or universal wheel exists for all 22 candidates.
+# These are non-core selected packages; actual additions need a full inventory.
 # Selected wheels total 18,485,798 bytes, excluding already-installed NumPy.
 # pandas needs glibc>=2.24, pyzmq>=2.26; the external builder must check its base.
 # Version constraints do not establish compiled-wheel import/NumPy ABI validity.
