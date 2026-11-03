@@ -203,7 +203,89 @@ def summarize_video(videos, request):
         minimum, maximum = min(minimum, float(array.min())), max(maximum, float(array.max()))
     return {"outputs": 1, "shape": shape, "dtype": dtype, "sha256": h.hexdigest(),
             "finite": True, "minimum": minimum, "maximum": maximum,
+            "finite_scope": "returned decoded frames after pipeline postprocessing",
+            "floating_point_frames": bool(np.issubdtype(np.dtype(dtype), np.floating)),
+            "latent_finite_checked": False, "pre_postprocess_finite_checked": False,
+            "pre_quantization_finite_checked": False,
             "retained_arrays": False, "quality_evaluated": False}
+
+
+
+def attention_observation(pipeline, requested):
+    """Inspect existing objects only; never import/select/resolve an attention kernel.
+
+    The pinned runtime selector can route individual calls to a fallback. Its
+    post-request value, processor classes and cached callable are evidence of
+    runtime state, not a trace proving which GPU kernel served every call.
+    """
+    import functools
+
+    def label(value):
+        if value is None:
+            return "unknown"
+        return getattr(value, "name", None) or str(value)
+
+    def symbol(value):
+        if value is None:
+            return None
+        partial = isinstance(value, functools.partial)
+        function = value.func if partial else value
+        module_name = getattr(function, "__module__", type(function).__module__)
+        module = sys.modules.get(module_name)
+        return {"module": module_name,
+                "qualname": getattr(function, "__qualname__", type(function).__qualname__),
+                "module_file": getattr(module, "__file__", None), "partial": partial}
+
+    result = {"requested_attention_backend": None if requested is None else label(requested),
+        "runtime_selector_after_request": "unknown", "cross_attention_selector_after_request": "unknown",
+        "runtime_state_class": None, "hybrid_schedule_enabled": None,
+        "selected_registry_entries": {}, "transformer_processors": [], "observation_errors": [],
+        "kernel_dispatch_verified": False,
+        "scope": "post-request runtime selector and existing processor/cached callable inspection; loaded modules or cached fallback functions do not prove per-call kernel dispatch",
+        "source_evidence": "loaded_source_sha256 records verified loaded xfuser files"}
+    runtime_module = sys.modules.get("xfuser.core.distributed.runtime_state")
+    registry = sys.modules.get("xfuser.core.attention.registry")
+    try:
+        # The pinned getter only returns _RUNTIME and asserts it exists.
+        state = runtime_module.get_runtime_state() if runtime_module is not None else None
+        if state is not None:
+            result["runtime_state_class"] = symbol(type(state))
+            selected = getattr(state, "attention_backend", None)
+            cross = getattr(state, "cross_attention_backend", None)
+            cross = selected if cross is None else cross
+            result["runtime_selector_after_request"] = label(selected)
+            result["cross_attention_selector_after_request"] = label(cross)
+            result["hybrid_schedule_enabled"] = getattr(getattr(state, "runtime_config", None),
+                                                         "use_hybrid_attn_schedule", None)
+            for role, backend in (("self", selected), ("cross", cross)):
+                entry = registry.find(backend) if registry is not None and backend is not None else None
+                if entry is not None:
+                    impl = getattr(entry, "impl", None)
+                    result["selected_registry_entries"][role] = {
+                        "backend": label(backend), "registered_impl_class": symbol(type(impl)),
+                        "registered_target": getattr(impl, "target", None),
+                        "registered_package": getattr(entry, "package", None),
+                        "cached_callable": symbol(getattr(entry, "_resolved", None)),
+                        "declared_fallback": None if getattr(entry, "fallback", None) is None else label(entry.fallback)}
+    except Exception as exc:
+        result["observation_errors"].append("runtime selector inspection: " + type(exc).__name__ + ": " + str(exc))
+    try:
+        processors = {}
+        for _, layer in pipeline.transformer.named_modules():
+            processor = getattr(layer, "processor", None)
+            if processor is None:
+                continue
+            row = {"class": symbol(type(processor)),
+                   "attention_function": symbol(getattr(processor, "attention_function", None)),
+                   "is_cross_attention": getattr(processor, "is_cross_attention", None)}
+            key = json.dumps(row, sort_keys=True)
+            if key not in processors:
+                processors[key] = dict(row, count=0)
+            processors[key]["count"] += 1
+        result["transformer_processors"] = [processors[key] for key in sorted(processors)]
+    except Exception as exc:
+        result["observation_errors"].append("processor inspection: " + type(exc).__name__ + ": " + str(exc))
+    return result
 
 
 def loaded_sources(source_root, manifest):
@@ -282,6 +364,7 @@ def execute_native(model, request, identity, config, source_root, manifest):
         if len(timings) != 1 or any(not math.isfinite(float(t)) or float(t) < 0 for t in timings):
             raise ValueError("native runner returned invalid single-request timing")
         summary = summarize_video(output.videos, request)
+        attention = attention_observation(pipeline, runner.config.attention_backend)
         result = {"status": "native_request_completed", "completed_requests": 1, "requested_requests": 1,
             "output": summary, "load_seconds": load_seconds, "cold_request_wall_seconds": elapsed,
             "official_runner_timings_seconds": [float(t) for t in timings],
@@ -290,7 +373,8 @@ def execute_native(model, request, identity, config, source_root, manifest):
             "pipeline_class": type(pipeline).__name__, "components": components,
             "scheduler_config": dict(pipeline.scheduler.config),
             "effective_request": {k: effective[k] for k in request if k in effective},
-            "actual_attention_backend": str(runner.config.attention_backend),
+            "requested_attention_backend": attention["requested_attention_backend"],
+            "attention_backend_observation": attention,
             "torch": torch.__version__, "cuda": torch.version.cuda,
             "gpu": torch.cuda.get_device_name(), "loaded_source_sha256": loaded_sources(source_root, manifest)}
         del output

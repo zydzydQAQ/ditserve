@@ -155,6 +155,75 @@ class NativeXDiTTests(unittest.TestCase):
             configs.append(config)
         self.assertIsNot(configs[0]["input_images"], configs[1]["input_images"])
 
+    def test_runtime_attention_selector_is_observed_not_inferred_from_request(self):
+        from enum import Enum
+        class Backend(Enum):
+            CUDNN = "cuDNN"
+            SDPA_EFFICIENT = "sdpa_efficient"
+        def kernel():
+            self.fail("metadata inspection must not invoke a kernel")
+        class Processor:
+            attention_function = staticmethod(kernel)
+            is_cross_attention = False
+        processor = Processor()
+        pipeline = SimpleNamespace(transformer=SimpleNamespace(named_modules=lambda: iter([
+            ("a", SimpleNamespace(processor=processor)), ("b", SimpleNamespace(processor=Processor()))])))
+        state = SimpleNamespace(attention_backend=Backend.CUDNN, cross_attention_backend=None,
+                                runtime_config=SimpleNamespace(use_hybrid_attn_schedule=False))
+        entry = SimpleNamespace(impl=SimpleNamespace(target="kernel:cudnn"),
+                                package="xfuser.core.attention.backends.sdpa", _resolved=kernel,
+                                fallback=Backend.SDPA_EFFICIENT,
+                                resolved=lambda: self.fail("must not resolve/import kernels"))
+        modules = {"xfuser.core.distributed.runtime_state": SimpleNamespace(get_runtime_state=lambda: state),
+                   "xfuser.core.attention.registry": SimpleNamespace(find=lambda backend: entry)}
+        with patch.dict(native.sys.modules, modules):
+            result = native.attention_observation(pipeline, "SDPA")
+            enum_requested = native.attention_observation(pipeline, Backend.CUDNN)
+        self.assertEqual(enum_requested["requested_attention_backend"], "CUDNN")
+        json.dumps(enum_requested, allow_nan=False)
+        self.assertEqual(result["requested_attention_backend"], "SDPA")
+        self.assertEqual(result["runtime_selector_after_request"], "CUDNN")
+        self.assertEqual(result["cross_attention_selector_after_request"], "CUDNN")
+        self.assertEqual(result["selected_registry_entries"]["self"]["declared_fallback"], "SDPA_EFFICIENT")
+        self.assertTrue(result["selected_registry_entries"]["self"]["cached_callable"]["qualname"].endswith("kernel"))
+        self.assertEqual(result["transformer_processors"][0]["count"], 2)
+        self.assertFalse(result["kernel_dispatch_verified"])
+        self.assertFalse(result["observation_errors"])
+        json.dumps(result, allow_nan=False)
+
+    def test_missing_runtime_remains_unknown_even_with_loaded_backend_module(self):
+        pipeline = SimpleNamespace(transformer=SimpleNamespace(named_modules=lambda: iter([])))
+        with patch.dict(native.sys.modules, {
+                "xfuser.core.distributed.runtime_state": None,
+                "xfuser.core.attention.registry": None,
+                "xfuser.core.attention.backends.sdpa.kernel": SimpleNamespace(cudnn=object())}):
+            result = native.attention_observation(pipeline, None)
+        self.assertIsNone(result["requested_attention_backend"])
+        self.assertEqual(result["runtime_selector_after_request"], "unknown")
+        self.assertEqual(result["selected_registry_entries"], {})
+        self.assertFalse(result["kernel_dispatch_verified"])
+
+    def test_unavailable_runtime_inspection_preserves_unknown_and_reports_error(self):
+        def unavailable():
+            raise AssertionError("Runtime state has not been initialized")
+        pipeline = SimpleNamespace(transformer=SimpleNamespace(named_modules=lambda: iter([])))
+        with patch.dict(native.sys.modules, {"xfuser.core.distributed.runtime_state":
+                                             SimpleNamespace(get_runtime_state=unavailable)}):
+            result = native.attention_observation(pipeline, "CUDNN")
+        self.assertEqual(result["runtime_selector_after_request"], "unknown")
+        self.assertIn("AssertionError", result["observation_errors"][0])
+
+    def test_uint8_finiteness_does_not_claim_prequantized_or_latent_finiteness(self):
+        import numpy as np
+        value = native.summarize_video(np.zeros((1, 2, 3, 4, 3), dtype=np.uint8),
+                                       {"num_frames": 2, "height": 3, "width": 4})
+        self.assertTrue(value["finite"])
+        self.assertFalse(value["floating_point_frames"])
+        self.assertFalse(value["pre_quantization_finite_checked"])
+        self.assertFalse(value["pre_postprocess_finite_checked"])
+        self.assertFalse(value["latent_finite_checked"])
+        self.assertEqual(value["finite_scope"], "returned decoded frames after pipeline postprocessing")
+
     def test_output_digest_has_geometry_finite_dtype_and_complete_frame_checks(self):
         import numpy as np
         request = {"num_frames": 2, "height": 3, "width": 4}
@@ -162,6 +231,8 @@ class NativeXDiTTests(unittest.TestCase):
         good = native.summarize_video(video, request)
         self.assertEqual(good["shape"], [2, 3, 4, 3])
         self.assertTrue(good["finite"])
+        self.assertTrue(good["floating_point_frames"])
+        self.assertFalse(good["pre_postprocess_finite_checked"])
         self.assertFalse(good["quality_evaluated"])
         self.assertFalse(good["retained_arrays"])
         video[0, 0, 0, 0, 0] = 1
