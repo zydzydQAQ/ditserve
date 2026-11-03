@@ -118,6 +118,24 @@ def aggregate(rows, world):
         scope='One full native SP request at a formal shape; not serving, independent SP1 equivalence or comparative performance.')
 
 
+def collect_rank_summary(output, rank_result, world, deadline):
+    paths = [Path(output)/f'rank-{i}'/'summary.json' for i in range(world)]
+    if rank_result['planned_returncode'] != 0:
+        # Let torchrun see rank 0's failure immediately so peers blocked in a
+        # native collective are terminated by their owning launcher.
+        available = [native.source.read_json(p.read_bytes()) for p in paths if p.is_file()]
+        return dict(schema='ditserve.external-xdit-distributed.v1', status='native_sp_request_failed',
+            requested_requests=1, completed_requests=0, world_size=world,
+            error=rank_result.get('error', 'rank 0 failed'),
+            failed_stage=rank_result.get('failed_stage'), available_rank_receipts=available,
+            qualification_eligible=False, allows=[])
+    while not all(p.is_file() for p in paths):
+        if time.monotonic() >= deadline:
+            raise TimeoutError('some ranks did not publish cleanup receipts')
+        time.sleep(.25)
+    return aggregate([native.source.read_json(p.read_bytes()) for p in paths], world)
+
+
 def run_rank(model, request, identity, config, source_root, manifest, rank, world, result):
     if any(n == 'xfuser' or n.startswith('xfuser.') for n in sys.modules):
         raise ValueError('native distributed execution requires a fresh interpreter')
@@ -298,12 +316,7 @@ def main(argv=None):
         publish_json(rank_dir/'summary.json', result)
     if args.command == 'run' and rank == 0 and rank_dir is not None:
         try:
-            paths = [output/f'rank-{i}'/'summary.json' for i in range(args.world_size)]
-            while not all(p.is_file() for p in paths):
-                if time.monotonic() >= deadline: raise TimeoutError('some ranks did not publish cleanup receipts')
-                time.sleep(.25)
-            rows = [native.source.read_json(p.read_bytes()) for p in paths]
-            summary = aggregate(rows, args.world_size)
+            summary = collect_rank_summary(output, result, args.world_size, deadline)
         except Exception as exc:
             summary = dict(schema='ditserve.external-xdit-distributed.v1', status='native_sp_request_failed',
                 requested_requests=1, completed_requests=0, world_size=args.world_size,

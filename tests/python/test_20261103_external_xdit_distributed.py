@@ -82,6 +82,20 @@ class DistributedNativeTests(unittest.TestCase):
         for value in (None,'','GPU-unit-fixture-0','not-a-uuid'):
             with self.assertRaises(ValueError):distributed.normalize_uuid(value)
 
+    def test_rank_zero_failure_returns_without_waiting_for_blocked_peers(self):
+        with TemporaryDirectory() as directory:
+            output=Path(directory)
+            (output/'rank-0').mkdir()
+            failed=dict(rank=0,planned_returncode=1,error='actual unit fault',failed_stage='load_model')
+            distributed.publish_json(output/'rank-0'/'summary.json',failed)
+            with patch.object(distributed.time,'sleep',side_effect=AssertionError('must not wait for peers')):
+                result=distributed.collect_rank_summary(output,failed,4,float('inf'))
+            self.assertEqual(result['status'],'native_sp_request_failed')
+            self.assertEqual(result['completed_requests'],0)
+            self.assertEqual(result['available_rank_receipts'],[failed])
+            self.assertEqual(result['failed_stage'],'load_model')
+            self.assertFalse(result['qualification_eligible'])
+
     def test_atomic_receipt_publication_never_exposes_partial_json(self):
         with TemporaryDirectory() as directory:
             target=Path(directory)/'summary.json'
