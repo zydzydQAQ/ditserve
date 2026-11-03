@@ -59,10 +59,12 @@ class AsymmetricCFGStepper:
         self._last_delta_cfg: Optional["torch.Tensor"] = None
         self._last_delta_step: Optional[int] = None
         self._delta_velocity: Optional["torch.Tensor"] = None
+        self._last_cond_f32: Optional["torch.Tensor"] = None
         self._warmup_ref_l1: Optional[float] = None
         self._last_curvature: Optional[float] = None
         self._last_raw_curvature: Optional[float] = None
         self._had_folded_since_anchor: bool = False
+        self._consecutive_folds: int = 0
         self.curvature_history: list[dict] = []
         self.dynamic_fold_start_step: Optional[int] = None
 
@@ -99,20 +101,41 @@ class AsymmetricCFGStepper:
         self._last_delta_cfg = None
         self._last_delta_step = None
         self._delta_velocity = None
+        self._last_cond_f32 = None
         self._warmup_ref_l1 = None
         self._last_curvature = None
         self._last_raw_curvature = None
         self._had_folded_since_anchor = False
+        self._consecutive_folds = 0
         self.curvature_history.clear()
         self.dynamic_fold_start_step = None
 
     def fold_prediction(self, step_index: int, pred_cond: "torch.Tensor", guidance_scale: float) -> "torch.Tensor":
         prediction = pred_cond + (guidance_scale - 1.0) * self._predict_delta_cfg(step_index, pred_cond.dtype)
         self._had_folded_since_anchor = True
+        self._consecutive_folds += 1
         if self.dynamic_fold_start_step is None:
             self.dynamic_fold_start_step = int(step_index)
         if self.curvature_threshold is not None:
             self.stats["curvature_triggered_folds"] += 1
+            if self._last_curvature is not None:
+                torch = self.torch
+                cond_f32 = pred_cond.detach().to(torch.float32)
+                cond_curv = 0.0
+                if self._last_cond_f32 is not None and self._last_cond_f32.shape == cond_f32.shape:
+                    cond_l1 = max(1e-6, float(torch.linalg.vector_norm(cond_f32, ord=1).item()))
+                    diff_l1 = float(torch.linalg.vector_norm(cond_f32 - self._last_cond_f32, ord=1).item())
+                    cos_sim = float(
+                        torch.nn.functional.cosine_similarity(
+                            cond_f32.flatten().unsqueeze(0),
+                            self._last_cond_f32.flatten().unsqueeze(0),
+                        ).item()
+                    )
+                    ang_curv = max(0.0, 1.0 - cos_sim)
+                    cond_curv = 0.55 * (diff_l1 / cond_l1) + 0.45 * ang_curv
+                self._last_cond_f32 = cond_f32.clone()
+                stale_curv = self._last_curvature * (1.0 + 0.25 * self._consecutive_folds)
+                self._last_curvature = max(stale_curv, cond_curv)
         self.stats["folded_cfg_steps"] += 1
         self.stats["saved_uncond_forwards"] += 1
         self.stats["folded_step_indices"].append(int(step_index))
@@ -137,6 +160,7 @@ class AsymmetricCFGStepper:
             "last_curvature": self._last_curvature,
             "last_raw_curvature": self._last_raw_curvature,
             "had_folded_since_anchor": self._had_folded_since_anchor,
+            "consecutive_folds": self._consecutive_folds,
             "curvature_history": list(self.curvature_history),
             "dynamic_fold_start_step": self.dynamic_fold_start_step,
             "stats": dict(self.stats),
@@ -146,6 +170,8 @@ class AsymmetricCFGStepper:
             tensors["delta"] = self._last_delta_cfg.detach().cpu().clone()
         if self._delta_velocity is not None:
             tensors["velocity"] = self._delta_velocity.detach().cpu().clone()
+        if self._last_cond_f32 is not None and self.curvature_threshold is not None:
+            tensors["last_cond"] = self._last_cond_f32.detach().cpu().clone()
         return {"config": config, "runtime": runtime}, tensors
 
     def import_state(self, metadata: dict, tensors: dict) -> None:
@@ -160,11 +186,13 @@ class AsymmetricCFGStepper:
         self._last_curvature = runtime["last_curvature"]
         self._last_raw_curvature = runtime["last_raw_curvature"]
         self._had_folded_since_anchor = bool(runtime["had_folded_since_anchor"])
+        self._consecutive_folds = int(runtime.get("consecutive_folds", 0))
         self.curvature_history = list(runtime["curvature_history"])
         self.dynamic_fold_start_step = runtime["dynamic_fold_start_step"]
         self.stats = dict(runtime["stats"])
         self._last_delta_cfg = None if self._last_delta_step is None else tensors["delta"]
         self._delta_velocity = tensors.get("velocity")
+        self._last_cond_f32 = tensors.get("last_cond")
 
     def _update_curvature_metrics(self, index: int, delta_f32: "torch.Tensor") -> None:
         torch = self.torch
@@ -236,8 +264,11 @@ class AsymmetricCFGStepper:
         """Record an exact (pred_cond, pred_uncond) pair from a CFG=2 parallel step."""
         torch = self.torch
         started = time.perf_counter()
-        delta_f32 = pred_cond.detach().to(torch.float32) - pred_uncond.detach().to(torch.float32)
+        cond_f32 = pred_cond.detach().to(torch.float32)
+        delta_f32 = cond_f32 - pred_uncond.detach().to(torch.float32)
         self._update_curvature_metrics(int(index), delta_f32)
+        self._last_cond_f32 = cond_f32.clone()
+        self._consecutive_folds = 0
         elapsed_ms = (time.perf_counter() - started) * 1000.0
         self.stats["curvature_metric_evals"] += 1
         self.stats["curvature_gate_ms"] += elapsed_ms

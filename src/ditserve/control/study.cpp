@@ -794,6 +794,13 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             if(::pwrite(fd.at(gpu),bytes,8,0)!=8)throw std::runtime_error("doorbell write failed: "+path.at(gpu));
             ++rings;
         }
+        std::uint64_t read(int gpu)const{
+            unsigned char bytes[8]={0,0,0,0,0,0,0,0};
+            if(::pread(fd.at(gpu),bytes,8,0)!=8)return 0;
+            std::uint64_t value=0;
+            for(int k=0;k<8;++k)value|=static_cast<std::uint64_t>(bytes[k])<<(8*k);
+            return value;
+        }
     } bells;
     if(doorbell){
         bells.dir=transfer_dir/("doorbell-"+std::to_string(::getpid())+"-"+std::to_string(static_cast<long long>(monotonic_seconds()*1e6)));
@@ -1186,13 +1193,18 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 }
                 advances.emplace_back(video(gpu),advance);
             }
-            work_unit=[&workers,stagings,advances,deadline,timing]{
+            work_unit=[&workers,&bells,group,stagings,advances,deadline,timing]{
                 Json out={{"ranks",Json::array()}};
+                bool staged=false;
                 for(std::size_t k=0;k<stagings.size();++k){
                     const auto& st=stagings[k];const auto& rid=st.id;
                     const char* prepare_key=k?"pair_prepare":"prepare";const char* transfer_key=k?"pair_transfer":"transfer";
-                    if(!st.prepare.is_null())out[prepare_key]=timing->call(workers.get(st.source_name),st.source_name,"prepare",st.prepare,deadline);
+                    if(!st.prepare.is_null()){
+                        staged=true;
+                        out[prepare_key]=timing->call(workers.get(st.source_name),st.source_name,"prepare",st.prepare,deadline);
+                    }
                     if(!st.targets.empty()){
+                        staged=true;
                         const auto exported=timing->call(workers.get(st.source_name),st.source_name,"export",
                             {{"op","block_export"},{"state_id",rid},{"path",st.transfer},{"release",st.release_source}},deadline);
                         const double imports_begin=timing->now();
@@ -1207,6 +1219,18 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                         if(error)std::rethrow_exception(error);
                         out[transfer_key]={{"bytes",exported.value("bytes",0)},{"export_ms",number_field(exported,"export_ms")},
                                            {"write_ms",number_field(exported,"write_ms")},{"targets",st.targets.size()},{"imports",imported}};
+                    }
+                }
+                if(staged&&!advances.empty()&&advances.front().second.contains("doorbell_epoch")){
+                    bool rung_during_staging=false;
+                    for(std::size_t r=0;r<group.size()&&r<advances.size();++r){
+                        const auto want=advances[r].second.at("doorbell_epoch").get<std::uint64_t>();
+                        if(bells.read(group[r])>want){rung_during_staging=true;break;}
+                    }
+                    if(rung_during_staging){
+                        timing->span("advances_skipped_doorbell",timing->now(),"completed");
+                        out["pre_advance_doorbell_stop"]=true;
+                        return out;
                     }
                 }
                 const double advances_begin=timing->now();
@@ -1300,7 +1324,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         row["action_ms"][key]=row.value("action_ms",Json::object()).value(key,0.)+elapsed;
         row["quanta"]=row.value("quanta",0)+1;
         if(task.rung_ms>=0){
-            bool stopped=false;
+            bool stopped=out.value("pre_advance_doorbell_stop",false);
             for(const auto& rank:out.value("ranks",Json::array()))for(const auto& event:rank.value("events",Json::array()))
                 stopped=stopped||event.value("doorbell_stop",false);
             if(stopped){
@@ -1426,6 +1450,18 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             row["transfers"]=row.value("transfers",0)+1;
             row["transfer_bytes"]=number_field(row,"transfer_bytes")+number_field(transfer,"bytes");
             row["transfer_export_ms"]=number_field(row,"transfer_export_ms")+number_field(transfer,"export_ms")+number_field(transfer,"write_ms");
+        }
+        if(out.value("pre_advance_doorbell_stop",false)){
+            if(out.contains("prepare"))row["model_ms"]=number_field(row,"model_ms")+number_field(out.at("prepare"),"model_ms");
+            state.prepared=true;
+            state.status="suspended";
+            const std::string pair=task.assignment.value("pair",std::string());
+            if(!pair.empty()){
+                auto& pstate=live[index.at(pair)];
+                pstate.prepared=true;
+                pstate.status="suspended";
+            }
+            return;
         }
         const auto& ranks=out.at("ranks");
         const auto expected_form=parse_form(task.assignment.value("form",std::string("sp1")));

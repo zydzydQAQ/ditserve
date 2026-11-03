@@ -705,17 +705,33 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         auto found = kept_forms.find(klass);
         if (found != kept_forms.end()) return found->second;
         std::vector<bool> keep(forms.size(), true);
-        if (prune && !policy.fixed_degree && cost.klass(klass).at("kind") == "video"
-            && cost.placement_invariant(klass) && int_field(state, "sp_groups_running", 0, 0) == 0) {
+        const auto& krow = cost.klass(klass);
+        const auto klinks = krow.contains("links") ? krow.at("links") : cost.profile().value("links", Json::object());
+        bool has_concurrent = false;
+        for (const auto& link : klinks)
+            if (link.is_object() && link.contains("concurrent_gbps") && !link.at("concurrent_gbps").empty()) has_concurrent = true;
+        if (prune && !policy.fixed_degree && krow.at("kind") == "video"
+            && !has_concurrent && int_field(state, "sp_groups_running", 0, 0) == 0) {
             const int lowest = min_video_degree(klass);
-            std::vector<double> ms(forms.size());
-            for (std::size_t i = 0; i < forms.size(); ++i) ms[i] = cost.step_ms(klass, forms[i], 1);
+            std::vector<double> min_ms(forms.size()), max_ms(forms.size());
+            for (std::size_t i = 0; i < forms.size(); ++i) {
+                double lo = cost.step_ms(klass, forms[i], 1), hi = lo;
+                if (!cost.placement_invariant(klass) && forms[i].degree() <= gpus) {
+                    for (const auto& g : cluster_groups(gpus, {forms[i].degree()})) {
+                        const double ms = cost.step_ms(klass, forms[i], 1, &g);
+                        lo = std::min(lo, ms);
+                        hi = std::max(hi, ms);
+                    }
+                }
+                min_ms[i] = lo;
+                max_ms[i] = hi;
+            }
             for (std::size_t i = 0; i < forms.size(); ++i) {
                 if (forms[i].degree() < lowest) continue;
                 for (std::size_t j = 0; j < forms.size() && keep[i]; ++j) {
                     if (j == i || forms[j].degree() < lowest || forms[j].degree() > gpus) continue;
-                    const bool fewer = forms[j].degree() < forms[i].degree(), faster = ms[j] < ms[i] - 1e-9;
-                    if (forms[j].degree() <= forms[i].degree() && ms[j] <= ms[i] + 1e-9 && (fewer || faster)) keep[i] = false;
+                    const bool fewer = forms[j].degree() < forms[i].degree(), faster = max_ms[j] < min_ms[i] - 1e-9;
+                    if (forms[j].degree() <= forms[i].degree() && max_ms[j] <= min_ms[i] + 1e-9 && (fewer || faster)) keep[i] = false;
                 }
             }
         }
@@ -770,7 +786,13 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         const double done = cost.completed_blocks(r, form);
         int quanta = left;
         const auto quantum = video_quantum(r, form, n, group);
-        if (quantum.is_number_integer() && left > 0) {
+        const bool continuous_doorbell = bool_field(
+            options, "continuous_doorbell",
+            (policy.id == "ditserve" || policy.id == "ditserve-approx")
+                && bool_field(options, "doorbell", false)
+                && bool_field(r, "rank_local_blocks", false))
+            && (!r.contains("pair") || r.at("pair").is_null());
+        if (quantum.is_number_integer() && left > 0 && !continuous_doorbell) {
             const bool rank_local = bool_field(r, "rank_local_blocks", false);
             const int per = quantum.get<int>(), bps = cost.execution_blocks_per_step(klass, form, rank_local, active_fold(r));
             Json future = r;future["blocks_done"] = 0;future["cfg_folded"] = false;
@@ -897,6 +919,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     // delay feasible work, and demoting them behind a long video only turns a
     // small miss into a very long tail.
     const double late_short_ms = number_field(options, "late_short_ms", 2000);
+    const double late_deadband_ms = number_field(options, "late_deadband_ms", 0.0);
     // Queue order among feasible requests: deadline (edf, the default), estimated remaining
     // single-GPU work (srtf) or arrival (fcfs); the lateness demotion applies to all three.
     const auto order_rule = options.value("order", policy.order);
@@ -928,7 +951,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         }
         EstimateEvidence evidence;
         const double remaining = estimate(*r, form, sp_groups(form), mid_step ? &group : nullptr, 0., capture ? &evidence : nullptr);
-        late[r] = demote_late && remaining > late_short_ms && now + remaining > number_field(*r, "deadline_ms");
+        late[r] = demote_late && remaining > late_short_ms && now + remaining > number_field(*r, "deadline_ms") + late_deadband_ms;
         rank_key[r] = order_rule == "edf" ? number_field(*r, "deadline_ms")
                     : order_rule == "srtf" ? estimate(*r, Form{}, 1) : number_field(*r, "arrival_ms");
         if (capture) {
@@ -1017,6 +1040,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     } else if (policy.approx) {
         cache_thresholds = {0.0, 0.08, 0.16, 0.24};
     }
+    const bool any_busy_initially = std::count(free.begin(), free.end(), false) > 0;
     bool knapsack_solved = false;
     std::map<const Json*, int> knapsack_target;
     std::map<const Json*, double> knapsack_tau;
@@ -1040,6 +1064,18 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                 for (int g = gpu / 4 * 4; g < std::min(gpus, gpu / 4 * 4 + 4); ++g) if (g / 2 != gpu / 2) value += occupied(g);
                 return value;
             };
+            auto companion_bonus = [&](int gpu) {
+                if (!policy.v5 || !policy.fission) return 0;
+                for (const Json* other : rows) if (other->at("kind") == "video" && other->value("cfg_fold_eligible", false)) {
+                    const auto group = group_of(*other);
+                    const auto it = std::find(group.begin(), group.end(), gpu);
+                    if (it != group.end() && group.size() >= 2) {
+                        const auto pos = static_cast<std::size_t>(std::distance(group.begin(), it));
+                        if (pos >= group.size() / 2) return 16;
+                    }
+                }
+                return 0;
+            };
             for (int gpu = 0; gpu < gpus; ++gpu) {
                 if (!free[gpu] || (continuous_batch > 0 && prepared && gpu != current.front())) continue;
                 if (strict_partition && reserve > 0 && !reserved(gpu)) continue;
@@ -1052,8 +1088,9 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                 }
                 if (score == 2 && hold_diffuse) continue;
                 if (score == 2 && policy.blocks && lazy && slack >= time_to_boundary(mid_owner[gpu])) continue;
-                if (score < rank) { rank = score; chosen = gpu; chosen_fit = image_placement == "pair_fit" ? fit(gpu) : 0; }
-                else if (image_placement == "pair_fit" && score == rank && fit(gpu) > chosen_fit) { chosen = gpu; chosen_fit = fit(gpu); }
+                const int gpu_fit = (image_placement == "pair_fit" ? fit(gpu) : 0) + (score == 1 ? companion_bonus(gpu) : 0);
+                if (score < rank) { rank = score; chosen = gpu; chosen_fit = gpu_fit; }
+                else if (score == rank && gpu_fit > chosen_fit) { chosen = gpu; chosen_fit = gpu_fit; }
             }
             if (chosen < 0) continue;
             free[chosen] = false;
@@ -1160,9 +1197,12 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         const int blocks_done = int_field(r, "blocks_done", 0, 0);
         const bool fold_eligible = policy.v5 && r.value("cfg_fold_eligible", false)
                                    && int_field(r, "steps_done", 0, 0) < steps;
+        const Form cur_form = (prepared && !current.empty()) ? form_of(r, current) : Form{};
+        const bool already_contracted = prepared && r.value("cfg_folded", false) && cur_form.cfg == 1;
         const bool resource_transition = policy.fission && prepared && blocks_done == 0
-                                         && (fold_eligible || r.value("cfg_folded", false));
+                                         && (fold_eligible != already_contracted);
         const bool fixed = prepared && !resource_transition && (blocks_done > 0 || !policy.elastic || pin_started
+                                        || (already_contracted && fold_eligible)
                                         || (policy.rounds && int_field(r, "steps_done", 0, 0) % round_steps != 0));
         if (fixed) {
             // A fixed placement can share its workers over time with another
@@ -1374,7 +1414,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                                 const double eff = single_ms / (d * step_t);
                                 const double qual_pen = 120.0 * tau;
                                 const double res_pen = extra > 0 ? 5.0 : 0.0;
-                                const double widen_bonus = (widen > 0 && eff >= widen) ? 10.0 * d : 0.0;
+                                const double widen_bonus = (widen > 0 && eff >= widen) ? 18.0 * d : 0.0;
                                 const double u = meets
                                     ? (w_edf * 1000.0 + 80.0 * eff - 14.0 * d + widen_bonus - qual_pen - res_pen)
                                     : (w_edf * 60.0 + 25.0 * eff - 12.0 * d - qual_pen - res_pen);
@@ -1406,7 +1446,8 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                         const int lmin = int_field(cost.klass(lklass), "min_degree", 1);
                         int new_d = cur_d;
                         for (int d : degrees) {
-                            if (d > new_d && d >= lmin && used_g - cur_d + d <= g_avail) {
+                            if (d > new_d && d >= lmin && used_g - cur_d + d <= g_avail
+                                && cost.step_ms(lklass, form_for(lklass, d), 1) < cost.step_ms(lklass, form_for(lklass, new_d), 1) - 1e-9) {
                                 new_d = d;
                             }
                         }
@@ -1455,7 +1496,9 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                     const bool candidate_meets = now + candidate <= number_field(r, "deadline_ms");
                     const double efficiency = remaining_work ? single_remaining / (d * candidate)
                                                              : single / (d * cost.step_ms(klass, form, sp_groups(form)));
-                    if (d > target && efficiency >= widen && (!remaining_work || !target_meets || candidate_meets)) target = d;
+                    const bool faster_step = !remaining_work
+                        || cost.step_ms(klass, form, sp_groups(form)) < cost.step_ms(klass, target_form, sp_groups(target_form)) - 1e-9;
+                    if (d > target && efficiency >= widen && faster_step && (!remaining_work || !target_meets || candidate_meets)) target = d;
                     // The legacy single-step ablation may widen on a pair estimate.
                     // A pair that is not yet assigned cannot justify remaining-work
                     // widening or bypass its regroup/deadline protection.
@@ -1497,16 +1540,31 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                 }
             }
         }
-        if (chosen.empty()) continue;
         const bool cfg_folded = policy.v5 && r.value("cfg_fold_eligible", false)
                                 && int_field(r, "steps_done", 0, 0) < steps;
         const bool fission_on_demand = bool_field(options, "fission_on_demand", policy.id == "ditserve-approx");
+        const bool demand_present = others_waiting || !assignments.empty() || any_busy_initially;
+        bool already_fissioned = false;
+        if (chosen.empty() && cfg_folded && policy.fission && prepared && current.size() >= 2
+            && (!fission_on_demand || demand_present)) {
+            const int half = static_cast<int>(current.size() / 2);
+            const std::vector<int> primary(current.begin(), current.begin() + half);
+            if (half >= min_degree && all_free(primary) && !held_by_other(primary, &r)) {
+                chosen = primary;
+                already_fissioned = true;
+            }
+        }
+        if (chosen.empty() && !cfg_folded && already_contracted && static_cast<int>(current.size()) >= min_degree
+            && all_free(current) && !held_by_other(current, &r)) {
+            chosen = current;
+        }
+        if (chosen.empty()) continue;
         // The class minimum is a memory/shape constraint; the policy's CFG-pair
         // minimum is not. Thus min_degree=1 still permits CFG2 to SP1.
-        const bool release = cfg_folded && policy.fission && chosen.size() >= 2
+        const bool release = already_fissioned || (cfg_folded && policy.fission && chosen.size() >= 2
                              && static_cast<int>(chosen.size() / 2) >= min_degree
-                             && (!fission_on_demand || others_waiting);
-        if (release) chosen.resize(static_cast<int>(chosen.size()) / 2);
+                             && (!fission_on_demand || demand_present));
+        if (release && !already_fissioned) chosen.resize(static_cast<int>(chosen.size()) / 2);
         take(chosen);
         Form form = form_for(klass, static_cast<int>(chosen.size()), &chosen);
         if (release && form.cfg == 2) form = Form{1, form.sp * 2, form.ring};

@@ -569,8 +569,40 @@ def matched_comparisons(plan, results):
         superiority_qualified=False)
 
 
-def evaluate(plan, protocol, evidence, *, root=Path('.'), lpips=False, lpips_backbone=None, lpips_head=None):
+VBENCH_SCHEMA = 'ditserve.benchmark.vbench_evaluation.v1'
+VBENCH_REVISION = '1039fe66d7aa2f4b214003ca2d35f5011c48bfee'
+
+
+def validate_vbench_receipt(receipt):
+    if receipt is None:
+        return dict(status='unknown', reason='no pinned complete official VBench evidence consumed')
+    if not isinstance(receipt, dict) or not verify_seal(receipt):
+        raise ValueError('unsealed or tampered VBench evaluation receipt')
+    if receipt.get('schema_version') != VBENCH_SCHEMA:
+        raise ValueError('unexpected VBench evaluation receipt schema')
+    if receipt.get('revision') != VBENCH_REVISION:
+        raise ValueError('VBench evaluation receipt revision does not match pinned revision')
+    if receipt.get('status') != 'completed' or receipt.get('verified') is not True:
+        raise ValueError('VBench evaluation receipt is not verified/completed')
+    dimensions = receipt.get('dimensions')
+    if not isinstance(dimensions, dict) or not dimensions:
+        raise ValueError('VBench evaluation receipt has no measured dimensions')
+    for name, entry in dimensions.items():
+        if not isinstance(entry, dict) or type(entry.get('score')) not in (int, float) or not math.isfinite(entry['score']):
+            raise ValueError(f'invalid VBench dimension score: {name}')
+    return dict(
+        status='measured',
+        receipt_sha256=receipt['sha256'],
+        manifest_sha256=receipt.get('manifest_sha256'),
+        revision=receipt['revision'],
+        dimensions=copy.deepcopy(dimensions),
+        reason=None,
+    )
+
+
+def evaluate(plan, protocol, evidence, *, root=Path('.'), lpips=False, lpips_backbone=None, lpips_head=None, vbench_receipt=None):
     validate_plan(plan, protocol)
+    vbench_state = validate_vbench_receipt(vbench_receipt)
     index = index_evidence(evidence, plan)
     lpips_adapter, lpips_state = prepare_lpips(lpips, backbone=lpips_backbone, head=lpips_head)
     metrics_identity = metric_identity(lpips_state)
@@ -627,7 +659,7 @@ def evaluate(plan, protocol, evidence, *, root=Path('.'), lpips=False, lpips_bac
         if row['status'] != 'measured':
             for key in ('metrics', 'actual_fold_count', 'verified_output', 'reference_output', 'run_sha256', 'artifact_sha256'):
                 row.pop(key, None)
-    result = summarize_results(plan, results, lpips_state)
+    result = summarize_results(plan, results, lpips_state, vbench_state=vbench_state)
     result.update(schema=SCHEMA, plan_sha256=plan['sha256'], evidence_sha256=evidence['sha256'],
         protocol_sha256=plan['protocol_sha256'], evidence=copy.deepcopy(evidence),
         metric_identity=metrics_identity, source_binding=source_binding(plan, evidence, metrics_identity),
@@ -635,7 +667,7 @@ def evaluate(plan, protocol, evidence, *, root=Path('.'), lpips=False, lpips_bac
     return seal(result)
 
 
-def summarize_results(plan, results, lpips_state):
+def summarize_results(plan, results, lpips_state, vbench_state=None):
     """Recompute summaries from full-denominator observations, also after merging."""
     arms = {arm['id']: arm for arm in plan['arms']}
     counts = Counter(row['status'] for row in results.values())
@@ -670,7 +702,9 @@ def summarize_results(plan, results, lpips_state):
             unknown_or_missing_pair_arms=len(results) - lpips_count,
             unit='dimensionless perceptual distance; lower is better', transform=LPIPS_TRANSFORM,
             adapter=copy.deepcopy(lpips_state)),
-        semantic_qualification='unknown', vbench=dict(status='unknown', reason='no pinned complete official VBench evidence consumed'),
+        semantic_qualification='measured' if (vbench_state and vbench_state.get('status') == 'measured') else 'unknown',
+        vbench=copy.deepcopy(vbench_state) if vbench_state is not None else dict(
+            status='unknown', reason='no pinned complete official VBench evidence consumed'),
         qualification_eligible=False, superiority_qualified=False,
         resource_scope=dict(artifact_maps_at_once=2, file_hash_chunk_bytes=CHUNK_BYTES,
             metric_working_set='frame-sized float64/SSIM arrays and optional CPU LPIPS activations; no full-video copies',
@@ -695,12 +729,16 @@ def main():
     parser.add_argument('--lpips', action='store_true', help='require real offline CPU selftest before LPIPS scores')
     parser.add_argument('--lpips-backbone', type=Path)
     parser.add_argument('--lpips-head', type=Path)
+    parser.add_argument('--vbench-receipt', type=Path)
     args = parser.parse_args()
     inputs = {name: bound_json(getattr(args, name)) for name in ('plan', 'evidence', 'protocol')}
+    if args.vbench_receipt is not None:
+        inputs['vbench_receipt'] = bound_json(args.vbench_receipt)
     if (args.lpips_backbone or args.lpips_head) and not args.lpips:
         parser.error('explicit LPIPS weight paths require --lpips')
     result = evaluate(inputs['plan'][0], inputs['protocol'][0], inputs['evidence'][0], root=args.evidence.parent,
-                      lpips=args.lpips, lpips_backbone=args.lpips_backbone, lpips_head=args.lpips_head)
+                      lpips=args.lpips, lpips_backbone=args.lpips_backbone, lpips_head=args.lpips_head,
+                      vbench_receipt=inputs['vbench_receipt'][0] if 'vbench_receipt' in inputs else None)
     if any(fingerprint(getattr(args, name)) != value[2] for name, value in inputs.items()):
         raise ValueError('input plan/evidence/protocol changed during evaluation')
     result['input_file_sha256'] = {name: value[1] for name, value in inputs.items()}

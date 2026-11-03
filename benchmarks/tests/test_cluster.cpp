@@ -1214,6 +1214,64 @@ int main() {
             require(result.at("metrics").at("completed") == 24, std::string("simulation completes: ") + policy);
         }
     });
+    check("placement-interval pruning, continuous-doorbell quanta, and fission continuation", [&] {
+        // 1. Placement-scoped calibrated PCIe profile: cfg2 (max 583.4 ms) still prunes cfg2sp2 (min > 650 ms).
+        Json scoped = pcie_profile();
+        scoped["classes"]["video"]["forms"]["cfg2"] = {{"placements", {{"0-1", {{"step_ms", 583.4}}}}}};
+        scoped["classes"]["video"]["forms"]["cfg2sp2"] = {{"placements", {{"0-3", {{"step_ms", 790.6}}}}}};
+        scoped["classes"]["video"]["forms"]["cfg2sp4"] = {{"placements", {{"0-7", {{"step_ms", 567.1}}}}}};
+        const ClusterCost scoped_cost(scoped);
+        require(!scoped_cost.placement_invariant("video"), "placement-scoped table recorded");
+        const auto scoped_lone = cluster_plan(
+            {{"now_ms", 0}, {"gpus", 8}, {"busy", Json::array()}, {"requests", Json::array({video("v", 1e9)})}},
+            "ditserve", scoped_cost, pcie_forms).at("assignments");
+        require(scoped_lone.size() == 1 && scoped_lone[0].at("form") == "cfg2",
+                "interval dominance pruning keeps lone video on cfg2 under placement-scoped profile: " + scoped_lone.dump());
+
+        // 2. Continuous doorbell counts 1 RPC per remaining solver step (+1 decode) instead of multi-quantum per step.
+        Json doorbell_prof = pcie_profile();
+        doorbell_prof["quantum_overhead_ms"] = 2.133;
+        const ClusterCost doorbell_cost(doorbell_prof);
+        // 20 steps on cfg2 (583.4 ms/step) + 1840 ms decode = 13508 ms without dispatch.
+        // With 21 continuous-doorbell quanta (44.793 ms), total is 13552.793 ms <= 13588.5 ms (feasible).
+        // Without continuous_doorbell (41 quanta = 87.453 ms), total would be 13595.453 ms > 13588.5 ms (false late demotion).
+        Json v_urgent = video("v_urgent", 13588.5, {{"rank_local_blocks", true}});
+        Json v_relaxed = video("v_relaxed", 20000.0, {{"rank_local_blocks", true}});
+        ClusterPlanTrace trace;
+        trace.max_rows = 8; trace.max_bytes = 65536;
+        const auto db_plan = cluster_plan(
+            {{"now_ms", 0}, {"gpus", 2}, {"busy", Json::array()}, {"requests", Json::array({v_urgent, v_relaxed})}},
+            "ditserve", doorbell_cost, {{"forms", {"cfg2"}}, {"quantum_blocks", 30}, {"doorbell", true}}, &trace).at("assignments");
+        require(db_plan.size() == 1 && db_plan[0].at("request_id") == "v_urgent",
+                "continuous doorbell avoids false demote_late demotion");
+        require(!trace.rows.empty() && trace.rows[0].at("modeled_dispatch_quanta") == 21
+                && !trace.rows[0].at("demoted_late").get<bool>(), "21 continuous-doorbell quanta modeled");
+
+        // 3. Urgent image ordered BEFORE a fold-eligible video takes the companion GPU (1), while the video
+        // contracts onto its primary GPU (0) in the same scheduling pass; and on subsequent folded steps
+        // continues advancing on GPU 0 while GPU 1 is busy.
+        Json f_vid = video("v_fold", 1e9, {{"status", "suspended"}, {"prepared", true}, {"steps_done", 12}, {"steps_total", 20},
+            {"group", {0, 1}}, {"form", "cfg2"}, {"cfg_fold_eligible", true}});
+        Json f_img = image("i_urgent", 500);
+        const auto same_pass = cluster_plan(
+            {{"now_ms", 0}, {"gpus", 2}, {"busy", Json::array()}, {"requests", Json::array({f_vid, f_img})}},
+            "ditserve-approx", ClusterCost(profile()), {{"forms", {"cfg2"}}}).at("assignments");
+        require(same_pass.size() == 2, "both urgent image and contracting video placed in the same pass: " + same_pass.dump());
+        require(same_pass[0].at("request_id") == "i_urgent" && same_pass[0].at("group") == Json::array({1}),
+                "urgent image takes companion half GPU 1");
+        require(same_pass[1].at("request_id") == "v_fold" && same_pass[1].at("group") == Json::array({0})
+                && same_pass[1].at("form") == "sp1" && same_pass[1].value("fission", false),
+                "video contracts onto primary half GPU 0");
+
+        // Step 13 continuation while companion GPU 1 is busy: video continues on GPU 0 without stalling.
+        f_vid["steps_done"] = 13; f_vid["group"] = {0}; f_vid["form"] = "sp1"; f_vid["cfg_folded"] = true;
+        const auto cont_plan = cluster_plan(
+            {{"now_ms", 0}, {"gpus", 2}, {"busy", Json::array({false, true})}, {"requests", Json::array({f_vid})}},
+            "ditserve-approx", ClusterCost(profile()), {{"forms", {"cfg2"}}}).at("assignments");
+        require(cont_plan.size() == 1 && cont_plan[0].at("group") == Json::array({0}) && cont_plan[0].at("form") == "sp1"
+                && cont_plan[0].value("cfg_folded", false) && cont_plan[0].value("fission", false),
+                "contracted video continues on primary half while companion GPU is busy: " + cont_plan.dump());
+    });
     std::cout << checks - failures << "/" << checks << " cluster checks passed\n";
     return failures ? 1 : 0;
 }
