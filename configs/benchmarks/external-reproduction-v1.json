@@ -1,0 +1,110 @@
+{
+  "schema": "ditserve.external-reproduction-contract.v1",
+  "id": "external-reproduction-v1",
+  "status": "implementation_and_compatibility_validation",
+  "qualified": false,
+  "formal_protocol_file": "formal-mixed-v1.json",
+  "formal_protocol_sha256": "6bcefd0a15088214dcde21c787007f52cfe79fbb262532a5d5c3682bcb0e801c",
+  "models": [
+    "wan21",
+    "wan22",
+    "sd35"
+  ],
+  "comparison_cells": [
+    {
+      "id": "wan21-sd35",
+      "models": [
+        "wan21",
+        "sd35"
+      ],
+      "scope": "existing frozen pairwise mixed-modality, mixed-resolution trace"
+    },
+    {
+      "id": "wan22-sd35",
+      "models": [
+        "wan22",
+        "sd35"
+      ],
+      "scope": "existing frozen pairwise mixed-modality, mixed-resolution trace"
+    }
+  ],
+  "three_model_mixture": "not in the current frozen formal protocol; requires a separately versioned protocol and calibration",
+  "sources": [
+    {
+      "id": "TetriServe",
+      "repository": "DiT-Serving/TetriServe",
+      "commit": "414ec2956c09466ccd7842fda9851511462bd42a",
+      "preserve": [
+        "original scheduler",
+        "round batching",
+        "ZMQ worker dispatch",
+        "NCCL latent transfer",
+        "dynamic SP regroup"
+      ]
+    },
+    {
+      "id": "GF-DiT",
+      "repository": "SJTU-Liquid/GF-DiT",
+      "commit": "442531e499891d4ffa654e87c076f03326a37b98",
+      "preserve": [
+        "runtime_v2 EDF-best-fit",
+        "original cost model and admission policy",
+        "original migration engine",
+        "GFC online execution groups"
+      ]
+    },
+    {
+      "id": "xDiT",
+      "repository": "xdit-project/xDiT",
+      "commit": "16c34e7f070de65d9d2c67a6d74e0007dd8b426a",
+      "preserve": [
+        "official pipeline/runner",
+        "native parallel decomposition"
+      ],
+      "serving_scope": "Any added multi-model queue/router is a disclosed port, not an upstream native serving feature"
+    },
+    {
+      "id": "GenServe",
+      "paper": "2604.04335v2",
+      "source_status": "official code release not yet located",
+      "eligibility": "unavailable until official code is found or a separately labeled paper reimplementation is validated; SBP-ESP policy is not a full-system result"
+    }
+  ],
+  "shared_backend": {
+    "frozen_build": "51740c05944b063e39bc325b64241cd611a73b41",
+    "xfuser_base_commit": "16c34e7f070de65d9d2c67a6d74e0007dd8b426a",
+    "identity": "complete source inventory, patch digest, actual import origins, kernel selection and dependency versions; revision label alone is insufficient",
+    "gfc_commit": "9aadcdc6d4abc30af13feac908fbb4be98313398",
+    "rule": "Share validated model/kernel components while preserving each external system scheduler, batching, state movement and communication design. A GFC-to-NCCL substitution is not a faithful GF-DiT reproduction."
+  },
+  "fairness": {
+    "input": "Export each frozen request once; reuse identical prompt bytes, model manifest, resolution, frames, steps, CFG scale, negative prompt, scheduler settings, seed, arrival and absolute deadline.",
+    "quality": "Decode the full required output before completion. Separate semantic/visual quality evaluation from finite-value and digest checks; no skipped steps, hidden cache approximation or altered precision without a separately labeled variant.",
+    "batching": {
+      "outputs_per_request": 1,
+      "native_dynamic_batching": "enabled where supported; tune using calibration only",
+      "legacy_batch_limit_1": "existing DITSERVE controller configuration, not a requirement to disable an external system native batching"
+    },
+    "hardware": "Equal total allocated GPUs, actual GPU types and topology; report resident model memory, host CPU/RAM, and cross-node placement. Time comparison runs sequentially or on disjoint nodes to control co-tenant contention.",
+    "arrival": "Open-loop arrivals from one client monotonic origin. Queueing and dispatch lag count toward latency; never postpone the original deadline when admission is delayed.",
+    "denominator": "All offered requests remain in SLO attainment, including rejected, failed, cancelled, unexecuted and timed-out requests. Missing results are failures, never dropped.",
+    "timing": "Same start and completion boundary for every system. Report scheduled-arrival-to-output-ready and wire/serialization separately; do not compare a digest-only server to a base64 image/video response as one latency metric.",
+    "slo": "One frozen per-shape SP1 service reference shared by every system; no baseline-specific SLO rescaling.",
+    "calibration": "Identical split and comparable tuning budgets; allow native batching/parallelism tuning without test-set feedback; record model-specific cost profiles.",
+    "report": "Per-model and per-resolution SLO attainment, goodput and latency; throughput with measurement horizon/drain convention; memory and GPU-time; three fixed test seeds and uncertainty across independent runs.",
+    "unsupported": "Mark exact unsupported cells and reasons. A supported subset has its own table and cannot stand in for full mixed-workload results."
+  },
+  "qualification_sequence": [
+    "full source and shared-backend identity verification",
+    "actual fixed-image imports and dependencies",
+    "offline exact model loading and native single-request generation",
+    "uninterrupted versus segmented/reassigned numerical validation, where applicable",
+    "two-request overlap, mixed-resolution and cross-model state isolation",
+    "common quality/output-completion validation",
+    "calibration split tuning and source-bound profile freeze",
+    "identical held-out trace replay under equal resource allocation",
+    "independent result accounting and full-system comparison eligibility"
+  ],
+  "current_policy_reimplementations": "in-framework policy controls only; excluded from official external-system claims",
+  "allows": []
+}
