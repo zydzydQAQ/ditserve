@@ -106,5 +106,110 @@
     "independent result accounting and full-system comparison eligibility"
   ],
   "current_policy_reimplementations": "in-framework policy controls only; excluded from official external-system claims",
-  "allows": []
+  "allows": [],
+  "native_support_boundaries": {
+    "evidence_scope": "Static audit of the frozen official commits, plus separately recorded component GPU diagnostics; not full-system qualification.",
+    "TetriServe": {
+      "model_scope": "One model per CServeRuntime; a same-pool SD3.5/Wan mixture requires an explicitly labelled extension.",
+      "batch_scope": "Original split/merge regroups samples of one request ID. It is not independent-request dynamic coalescing. Each tensor batch has one resolution/seed/profile; mixed resolutions are separate requests.",
+      "required_runtime_dependency": "pyzmq is required by the original Router/Dealer worker control plane. Direct CServeRuntime.generate bypasses only the HTTP front door.",
+      "source_locations": [
+        "tetriserve/engine/runtime.py:65",
+        "tetriserve/engine/runtime.py:104",
+        "tetriserve/engine/runtime.py:177",
+        "tetriserve/engine/runner.py:178",
+        "tetriserve/engine/request_tracker.py:63"
+      ],
+      "pending_compatibility": [
+        "Convert original remote Future/Work.wait float timeouts to timedelta on Torch2.10 without replacing transport.",
+        "Validate BS1/BS2 and reject unsupported nondivisible splitting; arbitrary mixed-step batches are not established.",
+        "Wan requires a video output contract and complete UniPC history, beyond the five SD3 tensors."
+      ]
+    },
+    "GF-DiT": {
+      "model_scope": "runtime_v2 registry contains Wan/Qwen; the ordinary diffusion registry SD3 entry does not establish runtime_v2 SD3 support. Runner and workers share one model configuration.",
+      "required_runtime_dependency": "Native WorkerWrapperBase, VllmConfig/workspace/model loader and Wan parallel layers use real vLLM. Lightweight control-plane dependencies alone do not satisfy this path.",
+      "shared_port_scope": "Preserve original MultiprocWorkerPool spawn/Pipe/readers/event loop, EDF/DAG and migration, with an explicit real xfuser model/session adapter. Do not synthesize fake vllm modules.",
+      "source_locations": [
+        "vllm_omni/diffusion/runtime_v2/registry.py:16",
+        "vllm_omni/diffusion/runtime_v2/runner.py:101",
+        "vllm_omni/diffusion/runtime_v2/multiproc_worker.py:905",
+        "vllm_omni/diffusion/worker/diffusion_worker.py:127"
+      ],
+      "pending_compatibility": [
+        "Bridge online logical groups and actual attention collectives to original GF collective_runtime, beyond successful SP1 migration.",
+        "Do not accept missing cost profiles returning zero for formal EDF comparison.",
+        "Treat cross-model same-pool scheduling as an added port feature, not an upstream capability."
+      ]
+    },
+    "xDiT": {
+      "model_scope": "Official native Wan runners can validate model/parallel execution; added serving queues or cross-model routing remain explicitly disclosed extensions."
+    },
+    "interpretation": "An unsupported native comparison cell remains visible. A common-backend extended port has a separate label, source/patch identity and validation; it is not an untouched native-oracle result."
+  },
+  "remaining_implementation": [
+    {
+      "order": 1,
+      "task": "Freeze common numerical profile",
+      "requires": [
+        "Versioned Wan recipe: DiT/UMT5/VAE learned components BF16, UMT5 on CPU; latent and UniPC solver/history remain FP32 where required",
+        "Identical CPU Generator producing FP32 initial noise, plus initial-noise and positive/negative embedding digests",
+        "Same explicit DiT attention; VAE math attention and FP32 inverse-normalization before BF16 VAE, followed by FP32 postprocessing",
+        "Real timesteps/sigmas plus scheduler-order/flow-shift receipts",
+        "Profile-bound actual VAE temporal/spatial factors, component dtype/device and BF16 migration/cache validation; cache-off first, approximation separately qualified"
+      ],
+      "acceptance": "Fresh uninterrupted-versus-segmented/parallel validation on every supported formal shape; historical517 outputs remain separate."
+    },
+    {
+      "order": 2,
+      "task": "Build source-bound calibration profiles",
+      "requires": [
+        "SD3.5 512/1024 x BS1/BS2 x SP1/SP2, with explicit OOM/unsupported cells",
+        "Wan formal shapes and relevant SP degrees",
+        "Common calibration split and tuning budget"
+      ],
+      "acceptance": "Before the real service loop starts, measured nonzero costs cover every initially permitted shape/batch/SP; record unsupported cells. Recalibrate later Wan/model/SP extensions before their replay. No synthetic costs or test-trace feedback in formal runs."
+    },
+    {
+      "order": 3,
+      "task": "Integrate original full service execution loops",
+      "requires": [
+        "Tetri pyzmq image dependency and explicit timeout compatibility",
+        "GF original process pool with genuine shared model/session adapter or separately qualified native vLLM stack"
+      ],
+      "acceptance": "Two overlapping independent seeds at 512/1024, real dispatch, identities, complete outputs, timeout/failure reporting and process cleanup."
+    },
+    {
+      "order": 4,
+      "task": "Complete scheduler-driven migration and SP changes",
+      "requires": [
+        "Original scheduler causes the move",
+        "SP1-to-SP2-to-SP1",
+        "Noncontiguous ranks and concurrent requests",
+        "Original Tetri NCCL transport or GF online GFC collectives respectively"
+      ],
+      "acceptance": "State ownership, solver/RNG/cache continuation and actual communication are validated against independent full-model results; no scheduler or collective replacement."
+    },
+    {
+      "order": 5,
+      "task": "Add explicit video and mixed-model ports",
+      "requires": [
+        "Complete Wan UniPC model_outputs/last_sample/cursor history",
+        "Video decode and completion protocol",
+        "Model residency and switching accounting",
+        "Separate native supported intersections and extended mixed-model labels"
+      ],
+      "acceptance": "Per-request state isolation and quality validation across each frozen two-model mixture; unsupported native cells retained."
+    },
+    {
+      "order": 6,
+      "task": "Run fair held-out serving comparison",
+      "requires": [
+        "Same immutable input export and all-offered denominator",
+        "Equal allocated GPU/CPU resources and controlled co-tenancy",
+        "Three fixed seeds and per-modality/resolution metrics"
+      ],
+      "acceptance": "Independent accounting of failures, SLO goodput, long tails, quality and GPU-time; only then full-system comparison eligibility."
+    }
+  ]
 }
