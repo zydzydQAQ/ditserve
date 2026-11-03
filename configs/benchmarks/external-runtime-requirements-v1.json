@@ -1055,7 +1055,7 @@
         "field": "geometry_and_text_contract",
         "shared_517": "Formal shapes are480x832x81,720x1280x81,512x896x121,704x1280x121;50steps,G5; model-specific spatial multiple checked",
         "official_native_observed": "Adapter passes exact formal shape, explicit negative prompt and step/guidance/seed; official Wan22 defaults736-high but adapter overrides to704. Diffusers can round invalid temporal lengths.",
-        "required_change": "Freeze actual geometry and model temporal factors, not only the generic4k+1 check: Wan22 requires8k+1. Validate preprocessed and decoded shape, prompt/negative bytes,512-token limit and attention masks. The existing native CLI uses explicit empty negative for its single-request diagnostic; a replay port must preserve each exported request negative verbatim."
+        "required_change": "Freeze actual geometry and manifest-pinned VAE factors: Wan22 TI2V-5B revision b8fff7315c768468a5333511427288870b2e9635 has temporal factor4 and spatial factor16, requiring4k+1 frames; its 1701-byte vae/config.json SHA256 d996c340fe9a7df5d7371f76a7d8d6956f6c98256080074d8434fa5eeac11360 was checked against model manifest02ac66402d23a0ad25fa9fece1f6f57e2dc08783dda18ff4c9904fddf28d2c5f. Validate preprocessed and decoded shape, prompt/negative bytes,512-token limit and attention masks. The existing native CLI uses explicit empty negative for its single-request diagnostic; a replay port must preserve each exported request negative verbatim."
       },
       {
         "field": "source_and_execution_path",
