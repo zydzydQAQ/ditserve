@@ -16,7 +16,7 @@ import external_runtime_probe as probe
 def main():
     initial = probe.storage()
     expected = int(os.environ['DITSERVE_EXTERNAL_GPUS'])
-    if expected not in (1,2,8):
+    if expected not in (1,2,4,8):
         raise ValueError('unsupported diagnostic allocation')
     root, shared, plan, binding = probe.bind_sources('external_task_runner.py', expected)
     if (plan.get('schema') != 'ditserve.external-task-plan.v1'
