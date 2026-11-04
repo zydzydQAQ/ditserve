@@ -31,6 +31,70 @@ PAIRS = ('sp1_reference_vs_normal_sp2', 'normal_sp2_vs_round_sp2_full',
 EXPECTED_ENDS = [4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28]
 
 
+class RankProgress:
+    """One atomically replaced small receipt per owned rank; no CUDA operations."""
+    def __init__(self, directory, rank, binding):
+        self.directory = Path(directory).absolute()
+        if (type(rank) is not int or rank not in (0,1) or self.directory.resolve() != self.directory
+                or not self.directory.is_dir()):
+            raise ValueError('progress requires one owned rank and an existing unlinked output directory')
+        self.path = self.directory / ('rank-'+str(rank)+'.progress.json')
+        self.pending = self.path.with_name(self.path.name+'.pending')
+        if self.path.exists() or self.pending.exists():
+            raise FileExistsError('previous progress must not be overwritten by another worker')
+        self.record = dict(schema='ditserve.tetriserve-sp2-progress.v1',rank=rank,pid=os.getpid(),
+            adapter_sha256=sha(__file__),prior_summary_sha256=binding['prior_summary_sha256'],
+            request_sha256=numerics.canonical(binding['request']),observation_only=True,
+            call_count_scope='Python forward entry/return; no new CUDA synchronization',
+            qualification_eligible=False,diagnostic_completed=False,started_calls=0,returned_calls=0,
+            trajectory=None,cursor=None,error=None,failed_stage=None)
+
+    def update(self, stage, *, trajectory=None, started=None, returned=None, cursor=None):
+        if not isinstance(stage,str) or not re.fullmatch('[a-z0-9_]{1,80}',stage):
+            raise ValueError('invalid progress stage')
+        if trajectory is not None and trajectory not in TRAJECTORIES:
+            raise ValueError('invalid progress trajectory')
+        for value in (started,returned,cursor):
+            if value is not None and (type(value) is not int or not 0<=value<=28):
+                raise ValueError('invalid progress call/cursor count')
+        row=dict(self.record,stage=stage,monotonic_ns=time.monotonic_ns())
+        if trajectory is not None: row['trajectory']=trajectory
+        if started is not None: row['started_calls']=started
+        if returned is not None: row['returned_calls']=returned
+        if cursor is not None: row['cursor']=cursor
+        if row['returned_calls']>row['started_calls']:
+            raise ValueError('returned calls cannot exceed started calls')
+        raw=(json.dumps(row,sort_keys=True,allow_nan=False)+'\n').encode()
+        if len(raw)>8192: raise ValueError('progress exceeds fixed small receipt budget')
+        if any(path.is_symlink() or path.resolve()!=path for path in (self.path,self.pending)):
+            raise ValueError('linked progress path')
+        probe.storage()
+        with self.pending.open('xb') as stream:
+            stream.write(raw)
+            stream.flush()
+        os.replace(self.pending,self.path)
+        self.record=row
+
+    def fail(self, error):
+        self.record.update(error=repr(error)[:1000],failed_stage=self.record.get('stage'))
+        self.update('worker_failed')
+
+
+def read_progress(directory):
+    records=[]
+    for rank in (0,1):
+        path=Path(directory)/('rank-'+str(rank)+'.progress.json')
+        if not path.exists(): continue
+        if path.is_symlink() or path.resolve()!=path.absolute() or path.stat().st_size>8192:
+            raise ValueError('invalid final progress path or size')
+        row=json.loads(path.read_bytes())
+        if (row.get('schema')!='ditserve.tetriserve-sp2-progress.v1' or row.get('rank')!=rank
+                or row.get('observation_only') is not True or row.get('diagnostic_completed') is not False):
+            raise ValueError('invalid final progress identity')
+        records.append(row)
+    return records
+
+
 def intervals_from_dispatches(dispatches, native_id):
     rows = [r for r in dispatches if r['request_ids'] == [native_id]]
     cursor, ends = 0, []
@@ -209,7 +273,10 @@ def assess(records):
 def worker(rank, args, binding):
     result = dict(rank=rank,status='failed',stage='binding',distributed_closed=False)
     pipeline = None
+    progress = None
     try:
+        progress = RankProgress(args.output_dir,rank,binding)
+        progress.update('source_binding_enter')
         migration.verify_derived(**{'root':binding['derived']['root'], 'expected':binding['derived']['manifest_sha256']})
         if sha(binding['config_path']) != binding['config_sha256']:
             raise ValueError('prior port config changed before spawn')
@@ -218,6 +285,7 @@ def worker(rank, args, binding):
         sys.path.insert(0,binding['config']['shared_python_root'])
         os.environ.update(DITSERVE_TETRI_PORT_CONFIG=binding['config_path'],
             DITSERVE_TETRI_PORT_CONFIG_SHA256=binding['config_sha256'])
+        progress.update('source_binding_return')
         import torch
         import torch.distributed as dist
         from safetensors.torch import load_file
@@ -230,13 +298,20 @@ def worker(rank, args, binding):
             raise ValueError('exactly two GPUs required')
         torch.cuda.set_device(rank); set_device(gpu=True)
         result['gpu_uuid'] = str(torch.cuda.get_device_properties(rank).uuid)
+        progress.update('default_group_enter')
         dist.init_process_group('nccl',init_method='file://'+str(args.output_dir/'rendezvous'),
             rank=rank,world_size=2,timeout=timedelta(seconds=180))
+        progress.update('default_group_return')
+        progress.update('native_groups_enter')
         PROCESS_GROUP.generate_all_process_groups(2,skip_latent_transfer=False)
+        progress.update('native_groups_return')
         control = PROCESS_GROUP.get_process_group([0,1],device='cpu')
         result['stage']='load_same_verified_model'
+        progress.update('model_load_enter')
         pipeline = TetriSharedSD35Pipeline.from_pretrained('stabilityai/stable-diffusion-3.5-medium',
             migration.upstream_engine_config('stabilityai/stable-diffusion-3.5-medium'),torch.bfloat16)
+        progress.update('model_load_return')
+        progress.update('sp2_activation_enter')
         set_seq_parallel_pg(2,1,rank,[0,1],2)
         pipeline.runtime.pool.activate((0,1),pipeline.runtime.state,ulysses_degree=2,ring_degree=1)
         pipeline.runtime.bind_global()
@@ -247,15 +322,25 @@ def worker(rank, args, binding):
         result.update(groups=list(pipeline.runtime.pool.current_ranks),actual_sp=actual_sp,actual_dp=actual_dp,
                       chunk_ends=binding['chunk_ends'],transformer_calls={},outputs={},
                       provenance=pipeline.provenance)
+        progress.update('sp2_activation_return')
         request = ImageRequest(**binding['request'])
+        progress.update('prepare_enter')
         initial = pipeline.prepare(request)
+        progress.update('prepare_return')
         result['initial_five_tensors'] = {name:tensor_summary(t) for name,t in zip(migration.NAMES,initial.transferred_tensors())}
         outputs = {}
         for name in TRAJECTORIES:
             result['stage']=name
-            calls=[0]
-            def count_forward(*unused): calls[0]+=1
+            calls=[0]; returned=[0]
+            progress.update('trajectory_enter',trajectory=name,started=0,returned=0,cursor=0)
+            def count_forward(*unused):
+                calls[0]+=1
+                progress.update('transformer_enter',trajectory=name,started=calls[0],returned=returned[0])
+            def count_return(*unused):
+                returned[0]+=1
+                progress.update('transformer_return',trajectory=name,started=calls[0],returned=returned[0])
             handle=pipeline.pipe.transformer.register_forward_pre_hook(count_forward)
+            return_handle=pipeline.pipe.transformer.register_forward_hook(count_return)
             try:
                 with torch.inference_mode():
                     if name == 'normal_sp2':
@@ -268,21 +353,30 @@ def worker(rank, args, binding):
                         state=RoundState(request,*(t.detach().clone() for t in initial.transferred_tensors()))
                         boundaries=[28] if name=='round_sp2_full' else binding['chunk_ends']
                         for end in boundaries:
+                            progress.update('round_enter',trajectory=name,cursor=state.cursor)
                             state=pipeline.advance(state,end)
+                            progress.update('round_return',trajectory=name,cursor=state.cursor)
                             # Exactly the transferred protocol, with explicit absolute cursor.
                             state=RoundState(request,*(t.detach().clone() for t in state.transferred_tensors()),cursor=end)
                         latents=state.latents
+                    progress.update('decode_enter',trajectory=name)
                     decoded=pipeline.raw.vae.decode(latents/pipeline.raw.vae.config.scaling_factor
                         +pipeline.raw.vae.config.shift_factor,return_dict=False)[0]
                     torch.cuda.synchronize()
+                    progress.update('decode_return',trajectory=name)
                     outputs[name]={'latents':latents.detach().cpu(),'decoded':decoded.detach().cpu()}
                     result['outputs'][name]={k:tensor_summary(v) for k,v in outputs[name].items()}
                     result['transformer_calls'][name]=calls[0]
                     if calls[0] != 28: raise ValueError('trajectory must execute exactly 28 transformer calls')
             finally:
                 handle.remove()
+                return_handle.remove()
+            progress.update('trajectory_return',trajectory=name,cursor=28)
+            progress.update('trajectory_barrier_enter',trajectory=name)
             dist.barrier(group=control)
+            progress.update('trajectory_barrier_return',trajectory=name)
         if rank==0:
+            progress.update('comparison_enter')
             result['stage']='compare_existing_reference_without_inference'
             for path,key in ((binding['reference'],'reference_sha256'),(binding['service_raw'],'service_raw_sha256')):
                 if sha(path)!=binding[key]: raise ValueError('prior raw changed before comparison')
@@ -295,15 +389,29 @@ def worker(rank, args, binding):
                 left,right=pair.split('_vs_')
                 result['comparisons'][pair]={k:compare_tensors(outputs[left][k],outputs[right][k])
                     for k in ('latents','decoded')}
+            progress.update('comparison_return')
+        progress.update('final_barrier_enter')
         dist.barrier(group=control)
+        progress.update('final_barrier_return')
         result.update(status='completed',stage='cleanup')
     except BaseException as exc:
         result.update(error=repr(exc),traceback=traceback.format_exc()[-14000:])
+        if progress is not None:
+            try: progress.fail(exc)
+            except BaseException as progress_error: result['progress_error']=repr(progress_error)
     finally:
+        def observe_cleanup(stage):
+            if progress is not None:
+                try: progress.update(stage)
+                except BaseException as exc: result.update(status='failed',progress_error=repr(exc))
         try:
+            observe_cleanup('runtime_cleanup_enter')
             if pipeline is not None: pipeline.runtime.close()
+            observe_cleanup('runtime_cleanup_return')
             import torch.distributed as dist
+            observe_cleanup('distributed_cleanup_enter')
             if dist.is_initialized(): dist.destroy_process_group()
+            observe_cleanup('distributed_cleanup_return')
             result['distributed_closed']=not dist.is_initialized()
         except BaseException as exc:
             result.update(status='failed',cleanup_error=repr(exc))
@@ -311,6 +419,12 @@ def worker(rank, args, binding):
         write_json(args.output_dir/('rank-'+str(rank)+'.json'),result)
     if result['status']!='completed':
         raise RuntimeError('SP2 diagnosis worker failed; see preserved rank summary')
+
+
+def read_rank_results(directory):
+    # Fixed progress files must never become completion/qualification receipts.
+    paths=[Path(directory)/('rank-'+str(rank)+'.json') for rank in (0,1)]
+    return [json.loads(path.read_bytes()) for path in paths if path.is_file()]
 
 
 def execute(args,binding):
@@ -332,8 +446,16 @@ def execute(args,binding):
             for child in children.processes:
                 child.join(timeout=5)
                 if child.is_alive(): child.kill(); child.join(timeout=5)
-    rows=[json.loads(p.read_bytes()) for p in sorted(args.output_dir.glob('rank-*.json'))]
+    rows=read_rank_results(args.output_dir)
     return rows,error
+
+
+
+def retain_execution(result, rows, error, directory):
+    # Preserve the causal timeout/worker failure even if an observation is corrupt.
+    result['ranks']=rows
+    if error: result['worker_error']=error
+    result['last_progress']=read_progress(directory)
 
 
 def main(argv=None):
@@ -365,12 +487,11 @@ def main(argv=None):
             raise ValueError('new output must be disjoint from protected prior artifacts')
         args.output_dir.mkdir(parents=True,exist_ok=False); created=True
         rows,error=execute(args,binding)
-        result['ranks']=rows
+        retain_execution(result,rows,error,args.output_dir)
         complete=error is None and assess(rows)
         comparisons=next((r.get('comparisons',{}) for r in rows if r.get('rank')==0),{})
         result.update(diagnostic_completed=complete,status='diagnostic_completed' if complete else 'failed',
             numerical_check_passed=complete and all(c['passed'] for pair in comparisons.values() for c in pair.values()))
-        if error: result['worker_error']=error
     except BaseException as exc:
         result.update(error=repr(exc),traceback=traceback.format_exc()[-14000:])
     if created:

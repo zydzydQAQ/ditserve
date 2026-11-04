@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 from tempfile import TemporaryDirectory
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]/'benchmarks'))
 import external_tetriserve_sp2_diagnostic as diagnostic
@@ -105,6 +106,82 @@ class SP2DiagnosticTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'summaries differ'):
                 diagnostic.bind_prior(root,'0'*64,'0'*64)
             self.assertEqual(before,sorted(p.relative_to(root).as_posix() for p in root.rglob('*')))
+
+
+    def test_progress_is_atomic_bounded_and_never_a_completion_receipt(self):
+        with TemporaryDirectory() as directory, patch.object(diagnostic.probe,'storage') as storage:
+            root=Path(directory)
+            binding=dict(prior_summary_sha256='a'*64,request=dict(prompt='rabbit',seed=102))
+            progress=diagnostic.RankProgress(root,0,binding)
+            progress.update('prepare_enter')
+            progress.update('transformer_enter',trajectory='normal_sp2',started=1,returned=0)
+            progress.update('transformer_return',trajectory='normal_sp2',started=1,returned=1)
+            self.assertEqual(storage.call_count,3)
+            self.assertLess(progress.path.stat().st_size,8192)
+            self.assertFalse(progress.pending.exists())
+            rows=diagnostic.read_progress(root)
+            self.assertEqual(rows[0]['returned_calls'],1)
+            self.assertFalse(rows[0]['diagnostic_completed'])
+            self.assertFalse(diagnostic.assess(rows))
+            self.assertEqual(diagnostic.read_rank_results(root),[])
+            (root/'rank-0.json').write_text(json.dumps(dict(rank=0,status='failed')))
+            self.assertEqual(diagnostic.read_rank_results(root),[dict(rank=0,status='failed')])
+            with self.assertRaises(FileExistsError):diagnostic.RankProgress(root,0,binding)
+
+    def test_storage_failure_preserves_last_progress_and_cannot_claim_completion(self):
+        with TemporaryDirectory() as directory:
+            root=Path(directory)
+            binding=dict(prior_summary_sha256='a'*64,request=dict(prompt='rabbit',seed=102))
+            progress=diagnostic.RankProgress(root,1,binding)
+            with patch.object(diagnostic.probe,'storage'):
+                progress.update('model_load_enter')
+            original=progress.path.read_bytes()
+            with patch.object(diagnostic.probe,'storage',side_effect=RuntimeError('storage stop')):
+                with self.assertRaisesRegex(RuntimeError,'storage stop'):progress.update('model_load_return')
+            self.assertEqual(progress.path.read_bytes(),original)
+            self.assertFalse(progress.pending.exists())
+            self.assertFalse(diagnostic.read_progress(root)[0]['diagnostic_completed'])
+
+    def test_failed_stage_survives_cleanup_observations(self):
+        with TemporaryDirectory() as directory, patch.object(diagnostic.probe,'storage'):
+            root=Path(directory)
+            progress=diagnostic.RankProgress(root,0,dict(prior_summary_sha256='a'*64,request={}))
+            progress.update('transformer_enter',trajectory='normal_sp2',started=3,returned=2)
+            progress.fail(RuntimeError('actual forward failed'))
+            progress.update('runtime_cleanup_enter')
+            row=diagnostic.read_progress(root)[0]
+            self.assertEqual(row['failed_stage'],'transformer_enter')
+            self.assertIn('actual forward failed',row['error'])
+            self.assertEqual((row['started_calls'],row['returned_calls']),(3,2))
+            self.assertFalse(row['diagnostic_completed'])
+            self.assertFalse(diagnostic.assess([row]))
+
+    def test_progress_rejects_linked_paths_bad_counts_and_partial_file_reuse(self):
+        with TemporaryDirectory() as directory, patch.object(diagnostic.probe,'storage'):
+            root=Path(directory);out=root/'out';out.mkdir();binding=dict(prior_summary_sha256='a'*64,request={})
+            link=root/'link';link.symlink_to(out,target_is_directory=True)
+            with self.assertRaises(ValueError):diagnostic.RankProgress(link,0,binding)
+            progress=diagnostic.RankProgress(out,0,binding)
+            for kwargs in (dict(started=True),dict(started=29),dict(started=1,returned=2),dict(cursor=-1)):
+                with self.assertRaises(ValueError):progress.update('transformer_enter',**kwargs)
+            progress.pending.write_text('preserve partial evidence')
+            with self.assertRaises(FileExistsError):progress.update('prepare_enter')
+            self.assertEqual(progress.pending.read_text(),'preserve partial evidence')
+
+
+    def test_timeout_survives_corrupt_progress_without_false_completion(self):
+        with TemporaryDirectory() as directory:
+            root=Path(directory)
+            (root/'rank-0.progress.json').write_text('{partial broken JSON')
+            result=dict(diagnostic_completed=False,numerical_check_passed=False,qualification_eligible=False)
+            timeout="TimeoutError('SP2 diagnostic timeout')"
+            with self.assertRaises(json.JSONDecodeError):
+                diagnostic.retain_execution(result,[],timeout,root)
+            self.assertEqual(result['worker_error'],timeout)
+            self.assertEqual(result['ranks'],[])
+            self.assertFalse(result['diagnostic_completed'])
+            self.assertFalse(result['numerical_check_passed'])
+            self.assertFalse(result['qualification_eligible'])
 
 
 if __name__=='__main__':unittest.main()
