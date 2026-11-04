@@ -5,6 +5,7 @@ import math
 from pathlib import Path
 import sys
 from tempfile import TemporaryDirectory
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -21,6 +22,13 @@ def dispatches():
     return rows
 
 
+
+def normal_returns():
+    return [dict(rank=rank,owner_rank=1,valid=True,error=None,is_native_owner=rank==1,
+                 native_return='pipeline_output' if rank==1 else 'none',shape=[1,16,128,128],dtype='torch.bfloat16')
+            for rank in (0,1)]
+
+
 def receipt():
     tensors={k:dict(shape=shape,dtype='torch.bfloat16',finite=True,sha256='a'*64,
               minimum=-1.,maximum=1.,retained_array=False) for k,shape in
@@ -35,6 +43,7 @@ def receipt():
         initial_five_tensors={n:dict(shape=shape,sha256='f'*64,finite=True,minimum=0.,maximum=1.,
             dtype='torch.float32' if n in ('timesteps','sigmas') else 'torch.bfloat16') for n,shape in
             dict(prompt_embeds=[2,333,4096],pooled_prompt_embeds=[2,2048],latents=[1,16,128,128],timesteps=[28],sigmas=[29]).items()}) for rank in (0,1)]
+    for row in rows:row['normal_collection']=diagnostic.normal_collection_receipt(row['rank'],normal_returns())
     rows[0].update(comparisons=comparisons,comparison_inputs={n:deepcopy(tensors) for n in ('sp1_reference','service')})
     return rows
 
@@ -182,6 +191,51 @@ class SP2DiagnosticTests(unittest.TestCase):
             self.assertFalse(result['diagnostic_completed'])
             self.assertFalse(result['numerical_check_passed'])
             self.assertFalse(result['qualification_eligible'])
+
+
+    def test_native_owner_contract_accepts_only_terminal_rank_output(self):
+        value=object()
+        self.assertEqual(diagnostic.owner_candidate(0,False,None),(None,'none'))
+        self.assertEqual(diagnostic.owner_candidate(1,True,SimpleNamespace(images=value)),(value,'pipeline_output'))
+        for rank,owner,output in ((0,False,SimpleNamespace(images=value)),(1,True,None),
+                                  (0,True,None),(1,False,None),(True,True,None)):
+            with self.assertRaises(ValueError):diagnostic.owner_candidate(rank,owner,output)
+
+    def test_both_return_validations_are_required_before_broadcast(self):
+        diagnostic.validate_normal_returns(normal_returns())
+        for mutation in ('missing','duplicate','owner','error','none','shape','dtype','unvalidated','boolowner'):
+            rows=normal_returns()
+            if mutation=='missing':rows.pop()
+            if mutation=='duplicate':rows[1]['rank']=0
+            if mutation=='owner':rows[0]['is_native_owner']=True
+            if mutation=='error':rows[1].update(valid=False,error='owner shape failure')
+            if mutation=='none':rows[1]['native_return']='none'
+            if mutation=='shape':rows[1]['shape']=[1,16,64,64]
+            if mutation=='dtype':rows[0]['dtype']='torch.float32'
+            if mutation=='unvalidated':rows[0]['valid']=False
+            if mutation=='boolowner':rows[1]['owner_rank']=True
+            with self.assertRaises(ValueError,msg=mutation):diagnostic.validate_normal_returns(rows)
+
+    def test_missing_or_forged_collection_receipt_cannot_complete(self):
+        self.assertTrue(diagnostic.assess(receipt()))
+        for mutation in ('missing','source','owner','role','native_return','backend','ranks','newgroups',
+                         'independent','validation','round_output','boolowner','boolgroup'):
+            rows=receipt();collection=rows[0]['normal_collection']
+            if mutation=='missing':del rows[0]['normal_collection']
+            if mutation=='source':collection['received_from_rank']=0
+            if mutation=='boolowner':collection['native_output_owner_rank']=True
+            if mutation=='boolgroup':collection['broadcast_group_ranks']=[False,True]
+            if mutation=='owner':collection['native_output_owner_rank']=0
+            if mutation=='role':collection['collection_role']='owner'
+            if mutation=='native_return':collection['native_return']='pipeline_output'
+            if mutation=='backend':collection['broadcast_backend']='gloo'
+            if mutation=='ranks':collection['broadcast_group_ranks']=[1,0]
+            if mutation=='newgroups':collection['created_process_groups']=1
+            if mutation=='independent':collection['independent_rank_agreement']=True
+            if mutation=='validation':collection['native_return_validations'][1]['valid']=False
+            if mutation=='round_output':rows[1]['outputs']['round_sp2_full']['latents']['sha256']='b'*64
+            self.assertFalse(diagnostic.assess(rows),mutation)
+        self.assertFalse(receipt()[0]['normal_collection']['independent_rank_agreement'])
 
 
 if __name__=='__main__':unittest.main()

@@ -219,6 +219,95 @@ def valid_initial(values):
     return True
 
 
+
+NORMAL_OWNER = 1
+NORMAL_SHAPE = [1,16,128,128]
+NORMAL_EQUALITY_SCOPE = 'Owner-returned normal latent replicated by post-inference broadcast; not independent rank agreement'
+
+
+def owner_candidate(rank, is_owner, output):
+    """Honor frozen 517's terminal SP-rank return contract before touching images."""
+    if type(rank) is not int or rank not in (0,1) or type(is_owner) is not bool or is_owner != (rank==NORMAL_OWNER):
+        raise ValueError('actual native output owner differs from SP2/CFG1/PP1 contract')
+    if is_owner:
+        if output is None: raise ValueError('native output owner returned None')
+        return output.images,'pipeline_output'
+    if output is not None: raise ValueError('nonowner must return native None')
+    return None,'none'
+
+
+def validate_normal_returns(rows):
+    if (len(rows)!=2 or any(type(r.get('rank')) is not int for r in rows)
+            or {r.get('rank') for r in rows}!={0,1}):
+        raise ValueError('both unique native return validations are required')
+    for row in rows:
+        rank=row['rank']
+        if (row.get('valid') is not True or row.get('error') is not None
+                or type(row.get('owner_rank')) is not int or row['owner_rank']!=NORMAL_OWNER
+                or row.get('is_native_owner') is not (rank==NORMAL_OWNER)
+                or row.get('native_return')!=('pipeline_output' if rank==NORMAL_OWNER else 'none')
+                or row.get('shape')!=NORMAL_SHAPE or any(type(x) is not int for x in row['shape'])
+                or row.get('dtype')!='torch.bfloat16'):
+            raise ValueError('native return validation failed before broadcast: '+repr(rows))
+
+
+def normal_collection_receipt(rank, rows):
+    validate_normal_returns(rows)
+    if type(rank) is not int or rank not in (0,1): raise ValueError('invalid collection rank')
+    return dict(schema='ditserve.tetriserve-normal-output-collection.v1',rank=rank,
+        native_output_owner_rank=NORMAL_OWNER,native_return='pipeline_output' if rank==NORMAL_OWNER else 'none',
+        collection_role='owner' if rank==NORMAL_OWNER else 'receiver',received_from_rank=NORMAL_OWNER,
+        shape=list(NORMAL_SHAPE),dtype='torch.bfloat16',broadcast_group_ranks=[0,1],broadcast_backend='nccl',
+        validation_group_ranks=[0,1],validation_backend='gloo',operation='post_inference_broadcast',
+        created_process_groups=0,independent_rank_agreement=False,equality_scope=NORMAL_EQUALITY_SCOPE,
+        native_return_validations=sorted(rows,key=lambda r:r['rank']))
+
+
+def collect_normal_output(output, pipeline, rank, control, progress):
+    """Copy only the actual normal owner output over an existing SP NCCL group.
+
+    Control synchronization contains only small Python metadata. Invalid owner
+    return structure is rejected on both ranks before either enters broadcast.
+    """
+    import torch
+    import torch.distributed as dist
+    from xfuser.core.distributed import get_sp_group
+    row=dict(rank=rank,owner_rank=NORMAL_OWNER,valid=False,error=None)
+    buffer=None
+    group=None
+    progress.update('normal_return_validation_enter',trajectory='normal_sp2')
+    try:
+        group=get_sp_group().device_group
+        if (pipeline.runtime.pool.current_ranks!=(0,1)
+                or dist.get_process_group_ranks(group)!=[0,1] or dist.get_backend(group)!='nccl'
+                or dist.get_process_group_ranks(control)!=[0,1] or dist.get_backend(control)!='gloo'):
+            raise ValueError('output collection must reuse actual native SP/control groups')
+        is_owner=pipeline.pipe.is_dp_last_group()
+        candidate,kind=owner_candidate(rank,is_owner,output)
+        if rank==NORMAL_OWNER:
+            if (not isinstance(candidate,torch.Tensor) or list(candidate.shape)!=NORMAL_SHAPE
+                    or candidate.dtype!=torch.bfloat16 or candidate.device!=torch.device('cuda',rank)
+                    or not torch.isfinite(candidate).all().item()):
+                raise ValueError('owner must provide the complete finite native CUDA BF16 latent')
+            buffer=candidate.contiguous()
+        else:
+            # Allocate before control validation so allocation failure is shared.
+            buffer=torch.empty(NORMAL_SHAPE,dtype=torch.bfloat16,device='cuda:'+str(rank))
+        row.update(valid=True,is_native_owner=is_owner,native_return=kind,
+                   shape=list(buffer.shape),dtype=str(buffer.dtype))
+    except Exception as exc:
+        row['error']=repr(exc)[:1000]
+    rows=[None,None]
+    dist.all_gather_object(rows,row,group=control)
+    validate_normal_returns(rows)
+    progress.update('normal_return_validation_return',trajectory='normal_sp2')
+    progress.update('normal_owner_broadcast_enter',trajectory='normal_sp2')
+    dist.broadcast(buffer,src=NORMAL_OWNER,group=group)
+    progress.update('normal_owner_broadcast_return',trajectory='normal_sp2')
+    if not torch.isfinite(buffer).all().item(): raise ValueError('nonfinite collected normal latent')
+    return buffer,normal_collection_receipt(rank,rows)
+
+
 def assess(records):
     """Completion is independent from numerical agreement; differences remain explicit."""
     if len(records) != 2 or {r.get('rank') for r in records} != {0, 1}:
@@ -243,8 +332,23 @@ def assess(records):
                         or value.get('finite') is not True
                         or not re.fullmatch('[0-9a-f]{64}', value.get('sha256',''))):
                     return False
-    if (rows[0]['initial_five_tensors'] != rows[1]['initial_five_tensors']
-            or rows[0]['outputs'] != rows[1]['outputs']):
+    if rows[0]['initial_five_tensors'] != rows[1]['initial_five_tensors']:
+        return False
+    for row in rows:
+        collection=row.get('normal_collection',{})
+        try:
+            expected=normal_collection_receipt(row['rank'],collection.get('native_return_validations',[]))
+        except (ValueError,TypeError,AttributeError,KeyError):
+            return False
+        if (collection!=expected
+                or any(type(collection[k]) is not int for k in ('rank','native_output_owner_rank','received_from_rank','created_process_groups'))
+                or any(type(x) is not int for k in ('shape','broadcast_group_ranks','validation_group_ranks') for x in collection[k])):
+            return False
+    # Normal equality checks collection integrity, not independent native returns.
+    if rows[0]['outputs']['normal_sp2']!=rows[1]['outputs']['normal_sp2']:
+        return False
+    # Both round trajectories still execute and report their own actual outputs.
+    if any(rows[0]['outputs'][name]!=rows[1]['outputs'][name] for name in TRAJECTORIES[1:]):
         return False
     comparisons = rows[0].get('comparisons', {})
     inputs = dict(rows[0]['outputs'], **rows[0].get('comparison_inputs', {}))
@@ -344,10 +448,11 @@ def worker(rank, args, binding):
             try:
                 with torch.inference_mode():
                     if name == 'normal_sp2':
-                        latents = pipeline.pipe(prompt=request.prompt,negative_prompt=request.negative_prompt,
+                        native_output = pipeline.pipe(prompt=request.prompt,negative_prompt=request.negative_prompt,
                             height=request.height,width=request.width,num_inference_steps=28,
                             guidance_scale=4.5,max_sequence_length=256,
-                            generator=torch.Generator(device='cpu').manual_seed(102),output_type='latent').images
+                            generator=torch.Generator(device='cpu').manual_seed(102),output_type='latent')
+                        latents,result['normal_collection']=collect_normal_output(native_output,pipeline,rank,control,progress)
                     else:
                         # Clone all five actual tensors; no mutation crosses trajectories.
                         state=RoundState(request,*(t.detach().clone() for t in initial.transferred_tensors()))
@@ -472,7 +577,9 @@ def main(argv=None):
     result=dict(schema='ditserve.tetriserve-sp2-diagnostic.v1',status='failed',diagnostic_completed=False,
         numerical_check_passed=False,qualification_eligible=False,allows=[],serving_executed=False,
         migration_executed=False,performance_measurements=False,reference_inference_executed=False,
-        retained_new_arrays=False,trajectories=list(TRAJECTORIES),tolerance=dict(atol=1e-5,rtol=1e-5))
+        retained_new_arrays=False,trajectories=list(TRAJECTORIES),tolerance=dict(atol=1e-5,rtol=1e-5),
+        native_normal_output_owner_rank=NORMAL_OWNER,normal_rank_equality_scope=NORMAL_EQUALITY_SCOPE,
+        normal_rank_equality_independent=False)
     created=False
     try:
         if not 120<=args.timeout_seconds<=3600: raise ValueError('invalid diagnostic timeout')
