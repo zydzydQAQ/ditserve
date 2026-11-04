@@ -2,8 +2,9 @@
 
 Launch with torchrun on one node. The official runner owns all model parallel
 communication and returns full outputs on every SP rank when DP=1. Only small
-source-bound receipts are written; decoded arrays are never transferred as Python
-objects or saved. The outer launcher must additionally verify torchrun's exit.
+source-bound receipts are written by default; decoded arrays are never transferred
+as Python objects. An explicit frozen numerical contract permits rank 0 alone to
+retain complete frames. The outer launcher must additionally verify torchrun's exit.
 """
 from __future__ import annotations
 import argparse
@@ -105,7 +106,7 @@ def aggregate(rows, world):
     output_identity = ('shape', 'dtype', 'sha256')
     if any(any(row['output'].get(k) != first['output'].get(k) for k in output_identity) for row in rows):
         raise ValueError('SP ranks disagree on the complete output shape, dtype or digest')
-    return dict(schema='ditserve.external-xdit-distributed.v1', status='native_sp_request_completed',
+    summary = dict(schema='ditserve.external-xdit-distributed.v1', status='native_sp_request_completed',
         world_size=world, requested_requests=1, completed_requests=1,
         selected_output_rank=0, output=first['output'], request=first['request'],
         source=first['source'], model_identity=first['model_identity'],
@@ -116,6 +117,13 @@ def aggregate(rows, world):
         qualification_eligible=False, allows=[], serving_executed=False, quality_evaluated=False,
         formal_benchmark_executed=False, shared_backend_comparison=False,
         scope='One full native SP request at a formal shape; not serving, independent SP1 equivalence or comparative performance.')
+    if any('decoded_capture' in row or 'decoded_artifact' in row for row in rows):
+        import external_xdit_numerics as numerics
+        numerics.validate_rank_capture(rows, world)
+        summary['decoded_capture'] = first['decoded_capture']
+        summary['decoded_artifact'] = first['decoded_artifact']
+        summary['performance_eligible'] = False
+    return summary
 
 
 def collect_rank_summary(output, rank_result, world, deadline):
@@ -136,7 +144,7 @@ def collect_rank_summary(output, rank_result, world, deadline):
     return aggregate([native.source.read_json(p.read_bytes()) for p in paths], world)
 
 
-def run_rank(model, request, identity, config, source_root, manifest, rank, world, result):
+def run_rank(model, request, identity, config, source_root, manifest, rank, world, result, capture_context=None):
     if any(n == 'xfuser' or n.startswith('xfuser.') for n in sys.modules):
         raise ValueError('native distributed execution requires a fresh interpreter')
     sys.path.insert(0, str(Path(source_root).resolve()))
@@ -211,6 +219,11 @@ def run_rank(model, request, identity, config, source_root, manifest, rank, worl
             effective_request={k: effective[k] for k in request if k in effective},
             attention_backend_observation=native.attention_observation(pipeline, runner.config.attention_backend),
             loaded_source_sha256=native.loaded_sources(source_root, manifest))
+        if capture_context is not None and rank == 0:
+            import external_xdit_numerics as numerics
+            result['failed_stage'] = 'retain_decoded_output'
+            result['decoded_artifact'] = numerics.capture(output.videos, result['output'], capture_context)
+            result['output']['retained_arrays'] = True
         del output
         native.source.verify_source(source_root, result['source_manifest_path'], result['source']['manifest_sha256'])
         result['failed_stage'] = 'cleanup'
@@ -251,7 +264,13 @@ def main(argv=None):
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--output-dir', type=Path, required=True)
     parser.add_argument('--timeout-seconds', type=int, default=3600)
+    parser.add_argument('--numerics-contract', type=Path)
+    parser.add_argument('--numerics-contract-sha256')
     args = parser.parse_args(argv)
+    if bool(args.numerics_contract) != bool(args.numerics_contract_sha256):
+        parser.error('capture requires both a contract and its SHA256')
+    if args.numerics_contract and args.output_dir.resolve() != args.output_dir:
+        parser.error('capture output path must be absolute without symlink traversal')
     if not 30 <= args.timeout_seconds <= 14400:
         parser.error('timeout must be30..14400 seconds')
     rank = topology(args.world_size, os.environ) if args.command == 'run' else 0
@@ -298,12 +317,21 @@ def main(argv=None):
         result.update(request=request, model_identity=identity, runner_config=config, protocol_sha256=args.protocol_sha256,
             source=dict(commit=native.source.COMMIT, manifest_sha256=args.source_manifest_sha256,
                         archive_sha256=native.source.ARCHIVE_SHA256, files=len(manifest['files'])))
+        capture_context = None
+        if args.numerics_contract:
+            import external_xdit_numerics as numerics
+            capture_context = numerics.prepare(args.numerics_contract, args.numerics_contract_sha256,
+                output, request, identity, result['source'], args.protocol_sha256, args.world_size, rank)
+            result['decoded_capture'] = numerics.capture_receipt(capture_context)
+            result['performance_eligible'] = False
         if args.command == 'plan':
             result.update(status='planned', planned_returncode=0)
         else:
             publish_json(rank_dir/'started.json', result)
+            if capture_context is not None:
+                numerics.begin(capture_context)
             with contextlib.redirect_stdout(sys.stderr):
-                run_rank(args.model, request, identity, config, args.source_root, manifest, rank, args.world_size, result)
+                run_rank(args.model, request, identity, config, args.source_root, manifest, rank, args.world_size, result, capture_context)
             result['runtime_packages'] = {}
             for name in ('torch', 'diffusers', 'transformers', 'cache-dit', 'numpy', 'yunchang'):
                 try: result['runtime_packages'][name] = importlib.metadata.version(name)

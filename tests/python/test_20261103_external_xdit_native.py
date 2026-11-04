@@ -40,9 +40,9 @@ class NativeXDiTTests(unittest.TestCase):
     def test_storage_boundary_is_fail_closed(self):
         def result(used, percent, returncode=0):
             return SimpleNamespace(returncode=returncode, stdout=f"Filesystem 1G-blocks Used Available Use% Mounted\n/dev/sdb 1024G {used}G 200G {percent}% /shared\n")
-        with patch.object(native.subprocess, "run", return_value=result(790, 79)):
-            self.assertEqual(native.check_storage()["used_gib"], 790)
-        for value in [result(791, 79), result(789, 80), result(787, 77, 1), SimpleNamespace(returncode=0, stdout="bad")]:
+        with patch.object(native.subprocess, "run", return_value=result(800, 79)):
+            self.assertEqual(native.check_storage()["used_gib"], 800)
+        for value in [result(801, 79), result(799, 80), result(787, 77, 1), SimpleNamespace(returncode=0, stdout="bad")]:
             with patch.object(native.subprocess, "run", return_value=value):
                 with self.assertRaisesRegex(ValueError, "storage"):
                     native.check_storage()

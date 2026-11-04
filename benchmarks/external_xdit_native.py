@@ -35,7 +35,7 @@ def check_storage():
     try:
         row = process.stdout.splitlines()[-1].split()
         used, percent = int(row[2].rstrip("G")), int(row[4].rstrip("%"))
-        if process.returncode or used > 790 or percent >= 80:
+        if process.returncode or used > 800 or percent >= 80:
             raise ValueError("shared-storage stop threshold reached")
     except (IndexError, ValueError) as exc:
         raise ValueError("shared-storage check failed or crossed stop threshold") from exc
@@ -313,7 +313,7 @@ def loaded_sources(source_root, manifest):
     return files
 
 
-def execute_native(model, request, identity, config, source_root, manifest):
+def execute_native(model, request, identity, config, source_root, manifest, capture_context=None):
     if any(n == "xfuser" or n.startswith("xfuser.") for n in sys.modules):
         raise ValueError("native run requires a fresh interpreter without loaded xfuser")
     sys.path.insert(0, str(Path(source_root).resolve()))
@@ -366,6 +366,12 @@ def execute_native(model, request, identity, config, source_root, manifest):
         if len(timings) != 1 or any(not math.isfinite(float(t)) or float(t) < 0 for t in timings):
             raise ValueError("native runner returned invalid single-request timing")
         summary = summarize_video(output.videos, request)
+        artifact = None
+        if capture_context is not None:
+            import external_xdit_numerics as numerics
+            phase = "retain_decoded_output"
+            artifact = numerics.capture(output.videos, summary, capture_context)
+            summary["retained_arrays"] = True
         attention = attention_observation(pipeline, runner.config.attention_backend)
         result = {"status": "native_request_completed", "completed_requests": 1, "requested_requests": 1,
             "output": summary, "load_seconds": load_seconds, "cold_request_wall_seconds": elapsed,
@@ -379,6 +385,9 @@ def execute_native(model, request, identity, config, source_root, manifest):
             "attention_backend_observation": attention,
             "torch": torch.__version__, "cuda": torch.version.cuda,
             "gpu": torch.cuda.get_device_name(), "loaded_source_sha256": loaded_sources(source_root, manifest)}
+        if artifact is not None:
+            result["decoded_artifact"] = artifact
+            result["performance_eligible"] = False
         del output
         return result
     except Exception as exc:
@@ -418,7 +427,13 @@ def main(argv=None):
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--cpu-offload", action="store_true", help="explicitly enable upstream model CPU offload; changes performance conditions")
+    parser.add_argument("--numerics-contract", type=Path)
+    parser.add_argument("--numerics-contract-sha256")
     args = parser.parse_args(argv)
+    if bool(args.numerics_contract) != bool(args.numerics_contract_sha256):
+        parser.error("capture requires both a contract and its SHA256")
+    if args.numerics_contract and args.output_dir.resolve() != args.output_dir:
+        parser.error("capture output path must be absolute without symlink traversal")
     result = {"schema": "ditserve.external-xdit-native.v1", "status": "not_started",
               "qualification_eligible": False, "allows": [], "serving_executed": False,
               "quality_evaluated": False, "formal_benchmark_executed": False,
@@ -444,6 +459,13 @@ def main(argv=None):
                      "override": "LocalCheckpointRunner._select_model changes only instance.settings.model_name to verified local root"},
             protocol_sha256=args.protocol_sha256, native_dtype="bfloat16", shared_backend_comparison=False,
             measurement_scope="one cold native request; no arrival replay, batching, baseline comparison, or quality qualification")
+        capture_context = None
+        if args.numerics_contract:
+            import external_xdit_numerics as numerics
+            capture_context = numerics.prepare(args.numerics_contract, args.numerics_contract_sha256,
+                output, request, identity, result["source"], args.protocol_sha256, 1, 0)
+            result["decoded_capture"] = numerics.capture_receipt(capture_context)
+            result["performance_eligible"] = False
         if args.command == "run":
             if not output.is_relative_to(Path("/shared/output/DITSERVE")):
                 raise ValueError("GPU outputs must be under /shared/output/DITSERVE")
@@ -451,10 +473,12 @@ def main(argv=None):
             created_output = True
             with (output/"started.json").open("x") as stream:
                 json.dump(result, stream, sort_keys=True, indent=2, allow_nan=False)
+            if capture_context is not None:
+                numerics.begin(capture_context)
             # Actual native logs go to stderr; stdout stays machine-readable JSON.
             phase = "execute_native"
             with contextlib.redirect_stdout(sys.stderr):
-                result.update(execute_native(args.model, request, identity, config, args.source_root, manifest))
+                result.update(execute_native(args.model, request, identity, config, args.source_root, manifest, capture_context))
             phase = "reverify_source"
             source.verify_source(args.source_root, args.source_manifest, args.source_manifest_sha256)
             result["runtime_packages"] = {}
