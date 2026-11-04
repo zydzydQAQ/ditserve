@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+from copy import deepcopy
 import hashlib
 import inspect
 import json
@@ -12,8 +13,12 @@ import re
 TRAJECTORIES = ('normal_sp2', 'round_sp2_full', 'round_sp2_chunked')
 CHUNK_ENDS = [4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28]
 REFERENCE_SHA256 = 'a91c5bb3541702314baff6b98ccb4dfe4d2cd072e4670d23838eb936d4db958a'
+R4_REFERENCE_SHA256 = 'a932e3872616d39ae947c5914a7b5892ff987752e1185734076fae8139502263'
 MAX_BYTES = 1024 * 1024
 REFERENCE_MAX_BYTES = 128 * 1024
+COUNTERFACTUAL_VARIANTS = ('native_replay', 'raw_same_state', 'raw_explicit_index', 'raw_round_device')
+NATIVE_SOLVER_SHA256 = '66d472c4b8acc99c7651bfd0f69e4b94d646adaffe14670a0e4988a6741ec424'
+RAW_SOLVER_SHA256 = 'c2f47ed75801a7bd11f43aa793671986b7d382461b8d6e9d60786ca77fa61bca'
 METHODS = ('_sync_pipeline', '_backbone_forward', '_scheduler_step', '_naive_forward', '_async_pipeline')
 RUNTIME_FIELDS = ('split_text_embed_in_sp', 'split_latents_by_rows', 'text_embed_sp_pad',
     'patch_mode', 'pipeline_patch_idx', 'num_pipeline_patch', 'pp_patches_height',
@@ -37,8 +42,8 @@ def bounded_read(path, limit):
 
 
 def bind_reference(path, expected_sha256, binding, assess):
-    if expected_sha256 != REFERENCE_SHA256:
-        raise ValueError('trace requires the fixed completed r3 reference SHA256')
+    if expected_sha256 not in (REFERENCE_SHA256, R4_REFERENCE_SHA256):
+        raise ValueError('trace requires the fixed completed r3/r4 reference SHA256')
     raw = bounded_read(path, REFERENCE_MAX_BYTES)
     if hashlib.sha256(raw).hexdigest() != expected_sha256:
         raise ValueError('trace reference SHA256 differs')
@@ -48,6 +53,9 @@ def bind_reference(path, expected_sha256, binding, assess):
             or row.get('numerical_check_passed') is not False or row.get('qualification_eligible') is not False
             or row.get('binding') != binding or not assess(row.get('ranks', []))):
         raise ValueError('trace reference is not the completed r3 diagnosis with identical prior bindings')
+    if expected_sha256 == R4_REFERENCE_SHA256 and (row.get('observer_reproduced') is not True
+            or row.get('observation_admissible') is not True):
+        raise ValueError('r4 reference observer was not admissible')
     return row
 
 
@@ -78,9 +86,104 @@ def valid_tensor(row):
         and isinstance(row.get('sha256'), str) and re.fullmatch('[0-9a-f]{64}', row['sha256']) is not None)
 
 
+def require_counterfactual_source(metadata):
+    if (metadata.get('type') != 'xfuser.model_executor.schedulers.scheduling_flow_match_euler_discrete.xFuserFlowMatchEulerDiscreteSchedulerWrapper'
+            or metadata.get('unwrapped_step', {}).get('file_sha256') != NATIVE_SOLVER_SHA256
+            or metadata.get('bound_step', {}).get('file_sha256') != '570aa9cc5806b6dfc01eb66228deed5c41ffb0465947e27cfd42534493a58897'
+            or metadata.get('inner', {}).get('type') != 'diffusers.schedulers.scheduling_flow_match_euler_discrete.FlowMatchEulerDiscreteScheduler'
+            or metadata['inner'].get('bound_step', {}).get('file_sha256') != RAW_SOLVER_SHA256
+            or metadata.get('config') != metadata['inner'].get('config')
+            or metadata['config'].get('stochastic_sampling') is not False):
+        raise ValueError('counterfactual requires the actual r4 frozen deterministic solver implementations')
+
+
+def solver_state(scheduler, summarize):
+    return dict(step_index=scheduler.step_index, begin_index=scheduler.begin_index,
+        num_inference_steps=scheduler.num_inference_steps,
+        timesteps=summarize(scheduler.timesteps), sigmas=summarize(scheduler.sigmas),
+        timesteps_device=str(scheduler.timesteps.device), sigmas_device=str(scheduler.sigmas.device))
+
+
+def clone_native_scheduler(scheduler):
+    # deepcopy(wrapper) can recurse through frozen xFuser __getattr__ while its
+    # new instance has no module. Rebuild only the verified wrapper state.
+    values = vars(scheduler)
+    if set(values) != {'module', 'module_type'} or values['module_type'] is not type(values['module']):
+        raise ValueError('unexpected native wrapper instance state')
+    return type(scheduler)(deepcopy(values['module']))
+
+
+class SolverCounterfactual:
+    """One normal step on independent clones; each neighboring branch changes one factor."""
+    def __init__(self, scheduler, values, describe_scheduler, *, summarize=tensor_description,
+                 compare=None, torch_module=None):
+        if torch_module is None:
+            import torch as torch_module
+        if compare is None:
+            from external_sd35_round_check import compare_tensors
+            compare = compare_tensors
+        self.torch, self.compare, self.summarize = torch_module, compare, summarize
+        self.describe_scheduler = describe_scheduler
+        self.live = scheduler
+        self.template = clone_native_scheduler(scheduler)
+        self.inputs = {k: values[k].detach().clone() for k in ('noise_pred', 'latents', 't')}
+        self.device = self.inputs['latents'].device
+        if self.device.type != 'cuda' or self.device.index not in (0, 1):
+            raise ValueError('counterfactual must observe one actual SP2 CUDA shard')
+        self.before = solver_state(self.template, summarize)
+        if (self.before['step_index'] is not None or self.before['begin_index'] is not None
+                or self.before['num_inference_steps'] != 28
+                or self.before['timesteps']['shape'] != [28] or self.before['sigmas']['shape'] != [29]):
+            raise ValueError('counterfactual requires native normal step0 before scheduler initialization')
+
+    def run(self, original_output):
+        live_before = solver_state(self.live, self.summarize)
+        cpu_rng = self.torch.get_rng_state()
+        cuda_rng = self.torch.cuda.get_rng_state(self.device)
+        outputs, variants = {}, {}
+        for name in COUNTERFACTUAL_VARIANTS:
+            clone = (clone_native_scheduler(self.template) if name == 'native_replay'
+                     else deepcopy(vars(self.template)['module']))
+            if name in ('raw_explicit_index', 'raw_round_device'):
+                clone._step_index = 0
+                clone.set_begin_index(0)
+            if name == 'raw_round_device':
+                clone.timesteps = clone.timesteps.to(self.device)
+                clone.sigmas = clone.sigmas.to(self.device)
+            values = {k: v.detach().clone() for k, v in self.inputs.items()}
+            state_before = solver_state(clone, self.summarize)
+            implementation = self.describe_scheduler(clone)['identity']
+            # The native wrapper consumes CUDA RNG even when churn is zero.
+            # Preserve the states AFTER the real call, including on exceptions.
+            with self.torch.random.fork_rng(devices=[self.device.index]):
+                output = clone.step(values['noise_pred'], values['t'], values['latents'], return_dict=False)[0]
+            outputs[name] = output
+            variants[name] = dict(implementation=implementation, state_before=state_before,
+                state_after=solver_state(clone, self.summarize), output=self.summarize(output))
+        unchanged = (solver_state(self.live, self.summarize) == live_before
+            and self.torch.equal(cpu_rng, self.torch.get_rng_state())
+            and self.torch.equal(cuda_rng, self.torch.cuda.get_rng_state(self.device)))
+        if not unchanged:
+            raise ValueError('counterfactual modified the actual scheduler or RNG state')
+        descriptions = dict(actual=self.summarize(original_output),
+                            **{name: row['output'] for name, row in variants.items()})
+        outputs['actual'] = original_output
+        pairs = [('actual', name) for name in COUNTERFACTUAL_VARIANTS]
+        pairs += list(zip(COUNTERFACTUAL_VARIANTS, COUNTERFACTUAL_VARIANTS[1:]))
+        comparisons = {a + '_vs_' + b: self.compare(outputs[a], outputs[b]) for a, b in pairs}
+        if descriptions['actual'] != descriptions['native_replay']:
+            raise ValueError('isolated native replay must reproduce the complete actual step0 output')
+        return dict(schema='ditserve.sd35-solver-counterfactual.v1', complete=False, logical_step=0,
+            scope='complete local SP2 shard; no sampled elements or retained arrays',
+            inputs={k:self.summarize(v) for k,v in self.inputs.items()}, actual_output=descriptions['actual'],
+            variants=variants, comparisons=comparisons, actual_scheduler_unchanged=True,
+            cpu_cuda_rng_restored=True, output_replaced=False, performance_measurements=False,
+            factors=['step_implementation', 'initial_step_and_begin_index', 'schedule_storage_device'])
+
+
 class TraceObserver:
     """Observe exact original calls; restore instance overrides including absence."""
-    def __init__(self, pipe, runtime_state, rank, *, summarize=tensor_description):
+    def __init__(self, pipe, runtime_state, rank, *, summarize=tensor_description, solver_counterfactual=False):
         if type(rank) is not int or rank not in (0, 1):
             raise ValueError('trace requires one of the two actual ranks')
         self.pipe, self.runtime_state, self.summarize = pipe, runtime_state, summarize
@@ -88,6 +191,8 @@ class TraceObserver:
             observation_only=True, performance_measurements=False, arrays_retained=False,
             hashing_may_synchronize_cuda=True, logical_step_rule='chunk_start + local_index',
             methods={}, schedulers={}, trajectories={})
+        if solver_counterfactual:
+            self.record['solver_counterfactual_enabled'] = True
         self.source_cache = {}
         self.scheduler_cache = {}
         self.active = None
@@ -104,8 +209,8 @@ class TraceObserver:
         return dict(qualified_name=target.__module__ + '.' + target.__qualname__,
                     file=path, file_sha256=self.source_cache[path])
 
-    def _scheduler(self):
-        scheduler = self.pipe.scheduler
+    def _scheduler(self, scheduler=None):
+        scheduler = self.pipe.scheduler if scheduler is None else scheduler
         step = scheduler.step
         inner = vars(scheduler).get('module')
         configs = dict(actual=dict(scheduler.config), inner=dict(inner.config) if inner is not None else None)
@@ -223,6 +328,12 @@ class TraceObserver:
             scheduler_before=self._scheduler(), runtime=self._runtime())
         row[kind].append(event)
         chunk[kind] += 1
+        counterfactual = None
+        if kind == 'scheduler' and event['logical_step'] == 0 and self.record.get('solver_counterfactual_enabled'):
+            event['solver_state_before'] = solver_state(self.pipe.scheduler, self._tensor)
+            if self.active == 'normal_sp2':
+                require_counterfactual_source(self.record['schedulers'][event['scheduler_before']['identity']])
+                counterfactual = SolverCounterfactual(self.pipe.scheduler, values, self._scheduler, summarize=self._tensor)
         self._check_size()
         result = original(*args, **kwargs)
         if kind == 'backbone':
@@ -233,6 +344,8 @@ class TraceObserver:
         else:
             event['output'] = self._tensor(result)
         event.update(returned=True, scheduler_after=self._scheduler())
+        if counterfactual is not None:
+            self.record['solver_counterfactual'] = counterfactual.run(result)
         self._check_size()
         return result
 
@@ -274,6 +387,8 @@ class TraceObserver:
         return True
 
     def finish(self):
+        if self.record.get('solver_counterfactual_enabled') and 'solver_counterfactual' in self.record:
+            self.record['solver_counterfactual']['complete'] = valid_counterfactual(self.record)
         self.record['complete'] = (set(self.record['trajectories']) == set(TRAJECTORIES)
             and all(row.get('complete') is True and self._coverage(name, row)
                     for name, row in self.record['trajectories'].items()))
@@ -292,6 +407,78 @@ class TraceObserver:
             stream.write(raw)
         return dict(file=path.name, bytes=len(raw), sha256=hashlib.sha256(raw).hexdigest(),
                     complete=self.record['complete'], performance_measurements=False)
+
+
+def valid_counterfactual(record):
+    """Validate controlled factors, all elements, native replay and the real round target."""
+    try:
+        row = record['solver_counterfactual']
+        normal = record['trajectories']['normal_sp2']['scheduler'][0]
+        full = record['trajectories']['round_sp2_full']['scheduler'][0]
+        variants = row['variants']
+        if (record.get('solver_counterfactual_enabled') is not True
+                or row.get('schema') != 'ditserve.sd35-solver-counterfactual.v1'
+                or row.get('logical_step') != 0 or row.get('actual_scheduler_unchanged') is not True
+                or row.get('cpu_cuda_rng_restored') is not True or row.get('output_replaced') is not False
+                or row.get('performance_measurements') is not False
+                or row.get('factors') != ['step_implementation', 'initial_step_and_begin_index', 'schedule_storage_device']
+                or set(variants) != set(COUNTERFACTUAL_VARIANTS)
+                or row['inputs'] != normal['inputs'] or row['inputs'] != full['inputs']
+                or row['actual_output'] != normal['output']
+                or variants['native_replay']['output'] != normal['output']
+                or variants['raw_round_device']['output'] != full['output']):
+            return False
+        states = {name:variants[name]['state_before'] for name in COUNTERFACTUAL_VARIANTS}
+        native, raw, explicit, device = [states[name] for name in COUNTERFACTUAL_VARIANTS]
+        for state in states.values():
+            if (set(state) != {'step_index','begin_index','num_inference_steps','timesteps','sigmas','timesteps_device','sigmas_device'}
+                    or type(state['num_inference_steps']) is not int or state['num_inference_steps'] != 28
+                    or not valid_tensor(state['timesteps']) or state['timesteps']['shape'] != [28]
+                    or not valid_tensor(state['sigmas']) or state['sigmas']['shape'] != [29]
+                    or any(state[k] not in ('cpu', 'cuda:'+str(record['rank'])) for k in ('timesteps_device','sigmas_device'))
+                    or any(state[k] is not None and type(state[k]) is not int for k in ('step_index','begin_index'))):
+                return False
+        if (native != normal['solver_state_before'] or raw != native
+                or native['step_index'] is not None or native['begin_index'] is not None
+                or explicit != dict(raw, step_index=0, begin_index=0)
+                or device != dict(explicit, timesteps_device=device['timesteps_device'], sigmas_device=device['sigmas_device'])
+                or device != full['solver_state_before']):
+            return False
+        identities = [variants[name]['implementation'] for name in COUNTERFACTUAL_VARIANTS]
+        if (identities[0] != normal['scheduler_before']['identity']
+                or identities[1:] != [full['scheduler_before']['identity']] * 3):
+            return False
+        require_counterfactual_source(record['schedulers'][identities[0]])
+        if record['schedulers'][identities[1]]['bound_step']['file_sha256'] != RAW_SOLVER_SHA256:
+            return False
+        descriptions = dict(actual=row['actual_output'])
+        for name, variant in variants.items():
+            if (not valid_tensor(variant['output'])
+                    or variant['state_after'] != dict(variant['state_before'], step_index=1)):
+                return False
+            descriptions[name] = variant['output']
+        pairs = [('actual', name) for name in COUNTERFACTUAL_VARIANTS]
+        pairs += list(zip(COUNTERFACTUAL_VARIANTS, COUNTERFACTUAL_VARIANTS[1:]))
+        if set(row['comparisons']) != {a+'_vs_'+b for a,b in pairs}:
+            return False
+        for a,b in pairs:
+            value = row['comparisons'][a+'_vs_'+b]
+            left, right = descriptions[a], descriptions[b]
+            if (left['shape'] != right['shape'] or left['dtype'] != right['dtype']
+                    or type(value.get('elements')) is not int or value['elements'] != math.prod(left['shape'])
+                    or value.get('atol') != 1e-5 or value.get('rtol') != 1e-5
+                    or type(value.get('passed')) is not bool or type(value.get('bitwise_equal')) is not bool
+                    or value['bitwise_equal'] != (left['sha256'] == right['sha256'])
+                    or any(type(value.get(k)) not in (int,float) or not math.isfinite(value[k])
+                           for k in ('max_abs_error','rmse','relative_l2_error','cosine_similarity'))
+                    or not 0 <= value['rmse'] <= value['max_abs_error'] or value['relative_l2_error'] < 0
+                    or not -1.000000000001 <= value['cosine_similarity'] <= 1.000000000001
+                    or (value['bitwise_equal'] and (not value['passed'] or value['max_abs_error'] != 0 or value['relative_l2_error'] != 0))
+                    or (value['passed'] and value['max_abs_error'] > 1e-5 + 1e-5*max(abs(right['minimum']),abs(right['maximum'])))):
+                return False
+        return True
+    except (KeyError, TypeError, ValueError, AttributeError):
+        return False
 
 
 def valid_trace(record):
@@ -336,10 +523,12 @@ def valid_trace(record):
                             or any(state[k] is not None and (type(state[k]) is not int or state[k] < 0)
                                    for k in ('step_index', 'begin_index'))):
                         return False
-    return True
+    if record.get('solver_counterfactual_enabled'):
+        return record.get('solver_counterfactual', {}).get('complete') is True and valid_counterfactual(record)
+    return 'solver_counterfactual' not in record
 
 
-def assess_observation(records, directory, reference):
+def assess_observation(records, directory, reference, *, reference_sha256=REFERENCE_SHA256, solver_counterfactual=False):
     """All six full output descriptors on both ranks must exactly reproduce r3."""
     reproduced = (len(records) == 2 and {r.get('rank') for r in records} == {0, 1}
         and all(row.get('outputs') == next(r['outputs'] for r in reference['ranks'] if r['rank'] == row['rank'])
@@ -354,9 +543,10 @@ def assess_observation(records, directory, reference):
             good = (receipt.get('file') == path.name and receipt.get('bytes') == len(raw)
                 and receipt.get('sha256') == hashlib.sha256(raw).hexdigest()
                 and receipt.get('complete') is True and trace.get('complete') is True
-                and trace.get('rank') == row['rank'] and valid_trace(trace))
+                and trace.get('rank') == row['rank'] and valid_trace(trace)
+                and (not solver_counterfactual or trace.get('solver_counterfactual_enabled') is True))
         except (OSError, ValueError, TypeError, KeyError):
             good = False
         complete = complete and good
     return dict(observer_reproduced=bool(reproduced), observation_admissible=bool(complete),
-                trace_reference_sha256=REFERENCE_SHA256, performance_measurements=False)
+                trace_reference_sha256=reference_sha256, performance_measurements=False)

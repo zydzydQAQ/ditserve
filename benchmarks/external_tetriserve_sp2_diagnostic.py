@@ -436,7 +436,8 @@ def worker(rank, args, binding):
         progress.update('prepare_return')
         result['initial_five_tensors'] = {name:tensor_summary(t) for name,t in zip(migration.NAMES,initial.transferred_tensors())}
         if args.trace_reference_summary is not None:
-            observer = trace.TraceObserver(pipeline.pipe, lambda: pipeline.runtime.state, rank)
+            observer = trace.TraceObserver(pipeline.pipe, lambda: pipeline.runtime.state, rank,
+                solver_counterfactual=args.solver_counterfactual)
         outputs = {}
         for name in TRAJECTORIES:
             result['stage']=name
@@ -584,8 +585,10 @@ def main(argv=None):
     parser.add_argument('--output-dir',type=Path,required=True)
     parser.add_argument('--timeout-seconds',type=int,default=1800)
     parser.add_argument('--trace-reference-summary',type=Path,
-        help='opt-in numerical observation, bound to the completed r3 child summary')
+        help='opt-in numerical observation, bound to the completed r3 or r4 child summary')
     parser.add_argument('--trace-reference-sha256',default=trace.REFERENCE_SHA256)
+    parser.add_argument('--solver-counterfactual',action='store_true',
+        help='observe isolated step0 solver variants; requires the admissible r4 trace reference')
     args=parser.parse_args(argv)
     args.output_dir=args.output_dir.absolute()
     args.prior_result=args.prior_result.absolute()
@@ -598,6 +601,9 @@ def main(argv=None):
     created=False
     try:
         if not 120<=args.timeout_seconds<=3600: raise ValueError('invalid diagnostic timeout')
+        if args.solver_counterfactual and (args.trace_reference_summary is None
+                or args.trace_reference_sha256 != trace.R4_REFERENCE_SHA256):
+            raise ValueError('solver counterfactual requires the fixed admissible r4 reference')
         if args.command=='run': probe.storage()
         binding=bind_prior(args.prior_result,args.prior_summary_sha256,args.prior_numerics_sha256)
         result['binding']=binding
@@ -606,7 +612,7 @@ def main(argv=None):
             reference = trace.bind_reference(args.trace_reference_summary, args.trace_reference_sha256, binding, assess)
             result.update(trace_reference_sha256=args.trace_reference_sha256, observer_reproduced=False,
                 observation_admissible=False, trace_hashing_may_synchronize_cuda=True,
-                trace_observer_sha256=sha(trace.__file__))
+                trace_observer_sha256=sha(trace.__file__), solver_counterfactual_enabled=args.solver_counterfactual)
         if args.command=='plan':
             result['status']='planned'; print(json.dumps(result,sort_keys=True,allow_nan=False)); return 0
         root=Path('/shared/output/DITSERVE')
@@ -618,7 +624,8 @@ def main(argv=None):
         retain_execution(result,rows,error,args.output_dir)
         complete=error is None and assess(rows)
         if reference is not None:
-            observation = trace.assess_observation(rows, args.output_dir, reference)
+            observation = trace.assess_observation(rows, args.output_dir, reference,
+                reference_sha256=args.trace_reference_sha256, solver_counterfactual=args.solver_counterfactual)
             observation['observation_admissible'] = complete and observation['observation_admissible']
             result.update(observation)
             complete = complete and result['observation_admissible']
