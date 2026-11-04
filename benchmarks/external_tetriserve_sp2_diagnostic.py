@@ -23,6 +23,7 @@ import external_tetriserve_migration as migration
 import external_tetriserve_service_numerics as numerics
 import external_runtime_probe as probe
 import external_sd35_trace as trace
+import external_sd35_common_solver_check as common_solver
 
 sha = migration.sha
 write_json = migration.write_json
@@ -454,10 +455,15 @@ def worker(rank, args, binding):
             try:
                 with torch.inference_mode(), (observer.trajectory(name) if observer else nullcontext()):
                     if name == 'normal_sp2':
-                        native_output = pipeline.pipe(prompt=request.prompt,negative_prompt=request.negative_prompt,
-                            height=request.height,width=request.width,num_inference_steps=28,
-                            guidance_scale=4.5,max_sequence_length=256,
-                            generator=torch.Generator(device='cpu').manual_seed(102),output_type='latent')
+                        selection = (common_solver.select(pipeline.pipe, lambda: pipeline.runtime.state)
+                            if args.normal_sp2_common_solver else nullcontext())
+                        with selection as solver_receipt:
+                            if solver_receipt is not None:
+                                result['common_solver'] = solver_receipt
+                            native_output = pipeline.pipe(prompt=request.prompt,negative_prompt=request.negative_prompt,
+                                height=request.height,width=request.width,num_inference_steps=28,
+                                guidance_scale=4.5,max_sequence_length=256,
+                                generator=torch.Generator(device='cpu').manual_seed(102),output_type='latent')
                         latents,result['normal_collection']=collect_normal_output(native_output,pipeline,rank,control,progress)
                     else:
                         # Clone all five actual tensors; no mutation crosses trajectories.
@@ -589,6 +595,8 @@ def main(argv=None):
     parser.add_argument('--trace-reference-sha256',default=trace.REFERENCE_SHA256)
     parser.add_argument('--solver-counterfactual',action='store_true',
         help='observe isolated step0 solver variants; requires the admissible r4 trace reference')
+    parser.add_argument('--normal-sp2-common-solver',action='store_true',
+        help='experimental normal SP2 raw-solver selection; mutually exclusive with old-output observation')
     args=parser.parse_args(argv)
     args.output_dir=args.output_dir.absolute()
     args.prior_result=args.prior_result.absolute()
@@ -601,6 +609,12 @@ def main(argv=None):
     created=False
     try:
         if not 120<=args.timeout_seconds<=3600: raise ValueError('invalid diagnostic timeout')
+        if args.normal_sp2_common_solver and (args.trace_reference_summary is not None or args.solver_counterfactual):
+            raise ValueError('common solver changes normal output and cannot use native-output observer gates')
+        if args.normal_sp2_common_solver:
+            result.update(normal_sp2_solver='common_raw_diffusers', native_normal_oracle_executed=False,
+                common_solver_recipe=common_solver.RECIPE, common_solver_adapter_sha256=sha(common_solver.__file__),
+                common_solver_diagnostic_completed=False, common_solver_equivalence_passed=False)
         if args.solver_counterfactual and (args.trace_reference_summary is None
                 or args.trace_reference_sha256 != trace.R4_REFERENCE_SHA256):
             raise ValueError('solver counterfactual requires the fixed admissible r4 reference')
@@ -623,6 +637,9 @@ def main(argv=None):
         rows,error=execute(args,binding)
         retain_execution(result,rows,error,args.output_dir)
         complete=error is None and assess(rows)
+        if args.normal_sp2_common_solver:
+            result.update(common_solver.assess(rows, complete))
+            complete = complete and result['common_solver_diagnostic_completed']
         if reference is not None:
             observation = trace.assess_observation(rows, args.output_dir, reference,
                 reference_sha256=args.trace_reference_sha256, solver_counterfactual=args.solver_counterfactual)
