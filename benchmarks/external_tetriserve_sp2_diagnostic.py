@@ -8,6 +8,7 @@ new reference inference or formal performance claim is made by this diagnostic.
 from __future__ import annotations
 
 import argparse
+from contextlib import nullcontext
 from datetime import timedelta
 import json
 import math
@@ -21,6 +22,7 @@ import traceback
 import external_tetriserve_migration as migration
 import external_tetriserve_service_numerics as numerics
 import external_runtime_probe as probe
+import external_sd35_trace as trace
 
 sha = migration.sha
 write_json = migration.write_json
@@ -378,6 +380,7 @@ def worker(rank, args, binding):
     result = dict(rank=rank,status='failed',stage='binding',distributed_closed=False)
     pipeline = None
     progress = None
+    observer = None
     try:
         progress = RankProgress(args.output_dir,rank,binding)
         progress.update('source_binding_enter')
@@ -432,6 +435,8 @@ def worker(rank, args, binding):
         initial = pipeline.prepare(request)
         progress.update('prepare_return')
         result['initial_five_tensors'] = {name:tensor_summary(t) for name,t in zip(migration.NAMES,initial.transferred_tensors())}
+        if args.trace_reference_summary is not None:
+            observer = trace.TraceObserver(pipeline.pipe, lambda: pipeline.runtime.state, rank)
         outputs = {}
         for name in TRAJECTORIES:
             result['stage']=name
@@ -446,7 +451,7 @@ def worker(rank, args, binding):
             handle=pipeline.pipe.transformer.register_forward_pre_hook(count_forward)
             return_handle=pipeline.pipe.transformer.register_forward_hook(count_return)
             try:
-                with torch.inference_mode():
+                with torch.inference_mode(), (observer.trajectory(name) if observer else nullcontext()):
                     if name == 'normal_sp2':
                         native_output = pipeline.pipe(prompt=request.prompt,negative_prompt=request.negative_prompt,
                             height=request.height,width=request.width,num_inference_steps=28,
@@ -520,6 +525,13 @@ def worker(rank, args, binding):
             result['distributed_closed']=not dist.is_initialized()
         except BaseException as exc:
             result.update(status='failed',cleanup_error=repr(exc))
+        if observer is not None:
+            try:
+                result['trace'] = observer.write(args.output_dir, probe.storage)
+                if not result['trace']['complete']:
+                    result.update(status='failed', trace_error='incomplete observer coverage')
+            except BaseException as exc:
+                result.update(status='failed', trace_error=repr(exc))
         probe.storage()
         write_json(args.output_dir/('rank-'+str(rank)+'.json'),result)
     if result['status']!='completed':
@@ -571,6 +583,9 @@ def main(argv=None):
     parser.add_argument('--prior-numerics-sha256',required=True)
     parser.add_argument('--output-dir',type=Path,required=True)
     parser.add_argument('--timeout-seconds',type=int,default=1800)
+    parser.add_argument('--trace-reference-summary',type=Path,
+        help='opt-in numerical observation, bound to the completed r3 child summary')
+    parser.add_argument('--trace-reference-sha256',default=trace.REFERENCE_SHA256)
     args=parser.parse_args(argv)
     args.output_dir=args.output_dir.absolute()
     args.prior_result=args.prior_result.absolute()
@@ -586,6 +601,12 @@ def main(argv=None):
         if args.command=='run': probe.storage()
         binding=bind_prior(args.prior_result,args.prior_summary_sha256,args.prior_numerics_sha256)
         result['binding']=binding
+        reference = None
+        if args.trace_reference_summary is not None:
+            reference = trace.bind_reference(args.trace_reference_summary, args.trace_reference_sha256, binding, assess)
+            result.update(trace_reference_sha256=args.trace_reference_sha256, observer_reproduced=False,
+                observation_admissible=False, trace_hashing_may_synchronize_cuda=True,
+                trace_observer_sha256=sha(trace.__file__))
         if args.command=='plan':
             result['status']='planned'; print(json.dumps(result,sort_keys=True,allow_nan=False)); return 0
         root=Path('/shared/output/DITSERVE')
@@ -596,6 +617,11 @@ def main(argv=None):
         rows,error=execute(args,binding)
         retain_execution(result,rows,error,args.output_dir)
         complete=error is None and assess(rows)
+        if reference is not None:
+            observation = trace.assess_observation(rows, args.output_dir, reference)
+            observation['observation_admissible'] = complete and observation['observation_admissible']
+            result.update(observation)
+            complete = complete and result['observation_admissible']
         comparisons=next((r.get('comparisons',{}) for r in rows if r.get('rank')==0),{})
         result.update(diagnostic_completed=complete,status='diagnostic_completed' if complete else 'failed',
             numerical_check_passed=complete and all(c['passed'] for pair in comparisons.values() for c in pair.values()))
