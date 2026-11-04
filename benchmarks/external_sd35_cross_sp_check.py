@@ -365,6 +365,48 @@ def reproduced(receipt, reference):
         and receipt['metadata']['runtime']==reference['runtime'])
 
 
+def run_parallel_candidate(pipeline, initial, request, rank, control, group, snapshots, progress):
+    import torch.distributed as dist
+    import external_sd35_parallel_wrapper_check as candidate
+    progress.update('candidate_conversion_enter')
+    pipeline.runtime.pool.activate((0,1),pipeline.runtime.state,ulysses_degree=2,ring_degree=1)
+    pipeline.runtime.bind_global()
+    backend=candidate.backend_metadata(pipeline.runtime.state)
+    conversion=candidate.convert(pipeline.pipe.transformer,pipeline.runtime.state)
+    preserved=candidate.identities(pipeline.pipe.transformer)
+    result=dict(conversion=conversion,backend=backend,routes={},module_calls={})
+    converted={}
+    progress.update('candidate_conversion_return')
+    pipeline.runtime.pool.activate((rank,),pipeline.runtime.state,ulysses_degree=1,ring_degree=1)
+    pipeline.runtime.bind_global()
+    if rank==0:
+        progress.update('converted_sp1_enter')
+        with candidate.observe_modules(pipeline.pipe.transformer) as calls:
+            converted['sp1_round'],result['routes']['sp1_round']=observe_route(pipeline,initial,request,'sp1_round')
+        result['module_calls']['sp1_round']=calls
+        result['original_sp1_vs_converted_sp1']=compare_boundaries(snapshots['sp1_native'],converted['sp1_round'])
+        progress.update('converted_sp1_return')
+    dist.barrier(group=control)
+    pipeline.runtime.pool.activate((0,1),pipeline.runtime.state,ulysses_degree=2,ring_degree=1)
+    pipeline.runtime.bind_global()
+    progress.update('converted_sp2_enter')
+    with candidate.observe_modules(pipeline.pipe.transformer) as calls:
+        converted['sp2_round'],result['routes']['sp2_round']=observe_route(pipeline,initial,request,'sp2_round')
+    result['module_calls']['sp2_round']=calls
+    progress.update('converted_sp2_return')
+    receipt=result['routes']['sp2_round']
+    maps=[None,None]
+    dist.all_gather_object(maps,dict(rank=rank,ranges=receipt['actual_row_ranges'],local_height=receipt['local_height']),group=control)
+    validate_partition(maps)
+    result['row_partition']=maps
+    for name,values in (('original_sp1_vs_converted_sp2',snapshots.get('sp1_native')),
+                        ('converted_sp1_vs_converted_sp2',converted.get('sp1_round'))):
+        reference=broadcast_boundaries(values,rank,control,group)
+        result[name]=compare_boundaries(reference,converted['sp2_round'],receipt['actual_row_ranges'])
+    result['post_inference_weights']=candidate.identity_receipt(preserved,candidate.identities(pipeline.pipe.transformer))
+    return result
+
+
 def worker(rank, args, binding, references):
     result = dict(rank=rank,status='failed',distributed_closed=False,qualification_eligible=False)
     pipeline = progress = None
@@ -438,8 +480,11 @@ def worker(rank, args, binding, references):
         for route in ROUTES[:2]:
             reference = broadcast_boundaries(snapshots.get(route),rank,control,group)
             result[route+'_vs_sp2_round'] = compare_boundaries(reference,snapshots['sp2_round'],receipt['actual_row_ranges'])
-        result['status'] = 'completed'
         progress.update('boundary_comparison_return')
+        if args.parallel_wrapper_candidate:
+            result['parallel_wrapper_candidate']=run_parallel_candidate(
+                pipeline,initial,request,rank,control,group,snapshots,progress)
+        result['status'] = 'completed'
     except BaseException as exc:
         result.update(error=repr(exc),traceback=traceback.format_exc()[-10000:])
         if progress is not None:
@@ -563,6 +608,9 @@ def main(argv=None):
     parser.add_argument('--sp2-reference-summary',type=Path,required=True)
     parser.add_argument('--sp2-reference-sha256',default=R5_SHA256)
     parser.add_argument('--sp2-reference-traces',type=Path,nargs=2,required=True)
+    parser.add_argument('--parallel-wrapper-candidate',action='store_true',
+        help='experimental in-process completion of frozen parallel wrapping; original routes remain unchanged')
+    parser.add_argument('--candidate-reference-summary',type=Path,help='immutable r7 child summary required by candidate mode')
     args=parser.parse_args(argv)
     args.output_dir=args.output_dir.absolute(); args.prior_result=args.prior_result.absolute()
     result=dict(schema='ditserve.sd35-cross-sp-first-step.v1',status='failed',diagnostic_completed=False,
@@ -576,6 +624,15 @@ def main(argv=None):
         binding=base.bind_prior(args.prior_result,args.prior_summary_sha256,args.prior_numerics_sha256)
         references=bind_reference(args.sp2_reference_summary,args.sp2_reference_sha256,args.sp2_reference_traces,binding)
         result.update(binding=binding,sp2_reference_sha256=args.sp2_reference_sha256,sp2_references=references)
+        if args.parallel_wrapper_candidate != (args.candidate_reference_summary is not None):
+            raise ValueError('parallel wrapper candidate requires its immutable r7 reference')
+        candidate_reference=None
+        if args.parallel_wrapper_candidate:
+            import external_sd35_parallel_wrapper_check as candidate
+            candidate_reference=candidate.bind_reference(args.candidate_reference_summary,binding,references,sys.modules[__name__])
+            result.update(parallel_wrapper_candidate_enabled=True,candidate_reference_sha256=candidate.R7_SHA256,
+                candidate_helper_sha256=base.sha(candidate.__file__),candidate_diagnostic_completed=False,
+                candidate_equivalence_passed=False,original_observer_reproduced=False)
         if args.command=='plan':
             result['status']='planned'; print(json.dumps(result,sort_keys=True,allow_nan=False)); return 0
         if (not args.output_dir.is_relative_to('/shared/output/DITSERVE')
@@ -586,6 +643,10 @@ def main(argv=None):
         rows,error=execute(args,binding,references)
         base.retain_execution(result,rows,error,args.output_dir)
         complete=error is None and assess(rows,references)
+        if candidate_reference is not None:
+            assessment=candidate.assess(rows,candidate_reference,sys.modules[__name__])
+            result.update(assessment)
+            complete=complete and assessment['candidate_diagnostic_completed']
         result.update(diagnostic_completed=complete,status='diagnostic_completed' if complete else 'failed')
     except BaseException as exc:
         result.update(error=repr(exc),traceback=traceback.format_exc()[-10000:])
