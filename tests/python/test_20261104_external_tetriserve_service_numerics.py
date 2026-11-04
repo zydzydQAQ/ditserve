@@ -1,5 +1,7 @@
 """Raw numerical evidence contracts; these tests make no CUDA execution claim."""
 from copy import deepcopy
+import ast
+import asyncio
 import hashlib
 import json
 import os
@@ -69,6 +71,27 @@ def captured_fixture(directory):
     return planned,plan_sha,summary
 
 
+def official_http_ids():
+    # Execute the unmodified official counter definitions, not a substitute
+    # generator. Extract just these CPU definitions to avoid importing Torch.
+    source = ROOT.parent/'.local/ditserve-kairos-rewrite-runtime/external-systems/20261103/TetriServe/tetriserve/utils.py'
+    if not source.is_file():
+        raise unittest.SkipTest('frozen official TetriServe source is not available in this checkout')
+    raw = source.read_bytes()
+    if hashlib.sha256(raw).hexdigest() != '815b8aea9ffb88df066fbd6fe3ae58e910c06ec6c4f7026e4727281e5bee95f6':
+        raise ValueError('official HTTP counter source changed')
+    wanted = {'Counter','gen_req_id','gen_sub_req_id','get_gen_req_id','get_gen_sub_req_id'}
+    nodes = [n for n in ast.parse(raw).body if
+        (isinstance(n,(ast.ClassDef,ast.AsyncFunctionDef)) and n.name in wanted) or
+        (isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id in wanted for t in n.targets))]
+    if len(nodes) != 5: raise ValueError('official counter definitions changed')
+    namespace = {'asyncio':asyncio}
+    exec(compile(ast.Module(body=nodes,type_ignores=[]),str(source),'exec'),namespace)
+    async def allocate():
+        return [(await namespace['get_gen_req_id'](),await namespace['get_gen_sub_req_id']()) for _ in range(2)]
+    return asyncio.run(allocate())
+
+
 class TetriServiceNumericsTests(unittest.TestCase):
     def test_plan_binds_fixed_tolerance_independent_requests_and_formal_shapes(self):
         numerics.validate_plan(plan())
@@ -114,6 +137,62 @@ class TetriServiceNumericsTests(unittest.TestCase):
         for attr,value in (('end_step',27),('origin_steps',[27]),('is_last_steps',[False]),('req_ids',[42,43])):
             changed = deepcopy(req); setattr(changed,attr,value)
             with self.assertRaises(ValueError): numerics.scheduled_identity(changed)
+
+    def test_real_http_counter_negative_subrequests_reach_final_capture(self):
+        ids = official_http_ids()
+        self.assertEqual(ids,[(0,-1),(1,-2)])
+        protocol = json.loads((ROOT/'configs/benchmarks/formal-mixed-v1.json').read_bytes())
+        offered = service.request_plans(protocol,
+            ['A red fox standing beside a mountain lake.','A white rabbit in a field of blue flowers.'],101,True)
+        # Reproduce both final dispatch identities observed in GPU r1. Native
+        # HTTP ordering put the 1024 request first: (0,-1,26:28,rank1), followed
+        # by the 512 request: (1,-2,20:28,rank0). The final tensor execution had
+        # not occurred when the old observer incorrectly rejected these IDs.
+        for (parent,sub),index,start,rank in ((ids[0],1,26,1),(ids[1],0,20,0)):
+            request = offered[index]['request']
+            config = SimpleNamespace(**{k:v for k,v in request.items() if k!='steps'},
+                batch_size=1,num_inference_steps=28-start)
+            config.prompt = [request['prompt']]
+            req = SimpleNamespace(req_ids=[parent],sub_req_ids=[sub],parallel_ranks=[rank],origin_steps=[28],
+                start_step=start,end_step=28,is_last_steps=[True],input_config=config)
+            row = numerics.scheduled_identity(req)
+            self.assertEqual((row['native_request_id'],row['sub_request_id']),(parent,sub))
+            self.assertEqual(row['request'],request)
+            self.assertEqual(row['final_interval'],[start,28])
+            for field,bad in [('req_ids',[-1]),('req_ids',[True]),('req_ids',[1.0]),
+                              ('sub_req_ids',[True]),('sub_req_ids',[-1.0]),('sub_req_ids',['-1'])]:
+                altered = deepcopy(req);setattr(altered,field,bad)
+                with self.subTest(field=field,bad=bad),self.assertRaises(ValueError):
+                    numerics.scheduled_identity(altered)
+
+    def test_signed_subrequests_remain_exactly_bound_and_unique_through_raw_receipts(self):
+        with TemporaryDirectory() as directory:
+            planned,plan_sha,summary = captured_fixture(directory)
+            ids = official_http_ids()
+            for response,(parent,sub) in zip(summary['responses'],ids):
+                old_parent = response['native_request_id'];response['native_request_id']=parent
+                for dispatch in summary['dispatches']:
+                    if dispatch['request_ids']==[old_parent]:
+                        dispatch['request_ids']=[parent];dispatch['sub_request_ids']=[sub]
+                path=Path(directory)/'raw'/('request-'+str(response['request_id'])+'.capture.json')
+                row=json.loads(path.read_bytes());row.update(native_request_id=parent,sub_request_id=sub)
+                path.write_text(json.dumps(row))
+            captured=numerics.bound_captures(directory,planned,plan_sha,summary)
+            self.assertEqual([(r['native_request_id'],r['sub_request_id']) for r in captured.values()],ids)
+            path=Path(directory)/'raw/request-100.capture.json';original=path.read_bytes()
+            for bad in (1,-2,True,-1.0,'-1'):
+                row=json.loads(original);row['sub_request_id']=bad;path.write_text(json.dumps(row))
+                with self.subTest(sub_id=bad),self.assertRaises(ValueError):
+                    numerics.bound_captures(directory,planned,plan_sha,summary)
+            path.write_bytes(original)
+            # Even if a poisoned second dispatch and capture agree, reused
+            # global sub-request identity cannot qualify a distinct HTTP output.
+            duplicate=deepcopy(summary)
+            for dispatch in duplicate['dispatches']:
+                if dispatch['request_ids']==[ids[1][0]]:dispatch['sub_request_ids']=[ids[0][1]]
+            second=Path(directory)/'raw/request-101.capture.json'
+            row=json.loads(second.read_bytes());row['sub_request_id']=ids[0][1];second.write_text(json.dumps(row))
+            with self.assertRaises(ValueError):numerics.bound_captures(directory,planned,plan_sha,duplicate)
 
     def test_previously_executed_native_scheduler_final_chunks(self):
         default = ROOT.parent/'.local/ditserve-kairos-rewrite-runtime/evidence/d20261103-tetri-logic-19c47ea-r2/summary.json'

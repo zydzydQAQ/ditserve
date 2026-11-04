@@ -130,6 +130,15 @@ def raw_shapes(request):
     return {'latents':[1,16,h//8,w//8], 'decoded':[1,3,h,w]}
 
 
+def validate_native_ids(parent_id, sub_id):
+    # Official utils.get_gen_req_id starts at zero; get_gen_sub_req_id negates
+    # an independent counter starting at one. Keep both identities unchanged.
+    if type(parent_id) is not int or parent_id < 0:
+        raise ValueError('native parent request ID must be a nonnegative integer')
+    if type(sub_id) is not int:
+        raise ValueError('native sub-request ID must be a signed integer')
+
+
 def scheduled_identity(reqs):
     """Capture scientific identity at the original worker's final round."""
     if (len(reqs.req_ids) != 1 or len(reqs.sub_req_ids) != 1 or reqs.input_config.batch_size != 1
@@ -139,9 +148,7 @@ def scheduled_identity(reqs):
             or reqs.parallel_ranks not in ([0],[1],[0,1])
             or not isinstance(reqs.input_config.prompt,list) or len(reqs.input_config.prompt) != 1):
         raise ValueError('capture requires one actual final 28-step service output')
-    for identifier in [*reqs.req_ids,*reqs.sub_req_ids]:
-        if type(identifier) is not int or identifier < 0:
-            raise ValueError('native request IDs must be nonnegative integers')
+    validate_native_ids(reqs.req_ids[0], reqs.sub_req_ids[0])
     config = reqs.input_config
     request = dict(prompt=config.prompt[0],negative_prompt=config.negative_prompt,
         height=config.height,width=config.width,steps=28,seed=config.seed,
@@ -328,6 +335,7 @@ def bound_captures(root, plan, plan_sha, summary):
     if len(files) != 2:
         raise ValueError('both actual raw request captures are required')
     captures = {}
+    native_ids, sub_ids = set(), set()
     for path in files:
         row = read_json(path.read_bytes())
         rid = row.get('request_id')
@@ -339,11 +347,19 @@ def bound_captures(root, plan, plan_sha, summary):
                 or row.get('actual_final_sync_calls') != 1 or row.get('actual_raw_decode_calls') != 1
                 or row.get('capture_before_postprocess') is not True):
             raise ValueError('capture source/request/raw execution identity differs')
+        validate_native_ids(row.get('native_request_id'), row.get('sub_request_id'))
+        if row['native_request_id'] in native_ids or row['sub_request_id'] in sub_ids:
+            raise ValueError('native parent/sub-request capture IDs must each be unique')
+        native_ids.add(row['native_request_id']); sub_ids.add(row['sub_request_id'])
         response = next(r for r in summary['responses'] if r['request_id'] == rid)
+        validate_native_ids(response['native_request_id'], row['sub_request_id'])
         dispatches = [d for d in summary['dispatches'] if d['request_ids'] == [response['native_request_id']] and d['end'] == 28]
         if len(dispatches) != 1:
             raise ValueError('capture requires exactly one actual final scheduler dispatch')
         dispatch = dispatches[0]
+        if len(dispatch['sub_request_ids']) != 1:
+            raise ValueError('capture requires exactly one actual native sub-request')
+        validate_native_ids(dispatch['request_ids'][0], dispatch['sub_request_ids'][0])
         if (row['native_request_id'] != response['native_request_id'] or dispatch['sub_request_ids'] != [row['sub_request_id']]
                 or dispatch['ranks'] != row['final_ranks'] or row['owner_rank'] != dispatch['ranks'][0]
                 or row['final_interval'] != [dispatch['start'],28]):
