@@ -41,7 +41,7 @@ def _positive(value, name):
     return value
 
 
-def _slo_parameters(klass, tier, window_scale, fast_scale):
+def _slo_parameters(klass, tier, window_scale, fast_scale, image_window_scale=None):
     service = float(klass["service_ms"])
     if "slo_ms" in klass:
         slo, source = float(klass["slo_ms"]), "class.slo_ms"
@@ -50,6 +50,8 @@ def _slo_parameters(klass, tier, window_scale, fast_scale):
             scale, source = fast_scale, "window.fast_slo_scale"
         elif klass["kind"] == "video" and window_scale is not None:
             scale, source = window_scale, "window.slo_scale"
+        elif klass["kind"] == "image" and image_window_scale is not None:
+            scale, source = image_window_scale, "window.image_slo_scale"
         else:
             scale = float(klass.get("slo_scale", 2.5))
             source = "class.slo_scale" if "slo_scale" in klass else "default.slo_scale"
@@ -63,6 +65,87 @@ def _quota(total, parts):
         raise ValueError("quota parts must be positive integers")
     base, remainder = divmod(total, parts)
     return [base + (1 if index < remainder else 0) for index in range(parts)]
+
+
+def latent_length(klass):
+    """Latent token length L_i = ((frames - 1)//4 + 1) * (H/16) * (W/16) (TetriServe Sec. 6.1)."""
+    if "tokens" in klass:
+        return _positive(klass["tokens"], "class.tokens")
+    spec = klass.get("spec", {})
+    height = _positive(spec.get("height", 512), "spec.height")
+    width = _positive(spec.get("width", 512), "spec.width")
+    frames = int(spec.get("frames", 1))
+    if frames < 1:
+        raise ValueError("spec.frames must be positive")
+    temporal = (frames - 1) // 4 + 1 if frames > 1 else 1
+    return float(temporal * (height / 16.0) * (width / 16.0))
+
+
+def _parse_resolution_distribution(spec):
+    if spec is None or spec == "uniform":
+        return dict(name="uniform", alpha=0.0)
+    if spec == "skewed":
+        return dict(name="skewed", alpha=1.0)
+    if spec == "skewed_small":
+        return dict(name="skewed_small", alpha=-1.0)
+    if isinstance(spec, dict):
+        name = spec.get("name", "uniform")
+        if name == "uniform":
+            return dict(name="uniform", alpha=0.0)
+        if name in ("skewed", "skewed_small"):
+            default_alpha = -1.0 if name == "skewed_small" else 1.0
+            alpha = float(spec.get("alpha", default_alpha))
+            if not math.isfinite(alpha):
+                raise ValueError("skewed alpha must be finite")
+            return dict(name=name, alpha=alpha)
+    raise ValueError("unknown resolution_distribution")
+
+
+def resolution_probabilities(class_names, classes, distribution="uniform"):
+    """Compute per-class probabilities p_i proportional to exp(alpha * L_i / L_max)."""
+    if not class_names:
+        return {}
+    dist = _parse_resolution_distribution(distribution)
+    if dist["name"] == "uniform" or abs(dist["alpha"]) < 1e-12:
+        p = 1.0 / len(class_names)
+        return {name: p for name in class_names}
+    lengths = [latent_length(classes[name]) for name in class_names]
+    max_len = max(lengths)
+    weights = [math.exp(dist["alpha"] * (length / max_len)) for length in lengths]
+    total_w = math.fsum(weights)
+    return {name: w / total_w for name, w in zip(class_names, weights)}
+
+
+def _weighted_quota(total, weights):
+    if type(total) is not int or total < 0:
+        raise ValueError("quota total must be a nonnegative integer")
+    if not weights:
+        return []
+    total_weight = math.fsum(weights)
+    if not math.isfinite(total_weight) or total_weight <= 0:
+        raise ValueError("quota weights must be finite and positive")
+    raw = [total * (float(w) / total_weight) for w in weights]
+    base = [int(math.floor(x + 1e-12)) for x in raw]
+    remainder = total - sum(base)
+    if remainder > 0:
+        order = sorted(range(len(weights)), key=lambda idx: (-(raw[idx] - base[idx]), idx))
+        for idx in order[:remainder]:
+            base[idx] += 1
+    elif remainder < 0:
+        order = sorted(range(len(weights)), key=lambda idx: (raw[idx] - base[idx], -idx))
+        for idx in order[:-remainder]:
+            base[idx] -= 1
+    return base
+
+
+def resolution_class_quotas(total, class_names, classes, distribution="uniform"):
+    if not class_names:
+        return []
+    dist = _parse_resolution_distribution(distribution)
+    if dist["name"] == "uniform" or abs(dist["alpha"]) < 1e-12:
+        return _quota(total, len(class_names))
+    probs = resolution_probabilities(class_names, classes, dist)
+    return _weighted_quota(total, [probs[name] for name in class_names])
 
 
 def _ratio_count(total, fraction):
@@ -158,9 +241,11 @@ def build_trace(classes, prompt_pools, windows, *, slots, seed, quality_per_kind
         if not 0.0 <= fast_video_fraction <= 1.0:
             raise ValueError("fast_video_fraction must be in [0, 1]")
         window_slo_scale = _positive(window["slo_scale"], "window.slo_scale") if "slo_scale" in window else None
+        image_window_scale = (_positive(window["image_slo_scale"], "window.image_slo_scale")
+                              if "image_slo_scale" in window else None)
         fast_slo_scale = _positive(window.get("fast_slo_scale", 1.2), "window.fast_slo_scale")
         slo_by_class = {
-            name: {tier: _slo_parameters(klass, tier, window_slo_scale, fast_slo_scale)
+            name: {tier: _slo_parameters(klass, tier, window_slo_scale, fast_slo_scale, image_window_scale)
                    for tier in (("standard", "fast") if klass["kind"] == "video" else ("standard",))}
             for name, klass in classes.items()
         }
@@ -169,10 +254,14 @@ def build_trace(classes, prompt_pools, windows, *, slots, seed, quality_per_kind
                 if slo_by_class[name]["fast"]["source"] == "window.fast_slo_scale":
                     slo_by_class[name]["fast"]["source"] = "default.fast_slo_scale"
         load = _positive(window.get("load", 1.0), "load")
+        has_res_dist = "resolution_distribution" in window
+        res_dist = _parse_resolution_distribution(window.get("resolution_distribution"))
         image_classes = [name for name, klass in classes.items() if klass["kind"] == "image"]
-        class_counts = {"video": _quota(video_count, len(video_classes)) if video_classes else [],
-                        "image": _quota(image_count, len(image_classes))}
-        class_names = {"video": video_classes, "image": [name for name, klass in classes.items() if klass["kind"] == "image"]}
+        class_counts = {
+            "video": resolution_class_quotas(video_count, video_classes, classes, res_dist) if video_classes else [],
+            "image": resolution_class_quotas(image_count, image_classes, classes, res_dist),
+        }
+        class_names = {"video": video_classes, "image": image_classes}
         if any(len(class_names[kind]) != len(class_counts[kind]) for kind in ("image", "video")):
             raise ValueError("each modality needs its own class quota")
         events = []
@@ -263,16 +352,26 @@ def build_trace(classes, prompt_pools, windows, *, slots, seed, quality_per_kind
         rows.extend(window_rows)
         counts = Counter(row["kind"] for row in window_rows)
         class_totals = Counter(row["class"] for row in window_rows)
-        manifest_windows.append(dict(index=window_index, pattern=pattern, start_ms=start, duration_ms=duration,
-                                     parameters=copy.deepcopy(window), cv=cv, bursts=bursts, burst_active_fraction=fraction,
-                                     slo_scale=window_slo_scale, fast_slo_scale=fast_slo_scale,
-                                     fast_video_fraction=fast_video_fraction, slo_by_class=slo_by_class,
-                                     load=load, count=count, video_fraction=video_count / count,
-                                     counts=dict(counts), class_counts=dict(class_totals),
-                                     active_windows=[dict(start_ms=active_start, duration_ms=active_length)
-                                                     for active_start, active_length in active_windows],
-                                     rate_rps=None if pattern in ("offline", "offline_all") else count * 1000 / duration,
-                                     gpu_ms=dict(gpu_by_kind)))
+        rate_rps = None if pattern in ("offline", "offline_all") else count * 1000 / duration
+        win_entry = dict(index=window_index, pattern=pattern, start_ms=start, duration_ms=duration,
+                         parameters=copy.deepcopy(window), cv=cv, bursts=bursts, burst_active_fraction=fraction,
+                         slo_scale=window_slo_scale, fast_slo_scale=fast_slo_scale,
+                         fast_video_fraction=fast_video_fraction, slo_by_class=slo_by_class,
+                         load=load, count=count, video_fraction=video_count / count,
+                         counts=dict(counts), class_counts=dict(class_totals),
+                         active_windows=[dict(start_ms=active_start, duration_ms=active_length)
+                                         for active_start, active_length in active_windows],
+                         rate_rps=rate_rps, gpu_ms=dict(gpu_by_kind))
+        if has_res_dist:
+            mean_gpu_ms = sum(gpu_by_kind.values()) / count
+            r0_rpm = slots * 60000.0 / mean_gpu_ms
+            win_entry.update(
+                resolution_distribution=res_dist,
+                r0_rpm=r0_rpm,
+                rate_rpm=None if rate_rps is None else rate_rps * 60.0,
+                active_rate_rpm=None if pattern in ("offline", "offline_all") else count * 60000.0 / exposure,
+            )
+        manifest_windows.append(win_entry)
         start += duration
     rows.sort(key=lambda row: (row["arrival_ms"], row["kind"], row["request_id"]))
     counts = Counter(row["kind"] for row in rows)
@@ -281,15 +380,20 @@ def build_trace(classes, prompt_pools, windows, *, slots, seed, quality_per_kind
                   for kind in kinds}
     gpu_total = sum(gpu_counts.values())
     duration = start
+    rate_rps = None if duration == 0 else len(rows) * 1000 / duration
     manifest = dict(schema=SCHEMA, seed=seed, slots=slots,
                     patterns=sorted({window["pattern"] for window in manifest_windows}),
                     counts=dict(counts), class_counts=dict(class_counts), total_duration_ms=duration,
-                    rate_rps=None if duration == 0 else len(rows) * 1000 / duration,
+                    rate_rps=rate_rps,
                     gpu_ms=dict(gpu_counts),
                     gpu_time_fraction={kind: value / gpu_total for kind, value in gpu_counts.items()},
                     normalized_gpu_work=gpu_total / slots / duration if duration else manifest_windows[0]["load"],
                     quality_requests=dict(quality_seen), sources={kind: _pool_manifest(prompt_pools[kind]) for kind in kinds},
                     windows=manifest_windows, slo_precedence=copy.deepcopy(SLO_PRECEDENCE))
+    if any("resolution_distribution" in w for w in manifest_windows):
+        mean_gpu_ms = gpu_total / len(rows)
+        manifest["r0_rpm"] = slots * 60000.0 / mean_gpu_ms
+        manifest["rate_rpm"] = None if rate_rps is None else rate_rps * 60.0
     manifest["workload_sha256"] = _digest(rows)
     return dict(manifest=manifest, workload=rows)
 

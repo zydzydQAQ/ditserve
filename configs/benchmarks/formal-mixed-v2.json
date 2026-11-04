@@ -1,0 +1,429 @@
+{
+  "schema": "ditserve.formal-protocol.v2",
+  "id": "formal-mixed-v2",
+  "scope": "GenServe/TetriServe-aligned mixed-modality serving protocol: per-resolution unoptimized SP1 end-to-end latency SLO baseline, SLO scale [1.0, 1.5, 2.0], rate scale [0.5, 1.0, 1.5] relative to R0 (reported in req/min), 100 requests/trace, 81-frame 3-tier video (256p/480p/720p) and 3-tier image (512^2/1024^2/1440^2), video fractions [0.2, 0.5, 0.8], uniform and TetriServe exponential-skewed resolution distributions",
+  "primary_model": "wan22",
+  "sensitivity_models": [
+    "wan21"
+  ],
+  "dataset_split": {
+    "method": "sha256-normalized-prompt-bucket-v1",
+    "salt": "ditserve-formal-20261102",
+    "buckets": {
+      "development": [
+        0,
+        20
+      ],
+      "calibration": [
+        20,
+        40
+      ],
+      "test": [
+        40,
+        100
+      ]
+    }
+  },
+  "datasets": {
+    "image": {
+      "kind": "diffusiondb",
+      "repository": "https://huggingface.co/datasets/poloclub/diffusiondb",
+      "revision": "fb620fbe49fa4420e0734bd9c0df11f51176b61f",
+      "sha256": "eecd341187bc91c07f5994ad0660d40228ea025616fd57a509bef8323677c68f"
+    },
+    "video": {
+      "kind": "vidprom",
+      "repository": "https://huggingface.co/datasets/WenhaoWang/VidProM",
+      "revision": "0c0900e6a037b058b1903bc1de9bcb6037d9fc24",
+      "sha256": "7668b87803b67638fa899b69f3a2a298ea13daffe508ce625e21937bff958b6e"
+    }
+  },
+  "seeds": {
+    "development": [
+      201,
+      202,
+      203
+    ],
+    "calibration": [
+      101
+    ],
+    "test": [
+      301,
+      302,
+      303,
+      304,
+      305
+    ]
+  },
+  "requests_per_cell": {
+    "development": 40,
+    "test": 100
+  },
+  "video_fractions": [
+    0.2,
+    0.5,
+    0.8
+  ],
+  "patterns": [
+    {
+      "name": "poisson"
+    },
+    {
+      "name": "gamma",
+      "cv": 2.0
+    },
+    {
+      "name": "bursty",
+      "bursts": 2,
+      "burst_active_fraction": 0.25
+    }
+  ],
+  "loads": [
+    0.5,
+    1.0,
+    1.5
+  ],
+  "rate_definition": "R0 = slots * 60000 / mean_sp1_gpu_service_ms (req/min); offered rate_rpm = load * R0",
+  "slo": {
+    "video_scale": 1.5,
+    "image_scale": 1.5,
+    "scales": [
+      1.0,
+      1.5,
+      2.0
+    ],
+    "default_scale": 1.5,
+    "target_attainment_per_modality": 0.95,
+    "basis": "per-shape measured SP1 end-to-end service (unoptimized single-GPU batch=1 including CPU text encoding and VAE decoding), frozen across all policies"
+  },
+  "resolution_distributions": [
+    {
+      "name": "uniform",
+      "alpha": 0.0
+    },
+    {
+      "name": "skewed",
+      "alpha": 1.0,
+      "formula": "p_i proportional to exp(alpha * L_i / L_max), L_i = ((frames - 1) // 4 + 1) * (height / 16) * (width / 16)"
+    },
+    {
+      "name": "skewed_small",
+      "alpha": -1.0,
+      "formula": "p_i proportional to exp(alpha * L_i / L_max)"
+    }
+  ],
+  "anchor": {
+    "model": "wan22",
+    "slo_scale": 1.5,
+    "load": 1.0,
+    "video_fraction": 0.5,
+    "resolution_distribution": "uniform",
+    "pattern": "poisson",
+    "count": 100
+  },
+  "batch_limit": 1,
+  "shape_distribution": "uniform or TetriServe exponential-skewed over latent token length within modality, deterministic largest-remainder integer quota",
+  "shapes": {
+    "wan21-dev": {
+      "model": "wan21",
+      "kind": "video",
+      "scope": "development",
+      "height": 480,
+      "width": 832,
+      "frames": 33,
+      "steps": 20,
+      "guidance_scale": 5.0
+    },
+    "wan22-dev": {
+      "model": "wan22",
+      "kind": "video",
+      "scope": "development",
+      "height": 512,
+      "width": 896,
+      "frames": 49,
+      "steps": 20,
+      "guidance_scale": 5.0
+    },
+    "sd35-dev": {
+      "model": "sd35",
+      "kind": "image",
+      "scope": "development",
+      "height": 512,
+      "width": 512,
+      "frames": 1,
+      "steps": 28,
+      "guidance_scale": 4.5
+    },
+    "wan22-256p": {
+      "model": "wan22",
+      "kind": "video",
+      "scope": "formal",
+      "role": "small-resolution",
+      "height": 256,
+      "width": 448,
+      "frames": 81,
+      "steps": 50,
+      "guidance_scale": 5.0
+    },
+    "wan22-480p": {
+      "model": "wan22",
+      "kind": "video",
+      "scope": "formal",
+      "role": "medium-resolution",
+      "height": 512,
+      "width": 896,
+      "frames": 81,
+      "steps": 50,
+      "guidance_scale": 5.0
+    },
+    "wan22-720p": {
+      "model": "wan22",
+      "kind": "video",
+      "scope": "formal",
+      "role": "large-resolution",
+      "height": 704,
+      "width": 1280,
+      "frames": 81,
+      "steps": 50,
+      "guidance_scale": 5.0
+    },
+    "wan21-256p": {
+      "model": "wan21",
+      "kind": "video",
+      "scope": "formal",
+      "role": "small-resolution-sensitivity",
+      "height": 256,
+      "width": 448,
+      "frames": 81,
+      "steps": 50,
+      "guidance_scale": 5.0
+    },
+    "wan21-480p": {
+      "model": "wan21",
+      "kind": "video",
+      "scope": "formal",
+      "role": "medium-resolution-sensitivity",
+      "height": 480,
+      "width": 832,
+      "frames": 81,
+      "steps": 50,
+      "guidance_scale": 5.0
+    },
+    "wan21-720p": {
+      "model": "wan21",
+      "kind": "video",
+      "scope": "formal",
+      "role": "large-resolution-sensitivity",
+      "height": 720,
+      "width": 1280,
+      "frames": 81,
+      "steps": 50,
+      "guidance_scale": 5.0
+    },
+    "sd35-512": {
+      "model": "sd35",
+      "kind": "image",
+      "scope": "formal",
+      "role": "small-resolution",
+      "height": 512,
+      "width": 512,
+      "frames": 1,
+      "steps": 28,
+      "guidance_scale": 4.5
+    },
+    "sd35-1024": {
+      "model": "sd35",
+      "kind": "image",
+      "scope": "formal",
+      "role": "medium-resolution",
+      "height": 1024,
+      "width": 1024,
+      "frames": 1,
+      "steps": 28,
+      "guidance_scale": 4.5
+    },
+    "sd35-1440": {
+      "model": "sd35",
+      "kind": "image",
+      "scope": "formal",
+      "role": "large-resolution",
+      "height": 1440,
+      "width": 1440,
+      "frames": 1,
+      "steps": 28,
+      "guidance_scale": 4.5
+    }
+  },
+  "p0_required_cases": [
+    {
+      "model": "wan21",
+      "shape_id": "wan21-dev"
+    },
+    {
+      "model": "wan22",
+      "shape_id": "wan22-dev"
+    }
+  ],
+  "formal_required_cases": [
+    {
+      "model": "wan22",
+      "shape_id": "wan22-256p"
+    },
+    {
+      "model": "wan22",
+      "shape_id": "wan22-480p"
+    },
+    {
+      "model": "wan22",
+      "shape_id": "wan22-720p"
+    },
+    {
+      "model": "sd35",
+      "shape_id": "sd35-512"
+    },
+    {
+      "model": "sd35",
+      "shape_id": "sd35-1024"
+    },
+    {
+      "model": "sd35",
+      "shape_id": "sd35-1440"
+    }
+  ],
+  "sensitivity_required_cases": [
+    {
+      "model": "wan21",
+      "shape_id": "wan21-256p"
+    },
+    {
+      "model": "wan21",
+      "shape_id": "wan21-480p"
+    },
+    {
+      "model": "wan21",
+      "shape_id": "wan21-720p"
+    }
+  ],
+  "quality": {
+    "serving_prompts_are_not_vbench": true,
+    "paired_prompts_per_model_minimum": 32,
+    "paired_seeds": [
+      301,
+      302,
+      303
+    ],
+    "vbench_repository": "https://github.com/Vchitect/VBench",
+    "vbench_revision": "1039fe66d7aa2f4b214003ca2d35f5011c48bfee",
+    "official_protocol": "complete pinned dimension/prompt manifest; 5 seeds, temporal flickering 25; no replacement with VidProM"
+  },
+  "sources": [
+    "https://huggingface.co/Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+    "https://huggingface.co/Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+    "https://huggingface.co/stabilityai/stable-diffusion-3.5-medium",
+    "https://huggingface.co/datasets/poloclub/diffusiondb",
+    "https://huggingface.co/datasets/WenhaoWang/VidProM",
+    "https://github.com/Vchitect/VBench"
+  ],
+  "prior_exposure": {
+    "manifest_file": "known-exploration-prompts-v1.json",
+    "manifest_sha256": "19edbc0cde6a27bf9e6203e8e0525e37298139e64c0450efa618fb69d8daa7cf",
+    "also_exclude_existing_pool_roles": [
+      "dev",
+      "development"
+    ],
+    "scope": "Excludes all known local exploration and all source-pool dev prompts; unknown prior exposure is not ruled out"
+  },
+  "p0_diagnostics": {
+    "scope": "Development execution-correctness stress only; not formal benchmark performance or scheduler utility evidence",
+    "contention": {
+      "count": 40,
+      "video_fraction": 0.5,
+      "pattern": "bursty",
+      "load": 1.2,
+      "image_slo_scale": 1.1,
+      "video_slo_scale": 1.5,
+      "lazy_preemption": false,
+      "require_observed_stops": true
+    },
+    "no_preemption": {
+      "count": 40,
+      "video_fraction": 1.0,
+      "pattern": "poisson",
+      "load": 0.1,
+      "image_slo_scale": 2.5,
+      "video_slo_scale": 1.5,
+      "lazy_preemption": true,
+      "require_observed_stops": false
+    },
+    "acceptance": "native_exact requires actual positive stop evidence for contention and exactly zero for no_preemption; no automatic retry, threshold tuning, or qualification from intended pressure"
+  },
+  "baseline_comparison_contract": {
+    "mode": "in_framework_policy_comparison",
+    "shared_executor": true,
+    "comparison_mode": "same_executor_mechanism_comparison",
+    "statement": "All policies execute on the same verified DitServe native runtime, worker pool, SP/CFG collective transport, and calibrated latency profile to isolate scheduling mechanisms (EDF-CFG2, optimal Static-<Form>, CFG2-First, TetriServe-policy, SBP-ESP, EDF-BF vs. DitServe) on the Wan + SD3.5 mixed-workload main table.",
+    "main_table_policies": [
+      "edf-cfg2",
+      "static-cfg2sp4",
+      "cfg2-first",
+      "tetriserve",
+      "sbp-esp",
+      "edf-bestfit",
+      "ditserve"
+    ],
+    "best_static_form_rule": "select best calibrated Static-<Form> (default static-cfg2sp4 on 8xA100)",
+    "candidate_static_forms": [
+      "static-cfg2sp2",
+      "static-cfg2sp3",
+      "static-cfg2sp4"
+    ],
+    "mechanism_labels": {
+      "edf-cfg2": "EDF-CFG2",
+      "static-cfg2sp2": "Static-CFG2SP2",
+      "static-cfg2sp3": "Static-CFG2SP3",
+      "static-cfg2sp4": "Static-<Form>",
+      "cfg2-first": "CFG2-First",
+      "tetriserve": "TetriServe-policy",
+      "sbp-esp": "SBP-ESP",
+      "edf-bestfit": "EDF-BF",
+      "ditserve": "DitServe"
+    },
+    "external_native_intersection": {
+      "tetriserve": {
+        "system": "TetriServe (ASPLOS'26)",
+        "native_intersection_scope": "SD3.5-Medium single-modality multi-resolution (512^2 / 1024^2)",
+        "shapes": [
+          "sd35-512",
+          "sd35-1024"
+        ],
+        "role": "external native runtime validation on supported image intersection"
+      },
+      "xdit": {
+        "system": "xDiT",
+        "native_intersection_scope": "single-model fixed partition/SP scaling (Wan2.1, Wan2.2, SD3.5)",
+        "role": "external native engine validation under fixed partition / static CFG2xSP"
+      }
+    }
+  },
+  "quality_acceptance_contract": {
+    "same_parallelism_segmentation_gate": {
+      "mode": "strict_numerical_equivalence",
+      "scope": "continuous vs. sub-step block-segmented execution under identical parallel form and group",
+      "atol": 1e-05,
+      "rtol": 1e-05,
+      "bitwise_digest_when_deterministic": true
+    },
+    "cross_sp_acceptance_gate": {
+      "mode": "semantic_quality_equivalence",
+      "scope": "cross-SP / elastic degree transitions (SP1 vs. CFG2 vs. CFG2xSP2/3/4) where non-associative BF16 All-to-All reduction order differs",
+      "disallow_strict_1e5_elementwise_gate": true,
+      "metrics": [
+        "PSNR",
+        "SSIM",
+        "LPIPS",
+        "VBench"
+      ],
+      "numerical_drift_bound": "bounded BF16 collective reduction drift with semantic quality equivalence (PSNR/SSIM/LPIPS/VBench) instead of 1e-5 elementwise equality"
+    }
+  }
+}

@@ -18,7 +18,7 @@ source "$(dirname "$0")/kairos_common.sh"
 export PYTHONPATH=$PACKAGE/python
 : "${DITSERVE_MODEL_MANIFESTS:?provide frozen model manifest mapping}"
 : "${DITSERVE_PROTOCOL_SHA256:?bind the frozen protocol}"
-protocol=$PACKAGE/configs/benchmarks/formal-mixed-v1.json
+protocol=${DITSERVE_FORMAL_PROTOCOL:-$PACKAGE/configs/benchmarks/formal-mixed-v1.json}
 python3 - "$protocol" "$DITSERVE_PROTOCOL_SHA256" <<'PY'
 import hashlib, json, pathlib, sys
 p = json.loads(pathlib.Path(sys.argv[1]).read_bytes())
@@ -32,7 +32,7 @@ case "$WAN_MODEL" in
 esac
 action=${DITSERVE_FORMAL_ACTION:-p0}
 benchmarks=$PACKAGE/benchmarks
-if [ "$action" = p1_isolated ] || [ "$action" = serve ]; then
+if [ "$action" = p1_isolated ] || [ "$action" = serve ] || { [ "$action" = calibration ] && [ -n "${DITSERVE_BENCHMARK_ROOT:-}" ]; }; then
   : "${DITSERVE_BENCHMARK_ROOT:?provide the separately frozen benchmark snapshot}"
   : "${DITSERVE_KAIROS_RUNTIME_ROOT:?provide the immutable operator release}"
   [ "$DITSERVE_BENCHMARK_ROOT" = "$DITSERVE_KAIROS_RUNTIME_ROOT/benchmarks" ] || {
@@ -200,9 +200,21 @@ for diagnostic in "${cases[@]}"; do
   if [ "$action" = p0 ]; then
     args+=(--split development --seed 201 --load 1.2 --video-fraction 0.5 --pattern bursty --diagnostic "$diagnostic")
   else
-    args+=(--split test --seed "${DITSERVE_SEED:-301}" --load "${DITSERVE_LOAD:-0.6}"
-           --video-fraction "${DITSERVE_VIDEO_FRACTION:-0.2}" --pattern "${DITSERVE_PATTERN:-poisson}"
+    args+=(--split test --seed "${DITSERVE_SEED:-301}"
+           --pattern "${DITSERVE_PATTERN:-poisson}"
            --suite "${DITSERVE_SUITE:-main}")
+    if [ -n "${DITSERVE_LOAD:-}" ]; then
+      args+=(--load "$DITSERVE_LOAD")
+    fi
+    if [ -n "${DITSERVE_VIDEO_FRACTION:-}" ]; then
+      args+=(--video-fraction "$DITSERVE_VIDEO_FRACTION")
+    fi
+    if [ -n "${DITSERVE_SLO_SCALE:-}" ]; then
+      args+=(--slo-scale "$DITSERVE_SLO_SCALE")
+    fi
+    if [ -n "${DITSERVE_RESOLUTION_DISTRIBUTION:-}" ]; then
+      args+=(--resolution-distribution "$DITSERVE_RESOLUTION_DISTRIBUTION")
+    fi
   fi
   python3 "$benchmarks/formal_benchmark.py" --protocol "$protocol" "${args[@]}"
   run_config "$cfg" "$DITSERVE_RUN_ID-$diagnostic"

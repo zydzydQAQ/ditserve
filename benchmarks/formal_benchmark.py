@@ -13,12 +13,22 @@ from pathlib import Path
 
 from cluster_config import MODELS, allocated_uuids, make_workers
 from native_study import build_calibration_config
-from native_serving import SUITES, build_serving_config, partition_image_gpus
+from native_serving import (
+    IN_FRAMEWORK_COMPARISON_DECLARATION,
+    IN_FRAMEWORK_MECHANISM_DISPLAY,
+    STATIC_POLICY,
+    SUITES,
+    build_serving_config,
+    in_framework_main_policies,
+    partition_image_gpus,
+)
 from fit_native_profile import build_profile
 from ditserve.evaluation.common import canonical_hash, read_json, seal, verify_seal
 from ditserve.evaluation.workloads import build_trace, validate_trace
 
 DEFAULT_PROTOCOL = Path(__file__).resolve().parents[1] / 'configs/benchmarks/formal-mixed-v1.json'
+DEFAULT_V2_PROTOCOL = Path(__file__).resolve().parents[1] / 'configs/benchmarks/formal-mixed-v2.json'
+SUPPORTED_SCHEMAS = ('ditserve.formal-protocol.v1', 'ditserve.formal-protocol.v2')
 BUNDLE_SCHEMA = 'ditserve.shape-profiles.v1'
 HEX64 = re.compile(r'[0-9a-f]{64}')
 TRACE_BUDGET_RULE = dict(schema='ditserve.trace-budget.v1', per_cell_startup_seconds=600,
@@ -46,9 +56,29 @@ def apply_trace_budget(config, rule=TRACE_BUDGET_RULE):
 
 def protocol(path=DEFAULT_PROTOCOL):
     value = read_json(path)
-    if value.get('schema') != 'ditserve.formal-protocol.v1':
+    if value.get('schema') not in SUPPORTED_SCHEMAS:
         raise ValueError('unsupported formal protocol')
     return value
+
+
+def genserve_sweep_cells(p):
+    """Return the 9-cell GenServe-style anchor + single-factor sweep configurations for v2."""
+    if p.get('schema') != 'ditserve.formal-protocol.v2':
+        raise ValueError('genserve_sweep_cells requires ditserve.formal-protocol.v2')
+    anchor = copy.deepcopy(p['anchor'])
+    cells = [dict(anchor, sweep_dimension='anchor')]
+    for scale in p['slo']['scales']:
+        if scale != anchor['slo_scale']:
+            cells.append(dict(anchor, slo_scale=scale, sweep_dimension='slo_scale'))
+    for load_val in p['loads']:
+        if load_val != anchor['load']:
+            cells.append(dict(anchor, load=load_val, sweep_dimension='rate_scale'))
+    for vfrac in p['video_fractions']:
+        if vfrac != anchor['video_fraction']:
+            cells.append(dict(anchor, video_fraction=vfrac, sweep_dimension='video_fraction'))
+    cells.append(dict(anchor, resolution_distribution='skewed', sweep_dimension='resolution_distribution'))
+    cells.append(dict(anchor, pattern='bursty', sweep_dimension='pattern'))
+    return cells
 
 
 def shape_spec(p, shape_id):
@@ -235,8 +265,13 @@ def assemble(p, model, records, runtime_facts):
 
 
 def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301,
-            load=0.6, video_fraction=0.2, pattern='poisson', suite='main', diagnostic=None,
-            p1_plan=None, p1_pair=None):
+            load=None, video_fraction=None, pattern='poisson', suite='main', diagnostic=None,
+            p1_plan=None, p1_pair=None, slo_scale=None, resolution_distribution=None):
+    is_v2 = p.get('schema') == 'ditserve.formal-protocol.v2'
+    if load is None:
+        load = p['anchor']['load'] if is_v2 and 'anchor' in p else 0.6
+    if video_fraction is None:
+        video_fraction = p['anchor']['video_fraction'] if is_v2 and 'anchor' in p else 0.2
     verify_seal(bundle)
     if bundle.get('schema') != BUNDLE_SCHEMA or bundle.get('model') != model or bundle.get('protocol_sha256') != canonical_hash(p):
         raise ValueError('profile bundle does not match model/protocol')
@@ -267,8 +302,25 @@ def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301
         diagnostic_controls = p1_plan['roles'][diagnostic]
     elif p1_pair is not None:
         raise ValueError('P1 pair requires a frozen plan')
-    image_scale = diagnostic_controls['image_slo_scale'] if diagnostic else p['slo']['image_scale']
-    video_scale = diagnostic_controls['video_slo_scale'] if diagnostic else p['slo']['video_scale']
+    if diagnostic:
+        image_scale = diagnostic_controls['image_slo_scale']
+        video_scale = diagnostic_controls['video_slo_scale']
+        effective_slo_scale = None
+    elif slo_scale is not None or is_v2:
+        allowed_scales = p['slo'].get('scales', [p['slo']['video_scale']])
+        effective_slo_scale = float(p['slo'].get('default_scale', p['slo']['video_scale'])
+                                    if slo_scale is None else slo_scale)
+        if effective_slo_scale not in allowed_scales:
+            raise ValueError('slo_scale is outside frozen protocol')
+        image_scale = video_scale = effective_slo_scale
+    else:
+        image_scale = p['slo']['image_scale']
+        video_scale = p['slo']['video_scale']
+        effective_slo_scale = None
+    dist_map = {d['name']: d for d in p.get('resolution_distributions', [{'name': 'uniform', 'alpha': 0.0}])}
+    dist_name = ('uniform' if resolution_distribution is None else resolution_distribution)
+    if dist_name not in dist_map:
+        raise ValueError('resolution_distribution is outside frozen protocol')
     scope = 'development' if split == 'development' else 'formal'
     ids = [sid for sid, shape in p['shapes'].items() if shape['scope'] == scope and shape['model'] in (model, 'sd35')]
     if pair is not None:
@@ -322,6 +374,8 @@ def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301
         doorbell=True, image_batch=p['batch_limit'], policy_order='random')
     window = dict(count=count, video_fraction=actual_fraction, pattern=actual_pattern, load=actual_load)
     window.update({k: v for k, v in patterns[actual_pattern].items() if k != 'name'})
+    if not diagnostic and (is_v2 or resolution_distribution is not None):
+        window['resolution_distribution'] = copy.deepcopy(dist_map[dist_name])
     trace = build_trace(classes, selected, [window], slots=len(uuids), seed=seed, output_mode=mode)
     validate_trace(trace)
     provenance = dict(path='generated:frozen-formal-split', sha256=trace['manifest']['workload_sha256'], manifest=trace['manifest'])
@@ -336,18 +390,51 @@ def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301
         for index in range(len(uuids)):
             phase['warmup'].append(dict(worker=('wan' if classes[sid]['kind']=='video' else 'image')+str(index),
                 spec=dict(classes[sid]['spec'], steps=1, prompt='warmup', seed=7), quantum='step'))
-    video_average = {'steps': 1, 'step_compute_ms': sum(classes[sid]['gpu_service_ms'] for sid in videos)/len(videos)}
-    image_average = sum(classes[sid]['service_ms'] for sid in images)/len(images)
+    class_counts = trace['manifest']['class_counts']
+    vid_total = sum(class_counts.get(sid, 0) for sid in videos)
+    img_total = sum(class_counts.get(sid, 0) for sid in images)
+    if is_v2 and vid_total > 0 and img_total > 0:
+        video_mean_ms = sum(classes[sid]['gpu_service_ms'] * class_counts.get(sid, 0) for sid in videos) / vid_total
+        image_mean_ms = sum(classes[sid]['service_ms'] * class_counts.get(sid, 0) for sid in images) / img_total
+        share_rule = 'mean measured GPU work weighted by resolution distribution class counts'
+    else:
+        video_mean_ms = sum(classes[sid]['gpu_service_ms'] for sid in videos) / len(videos)
+        image_mean_ms = sum(classes[sid]['service_ms'] for sid in images) / len(images)
+        share_rule = 'mean measured GPU work across equally weighted shape classes'
+    video_average = {'steps': 1, 'step_compute_ms': video_mean_ms}
+    image_average = image_mean_ms
     image_share = partition_image_gpus(len(uuids), actual_fraction, video_average, image_average)
     phase['options']['partition_image_gpus'] = image_share
     # Suite keys select policies above; only their result-directory suffix is encoded.
     experiment_suite = suite.replace('+', '-')
-    config['experiment'] = f"formal-{model}-{split}-{actual_pattern}-s{seed}-l{str(actual_load).replace('.', 'p')}-v{str(actual_fraction).replace('.', 'p')}" + (f'-{diagnostic}' if diagnostic else f'-{experiment_suite}')
+    extra_tags = ''
+    if not diagnostic and (is_v2 or slo_scale is not None or resolution_distribution is not None):
+        if effective_slo_scale is not None:
+            extra_tags += f"-slo{str(effective_slo_scale).replace('.', 'p')}"
+        if dist_name != 'uniform':
+            extra_tags += f"-{dist_name.replace('_', '-')}"
+    config['experiment'] = (
+        f"formal-{model}-{split}-{actual_pattern}-s{seed}-l{str(actual_load).replace('.', 'p')}"
+        f"-v{str(actual_fraction).replace('.', 'p')}{extra_tags}"
+        + (f'-{diagnostic}' if diagnostic else f'-{experiment_suite}')
+    )
     role = 'preemption' if diagnostic == 'contention' else diagnostic or 'serving'
     config['benchmark'].update(trace=provenance, formal_protocol=binding(p, split, role, ids, selected, bundle),
         preemption_diagnostic=diagnostic, mixed_resolution=True,
-        partition_image_gpus=dict(value=image_share, rule='mean measured GPU work across equally weighted shape classes'),
+        partition_image_gpus=dict(value=image_share, rule=share_rule),
         scope='finite public-prompt trace; not sustained-capacity or semantic qualification')
+    if not diagnostic and (is_v2 or slo_scale is not None or resolution_distribution is not None):
+        config['benchmark']['slo_scale'] = effective_slo_scale
+        config['benchmark']['resolution_distribution'] = copy.deepcopy(dist_map[dist_name])
+    if is_v2 or 'baseline_comparison_contract' in p or 'in_framework_policy_comparison' in p:
+        comparison_meta = copy.deepcopy(config['benchmark'].get('in_framework_policy_comparison', {}))
+        for key in ('in_framework_policy_comparison', 'baseline_comparison_contract'):
+            if isinstance(p.get(key), dict):
+                comparison_meta.update(copy.deepcopy(p[key]))
+                comparison_meta[key] = copy.deepcopy(p[key])
+        config['benchmark']['in_framework_policy_comparison'] = comparison_meta
+    if 'quality_acceptance_contract' in p:
+        config['benchmark']['quality_acceptance_contract'] = copy.deepcopy(p['quality_acceptance_contract'])
     if diagnostic and p1_plan is None:
         config['benchmark']['p0_diagnostic_controls'] = copy.deepcopy(diagnostic_controls)
         config['benchmark']['scope'] = p['p0_diagnostics']['scope']
@@ -399,8 +486,10 @@ def main():
             ap.add_argument('--bundle', type=Path, required=True)
             ap.add_argument('--split', choices=['development', 'test'], default='test')
             ap.add_argument('--seed', type=int, default=301)
-            ap.add_argument('--load', type=float, default=0.6)
-            ap.add_argument('--video-fraction', type=float, default=0.2)
+            ap.add_argument('--load', type=float, default=None)
+            ap.add_argument('--video-fraction', type=float, default=None)
+            ap.add_argument('--slo-scale', type=float, default=None)
+            ap.add_argument('--resolution-distribution', default=None)
             ap.add_argument('--pattern', choices=['poisson', 'gamma', 'bursty'], default='poisson')
             ap.add_argument('--suite', choices=sorted(SUITES), default='main')
             ap.add_argument('--diagnostic', choices=['contention', 'no_preemption'])
@@ -420,7 +509,8 @@ def main():
             uuids = args.gpu_uuids.split(',') if args.gpu_uuids else allocated_uuids()
             result = serving(p, args.model, uuids, read_json(args.bundle), pools, manifests,
                 split=args.split, seed=args.seed, load=args.load, video_fraction=args.video_fraction,
-                pattern=args.pattern, suite=args.suite, diagnostic=args.diagnostic)
+                pattern=args.pattern, suite=args.suite, diagnostic=args.diagnostic,
+                slo_scale=args.slo_scale, resolution_distribution=args.resolution_distribution)
     write_new(args.output, result)
     print(json.dumps(dict(output=str(args.output), sha256=canonical_hash(result), scientific_qualification='pending')))
 
