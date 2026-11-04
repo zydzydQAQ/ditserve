@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+from contextlib import nullcontext
 from dataclasses import asdict
 import functools
 import hashlib
@@ -223,6 +224,11 @@ def observed_launch_worker(*args):
     verify_native_imports(Path(config['derived_manifest']).parent)
     rank = args[0]
     original = FluidServeRunner.generate
+    capture = None
+    if os.environ['DITSERVE_TETRI_SERVICE_PHASE'] == 'service':
+        from external_tetriserve_service_numerics import CaptureSession
+        capture = CaptureSession(os.environ['DITSERVE_TETRI_NUMERICS_PLAN'],
+                                 os.environ['DITSERVE_TETRI_NUMERICS_PLAN_SHA256'],rank)
     original_stop = LatentManager.stop_sender_thread
     stopped_managers = []
     def stop_sender(manager):
@@ -262,7 +268,8 @@ def observed_launch_worker(*args):
                     return out
                 setattr(pipeline, name, timed)
         try:
-            output = original(self, reqs, *rest, **kwargs)
+            with capture.observe_round(pipeline,reqs) if capture is not None else nullcontext():
+                output = original(self, reqs, *rest, **kwargs)
             kinds = ['image' if isinstance(v, Image) else 'latent_future' if isinstance(v, LatentFuture) else type(v).__name__ for v in output]
             futures = kwargs.get('latent_future_dict', rest[0] if rest else {}) or {}
             append_event(rank, dict(event='round', **dispatch_record(reqs),
@@ -574,6 +581,38 @@ def bind_derived_adapters(derived):
     return module
 
 
+def run_numerical_reference(args, result, plan_path, plan_sha):
+    """Write immutable service completion first; compare in a fresh subprocess."""
+    import external_tetriserve_service_numerics as numerics
+    completion = args.output_dir/'service-completion.json'
+    write_json(completion,result)
+    command = [sys.executable,'-B',str(Path(numerics.__file__).resolve()),'reference',
+        '--plan',str(plan_path),'--plan-sha256',plan_sha,
+        '--service-summary',str(completion),'--service-summary-sha256',sha(completion),
+        '--shared-python-root',str(args.shared_python_root),
+        '--model-root',str(args.model_root),'--model-manifest',str(args.model_manifest)]
+    env = os.environ.copy()
+    # A detached SP1 reference process, after native distributed workers exited.
+    # This does not alter the service allocation or the platform environment.
+    env.update(WORLD_SIZE='1',RANK='0',LOCAL_RANK='0',PYTHONDONTWRITEBYTECODE='1')
+    process = subprocess.run(command,env=env,capture_output=True,text=True,
+                             timeout=args.reference_timeout_seconds)
+    summary_path = plan_path.parent/'summary.json'
+    evidence = dict(returncode=process.returncode,stdout_tail=process.stdout[-12000:],
+                    stderr_tail=process.stderr[-12000:],service_completion_sha256=sha(completion))
+    if summary_path.is_file():
+        summary = numerics.read_json(summary_path.read_bytes())
+        evidence.update(summary=str(summary_path),summary_sha256=sha(summary_path),result=summary)
+    else:
+        summary = {}
+    passed = (process.returncode == 0 and summary.get('status') == 'numerical_passed'
+              and summary.get('numerical_check_passed') is True
+              and summary.get('plan_sha256') == plan_sha
+              and summary.get('service_summary_sha256') == sha(completion)
+              and len(summary.get('comparisons',[])) == 2)
+    return passed,evidence
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('command', choices=['plan','run'])
@@ -585,6 +624,7 @@ def main(argv=None):
     parser.add_argument('--seed', type=int, default=101)
     parser.add_argument('--mixed-resolution', action='store_true')
     parser.add_argument('--timeout-seconds', type=int, default=3600)
+    parser.add_argument('--reference-timeout-seconds', type=int, default=1800)
     parser.add_argument('--slo-seconds', type=float, default=600.)
     args = parser.parse_args(argv)
     result = dict(schema=SCHEMA, status='failed', qualification_eligible=False, allows=[],
@@ -595,12 +635,14 @@ def main(argv=None):
                   limitations=['Two independent HTTP requests, one image per request; native cross-request batching is not implemented upstream',
                       'BS2 is exercised only by calibration, not the HTTP workload',
                       'Native allocation is unrestricted within SP1/SP2; cross-rank migration is observed, not forced',
-                      'PNG identity and actual execution counts do not establish numerical quality equivalence'],
+                      'Raw numerical tolerance is a diagnostic criterion, not a paper quality qualification',
+                      'Capture adds CPU transfer synchronization; these service timings are instrumented'],
                   scope='Original TetriServe HTTP/runtime/worker service with shared SD3.5 model; two-request diagnostic')
     result['service_adapter_sha256'] = sha(__file__)
     created = False
     try:
-        if not 300 <= args.timeout_seconds <= 7200 or not math.isfinite(args.slo_seconds) or args.slo_seconds <= 0:
+        if (not 300 <= args.timeout_seconds <= 7200 or not 120 <= args.reference_timeout_seconds <= 3600
+                or not math.isfinite(args.slo_seconds) or args.slo_seconds <= 0):
             raise ValueError('invalid diagnostic timeout/SLO')
         args.output_dir = args.output_dir.resolve()
         sys.dont_write_bytecode = True
@@ -656,6 +698,13 @@ def main(argv=None):
             derived_manifest=str(Path(derived['root'])/'PORT_MANIFEST.json'),
             derived_manifest_sha256=derived['manifest_sha256'], diagnostic_only=True, server_launch_allowed=False)
         result.update(derived_manifest_sha256=derived['manifest_sha256'])
+        import external_tetriserve_service_numerics as numerics
+        sources = {name:result[name] for name in numerics.SOURCE_KEYS if name!='numerics_adapter_sha256'}
+        sources['numerics_adapter_sha256'] = sha(numerics.__file__)
+        plan_path,plan_sha = numerics.create_plan(args.output_dir/'numerics',requests,sources,args.protocol)
+        result.update(numerics_plan=str(plan_path),numerics_plan_sha256=plan_sha,
+                      numerics_adapter_sha256=sources['numerics_adapter_sha256'],raw_artifacts_protected=True)
+        os.environ.update(DITSERVE_TETRI_NUMERICS_PLAN=str(plan_path),DITSERVE_TETRI_NUMERICS_PLAN_SHA256=plan_sha)
         # Upstream uses relative ipc://localhost:<port> sockets. Keep these tiny,
         # transient socket inodes on the container filesystem, not shared NFS.
         # All model data, measurements and failure artifacts use absolute /shared
@@ -670,6 +719,9 @@ def main(argv=None):
         result['ipc_scope'] = 'Original relative ZMQ IPC endpoints in a private ephemeral container directory'
         result.update(status='service_passed', http_zmq_executed=True, serving_executed=True,
                       model_weights_verified=True)
+        passed,reference = run_numerical_reference(args,result,plan_path,plan_sha)
+        result.update(status='service_and_numerics_passed' if passed else 'numerical_failed',
+                      numerical_check_passed=passed,independent_reference=reference)
     except BaseException as exc:
         result.update(error=repr(exc), traceback=traceback.format_exc()[-16000:])
     if created:
@@ -678,7 +730,7 @@ def main(argv=None):
                               sha256=sha(args.output_dir/'summary.json'), qualification_eligible=False)), flush=True)
     else:
         print(json.dumps(result, sort_keys=True, allow_nan=False), flush=True)
-    return 0 if result['status'] == 'service_passed' else 1
+    return 0 if result['status'] == 'service_and_numerics_passed' else 1
 
 
 if __name__ == '__main__':
