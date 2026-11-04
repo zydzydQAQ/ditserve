@@ -174,3 +174,6 @@ class TaylorResidualCompensator:
             self.pre_step(state)
             record = runtime.step(state)
             return self.post_step(state, record)
+
+    def summary(self) -> dict:
+        return dict(self.stats, adaptive_alphas={k: round(float(v), 5) for k, v in self._adaptive_alphas.items()})

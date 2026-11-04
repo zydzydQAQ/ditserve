@@ -118,7 +118,7 @@ class SD35Backend(AtomicPipelineBackend):
         if not hasattr(self, "encoders_offloaded"):
             self.encoders_offloaded = False
         key = self._prompt_key(prompt, negative_prompt, max_sequence_length, do_cfg)
-        if key in self.encoder_pool._entries:
+        if self.encoder_pool.has_key(key):
             return dict(key=key, staged=False, cached=True)
         was_offloaded = self.encoders_offloaded
         if was_offloaded:
@@ -146,6 +146,7 @@ class SD35Backend(AtomicPipelineBackend):
                     "negative_pooled_prompt_embeds": nppe,
                 },
                 pin_memory=True,
+                write_shm=self.encoder_pool.write_shm,
             )
         finally:
             if was_offloaded:
@@ -311,7 +312,11 @@ class SD35Backend(AtomicPipelineBackend):
         # 2. Initialize per-request independent scheduler & resolution-shifted timesteps
         base_scheduler = getattr(raw_pipe, "scheduler", None)
         if base_scheduler is not None:
-            scheduler = copy.deepcopy(base_scheduler)
+            raw_sched = getattr(base_scheduler, "module", base_scheduler)
+            if hasattr(raw_sched, "from_config") and hasattr(raw_sched, "config"):
+                scheduler = raw_sched.from_config(raw_sched.config)
+            else:
+                scheduler = copy.deepcopy(raw_sched)
             scheduler_kwargs = {}
             if getattr(scheduler, "config", None) is not None and scheduler.config.get("use_dynamic_shifting", False):
                 raw_tf = _unwrap_transformer(raw_pipe.transformer)

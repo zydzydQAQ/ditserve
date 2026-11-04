@@ -70,12 +70,12 @@
     },
     {
       "name": "gamma",
-      "cv": 2.0
-    },
-    {
-      "name": "bursty",
-      "bursts": 2,
-      "burst_active_fraction": 0.25
+      "cv": 2.0,
+      "cvs": [
+        2.0,
+        4.0,
+        6.0
+      ]
     }
   ],
   "loads": [
@@ -338,7 +338,7 @@
     "contention": {
       "count": 40,
       "video_fraction": 0.5,
-      "pattern": "bursty",
+      "pattern": "gamma",
       "load": 1.2,
       "image_slo_scale": 1.1,
       "video_slo_scale": 1.5,
@@ -361,15 +361,17 @@
     "mode": "in_framework_policy_comparison",
     "shared_executor": true,
     "comparison_mode": "same_executor_mechanism_comparison",
-    "statement": "All policies execute on the same verified DitServe native runtime, worker pool, SP/CFG collective transport, and calibrated latency profile to isolate scheduling mechanisms (EDF-CFG2, optimal Static-<Form>, CFG2-First, TetriServe-policy, SBP-ESP, EDF-BF vs. DitServe) on the Wan + SD3.5 mixed-workload main table.",
+    "statement": "All policies execute on the same verified DitServe native runtime, worker pool, SP/CFG collective transport, and calibrated latency profile to isolate scheduling mechanisms (optimal Static-<Form>, TetriServe-policy, SBP-ESP, EDF-BF vs. DitServe) on the Wan + SD3.5 mixed-workload main table; the in-house heuristics EDF-CFG2 and CFG2-First run only in the ablation suite.",
     "main_table_policies": [
-      "edf-cfg2",
       "static-cfg2sp4",
-      "cfg2-first",
       "tetriserve",
       "sbp-esp",
       "edf-bestfit",
       "ditserve"
+    ],
+    "ablation_only_policies": [
+      "edf-cfg2",
+      "cfg2-first"
     ],
     "best_static_form_rule": "select best calibrated Static-<Form> (default static-cfg2sp4 on 8xA100)",
     "candidate_static_forms": [
@@ -401,7 +403,7 @@
       "xdit": {
         "system": "xDiT",
         "native_intersection_scope": "single-model fixed partition/SP scaling (Wan2.1, Wan2.2, SD3.5)",
-        "role": "external native engine validation under fixed partition / static CFG2xSP"
+        "role": "external native engine validation under fixed partition / static SP (unoptimized single-GPU per request, xdit-sp1)"
       }
     }
   },

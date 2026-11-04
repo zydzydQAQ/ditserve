@@ -5,7 +5,14 @@ import argparse
 import hashlib
 import json
 import math
+import sys
 from pathlib import Path
+
+_BENCHMARKS_DIR = Path(__file__).resolve().parent
+if str(_BENCHMARKS_DIR) not in sys.path:
+    sys.path.insert(0, str(_BENCHMARKS_DIR))
+
+from cluster_config import default_sd35_batch_step_ms
 
 
 FIT_POLICIES = {"static_sp1", "static_cfg2", "static_sp2", "static_cfg2sp2", "static_sp4"}
@@ -60,10 +67,19 @@ def extract_measurements(record):
                 raise ValueError("image batch measurement lacks actual batch_size")
             if size > 1 and len(set(row.get("batch_request_ids", []))) != size:
                 raise ValueError("image batch measurement lacks complete member identity")
-            images.append({"policy": policy, "batch_size": size,
-                           "batch_identity": (row.get("phase", "cluster"), row["cell"],
-                                              tuple(row.get("batch_request_ids", [row.get("request_id")]))),
-                           "service_ms": row["batch_model_ms"] if size > 1 else row["model_ms"]})
+            img_spec = row.get("spec") if isinstance(row.get("spec"), dict) else {}
+            images.append({
+                "policy": policy,
+                "batch_size": size,
+                "batch_identity": (row.get("phase", "cluster"), row["cell"],
+                                   tuple(row.get("batch_request_ids", [row.get("request_id")]))),
+                "service_ms": row["batch_model_ms"] if size > 1 else row["model_ms"],
+                "steps": int(img_spec.get("steps", 28)),
+                "resolution": int(img_spec.get("height", 1024)),
+                "prepare_ms": row.get("prepare_cb_ms", row.get("prepare_ms")),
+                "finish_ms": row.get("decode_cb_ms", row.get("finish_ms")),
+                "batch_step_ms": row.get("batch_step_ms"),
+            })
             continue
         decode_ms = math.fsum(output.get("model_ms", 0.0) for output in row.get("outputs", []))
         steps = row["spec"]["steps"]
@@ -210,6 +226,39 @@ def build_profile(record, runtime_facts, model_name):
         raise ValueError("calibration requires unbatched image measurements")
     image_cost = profile["classes"]["sd35-preflight"]
     image_cost["service_ms"] = median(image_batches[1])
+    img_steps = int(images[0].get("steps", 28))
+    img_resolution = int(images[0].get("resolution", 1024))
+    decode_and_prep = min(float(image_cost["service_ms"]) * 0.12, 180.0)
+    prep_samples = [
+        float(row["prepare_ms"])
+        for row in images
+        if isinstance(row.get("prepare_ms"), (int, float)) and row["prepare_ms"] > 0
+    ]
+    fin_samples = [
+        float(row["finish_ms"])
+        for row in images
+        if isinstance(row.get("finish_ms"), (int, float)) and row["finish_ms"] > 0
+    ]
+    image_cost["steps"] = img_steps
+    image_cost["prepare_ms"] = round(median(prep_samples), 3) if prep_samples else round(decode_and_prep * 0.25, 3)
+    image_cost["finish_ms"] = round(median(fin_samples), 3) if fin_samples else round(decode_and_prep * 0.75, 3)
+    batch_step_ms = default_sd35_batch_step_ms(image_cost["service_ms"], steps=img_steps, resolution=img_resolution)
+    cb_step_samples = {}
+    for phase in record.get("phases", []):
+        for cell in phase.get("cells", []):
+            for sample in cell.get("continuous_batch", {}).get("samples", []):
+                bsize = sample.get("batch_size")
+                mms = sample.get("model_ms")
+                if isinstance(bsize, int) and 1 <= bsize <= 8 and isinstance(mms, (int, float)) and mms > 0:
+                    cb_step_samples.setdefault(bsize, []).append(float(mms))
+    for row in images:
+        if isinstance(row.get("batch_step_ms"), dict):
+            for k, v in row["batch_step_ms"].items():
+                if isinstance(v, (int, float)) and v > 0:
+                    cb_step_samples.setdefault(int(k), []).append(float(v))
+    for bsize, vals in cb_step_samples.items():
+        batch_step_ms[str(bsize)] = round(median(vals), 3)
+    image_cost["batch_step_ms"] = batch_step_ms
     if any(size > 1 for size in image_batches):
         image_cost["batch_ms"] = {str(size): median(values) for size, values in image_batches.items()}
     placements = {}

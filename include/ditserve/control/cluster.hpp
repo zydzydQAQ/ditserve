@@ -84,6 +84,9 @@ public:
     // One denoise round for up to 8 resident/new images in continuous mode.
     // batch_step_ms is a separate measured table, never the atomic pipeline batch_ms.
     double continuous_step_ms(const std::string& klass, int size) const;
+    double continuous_step_ms(const std::string& klass, double effective_size) const;
+    double continuous_effective_batch_size(const std::string& klass, const std::vector<const Json*>& batch, bool sequence_packing = false) const;
+    double continuous_batch_step_ms(const std::string& klass, const std::vector<const Json*>& batch, bool sequence_packing = false) const;
     // Plain sequence parallelism of `degree` GPUs.
     double step_ms(const std::string& klass, int degree, int sp_groups = 1) const { return step_ms(klass, Form{1, degree}, sp_groups); }
     double block_ms(const std::string& klass, int degree, int sp_groups = 1) const { return block_ms(klass, Form{1, degree}, sp_groups); }

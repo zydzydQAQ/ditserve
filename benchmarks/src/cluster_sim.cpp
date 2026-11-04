@@ -41,7 +41,7 @@ Json simulate_cluster(const Json& config) {
         if (cost.klass(klass).at("kind") != row.at("kind")) throw std::invalid_argument("request kind differs from its cost class");
         // Keep only scheduling fields: every plan copies the queue.
         Json light;
-        for (const auto* key : {"request_id", "kind", "class", "arrival_ms", "deadline_ms", "slo_ms", "service_ms", "steps_total", "decode_done", "batch_spec"})
+        for (const auto* key : {"request_id", "kind", "class", "arrival_ms", "deadline_ms", "slo_ms", "service_ms", "steps_total", "decode_done", "batch_spec", "spec"})
             if (row.contains(key)) light[key] = row.at(key);
         row = light;
         row["status"] = "pending"; row["steps_done"] = 0; row["blocks_done"] = 0; row["prepared"] = false;
@@ -144,11 +144,16 @@ Json simulate_cluster(const Json& config) {
                                                                                : number_field(cost.klass(klass), "service_ms");
                 else if (quantum == "continuous_batch") {
                     const bool bubble_free = bool_field(options, "bubble_free", false);
+                    const bool sequence_packing = assignment.value("sequence_packing", bool_field(options, "sequence_packing", false));
                     const auto& batch_arr = assignment.at("batch");
-                    duration += cost.continuous_step_ms(klass, static_cast<int>(batch_arr.size()));
+                    std::vector<const Json*> batch_ptrs;
+                    batch_ptrs.reserve(batch_arr.size());
+                    for (const auto& member : batch_arr)
+                        batch_ptrs.push_back(&rows[index.at(member.get<std::string>())]);
+                    duration += cost.continuous_batch_step_ms(klass, batch_ptrs, sequence_packing);
                     if (!bubble_free) {
-                        for (const auto& member : batch_arr) {
-                            const auto& mrow = rows[index.at(member.get<std::string>())];
+                        for (const Json* mptr : batch_ptrs) {
+                            const auto& mrow = *mptr;
                             if (!mrow.value("prepared", false)) duration += number_field(cost.klass(klass), "prepare_ms");
                             const int steps = int_field(mrow, "steps_total", int_field(cost.klass(klass), "steps", 2), 1);
                             if (int_field(mrow, "steps_done", 0, 0) + 1 >= steps) duration += number_field(cost.klass(klass), "finish_ms");

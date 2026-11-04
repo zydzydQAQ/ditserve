@@ -8,6 +8,44 @@ from pathlib import Path
 
 from native_exact import validate_run
 from native_metrics import summarize_run
+from native_serving import IN_FRAMEWORK_MECHANISM_DISPLAY, POLICY_DISPLAY
+
+
+POLICY_ORDER = (
+    "xdit",
+    "edf-cfg2",
+    "static-cfg2sp2",
+    "static-cfg2sp3",
+    "static-cfg2sp4",
+    "cfg2-first",
+    "tetriserve",
+    "sbp-esp",
+    "edf-bestfit",
+    "partition",
+    "ditserve",
+    "ditserve-approx",
+    "abl-no-block",
+    "abl-no-prune",
+    "abl-no-mindeg",
+    "abl-first-fit",
+    "block-cfg2",
+    "block-cfg2sp3",
+    "fold-cfg2sp3",
+    "approx-cfg2sp3",
+    "ditserve-v1",
+)
+
+MECHANISM_DISPLAY = {
+    **POLICY_DISPLAY,
+    **IN_FRAMEWORK_MECHANISM_DISPLAY,
+    "static-<form>": "Static-<Form>",
+}
+
+
+def mechanism_label(policy, generic_static=False):
+    if generic_static and policy in ("static-cfg2sp2", "static-cfg2sp3", "static-cfg2sp4"):
+        return "Static-<Form>"
+    return MECHANISM_DISPLAY.get(policy, policy)
 
 
 def file_hash(path):
@@ -88,6 +126,7 @@ def paper_row(manifest_dir, specification):
     metrics["failure_count"] = len(matches[0]["failures"])
     row = {
         "label": label,
+        "mechanism_label": mechanism_label(policy),
         "metrics": metrics,
         "source": {
             "run": str(path), "run_sha256": hashlib.sha256(raw).hexdigest(),

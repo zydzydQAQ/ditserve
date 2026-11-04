@@ -254,7 +254,8 @@ class WanStepWorker:
 
     def __init__(self, device="cuda:0", model_path=None, attention="math", vae_dtype="float32", *,
                  engine="xdit", revision=None, text_encoder_dtype=TEXT_ENCODER_DTYPE,
-                 negative_prompt_cache_entries=None, negative_prompt_cache_bytes=None):
+                 negative_prompt_cache_entries=None, negative_prompt_cache_bytes=None,
+                 encoder_pool=None):
         from .prompt_cache import cache_options
         # Validated before any weights load: both limits or neither.
         cache_config = cache_options({name: value for name, value in (
@@ -326,6 +327,13 @@ class WanStepWorker:
         self._encoder_lock = threading.Lock()
         self._owner = object()
         self._states = {}
+        self._encoder_pool = None
+        if encoder_pool is not None:
+            from ..encoder_pool import ProactiveEncoderPool
+            self._encoder_pool = (
+                encoder_pool if isinstance(encoder_pool, ProactiveEncoderPool)
+                else ProactiveEncoderPool(encoder_pool)
+            )
         self._negative_prompt_cache = None
         if cache_config:
             from .prompt_cache import NegativePromptCache
@@ -485,7 +493,48 @@ class WanStepWorker:
         """
         spec = normalize_spec(spec)
         with self._encoder_lock, self.torch.inference_mode():
+            pool = getattr(self, "_encoder_pool", None)
+            if pool is not None and getattr(pool, "trimmed", False):
+                encoded = pool.encode_wan_prompt_fast(self, spec)
+                self._validate_cpu_embeddings(encoded.prompt_embeds, encoded.negative_prompt_embeds, spec)
+                return encoded
             started = time.perf_counter()
+            pool_key = None
+            if pool is not None:
+                import json as _json
+                model_id = _json.dumps([str(self.model_path), self.model_revision])
+                pool_key = pool.prompt_key(
+                    "wan_exact",
+                    model_id,
+                    spec["prompt"],
+                    spec["negative_prompt"],
+                    512,
+                    self.text_encoder_dtype,
+                    spec["guidance_scale"] > 1,
+                )
+                if pool.has_key(pool_key):
+                    try:
+                        fetched = pool.fetch_to_device(pool_key, "cpu")["tensors"]
+                        prompt = fetched["prompt_embeds"].clone()
+                        neg_t = fetched.get("negative_prompt_embeds")
+                        negative = None if neg_t is None else neg_t.clone()
+                        self._validate_cpu_embeddings(prompt, negative, spec)
+                        elapsed_ms = (time.perf_counter() - started) * 1000
+                        receipt = {
+                            "hit": True,
+                            "encoder_pool_hit": True,
+                            "cpu_prompt_encode_ms": elapsed_ms,
+                        }
+                        return EncodedPrompt(
+                            spec=spec,
+                            prompt_embeds=prompt,
+                            negative_prompt_embeds=negative,
+                            cpu_prompt_encode_ms=elapsed_ms,
+                            owner=self._owner,
+                            negative_prompt_cache=receipt,
+                        )
+                    except (KeyError, OSError, RuntimeError, ValueError):
+                        pass
             arguments = dict(
                 prompt=spec["prompt"], negative_prompt=spec["negative_prompt"],
                 do_classifier_free_guidance=spec["guidance_scale"] > 1,
@@ -500,6 +549,14 @@ class WanStepWorker:
                 prompt, negative, receipt = cache.encode(self.pipe.encode_prompt, arguments,
                     request_id=spec["request_id"],
                     validate=lambda prompt, negative: self._validate_cpu_embeddings(prompt, negative, spec))
+            if pool is not None and pool_key is not None:
+                try:
+                    pool.stage_embeddings(
+                        pool_key,
+                        {"prompt_embeds": prompt, "negative_prompt_embeds": negative},
+                    )
+                except OSError:
+                    pass
             elapsed_ms = (time.perf_counter() - started) * 1000
             if receipt is not None:
                 receipt["cpu_prompt_encode_ms"] = elapsed_ms

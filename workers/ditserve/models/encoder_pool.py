@@ -24,11 +24,19 @@ class ProactiveEncoderPool:
         self.shm_dir = Path(cfg.get("shm_dir", "/dev/shm/ditserve-hetero-embeds"))
         self.max_entries = int(eff_entries if eff_entries is not None else cfg.get("max_entries", 64))
         self.max_bytes = int(max_bytes if max_bytes is not None else cfg.get("max_bytes", 512 * (1 << 20)))
+        self.write_shm = bool(cfg.get("write_shm", False))
+        self.pin_memory = bool(cfg.get("pin_memory", True))
         self._entries = OrderedDict()
         self._bytes = 0
         self.hits = 0
         self.misses = 0
         self.staged_pushes = 0
+
+    def has_key(self, key: str) -> bool:
+        """Return True if prompt embedding key is in-memory or staged in /dev/shm."""
+        if key in self._entries:
+            return True
+        return (self.shm_dir / f"{key[:24]}.pt").is_file()
 
     @staticmethod
     def prompt_key(modality: str, model_id: str, prompt: str, negative_prompt: str = "",
@@ -61,11 +69,15 @@ class ProactiveEncoderPool:
                 except OSError:
                     pass
 
-    def stage_embeddings(self, key: str, tensors: dict, *, pin_memory: bool = True,
-                         write_shm: bool = False) -> dict:
+    def stage_embeddings(self, key: str, tensors: dict, *, pin_memory: bool | None = None,
+                         write_shm: bool | None = None) -> dict:
         """Stage prompt embedding tensors in pinned host memory (and optional /dev/shm slab)."""
         import torch
 
+        if pin_memory is None:
+            pin_memory = self.pin_memory
+        if write_shm is None:
+            write_shm = self.write_shm
         started = time.perf_counter()
         staged_tensors = {}
         total_bytes = 0
@@ -94,7 +106,9 @@ class ProactiveEncoderPool:
         if write_shm:
             self.shm_dir.mkdir(parents=True, exist_ok=True)
             slab_path = str(self.shm_dir / f"{key[:24]}.pt")
-            torch.save(staged_tensors, slab_path)
+            tmp_path = f"{slab_path}.tmp.{os.getpid()}.{time.time_ns()}"
+            torch.save(staged_tensors, tmp_path)
+            os.replace(tmp_path, slab_path)
 
         record = {
             "key": key,
@@ -224,7 +238,8 @@ class ProactiveEncoderPool:
         from .wan.runtime import EncodedPrompt, normalize_spec
 
         dtype = wan_runtime.text_encoder_dtype
-        if str(wan_runtime.pipe.text_encoder.dtype) != "torch." + dtype:
+        text_encoder = getattr(getattr(wan_runtime, "pipe", None), "text_encoder", None)
+        if text_encoder is not None and str(text_encoder.dtype) != "torch." + dtype:
             raise ValueError("encoder weights differ from loaded text_encoder_dtype")
         norm_spec = normalize_spec(spec)
         t0 = time.perf_counter()
@@ -236,24 +251,34 @@ class ProactiveEncoderPool:
         pos_key = self.prompt_key("wan_pos", model_id, pos_text, "", max_sequence_length, dtype, False)
         neg_key = self.prompt_key("wan_neg", model_id, "", neg_text, max_sequence_length, dtype, False)
 
-        pos_hit = use_cache and (pos_key in self._entries)
+        pos_hit = use_cache and self.has_key(pos_key)
         if pos_hit:
             pos_emb = self.fetch_to_device(pos_key, "cpu")["tensors"]["embed"].clone()
         else:
             pos_emb, _ = self._encode_single_wan_text_trimmed(wan_runtime, pos_text, max_sequence_length)
             if use_cache:
-                self.stage_embeddings(pos_key, {"embed": pos_emb.clone()}, pin_memory=pin_memory)
+                self.stage_embeddings(
+                    pos_key,
+                    {"embed": pos_emb.clone()},
+                    pin_memory=pin_memory,
+                    write_shm=self.write_shm,
+                )
 
         neg_emb = None
         neg_hit = False
         if do_cfg:
-            neg_hit = use_cache and (neg_key in self._entries)
+            neg_hit = use_cache and self.has_key(neg_key)
             if neg_hit:
                 neg_emb = self.fetch_to_device(neg_key, "cpu")["tensors"]["embed"].clone()
             else:
                 neg_emb, _ = self._encode_single_wan_text_trimmed(wan_runtime, neg_text, max_sequence_length)
                 if use_cache:
-                    self.stage_embeddings(neg_key, {"embed": neg_emb.clone()}, pin_memory=pin_memory)
+                    self.stage_embeddings(
+                        neg_key,
+                        {"embed": neg_emb.clone()},
+                        pin_memory=pin_memory,
+                        write_shm=self.write_shm,
+                    )
 
         elapsed_ms = (time.perf_counter() - t0) * 1000.0
         receipt = {

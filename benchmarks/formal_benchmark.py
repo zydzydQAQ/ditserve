@@ -62,7 +62,7 @@ def protocol(path=DEFAULT_PROTOCOL):
 
 
 def genserve_sweep_cells(p):
-    """Return the 9-cell GenServe-style anchor + single-factor sweep configurations for v2."""
+    """Return the GenServe-style anchor + single-factor sweep configurations for v2."""
     if p.get('schema') != 'ditserve.formal-protocol.v2':
         raise ValueError('genserve_sweep_cells requires ditserve.formal-protocol.v2')
     anchor = copy.deepcopy(p['anchor'])
@@ -77,7 +77,9 @@ def genserve_sweep_cells(p):
         if vfrac != anchor['video_fraction']:
             cells.append(dict(anchor, video_fraction=vfrac, sweep_dimension='video_fraction'))
     cells.append(dict(anchor, resolution_distribution='skewed', sweep_dimension='resolution_distribution'))
-    cells.append(dict(anchor, pattern='bursty', sweep_dimension='pattern'))
+    gamma_spec = next(x for x in p['patterns'] if x['name'] == 'gamma')
+    for cv_val in gamma_spec.get('cvs', [gamma_spec.get('cv', 2.0)]):
+        cells.append(dict(anchor, pattern='gamma', cv=float(cv_val), sweep_dimension='pattern'))
     return cells
 
 
@@ -266,7 +268,7 @@ def assemble(p, model, records, runtime_facts):
 
 def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301,
             load=None, video_fraction=None, pattern='poisson', suite='main', diagnostic=None,
-            p1_plan=None, p1_pair=None, slo_scale=None, resolution_distribution=None):
+            p1_plan=None, p1_pair=None, slo_scale=None, resolution_distribution=None, cv=None):
     is_v2 = p.get('schema') == 'ditserve.formal-protocol.v2'
     if load is None:
         load = p['anchor']['load'] if is_v2 and 'anchor' in p else 0.6
@@ -366,14 +368,25 @@ def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301
     actual_load = diagnostic_controls['load'] if diagnostic else load
     actual_pattern = diagnostic_controls['pattern'] if diagnostic else pattern
     mode = 'digest' if diagnostic else 'check'
-    cv = patterns[actual_pattern].get('cv', 1.0)
+    default_cv = patterns[actual_pattern].get('cv', 1.0)
+    if cv is not None and not diagnostic:
+        if actual_pattern != 'gamma':
+            raise ValueError('cv override is only valid for gamma arrival pattern')
+        allowed_cvs = [float(x) for x in patterns['gamma'].get('cvs', [default_cv])]
+        if float(cv) not in allowed_cvs:
+            raise ValueError('gamma cv is outside frozen protocol')
+        effective_cv = float(cv)
+    else:
+        effective_cv = float(default_cv)
     config = build_serving_config(model, uuids, singleton, selected, seed=seed, load=actual_load,
-        pattern=actual_pattern, cv=cv, video_fraction=actual_fraction, count=count, policies=policies,
+        pattern=actual_pattern, cv=effective_cv, video_fraction=actual_fraction, count=count, policies=policies,
         image_slo_scale=image_scale, video_slo_scale=video_scale,
         require_profile_match=True, forms=['cfg2'] if diagnostic else None, output_mode=mode,
         doorbell=True, image_batch=p['batch_limit'], policy_order='random')
     window = dict(count=count, video_fraction=actual_fraction, pattern=actual_pattern, load=actual_load)
-    window.update({k: v for k, v in patterns[actual_pattern].items() if k != 'name'})
+    window.update({k: v for k, v in patterns[actual_pattern].items() if k not in ('name', 'cvs')})
+    if actual_pattern == 'gamma':
+        window['cv'] = effective_cv
     if not diagnostic and (is_v2 or resolution_distribution is not None):
         window['resolution_distribution'] = copy.deepcopy(dist_map[dist_name])
     trace = build_trace(classes, selected, [window], slots=len(uuids), seed=seed, output_mode=mode)
@@ -408,11 +421,13 @@ def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301
     # Suite keys select policies above; only their result-directory suffix is encoded.
     experiment_suite = suite.replace('+', '-')
     extra_tags = ''
-    if not diagnostic and (is_v2 or slo_scale is not None or resolution_distribution is not None):
+    if not diagnostic and (is_v2 or slo_scale is not None or resolution_distribution is not None or cv is not None):
         if effective_slo_scale is not None:
             extra_tags += f"-slo{str(effective_slo_scale).replace('.', 'p')}"
         if dist_name != 'uniform':
             extra_tags += f"-{dist_name.replace('_', '-')}"
+        if actual_pattern == 'gamma':
+            extra_tags += f"-cv{str(effective_cv).replace('.', 'p')}"
     config['experiment'] = (
         f"formal-{model}-{split}-{actual_pattern}-s{seed}-l{str(actual_load).replace('.', 'p')}"
         f"-v{str(actual_fraction).replace('.', 'p')}{extra_tags}"
@@ -490,6 +505,7 @@ def main():
             ap.add_argument('--video-fraction', type=float, default=None)
             ap.add_argument('--slo-scale', type=float, default=None)
             ap.add_argument('--resolution-distribution', default=None)
+            ap.add_argument('--cv', type=float, default=None)
             ap.add_argument('--pattern', choices=['poisson', 'gamma', 'bursty'], default='poisson')
             ap.add_argument('--suite', choices=sorted(SUITES), default='main')
             ap.add_argument('--diagnostic', choices=['contention', 'no_preemption'])
@@ -510,7 +526,8 @@ def main():
             result = serving(p, args.model, uuids, read_json(args.bundle), pools, manifests,
                 split=args.split, seed=args.seed, load=args.load, video_fraction=args.video_fraction,
                 pattern=args.pattern, suite=args.suite, diagnostic=args.diagnostic,
-                slo_scale=args.slo_scale, resolution_distribution=args.resolution_distribution)
+                slo_scale=args.slo_scale, resolution_distribution=args.resolution_distribution,
+                cv=args.cv)
     write_new(args.output, result)
     print(json.dumps(dict(output=str(args.output), sha256=canonical_hash(result), scientific_qualification='pending')))
 

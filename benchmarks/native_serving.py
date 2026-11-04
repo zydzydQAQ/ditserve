@@ -2,13 +2,20 @@
 """Generate frozen native serving studies from a fitted profile and sealed prompts."""
 
 import argparse
+import copy
 import json
 import math
 import random
 import re
 from pathlib import Path
 
-from cluster_config import MODELS, allocated_uuids, make_workers
+from cluster_config import (
+    DEFAULT_CONTINUOUS_BATCH,
+    MODELS,
+    allocated_uuids,
+    default_sd35_batch_step_ms,
+    make_workers,
+)
 from ditserve.evaluation.common import read_json, verify_seal
 from ditserve.evaluation.workloads import build_trace, validate_trace
 
@@ -18,22 +25,71 @@ from ditserve.evaluation.workloads import build_trace, validate_trace
 POLICY_DISPLAY = {
     "xdit": "xDiT", "tetriserve": "TetriServe (re-impl.)", "sbp-esp": "SBP-ESP", "edf-bestfit": "EDF-BF",
     "edf-cfg2": "EDF-CFG2", "cfg2-first": "CFG2-First", "partition": "Static-Partition",
+    "static-cfg2": "Static-CFG2", "static-cfg2sp2": "Static-CFG2SP2",
+    "static-cfg2sp3": "Static-CFG2SP3", "static-cfg2sp4": "Static-CFG2SP4",
     "ditserve": "DitServe", "ditserve-approx": "DitServe-Approx",
     "fold-cfg2sp3": "CFG2SP3 fold only", "approx-cfg2sp3": "CFG2SP3 fold + fission",
     "abl-no-block": "DitServe w/o block preemption", "abl-no-prune": "DitServe w/o form pruning",
     "abl-no-mindeg": "DitServe w/o CFG-pair admission", "abl-first-fit": "DitServe w/o pair-fit placement",
     "ditserve-v1": "DitServe-v1 (knapsack)", "block-cfg2": "Block-cfg2", "block-cfg2sp3": "Block-cfg2sp3",
 }
+IN_FRAMEWORK_MECHANISM_DISPLAY = {
+    "edf-cfg2": "EDF-CFG2",
+    "static-cfg2sp2": "Static-CFG2SP2",
+    "static-cfg2sp3": "Static-CFG2SP3",
+    "static-cfg2sp4": "Static-CFG2SP4",
+    "cfg2-first": "CFG2-First",
+    "tetriserve": "TetriServe-policy",
+    "sbp-esp": "SBP-ESP",
+    "edf-bestfit": "EDF-BF",
+    "ditserve": "DitServe",
+}
+STATIC_POLICY = re.compile(r"^static-(?:sp1|cfg2|sp2|cfg2sp2|sp3|cfg2sp3|sp4|cfg2sp4|sp6|sp8)$")
+IN_FRAMEWORK_COMPARISON_DECLARATION = {
+    "enabled": True,
+    "comparison_mode": "same_executor_mechanism_comparison",
+    "statement": (
+        "All policies execute on the same verified DitServe native runtime, worker pool, "
+        "SP/CFG collective transport, and calibrated latency profile to isolate scheduling "
+        "mechanisms (optimal Static-<Form>, TetriServe-policy, SBP-ESP, EDF-BF vs. DitServe) "
+        "on the Wan + SD3.5 mixed-workload main table; the in-house heuristics EDF-CFG2 and "
+        "CFG2-First run only in the ablation suite."
+    ),
+    "canonical_mechanisms": [
+        "static-cfg2sp4",
+        "tetriserve",
+        "sbp-esp",
+        "edf-bestfit",
+        "ditserve",
+    ],
+}
+# In-house heuristics that isolate DitServe mechanisms; never part of the full
+# baseline matrix (main/sweep), only of the ablation suite.
+ABLATION_ONLY_POLICIES = ("edf-cfg2", "cfg2-first")
+
+
+def in_framework_main_policies(best_static_form="static-cfg2sp4"):
+    """Return the 5-policy in-framework main table mechanism comparison list."""
+    if not isinstance(best_static_form, str) or not STATIC_POLICY.fullmatch(best_static_form):
+        raise ValueError(f"best_static_form must match STATIC_POLICY, got {best_static_form!r}")
+    return [best_static_form, "tetriserve", "sbp-esp", "edf-bestfit", "ditserve"]
+
+
 SUITES = {
-    # External methods and simple heuristics against DitServe.
-    "main": ["xdit", "tetriserve", "sbp-esp", "edf-bestfit", "edf-cfg2", "cfg2-first", "ditserve"],
-    # DitServe with one mechanism removed; EDF-CFG2 has all of them removed.
+    # Paper baselines against DitServe (full matrix).
+    "main": ["xdit", "tetriserve", "sbp-esp", "edf-bestfit", "ditserve"],
+    # Same-executor in-framework mechanism comparison on the shared native runtime.
+    "in-framework-main": ["static-cfg2sp4", "tetriserve", "sbp-esp", "edf-bestfit", "ditserve"],
+    # Combined main table with both xDiT (static partition, CFG=1) and optimal Static-<Form>.
+    "main-all": ["xdit", "static-cfg2sp4", "tetriserve", "sbp-esp", "edf-bestfit", "ditserve"],
+    # DitServe with one mechanism removed; CFG2-First drops sub-step preemption and
+    # pair-fit placement, EDF-CFG2 has all of them removed.
     "ablation": ["ditserve", "abl-no-block", "abl-no-prune", "abl-no-mindeg", "abl-first-fit",
-                 "block-cfg2", "edf-cfg2", "ditserve-v1"],
+                 "block-cfg2", "cfg2-first", "edf-cfg2", "ditserve-v1"],
     # Same fixed form with and without sub-step preemption (digest-checked pair).
     "preempt": ["edf-cfg2", "block-cfg2"],
-    # Core competing external methods + strongest heuristic + DitServe for Rate/SLO/CV/GPU sweeps.
-    "sweep": ["xdit", "tetriserve", "sbp-esp", "edf-bestfit", "edf-cfg2", "ditserve"],
+    # Paper baselines + DitServe for Rate/SLO/CV/GPU sweeps.
+    "sweep": ["xdit", "tetriserve", "sbp-esp", "edf-bestfit", "ditserve"],
 }
 SUITES["main+ablation"] = list(dict.fromkeys(SUITES["main"] + SUITES["ablation"]))
 DEFAULT_POLICIES = SUITES["main"]
@@ -64,7 +120,8 @@ def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load,
                          video_fraction, count, policies=None, video_slo_scale=1.5,
                          image_slo_scale=2.5, quality_per_kind=0, cfg_fold=None, forms=None, doorbell=False,
                          output_mode="check", require_profile_match=False, collective_backend="nccl", cv=1.0,
-                         image_batch=1, policy_order="forward", order_seed=None, async_rank0_decode=False):
+                         image_batch=1, policy_order="forward", order_seed=None, async_rank0_decode=False,
+                         continuous_batch=None, sequence_packing=True, bubble_free=True):
     policies = list(DEFAULT_POLICIES if policies is None else policies)
     requested_policies = list(policies)
     if policy_order not in ("forward", "reverse", "random"):
@@ -75,6 +132,31 @@ def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load,
         random.Random(seed if order_seed is None else order_seed).shuffle(policies)
     if not isinstance(image_batch, int) or isinstance(image_batch, bool) or not 1 <= image_batch <= 8:
         raise ValueError("image_batch must be an integer in [1, 8]")
+    if continuous_batch is not None:
+        if not isinstance(continuous_batch, int) or isinstance(continuous_batch, bool) or not 0 <= continuous_batch <= 8:
+            raise ValueError("continuous_batch must be an integer in [0, 8]")
+        if continuous_batch > 0 and image_batch > 1:
+            raise ValueError("continuous_batch and atomic image_batch are mutually exclusive")
+    if continuous_batch is None:
+        if image_batch > 1:
+            eff_cb = 0
+        else:
+            eff_cb = DEFAULT_CONTINUOUS_BATCH if "batch_step_ms" in profile["classes"]["sd35-preflight"] else 0
+    else:
+        eff_cb = continuous_batch
+    if eff_cb > 0:
+        sd_cls = profile["classes"]["sd35-preflight"]
+        if any(k not in sd_cls for k in ("batch_step_ms", "steps", "prepare_ms", "finish_ms")):
+            profile = copy.deepcopy(profile)
+            sd_cls = profile["classes"]["sd35-preflight"]
+            sd_steps = int(sd_cls.get("steps", 28))
+            sd_cls.setdefault("steps", sd_steps)
+            sd_cls.setdefault("prepare_ms", 15.0)
+            sd_cls.setdefault("finish_ms", 65.0)
+            sd_cls.setdefault(
+                "batch_step_ms",
+                default_sd35_batch_step_ms(float(sd_cls["service_ms"]), steps=sd_steps, resolution=1024),
+            )
     if image_batch > 1:
         table = profile["classes"]["sd35-preflight"].get("batch_ms", {})
         for size in range(2, image_batch + 1):
@@ -114,6 +196,9 @@ def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load,
             "guidance_scale": 4.5, "negative_prompt": "blurry, low quality",
             "max_sequence_length": 256, "prompt": "A lighthouse at dusk.", "seed": 202,
         }, cfg_fold=cfg_fold,
+        continuous_batch=eff_cb if eff_cb > 0 else DEFAULT_CONTINUOUS_BATCH,
+        sequence_packing=sequence_packing,
+        bubble_free=bubble_free,
     )
     for item in warmup:
         item["spec"]["steps"] = 1
@@ -157,6 +242,63 @@ def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load,
         "manifest": trace["manifest"],
     }
     gpus = len(gpu_uuids)
+    phase_options = {
+        "sp_transport": "export",
+        "forms": forms,
+        "quantum_blocks": 4,
+        "async_rank0_decode": async_rank0_decode,
+        "image_batch": image_batch,
+        "tiered_memory": False,
+        "doorbell": doorbell,
+        "partition_image_gpus": image_share,
+        "collective_backend": collective_backend,
+    }
+    if eff_cb > 0:
+        phase_options["continuous_batch"] = eff_cb
+        phase_options["sequence_packing"] = bool(sequence_packing)
+        phase_options["bubble_free"] = bool(bubble_free)
+    benchmark_meta = {
+        "native_serving": True,
+        "performance_qualified": False,
+        "quality_qualified": False,
+        "exact_mode": not approximate,
+        "models": [selected["name"], "SD3.5-Medium"],
+        "gpus": gpus,
+        "seed": seed,
+        "load": load,
+        "pattern": pattern,
+        "cv": float(cv) if pattern == "gamma" else None,
+        "video_fraction": video_fraction,
+        "count": count,
+        "video_slo_scale": video_slo_scale,
+        "image_slo_scale": image_slo_scale,
+        "output_mode": output_mode,
+        "profile_placement": {
+            "required": require_profile_match, "matches": profile_match,
+            "gpu_uuids": profile_uuids or [],
+        },
+        "trace": provenance,
+        "policies": policies,
+        "requested_policies": requested_policies,
+        "policy_order": {"mode": policy_order, "seed": seed if order_seed is None else order_seed},
+        "image_batch": {"max_requests": image_batch, "scope": "same atomic request batching limit for every policy; each request generates one image"},
+        "policy_display": {name: POLICY_DISPLAY.get(name, name) for name in policies},
+        "in_framework_policy_comparison": dict(
+            copy.deepcopy(IN_FRAMEWORK_COMPARISON_DECLARATION),
+            mechanism_display={
+                name: IN_FRAMEWORK_MECHANISM_DISPLAY.get(name, POLICY_DISPLAY.get(name, name))
+                for name in policies
+            },
+        ),
+        "collective_backend": collective_backend,
+        "partition_image_gpus": {"value": image_share, "rule": "expected image share of GPU time, even video remainder"},
+    }
+    if eff_cb > 0:
+        benchmark_meta["continuous_batch"] = {
+            "max_requests": eff_cb,
+            "sequence_packing": bool(sequence_packing),
+            "bubble_free": bool(bubble_free),
+        }
     return {
         "schema": "ditserve.study.v1",
         "experiment": f"kairos-{model}-native-serving-s{seed}-l{str(load).replace('.', 'p')}",
@@ -182,17 +324,7 @@ def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load,
             "text_prefetch": 1,
             "output_mode": "check",
             "warmup": warmup,
-            "options": {
-                "sp_transport": "export",
-                "forms": forms,
-                "quantum_blocks": 4,
-                "async_rank0_decode": async_rank0_decode,
-                "image_batch": image_batch,
-                "tiered_memory": False,
-                "doorbell": doorbell,
-                "partition_image_gpus": image_share,
-                "collective_backend": collective_backend,
-            },
+            "options": phase_options,
             "matrix": {
                 "/policy": policies,
                 "/workload": [trace["workload"]],
@@ -200,35 +332,7 @@ def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load,
             },
             "artifact_dependencies": ([{"consumer": "native_quality", "closed": False}] if quality_per_kind else []),
         }],
-        "benchmark": {
-            "native_serving": True,
-            "performance_qualified": False,
-            "quality_qualified": False,
-            "exact_mode": not approximate,
-            "models": [selected["name"], "SD3.5-Medium"],
-            "gpus": gpus,
-            "seed": seed,
-            "load": load,
-            "pattern": pattern,
-            "cv": float(cv) if pattern == "gamma" else None,
-            "video_fraction": video_fraction,
-            "count": count,
-            "video_slo_scale": video_slo_scale,
-            "image_slo_scale": image_slo_scale,
-            "output_mode": output_mode,
-            "profile_placement": {
-                "required": require_profile_match, "matches": profile_match,
-                "gpu_uuids": profile_uuids or [],
-            },
-            "trace": provenance,
-            "policies": policies,
-            "requested_policies": requested_policies,
-            "policy_order": {"mode": policy_order, "seed": seed if order_seed is None else order_seed},
-            "image_batch": {"max_requests": image_batch, "scope": "same atomic request batching limit for every policy; each request generates one image"},
-            "policy_display": {name: POLICY_DISPLAY.get(name, name) for name in policies},
-            "collective_backend": collective_backend,
-            "partition_image_gpus": {"value": image_share, "rule": "expected image share of GPU time, even video remainder"},
-        },
+        "benchmark": benchmark_meta,
     }
 
 
@@ -251,6 +355,12 @@ def main():
     parser.add_argument("--order-seed", type=int, help="independent reproducible policy order seed; defaults to trace seed")
     parser.add_argument("--image-batch", type=int, default=1,
                         help="maximum atomic image requests per batch, shared by all policies; >1 requires measured batch_ms")
+    parser.add_argument("--continuous-batch", type=int, default=None,
+                        help="maximum step-level continuous image batch size in [0, 8]; mutually exclusive with --image-batch > 1")
+    parser.add_argument("--sequence-packing", action=argparse.BooleanOptionalAction, default=True,
+                        help="enable multi-resolution token sequence packing for SD3.5 continuous batches")
+    parser.add_argument("--bubble-free", action=argparse.BooleanOptionalAction, default=True,
+                        help="overlap T5 encode and VAE decode with MM-DiT denoising rounds")
     parser.add_argument("--quality-arm", choices=["exact", "fixed", "curvature"],
                         help="controlled all-video cfg2sp3 quality arm, with identical runtime settings")
     parser.add_argument("--policies")
@@ -353,6 +463,7 @@ def main():
         cfg_fold=cfg_fold, forms=forms, doorbell=args.doorbell, output_mode=args.output_mode,
         require_profile_match=args.require_profile_match, collective_backend=args.collective_backend, cv=args.cv,
         image_batch=args.image_batch, policy_order=args.policy_order, order_seed=args.order_seed,
+        continuous_batch=args.continuous_batch, sequence_packing=args.sequence_packing, bubble_free=args.bubble_free,
     )
     config["benchmark"]["quality_arm"] = args.quality_arm
     if args.experiment is not None:

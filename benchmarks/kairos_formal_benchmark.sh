@@ -186,6 +186,22 @@ if [ "$action" = p1 ]; then
   # and negative outcomes. Successful replay is not scientific acceptance.
   exit 0
 fi
+if [ "$action" = serve ] && [ -n "${DITSERVE_SERVE_BATCH:-}" ]; then
+  IFS=';' read -ra batch_items <<< "$DITSERVE_SERVE_BATCH"
+  for item in "${batch_items[@]}"; do
+    [ -n "$item" ] || continue
+    tag="${item%%:*}"
+    flags="${item#*:}"
+    cfg="$RUN_DIR/serving-$tag.json"
+    read -ra extra_args <<< "$flags"
+    python3 "$benchmarks/formal_benchmark.py" --protocol "$protocol" serve \
+      --model "$model" --bundle "$RUN_DIR/bundle.json" --datasets "$DATA/datasets" \
+      --model-manifests "$DITSERVE_MODEL_MANIFESTS" --output "$cfg" \
+      --split test --seed "${DITSERVE_SEED:-301}" "${extra_args[@]}"
+    run_config "$cfg" "$DITSERVE_RUN_ID-$tag"
+  done
+  exit 0
+fi
 cases=(serving)
 if [ "$action" = p0 ]; then cases=(contention no_preemption); fi
 if [ -n "${DITSERVE_P0_CASE:-}" ]; then
@@ -214,6 +230,9 @@ for diagnostic in "${cases[@]}"; do
     fi
     if [ -n "${DITSERVE_RESOLUTION_DISTRIBUTION:-}" ]; then
       args+=(--resolution-distribution "$DITSERVE_RESOLUTION_DISTRIBUTION")
+    fi
+    if [ -n "${DITSERVE_CV:-}" ]; then
+      args+=(--cv "$DITSERVE_CV")
     fi
   fi
   python3 "$benchmarks/formal_benchmark.py" --protocol "$protocol" "${args[@]}"

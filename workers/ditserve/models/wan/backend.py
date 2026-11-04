@@ -22,11 +22,15 @@ class WanBackend(Backend):
         self.options = config.get("options", {})
         # Optional worker-owned negative-embedding cache: both limits or neither, checked before loading.
         cache_config = cache_options(self.options)
+        pool_cfg = self.options.get("encoder_pool")
+        if isinstance(pool_cfg, dict) and pool_cfg.get("enabled", True):
+            cache_config["encoder_pool"] = pool_cfg
         self.runtime = WanStepWorker(device=config.get("device", "cuda:0"),
             model_path=config.get("model_path"), attention=config.get("attention", "math"),
             vae_dtype=config.get("vae_dtype", "float32"), engine=self.options.get("engine", "xdit"),
             text_encoder_dtype=config.get("text_encoder_dtype", TEXT_ENCODER_DTYPE),
             revision=config.get("revision"), **cache_config)
+        self.release_cache_on_stop = bool(self.options.get("release_cache_on_stop", False))
         self.tiered_manager = TieredVideoStateManager(
             self.runtime, max_pinned_mb=int(self.options.get("max_pinned_mb", 8192))
         )
@@ -155,7 +159,12 @@ class WanBackend(Backend):
             if self.execution.startswith("block"):
                 if self.executor is None:
                     from .block import WanBlockExecutor
-                    self.executor = WanBlockExecutor(self.runtime, interleave=self.interleave, cfg_fold_options=self.cfg_fold_options)
+                    self.executor = WanBlockExecutor(
+                        self.runtime,
+                        interleave=self.interleave,
+                        cfg_fold_options=self.cfg_fold_options,
+                        release_cache_on_stop=self.release_cache_on_stop,
+                    )
                 self.continuations[key] = self.executor.attach(state)
             self.states[key] = state
         except BaseException:
@@ -373,7 +382,12 @@ class WanBackend(Backend):
         read_ms = (time.perf_counter() - started) * 1000
         if self.executor is None:
             from .block import WanBlockExecutor
-            self.executor = WanBlockExecutor(self.runtime, interleave=self.interleave, cfg_fold_options=self.cfg_fold_options)
+            self.executor = WanBlockExecutor(
+                self.runtime,
+                interleave=self.interleave,
+                cfg_fold_options=self.cfg_fold_options,
+                release_cache_on_stop=self.release_cache_on_stop,
+            )
         from .block import import_block_state
         state, continuation, timing = import_block_state(self.executor, payload)
         self.states[key], self.continuations[key] = state, continuation
@@ -485,7 +499,8 @@ class WanBackend(Backend):
                 # A warmup may have built a single-GPU executor; block quanta now need SP safe points.
                 from .block import WanBlockExecutor
                 self.executor = WanBlockExecutor(self.runtime, parallel=self.parallel, interleave=self.interleave,
-                                                 cfg_fold_options=self.cfg_fold_options)
+                                                 cfg_fold_options=self.cfg_fold_options,
+                                                 release_cache_on_stop=self.release_cache_on_stop)
             return dict(self.parallel.capabilities, initialized=True, execution=self.execution, collectives=collective_info)
         if self.parallel is None:
             raise ValueError("distributed init must complete first on every rank")

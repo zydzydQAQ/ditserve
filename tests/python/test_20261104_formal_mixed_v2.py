@@ -99,6 +99,10 @@ class FormalMixedV2Test(unittest.TestCase):
         self.assertEqual(self.p['slo']['default_scale'], 1.5)
         self.assertEqual(self.p['loads'], [0.5, 1.0, 1.5])
         self.assertEqual(self.p['video_fractions'], [0.2, 0.5, 0.8])
+        self.assertEqual([x['name'] for x in self.p['patterns']], ['poisson', 'gamma'])
+        gamma_pattern = next(x for x in self.p['patterns'] if x['name'] == 'gamma')
+        self.assertEqual(gamma_pattern['cv'], 2.0)
+        self.assertEqual(gamma_pattern['cvs'], [2.0, 4.0, 6.0])
         wan22_shapes = [k for k, v in self.p['shapes'].items() if v['scope'] == 'formal' and v['model'] == 'wan22']
         sd35_shapes = [k for k, v in self.p['shapes'].items() if v['scope'] == 'formal' and v['model'] == 'sd35']
         self.assertEqual(wan22_shapes, ['wan22-256p', 'wan22-480p', 'wan22-720p'])
@@ -170,13 +174,16 @@ class FormalMixedV2Test(unittest.TestCase):
             },
         )
         cells = formal.genserve_sweep_cells(self.p)
-        self.assertEqual(len(cells), 9)
+        self.assertEqual(len(cells), 11)
+        gamma_cells = [c for c in cells if c['pattern'] == 'gamma']
+        self.assertEqual([c['cv'] for c in gamma_cells], [2.0, 4.0, 6.0])
+        for bad_cv in (0.5, 1.0):
+            with self.assertRaises(ValueError):
+                formal.serving(self.p, 'wan22', self.uuids, b, self.pools, self.manifests, pattern='gamma', cv=bad_cv)
 
     def test_in_framework_policy_comparison_and_quality_contracts(self):
         expected_policies = [
-            'edf-cfg2',
             'static-cfg2sp4',
-            'cfg2-first',
             'tetriserve',
             'sbp-esp',
             'edf-bestfit',
@@ -186,7 +193,7 @@ class FormalMixedV2Test(unittest.TestCase):
         self.assertEqual(formal.in_framework_main_policies(), expected_policies)
         self.assertEqual(
             formal.in_framework_main_policies('static-cfg2sp3'),
-            ['edf-cfg2', 'static-cfg2sp3', 'cfg2-first', 'tetriserve', 'sbp-esp', 'edf-bestfit', 'ditserve'],
+            ['static-cfg2sp3', 'tetriserve', 'sbp-esp', 'edf-bestfit', 'ditserve'],
         )
         with self.assertRaises(ValueError):
             formal.in_framework_main_policies('invalid-policy')
@@ -195,6 +202,12 @@ class FormalMixedV2Test(unittest.TestCase):
         self.assertEqual(contract['mode'], 'in_framework_policy_comparison')
         self.assertTrue(contract['shared_executor'])
         self.assertEqual(contract['main_table_policies'], expected_policies)
+        self.assertEqual(contract['ablation_only_policies'], ['edf-cfg2', 'cfg2-first'])
+        for suite in ('main', 'in-framework-main', 'sweep'):
+            for heuristic in ('edf-cfg2', 'cfg2-first'):
+                self.assertNotIn(heuristic, formal.SUITES[suite])
+        for heuristic in ('edf-cfg2', 'cfg2-first'):
+            self.assertIn(heuristic, formal.SUITES['ablation'])
         self.assertIn('static-cfg2sp4', contract['best_static_form_rule'])
         self.assertEqual(contract['mechanism_labels']['tetriserve'], 'TetriServe-policy')
         self.assertEqual(contract['mechanism_labels']['static-cfg2sp4'], 'Static-<Form>')
@@ -262,6 +275,7 @@ class FormalMixedV2Test(unittest.TestCase):
                         pattern=cell['pattern'],
                         slo_scale=cell['slo_scale'],
                         resolution_distribution=cell['resolution_distribution'],
+                        cv=cell.get('cv'),
                     )
                     path = root / f'cell-{idx}.json'
                     path.write_text(json.dumps(cfg, allow_nan=False), encoding='utf-8')

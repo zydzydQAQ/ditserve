@@ -43,7 +43,8 @@ class WanBlockExecutor:
     is a collective safe point, and the solver commit closes the step.
     """
 
-    def __init__(self, worker, parallel=None, interleave=False, cfg_fold_options=None):
+    def __init__(self, worker, parallel=None, interleave=False, cfg_fold_options=None, *,
+                 release_cache_on_stop=False):
         self.worker, self.model, self.parallel = worker, worker.pipe.transformer, parallel
         self.xdit = getattr(worker, "xdit", None)
         # Wan2.2 TI2V conditions every patch token on its own timestep.
@@ -54,6 +55,7 @@ class WanBlockExecutor:
         # results; under a CFG-parallel layout each rank has one branch and it is moot.
         self.interleave = bool(interleave)
         self.cfg_fold_options = None if cfg_fold_options is None else dict(cfg_fold_options)
+        self.release_cache_on_stop = bool(release_cache_on_stop)
         self._side = None
         self._validate_model()
         self._owner, self._states, self._advancing = object(), {}, False
@@ -182,6 +184,213 @@ class WanBlockExecutor:
             return self.xdit.forward_block(packet, index)
         return self.model.blocks[index](hidden, encoder, projected, rotary)
 
+    def _forward_interleaved_block(self, packet, other, index, side=None):
+        """Interleave cond and uncond block i across main and side CUDA streams.
+
+        When the underlying block exposes standard Wan sublayers (norm1, attn1,
+        norm2, attn2, norm3, ffn, scale_shift_table) and a side CUDA stream is
+        active, Stage 1 (Self-Attention + Ulysses All-to-All) of uncond on the
+        side stream overlaps with Stage 2 (Cross-Attention + FFN compute) of
+        cond on the main stream, and Stage 1 of the next cond block overlaps
+        with Stage 2 of uncond on the side stream, while strictly ordering
+        Ulysses collectives via lightweight CUDA events.
+        """
+        torch = self.worker.torch
+        block = self.model.blocks[index]
+        has_sublayers = all(
+            hasattr(block, attr)
+            for attr in ("scale_shift_table", "norm1", "attn1", "norm2", "attn2", "norm3", "ffn")
+        )
+        if side is None or not has_sublayers:
+            packet["hidden"] = self._forward_block(
+                packet, index, packet["hidden"], packet["encoder"], packet["projected"], packet["rotary"]
+            )
+            if side is not None:
+                self._record(other, side)
+                with torch.cuda.stream(side):
+                    other["hidden"] = self._forward_block(
+                        other, index, other["hidden"], other["encoder"], other["projected"], other["rotary"]
+                    )
+            else:
+                other["hidden"] = self._forward_block(
+                    other, index, other["hidden"], other["encoder"], other["projected"], other["rotary"]
+                )
+            return packet["hidden"], other["hidden"]
+
+        if self.xdit is not None:
+            self.model._sp_pad["local_rows"] = packet.get("local_rows", 0)
+            self.model._self_attn_kwargs["valid_kv_len"] = packet.get("valid_kv_len")
+            if getattr(self.model, "attention_kwargs", None) is not None:
+                self.model.attention_kwargs["thw"] = packet.get("thw")
+
+        def _split_temb(temb):
+            if temb.ndim == 4:
+                parts = (block.scale_shift_table.unsqueeze(0) + temb.float()).chunk(6, dim=2)
+                return tuple(p.squeeze(2) for p in parts)
+            return (block.scale_shift_table + temb.float()).chunk(6, dim=1)
+
+        def _stage1(h, shift_msa, scale_msa, gate_msa, rotary):
+            norm_h = (block.norm1(h.float()) * (1.0 + scale_msa) + shift_msa).type_as(h)
+            attn_out = block.attn1(norm_h, None, None, rotary)
+            return (h.float() + attn_out * gate_msa).type_as(h)
+
+        def _stage2(h, encoder, c_shift_msa, c_scale_msa, c_gate_msa, local_rows):
+            norm_h = block.norm2(h.float()).type_as(h)
+            attn_out = block.attn2(norm_h, encoder, None, None)
+            h = h + attn_out
+            norm_h = (block.norm3(h.float()) * (1.0 + c_scale_msa) + c_shift_msa).type_as(h)
+            ff_out = block.ffn(norm_h)
+            h = (h.float() + ff_out.float() * c_gate_msa).type_as(h)
+            if local_rows:
+                h = h.clone()
+                h[:, -local_rows:] = 0
+            return h
+
+        main_stream = torch.cuda.current_stream()
+        self._record(other, side)
+        c_shift, c_scale, c_gate, c_cshift, c_cscale, c_cgate = _split_temb(packet["projected"])
+        u_shift, u_scale, u_gate, u_cshift, u_cscale, u_cgate = _split_temb(other["projected"])
+        local_rows_c = int(packet.get("local_rows", 0)) if self.xdit is not None else 0
+        local_rows_u = int(other.get("local_rows", 0)) if self.xdit is not None else 0
+
+        if self.xdit is not None:
+            from xfuser.core.distributed import (
+                get_ulysses_parallel_world_size,
+                get_ring_parallel_world_size,
+                get_runtime_state,
+            )
+            ulysses_deg = get_ulysses_parallel_world_size()
+            ring_deg = get_ring_parallel_world_size()
+            proc1 = getattr(block.attn1, "processor", None)
+            if (
+                ulysses_deg > 1
+                and ring_deg == 1
+                and getattr(block.attn1, "add_k_proj", None) is None
+                and getattr(get_runtime_state(), "fp8_comms", None) is None
+                and hasattr(proc1, "_get_qkv_projections")
+                and hasattr(proc1, "_qk_norm_rope_reference")
+            ):
+                import torch.distributed._functional_collectives as ft_c
+                from ditserve.models.xdit.process_group import PROCESS_GROUP
+                from xfuser.model_executor.layers.usp import (
+                    _get_attention_function,
+                    _trim_trailing_kv_padding,
+                    _maybe_wait,
+                )
+
+                attn1 = block.attn1
+                attn_fn = _get_attention_function(backend=None)
+                hb_backend = get_runtime_state().attention_backend
+                ulysses_pg = PROCESS_GROUP.ULYSSES_PG
+
+                def _prep_qkv(h, shift_m, scale_m, rot):
+                    norm_h = (block.norm1(h.float()) * (1.0 + scale_m) + shift_m).type_as(h)
+                    q, k, v = proc1._get_qkv_projections(attn1, norm_h, None)
+                    q, k, v = proc1._qk_norm_rope_reference(attn1, q, k, v, rot)
+                    return q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)
+
+                def _launch_in_a2a(q, k, v):
+                    b, h_cnt, s_loc, d = q.shape
+                    qkv = (
+                        torch.stack([q, k, v], dim=0)
+                        .view(3, b, ulysses_deg, h_cnt // ulysses_deg, s_loc, d)
+                        .permute(2, 0, 1, 3, 4, 5)
+                        .contiguous()
+                    )
+                    qkv_async = ft_c.all_to_all_single(
+                        qkv.flatten(), output_split_sizes=None, input_split_sizes=None, group=ulysses_pg
+                    )
+                    return qkv_async, qkv.shape, qkv.dtype, (b, h_cnt, s_loc, d)
+
+                def _finish_in_a2a(qkv_async, qkv_shape, qkv_dtype, meta):
+                    b, h_cnt, _s_loc, d = meta
+                    qkv_recv = _maybe_wait(qkv_async).view(qkv_dtype).reshape(qkv_shape)
+                    qkv_unp = qkv_recv.permute(1, 2, 3, 0, 4, 5).reshape(3, b, h_cnt // ulysses_deg, -1, d)
+                    return torch.unbind(qkv_unp, dim=0)
+
+                def _run_sdpa(q, k, v, valid_kv_len):
+                    akw = dict(self.model._self_attn_kwargs)
+                    akw["valid_kv_len"] = valid_kv_len
+                    if valid_kv_len is not None:
+                        k, v, akw = _trim_trailing_kv_padding(k, v, akw, hb_backend)
+                    out, _ = attn_fn(
+                        q, k, v, dropout_p=0.0, is_causal=False, joint_attn_kwargs=None, attention_kwargs=akw
+                    )
+                    return out
+
+                def _launch_out_a2a(out):
+                    b, h_loc, s_full, d = out.shape
+                    out_p = out.permute(2, 0, 1, 3).contiguous()
+                    out_async = ft_c.all_to_all_single(
+                        out_p.flatten(), output_split_sizes=None, input_split_sizes=None, group=ulysses_pg
+                    )
+                    return out_async, out_p.shape, out_p.dtype, (b, h_loc, s_full, d)
+
+                def _finish_out_a2a(out_async, out_p_shape, out_p_dtype, meta, act_dtype):
+                    b, _h_loc, s_full, d = meta
+                    out_recv = _maybe_wait(out_async).view(out_p_dtype).reshape(out_p_shape)
+                    out_full = (
+                        out_recv.reshape(ulysses_deg, s_full // ulysses_deg, b, -1, d)
+                        .permute(2, 0, 3, 1, 4)
+                        .reshape(b, -1, s_full // ulysses_deg, d)
+                    )
+                    attn_out = out_full.transpose(1, 2).flatten(2, 3).to(act_dtype)
+                    attn_out = attn1.to_out[0](attn_out)
+                    return attn1.to_out[1](attn_out)
+
+                # 1. Prep cond QKV and launch cond Input All-to-All on NCCL stream
+                q_c, k_c, v_c = _prep_qkv(packet["hidden"], c_shift, c_scale, packet["rotary"])
+                in_c = _launch_in_a2a(q_c, k_c, v_c)
+
+                # 2. Overlap cond Input All-to-All with uncond QKV prep on compute stream
+                q_u, k_u, v_u = _prep_qkv(other["hidden"], u_shift, u_scale, other["rotary"])
+
+                # 3. Wait cond Input All-to-All and launch uncond Input All-to-All on NCCL stream
+                q_c, k_c, v_c = _finish_in_a2a(*in_c)
+                in_u = _launch_in_a2a(q_u, k_u, v_u)
+
+                # 4. Overlap uncond Input All-to-All with cond Self-Attention (SDPA) on compute stream
+                sdpa_c = _run_sdpa(q_c, k_c, v_c, packet.get("valid_kv_len"))
+
+                # 5. Wait uncond Input All-to-All and launch cond Output All-to-All on NCCL stream
+                q_u, k_u, v_u = _finish_in_a2a(*in_u)
+                out_c = _launch_out_a2a(sdpa_c)
+
+                # 6. Overlap cond Output All-to-All with uncond Self-Attention (SDPA) on compute stream
+                sdpa_u = _run_sdpa(q_u, k_u, v_u, other.get("valid_kv_len"))
+
+                # 7. Wait cond Output All-to-All and launch uncond Output All-to-All on NCCL stream
+                attn_out_c = _finish_out_a2a(*out_c, packet["hidden"].dtype)
+                out_u = _launch_out_a2a(sdpa_u)
+
+                # 8. Overlap uncond Output All-to-All with cond to_out + Cross-Attn + FFN on compute stream
+                h_c = (packet["hidden"].float() + attn_out_c * c_gate).type_as(packet["hidden"])
+                packet["hidden"] = _stage2(h_c, packet["encoder"], c_cshift, c_cscale, c_cgate, local_rows_c)
+
+                # 9. Wait uncond Output All-to-All and finish uncond to_out + Cross-Attn + FFN
+                attn_out_u = _finish_out_a2a(*out_u, other["hidden"].dtype)
+                h_u = (other["hidden"].float() + attn_out_u * u_gate).type_as(other["hidden"])
+                other["hidden"] = _stage2(h_u, other["encoder"], u_cshift, u_cscale, u_cgate, local_rows_u)
+                return packet["hidden"], other["hidden"]
+
+        h_c = _stage1(packet["hidden"], c_shift, c_scale, c_gate, packet["rotary"])
+        ev_c_s1 = torch.cuda.Event()
+        ev_c_s1.record(main_stream)
+
+        h_c = _stage2(h_c, packet["encoder"], c_cshift, c_cscale, c_cgate, local_rows_c)
+        packet["hidden"] = h_c
+
+        with torch.cuda.stream(side):
+            side.wait_event(ev_c_s1)
+            h_u = _stage1(other["hidden"], u_shift, u_scale, u_gate, other["rotary"])
+            ev_u_s1 = torch.cuda.Event()
+            ev_u_s1.record(side)
+            h_u = _stage2(h_u, other["encoder"], u_cshift, u_cscale, u_cgate, local_rows_u)
+            other["hidden"] = h_u
+
+        main_stream.wait_event(ev_u_s1)
+        return packet["hidden"], other["hidden"]
+
     def _prediction(self, packet):
         if self.xdit is not None:
             return self.xdit.prediction(packet)
@@ -283,6 +492,9 @@ class WanBlockExecutor:
             started = time.perf_counter()
             self._advancing = True
             try:
+                if self.xdit is not None and state.packet is not None:
+                    layout = self.parallel.handle.current if self.parallel is not None else None
+                    self.xdit.activate(state.base, layout)
                 side = None
                 while executed < blocks:
                     check_budget()
@@ -299,28 +511,31 @@ class WanBlockExecutor:
                     idle_fold = (state.folded and self.parallel is not None
                                  and self.parallel.handle.current.cfg == 2
                                  and self.parallel.handle.current.cfg_role(self.parallel.handle.rank) == 1)
+                    other = state.packet_uncond
                     if observe and not idle_fold:
                         start, end = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
                         start.record()
-                    if not idle_fold:
-                        packet["hidden"] = self._forward_block(packet, index, packet["hidden"], packet["encoder"],
-                                                               packet["projected"], packet["rotary"])
+                    if other is not None and not idle_fold:
+                        self._forward_interleaved_block(packet, other, index, side=side)
+                        executed += 2
+                    else:
+                        if not idle_fold:
+                            packet["hidden"] = self._forward_block(packet, index, packet["hidden"], packet["encoder"],
+                                                                   packet["projected"], packet["rotary"])
+                        executed += 1
+                        if other is not None:
+                            if side is not None:
+                                self._record(other, side)
+                                with torch.cuda.stream(side):
+                                    other["hidden"] = self._forward_block(other, index, other["hidden"], other["encoder"],
+                                                                          other["projected"], other["rotary"])
+                            else:
+                                other["hidden"] = self._forward_block(other, index, other["hidden"], other["encoder"],
+                                                                      other["projected"], other["rotary"])
+                            executed += 1
                     if observe and not idle_fold:
                         end.record()
                         events.append((branch, index, start, end))
-                    executed += 1
-                    other = state.packet_uncond
-                    if other is not None:
-                        # The unconditional branch's block i, on the side stream when there is one.
-                        if side is not None:
-                            self._record(other, side)
-                            with torch.cuda.stream(side):
-                                other["hidden"] = self._forward_block(other, index, other["hidden"], other["encoder"],
-                                                                            other["projected"], other["rotary"])
-                        else:
-                            other["hidden"] = self._forward_block(other, index, other["hidden"], other["encoder"],
-                                                                        other["projected"], other["rotary"])
-                        executed += 1
                     state.next_block += 1
                     if state.next_block == len(self.model.blocks):
                         if side is not None and state.packet_uncond is not None:
@@ -338,6 +553,14 @@ class WanBlockExecutor:
                     torch.cuda.current_stream().wait_stream(side)
                     self._record(state.packet_uncond, torch.cuda.current_stream())
                 worker._sync()
+                if (
+                    not completed
+                    and self.release_cache_on_stop
+                    and hasattr(torch, "cuda")
+                    and torch.cuda.is_available()
+                    and str(getattr(worker, "device", "")).startswith("cuda")
+                ):
+                    torch.cuda.empty_cache()
                 if self.parallel is not None:
                     if completed:
                         self.parallel.end_step()
@@ -349,6 +572,7 @@ class WanBlockExecutor:
                 row = dict(kind="block_quantum", step_index=step, branch=initial_branch,
                            start_block=initial_block, next_block=state.next_block, next_branch=state.branch,
                            blocks=executed, step_completed=completed, ms=wall_ms, doorbell_stop=rung,
+                           released_cache_on_stop=bool(not completed and self.release_cache_on_stop),
                            block_cuda_ms=[dict(branch=b, block=i, ms=float(a.elapsed_time(z)))
                                           for b, i, a, z in events],
                            extra_state_bytes=self.extra_state_bytes(state))

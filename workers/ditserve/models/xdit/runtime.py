@@ -79,6 +79,8 @@ class XDitRuntime:
     def activate(self, layout, *, height, width, num_frames, batch_size=1, num_inference_steps=20):
         from xfuser.core.distributed import runtime_state as state
 
+        if state._RUNTIME is not self.state:
+            self.pool.install()
         state._RUNTIME = self.state
         sp_ranks = layout.sp_ranks(self.pool.rank)
         r_deg = getattr(layout, "ring", 1)

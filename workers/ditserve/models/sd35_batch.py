@@ -80,34 +80,55 @@ def _unwrap_attn(attn: Any) -> Any:
     return getattr(attn, "module", attn)
 
 
-def _expand_per_segment(torch_mod: Any, values: Any, counts_tensor: Any) -> Any:
+def _expand_per_segment(torch_mod: Any, values: Any, counts_tensor: Any, total_tokens: Optional[int] = None) -> Any:
     """Expand [M, D] per-item modulation vectors to [1, sum(counts), D] along the packed token dimension."""
+    if total_tokens is not None:
+        return torch_mod.repeat_interleave(values, counts_tensor, dim=0, output_size=int(total_tokens)).unsqueeze(0)
     return torch_mod.repeat_interleave(values, counts_tensor, dim=0).unsqueeze(0)
 
 
 def _packed_adaln_zero(torch_mod: Any, norm_layer: Any, packed_x: Any, temb_vec: Any, counts_tensor: Any):
-    """Apply AdaLayerNormZero to a 1D packed token tensor [1, N_total, D] with per-segment temb [M, D]."""
+    """Apply AdaLayerNormZero or SD35AdaLayerNormZeroX to a 1D packed token tensor [1, N_total, D]."""
+    total_tokens = int(packed_x.shape[1])
+    dim = int(packed_x.shape[-1])
     emb = norm_layer.linear(norm_layer.silu(temb_vec))
-    shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = emb.chunk(6, dim=1)
-    scale_msa_tok = _expand_per_segment(torch_mod, scale_msa, counts_tensor)
-    shift_msa_tok = _expand_per_segment(torch_mod, shift_msa, counts_tensor)
-    normed = norm_layer.norm(packed_x) * (1.0 + scale_msa_tok) + shift_msa_tok
+    emb_tok = _expand_per_segment(torch_mod, emb, counts_tensor, total_tokens)
+    norm_x = norm_layer.norm(packed_x)
+    if emb_tok.shape[-1] == 9 * dim:
+        (
+            shift_msa,
+            scale_msa,
+            gate_msa,
+            shift_mlp,
+            scale_mlp,
+            gate_mlp,
+            shift_msa2,
+            scale_msa2,
+            gate_msa2,
+        ) = emb_tok.chunk(9, dim=-1)
+        normed = norm_x * (1.0 + scale_msa) + shift_msa
+        normed2 = norm_x * (1.0 + scale_msa2) + shift_msa2
+        return normed, gate_msa, shift_mlp, scale_mlp, gate_mlp, normed2, gate_msa2
+    shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = emb_tok.chunk(6, dim=-1)
+    normed = norm_x * (1.0 + scale_msa) + shift_msa
     return (
         normed,
-        _expand_per_segment(torch_mod, gate_msa, counts_tensor),
-        _expand_per_segment(torch_mod, shift_mlp, counts_tensor),
-        _expand_per_segment(torch_mod, scale_mlp, counts_tensor),
-        _expand_per_segment(torch_mod, gate_mlp, counts_tensor),
+        gate_msa,
+        shift_mlp,
+        scale_mlp,
+        gate_mlp,
+        None,
+        None,
     )
 
 
 def _packed_adaln_continuous(torch_mod: Any, norm_layer: Any, packed_x: Any, temb_vec: Any, counts_tensor: Any):
     """Apply AdaLayerNormContinuous to a 1D packed token tensor [1, N_total, D] with per-segment temb [M, D]."""
+    total_tokens = int(packed_x.shape[1])
     emb = norm_layer.linear(norm_layer.silu(temb_vec))
-    scale, shift = emb.chunk(2, dim=1)
-    scale_tok = _expand_per_segment(torch_mod, scale, counts_tensor)
-    shift_tok = _expand_per_segment(torch_mod, shift, counts_tensor)
-    return norm_layer.norm(packed_x) * (1.0 + scale_tok) + shift_tok
+    emb_tok = _expand_per_segment(torch_mod, emb, counts_tensor, total_tokens)
+    scale, shift = emb_tok.chunk(2, dim=-1)
+    return norm_layer.norm(packed_x) * (1.0 + scale) + shift
 
 
 def _packed_joint_attention(
@@ -121,7 +142,8 @@ def _packed_joint_attention(
     """Execute MM-DiT Joint Attention on packed [1, N_total, D] image tokens and [1, L_total, D] text tokens.
 
     All QKV and output linear projections execute as single packed GEMMs without padding tokens.
-    Joint attention is strictly isolated per segment via ``cu_img`` and ``cu_txt``.
+    Joint attention is strictly isolated per segment via ``cu_img`` and ``cu_txt``, with segments
+    of identical ``(N_m, L_m)`` batched into a single FlashAttention/SDPA kernel call.
     """
     attn = _unwrap_attn(attn_layer)
     F = torch_mod.nn.functional
@@ -156,38 +178,73 @@ def _packed_joint_attention(
     else:
         q_txt = k_txt = v_txt = None
 
-    # 3. Segment-isolated variable-length joint attention per (N_m + L_m) window
+    # 3. Segment-isolated variable-length joint attention per (N_m + L_m) window,
+    #    batching segments that share identical (N_m, L_m) lengths into a single SDPA call.
     num_segments = len(cu_img) - 1
-    img_outputs = []
-    txt_outputs = []
-    for m in range(num_segments):
-        i0, i1 = cu_img[m], cu_img[m + 1]
-        n_m = i1 - i0
-        qi = q_img[:, i0:i1]
-        ki = k_img[:, i0:i1]
-        vi = v_img[:, i0:i1]
-        if q_txt is not None:
-            t0, t1 = cu_txt[m], cu_txt[m + 1]
-            qt = q_txt[:, t0:t1]
-            kt = k_txt[:, t0:t1]
-            vt = v_txt[:, t0:t1]
-            q_joint = torch_mod.cat([qi, qt], dim=1).transpose(1, 2)
-            k_joint = torch_mod.cat([ki, kt], dim=1).transpose(1, 2)
-            v_joint = torch_mod.cat([vi, vt], dim=1).transpose(1, 2)
-        else:
-            q_joint = qi.transpose(1, 2)
-            k_joint = ki.transpose(1, 2)
-            v_joint = vi.transpose(1, 2)
+    img_outputs: List[Any] = [None] * num_segments
+    txt_outputs: List[Any] = [None] * num_segments
 
-        out_joint = F.scaled_dot_product_attention(
-            q_joint, k_joint, v_joint, dropout_p=0.0, is_causal=False
-        )
-        out_joint = out_joint.transpose(1, 2).reshape(1, -1, heads * head_dim).to(q_img.dtype)
-        if q_txt is not None:
-            img_outputs.append(out_joint[:, :n_m])
-            txt_outputs.append(out_joint[:, n_m:])
+    groups: Dict[Tuple[int, int], List[int]] = {}
+    for m in range(num_segments):
+        n_m = cu_img[m + 1] - cu_img[m]
+        t_m = (cu_txt[m + 1] - cu_txt[m]) if q_txt is not None else 0
+        groups.setdefault((n_m, t_m), []).append(m)
+
+    for (n_m, t_m), seg_indices in groups.items():
+        if len(seg_indices) == 1:
+            m = seg_indices[0]
+            i0, i1 = cu_img[m], cu_img[m + 1]
+            qi = q_img[:, i0:i1]
+            ki = k_img[:, i0:i1]
+            vi = v_img[:, i0:i1]
+            if q_txt is not None:
+                t0, t1 = cu_txt[m], cu_txt[m + 1]
+                q_joint = torch_mod.cat([qi, q_txt[:, t0:t1]], dim=1).transpose(1, 2)
+                k_joint = torch_mod.cat([ki, k_txt[:, t0:t1]], dim=1).transpose(1, 2)
+                v_joint = torch_mod.cat([vi, v_txt[:, t0:t1]], dim=1).transpose(1, 2)
+            else:
+                q_joint = qi.transpose(1, 2)
+                k_joint = ki.transpose(1, 2)
+                v_joint = vi.transpose(1, 2)
+            out_joint = F.scaled_dot_product_attention(
+                q_joint, k_joint, v_joint, dropout_p=0.0, is_causal=False
+            )
+            out_joint = out_joint.transpose(1, 2).reshape(1, -1, heads * head_dim).to(q_img.dtype)
+            if q_txt is not None:
+                img_outputs[m] = out_joint[:, :n_m]
+                txt_outputs[m] = out_joint[:, n_m:]
+            else:
+                img_outputs[m] = out_joint
         else:
-            img_outputs.append(out_joint)
+            q_batch, k_batch, v_batch = [], [], []
+            for m in seg_indices:
+                i0, i1 = cu_img[m], cu_img[m + 1]
+                qi = q_img[:, i0:i1]
+                ki = k_img[:, i0:i1]
+                vi = v_img[:, i0:i1]
+                if q_txt is not None:
+                    t0, t1 = cu_txt[m], cu_txt[m + 1]
+                    q_batch.append(torch_mod.cat([qi, q_txt[:, t0:t1]], dim=1))
+                    k_batch.append(torch_mod.cat([ki, k_txt[:, t0:t1]], dim=1))
+                    v_batch.append(torch_mod.cat([vi, v_txt[:, t0:t1]], dim=1))
+                else:
+                    q_batch.append(qi)
+                    k_batch.append(ki)
+                    v_batch.append(vi)
+            q_joint = torch_mod.cat(q_batch, dim=0).transpose(1, 2)
+            k_joint = torch_mod.cat(k_batch, dim=0).transpose(1, 2)
+            v_joint = torch_mod.cat(v_batch, dim=0).transpose(1, 2)
+            out_joint = F.scaled_dot_product_attention(
+                q_joint, k_joint, v_joint, dropout_p=0.0, is_causal=False
+            )
+            out_joint = out_joint.transpose(1, 2).reshape(len(seg_indices), -1, heads * head_dim).to(q_img.dtype)
+            for b_idx, m in enumerate(seg_indices):
+                item_out = out_joint[b_idx : b_idx + 1]
+                if q_txt is not None:
+                    img_outputs[m] = item_out[:, :n_m]
+                    txt_outputs[m] = item_out[:, n_m:]
+                else:
+                    img_outputs[m] = item_out
 
     packed_img_attn = torch_mod.cat(img_outputs, dim=1)
     # 4. Packed single-GEMM output projection on image tokens [1, N_total, D]
@@ -268,7 +325,15 @@ def forward_packed_sd35(
 
     # 3. Execute packed JointTransformerBlocks
     for block in raw_tf.transformer_blocks:
-        norm_hidden_states, gate_msa, shift_mlp, scale_mlp, gate_mlp = _packed_adaln_zero(
+        (
+            norm_hidden_states,
+            gate_msa,
+            shift_mlp,
+            scale_mlp,
+            gate_mlp,
+            norm_hidden_states2,
+            gate_msa2,
+        ) = _packed_adaln_zero(
             torch_mod, block.norm1, packed_hidden_states, temb_vec, img_counts_tensor
         )
         context_pre_only = bool(getattr(block, "context_pre_only", False))
@@ -278,7 +343,7 @@ def forward_packed_sd35(
             )
             c_gate_msa = c_shift_mlp = c_scale_mlp = c_gate_mlp = None
         else:
-            norm_encoder_hidden_states, c_gate_msa, c_shift_mlp, c_scale_mlp, c_gate_mlp = _packed_adaln_zero(
+            norm_encoder_hidden_states, c_gate_msa, c_shift_mlp, c_scale_mlp, c_gate_mlp, _, _ = _packed_adaln_zero(
                 torch_mod, block.norm1_context, packed_encoder_hidden_states, temb_vec, txt_counts_tensor
             )
 
@@ -294,17 +359,18 @@ def forward_packed_sd35(
 
         # Optional dual spatial self-attention (SD3.5-Medium blocks with use_dual_attention)
         if getattr(block, "use_dual_attention", False) and getattr(block, "attn2", None) is not None:
-            norm_hidden_states2 = block.norm1_dual.norm(packed_hidden_states)
-            emb_dual = block.norm1_dual.linear(block.norm1_dual.silu(temb_vec))
-            shift_msa2, scale_msa2, gate_msa2 = emb_dual.chunk(3, dim=1)
-            norm_hidden_states2 = (
-                norm_hidden_states2 * (1.0 + _expand_per_segment(torch_mod, scale_msa2, img_counts_tensor))
-                + _expand_per_segment(torch_mod, shift_msa2, img_counts_tensor)
-            )
+            if norm_hidden_states2 is None and getattr(block, "norm1_dual", None) is not None:
+                norm_hidden_states2 = block.norm1_dual.norm(packed_hidden_states)
+                emb_dual = block.norm1_dual.linear(block.norm1_dual.silu(temb_vec))
+                emb_dual_tok = _expand_per_segment(
+                    torch_mod, emb_dual, img_counts_tensor, int(packed_hidden_states.shape[1])
+                )
+                shift_msa2, scale_msa2, gate_msa2 = emb_dual_tok.chunk(3, dim=-1)
+                norm_hidden_states2 = norm_hidden_states2 * (1.0 + scale_msa2) + shift_msa2
             attn_output2, _ = _packed_joint_attention(
                 torch_mod, block.attn2, norm_hidden_states2, None, cu_img, cu_txt
             )
-            packed_hidden_states = packed_hidden_states + _expand_per_segment(torch_mod, gate_msa2, img_counts_tensor) * attn_output2
+            packed_hidden_states = packed_hidden_states + gate_msa2 * attn_output2
 
         # Packed FFN on image tokens [1, N_total, D]
         norm_hidden_states = block.norm2(packed_hidden_states) * (1.0 + scale_mlp) + shift_mlp

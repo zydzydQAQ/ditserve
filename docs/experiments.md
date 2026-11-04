@@ -48,19 +48,23 @@ CLI 默认按 trace seed 可复现地随机排列策略，可用 `--policy-order
 
 策略行为的唯一来源是 `src/ditserve/control/policy.cpp` 的注册表（`PolicyTraits`）；规划器、执行器能力检查和模拟器读同一行。外部方法在同一执行器、同一 worker 和同一画像上重实现：只有 arXiv 预印本的方法按**方法简称**命名，已发表系统（TetriServe, ASPLOS'26）和真实引擎（xDiT）用系统名并注明重实现范围。`benchmarks/native_serving.py --suite` 生成论文各表的策略列表。
 
-**主对比（`--suite main`）**
+**双轨基线评测设计（Two-Track Baseline Evaluation Design）**
+
+- **Track 1 — 同执行器机制对比（In-framework Policy Comparison, Wan + SD3.5 Mixed-Workload Main Table）**：在 Wan2.1/Wan2.2 + SD3.5 混合负载主表上，所有对比策略均运行在**同一已验证的 DitServe 原生执行引擎、worker 池、集合通信传输层与校准延迟画像**之上，以剥离底层框架/依赖差异带来的混淆，纯粹隔离调度机制本身的收益：最优 `Static-<Form>`（例如 `Static-CFG2SP4`）、`TetriServe-policy`（注册表 `tetriserve`）、`SBP-ESP`、`EDF-BF`（注册表 `edf-bestfit`）对比 `DitServe`。自研启发式 `EDF-CFG2`、`CFG2-First` 不进全矩阵，只在消融中运行。
+- **Track 2 — 外部系统原生交集对比（External System Native Intersection）**：在外部系统原生支持的工作负载交集上进行端到端对比，包括 `TetriServe` 在原生 SD3.5 $512^2$/$1024^2$ 图像 serving 上的评测，以及 `xDiT` 在原生单模型固定分区/SP serving 上的评测。
+
+**主对比（`--suite main`，全矩阵与 `--suite sweep` 同为 xDiT、TetriServe、SBP-ESP、EDF-BF、DitServe）**
 
 | 策略 | 论文名 | 来源 | 行为 | 未复现部分 |
 | --- | --- | --- | --- | --- |
-| `xdit`（=`xdit-cfg2`） | xDiT 固定分区 | 一个明确的 xDiT 部署配置 | 两模型固定分区，图像份额按 trace 的 GPU 时间占比预先算出；视频 cfg2、FCFS、不抢占 | 不是自动选优后的全部 xDiT 配置 |
-| `tetriserve` | TetriServe (re-impl.) | ASPLOS'26 | step 级弹性 SP，每 `round_steps` 步一轮；每轮对可动视频做 0/1 group knapsack：价值=保持按时的请求数，代价=最小可行 GPU 数；剩余 GPU 先给救不回的请求再按 EDF 加宽 | 原文 batching、多节点；round 用 step 数近似固定时长 |
+| `xdit`（=`xdit-sp1`） | xDiT 固定分区 | 一个明确的 xDiT 完全不优化静态划分基线（`cfg=1, sp=1`） | 两模型静态划分 GPU，图像份额按 trace 的 GPU 时间占比预先算出（或默认 1/4）；视频不开启任何并行优化（`cfg=1, sp=1`，单卡独立执行）、FCFS、一旦开始运行到底不抢占（`hold_diffuse=true`） | 不开启 CFG 并行、序列并行、弹性扩缩容或子步抢占 |
+| `static-<form>` | `Static-<Form>`（如 `Static-CFG2SP4`） | 最优静态并行基线 | 视频固定使用所选静态并行形态（如 `CFG2SP4`），不跨轮改变并行度 | — |
+| `tetriserve` | TetriServe-policy / TetriServe (re-impl.) | ASPLOS'26 | step 级弹性 SP，每 `round_steps` 步一轮；每轮对可动视频做 0/1 group knapsack：价值=保持按时的请求数，代价=最小可行 GPU 数；剩余 GPU 先给救不回的请求再按 EDF 加宽 | 原文 batching、多节点；round 用 step 数近似固定时长 |
 | `sbp-esp` | SBP-ESP | GenServe 的方法（arXiv:2604.04335） | step 抢占、逐步 deadline knapsack、弹性 SP、单卡 VAE；图像 batch 服从统一显式上限和实测画像 | 原文效用函数与完整系统未复现 |
 | `edf-bestfit` | EDF-BF | GF-DiT 的方法（arXiv:2606.13501）`EdfBestFit` | EDF 次序取能按时完成的最小 size，否则取剩余可放的最大 size；再按 EDF 逐级加宽剩余 GPU | GFC 后端单独验证；当前组选择仍受拓扑对齐约束，未复现完整任意组调度 |
-| `edf-cfg2` | EDF-CFG2 | 启发式 | 每个视频固定一对 CFG GPU，EDF，图像在视频 step 边界取卡 | — |
-| `cfg2-first` | CFG2-First | 启发式 | step 边界弹性，但剪除被支配形态、视频不窄于一对 CFG GPU、只在每卡效率 ≥0.9 时加宽；无子步抢占 | — |
 | `ditserve` | DitServe | 本文 | `cfg2-first` 规则 + block 子步抢占（doorbell）+ pair-fit 图像放置 | 输出保持需同形态配对验收；跨 SP 不承诺逐位一致 |
 
-**消融（`--suite ablation`，以 `ditserve` 为满配逐项拿掉）**：`abl-no-block`（整步量子）、`abl-no-prune`（不剪支配形态）、`abl-no-mindeg`（允许单卡 admit）、`abl-first-fit`（图像放最低号空卡）、`block-cfg2`（只保留 block 抢占、不弹性）、`edf-cfg2`（全部拿掉）、`ditserve-v1`（旧手调 knapsack 规划器）。
+**消融（`--suite ablation`，以 `ditserve` 为满配逐项拿掉）**：`abl-no-block`（整步量子）、`abl-no-prune`（不剪支配形态）、`abl-no-mindeg`（允许单卡 admit）、`abl-first-fit`（图像放最低号空卡）、`block-cfg2`（只保留 block 抢占、不弹性）、`cfg2-first`（CFG2-First：step 边界弹性、剪除被支配形态、视频不窄于一对 CFG GPU、每卡效率 ≥0.9 才加宽；去掉子步抢占与 pair-fit 放置）、`edf-cfg2`（EDF-CFG2：每个视频固定一对 CFG GPU、EDF、图像在视频 step 边界取卡；全部拿掉）、`ditserve-v1`（旧手调 knapsack 规划器）。
 
 **受控与诊断**：`static-<form>`（校准与对照）、`block-<form>`（同形态 + 子步抢占，与 `edf-cfg2` 做 digest 配对，`--suite preempt`）、`ditserve-approx`（DitServe + CFG 折叠，Approx 单独成表）、`diag-*`（特征缓存、v3、tiered、2D-USP，不进论文表）。
 
@@ -91,6 +95,11 @@ CLI 默认按 trace seed 可复现地随机排列策略，可用 `--policy-order
 ## 数值口径与证据
 
 “Exact”只相对同一优化 runtime 的不中断执行，绑定模型、dtype、attention、sampler、seed 和 decoder。CFG parallel 的逐位一致需单独验证；token-sharded SP 不默认逐位一致。BF16 VAE、INT8 通信、特征缓存和 CFG fold 均属单独数值模式。
+
+**双层数值与质量验收门禁（Two-Tier Numerical & Quality Acceptance Gate）**
+
+- **Tier 1 — 同并行度分段续跑门禁（Same-Parallelism Segmentation Gate）**：在**相同**并行度下，不中断执行与按轮分段/中断续跑执行（例如固定 CFG2 下 `EDF-CFG2` vs. `Block-CFG2`，或固定 SP2 下 `round28` vs. `13-chunk`）要求严格的 `atol=rtol=1e-5` / 逐位一致（bitwise equivalence），用于验证轮边界或子步边界状态交接引入零数值损坏。
+- **Tier 2 — 跨 SP 度语义质量等价门禁（Cross-SP Acceptance Gate）**：跨**不同**序列并行度（`SP1` vs. `SP2`/`SP4`/`SP8` 或 `CFG2` $\leftrightarrow$ `CFG2SPk`）的执行或弹性切换，会因 BF16 Ulysses all-to-all 与注意力归约顺序的非结合性而自然产生 $>10^{-5}$ 的逐元素差异。因此，跨 SP 验收采用**语义/感知质量等价（semantic/perceptual quality equivalence）**门禁：输出全有限（finite outputs）、有界余弦相似度 $\ge 0.95$ / 相对 L2 误差 $\le 0.25$、PSNR $\ge 20\text{ dB}$、SSIM $\ge 0.85$、LPIPS 以及 VBench 质量等价；而 `atol=rtol=1e-5` 逐元素差异仅作为非阻塞的诊断遥测（non-blocking diagnostic telemetry）记录。
 
 默认长期交付为日期事项报告与 `summary.json`，详见[结果处理](results.md)。执行原始记录保留至分析/评测依赖闭合；摘要不支持原始重评。`completed` 不表示性能、数值或语义资格通过，未完成评测不得把依赖标为已闭合。主结果须有多seed、足量请求、失败分母和误差区间；有限trace的按时goodput不等于稳定容量。
 

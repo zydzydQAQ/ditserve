@@ -1055,6 +1055,19 @@ int main() {
                                               {"gpus", 1}, {"options", {{"continuous_batch", 4}, {"bubble_free", true}}}});
         require(sim_serial.at("metrics").at("completed") == 2 && sim_bf.at("metrics").at("completed") == 2, "both simulations complete");
         require(sim_bf.at("makespan_ms").get<double>() < sim_serial.at("makespan_ms").get<double>(), "bubble_free reduces continuous batch makespan");
+
+        // Token-aware mixed-resolution continuous batching: 512x512 + 1024x1024 gives B_eff = 1.25 with sequence_packing=true vs 2.0 when padded.
+        Json res_prof = profile();
+        res_prof["classes"]["image"] = {{"kind", "image"}, {"service_ms", 100}, {"steps", 2},
+                                        {"prepare_ms", 0}, {"finish_ms", 20},
+                                        {"batch_step_ms", {{"1", 40}, {"2", 80}, {"4", 160}}}};
+        const ClusterCost res_cost(res_prof);
+        const Json req512 = img_with("m512", 120, {{"spec", {{"height", 512}, {"width", 512}}}});
+        const Json req1024 = img_with("m1024", 120, {{"spec", {{"height", 1024}, {"width", 1024}}}});
+        near(res_cost.continuous_effective_batch_size("image", {&req1024, &req512}, true), 1.25);
+        near(res_cost.continuous_effective_batch_size("image", {&req1024, &req512}, false), 2.0);
+        near(res_cost.continuous_batch_step_ms("image", {&req1024, &req512}, true), 50.0);
+        near(res_cost.continuous_batch_step_ms("image", {&req1024, &req512}, false), 80.0);
     });
 
     // ---- policy registry and the baseline / heuristic / ablation policies ----
@@ -1085,7 +1098,7 @@ int main() {
             require(cluster_policy(id), std::string("registered policy: ") + id);
         require(canonical_policy("heterodit_exact") == "ditserve-v1" && canonical_policy("step_elastic") == "abl-step-elastic"
                 && canonical_policy("static_cfg2") == "static-cfg2" && canonical_policy("block_cfg2") == "block-cfg2"
-                && canonical_policy("heterodit_v5") == "ditserve-v1-approx" && canonical_policy("xdit") == "xdit-cfg2",
+                && canonical_policy("heterodit_v5") == "ditserve-v1-approx" && canonical_policy("xdit") == "xdit-sp1",
                 "legacy names resolve to canonical IDs");
         for (const char* retired : {"vanilla_xdit", "tridentserve_stage", "vllm_omni", "gf_dit", "genserve_40gb"})
             require(!cluster_policy(retired), std::string("retired name rejected: ") + retired);
@@ -1097,8 +1110,9 @@ int main() {
         require(policy_traits("abl-no-block").family == "ablation" && !policy_traits("abl-no-block").blocks, "ablation removes one mechanism");
         require(policy_traits("sbp-esp").display == "SBP-ESP" && policy_traits("edf-bestfit").display == "EDF-BF",
                 "preprint methods are named by method");
-        require(policy_traits("xdit").hold_diffuse && policy_traits("xdit").order == "fcfs" && policy_traits("xdit").partition_divisor == 4,
-                "xDiT: disjoint model GPUs, FCFS, no preemption");
+        require(policy_traits("xdit").hold_diffuse && policy_traits("xdit").order == "fcfs" && policy_traits("xdit").partition_divisor == 4
+                && policy_traits("xdit").fixed_form.cfg == 1 && policy_traits("xdit").fixed_form.sp == 1,
+                "xDiT: disjoint model GPUs, CFG and SP parallelism off (sp1), FCFS, no preemption");
         const auto catalog = policy_catalog();
         require(catalog.is_array() && catalog.size() >= 20, "catalog lists every policy");
     });
@@ -1154,9 +1168,13 @@ int main() {
         require(two.size() == 2, "both placed");
     });
     check("xDiT and Static-Partition reserve image GPUs", [&] {
-        const auto x = pcie_plan(Json::array({video("v1", 1e9), video("v2", 1e9), video("v3", 1e9), video("v4", 1e9)}), "xdit").at("assignments");
-        require(x.size() == 3, "two of eight GPUs serve images only, so three CFG pairs: " + x.dump());
-        for (const auto& a : x) for (const auto& g : a.at("group")) require(g.get<int>() < 6, "videos stay off image GPUs");
+        const auto x = pcie_plan(Json::array({video("v1", 1e9), video("v2", 1e9), video("v3", 1e9), video("v4", 1e9),
+                                              video("v5", 1e9), video("v6", 1e9), video("v7", 1e9)}), "xdit").at("assignments");
+        require(x.size() == 6, "two of eight GPUs serve images only, so six SP1 videos: " + x.dump());
+        for (const auto& a : x) {
+            require(a.at("form") == "sp1" && a.at("degree") == 1, "xDiT uses sp1 with CFG and SP parallelism off");
+            for (const auto& g : a.at("group")) require(g.get<int>() < 6, "videos stay off image GPUs");
+        }
         const auto sized = pcie_plan(Json::array({video("v1", 1e9), video("v2", 1e9), video("v3", 1e9)}), "partition", Json::array(),
                                      {{"partition_image_gpus", 4}}).at("assignments");
         require(sized.size() == 2, "partition_image_gpus resizes the image share");

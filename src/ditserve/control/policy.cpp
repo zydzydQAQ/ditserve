@@ -50,26 +50,25 @@ const std::map<std::string, PolicyTraits>& named() {
         // ---- baselines (re-implemented on the same executor, workers and profile) ----
         {
             auto t = row("tetriserve", "TetriServe (re-impl.)", "baseline",
-                "TetriServe, ASPLOS'26: step-level SP, round-based scheduling, per-round minimal feasible "
-                "allocation packed by a deadline group knapsack; rounds approximated by options.round_steps "
-                "solver steps; not reproduced: its batching and multi-node deployment");
-            t.elastic = t.rounds = t.deadline_dp = true;
+                "TetriServe, ASPLOS'26: step-level SP, round-based scheduling with mid-round GPU hold, "
+                "dominated-degree pruning, survival-aware deadline group knapsack, and 1-GPU best-effort late fallback");
+            t.elastic = t.rounds = t.deadline_dp = t.prune_dominated = true;
             add(t);
         }
         {
             auto t = row("sbp-esp", "SBP-ESP", "baseline",
                 "method of GenServe (arXiv:2604.04335, preprint): step-boundary video preemption, elastic SP "
-                "re-planned every step by an SLO-aware deadline knapsack, dynamic image batching, single-GPU "
-                "VAE decode; not reproduced: its exact utility function");
+                "re-planned every step by a joint cross-modal SLO-aware lexicographic DP with slack utility, "
+                "dynamic image batching, single-GPU VAE decode");
             t.elastic = t.deadline_dp = t.image_batching = true;
             add(t);
         }
         {
             auto t = row("edf-bestfit", "EDF-BF", "baseline",
-                "method of GF-DiT (arXiv:2606.13501, preprint): EdfBestFit policy, smallest SP meeting the "
-                "deadline else the largest that fits, then EDF surplus redistribution; arbitrary rank groups "
-                "and group-free collectives require options.collective_backend=gfc");
+                "method of GF-DiT (arXiv:2606.13501, preprint): strict EDF EdfBestFit policy, smallest SP meeting "
+                "the deadline else fastest fitting degree, then cost-aware head-of-line EDF surplus promotion");
             t.elastic = t.best_fit = true;
+            t.demote_late = false;
             add(t);
         }
 
@@ -216,7 +215,7 @@ std::string legacy_policy_alias(const std::string& name) {
 }
 
 std::string canonical_policy(const std::string& name) {
-    if (name == "xdit") return "xdit-cfg2";
+    if (name == "xdit") return "xdit-sp1";
     const auto legacy = legacy_policy_alias(name);
     return legacy.empty() ? name : legacy;
 }
@@ -248,8 +247,9 @@ const PolicyTraits& policy_traits(const std::string& raw) {
                            : "fixed initial CFG form with folding and subgroup fission");
         t.fixed_form = form; t.fixed_degree = form.degree(); t.blocks = t.v5 = true; t.fission = kind == "approx";
     } else {
-        t = row(name, form_text == "cfg2" ? "xDiT" : "xDiT-" + form_text, "baseline",
-            "xDiT engine (arXiv:2411.01738) deployed as usual: each model on its own GPUs, fixed parallel form, "
+        t = row(name, form_text == "sp1" ? "xDiT" : "xDiT-" + form_text, "baseline",
+            "xDiT engine (arXiv:2411.01738) static-partition baseline: each model on its own GPUs, "
+            "unoptimized single-GPU execution without CFG or sequence parallelism by default (cfg=1, sp1), "
             "FCFS, a started request runs to completion without preemption");
         t.fixed_form = form; t.fixed_degree = form.degree();
         t.hold_diffuse = true; t.order = "fcfs"; t.demote_late = false; t.partition_divisor = 4;
@@ -268,7 +268,7 @@ Json policy_catalog() {
                     {"order", t.order}, {"hold_diffuse", t.hold_diffuse}, {"partition_divisor", t.partition_divisor}};
     };
     for (const auto& item : named()) out.push_back(describe(item.second));
-    for (const char* name : {"xdit-cfg2", "static-cfg2", "block-cfg2", "fold-cfg2sp3", "approx-cfg2sp3"})
+    for (const char* name : {"xdit-sp1", "xdit-sp2", "xdit-cfg2", "static-cfg2", "block-cfg2", "fold-cfg2sp3", "approx-cfg2sp3"})
         out.push_back(describe(policy_traits(name)));
     return out;
 }

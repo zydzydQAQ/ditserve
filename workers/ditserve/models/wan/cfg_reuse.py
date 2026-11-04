@@ -134,7 +134,7 @@ class AsymmetricCFGStepper:
                     ang_curv = max(0.0, 1.0 - cos_sim)
                     cond_curv = 0.55 * (diff_l1 / cond_l1) + 0.45 * ang_curv
                 self._last_cond_f32 = cond_f32.clone()
-                stale_curv = self._last_curvature * (1.0 + 0.25 * self._consecutive_folds)
+                stale_curv = self._last_curvature * 1.05
                 self._last_curvature = max(stale_curv, cond_curv)
         self.stats["folded_cfg_steps"] += 1
         self.stats["saved_uncond_forwards"] += 1

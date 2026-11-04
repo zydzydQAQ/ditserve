@@ -549,6 +549,84 @@ double ClusterCost::continuous_step_ms(const std::string& name, int size) const 
     return lower->second + (upper->second - lower->second) * (size - lower->first) / (upper->first - lower->first);
 }
 
+double ClusterCost::continuous_step_ms(const std::string& name, double effective_size) const {
+    const auto& row = klass(name);
+    if (row.at("kind") != "image") throw std::invalid_argument("only image classes use continuous batching");
+    if (!std::isfinite(effective_size) || effective_size <= 0.0 || effective_size > 8.0 + 1e-6)
+        throw std::invalid_argument("continuous batch size must be in (0, 8]");
+    if (!row.contains("batch_step_ms")) throw std::invalid_argument("continuous_batch requires measured batch_step_ms");
+    std::map<int, double> table;
+    for (auto entry = row.at("batch_step_ms").begin(); entry != row.at("batch_step_ms").end(); ++entry)
+        table[std::stoi(entry.key())] = entry.value().get<double>();
+    double clamped = std::min(8.0, effective_size);
+    if (clamped <= 1.0 + 1e-9) {
+        if (std::abs(clamped - 1.0) <= 1e-9) return table.at(1);
+        const double r = std::max(0.25, clamped);
+        return table.at(1) * (0.10 + 0.90 * r);
+    }
+    if (std::abs(std::round(clamped) - clamped) <= 1e-9) clamped = std::round(clamped);
+    const int ceil_key = static_cast<int>(std::ceil(clamped));
+    auto upper = table.lower_bound(ceil_key);
+    if (upper != table.end() && std::abs(upper->first - clamped) <= 1e-9) return upper->second;
+    if (upper == table.end()) throw std::invalid_argument("continuous batch size exceeds its calibration table");
+    const auto lower = std::prev(upper);
+    return lower->second + (upper->second - lower->second) * (clamped - lower->first) / (upper->first - lower->first);
+}
+
+double ClusterCost::continuous_effective_batch_size(const std::string& name, const std::vector<const Json*>& batch,
+                                                    bool sequence_packing) const {
+    const auto& row = klass(name);
+    if (row.at("kind") != "image") throw std::invalid_argument("only image classes use continuous batching");
+    if (batch.empty()) throw std::invalid_argument("continuous batch must not be empty");
+    auto pixels = [](const Json& req) -> double {
+        for (const char* key : {"batch_spec", "spec"}) {
+            if (req.contains(key) && req.at(key).is_object()) {
+                const auto& s = req.at(key);
+                if (s.contains("height") && s.contains("width") && s.at("height").is_number() && s.at("width").is_number()) {
+                    const double h = s.at("height").get<double>();
+                    const double w = s.at("width").get<double>();
+                    if (h > 0.0 && w > 0.0) return h * w;
+                }
+            }
+        }
+        return 0.0;
+    };
+    std::vector<double> p;
+    p.reserve(batch.size());
+    for (const Json* m : batch) {
+        if (!m) throw std::invalid_argument("null request in continuous batch");
+        const double pi = pixels(*m);
+        if (pi <= 0.0) return static_cast<double>(batch.size());
+        p.push_back(pi);
+    }
+    double ref_pixels = 0.0;
+    if (row.contains("base_pixels") && row.at("base_pixels").is_number() && row.at("base_pixels").get<double>() > 0.0) {
+        ref_pixels = row.at("base_pixels").get<double>();
+    } else if (row.contains("spec") && row.at("spec").is_object()
+               && row.at("spec").contains("height") && row.at("spec").contains("width")
+               && row.at("spec").at("height").is_number() && row.at("spec").at("width").is_number()) {
+        const double rh = row.at("spec").at("height").get<double>();
+        const double rw = row.at("spec").at("width").get<double>();
+        if (rh > 0.0 && rw > 0.0) ref_pixels = rh * rw;
+    }
+    if (ref_pixels <= 0.0) ref_pixels = *std::max_element(p.begin(), p.end());
+    const double min_p = *std::min_element(p.begin(), p.end());
+    const double max_p = *std::max_element(p.begin(), p.end());
+    if (std::abs(max_p - min_p) <= 1e-9 && std::abs(max_p - ref_pixels) <= 1e-9)
+        return static_cast<double>(batch.size());
+    if (sequence_packing) {
+        double total_units = 0.0;
+        for (double pi : p) total_units += pi / ref_pixels;
+        return std::min(8.0, std::max(0.25, total_units));
+    }
+    return std::min(8.0, std::max(0.25, static_cast<double>(batch.size()) * (max_p / ref_pixels)));
+}
+
+double ClusterCost::continuous_batch_step_ms(const std::string& name, const std::vector<const Json*>& batch,
+                                             bool sequence_packing) const {
+    return continuous_step_ms(name, continuous_effective_batch_size(name, batch, sequence_packing));
+}
+
 int ClusterCost::blocks_per_step(const std::string& name) const { return int_field(klass(name), "blocks_per_step", 1); }
 
 int ClusterCost::execution_blocks_per_step(const std::string& name, const Form& form, bool rank_local_blocks, bool cfg_folded) const {
@@ -831,11 +909,14 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     // Static partition baseline: the last R GPUs serve images only.
     // Partitioned policies reserve image GPUs; options.partition_image_gpus sizes the share
     // for those policies only (reserve_image_gpus applies to every policy).
-    const int partition_default = policy.partition_divisor > 0
+    const int raw_partition_default = policy.partition_divisor > 0
         ? int_field(options, "partition_image_gpus", std::max(1, gpus / policy.partition_divisor), 1) : 0;
+    const int partition_default = (policy.fixed_degree > 0 && raw_partition_default > 0)
+        ? std::min(raw_partition_default, std::max(0, gpus - policy.fixed_degree)) : raw_partition_default;
     const int reserve = int_field(options, "reserve_image_gpus", partition_default, 0);
     const bool strict_partition = bool_field(options, "strict_partition", policy.partition_divisor > 0);
     const bool hold_diffuse = bool_field(options, "hold_diffuse", policy.hold_diffuse);
+    const int round_steps = int_field(options, "round_steps", policy.round_steps);
     // Image placement among equally ranked free GPUs: "first" takes the lowest index; "pair_fit" takes the GPU
     // whose aligned partner (then quad) is already occupied, so free aligned pairs stay whole for CFG2 videos.
     const auto image_placement = options.value("image_placement", policy.image_placement);
@@ -885,6 +966,18 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         else if (hold_diffuse && r->value("prepared", false) && int_field(*r, "steps_done", 0, 0) < rsteps)
             for (int gpu : group_of(*r)) mid_owner[gpu] = r;
     }
+    // Round-based policies (TetriServe) hold their group inside an unfinished round
+    // unless a mid-step solver owner already claims the GPU.
+    if (policy.rounds && round_steps > 1) {
+        for (const Json* r : rows) {
+            if (r->at("kind") != "video" || !r->value("prepared", false)) continue;
+            const auto rklass = r->at("class").get<std::string>();
+            const int rsteps = int_field(*r, "steps_total", int_field(cost.klass(rklass), "steps", 0), 1);
+            const int sdone = int_field(*r, "steps_done", 0, 0);
+            if (sdone > 0 && sdone < rsteps && sdone % round_steps != 0)
+                for (int gpu : group_of(*r)) if (!mid_owner[gpu]) mid_owner[gpu] = r;
+        }
+    }
     // Two videos inside a step in lockstep (request-level interleaving) resume together; the
     // state names the partner on both rows.
     const bool pairing = bool_field(options, "pairing", false);
@@ -918,7 +1011,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     // Late requests shorter than this keep their EDF position: they barely
     // delay feasible work, and demoting them behind a long video only turns a
     // small miss into a very long tail.
-    const double late_short_ms = number_field(options, "late_short_ms", 2000);
+    const double late_short_ms = number_field(options, "late_short_ms", policy.id == "sbp-esp" ? 0.0 : 2000.0);
     const double late_deadband_ms = number_field(options, "late_deadband_ms", 0.0);
     // Queue order among feasible requests: deadline (edf, the default), estimated remaining
     // single-GPU work (srtf) or arrival (fcfs); the lateness demotion applies to all three.
@@ -983,9 +1076,6 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     std::sort(rows.begin(), rows.end(), [&](const Json* a, const Json* b) { return edf(a) < edf(b); });
     if (trace) for (std::size_t position = 0; position < rows.size(); ++position)
         for (auto& row : trace->rows) if (row.at("request_id") == rows[position]->at("request_id")) row["rank_position"] = position;
-    // Round-based regrouping: a placed video keeps its group until it has completed a multiple of
-    // round_steps steps, like TetriServe's rounds; other elastic policies regroup at every step.
-    const int round_steps = int_field(options, "round_steps", policy.round_steps);
 
     auto time_to_boundary = [&](const Json* r) {
         const auto group = group_of(*r);
@@ -1113,7 +1203,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             if (continuous_batch > 0) {
                 std::vector<const Json*> members = {&r};
                 auto round_cost = [&](const std::vector<const Json*>& batch) {
-                    double value = cost.continuous_step_ms(klass, static_cast<int>(batch.size())) + cost.quantum_overhead_ms();
+                    double value = cost.continuous_batch_step_ms(klass, batch, sequence_packing) + cost.quantum_overhead_ms();
                     if (!bubble_free) {
                         for (const Json* m : batch) {
                             if (!m->value("prepared", false)) value += number_field(cost.klass(klass), "prepare_ms");
@@ -1129,7 +1219,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                         const int steps = int_field(*m, "steps_total", int_field(cost.klass(klass), "steps", 2), 1);
                         const int remaining = std::max(0, steps - int_field(*m, "steps_done", 0, 0) - 1);
                         double complete = service;
-                        if (remaining > 0) complete += remaining * (cost.continuous_step_ms(klass, static_cast<int>(batch.size()))
+                        if (remaining > 0) complete += remaining * (cost.continuous_batch_step_ms(klass, batch, sequence_packing)
                             + cost.quantum_overhead_ms()) + number_field(cost.klass(klass), "finish_ms");
                         else if (bubble_free) complete += number_field(cost.klass(klass), "finish_ms");
                         if (now + complete > number_field(*m, "deadline_ms")) return false;
