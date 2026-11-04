@@ -174,10 +174,10 @@
       "order": 3,
       "task": "Integrate original full service execution loops",
       "requires": [
-        "Tetri pyzmq image dependency and explicit timeout compatibility",
-        "GF original process pool with genuine shared model/session adapter or separately qualified native vLLM stack"
+        "Tetri pyzmq image dependency and explicit timeout compatibility"
       ],
-      "acceptance": "Two overlapping independent seeds at 512/1024, real dispatch, identities, complete outputs, timeout/failure reporting and process cleanup."
+      "acceptance": "Two overlapping independent seeds at 512/1024, real dispatch, identities, complete outputs, timeout/failure reporting and process cleanup.",
+      "optional_gfdit_extension": "Original process pool with genuine shared model/session adapter or separately qualified native vLLM stack; not a prerequisite for xDiT/TetriServe comparison."
     },
     {
       "order": 4,
@@ -211,5 +211,30 @@
       ],
       "acceptance": "Independent accounting of failures, SLO goodput, long tails, quality and GPU-time; only then full-system comparison eligibility."
     }
-  ]
+  ],
+  "baseline_priority": {
+    "as_of": "2026-11-04",
+    "basis": "User requests maximum alignment on the existing image and models; GF-DiT is optional.",
+    "primary": [
+      "xDiT",
+      "TetriServe"
+    ],
+    "optional_mechanism_reference": [
+      "GF-DiT"
+    ],
+    "gfdit_full_native_service_blocks_primary_comparison": false,
+    "gfdit_reference_scope": [
+      "Source-bound original EDF-Best-Fit/EDF-Greedy decisions with common absolute deadlines and explicit model/shape/stage/SP costs",
+      "Original group-free collective correctness and elastic-group mechanism checks; independently qualified from scheduling",
+      "Optional shared-backend task and migration execution after numerical validation"
+    ],
+    "claim_boundary": "A policy event replay, a GFC microbenchmark, and a model migration check are separate mechanisms; their combination is not evidence of a complete GF-DiT service. Reused GF mechanisms remain prior work, not new DitServe contributions.",
+    "unchanged_primary_gates": [
+      "identical workload/model/backend recipes",
+      "numerical and quality acceptance",
+      "measured calibration costs",
+      "all-offered serving accounting",
+      "explicit native-support and shared-backend-port labels"
+    ]
+  }
 }
