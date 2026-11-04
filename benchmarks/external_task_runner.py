@@ -18,7 +18,12 @@ def main():
     expected = int(os.environ['DITSERVE_EXTERNAL_GPUS'])
     if expected not in (1,2,4,8):
         raise ValueError('unsupported diagnostic allocation')
-    root, shared, plan, binding = probe.bind_sources('external_task_runner.py', expected)
+    image = os.environ.get('DITSERVE_EXTERNAL_IMAGE_DIGEST', probe.IMAGE_DIGEST)
+    if image not in (probe.IMAGE_DIGEST,
+            'sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05'):
+        raise ValueError('unreviewed external runtime image')
+    root, shared, plan, binding = probe.bind_sources(
+        'external_task_runner.py', expected, expected_image_digest=image)
     if (plan.get('schema') != 'ditserve.external-task-plan.v1'
             or plan.get('gpus') != expected or type(plan.get('timeout_seconds')) is not int
             or not 30 <= plan['timeout_seconds'] <= 14400):
@@ -38,6 +43,11 @@ def main():
         TRITON_CACHE_DIR=str(output/'cache/triton'),MPLCONFIGDIR=str(output/'cache/matplotlib'),
         OMP_NUM_THREADS='1',TOKENIZERS_PARALLELISM='false',
         PYTHONPATH=str(shared),DITSERVE_PACKAGE_ROOT=str(shared))
+    for key, suffix in {'TMPDIR':'tmp', 'TORCH_EXTENSIONS_DIR':'extensions',
+        'FLASHINFER_WORKSPACE_BASE':'flashinfer', 'FLASHINFER_CUBIN_DIR':'cubins'}.items():
+        cache = output/'cache'/suffix
+        cache.mkdir(parents=True, exist_ok=False)
+        env[key] = str(cache)
     mapping={'python':sys.executable,'package':str(root),'output':str(output/'result'),
              'shared_python':str(shared)}
     argv=[part.format(**mapping) for part in plan['argv']]

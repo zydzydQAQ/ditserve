@@ -41,7 +41,7 @@ def storage():
     try:
         row = result.stdout.splitlines()[-1].split()
         used, percent = int(row[2].rstrip('G')), int(row[4].rstrip('%'))
-        if result.returncode or used > 790 or percent >= 80:
+        if result.returncode or used > 800 or percent >= 80:
             raise ValueError('shared-storage stop threshold reached')
     except (ValueError, IndexError):
         raise SystemExit(75)
@@ -66,7 +66,10 @@ def verify_inventory(root, files):
         raise ValueError('unmanifested or linked probe package file')
 
 
-def bind_sources(expected_entrypoint="external_runtime_probe.py", expected_gpus=1):
+def bind_sources(expected_entrypoint="external_runtime_probe.py", expected_gpus=1,
+                 *, expected_image_digest=IMAGE_DIGEST):
+    if not re.fullmatch(r"sha256:[0-9a-f]{64}", expected_image_digest):
+        raise ValueError("invalid pinned image digest")
     root = Path(os.environ['DITSERVE_EXTERNAL_PROBE_ROOT'])
     if root.parent != DATA / 'external-probes' or Path(__file__).resolve() != root / 'external_runtime_probe.py':
         raise ValueError('unexpected immutable probe root')
@@ -98,9 +101,13 @@ def bind_sources(expected_entrypoint="external_runtime_probe.py", expected_gpus=
             raise ValueError('submitted environment differs: '+key)
     if (spec['name'] != os.environ['DITSERVE_RUN_ID'] or spec['workers'] != 1
             or spec['gpus_per_worker'] != expected_gpus or spec['mount_shared'] is not True
-            or not spec['image'].endswith('@'+IMAGE_DIGEST)
+            or spec['image'] != '192.168.1.114:30500/jjjkairos/ditserve@'+expected_image_digest
             or spec['command'] != '/opt/venv/bin/python -B '+str(root/expected_entrypoint)):
         raise ValueError('submitted diagnostic spec differs')
+    image_env = os.environ.get('DITSERVE_EXTERNAL_IMAGE_DIGEST')
+    if image_env is not None and (image_env != expected_image_digest
+            or env.get('DITSERVE_EXTERNAL_IMAGE_DIGEST') != image_env):
+        raise ValueError('submitted image environment differs')
     gfc_inventory = {p.relative_to(package/'gfc').as_posix():sha(p)
         for p in sorted((package/'gfc').rglob('*.py'))}
     if canonical(gfc_inventory) != GFC_SHA256:

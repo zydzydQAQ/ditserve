@@ -47,13 +47,13 @@ class ExternalRuntimeProbeTest(unittest.TestCase):
         self.assertNotEqual(result['returncode'],0)
 
     def test_storage_threshold_fails_closed(self):
-        for used,percent,fail in ((790,79,False),(791,79,True),(790,80,True)):
+        for used,percent,fail in ((800,79,False),(801,79,True),(800,80,True)):
             result=subprocess.CompletedProcess([],0,f'Filesystem 1G-blocks Used Available Use% Mounted on\n/dev/sdb 1024G {used}G 234G {percent}% /shared\n','')
             with patch.object(m.subprocess,'run',return_value=result):
                 if fail:
                     with self.assertRaises(SystemExit) as caught:m.storage()
                     self.assertEqual(caught.exception.code,75)
-                else:self.assertEqual(m.storage()['used_gib'],790)
+                else:self.assertEqual(m.storage()['used_gib'],800)
 
     def test_missing_df_fails_closed(self):
         with patch.object(m.subprocess,'run',return_value=subprocess.CompletedProcess([],1,'','error')):
