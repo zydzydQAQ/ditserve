@@ -4,6 +4,7 @@ The conversion mutates only this temporary diagnostic model. It is intentionally
 not rolled back, and is neither a production patch nor full trajectory evidence.
 """
 from __future__ import annotations
+import ast
 from collections import Counter
 from copy import deepcopy
 from contextlib import contextmanager, ExitStack
@@ -11,6 +12,7 @@ import hashlib
 import inspect
 import json
 import re
+import textwrap
 from pathlib import Path
 
 import external_sd35_trace as trace
@@ -27,6 +29,10 @@ ATTENTION_TYPE='xfuser.model_executor.layers.attention_processor.xFuserAttention
 PROCESSOR_TYPE='xfuser.model_executor.layers.attention_processor.xFuserJointAttnProcessor2_0'
 PATCH_TYPE='xfuser.model_executor.layers.embeddings.xFuserPatchEmbedWrapper'
 CONV_TYPE='xfuser.model_executor.layers.conv.xFuserConv2dWrapper'
+JOINT_METHOD_SHA256='3e2ce1c476441cf7a7e98eed3b48230294978538374b44185165306d163a5c95'
+JOINT_DERIVED_SHA256='af64f56274c10f6381a6735e1e69a05b406d4569cf560b4decc0ecad71ec6e71'
+JOINT_ORIGINAL_AST_SHA256='cf9cd0b3b9bdc0e65c4dfd4f1f5680834c2d149e8b59221807447ac56cb0f260'
+JOINT_DERIVED_AST_SHA256='c9c8785b457de6af7d4d5a12e82faad02bd10fe8123b26fd074c47b0919a1f98'
 
 
 def qualified(value):
@@ -54,6 +60,99 @@ def factories():
     return dict(transformer=xFuserSD3Transformer2DWrapper,attention=xFuserAttentionWrapper,
         processor=xFuserJointAttnProcessor2_0,patch=xFuserPatchEmbedWrapper,conv=xFuserConv2dWrapper,
         raw_attention=Attention,raw_processor=JointAttnProcessor2_0,raw_patch=PatchEmbed,raw_conv=torch.nn.Conv2d)
+
+
+def canonical_ast(value):
+    """Stable across Python 3.10/3.13; empty PEP695 type parameters add no syntax."""
+    if isinstance(value,ast.AST):
+        return [type(value).__name__,[[name,canonical_ast(item)] for name,item in ast.iter_fields(value)
+                if not (name=='type_params' and item==[])]]
+    if isinstance(value,list):return [canonical_ast(item) for item in value]
+    return value
+
+
+def joint_branch(tree):
+    condition=canonical_ast(ast.parse('HAS_LONG_CTX_ATTN and get_sequence_parallel_world_size() > 1',mode='eval').body)
+    matches=[node for node in ast.walk(tree) if isinstance(node,ast.If) and canonical_ast(node.test)==condition]
+    if len(matches)!=1:raise ValueError('expected exactly one original SP2 joint-attention branch')
+    return matches[0]
+
+
+def derive_joint_method(original_text):
+    original_text=textwrap.dedent(original_text)
+    if hashlib.sha256(original_text.encode()).hexdigest()!=JOINT_METHOD_SHA256:
+        raise ValueError('original joint processor method text SHA256 differs')
+    tree=ast.parse(original_text)
+    if len(tree.body)!=1 or not isinstance(tree.body[0],ast.FunctionDef) or tree.body[0].name!='__call__':
+        raise ValueError('expected one undecorated joint processor __call__ method')
+    if tree.body[0].decorator_list:raise ValueError('decorated joint processor method is not supported')
+    branch=joint_branch(tree)
+    first=branch.body[0]
+    if canonical_ast(first)!=canonical_ast(ast.parse('attention_kwargs = None').body[0]):
+        raise ValueError('original SP2 branch entry differs')
+    insertion=' '*first.col_offset+'joint_strategy = None\n'
+    lines=original_text.splitlines(keepends=True);lines.insert(first.lineno-1,insertion)
+    derived=''.join(lines)
+    if hashlib.sha256(derived.encode()).hexdigest()!=JOINT_DERIVED_SHA256:
+        raise ValueError('derived joint processor method text SHA256 differs')
+    expected=deepcopy(tree)
+    joint_branch(expected).body.insert(0,ast.parse('joint_strategy = None').body[0])
+    derived_tree=ast.parse(derived)
+    if canonical_ast(derived_tree)!=canonical_ast(expected):
+        raise ValueError('derived method contains another AST change')
+    restored=deepcopy(derived_tree);del joint_branch(restored).body[0]
+    if canonical_ast(restored)!=canonical_ast(tree):raise ValueError('AST restoration differs')
+    return derived,dict(original_method_sha256=JOINT_METHOD_SHA256,derived_method_sha256=JOINT_DERIVED_SHA256,
+        original_ast_sha256=digest(canonical_ast(tree)),derived_ast_sha256=digest(canonical_ast(derived_tree)),
+        restored_ast_sha256=digest(canonical_ast(restored)),inserted_statement='joint_strategy = None',
+        insertion_line_in_method=first.lineno,ast_statements_inserted=1,ast_statements_removed=0,
+        other_ast_changes=False,ast_canonicalization='node fields excluding locations and empty type_params')
+
+
+@contextmanager
+def joint_strategy_default(*, processor_class=None):
+    cls=factories()['processor'] if processor_class is None else processor_class
+    original=vars(cls).get('__call__')
+    if (qualified(cls)!=PROCESSOR_TYPE or not inspect.isfunction(original)
+            or original.__qualname__!='xFuserJointAttnProcessor2_0.__call__' or original.__code__.co_freevars):
+        raise ValueError('expected the actual frozen joint processor class method')
+    original_source=source(original)
+    if original_source['file_sha256']!=SOURCE_HASHES['attention']:
+        raise ValueError('original joint processor source file SHA256 differs')
+    derived,receipt=derive_joint_method(inspect.getsource(original))
+    namespace=dict(original.__globals__)
+    filename='<ditserve-sd35-joint-strategy-default:'+JOINT_DERIVED_SHA256+'>'
+    exec(compile(derived,filename,'exec',dont_inherit=True),namespace)
+    replacement=namespace['__call__']
+    replacement.__qualname__=original.__qualname__
+    replacement.__module__=original.__module__
+    receipt.update(original_source=original_source,derived_source=filename,complete=False,
+        method_identity_restored=False,source_files_modified=False,
+        scope='temporary class method adaptation only during converted candidate routes')
+    setattr(cls,'__call__',replacement)
+    try:
+        yield receipt
+        receipt['complete']=True
+    finally:
+        setattr(cls,'__call__',original)
+        receipt['method_identity_restored']=vars(cls).get('__call__') is original
+
+
+def valid_joint_strategy(receipt):
+    try:
+        return (receipt['original_source']['file_sha256']==SOURCE_HASHES['attention']
+            and receipt['original_method_sha256']==JOINT_METHOD_SHA256
+            and receipt['derived_method_sha256']==JOINT_DERIVED_SHA256
+            and receipt['original_ast_sha256']==receipt['restored_ast_sha256']==JOINT_ORIGINAL_AST_SHA256
+            and receipt['derived_ast_sha256']==JOINT_DERIVED_AST_SHA256
+            and receipt['insertion_line_in_method']==74
+            and all(type(receipt[k]) is int for k in ('insertion_line_in_method','ast_statements_inserted','ast_statements_removed'))
+            and receipt['derived_source']=='<ditserve-sd35-joint-strategy-default:'+JOINT_DERIVED_SHA256+'>'
+            and receipt['inserted_statement']=='joint_strategy = None'
+            and receipt['ast_statements_inserted']==1 and receipt['ast_statements_removed']==0
+            and receipt['other_ast_changes'] is False and receipt['complete'] is True
+            and receipt['method_identity_restored'] is True and receipt['source_files_modified'] is False)
+    except (KeyError,TypeError):return False
 
 
 def tensor_identity(value):
@@ -240,13 +339,16 @@ def valid_conversion(receipt):
     except (KeyError,TypeError):return False
 
 
-def assess(rows,reference,cross):
+def assess(rows,reference,cross, *, joint_strategy=False):
     result=dict(candidate_diagnostic_completed=False,candidate_equivalence_passed=False,
         original_observer_reproduced=original_reproduced(rows,reference),qualification_eligible=False)
     try:
         if not result['original_observer_reproduced']:return result
         for row in rows:
             candidate=row['parallel_wrapper_candidate'];rank=row['rank']
+            if joint_strategy:
+                if not valid_joint_strategy(candidate.get('joint_strategy_default',{})):return result
+            elif 'joint_strategy_default' in candidate:return result
             if (not valid_conversion(candidate['conversion']) or candidate['backend']['configured']!='SDPA_MATH'
                     or not valid_weights(candidate['post_inference_weights'])):return result
             for key in ('parameters','state_dict'):

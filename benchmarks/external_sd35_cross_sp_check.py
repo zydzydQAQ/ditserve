@@ -7,7 +7,7 @@ The SP2 local outputs must reproduce the immutable r5 first-step observation.
 from __future__ import annotations
 
 import argparse
-from contextlib import contextmanager, ExitStack
+from contextlib import contextmanager, ExitStack, nullcontext
 from datetime import timedelta
 import hashlib
 import inspect
@@ -365,46 +365,56 @@ def reproduced(receipt, reference):
         and receipt['metadata']['runtime']==reference['runtime'])
 
 
-def run_parallel_candidate(pipeline, initial, request, rank, control, group, snapshots, progress):
+def run_parallel_candidate(pipeline, initial, request, rank, control, group, snapshots, progress, *, result, joint_strategy=False):
     import torch.distributed as dist
     import external_sd35_parallel_wrapper_check as candidate
+    result.update(stage='candidate_conversion_enter',routes={},module_calls={})
     progress.update('candidate_conversion_enter')
     pipeline.runtime.pool.activate((0,1),pipeline.runtime.state,ulysses_degree=2,ring_degree=1)
     pipeline.runtime.bind_global()
     backend=candidate.backend_metadata(pipeline.runtime.state)
     conversion=candidate.convert(pipeline.pipe.transformer,pipeline.runtime.state)
     preserved=candidate.identities(pipeline.pipe.transformer)
-    result=dict(conversion=conversion,backend=backend,routes={},module_calls={})
+    result.update(conversion=conversion,backend=backend,stage='candidate_conversion_return')
     converted={}
     progress.update('candidate_conversion_return')
-    pipeline.runtime.pool.activate((rank,),pipeline.runtime.state,ulysses_degree=1,ring_degree=1)
-    pipeline.runtime.bind_global()
-    if rank==0:
-        progress.update('converted_sp1_enter')
+    with (candidate.joint_strategy_default() if joint_strategy else nullcontext()) as adaptation:
+        if adaptation is not None:result['joint_strategy_default']=adaptation
+        pipeline.runtime.pool.activate((rank,),pipeline.runtime.state,ulysses_degree=1,ring_degree=1)
+        pipeline.runtime.bind_global()
+        if rank==0:
+            result['stage']='converted_sp1_enter'
+            progress.update('converted_sp1_enter')
+            with candidate.observe_modules(pipeline.pipe.transformer) as calls:
+                result['module_calls']['sp1_round']=calls
+                converted['sp1_round'],result['routes']['sp1_round']=observe_route(pipeline,initial,request,'sp1_round')
+            result['module_calls']['sp1_round']=calls
+            result['original_sp1_vs_converted_sp1']=compare_boundaries(snapshots['sp1_native'],converted['sp1_round'])
+            result['stage']='converted_sp1_return'
+            progress.update('converted_sp1_return')
+        dist.barrier(group=control)
+        pipeline.runtime.pool.activate((0,1),pipeline.runtime.state,ulysses_degree=2,ring_degree=1)
+        pipeline.runtime.bind_global()
+        result['stage']='converted_sp2_enter'
+        progress.update('converted_sp2_enter')
         with candidate.observe_modules(pipeline.pipe.transformer) as calls:
-            converted['sp1_round'],result['routes']['sp1_round']=observe_route(pipeline,initial,request,'sp1_round')
-        result['module_calls']['sp1_round']=calls
-        result['original_sp1_vs_converted_sp1']=compare_boundaries(snapshots['sp1_native'],converted['sp1_round'])
-        progress.update('converted_sp1_return')
-    dist.barrier(group=control)
-    pipeline.runtime.pool.activate((0,1),pipeline.runtime.state,ulysses_degree=2,ring_degree=1)
-    pipeline.runtime.bind_global()
-    progress.update('converted_sp2_enter')
-    with candidate.observe_modules(pipeline.pipe.transformer) as calls:
-        converted['sp2_round'],result['routes']['sp2_round']=observe_route(pipeline,initial,request,'sp2_round')
-    result['module_calls']['sp2_round']=calls
-    progress.update('converted_sp2_return')
-    receipt=result['routes']['sp2_round']
-    maps=[None,None]
-    dist.all_gather_object(maps,dict(rank=rank,ranges=receipt['actual_row_ranges'],local_height=receipt['local_height']),group=control)
-    validate_partition(maps)
-    result['row_partition']=maps
-    for name,values in (('original_sp1_vs_converted_sp2',snapshots.get('sp1_native')),
-                        ('converted_sp1_vs_converted_sp2',converted.get('sp1_round'))):
-        reference=broadcast_boundaries(values,rank,control,group)
-        result[name]=compare_boundaries(reference,converted['sp2_round'],receipt['actual_row_ranges'])
-    result['post_inference_weights']=candidate.identity_receipt(preserved,candidate.identities(pipeline.pipe.transformer))
-    return result
+            result['module_calls']['sp2_round']=calls
+            converted['sp2_round'],result['routes']['sp2_round']=observe_route(pipeline,initial,request,'sp2_round')
+        result['module_calls']['sp2_round']=calls
+        result['stage']='converted_sp2_return'
+        progress.update('converted_sp2_return')
+        receipt=result['routes']['sp2_round']
+        maps=[None,None]
+        dist.all_gather_object(maps,dict(rank=rank,ranges=receipt['actual_row_ranges'],local_height=receipt['local_height']),group=control)
+        validate_partition(maps)
+        result['row_partition']=maps
+        for name,values in (('original_sp1_vs_converted_sp2',snapshots.get('sp1_native')),
+                            ('converted_sp1_vs_converted_sp2',converted.get('sp1_round'))):
+            reference=broadcast_boundaries(values,rank,control,group)
+            result[name]=compare_boundaries(reference,converted['sp2_round'],receipt['actual_row_ranges'])
+        result['post_inference_weights']=candidate.identity_receipt(preserved,candidate.identities(pipeline.pipe.transformer))
+        result['stage']='candidate_completed'
+        return result
 
 
 def worker(rank, args, binding, references):
@@ -482,8 +492,9 @@ def worker(rank, args, binding, references):
             result[route+'_vs_sp2_round'] = compare_boundaries(reference,snapshots['sp2_round'],receipt['actual_row_ranges'])
         progress.update('boundary_comparison_return')
         if args.parallel_wrapper_candidate:
-            result['parallel_wrapper_candidate']=run_parallel_candidate(
-                pipeline,initial,request,rank,control,group,snapshots,progress)
+            result['parallel_wrapper_candidate']={}
+            run_parallel_candidate(pipeline,initial,request,rank,control,group,snapshots,progress,
+                result=result['parallel_wrapper_candidate'],joint_strategy=args.joint_strategy_default)
         result['status'] = 'completed'
     except BaseException as exc:
         result.update(error=repr(exc),traceback=traceback.format_exc()[-10000:])
@@ -611,6 +622,8 @@ def main(argv=None):
     parser.add_argument('--parallel-wrapper-candidate',action='store_true',
         help='experimental in-process completion of frozen parallel wrapping; original routes remain unchanged')
     parser.add_argument('--candidate-reference-summary',type=Path,help='immutable r7 child summary required by candidate mode')
+    parser.add_argument('--joint-strategy-default',action='store_true',
+        help='candidate-only one-statement adaptation of the frozen attn2 SP2 processor; restored in finally')
     args=parser.parse_args(argv)
     args.output_dir=args.output_dir.absolute(); args.prior_result=args.prior_result.absolute()
     result=dict(schema='ditserve.sd35-cross-sp-first-step.v1',status='failed',diagnostic_completed=False,
@@ -621,6 +634,8 @@ def main(argv=None):
     created=False
     try:
         if not 120<=args.timeout_seconds<=3600: raise ValueError('invalid diagnostic timeout')
+        if args.joint_strategy_default and not args.parallel_wrapper_candidate:
+            raise ValueError('joint strategy adaptation is restricted to the opt-in parallel wrapper candidate')
         binding=base.bind_prior(args.prior_result,args.prior_summary_sha256,args.prior_numerics_sha256)
         references=bind_reference(args.sp2_reference_summary,args.sp2_reference_sha256,args.sp2_reference_traces,binding)
         result.update(binding=binding,sp2_reference_sha256=args.sp2_reference_sha256,sp2_references=references)
@@ -632,7 +647,8 @@ def main(argv=None):
             candidate_reference=candidate.bind_reference(args.candidate_reference_summary,binding,references,sys.modules[__name__])
             result.update(parallel_wrapper_candidate_enabled=True,candidate_reference_sha256=candidate.R7_SHA256,
                 candidate_helper_sha256=base.sha(candidate.__file__),candidate_diagnostic_completed=False,
-                candidate_equivalence_passed=False,original_observer_reproduced=False)
+                candidate_equivalence_passed=False,original_observer_reproduced=False,
+                joint_strategy_default_enabled=args.joint_strategy_default)
         if args.command=='plan':
             result['status']='planned'; print(json.dumps(result,sort_keys=True,allow_nan=False)); return 0
         if (not args.output_dir.is_relative_to('/shared/output/DITSERVE')
@@ -644,7 +660,7 @@ def main(argv=None):
         base.retain_execution(result,rows,error,args.output_dir)
         complete=error is None and assess(rows,references)
         if candidate_reference is not None:
-            assessment=candidate.assess(rows,candidate_reference,sys.modules[__name__])
+            assessment=candidate.assess(rows,candidate_reference,sys.modules[__name__],joint_strategy=args.joint_strategy_default)
             result.update(assessment)
             complete=complete and assessment['candidate_diagnostic_completed']
         result.update(diagnostic_completed=complete,status='diagnostic_completed' if complete else 'failed')
