@@ -5,14 +5,7 @@ import argparse
 import hashlib
 import json
 import math
-import sys
 from pathlib import Path
-
-_BENCHMARKS_DIR = Path(__file__).resolve().parent
-if str(_BENCHMARKS_DIR) not in sys.path:
-    sys.path.insert(0, str(_BENCHMARKS_DIR))
-
-from cluster_config import default_sd35_batch_step_ms
 
 
 FIT_POLICIES = {"static_sp1", "static_cfg2", "static_sp2", "static_cfg2sp2", "static_sp4"}
@@ -74,11 +67,12 @@ def extract_measurements(record):
                 "batch_identity": (row.get("phase", "cluster"), row["cell"],
                                    tuple(row.get("batch_request_ids", [row.get("request_id")]))),
                 "service_ms": row["batch_model_ms"] if size > 1 else row["model_ms"],
-                "steps": int(img_spec.get("steps", 28)),
-                "resolution": int(img_spec.get("height", 1024)),
-                "prepare_ms": row.get("prepare_cb_ms", row.get("prepare_ms")),
-                "finish_ms": row.get("decode_cb_ms", row.get("finish_ms")),
-                "batch_step_ms": row.get("batch_step_ms"),
+                "steps": int(img_spec["steps"]) if "steps" in img_spec else None,
+                # Only genuine continuous-batch stage durations. Study rows never carry
+                # per-image prepare/decode durations otherwise, and row["finish_ms"]
+                # is the controller completion timestamp, not a duration.
+                "prepare_ms": row.get("prepare_cb_ms"),
+                "finish_ms": row.get("decode_cb_ms"),
             })
             continue
         decode_ms = math.fsum(output.get("model_ms", 0.0) for output in row.get("outputs", []))
@@ -226,39 +220,38 @@ def build_profile(record, runtime_facts, model_name):
         raise ValueError("calibration requires unbatched image measurements")
     image_cost = profile["classes"]["sd35-preflight"]
     image_cost["service_ms"] = median(image_batches[1])
-    img_steps = int(images[0].get("steps", 28))
-    img_resolution = int(images[0].get("resolution", 1024))
-    decode_and_prep = min(float(image_cost["service_ms"]) * 0.12, 180.0)
-    prep_samples = [
-        float(row["prepare_ms"])
-        for row in images
-        if isinstance(row.get("prepare_ms"), (int, float)) and row["prepare_ms"] > 0
-    ]
-    fin_samples = [
-        float(row["finish_ms"])
-        for row in images
-        if isinstance(row.get("finish_ms"), (int, float)) and row["finish_ms"] > 0
-    ]
-    image_cost["steps"] = img_steps
-    image_cost["prepare_ms"] = round(median(prep_samples), 3) if prep_samples else round(decode_and_prep * 0.25, 3)
-    image_cost["finish_ms"] = round(median(fin_samples), 3) if fin_samples else round(decode_and_prep * 0.75, 3)
-    batch_step_ms = default_sd35_batch_step_ms(image_cost["service_ms"], steps=img_steps, resolution=img_resolution)
+    image_provenance = {"service_ms": "measured"}
+    img_steps = {row["steps"] for row in images}
+    if len(img_steps) == 1 and None not in img_steps:
+        image_cost["steps"] = next(iter(img_steps))
+        image_provenance["steps"] = "request_spec"
+
+    def positive(value):
+        return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) and value > 0
+
+    # Continuous-batch costs are written only from measured samples; nothing is
+    # synthesized here. Without samples the field is absent and native serving
+    # must opt in to continuous batching explicitly (and labels any placeholder).
+    for field in ("prepare_ms", "finish_ms"):
+        samples = [float(row[field]) for row in images if positive(row[field])]
+        if samples:
+            image_cost[field] = round(median(samples), 3)
+            image_provenance[field] = "measured_continuous_batch_stage"
     cb_step_samples = {}
     for phase in record.get("phases", []):
         for cell in phase.get("cells", []):
-            for sample in cell.get("continuous_batch", {}).get("samples", []):
+            for sample in (cell.get("continuous_batch") or {}).get("samples", []):
                 bsize = sample.get("batch_size")
-                mms = sample.get("model_ms")
-                if isinstance(bsize, int) and 1 <= bsize <= 8 and isinstance(mms, (int, float)) and mms > 0:
-                    cb_step_samples.setdefault(bsize, []).append(float(mms))
-    for row in images:
-        if isinstance(row.get("batch_step_ms"), dict):
-            for k, v in row["batch_step_ms"].items():
-                if isinstance(v, (int, float)) and v > 0:
-                    cb_step_samples.setdefault(int(k), []).append(float(v))
-    for bsize, vals in cb_step_samples.items():
-        batch_step_ms[str(bsize)] = round(median(vals), 3)
-    image_cost["batch_step_ms"] = batch_step_ms
+                if (isinstance(bsize, int) and not isinstance(bsize, bool) and 1 <= bsize <= 8
+                        and positive(sample.get("model_ms"))):
+                    cb_step_samples.setdefault(bsize, []).append(float(sample["model_ms"]))
+    if 1 in cb_step_samples:
+        image_cost["batch_step_ms"] = {str(size): round(median(values), 3)
+                                       for size, values in sorted(cb_step_samples.items())}
+        image_provenance["batch_step_ms"] = "measured_continuous_batch_rounds"
+    elif cb_step_samples:
+        # The executor requires a batch-1 entry; never pad it with a synthetic value.
+        image_provenance["batch_step_ms"] = "omitted_no_batch1_rounds"
     if any(size > 1 for size in image_batches):
         image_cost["batch_ms"] = {str(size): median(values) for size, values in image_batches.items()}
     placements = {}
@@ -300,6 +293,8 @@ def build_profile(record, runtime_facts, model_name):
         "execution_cost_mode": "placement_bound_form_table_with_analytical_fallback" if forms else "analytical_fallback_only",
         "unbound_measurements": sum(row["group"] is None for row in videos),
         "image_batch_samples": {str(size): len(values) for size, values in image_batches.items()},
+        "image_cost_provenance": image_provenance,
+        "continuous_batch_round_samples": {str(size): len(values) for size, values in sorted(cb_step_samples.items())},
         "validation_scope": "held-out forms on calibration hardware and shape; not held-out request, placement or workload validation",
         "method": "single constrained saturation model fitted once; no per-form bandwidth or overlap overrides",
     }

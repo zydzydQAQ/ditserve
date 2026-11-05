@@ -2,6 +2,7 @@
 """Generate a functional native-cluster preflight on the allocated Kairos GPUs."""
 
 import argparse
+import copy
 import json
 import subprocess
 from pathlib import Path
@@ -29,9 +30,12 @@ MEMORY_STRATEGIES = (
     "s3_both_encoders_cpu",
     "s4_disaggregated_pool",
 )
-DEFAULT_MEMORY_STRATEGY = "s4_disaggregated_pool"
+# Worker memory strategies and SD3.5 continuous batching are explicit opt-in.
+# None / 0 keep the legacy worker options (Wan {"execution": "block"}, SD3.5
+# {"profile": False, "cache": False}) and atomic SD3.5 execution.
+DEFAULT_MEMORY_STRATEGY = None
 CONTINUOUS_BATCH_SIZES = (1, 2, 3, 4, 6, 8)
-DEFAULT_CONTINUOUS_BATCH = 4
+DEFAULT_CONTINUOUS_BATCH = 0
 
 _MEMORY_STRATEGY_DESCRIPTORS = {
     "s0_naive_gpu": {
@@ -135,6 +139,86 @@ def memory_strategy_Descriptor(strategy: str) -> dict:
 memory_strategy_descriptor = memory_strategy_Descriptor
 
 
+# Behaviour the workers have regardless of options (workers/ditserve/models):
+# WanStepWorker always loads UMT5 on the CPU; AtomicPipelineBackend rejects CPU
+# text encoding for SD3.5, so T5-XXL always encodes on the GPU
+# (offload_text_encoders_after_warmup only parks its weights on the CPU and
+# restores them for every uncached prompt); no worker reads
+# weight_swap_on_switch; native configs keep the phase option tiered_memory
+# False (export transport, while the C++ tiered memory requires pinned SP1).
+_FIXED_WORKER_MEMORY = {
+    "wan_text_encoder_device": "cpu",
+    "sd35_text_encoder_device": "cuda",
+    "weight_swap_on_switch": False,
+    "tiered_memory": False,
+}
+
+
+def _unimplemented_memory_knobs(descriptor):
+    missing = [f"{key}={descriptor[key]!r}" for key, value in _FIXED_WORKER_MEMORY.items()
+               if descriptor[key] != value]
+    if not descriptor["encoder_pool"].get("enabled", True):
+        # Wan honours encoder_pool.enabled; SD35Backend always uses its pool.
+        missing.append("encoder_pool.enabled=False (SD35Backend always uses its encoder pool)")
+    return missing
+
+
+# Strategies whose every descriptor knob the workers implement; the others are
+# analytical only (benchmarks/cross_modal_memory_study.py).
+WORKER_MEMORY_STRATEGIES = tuple(
+    name for name in MEMORY_STRATEGIES
+    if not _unimplemented_memory_knobs(_MEMORY_STRATEGY_DESCRIPTORS[name])
+)
+
+
+def applied_memory_strategy(strategy):
+    """Return the worker options a memory strategy actually applies.
+
+    Raises ValueError for strategies relying on knobs no worker implements, so
+    a GPU config never carries a label its workers do not execute. The record
+    lists only applied worker options (never tiered_memory or device claims).
+    """
+    descriptor = memory_strategy_descriptor(strategy)
+    missing = _unimplemented_memory_knobs(descriptor)
+    if missing:
+        raise ValueError(
+            f"memory_strategy {strategy!r} is analytical only; the workers do not implement "
+            + "; ".join(missing)
+            + ". Use benchmarks/cross_modal_memory_study.py for S0-S4 analysis; "
+            + "worker configs accept only " + ", ".join(WORKER_MEMORY_STRATEGIES))
+    pool = dict(descriptor["encoder_pool"])
+    return {
+        "strategy": strategy,
+        "code": descriptor["code"],
+        "label": descriptor["label"],
+        "applied_worker_options": {
+            "wan": {"release_cache_on_stop": bool(descriptor["release_cache_on_stop"]), "encoder_pool": pool},
+            "image": {
+                "offload_text_encoders_after_warmup": bool(descriptor["offload_text_encoders_after_warmup"]),
+                "encoder_pool": dict(pool),
+            },
+        },
+    }
+
+
+def continuous_batch_settings(continuous_batch=0, sequence_packing=None, bubble_free=None):
+    """Resolve an explicit SD3.5 continuous-batch request; None or 0 means off.
+
+    sequence_packing/bubble_free are continuous-batch sub-options: None means
+    on with continuous batching and off without it; an explicit True without
+    continuous batching is rejected rather than reaching atomic workers.
+    """
+    value = 0 if continuous_batch is None else continuous_batch
+    if not isinstance(value, int) or isinstance(value, bool) or not 0 <= value <= 8:
+        raise ValueError("continuous_batch must be an integer in [0, 8]")
+    if value == 0:
+        if sequence_packing or bubble_free:
+            raise ValueError("sequence_packing and bubble_free require continuous_batch > 0")
+        return 0, False, False
+    return (value, True if sequence_packing is None else bool(sequence_packing),
+            True if bubble_free is None else bool(bubble_free))
+
+
 def allocated_uuids():
     output = subprocess.run(
         ["nvidia-smi", "--query-gpu=uuid", "--format=csv,noheader"],
@@ -170,16 +254,21 @@ def make_workers(
     cfg_fold=None,
     memory_strategy=DEFAULT_MEMORY_STRATEGY,
     continuous_batch=DEFAULT_CONTINUOUS_BATCH,
-    sequence_packing=True,
-    bubble_free=True,
+    sequence_packing=None,
+    bubble_free=None,
 ):
+    """Build per-GPU Wan + SD3.5 workers.
+
+    With no memory_strategy and continuous_batch 0 the legacy options are
+    produced. sequence_packing/bubble_free are continuous-batch sub-options
+    (see continuous_batch_settings) and are emitted only when continuous_batch > 0.
+    """
     if model not in MODELS:
         raise ValueError("unknown model: " + model)
     if len(gpu_uuids) not in (2, 4, 6, 8) or len(set(gpu_uuids)) != len(gpu_uuids):
         raise ValueError("native studies require 2, 4, 6 or 8 distinct GPU UUIDs")
-    eff_strategy = DEFAULT_MEMORY_STRATEGY if memory_strategy is None else memory_strategy
-    strategy_desc = memory_strategy_Descriptor(eff_strategy)
-    cb_enabled = bool(continuous_batch and int(continuous_batch) > 0)
+    cb, packing, bubble = continuous_batch_settings(continuous_batch, sequence_packing, bubble_free)
+    applied = None if memory_strategy is None else applied_memory_strategy(memory_strategy)
     selected = MODELS[model]
     workers, slots, warmup = {}, [], []
     for index, uuid in enumerate(gpu_uuids):
@@ -192,24 +281,12 @@ def make_workers(
         options = {"execution": "block"}
         if cfg_fold is not None:
             options["cfg_fold"] = cfg_fold
-        image_options = {
-            "profile": False,
-            "cache": False,
-            "continuous_batch": cb_enabled,
-            "sequence_packing": bool(sequence_packing),
-            "bubble_free": bool(bubble_free),
-        }
-        if strategy_desc is not None:
-            options["memory_strategy"] = eff_strategy
-            options["release_cache_on_stop"] = bool(strategy_desc["release_cache_on_stop"])
-            options["encoder_pool"] = dict(strategy_desc["encoder_pool"])
-            image_options["memory_strategy"] = eff_strategy
-            image_options["offload_text_encoders_after_warmup"] = bool(
-                strategy_desc["offload_text_encoders_after_warmup"]
-            )
-            image_options["encoder_pool"] = dict(strategy_desc["encoder_pool"])
-            if strategy_desc.get("weight_swap_on_switch"):
-                image_options["weight_swap_on_switch"] = True
+        image_options = {"profile": False, "cache": False}
+        if cb > 0:
+            image_options.update(continuous_batch=True, sequence_packing=packing, bubble_free=bubble)
+        if applied is not None:
+            options.update(copy.deepcopy(applied["applied_worker_options"]["wan"]))
+            image_options.update(copy.deepcopy(applied["applied_worker_options"]["image"]))
         workers[f"wan{index}"] = {
             "backend": "wan",
             "python": "/opt/venv/bin/python",
@@ -256,20 +333,15 @@ def build_config(
     image_steps=4,
     memory_strategy=DEFAULT_MEMORY_STRATEGY,
     continuous_batch=DEFAULT_CONTINUOUS_BATCH,
-    sequence_packing=True,
-    bubble_free=True,
+    sequence_packing=None,
+    bubble_free=None,
 ):
     if frames != 17 or steps != 4 or image_steps != 4:
         raise ValueError("the functional preflight is fixed at Wan 17f/4 steps and SD3.5 4 steps")
     if len(gpu_uuids) not in (2, 4, 6, 8) or len(set(gpu_uuids)) != len(gpu_uuids):
         raise ValueError("preflight requires 2, 4, 6 or 8 distinct GPU UUIDs")
-    if continuous_batch is not None and (
-        not isinstance(continuous_batch, int) or isinstance(continuous_batch, bool) or not 0 <= continuous_batch <= 8
-    ):
-        raise ValueError("continuous_batch must be an integer in [0, 8]")
-    eff_cb = DEFAULT_CONTINUOUS_BATCH if continuous_batch is None else int(continuous_batch)
-    eff_strategy = DEFAULT_MEMORY_STRATEGY if memory_strategy is None else memory_strategy
-    strategy_desc = memory_strategy_Descriptor(eff_strategy)
+    eff_cb, packing, bubble = continuous_batch_settings(continuous_batch, sequence_packing, bubble_free)
+    applied = None if memory_strategy is None else applied_memory_strategy(memory_strategy)
     gpus = len(gpu_uuids)
     form = {2: "cfg2", 4: "cfg2sp2", 6: "cfg2sp3", 8: "cfg2sp3"}[gpus]
     video_spec = {
@@ -309,10 +381,10 @@ def build_config(
         video_spec=video_spec,
         image_spec=image_spec,
         cfg_fold=cfg_fold,
-        memory_strategy=eff_strategy,
+        memory_strategy=memory_strategy,
         continuous_batch=eff_cb,
-        sequence_packing=sequence_packing,
-        bubble_free=bubble_free,
+        sequence_packing=packing,
+        bubble_free=bubble,
     )
     video_row = {
         "request_id": "video-preflight",
@@ -343,11 +415,7 @@ def build_config(
         "quantum_blocks": 4,
         "async_rank0_decode": True,
         "image_batch": 1,
-        "continuous_batch": eff_cb,
-        "sequence_packing": bool(sequence_packing),
-        "bubble_free": bool(bubble_free),
         "tiered_memory": False,
-        "memory_strategy": eff_strategy,
     }
     benchmark_meta = {
         "functional_preflight": True,
@@ -356,13 +424,18 @@ def build_config(
         "models": [selected["name"], "SD3.5-Medium"],
         "hardware_source": "nvidia-smi in this job",
         "profile_role": "synthetic scheduling placeholders only",
-        "memory_strategy": strategy_desc,
-        "continuous_batch": {
-            "max_requests": eff_cb,
-            "sequence_packing": bool(sequence_packing),
-            "bubble_free": bool(bubble_free),
-        },
     }
+    image_cost = {"kind": "image", "service_ms": 1000.0}
+    if eff_cb > 0:
+        phase_options.update(continuous_batch=eff_cb, sequence_packing=packing, bubble_free=bubble)
+        benchmark_meta["continuous_batch"] = {
+            "max_requests": eff_cb, "sequence_packing": packing, "bubble_free": bubble,
+        }
+        # Synthetic like the rest of this functional-preflight profile.
+        image_cost.update(steps=image_steps, prepare_ms=20.0, finish_ms=80.0,
+                          batch_step_ms=default_sd35_batch_step_ms(1000.0, image_steps, resolution=512))
+    if applied is not None:
+        benchmark_meta["memory_strategy"] = applied
     return {
         "schema": "ditserve.study.v1",
         "experiment": f"kairos-{model}-native-preflight",
@@ -398,14 +471,7 @@ def build_config(
                         "steps": steps,
                         "decode_chunks": (frames - 1) // 4 + 1,
                     },
-                    "sd35-preflight": {
-                        "kind": "image",
-                        "service_ms": 1000.0,
-                        "steps": image_steps,
-                        "prepare_ms": 20.0,
-                        "finish_ms": 80.0,
-                        "batch_step_ms": default_sd35_batch_step_ms(1000.0, image_steps, resolution=512),
-                    },
+                    "sd35-preflight": image_cost,
                 },
                 "links": {
                     str(degree): {"gbps": 3.0, "latency_ms": 0.1}
@@ -438,30 +504,40 @@ def main():
         "--continuous-batch",
         type=int,
         default=DEFAULT_CONTINUOUS_BATCH,
-        help="maximum continuous step-level image batch size in [0, 8] (0 disables continuous batching)",
+        help="opt-in maximum continuous step-level image batch size in [0, 8]; default 0 (off)",
     )
     parser.add_argument(
         "--sequence-packing",
         action=argparse.BooleanOptionalAction,
-        default=True,
-        help="enable multi-resolution token sequence packing for SD3.5 continuous batches",
+        default=None,
+        help="token sequence packing for SD3.5 continuous batches (default: on iff --continuous-batch > 0)",
     )
     parser.add_argument(
         "--bubble-free",
         action=argparse.BooleanOptionalAction,
-        default=True,
-        help="overlap T5 encode and VAE decode with MM-DiT denoising rounds",
+        default=None,
+        help="overlap T5 encode and VAE decode with continuous MM-DiT rounds (default: on iff --continuous-batch > 0)",
+    )
+    parser.add_argument(
+        "--memory-strategy",
+        choices=MEMORY_STRATEGIES,
+        help="opt-in worker memory strategy; only strategies the workers implement are accepted "
+             "(default: none, legacy worker options)",
     )
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     uuids = args.gpu_uuids.split(",") if args.gpu_uuids else allocated_uuids()
-    config = build_config(
-        args.model,
-        uuids,
-        continuous_batch=args.continuous_batch,
-        sequence_packing=args.sequence_packing,
-        bubble_free=args.bubble_free,
-    )
+    try:
+        config = build_config(
+            args.model,
+            uuids,
+            memory_strategy=args.memory_strategy,
+            continuous_batch=args.continuous_batch,
+            sequence_packing=args.sequence_packing,
+            bubble_free=args.bubble_free,
+        )
+    except ValueError as error:
+        parser.error(str(error))
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("x", encoding="utf-8") as stream:
         json.dump(config, stream, indent=2)

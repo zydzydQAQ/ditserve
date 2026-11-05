@@ -12,7 +12,13 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import pickle
+import threading
 import time
+
+
+# A slab another worker unlinks, replaces or (never, given os.replace) half-writes reads as a miss.
+_SLAB_READ_ERRORS = (OSError, EOFError, RuntimeError, ValueError, pickle.UnpicklingError)
 
 
 class ProactiveEncoderPool:
@@ -28,15 +34,62 @@ class ProactiveEncoderPool:
         self.pin_memory = bool(cfg.get("pin_memory", True))
         self._entries = OrderedDict()
         self._bytes = 0
+        self._lock = threading.RLock()  # encode thread and request thread share one pool
         self.hits = 0
         self.misses = 0
         self.staged_pushes = 0
+        self.shm_adoptions = 0
+
+    def _slab_file(self, key: str) -> Path:
+        return self.shm_dir / f"{key[:24]}.pt"
 
     def has_key(self, key: str) -> bool:
-        """Return True if prompt embedding key is in-memory or staged in /dev/shm."""
+        """Return True if prompt embedding key is in-memory or staged in /dev/shm.
+
+        Advisory only: /dev/shm slabs are shared by every worker and another one may
+        remove the slab right after this returns. Callers that must later fetch the
+        key use ``ensure_resident`` instead.
+        """
         if key in self._entries:
             return True
-        return (self.shm_dir / f"{key[:24]}.pt").is_file()
+        return self._slab_file(key).is_file()
+
+    def ensure_resident(self, key: str) -> bool:
+        """Make ``key`` fetchable from this pool's own memory; False is a miss.
+
+        An in-memory entry is a hit. Otherwise a /dev/shm slab staged by any worker is
+        read now into this pool's LRU, so a later ``fetch_to_device`` no longer depends
+        on the shared file; a slab that vanished or cannot be read is a miss and the
+        caller encodes. The adopted entry does not own the slab and never unlinks it.
+        """
+        with self._lock:
+            if key in self._entries:
+                return True
+        import torch
+
+        try:
+            source = torch.load(str(self._slab_file(key)), map_location="cpu", weights_only=True)
+        except _SLAB_READ_ERRORS:
+            return False
+        if not isinstance(source, dict):
+            return False
+        started = time.perf_counter()
+        staged_tensors, tensor_meta, total_bytes = self._host_copies(source, self.pin_memory)
+        with self._lock:
+            if key in self._entries:
+                return True
+            self._admit(key, {
+                "key": key,
+                "tensors": staged_tensors,
+                "meta": tensor_meta,
+                "bytes": total_bytes,
+                "slab_path": None,
+                "slab_id": None,
+                "adopted_shm": True,
+                "stage_ms": (time.perf_counter() - started) * 1000.0,
+            })
+            self.shm_adoptions += 1
+        return True
 
     @staticmethod
     def prompt_key(modality: str, model_id: str, prompt: str, negative_prompt: str = "",
@@ -56,33 +109,52 @@ class ProactiveEncoderPool:
         ).encode("utf-8")
         return hashlib.sha256(payload).hexdigest()
 
+    @staticmethod
+    def _file_identity(stat_result) -> tuple:
+        return (stat_result.st_dev, stat_result.st_ino, stat_result.st_size, stat_result.st_mtime_ns)
+
+    @classmethod
+    def _unlink_own_slab(cls, record: dict) -> None:
+        """Remove the slab this pool wrote, unless another worker has since replaced it.
+
+        Slabs are shared by every worker on the node; one this pool only read (or one
+        another worker re-staged over its own) belongs to someone else and is kept.
+        """
+        slab_path, slab_id = record.get("slab_path"), record.get("slab_id")
+        if not slab_path or slab_id is None:
+            return
+        try:
+            if cls._file_identity(os.stat(slab_path)) == slab_id:
+                os.unlink(slab_path)
+        except OSError:
+            pass
+
     def _evict_to_fit(self, needed_bytes: int) -> None:
         while self._entries and (
             len(self._entries) >= self.max_entries or self._bytes + needed_bytes > self.max_bytes
         ):
             _, evicted = self._entries.popitem(last=False)
             self._bytes -= evicted["bytes"]
-            slab_path = evicted.get("slab_path")
-            if slab_path and Path(slab_path).is_file():
-                try:
-                    Path(slab_path).unlink()
-                except OSError:
-                    pass
+            self._unlink_own_slab(evicted)
 
-    def stage_embeddings(self, key: str, tensors: dict, *, pin_memory: bool | None = None,
-                         write_shm: bool | None = None) -> dict:
-        """Stage prompt embedding tensors in pinned host memory (and optional /dev/shm slab)."""
+    def _admit(self, key: str, record: dict) -> None:
+        """Insert ``record`` as the most recent entry; the caller holds ``_lock``."""
+        previous = self._entries.pop(key, None)
+        if previous is not None:
+            self._bytes -= previous["bytes"]
+            if record.get("slab_id") is None and previous.get("slab_id") is not None:
+                record["slab_path"], record["slab_id"] = previous["slab_path"], previous["slab_id"]
+        self._evict_to_fit(record["bytes"])
+        self._entries[key] = record
+        self._bytes += record["bytes"]
+
+    @staticmethod
+    def _host_copies(tensors: dict, pin_memory: bool):
         import torch
 
-        if pin_memory is None:
-            pin_memory = self.pin_memory
-        if write_shm is None:
-            write_shm = self.write_shm
-        started = time.perf_counter()
         staged_tensors = {}
         total_bytes = 0
         tensor_meta = {}
-
         for name, tensor in tensors.items():
             if tensor is None:
                 staged_tensors[name] = None
@@ -100,14 +172,27 @@ class ProactiveEncoderPool:
                 "dtype": str(cpu_tensor.dtype).replace("torch.", ""),
                 "bytes": nbytes,
             }
+        return staged_tensors, tensor_meta, total_bytes
 
-        self._evict_to_fit(total_bytes)
-        slab_path = None
+    def stage_embeddings(self, key: str, tensors: dict, *, pin_memory: bool | None = None,
+                         write_shm: bool | None = None) -> dict:
+        """Stage prompt embedding tensors in pinned host memory (and optional /dev/shm slab)."""
+        import torch
+
+        if pin_memory is None:
+            pin_memory = self.pin_memory
+        if write_shm is None:
+            write_shm = self.write_shm
+        started = time.perf_counter()
+        staged_tensors, tensor_meta, total_bytes = self._host_copies(tensors, pin_memory)
+
+        slab_path = slab_id = None
         if write_shm:
             self.shm_dir.mkdir(parents=True, exist_ok=True)
-            slab_path = str(self.shm_dir / f"{key[:24]}.pt")
-            tmp_path = f"{slab_path}.tmp.{os.getpid()}.{time.time_ns()}"
+            slab_path = str(self._slab_file(key))
+            tmp_path = f"{slab_path}.tmp.{os.getpid()}.{threading.get_ident()}.{time.time_ns()}"
             torch.save(staged_tensors, tmp_path)
+            slab_id = self._file_identity(os.stat(tmp_path))  # os.replace keeps inode and mtime
             os.replace(tmp_path, slab_path)
 
         record = {
@@ -116,12 +201,12 @@ class ProactiveEncoderPool:
             "meta": tensor_meta,
             "bytes": total_bytes,
             "slab_path": slab_path,
+            "slab_id": slab_id,
             "stage_ms": (time.perf_counter() - started) * 1000.0,
         }
-        self._entries[key] = record
-        self._entries.move_to_end(key)
-        self._bytes += total_bytes
-        self.staged_pushes += 1
+        with self._lock:
+            self._admit(key, record)
+            self.staged_pushes += 1
         return {
             "key": key,
             "bytes": total_bytes,
@@ -135,18 +220,20 @@ class ProactiveEncoderPool:
         import torch
 
         started = time.perf_counter()
-        if key in self._entries:
-            record = self._entries[key]
-            self._entries.move_to_end(key)
-            self.hits += 1
-            source = record["tensors"]
-        else:
-            slab_file = self.shm_dir / f"{key[:24]}.pt"
-            if not slab_file.is_file():
+        with self._lock:
+            record = self._entries.get(key)
+            if record is not None:
+                self._entries.move_to_end(key)
+                self.hits += 1
+                source = record["tensors"]
+        if record is None:
+            # Cross-worker read without adoption; a slab removed under us is a miss.
+            try:
+                source = torch.load(str(self._slab_file(key)), map_location="cpu", weights_only=True)
+            except _SLAB_READ_ERRORS as error:
                 self.misses += 1
-                raise KeyError(f"Prompt embedding key not found in pool: {key}")
+                raise KeyError(f"Prompt embedding key not found in pool: {key}") from error
             self.hits += 1
-            source = torch.load(str(slab_file), map_location="cpu", weights_only=True)
 
         target = torch.device(device)
         out = {}
@@ -251,7 +338,7 @@ class ProactiveEncoderPool:
         pos_key = self.prompt_key("wan_pos", model_id, pos_text, "", max_sequence_length, dtype, False)
         neg_key = self.prompt_key("wan_neg", model_id, "", neg_text, max_sequence_length, dtype, False)
 
-        pos_hit = use_cache and self.has_key(pos_key)
+        pos_hit = use_cache and self.ensure_resident(pos_key)
         if pos_hit:
             pos_emb = self.fetch_to_device(pos_key, "cpu")["tensors"]["embed"].clone()
         else:
@@ -267,7 +354,7 @@ class ProactiveEncoderPool:
         neg_emb = None
         neg_hit = False
         if do_cfg:
-            neg_hit = use_cache and self.has_key(neg_key)
+            neg_hit = use_cache and self.ensure_resident(neg_key)
             if neg_hit:
                 neg_emb = self.fetch_to_device(neg_key, "cpu")["tensors"]["embed"].clone()
             else:
@@ -308,18 +395,15 @@ class ProactiveEncoderPool:
             "hits": self.hits,
             "misses": self.misses,
             "staged_pushes": self.staged_pushes,
+            "shm_adoptions": self.shm_adoptions,
         }
 
     def clear(self) -> None:
-        for record in self._entries.values():
-            slab_path = record.get("slab_path")
-            if slab_path and os.path.isfile(slab_path):
-                try:
-                    os.unlink(slab_path)
-                except OSError:
-                    pass
-        self._entries.clear()
-        self._bytes = 0
+        with self._lock:
+            for record in self._entries.values():
+                self._unlink_own_slab(record)
+            self._entries.clear()
+            self._bytes = 0
 
 
 from contextlib import nullcontext as _null_ctx

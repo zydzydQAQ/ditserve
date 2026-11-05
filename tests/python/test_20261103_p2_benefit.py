@@ -377,8 +377,16 @@ class P2ContrastTest(unittest.TestCase):
                 contrasts.make_configs(config, 'block-fixed')
         config = copy.deepcopy(base); config['phases'][0]['gpus'] = config['phases'][0]['gpus'][:2]
         config['phases'][0]['options']['partition_image_gpus'] = 1
-        with self.assertRaisesRegex(ValueError, 'no complete fixed CFG2'):
+        # xdit is sp1 in the current registry: one image GPU still leaves a complete sp1 video group.
+        resolved = contrasts.make_configs(config, 'system-xdit')['reference']['phases'][0]
+        self.assertEqual(contrasts.resolved_options('xdit', resolved['options'], 2)['forms'], ['sp1'])
+        # Only a partition that leaves no video GPU is unsupported.
+        config['phases'][0]['options']['reserve_image_gpus'] = 2
+        with self.assertRaisesRegex(ValueError, 'no complete fixed SP1'):
             contrasts.make_configs(config, 'system-xdit')
+        # Under 6429a94's registry (cfg2 xdit) the two-GPU partition has no complete CFG2 pair.
+        with self.assertRaisesRegex(ValueError, 'no complete fixed CFG2'):
+            contrasts.resolved_options('xdit', resolved['options'], 2, contrasts.LEGACY_POLICY_SOURCE)
         for name in ('minimum-pair', 'pruning', 'remaining-work'):
             with self.subTest(contrast=name), self.assertRaises(ValueError):
                 contrasts.make_configs(base, name)

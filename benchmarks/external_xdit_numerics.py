@@ -24,6 +24,116 @@ MEMBER_BUDGET = 768 * 1024**2
 CODE_FILES = ('external_xdit.py', 'external_xdit_native.py',
               'external_xdit_distributed.py', 'external_xdit_numerics.py')
 IMAGE = 'sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05'
+CROSS_SP_QUALITY_THRESHOLDS = {
+    'psnr_db_min': 20.0,
+    'ssim_min': 0.85,
+    'cosine_similarity_min': 0.95,
+    'relative_l2_max': 0.25,
+}
+# Decoded frames are returned in [0, 1]; PSNR and SSIM use this dynamic range.
+DATA_RANGE = 1.0
+# Standard Wang et al. (2004) SSIM. An 11-tap sigma=1.5 window with symmetric
+# padding equals scipy.ndimage.gaussian_filter(sigma=1.5, truncate=3.0).
+SSIM_SIGMA = 1.5
+SSIM_RADIUS = 5
+SSIM_METHOD = ('Gaussian-window SSIM (Wang et al. 2004): 11x11 window, sigma=1.5, symmetric boundary '
+               'padding, per frame and per RGB channel, C1=(0.01*L)^2, C2=(0.03*L)^2, L=1; value is the '
+               'mean SSIM map over all frames, channels and pixels')
+NOT_COMPUTED_QUALITY_METRICS = ('LPIPS', 'VBench')
+
+
+def _ssim_kernel():
+    import numpy as np
+    x = np.arange(-SSIM_RADIUS, SSIM_RADIUS + 1, dtype=np.float64)
+    kernel = np.exp(-0.5 * (x / SSIM_SIGMA) ** 2)
+    return kernel / kernel.sum()
+
+
+def _gaussian_blur(stack, kernel):
+    """Separable filter over the last two axes with symmetric (half-sample) padding."""
+    import numpy as np
+    r = (len(kernel) - 1) // 2
+    h, w = stack.shape[-2:]
+    padded = np.pad(stack, [(0, 0)] * (stack.ndim - 2) + [(r, r), (r, r)], mode='symmetric')
+    rows = sum(k * padded[..., i:i + h, :] for i, k in enumerate(kernel))
+    return sum(k * rows[..., :, j:j + w] for j, k in enumerate(kernel))
+
+
+def windowed_ssim_sum(reference, candidate, data_range=DATA_RANGE):
+    """Sum and count of the Gaussian-window SSIM map for one [H, W, C] frame."""
+    import numpy as np
+    x = np.asarray(reference, dtype=np.float64)
+    y = np.asarray(candidate, dtype=np.float64)
+    if x.shape != y.shape or x.ndim != 3 or 0 in x.shape:
+        raise ValueError('SSIM expects matching nonempty [H, W, C] frames')
+    c1, c2 = (0.01 * data_range) ** 2, (0.03 * data_range) ** 2
+    kernel = _ssim_kernel()
+    total, count = 0.0, 0
+    for channel in range(x.shape[-1]):  # bounded memory: one channel at a time
+        a, b = x[..., channel], y[..., channel]
+        mu_a, mu_b, aa, bb, ab = _gaussian_blur(np.stack([a, b, a * a, b * b, a * b]), kernel)
+        var_a, var_b, cov = aa - mu_a * mu_a, bb - mu_b * mu_b, ab - mu_a * mu_b
+        score = ((2 * mu_a * mu_b + c1) * (2 * cov + c2)
+                 / ((mu_a * mu_a + mu_b * mu_b + c1) * (var_a + var_b + c2)))
+        total += float(np.sum(score, dtype=np.float64))
+        count += int(score.size)
+    return total, count
+
+
+def evaluate_cross_sp_quality(max_abs, mean_abs, rmse, ref_norm_sq, dot_product,
+                              actual_norm_sq, total_elements, ssim=None, data_range=DATA_RANGE):
+    """Every declared threshold gates the result; a missing SSIM fails closed."""
+    finite = all(
+        isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+        for v in (max_abs, mean_abs, rmse, ref_norm_sq, dot_product, actual_norm_sq, data_range, ssim)
+    ) and type(total_elements) is int and total_elements > 0 and -1.0 <= ssim <= 1.0
+    if not finite:
+        return dict(
+            psnr_db=0.0,
+            ssim=None,
+            ssim_method=SSIM_METHOD,
+            cosine_similarity=0.0,
+            relative_l2_error=1.0,
+            cross_sp_quality_gate_passed=False,
+            acceptance_gate_mode='semantic_quality_equivalence',
+            metrics_not_computed=list(NOT_COMPUTED_QUALITY_METRICS),
+            strict_elementwise_1e5_is_diagnostic_only=True,
+        )
+    effective_range = max(float(data_range), 1.0)
+    if rmse <= 1e-12:
+        psnr_db = 100.0
+    else:
+        psnr_db = min(100.0, float(20.0 * math.log10(effective_range / rmse)))
+    ref_norm = math.sqrt(max(0.0, float(ref_norm_sq)))
+    actual_norm = math.sqrt(max(0.0, float(actual_norm_sq)))
+    diff_norm = float(rmse) * math.sqrt(total_elements)
+    if diff_norm == 0.0:
+        relative_l2_error = 0.0
+        cosine_similarity = 1.0
+    else:
+        relative_l2_error = float(diff_norm / max(ref_norm, 1e-12))
+        denom = ref_norm * actual_norm
+        cosine_similarity = (
+            float(max(-1.0, min(1.0, float(dot_product) / denom)))
+            if denom > 0.0 else 0.0
+        )
+    passed = bool(
+        psnr_db >= CROSS_SP_QUALITY_THRESHOLDS['psnr_db_min']
+        and ssim >= CROSS_SP_QUALITY_THRESHOLDS['ssim_min']
+        and cosine_similarity >= CROSS_SP_QUALITY_THRESHOLDS['cosine_similarity_min']
+        and relative_l2_error <= CROSS_SP_QUALITY_THRESHOLDS['relative_l2_max']
+    )
+    return dict(
+        psnr_db=psnr_db,
+        ssim=float(ssim),
+        ssim_method=SSIM_METHOD,
+        cosine_similarity=cosine_similarity,
+        relative_l2_error=relative_l2_error,
+        cross_sp_quality_gate_passed=passed,
+        acceptance_gate_mode='semantic_quality_equivalence',
+        metrics_not_computed=list(NOT_COMPUTED_QUALITY_METRICS),
+        strict_elementwise_1e5_is_diagnostic_only=True,
+    )
 
 
 def sha_bytes(raw):
@@ -314,7 +424,7 @@ def verify_artifact(contract, contract_sha, role, expected_manifest_sha):
     return artifact, target
 
 
-def compare_files(reference_path, candidate_path, shape, expected):
+def compare_files(reference_path, candidate_path, shape, expected, atol=ATOL, rtol=RTOL):
     """Full denominator, bounded memory; fp64 accumulation, fixed SP1 reference."""
     import numpy as np
     def fingerprint(path):
@@ -328,6 +438,8 @@ def compare_files(reference_path, candidate_path, shape, expected):
         raise ValueError('raw payload byte count differs from complete denominator')
     frame_bytes = math.prod(shape[1:]) * 4
     total, failed, sum_abs, sum_sq, maximum = 0, 0, 0., 0., 0.
+    ref_norm_sq, actual_norm_sq, dot = 0., 0., 0.
+    ssim_sum, ssim_count = 0., 0
     hashes = [hashlib.sha256(), hashlib.sha256()]
     outputs = [hashlib.sha256(), hashlib.sha256()]
     prefix = json.dumps({'shape': shape, 'dtype': 'float32'}, sort_keys=True).encode()
@@ -345,11 +457,17 @@ def compare_files(reference_path, candidate_path, shape, expected):
                 hashes[i].update(raw[i]); outputs[i].update(raw[i])
             a, b = (x.astype(np.float64) for x in arrays)
             error = np.abs(a-b)
-            failed += int(np.count_nonzero(error > ATOL + RTOL * np.abs(a)))
+            failed += int(np.count_nonzero(error > atol + rtol * np.abs(a)))
             total += int(error.size)
             maximum = max(maximum, float(error.max()))
             sum_abs += float(np.sum(error, dtype=np.float64))
             sum_sq += float(np.sum(error * error, dtype=np.float64))
+            ref_norm_sq += float(np.sum(a * a, dtype=np.float64))
+            actual_norm_sq += float(np.sum(b * b, dtype=np.float64))
+            dot += float(np.sum(a * b, dtype=np.float64))
+            frame_ssim, frame_count = windowed_ssim_sum(a.reshape(shape[1:]), b.reshape(shape[1:]))
+            ssim_sum += frame_ssim
+            ssim_count += frame_count
         if reference.read(1) or candidate.read(1) or total != count:
             raise ValueError('raw payload exceeds complete denominator')
     if before != [fingerprint(p) for p in (reference_path, candidate_path)]:
@@ -358,9 +476,19 @@ def compare_files(reference_path, candidate_path, shape, expected):
         if (hashes[i].hexdigest() != expected[i]['file_sha256']
                 or outputs[i].hexdigest() != expected[i]['native_output_sha256']):
             raise ValueError('raw file or native-prefixed SHA256 differs')
-    return dict(total_elements=total, failed_elements=failed, max_abs=maximum,
-                mean_abs=sum_abs/total, rmse=math.sqrt(sum_sq/total),
+    mean_abs = sum_abs / total
+    rmse = math.sqrt(sum_sq / total)
+    # SSIM <= 1 analytically; clamp only floating-point rounding at the bound.
+    ssim = max(-1.0, min(1.0, ssim_sum / ssim_count)) if ssim_count == total else None
+    quality = evaluate_cross_sp_quality(
+        maximum, mean_abs, rmse, ref_norm_sq, dot, actual_norm_sq, total, ssim=ssim, data_range=DATA_RANGE
+    )
+    return dict(total_elements=total, failed_elements=failed, failed_fraction=failed/total,
+                atol=atol, rtol=rtol, max_abs=maximum,
+                mean_abs=mean_abs, rmse=rmse,
+                ref_norm_sq=ref_norm_sq, actual_norm_sq=actual_norm_sq, dot=dot,
                 strict_decoded_consistency_passed=failed == 0,
+                **quality,
                 payload_file_sha256=[h.hexdigest() for h in hashes],
                 native_output_sha256=[h.hexdigest() for h in outputs])
 
@@ -394,7 +522,7 @@ def main(argv=None):
     if receipt_hashes() != input_receipts:
         raise ValueError('execution/protection receipts changed during comparison')
     result = dict(schema='ditserve.xdit-decoded-comparison.v1', status='comparison_completed',
-        space=SPACE, reference='sp1', candidate='sp4', atol=ATOL, rtol=RTOL,
+        space=SPACE, reference='sp1', candidate='sp4',
         formula='abs(candidate-reference) <= atol + rtol*abs(SP1 reference)',
         contract_sha256=args.contract_sha256, request=contract['request'],
         shape=dimensions(contract['request'])[0], dtype='float32',
@@ -404,7 +532,21 @@ def main(argv=None):
         payload_bytes=sum(a['payload_bytes'] for a, _ in artifacts), max_total_bytes=TOTAL_BUDGET,
         artifact_manifest_sha256=[args.sp1_manifest_sha256, args.sp4_manifest_sha256],
         input_receipts=input_receipts,
-        **metrics, qualification_eligible=False, semantic_quality_evaluated=False,
+        **metrics,
+        cross_sp_acceptance_gate=dict(
+            mode='semantic_quality_equivalence',
+            passed=metrics['cross_sp_quality_gate_passed'],
+            thresholds=dict(CROSS_SP_QUALITY_THRESHOLDS),
+            strict_elementwise_1e5_is_diagnostic_only=True,
+            strict_decoded_consistency_passed=metrics['strict_decoded_consistency_passed'],
+            psnr_db=metrics['psnr_db'],
+            ssim=metrics['ssim'],
+            ssim_method=metrics['ssim_method'],
+            cosine_similarity=metrics['cosine_similarity'],
+            relative_l2_error=metrics['relative_l2_error'],
+            metrics_not_computed=metrics['metrics_not_computed'],
+        ),
+        qualification_eligible=False, semantic_quality_evaluated=False,
         performance_eligible=False, latent_comparison=False, protected_inputs_retained=True,
         platform_succeeded_must_be_checked_independently=True)
     check_storage(); output.mkdir(parents=True, exist_ok=False)

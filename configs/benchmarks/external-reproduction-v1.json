@@ -29,6 +29,81 @@
     }
   ],
   "three_model_mixture": "not in the current frozen formal protocol; requires a separately versioned protocol and calibration",
+  "baseline_comparison_tracks": {
+    "in_framework_policy_comparison": {
+      "scope": "Wan + SD3.5 mixed-workload main table on the shared verified DitServe executor comparing scheduling mechanisms",
+      "comparison_cells": [
+        "wan21-sd35",
+        "wan22-sd35"
+      ],
+      "policies": [
+        "Static-<Form>",
+        "TetriServe-policy",
+        "SBP-ESP",
+        "EDF-BF",
+        "DitServe"
+      ],
+      "ablation_only_policies": [
+        "EDF-CFG2",
+        "CFG2-First"
+      ],
+      "executor": "shared verified DitServe executor"
+    },
+    "external_system_native_intersection": {
+      "scope": "Native supported workload intersections for external systems",
+      "TetriServe": {
+        "models": [
+          "sd35"
+        ],
+        "shapes": [
+          "sd35-512",
+          "sd35-1024"
+        ],
+        "workload": "native SD3.5 512^2/1024^2 image workloads"
+      },
+      "xDiT": {
+        "models": [
+          "wan21",
+          "wan22",
+          "sd35"
+        ],
+        "workload": "native single-model fixed partition/SP workloads"
+      }
+    }
+  },
+  "quality_and_numerical_verification": {
+    "acceptance_gate_hierarchy": {
+      "same_parallelism_segmentation_gate": {
+        "scope": "Uninterrupted vs. round-segmented/resumed execution at the same parallelism degree (e.g., fixed-CFG2 EDF-CFG2 vs. Block-CFG2, or fixed-SP2 round_sp2_full vs. round_sp2_chunked)",
+        "mode": "strict_elementwise_equivalence",
+        "atol": 1e-05,
+        "rtol": 1e-05,
+        "require_bitwise_when_deterministic": true
+      },
+      "cross_sp_acceptance_gate": {
+        "scope": "Execution across different sequence-parallel degrees (SP1 vs. SP2/SP4/SP8 or elastic CFG2 <-> CFG2SPk)",
+        "mode": "semantic_quality_equivalence",
+        "require_finite_outputs": true,
+        "cosine_similarity_min": 0.95,
+        "relative_l2_max": 0.25,
+        "psnr_db_min": 20.0,
+        "ssim_min": 0.85,
+        "lpips_max": 0.15,
+        "thresholds": {
+          "cosine_similarity_min": 0.95,
+          "relative_l2_max": 0.25,
+          "psnr_db_min": 20.0,
+          "ssim_min": 0.85,
+          "lpips_max": 0.15
+        },
+        "diagnostic_elementwise_tolerance": {
+          "atol": 1e-05,
+          "rtol": 1e-05
+        },
+        "strict_elementwise_1e5_is_diagnostic_only": true
+      }
+    }
+  },
   "sources": [
     {
       "id": "TetriServe",

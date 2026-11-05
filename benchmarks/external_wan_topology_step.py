@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 from contextlib import redirect_stdout
 import json
+import math
 import os
 from pathlib import Path
 import sys
@@ -19,6 +20,9 @@ import external_wan_first_step as observer
 
 SCHEMA = 'ditserve.wan-topology-first-step.v1'
 OBSERVER_COMMIT = '45685bea933790a5f335f614cd1e96d7e2d6f44f'
+CROSS_SP_THRESHOLDS = {'relative_l2_max': 0.25, 'cosine_similarity_min': 0.95}
+COSINE_BASIS = ('measured cosine when the boundary row carries one; otherwise the exact lower bound '
+                'cos >= sqrt(1 - relative_l2^2), valid for relative_l2 < 1 (the frozen observer emits no cosine)')
 PINNED = {
     'external_wan_first_step.py':'25969edc40b315baabc726503cf59b9920fd0913d1ea34f0eca47abfbffb6b8b',
     'external_xdit_native.py':'b1a2fec877a063d0a750015c4bbbca6105cc32dd7eb904a340884dab0a99f839',
@@ -81,6 +85,32 @@ def geometry_contract(config, oracle, world):
         expected_padding_tokens=0,model_config_sha256=observer.sha(observer.canonical(config)))
 
 
+def boundary_gate(comparison, thresholds=None):
+    """Check every declared cross-SP threshold for one boundary; unknown metrics fail closed."""
+    limits = CROSS_SP_THRESHOLDS if thresholds is None else thresholds
+    def finite(value):
+        return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+    if comparison.get('bitwise_equal') is True:
+        relative_l2, cosine, basis = 0.0, 1.0, 'bitwise_equal'
+    else:
+        relative_l2 = comparison.get('relative_l2')
+        relative_l2 = float(relative_l2) if finite(relative_l2) and relative_l2 >= 0 else None
+        cosine, basis = comparison.get('cosine_similarity'), 'measured'
+        if finite(cosine):
+            cosine = float(cosine)
+        elif relative_l2 is not None and relative_l2 < 1:
+            cosine, basis = math.sqrt(1.0 - relative_l2 * relative_l2), 'lower_bound_from_relative_l2'
+        else:
+            cosine, basis = None, 'unavailable'
+    failures = []
+    if relative_l2 is None or relative_l2 > limits['relative_l2_max']:
+        failures.append('relative_l2')
+    if cosine is None or cosine < limits['cosine_similarity_min']:
+        failures.append('cosine_similarity')
+    return dict(passed=not failures, relative_l2=relative_l2, cosine_similarity=cosine,
+                cosine_basis=basis, failed_thresholds=failures)
+
+
 def aggregate(rows, binding, world, launcher, reference_sha256):
     if world not in (2,8): raise ValueError('unsupported aggregate topology')
     # Reuse every old UUID/source/cleanup/call-count check, then close its
@@ -98,10 +128,35 @@ def aggregate(rows, binding, world, launcher, reference_sha256):
         compared = [b for b in row['boundaries'] if 'comparison' in b]
         if len(compared) != (18 if row['rank']==0 else 0):
             raise ValueError('only rank0 must compare all 18 complete boundaries')
+    named = [(b['name'], boundary_gate(b['comparison'])) for b in first['boundaries'] if 'comparison' in b]
+    max_rel_l2 = max((g['relative_l2'] for _, g in named if g['relative_l2'] is not None), default=None)
+    min_cosine = min((g['cosine_similarity'] for _, g in named if g['cosine_similarity'] is not None), default=None)
+    failed_boundaries = {name: g['failed_thresholds'] for name, g in named if not g['passed']}
+    bounded_drift_passed = bool(named) and not failed_boundaries
     result.update(schema=SCHEMA,diagnostic_completed=True,launcher=launcher,
         reference_summary_sha256=reference_sha256,topology_contract=first['topology_contract'],
         original_observer_schema=observer.SCHEMA,observed_boundaries_per_rank=18,
-        compatibility_scope='same byte-frozen observer and original source binding; topology-only launcher')
+        compatibility_scope='same byte-frozen observer and original source binding; topology-only launcher',
+        cross_sp_acceptance_gate=dict(
+            mode='semantic_quality_equivalence',
+            reference_topology='sp1',
+            candidate_topology=f'sp{world}',
+            passed=bounded_drift_passed,
+            max_relative_l2=max_rel_l2,
+            min_cosine_similarity=min_cosine,
+            cosine_basis=COSINE_BASIS,
+            failed_boundaries=failed_boundaries,
+            relative_l2_max=CROSS_SP_THRESHOLDS['relative_l2_max'],
+            cosine_similarity_min=CROSS_SP_THRESHOLDS['cosine_similarity_min'],
+            metrics_not_computed=['PSNR', 'SSIM', 'LPIPS', 'VBench'],
+            strict_elementwise_1e5_is_diagnostic_only=True,
+            all_boundaries_within_1e5_tolerance=result.get('all_boundaries_within_tolerance'),
+            rationale=(
+                f'Cross-SP (sp{world} vs sp1) boundary drift in BF16 Ulysses attention is evaluated '
+                'as bounded numerical drift (relative L2 and cosine per boundary) rather than 1e-5 elementwise '
+                'equality; no perceptual or semantic quality metric is computed here'
+            ),
+        ))
     return result
 
 

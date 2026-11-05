@@ -40,7 +40,7 @@ worker 以完整 GPU UUID 绑定设备，模型使用 `cuda:0`。显式 `actions
 
 `output_mode` 为 `file`、`digest` 或 `check`。无下游质量评测的 serving 使用 `check`，质量子集保留文件并登记依赖。`--suite preempt` 固定 `edf-cfg2/block-cfg2`、CFG2 和 digest；`native_exact.py` 核对完整输入、runtime、输出形状/dtype/有限性及实际停止。`--no-preemption-diagnostic` 用低负载全视频对照测常驻开销，必须由 `native_exact.py --no-preemption` 确认零停止。哈希相同不替代权重完整性验证，也不证明跨 SP 或 FP32 一致。
 
-各策略共享相同 trace、图像批次上限和输出设置。`--image-batch` 默认 1；大于 1 时必须有从 2 到上限每个批次的实测 `sd35-preflight.batch_ms`，缺失即拒绝配置。连续批 `options.continuous_batch` 与原子 `image_batch>1` 互斥，原生 serving 生成器不自动开启连续批。批处理成员、实际 batch_size 和批耗时必须在执行记录中可核对。
+各策略共享相同 trace、图像批次上限和输出设置。`--image-batch` 默认 1；大于 1 时必须有从 2 到上限每个批次的实测 `sd35-preflight.batch_ms`，缺失即拒绝配置。连续批 `options.continuous_batch` 与原子 `image_batch>1` 互斥，原生 serving 生成器不自动开启连续批：只有显式 `--continuous-batch N`（N>0）才开启，且 worker 与阶段选项同步；profile 缺少实测 `batch_step_ms`/`prepare_ms`/`finish_ms` 时补入的占位值在 `benchmark.continuous_batch.cost_provenance` 中标为 synthetic，不能当实测结论。`fit_native_profile.py` 只从连续批实测阶段（`prepare_cb_ms`/`decode_cb_ms`）和含 batch=1 的实测轮次写这些字段，缺失即不写。`--memory-strategy` 默认不设；worker 配置只接受描述符与 worker 实际行为一致的策略（目前仅 `s2_wan_cpu_sd35_gpu`），S0–S4 的整体对比由 `cross_modal_memory_study.py` 分析给出，不是可执行 worker 配置。批处理成员、实际 batch_size 和批耗时必须在执行记录中可核对。
 
 CLI 默认按 trace seed 可复现地随机排列策略，可用 `--policy-order/--order-seed` 控制；多种顺序和重复运行用于识别顺序漂移。warmup 在到达时钟前完成，模型加载/预热不计入请求延迟，全部登记 GPU 从阶段开始到清理确认仍计费。
 
@@ -57,11 +57,11 @@ CLI 默认按 trace seed 可复现地随机排列策略，可用 `--policy-order
 
 | 策略 | 论文名 | 来源 | 行为 | 未复现部分 |
 | --- | --- | --- | --- | --- |
-| `xdit`（=`xdit-sp1`） | xDiT 固定分区 | 一个明确的 xDiT 完全不优化静态划分基线（`cfg=1, sp=1`） | 两模型静态划分 GPU，图像份额按 trace 的 GPU 时间占比预先算出（或默认 1/4）；视频不开启任何并行优化（`cfg=1, sp=1`，单卡独立执行）、FCFS、一旦开始运行到底不抢占（`hold_diffuse=true`） | 不开启 CFG 并行、序列并行、弹性扩缩容或子步抢占 |
+| `xdit`（=`xdit-sp1`） | xDiT 固定分区 | 一个明确的 xDiT 完全不优化静态划分基线（`cfg=1, sp=1`） | 两模型静态划分 GPU，图像份额按 trace 的 GPU 时间占比预先算出（或默认 1/4），并截断到至少留 1 张视频卡（`sp1`）；视频不开启任何并行优化（`cfg=1, sp=1`，单卡独立执行）、FCFS、一旦开始运行到底不抢占（`hold_diffuse=true`） | 不开启 CFG 并行、序列并行、弹性扩缩容或子步抢占 |
 | `static-<form>` | `Static-<Form>`（如 `Static-CFG2SP4`） | 最优静态并行基线 | 视频固定使用所选静态并行形态（如 `CFG2SP4`），不跨轮改变并行度 | — |
-| `tetriserve` | TetriServe-policy / TetriServe (re-impl.) | ASPLOS'26 | step 级弹性 SP，每 `round_steps` 步一轮；每轮对可动视频做 0/1 group knapsack：价值=保持按时的请求数，代价=最小可行 GPU 数；剩余 GPU 先给救不回的请求再按 EDF 加宽 | 原文 batching、多节点；round 用 step 数近似固定时长 |
-| `sbp-esp` | SBP-ESP | GenServe 的方法（arXiv:2604.04335） | step 抢占、逐步 deadline knapsack、弹性 SP、单卡 VAE；图像 batch 服从统一显式上限和实测画像 | 原文效用函数与完整系统未复现 |
-| `edf-bestfit` | EDF-BF | GF-DiT 的方法（arXiv:2606.13501）`EdfBestFit` | EDF 次序取能按时完成的最小 size，否则取剩余可放的最大 size；再按 EDF 逐级加宽剩余 GPU | GFC 后端单独验证；当前组选择仍受拓扑对齐约束，未复现完整任意组调度 |
+| `tetriserve` | TetriServe-policy / TetriServe (re-impl.) | ASPLOS'26 | step 级弹性 SP，每 `round_steps` 步一轮，轮内视频占住其 GPU，图像和其他视频都不能占用（无子步抢占）；剪除被支配形态（`prune_dominated=true`）；每轮对可动视频做 0/1 group knapsack：价值=保持按时的请求数，代价=最小可行 GPU 数；剩余 GPU 先给救不回的请求再按 EDF 加宽 | 原文 batching、多节点；round 用 step 数近似固定时长 |
+| `sbp-esp` | SBP-ESP | GenServe 的方法（arXiv:2604.04335） | step 抢占、逐步 deadline knapsack、弹性 SP、单卡 VAE；所有迟到请求都排到可按时请求之后（`late_short_ms=0`）；图像 batch 服从统一显式上限和实测画像 | 原文效用函数与完整系统未复现 |
+| `edf-bestfit` | EDF-BF | GF-DiT 的方法（arXiv:2606.13501）`EdfBestFit` | 严格 EDF（`demote_late=false`，迟到请求不降级）次序取能按时完成的最小 size，否则取剩余可放的最大 size；再按 EDF 逐级加宽剩余 GPU | GFC 后端单独验证；当前组选择仍受拓扑对齐约束，未复现完整任意组调度 |
 | `ditserve` | DitServe | 本文 | `cfg2-first` 规则 + block 子步抢占（doorbell）+ pair-fit 图像放置 | 输出保持需同形态配对验收；跨 SP 不承诺逐位一致 |
 
 **消融（`--suite ablation`，以 `ditserve` 为满配逐项拿掉）**：`abl-no-block`（整步量子）、`abl-no-prune`（不剪支配形态）、`abl-no-mindeg`（允许单卡 admit）、`abl-first-fit`（图像放最低号空卡）、`block-cfg2`（只保留 block 抢占、不弹性）、`cfg2-first`（CFG2-First：step 边界弹性、剪除被支配形态、视频不窄于一对 CFG GPU、每卡效率 ≥0.9 才加宽；去掉子步抢占与 pair-fit 放置）、`edf-cfg2`（EDF-CFG2：每个视频固定一对 CFG GPU、EDF、图像在视频 step 边界取卡；全部拿掉）、`ditserve-v1`（旧手调 knapsack 规划器）。
@@ -99,7 +99,7 @@ CLI 默认按 trace seed 可复现地随机排列策略，可用 `--policy-order
 **双层数值与质量验收门禁（Two-Tier Numerical & Quality Acceptance Gate）**
 
 - **Tier 1 — 同并行度分段续跑门禁（Same-Parallelism Segmentation Gate）**：在**相同**并行度下，不中断执行与按轮分段/中断续跑执行（例如固定 CFG2 下 `EDF-CFG2` vs. `Block-CFG2`，或固定 SP2 下 `round28` vs. `13-chunk`）要求严格的 `atol=rtol=1e-5` / 逐位一致（bitwise equivalence），用于验证轮边界或子步边界状态交接引入零数值损坏。
-- **Tier 2 — 跨 SP 度语义质量等价门禁（Cross-SP Acceptance Gate）**：跨**不同**序列并行度（`SP1` vs. `SP2`/`SP4`/`SP8` 或 `CFG2` $\leftrightarrow$ `CFG2SPk`）的执行或弹性切换，会因 BF16 Ulysses all-to-all 与注意力归约顺序的非结合性而自然产生 $>10^{-5}$ 的逐元素差异。因此，跨 SP 验收采用**语义/感知质量等价（semantic/perceptual quality equivalence）**门禁：输出全有限（finite outputs）、有界余弦相似度 $\ge 0.95$ / 相对 L2 误差 $\le 0.25$、PSNR $\ge 20\text{ dB}$、SSIM $\ge 0.85$、LPIPS 以及 VBench 质量等价；而 `atol=rtol=1e-5` 逐元素差异仅作为非阻塞的诊断遥测（non-blocking diagnostic telemetry）记录。
+- **Tier 2 — 跨 SP 度有界漂移门禁（Cross-SP Acceptance Gate）**：跨**不同**序列并行度（`SP1` vs. `SP2`/`SP4`/`SP8` 或 `CFG2` $\leftrightarrow$ `CFG2SPk`）的执行或弹性切换，会因 BF16 Ulysses all-to-all 与注意力归约顺序的非结合性而自然产生 $>10^{-5}$ 的逐元素差异，因此跨 SP 验收采用有界漂移门禁，`atol=rtol=1e-5` 逐元素差异仅作为非阻塞的诊断遥测（non-blocking diagnostic telemetry）记录。实际计算并检查的指标：xDiT 解码帧 SP1/SP4 对照（`external_xdit_numerics.py`）要求输出全有限、余弦相似度 $\ge 0.95$、相对 L2 误差 $\le 0.25$、PSNR $\ge 20\text{ dB}$、SSIM $\ge 0.85$（数据范围 1；Wang 等 2004 高斯窗 SSIM，11×11、$\sigma=1.5$、对称边界、逐帧逐通道均值，与 `native_quality.py` 的定义一致），缺少 SSIM 时门禁失败；Wan 首步 SP2/SP8 边界（`external_wan_topology_step.py`）逐边界检查相对 L2 $\le 0.25$ 与余弦 $\ge 0.95$，冻结观测器未输出余弦时用精确下界 $\sqrt{1-\text{relL2}^2}$，无法得到任一指标即失败；SD3.5 与 TetriServe 跨 SP 对照只检查余弦与相对 L2。LPIPS 与 VBench 不在任何跨 SP 门禁中计算；`semantic_quality_equivalence` 只是模式名，不代表语义或感知质量已验证，相应质量结论仍须走 P4/VBench 独立流程。
 
 默认长期交付为日期事项报告与 `summary.json`，详见[结果处理](results.md)。执行原始记录保留至分析/评测依赖闭合；摘要不支持原始重评。`completed` 不表示性能、数值或语义资格通过，未完成评测不得把依赖标为已闭合。主结果须有多seed、足量请求、失败分母和误差区间；有限trace的按时goodput不等于稳定容量。
 
@@ -151,7 +151,7 @@ P0 用 `wan21-dev/sd35-dev` 或 `wan22-dev/sd35-dev` 校准，再用 `serve --sp
 
 新的随机分区不能消除既往探索污染。协议另外绑定 `known-exploration-prompts-v1.json`：从当前可读的 13 份历史原始记录与固定预热文本提取 162 个规范化 prompt 哈希，并记录每份来源哈希；这些 prompt 只允许进入 development。源 pool 已标 `split=dev` 或 `service_split=dev` 的全部文本也被排除出 calibration/test，包括其空白变体。若 pool 声明有旧 dev 集而样本角色丢失，生成器失败。该排除仅覆盖已知本地历史与 pool 角色，不能据此宣称未知远端、私有或未留存探索从未见过测试 prompt；发现新历史须更新排除清单和协议身份，再冻结实验。
 
-P0 的 `p0_diagnostics` 现在独立冻结：contention 为 40 请求、50/50、bursty 活跃段负载 1.2、图像 SLO×1.1、视频×1.5，且关闭 lazy deadline 筛选（`lazy_preemption=false`），用于在有图像等待时检验真实安全点停止/恢复路径；no-preemption 为 40 个纯视频、Poisson、负载 0.1，保持 lazy 开启。每种场景内部的 EDF-CFG2 与 Block-CFG2 共享同一 trace/SLO，两个场景之间允许不同到达和构成。所有覆盖值写入配置 `benchmark.p0_diagnostic_controls`；原 CLI 请求值单独保留，不伪装为正式矩阵设置。
+P0 的 `p0_diagnostics` 现在独立冻结：contention 为 40 请求、50/50、负载 1.2、图像 SLO×1.1、视频×1.5，到达模式在 v1 为 bursty 活跃段、在 v2 为 gamma（v2 已删除 bursty），且关闭 lazy deadline 筛选（`lazy_preemption=false`），用于在有图像等待时检验真实安全点停止/恢复路径；no-preemption 为 40 个纯视频、Poisson、负载 0.1，保持 lazy 开启。每种场景内部的 EDF-CFG2 与 Block-CFG2 共享同一 trace/SLO，两个场景之间允许不同到达和构成。诊断只使用自身冻结的负载、构成与到达模式：`formal_benchmark.py` 对诊断跳过正式矩阵的 load/mix/pattern 校验，改为校验诊断模式本身是否在协议 `patterns` 中声明（未声明即报协议内部不一致），`kairos_formal_benchmark.sh` 的 P0 分支也不再传 `--load/--video-fraction/--pattern`。所有覆盖值写入配置 `benchmark.p0_diagnostic_controls`；原 CLI 请求值（未传时为 null）单独保留在 `requested_workload_before_diagnostic_override`，不伪装为正式矩阵设置。
 
 contention 的压力设置不能保证真实 GPU 必然停止，`native_exact` 仍必须观测到实际 stop 才通过；no-preemption 必须为零。关闭 lazy 只验证停止路径，不证明正式 deadline 门铃策略收益。P1 必须另测 `lazy_preemption=true` 下的实际停止、无抢占开销与端到端收益；正式主表保持原图像 SLO×2.5 和 lazy 默认开启。若诊断零停止，应调查执行证据，不自动调 SLO 重试直到得到有利结果。
 
@@ -223,7 +223,7 @@ PYTHONPATH=workers python3 benchmarks/collect_stage_evidence.py \
 
 ### P2 配对比较与单机制消融（2026-11-03）
 
-`benchmarks/p2_contrasts.py` 从至少三个 seed 的冻结配置准备 reference/candidate 两臂、计划和空证据模板。支持固定/弹性 block 对照、pruning、minimum-pair、placement、lazy、remaining-work 和 continuous doorbell；也可准备与指定系统策略的同框架比较。它审查实际 policy/options 默认值，拒绝被显式 options 抹成同臂的消融。doorbell 对照统一 block 检查间隔；仅 CFG2 的配置不能用于证明形态剪枝/扩组收益。xDiT 分区基线若没有 image 分区外的合法 CFG2 组（例如两卡）直接标为不可支持，不能将其不可执行算成 DitServe 的胜出。
+`benchmarks/p2_contrasts.py` 从至少三个 seed 的冻结配置准备 reference/candidate 两臂、计划和空证据模板。支持固定/弹性 block 对照、pruning、minimum-pair、placement、lazy、remaining-work 和 continuous doorbell；也可准备与指定系统策略的同框架比较。它审查实际 policy/options 默认值，拒绝被显式 options 抹成同臂的消融。doorbell 对照统一 block 检查间隔；仅 CFG2 的配置不能用于证明形态剪枝/扩组收益。当前注册表中 `xdit` 为 `xdit-sp1`：只有图像分区之外不剩视频 GPU 时才标为不可支持（两卡留一张图像卡仍可执行）；6429a94 时代的源码包按旧注册表解析，`xdit` 仍为固定 CFG2，此时若图像分区外没有合法 CFG2 组（例如两卡）直接标为不可支持。两种情况都不能把不可执行算成 DitServe 的胜出。
 
 示例：`PYTHONPATH=workers python benchmarks/p2_contrasts.py --protocol configs/benchmarks/formal-mixed-v1.json --workload-id <name> --config <seed301.json> --config <seed302.json> --config <seed303.json> --contrast block-elastic --contrast lazy --output-dir <new-dir>`。这些是可执行配置，工具本身不提交作业，也不绕过阶段资格。
 

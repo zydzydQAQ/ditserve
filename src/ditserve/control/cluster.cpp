@@ -967,7 +967,8 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             for (int gpu : group_of(*r)) mid_owner[gpu] = r;
     }
     // Round-based policies (TetriServe) hold their group inside an unfinished round
-    // unless a mid-step solver owner already claims the GPU.
+    // unless a mid-step solver owner already claims the GPU. Round policies have no
+    // block preemption, so the image placement below keeps images off held GPUs too.
     if (policy.rounds && round_steps > 1) {
         for (const Json* r : rows) {
             if (r->at("kind") != "video" || !r->value("prepared", false)) continue;
@@ -1177,7 +1178,10 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                     if (std::find(group.begin(), group.end(), gpu) != group.end()) score = 1;
                 }
                 if (score == 2 && hold_diffuse) continue;
-                if (score == 2 && policy.blocks && lazy && slack >= time_to_boundary(mid_owner[gpu])) continue;
+                // Taking a held GPU is block (sub-step) preemption; a policy without it waits for
+                // the owner's step, chunked decode or round boundary like any other video does.
+                if (score == 2 && !policy.blocks) continue;
+                if (score == 2 && lazy && slack >= time_to_boundary(mid_owner[gpu])) continue;
                 const int gpu_fit = (image_placement == "pair_fit" ? fit(gpu) : 0) + (score == 1 ? companion_bonus(gpu) : 0);
                 if (score < rank) { rank = score; chosen = gpu; chosen_fit = gpu_fit; }
                 else if (score == rank && gpu_fit > chosen_fit) { chosen = gpu; chosen_fit = gpu_fit; }

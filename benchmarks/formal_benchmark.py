@@ -267,13 +267,17 @@ def assemble(p, model, records, runtime_facts):
 
 
 def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301,
-            load=None, video_fraction=None, pattern='poisson', suite='main', diagnostic=None,
+            load=None, video_fraction=None, pattern=None, suite='main', diagnostic=None,
             p1_plan=None, p1_pair=None, slo_scale=None, resolution_distribution=None, cv=None):
     is_v2 = p.get('schema') == 'ditserve.formal-protocol.v2'
+    # Record exactly what the caller asked for; diagnostics replace these.
+    requested_workload = dict(load=load, video_fraction=video_fraction, pattern=pattern)
     if load is None:
         load = p['anchor']['load'] if is_v2 and 'anchor' in p else 0.6
     if video_fraction is None:
         video_fraction = p['anchor']['video_fraction'] if is_v2 and 'anchor' in p else 0.2
+    if pattern is None:
+        pattern = p['anchor'].get('pattern', 'poisson') if is_v2 and 'anchor' in p else 'poisson'
     verify_seal(bundle)
     if bundle.get('schema') != BUNDLE_SCHEMA or bundle.get('model') != model or bundle.get('protocol_sha256') != canonical_hash(p):
         raise ValueError('profile bundle does not match model/protocol')
@@ -283,11 +287,14 @@ def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301
         raise ValueError('profile model identity differs from serving')
     if split not in ('development', 'test') or seed not in p['seeds'][split]:
         raise ValueError('seed/split is outside frozen protocol')
-    if load not in p['loads'] or video_fraction not in p['video_fractions']:
-        raise ValueError('load/mix is outside frozen protocol')
     patterns = {x['name']: x for x in p['patterns']}
-    if pattern not in patterns:
-        raise ValueError('arrival pattern is outside frozen protocol')
+    # Diagnostics run their own frozen load/mix/pattern, so the formal matrix
+    # applies only to non-diagnostic cells; the diagnostic pattern is checked below.
+    if not diagnostic:
+        if load not in p['loads'] or video_fraction not in p['video_fractions']:
+            raise ValueError('load/mix is outside frozen protocol')
+        if pattern not in patterns:
+            raise ValueError('arrival pattern is outside frozen protocol')
     if diagnostic not in (None, 'contention', 'no_preemption'):
         raise ValueError('unknown preemption diagnostic')
     if diagnostic and split != 'development':
@@ -304,6 +311,12 @@ def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301
         diagnostic_controls = p1_plan['roles'][diagnostic]
     elif p1_pair is not None:
         raise ValueError('P1 pair requires a frozen plan')
+    if diagnostic and diagnostic_controls['pattern'] not in patterns:
+        source = 'P1 plan role' if p1_plan is not None else 'p0_diagnostics'
+        raise ValueError(
+            f"{source} {diagnostic!r} uses arrival pattern {diagnostic_controls['pattern']!r}, which frozen "
+            f"protocol {p.get('id')!r} does not declare (declared: {sorted(patterns)}); the protocol is "
+            'internally inconsistent and needs a new version, not a requested-pattern workaround')
     if diagnostic:
         image_scale = diagnostic_controls['image_slo_scale']
         video_scale = diagnostic_controls['video_slo_scale']
@@ -453,8 +466,7 @@ def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301
     if diagnostic and p1_plan is None:
         config['benchmark']['p0_diagnostic_controls'] = copy.deepcopy(diagnostic_controls)
         config['benchmark']['scope'] = p['p0_diagnostics']['scope']
-        config['benchmark']['requested_workload_before_diagnostic_override'] = dict(
-            load=load, video_fraction=video_fraction, pattern=pattern)
+        config['benchmark']['requested_workload_before_diagnostic_override'] = requested_workload
     if p1_plan is not None:
         case_id = f'{p1_pair}-{diagnostic}-s{seed}'
         config['experiment'] = 'p1-' + case_id
@@ -506,7 +518,8 @@ def main():
             ap.add_argument('--slo-scale', type=float, default=None)
             ap.add_argument('--resolution-distribution', default=None)
             ap.add_argument('--cv', type=float, default=None)
-            ap.add_argument('--pattern', choices=['poisson', 'gamma', 'bursty'], default='poisson')
+            # Default: protocol anchor (v2) or poisson; P0 diagnostics ignore it.
+            ap.add_argument('--pattern', choices=['poisson', 'gamma', 'bursty'], default=None)
             ap.add_argument('--suite', choices=sorted(SUITES), default='main')
             ap.add_argument('--diagnostic', choices=['contention', 'no_preemption'])
     args = parser.parse_args()

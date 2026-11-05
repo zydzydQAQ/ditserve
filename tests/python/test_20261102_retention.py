@@ -192,6 +192,28 @@ class RetentionTests(unittest.TestCase):
         retention.write_json(self.destination / "retention-index.json", index)
         self.assertEqual(retention.verify_retention(self.root, self.destination)["report"], str(self.destination / "REPORT.md"))
 
+    def test_ephemeral_tmp_ledger_falls_back_to_persisted_acceptance_ledger(self):
+        ephemeral = self.root.parent / "ephemeral-ledgers/test.json"
+        ephemeral.parent.mkdir(parents=True)
+        ephemeral.write_text(json.dumps({"active": None, "charges": []}), encoding="utf-8")
+        self.run["budget_ledger"] = str(ephemeral)
+        self.run["budget"]["ledger"] = str(ephemeral)
+        self.publish()
+        self.manifest_report()
+        ephemeral.unlink()
+        ephemeral.parent.rmdir()
+        self.assertFalse(self.plan()["work"])
+        persisted = self.root / "acceptance/run01/ledgers/test.json"
+        persisted.parent.mkdir(parents=True)
+        persisted.write_text(json.dumps({"active": True, "charges": []}), encoding="utf-8")
+        plan_active = self.plan()
+        self.assertFalse(plan_active["work"])
+        self.assertIn("GPU accounting is still active", plan_active["protected"][0]["reason"])
+        persisted.write_text(json.dumps({"active": None, "charges": []}), encoding="utf-8")
+        plan_closed = self.plan()
+        self.assertEqual(len(plan_closed["work"]), 1)
+        self.assertEqual(len(plan_closed["acceptance"]), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

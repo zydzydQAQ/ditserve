@@ -57,7 +57,33 @@ Json trace_row(const std::string& id, const std::string& kind, double arrival, d
 }
 }
 
-int main() {
+int main(int argc, char** argv) {
+    // Registry dump for tests/python/test_20261105_scheduler_policy.py: the Python P2 resolver
+    // must mirror these traits, so it compares against the compiled registry, not a copy.
+    if (argc == 2 && std::string(argv[1]) == "--policy-catalog") {
+        // Planner defaults that live in cluster_plan rather than PolicyTraits, observed per policy:
+        // the lateness threshold from the decision trace, and whether the free GPU of a video two
+        // steps into a five-step round is kept from an image ranked ahead of it (round or diffuse hold).
+        Json planner = Json::object();
+        Json ids = Json::array({"xdit"});
+        for (const auto& item : policy_catalog()) ids.push_back(item.at("id"));
+        for (const auto& id : ids) {
+            const auto name = id.get<std::string>();
+            try {
+                ClusterPlanTrace trace;
+                const Json held = video("held", 1e9, {{"status", "suspended"}, {"prepared", true}, {"group", {0, 1}},
+                                                      {"steps_done", 2}, {"steps_total", 10}});
+                const auto result = cluster_plan(
+                    {{"now_ms", 0}, {"gpus", 4}, {"busy", Json::array({true, false, true, true})}, {"requests", {held, image("img", 5000)}}},
+                    name, ClusterCost(profile()), {{"round_steps", 5}, {"reserve_image_gpus", 0}, {"strict_partition", false}}, &trace);
+                bool image_placed = false;
+                for (const auto& a : result.at("assignments")) image_placed = image_placed || a.at("request_id") == "img";
+                planner[name] = {{"late_short_ms", trace.rows.at(0).at("late_short_ms")}, {"mid_round_gpu_held", !image_placed}};
+            } catch (const std::exception&) {}
+        }
+        std::cout << Json{{"catalog", policy_catalog()}, {"planner", planner}}.dump() << '\n';
+        return 0;
+    }
     check("20261103 native CFG2 counters price the executed half-step", [] {
         Json p=profile();auto& c=p["classes"]["video"];
         c["steps"]=1;c["blocks_per_step"]=60;c["finish_ms"]=0;
@@ -205,6 +231,65 @@ int main() {
         require(preempt.size() == 1 && preempt[0].at("request_id") == "urgent-image"
                 && preempt[0].at("reason") == "block_preempt",
                 "the solver hold still permits an image on its separate worker after the video stops");
+    });
+    check("20261105 TetriServe round hold keeps images and videos off held GPUs", [] {
+        // A TetriServe video placed on GPUs 0-1 is 2 steps into a 5-step round; GPUs 2-3 are busy.
+        const Json busy = {false, false, true, true};
+        const Json options = {{"round_steps", 5}};
+        Json held = video("held", 1e9, {{"status", "suspended"}, {"prepared", true}, {"group", {0, 1}},
+                                        {"steps_done", 2}, {"steps_total", 10}});
+        // An urgent image must not take a held GPU: TetriServe has no block preemption.
+        const auto with_image = plan({held, image("img", 60)}, "tetriserve", 4, busy, options);
+        require(with_image.size() == 1 && with_image[0].at("request_id") == "held"
+                && with_image[0].at("group") == Json::array({0, 1}) && with_image[0].at("reason") == "resume",
+                "the held video resumes on its group and the image waits: " + with_image.dump());
+        for (const auto& a : with_image) require(a.at("reason") != "block_preempt", "no block_preempt without blocks");
+        // GPU 0 is still busy (a quantum finishing there): the held video waits, and its free
+        // partner GPU 1 stays reserved for it rather than going to an image.
+        const auto running = plan({held, image("img", 60)}, "tetriserve", 4, Json::array({true, false, true, true}), options);
+        require(running.empty(), "a held GPU is not lent to an image inside the round: " + running.dump());
+        // Nor is it taken by another video.
+        const auto other = plan({held, video("new", 1)}, "tetriserve", 4, Json::array({true, false, true, true}), options);
+        require(other.empty(), "a held GPU is not lent to another video inside the round: " + other.dump());
+        // At the round boundary the hold lifts: an image may take a GPU of the video's last group.
+        held["steps_done"] = 5;
+        const auto boundary = plan({held, image("img", 60)}, "tetriserve", 4, Json::array({true, false, true, true}), options);
+        require(boundary.size() == 1 && boundary[0].at("request_id") == "img" && boundary[0].at("group") == Json::array({1})
+                && boundary[0].at("reason") == "edf", "at a round boundary the image takes the free GPU: " + boundary.dump());
+        // round_steps 1 disables the hold, like regrouping at every step.
+        held["steps_done"] = 2;
+        const auto unheld = plan({held, image("img", 60)}, "tetriserve", 4, Json::array({true, false, true, true}), {{"round_steps", 1}});
+        require(unheld.size() == 1 && unheld[0].at("request_id") == "img" && unheld[0].at("reason") == "edf",
+                "without rounds the step-boundary GPU is free for the image: " + unheld.dump());
+        // Simulated: the hold never shows up as block preemption.
+        Json trace = Json::array({trace_row("v", "video", 0, 1e9), trace_row("w", "video", 0, 1e9)});
+        for (int i = 0; i < 8; ++i) trace.push_back(trace_row("i" + std::to_string(i), "image", 300. + 900 * i, 300. + 900 * i + 120));
+        const auto sim = simulate(trace, "tetriserve", 2, {{"round_steps", 3}, {"forms", {"sp1", "sp2"}}});
+        require(sim.at("metrics").at("completed") == 10 && sim.at("block_preemptions") == 0,
+                "TetriServe simulation completes without block preemptions: " + sim.at("block_preemptions").dump());
+    });
+    check("20261105 only block policies emit block_preempt", [] {
+        // A chunked decode holds GPU 0; an image that would miss waiting for it.
+        Json chunked = profile(); chunked["classes"]["video"]["decode_chunks"] = 10;
+        const ClusterCost cost(chunked);
+        const auto decoding = video("v", 1e9, {{"status", "suspended"}, {"prepared", true}, {"group", {0}}, {"steps_done", 4}, {"decode_done", 3}});
+        const Json options = {{"quantum_ms", 25}, {"round_steps", 5}};
+        for (const char* policy : {"abl-step-elastic", "abl-round-elastic", "tetriserve", "sbp-esp", "edf-bestfit", "static-sp1"}) {
+            const auto result = cluster_plan({{"now_ms", 0}, {"gpus", 1}, {"busy", Json::array()}, {"requests", {image("i", 90), decoding}}},
+                                             policy, cost, options).at("assignments");
+            require(result.size() == 1 && result[0].at("request_id") == "v" && result[0].at("quantum") == "finish",
+                    std::string(policy) + " waits for the decode chunk instead of preempting: " + result.dump());
+        }
+        const auto block = cluster_plan({{"now_ms", 0}, {"gpus", 1}, {"busy", Json::array()}, {"requests", {image("i", 90), decoding}}},
+                                        "abl-block-elastic", cost, options).at("assignments");
+        require(block.size() == 1 && block[0].at("reason") == "block_preempt", "block policies still preempt the decode");
+    });
+    check("20261105 xDiT sp1 partition on two GPUs keeps one video GPU", [] {
+        // The default image share max(1, 2/4) = 1 is clamped to leave one sp1 video GPU.
+        const auto result = plan(Json::array({video("v", 1e9), image("i", 1e9)}), "xdit", 2);
+        require(result.size() == 2, "both the video and the image are placed: " + result.dump());
+        for (const auto& a : result)
+            require(a.at("group") == Json::array({a.at("request_id") == "i" ? 1 : 0}), "image on GPU 1, sp1 video on GPU 0: " + result.dump());
     });
     check("20261103 deadline doorbells select only a group that saves its reserved image", [] {
         const std::vector<PreemptionGroup> heterogeneous = {

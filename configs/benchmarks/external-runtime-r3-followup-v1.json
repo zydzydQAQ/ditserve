@@ -3,8 +3,9 @@
   "date": "2026-11-04",
   "status": "three_package_metadata_closure_reviewed_actual_original_import_pending",
   "requirements": {
-    "path": "requirements/external-serving-r3-additions.txt",
-    "sha256": "dbbe00121d64615ebb43a703db002845435de655d7fb31b6cc4f1fb8c7461745"
+    "path": "git:ed8564ed87c84be2ab1f39cc523443e1b61611e5:requirements/external-serving-r3-additions.txt",
+    "sha256": "dbbe00121d64615ebb43a703db002845435de655d7fb31b6cc4f1fb8c7461745",
+    "working_tree_status": "deleted; recover read-only with git show <commit>:<path>"
   },
   "scope": "Shared SD3.5 adapter through original GF-DiT runtime_v2, MultiprocWorkerPool, scheduler, migration engine and GFC; not the complete optional upstream model/UI environment.",
   "authority": {

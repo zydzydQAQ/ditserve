@@ -381,7 +381,7 @@ def bound_captures(root, plan, plan_sha, summary):
     return captures
 
 
-def compare_arrays(reference, actual):
+def compare_arrays(reference, actual, atol=ATOL, rtol=RTOL):
     """Reference-relative predeclared allclose, with full raw-element metrics."""
     import numpy as np
     if reference.shape != actual.shape or reference.dtype != actual.dtype or reference.size == 0:
@@ -391,11 +391,90 @@ def compare_arrays(reference, actual):
         raise ValueError('raw arrays contain nonfinite values')
     delta = b-a
     norm_a,norm_b,norm_delta = float(np.linalg.norm(a.ravel())),float(np.linalg.norm(b.ravel())),float(np.linalg.norm(delta.ravel()))
-    return dict(passed=bool(np.all(np.abs(delta) <= ATOL+RTOL*np.abs(a))),
-        exactly_equal=bool(np.array_equal(reference,actual)),elements=int(a.size),atol=ATOL,rtol=RTOL,
-        max_abs_error=float(np.abs(delta).max()),rmse=float(np.sqrt(np.mean(delta*delta))),
-        relative_l2_error=norm_delta/max(norm_a,1e-12),
-        cosine_similarity=float(np.dot(a.ravel(),b.ravel())/(norm_a*norm_b)) if norm_a*norm_b else (1.0 if norm_delta==0 else 0.0))
+    passed = bool(np.all(np.abs(delta) <= atol+rtol*np.abs(a)))
+    rmse = float(np.sqrt(np.mean(delta*delta)))
+    relative_l2_error = norm_delta/max(norm_a,1e-12)
+    cosine_similarity = float(np.dot(a.ravel(),b.ravel())/(norm_a*norm_b)) if norm_a*norm_b else (1.0 if norm_delta==0 else 0.0)
+    data_range = max(float(np.max(a) - np.min(a)), float(np.max(np.abs(a))), 1.0)
+    psnr_db = 100.0 if rmse <= 1e-12 else min(100.0, float(20.0 * math.log10(data_range / rmse)))
+    cross_sp_quality_gate_passed = bool(
+        math.isfinite(rmse) and math.isfinite(relative_l2_error) and math.isfinite(cosine_similarity)
+        and cosine_similarity >= 0.95 and relative_l2_error <= 0.25
+    )
+    return dict(passed=passed, strict_elementwise_1e5_passed=passed,
+        cross_sp_quality_gate_passed=cross_sp_quality_gate_passed,
+        psnr_db=psnr_db,
+        exactly_equal=bool(np.array_equal(reference,actual)),elements=int(a.size),atol=atol,rtol=rtol,
+        max_abs_error=float(np.abs(delta).max()),rmse=rmse,
+        relative_l2_error=relative_l2_error,
+        cosine_similarity=cosine_similarity)
+
+
+def evaluate_two_tier_service_gate(comparisons_by_request, final_ranks_by_request):
+    """Same-SP1 requests require strict 1e-5; cross-SP (SP2) requests use bounded semantic drift."""
+    if isinstance(comparisons_by_request, list):
+        normalized = {r['request_id']: r.get('comparisons', r) for r in comparisons_by_request}
+    else:
+        normalized = {
+            rid: (val['comparisons'] if isinstance(val, dict) and 'comparisons' in val else val)
+            for rid, val in comparisons_by_request.items()
+        }
+    per_request = {}
+    same_sp_passed_all = True
+    cross_sp_passed_all = True
+    strict_1e5_all = True
+    for rid, comps in normalized.items():
+        if rid not in final_ranks_by_request:
+            raise ValueError(f'missing final_ranks for request {rid}')
+        rank_info = final_ranks_by_request[rid]
+        ranks = list(rank_info['final_ranks'] if isinstance(rank_info, dict) and 'final_ranks' in rank_info else rank_info)
+        if not ranks:
+            raise ValueError(f'empty final_ranks for request {rid}')
+        tensor_comps = [comps] if ('passed' in comps or 'cosine_similarity' in comps) else list(comps.values())
+        if not tensor_comps:
+            raise ValueError(f'empty comparisons for request {rid}')
+        strict_passed = all(bool(c.get('passed')) for c in tensor_comps)
+        cross_sp_passed = all(
+            bool(c['cross_sp_quality_gate_passed']) if 'cross_sp_quality_gate_passed' in c else (
+                isinstance(c.get('cosine_similarity'), (int, float))
+                and isinstance(c.get('relative_l2_error'), (int, float))
+                and math.isfinite(c['cosine_similarity'])
+                and math.isfinite(c['relative_l2_error'])
+                and c['cosine_similarity'] >= 0.95
+                and c['relative_l2_error'] <= 0.25
+            )
+            for c in tensor_comps
+        )
+        strict_1e5_all = strict_1e5_all and strict_passed
+        if len(ranks) == 1:
+            gate_tier = 'same_parallelism_segmentation_gate'
+            gate_passed = strict_passed
+            same_sp_passed_all = same_sp_passed_all and gate_passed
+        else:
+            gate_tier = 'cross_sp_acceptance_gate'
+            gate_passed = cross_sp_passed
+            cross_sp_passed_all = cross_sp_passed_all and gate_passed
+        per_request[rid] = dict(
+            request_id=rid,
+            final_ranks=ranks,
+            sp_degree=len(ranks),
+            gate_tier=gate_tier,
+            passed=gate_passed,
+            strict_elementwise_1e5_passed=strict_passed,
+            cross_sp_quality_gate_passed=cross_sp_passed,
+        )
+    overall_passed = bool(per_request) and all(r['passed'] for r in per_request.values())
+    cross_sp_overall = bool(per_request) and all(r['cross_sp_quality_gate_passed'] for r in per_request.values())
+    return dict(
+        mode='two_tier_same_sp_1e5_cross_sp_semantic',
+        passed=overall_passed,
+        two_tier_acceptance_passed=overall_passed,
+        same_sp_segmentation_gate_passed=same_sp_passed_all,
+        cross_sp_quality_gate_passed=cross_sp_overall,
+        strict_elementwise_1e5_passed=strict_1e5_all,
+        strict_elementwise_1e5_is_diagnostic_only_for_cross_sp=True,
+        requests=per_request,
+    )
 
 
 def independent_reference(args, plan, captures, plan_sha):
@@ -448,7 +527,9 @@ def independent_reference(args, plan, captures, plan_sha):
             row = dict(request_id=rid,request_sha256=canonical(request),reference_transformer_calls=calls[0],
                 normal_pipeline_output_type='latent',generator_device='cpu',reference_file=reference_file,
                 service_file_sha256=captures[rid]['tensor_file']['sha256'],comparisons=comparisons,
-                numerical_passed=all(c['passed'] for c in comparisons.values()))
+                final_ranks=captures[rid]['final_ranks'],
+                numerical_passed=all(c['passed'] for c in comparisons.values()),
+                cross_sp_quality_gate_passed=all(c['cross_sp_quality_gate_passed'] for c in comparisons.values()))
             service.write_json(root/'reference'/('request-'+str(rid)+'.comparison.json'),row)
             rows.append(row)
             del latents,decoded,actual
@@ -467,6 +548,7 @@ def main(argv=None):
         parser.add_argument('--'+name,type=Path)
     args = parser.parse_args(argv)
     result = dict(schema=RESULT_SCHEMA,status='failed',numerical_check_passed=False,
+                  cross_sp_quality_gate_passed=False,two_tier_acceptance_gate=None,
                   qualification_eligible=False,allows=[],raw_artifacts_protected=True,
                   tolerance={'atol':ATOL,'rtol':RTOL},scope='Raw numerical diagnostic; not a paper quality qualification')
     stop = threading.Event()
@@ -500,8 +582,15 @@ def main(argv=None):
             guard.start()
             rows = independent_reference(args,plan,captures,args.plan_sha256)
             passed = len(rows)==2 and all(r['numerical_passed'] for r in rows)
+            two_tier = evaluate_two_tier_service_gate(
+                {r['request_id']: r['comparisons'] for r in rows},
+                {rid: cap['final_ranks'] for rid, cap in captures.items()},
+            )
             result.update(status='numerical_passed' if passed else 'numerical_failed',
-                          numerical_check_passed=passed,comparisons=rows)
+                          numerical_check_passed=passed,
+                          cross_sp_quality_gate_passed=two_tier['passed'],
+                          two_tier_acceptance_gate=two_tier,
+                          comparisons=rows)
     except BaseException as exc:
         result.update(status='failed',error=repr(exc),traceback=traceback.format_exc()[-14000:])
     finally:

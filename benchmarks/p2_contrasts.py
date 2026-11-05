@@ -77,6 +77,7 @@ def audit_native_sources(native, explicit_pins=None):
         for name, pins in AUDITED_NATIVE_BUNDLES.items():
             if all(native.get(path) == digest for path, digest in pins.items()):
                 return dict(bundle=name, pins_sha256=canonical_hash(pins), qualification_eligible=False,
+                            policy_source_sha256=_reviewed_policy_source(pins),
                             scope='reviewed native source combination only; core, execution and scientific gates remain independent')
         raise ValueError('native option resolver has not been audited for this source bundle')
     if (not isinstance(explicit_pins, dict) or not REQUIRED_NATIVE_SOURCES <= set(explicit_pins)
@@ -88,7 +89,15 @@ def audit_native_sources(native, explicit_pins=None):
     if any(native.get(path) != digest for path, digest in pins.items()):
         raise ValueError('native source snapshot differs from explicit singleton pins')
     return dict(bundle='explicit-singleton-map', pins_sha256=canonical_hash(pins), qualification_eligible=False,
+                policy_source_sha256=_reviewed_policy_source(pins),
                 scope='explicit internal-caller pins; caller owns source review, independent of all qualification gates')
+
+
+def _reviewed_policy_source(pins):
+    """policy.cpp digest of audited pins; it must select a reviewed resolver registry."""
+    digest = pins.get('src/ditserve/control/policy.cpp')
+    policy_registry(digest)
+    return digest
 
 CONTRASTS = {
     'block-fixed': dict(reference='edf-cfg2', candidate='block-cfg2', mechanism='block preemption', field='blocks'),
@@ -107,45 +116,102 @@ for _policy in ('xdit', 'tetriserve', 'sbp-esp', 'edf-bestfit', 'edf-cfg2', 'cfg
     CONTRASTS['system-' + _policy] = dict(reference=_policy, candidate='ditserve', mechanism='system comparison', system=True)
 
 
-def canonical_policy(policy):
-    return 'xdit-cfg2' if policy == 'xdit' else policy
+# Planner defaults per reviewed policy.cpp revision. A record is resolved with the
+# registry of the policy.cpp it executed; new configurations use CURRENT_POLICY_SOURCE.
+# Each entry mirrors the PolicyTraits rows and the policy-dependent defaults of
+# cluster_plan (src/ditserve/control/cluster.cpp) of that revision.
+_OURS = ('ditserve', 'cfg2-first', 'abl-no-block', 'abl-no-prune', 'abl-no-mindeg', 'abl-first-fit')
 
 
-def resolved_options(policy, options, gpus):
+def _policy_rows(xdit_form, tetriserve_prunes, edf_bestfit_demotes, sbp_esp_late_short_ms):
+    xdit = 'xdit-' + xdit_form
+    rows = {}
+    for policy in _OURS + ('edf-cfg2', 'block-cfg2', xdit, 'tetriserve', 'sbp-esp', 'edf-bestfit'):
+        ours = policy in _OURS
+        fixed = policy in {'edf-cfg2', 'block-cfg2', xdit}
+        rows[policy] = dict(
+            elastic=not fixed, blocks=policy in {'ditserve', 'abl-no-prune', 'abl-no-mindeg', 'abl-first-fit', 'block-cfg2'},
+            fixed_form=(xdit_form if policy == xdit else 'cfg2') if fixed else None,
+            prune_dominated=ours and policy != 'abl-no-prune' or policy == 'tetriserve' and tetriserve_prunes,
+            min_video_degree=2 if ours and policy != 'abl-no-mindeg' else 1,
+            widen_efficiency=.9 if ours else 0., image_placement='pair_fit' if ours and policy != 'abl-first-fit' else 'first',
+            order='fcfs' if policy == xdit else 'edf', hold_diffuse=policy == xdit,
+            demote_late=policy != xdit and (policy != 'edf-bestfit' or edf_bestfit_demotes),
+            late_short_ms=float(sbp_esp_late_short_ms) if policy == 'sbp-esp' else 2000.,
+            rounds=policy == 'tetriserve', deadline_dp=policy in {'tetriserve', 'sbp-esp'}, best_fit=policy == 'edf-bestfit',
+            image_batching=policy == 'sbp-esp', partition_divisor=4 if policy == xdit else 0)
+    return rows
+
+
+# 6429a94 and every bundle in AUDITED_NATIVE_BUNDLES: xdit is a CFG2 pair, no round hold,
+# no fixed-form partition clamp, and late_short_ms is 2000 ms for every policy (not recorded).
+LEGACY_POLICY_SOURCE = _POLICY_SOURCES['src/ditserve/control/policy.cpp']
+# Reviewed after 7ee8beb with the review fixes: xdit is single-GPU sp1 and its image share is
+# clamped to leave one sp1 video GPU; TetriServe prunes dominated degrees and, inside an
+# unfinished round, holds its GPUs from images and other videos (no block preemption);
+# EDF-BF never demotes late requests; SBP-ESP demotes every late request (late_short_ms 0).
+CURRENT_POLICY_SOURCE = '9403cac1bb66f5787bfd567d9e70a27ffa08d4f3210101835e0e647ddd2119e0'
+POLICY_REGISTRIES = {
+    LEGACY_POLICY_SOURCE: dict(xdit='xdit-cfg2', policies=_policy_rows('cfg2', False, True, 2000),
+                               planner_fields=False, partition_clamp=False),
+    CURRENT_POLICY_SOURCE: dict(xdit='xdit-sp1', policies=_policy_rows('sp1', True, False, 0),
+                                planner_fields=True, partition_clamp=True),
+}
+
+
+def policy_registry(policy_source=CURRENT_POLICY_SOURCE):
+    """Planner defaults of one reviewed policy.cpp digest; unknown digests fail closed."""
+    try:
+        return POLICY_REGISTRIES[policy_source]
+    except (KeyError, TypeError):
+        raise ValueError('no reviewed P2 policy registry for policy.cpp digest: ' + str(policy_source)) from None
+
+
+def canonical_policy(policy, policy_source=CURRENT_POLICY_SOURCE):
+    return policy_registry(policy_source)['xdit'] if policy == 'xdit' else policy
+
+
+def resolved_options(policy, options, gpus, policy_source=CURRENT_POLICY_SOURCE):
     if (options.get('sp_transport') != 'export' or options.get('pin_started', False)
             or options.get('tiered_memory', False) or gpus not in (2, 4, 6, 8)):
         raise ValueError('unsupported: P2 resolver covers unpinned export transport on 2/4/6/8 GPUs only')
-    policy = canonical_policy(policy)
-    known = {'ditserve', 'cfg2-first', 'abl-no-block', 'abl-no-prune', 'abl-no-mindeg', 'abl-first-fit',
-             'edf-cfg2', 'block-cfg2', 'xdit-cfg2', 'tetriserve', 'sbp-esp', 'edf-bestfit'}
-    if policy not in known:
+    registry = policy_registry(policy_source)
+    policy = canonical_policy(policy, policy_source)
+    if policy not in registry['policies']:
         raise ValueError('policy has no audited exact resolver: ' + policy)
-    ours = policy in {'ditserve', 'cfg2-first', 'abl-no-block', 'abl-no-prune', 'abl-no-mindeg', 'abl-first-fit'}
-    fixed = policy in {'edf-cfg2', 'block-cfg2', 'xdit-cfg2'}
-    blocks = policy in {'ditserve', 'abl-no-prune', 'abl-no-mindeg', 'abl-first-fit', 'block-cfg2'}
-    default = dict(elastic=not fixed, blocks=blocks, fixed_form='cfg2' if fixed else None,
-        prune_dominated=ours and policy != 'abl-no-prune', min_video_degree=2 if ours and policy != 'abl-no-mindeg' else 1,
-        widen_efficiency=.9 if ours else 0., image_placement='pair_fit' if ours and policy != 'abl-first-fit' else 'first',
-        order='fcfs' if policy == 'xdit-cfg2' else 'edf', hold_diffuse=policy == 'xdit-cfg2',
-        demote_late=policy != 'xdit-cfg2', rounds=policy == 'tetriserve',
-        deadline_dp=policy in {'tetriserve', 'sbp-esp'}, best_fit=policy == 'edf-bestfit',
-        lazy_preemption=True, widen_remaining_work=True, doorbell=False, check_blocks=1,
-        quantum_blocks=4, quantum_ms=0., pin_started=False, round_steps=5,
-        image_batching=policy == 'sbp-esp')
+    traits = registry['policies'][policy]
+    fixed, blocks = traits['fixed_form'], traits['blocks']
+    default = {key: value for key, value in traits.items() if key not in ('late_short_ms', 'partition_divisor')}
+    default.update(lazy_preemption=True, widen_remaining_work=True, doorbell=False, check_blocks=1,
+                   quantum_blocks=4, quantum_ms=0., pin_started=False, round_steps=5)
     overridable = {'prune_dominated', 'min_video_degree', 'widen_efficiency', 'image_placement', 'order',
                    'hold_diffuse', 'demote_late', 'lazy_preemption', 'widen_remaining_work', 'doorbell',
                    'check_blocks', 'quantum_blocks', 'quantum_ms', 'pin_started', 'round_steps'}
+    if registry['planner_fields']:
+        # Every resolution of this revision carries both keys, so arms sharing a default never
+        # differ on them; an explicit late_short_ms option still wins.
+        overridable.add('late_short_ms')
+        default['late_short_ms'] = traits['late_short_ms']
     default.update({key: options[key] for key in overridable if key in options})
-    default['forms'] = ['cfg2'] if fixed else options.get('forms')
+    if registry['planner_fields']:
+        # cluster_plan's round hold: policy.rounds && round_steps > 1 (no block preemption).
+        default['round_hold'] = traits['rounds'] and type(default['round_steps']) is int and default['round_steps'] > 1
+    default['forms'] = [fixed] if fixed else options.get('forms')
     if (not isinstance(default['forms'], list) or not default['forms']
             or any(form not in FORM_DEGREES for form in default['forms'])):
         raise ValueError('unsupported or implicit parallel form space')
-    default['reserve_image_gpus'] = options.get('reserve_image_gpus',
-        options.get('partition_image_gpus', max(1, gpus // 4)) if policy == 'xdit-cfg2' else 0)
-    default['strict_partition'] = options.get('strict_partition', policy == 'xdit-cfg2')
+    partitioned = traits['partition_divisor'] > 0
+    share = options.get('partition_image_gpus', max(1, gpus // traits['partition_divisor'])) if partitioned else 0
+    if registry['partition_clamp'] and fixed and type(share) is int and share > 0:
+        # cluster_plan clamps a fixed-form partition so one fixed video group remains.
+        share = min(share, max(0, gpus - FORM_DEGREES[fixed]))
+    default['reserve_image_gpus'] = options.get('reserve_image_gpus', share)
+    default['strict_partition'] = options.get('strict_partition', partitioned)
     reserve = default['reserve_image_gpus']
-    if type(reserve) is not int or reserve < 0 or reserve >= gpus or fixed and gpus - reserve < 2:
-        raise ValueError('unsupported baseline: image partition leaves no complete fixed CFG2 video group')
+    if type(reserve) is not int or reserve < 0 or reserve >= gpus or fixed and gpus - reserve < FORM_DEGREES[fixed]:
+        raise ValueError('unsupported baseline: image partition leaves no complete fixed '
+                         + fixed.upper() + ' video group' if fixed else
+                         'unsupported baseline: image partition leaves no video GPU')
     default['doorbell_effective'] = blocks and default['doorbell']
     default['image_batching_effective'] = default['image_batching'] and 'image_batch' not in options
     default['shared_options'] = {key: value for key, value in options.items() if key not in overridable
@@ -153,10 +219,10 @@ def resolved_options(policy, options, gpus):
     return default
 
 
-def validate_contrast(name, reference, candidate):
+def validate_contrast(name, reference, candidate, policy_source=CURRENT_POLICY_SOURCE):
     definition = CONTRASTS[name]
     for arm, phase in (('reference', reference), ('candidate', candidate)):
-        if canonical_policy(phase['policy']) != canonical_policy(definition[arm]):
+        if canonical_policy(phase['policy'], policy_source) != canonical_policy(definition[arm], policy_source):
             raise ValueError('selected policy differs from contrast ' + arm)
     normalized = [copy.deepcopy(phase) for phase in (reference, candidate)]
     for phase in normalized:
@@ -169,16 +235,18 @@ def validate_contrast(name, reference, candidate):
             phase['options'].pop(key)
     if normalized[0] != normalized[1]:
         raise ValueError('contrast changes inputs or settings beyond its declared mechanism/policy')
-    resolved = [resolved_options(phase['policy'], phase.get('options', {}), len(phase['gpus']))
+    resolved = [resolved_options(phase['policy'], phase.get('options', {}), len(phase['gpus']), policy_source)
                 for phase in (reference, candidate)]
     for phase, options in zip((reference, candidate), resolved):
         available = len(phase['gpus']) - options['reserve_image_gpus']
         if any(row.get('kind') == 'video' and row.get('min_degree', 1) > available
                for row in phase.get('profile', {}).get('classes', {}).values()):
             raise ValueError('unsupported model: partition cannot accommodate its minimum degree')
-        if options['fixed_form'] and any(row.get('kind') == 'video' and row.get('min_degree', 1) > 2
-                                        for row in phase.get('profile', {}).get('classes', {}).values()):
-            raise ValueError('unsupported: class minimum would replace the declared fixed CFG2 form with SP')
+        fixed = options['fixed_form']
+        if fixed and any(row.get('kind') == 'video' and row.get('min_degree', 1) > FORM_DEGREES[fixed]
+                         for row in phase.get('profile', {}).get('classes', {}).values()):
+            raise ValueError('unsupported: class minimum would replace the declared fixed '
+                             + fixed.upper() + ' form with SP')
     differing = {key for key in resolved[0] if resolved[0][key] != resolved[1][key]}
     if not differing:
         raise ValueError('policy/options overrides make the two supposedly different arms identical')
@@ -245,6 +313,7 @@ def make_configs(config, contrast):
         value['benchmark']['performance_qualified'] = False
         value['benchmark']['scope'] = 'prepared P2 exact-serving contrast; independent qualification required'
         value['benchmark']['p2'] = dict(contrast=contrast, arm=arm, mechanism=definition['mechanism'],
+            policy_source_sha256=CURRENT_POLICY_SOURCE,
             source_config_sha256=canonical_hash(config),
             parent_role=config['benchmark']['formal_protocol']['role'],
             parent_controls=copy.deepcopy(config['benchmark'].get('p0_diagnostic_controls',

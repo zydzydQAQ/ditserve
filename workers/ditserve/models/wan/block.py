@@ -14,6 +14,54 @@ XDIT_PACKET_SCHEMA = "ditserve.wan-block-packet.v2"
 PACKET_TENSORS = ("hidden", "encoder", "temb", "projected")
 
 
+def _ulysses_all_to_all_launch(tensor):
+    """Start the Ulysses all-to-all of ``tensor`` the way xFuser USP dispatches it.
+
+    Mirrors ``xfuser.model_executor.layers.usp._sdpa_all_to_all_single`` except that
+    the NCCL wait is deferred to ``_ulysses_all_to_all_finish``: a configured
+    ``PROCESS_GROUP.ALL_TO_ALL`` override (group-free collectives) carries the
+    exchange when it accepts it, otherwise the functional NCCL collective runs on
+    ``PROCESS_GROUP.ULYSSES_PG``. Both are read at call time, as USP does.
+    """
+    from ..xdit.process_group import PROCESS_GROUP
+
+    flat = tensor.flatten()
+    override = getattr(PROCESS_GROUP, "ALL_TO_ALL", None)
+    exchanged = override(flat, PROCESS_GROUP.ULYSSES_PG) if override is not None else None
+    if exchanged is None:
+        import torch.distributed._functional_collectives as ft_c
+        exchanged = ft_c.all_to_all_single(
+            flat, output_split_sizes=None, input_split_sizes=None, group=PROCESS_GROUP.ULYSSES_PG)
+    return exchanged, tensor.shape, tensor.dtype
+
+
+def _ulysses_all_to_all_finish(handle):
+    """Wait (``usp._maybe_wait``) and restore the launched tensor's dtype and shape."""
+    import torch.distributed._functional_collectives as ft_c
+
+    exchanged, shape, dtype = handle
+    if isinstance(exchanged, ft_c.AsyncCollectiveTensor):
+        exchanged = exchanged.wait()
+    return exchanged.view(dtype).reshape(shape)
+
+
+def _processor_qk_norm_rope(processor, attn, query, key, value, rotary):
+    """Q/K norm and RoPE exactly as ``processor.__call__`` selects them.
+
+    xFuser's Wan processor uses its fused FlyDSL kernel whenever its module imported
+    one (``_HAS_FLYDSL``) and RoPE is present, and its reference otherwise. The flag
+    and kernel are read from the namespace that processor's ``__call__`` reads, so
+    interleaved and non-interleaved blocks always run the same implementation.
+    Returns [batch, tokens, heads, head_dim] tensors.
+    """
+    namespace = getattr(getattr(type(processor), "__call__", None), "__globals__", None) or {}
+    if namespace.get("_HAS_FLYDSL", False) and rotary is not None:
+        query, key = namespace["fused_qk_norm_rope"](
+            query, key, attn.norm_q, attn.norm_k, rotary[0], rotary[1], attn.heads)
+        return query, key, value.unflatten(2, (attn.heads, -1))
+    return processor._qk_norm_rope_reference(attn, query, key, value, rotary)
+
+
 @dataclasses.dataclass
 class BlockState:
     base: object
@@ -270,23 +318,19 @@ class WanBlockExecutor:
                 and hasattr(proc1, "_get_qkv_projections")
                 and hasattr(proc1, "_qk_norm_rope_reference")
             ):
-                import torch.distributed._functional_collectives as ft_c
-                from ditserve.models.xdit.process_group import PROCESS_GROUP
                 from xfuser.model_executor.layers.usp import (
                     _get_attention_function,
                     _trim_trailing_kv_padding,
-                    _maybe_wait,
                 )
 
                 attn1 = block.attn1
                 attn_fn = _get_attention_function(backend=None)
                 hb_backend = get_runtime_state().attention_backend
-                ulysses_pg = PROCESS_GROUP.ULYSSES_PG
 
                 def _prep_qkv(h, shift_m, scale_m, rot):
                     norm_h = (block.norm1(h.float()) * (1.0 + scale_m) + shift_m).type_as(h)
                     q, k, v = proc1._get_qkv_projections(attn1, norm_h, None)
-                    q, k, v = proc1._qk_norm_rope_reference(attn1, q, k, v, rot)
+                    q, k, v = _processor_qk_norm_rope(proc1, attn1, q, k, v, rot)
                     return q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)
 
                 def _launch_in_a2a(q, k, v):
@@ -297,14 +341,11 @@ class WanBlockExecutor:
                         .permute(2, 0, 1, 3, 4, 5)
                         .contiguous()
                     )
-                    qkv_async = ft_c.all_to_all_single(
-                        qkv.flatten(), output_split_sizes=None, input_split_sizes=None, group=ulysses_pg
-                    )
-                    return qkv_async, qkv.shape, qkv.dtype, (b, h_cnt, s_loc, d)
+                    return _ulysses_all_to_all_launch(qkv), (b, h_cnt, s_loc, d)
 
-                def _finish_in_a2a(qkv_async, qkv_shape, qkv_dtype, meta):
+                def _finish_in_a2a(handle, meta):
                     b, h_cnt, _s_loc, d = meta
-                    qkv_recv = _maybe_wait(qkv_async).view(qkv_dtype).reshape(qkv_shape)
+                    qkv_recv = _ulysses_all_to_all_finish(handle)
                     qkv_unp = qkv_recv.permute(1, 2, 3, 0, 4, 5).reshape(3, b, h_cnt // ulysses_deg, -1, d)
                     return torch.unbind(qkv_unp, dim=0)
 
@@ -321,14 +362,11 @@ class WanBlockExecutor:
                 def _launch_out_a2a(out):
                     b, h_loc, s_full, d = out.shape
                     out_p = out.permute(2, 0, 1, 3).contiguous()
-                    out_async = ft_c.all_to_all_single(
-                        out_p.flatten(), output_split_sizes=None, input_split_sizes=None, group=ulysses_pg
-                    )
-                    return out_async, out_p.shape, out_p.dtype, (b, h_loc, s_full, d)
+                    return _ulysses_all_to_all_launch(out_p), (b, h_loc, s_full, d)
 
-                def _finish_out_a2a(out_async, out_p_shape, out_p_dtype, meta, act_dtype):
+                def _finish_out_a2a(handle, meta, act_dtype):
                     b, _h_loc, s_full, d = meta
-                    out_recv = _maybe_wait(out_async).view(out_p_dtype).reshape(out_p_shape)
+                    out_recv = _ulysses_all_to_all_finish(handle)
                     out_full = (
                         out_recv.reshape(ulysses_deg, s_full // ulysses_deg, b, -1, d)
                         .permute(2, 0, 3, 1, 4)

@@ -73,8 +73,11 @@ def build_calibration_config(model, gpu_uuids, *, image_batch_calibration=1,
     if image_spec_override is not None:
         image_spec.update(copy.deepcopy(image_spec_override))
     frames, steps, image_steps = video_spec["frames"], video_spec["steps"], image_spec["steps"]
+    # Calibration measures the legacy atomic workers: no memory strategy and no
+    # SD3.5 continuous batching, stated explicitly so a default change cannot alter it.
     selected, workers, slots, warmup = make_workers(
         model, gpu_uuids, video_spec=video_spec, image_spec=image_spec,
+        memory_strategy=None, continuous_batch=0,
     )
     for item in warmup:
         item["spec"]["steps"] = 1

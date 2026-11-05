@@ -255,7 +255,9 @@ for diagnostic in "${cases[@]}"; do
   args=(serve --model "$model" --bundle "$RUN_DIR/bundle.json" --datasets "$DATA/datasets"
         --model-manifests "$DITSERVE_MODEL_MANIFESTS" --output "$cfg")
   if [ "$action" = p0 ]; then
-    args+=(--split development --seed 201 --load 1.2 --video-fraction 0.5 --pattern bursty --diagnostic "$diagnostic")
+    # Load, mix and arrival pattern come only from the protocol's frozen
+    # p0_diagnostics entry; passing formal-matrix values here would be ignored.
+    args+=(--split development --seed 201 --diagnostic "$diagnostic")
   else
     args+=(--split test --seed "${DITSERVE_SEED:-301}"
            --pattern "${DITSERVE_PATTERN:-poisson}"

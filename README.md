@@ -32,6 +32,18 @@ docs/                 使用说明、能力边界及研究文档
 
 本地编译、CPU/mock/Gloo 测试验证实现契约，不能证明 GPU 加速、CUDA/NCCL 正确性或模型质量；这些结论需要绑定当前代码、模型与硬件的 Kairos 实测。历史结果只读兼容，不自动继承到新实现。
 
+## 评测设计口径与质量验收门禁
+
+### 双轨基线评测设计（Two-Track Baseline Evaluation Design）
+
+- **Track 1 — 同执行器机制对比（In-framework Policy Comparison，Wan + SD3.5 混合负载主表）**：在 Wan2.1/Wan2.2 + SD3.5 混合负载主表上，所有基线策略（最优 `Static-<Form>` 如 `Static-CFG2SP4`、`TetriServe-policy`、`SBP-ESP`、`EDF-BF` 与 `DitServe`；自研启发式 `EDF-CFG2`、`CFG2-First` 只在消融中运行）均运行在**同一已验证的 DitServe 原生执行引擎、worker 池、集合通信传输层与校准延迟画像**之上，以剥离底层框架与依赖差异的混淆，纯净隔离调度机制本身的收益。
+- **Track 2 — 外部系统原生交集对比（External System Native Intersection）**：在外部代码库原生支持的工作负载交集上进行对比评测，包括 `TetriServe` 在原生 SD3.5 $512^2$/$1024^2$ 图像 serving 上的对比，以及 `xDiT` 在原生单模型固定分区/SP serving 上的对比。
+
+### 双层数值与质量验收门禁（Two-Tier Numerical & Quality Acceptance Gate）
+
+- **Tier 1 — 同并行度分段续跑门禁（Same-Parallelism Segmentation Gate）**：在**相同**并行度下的不中断执行与按轮分段/续跑执行（例如固定 CFG2 下 `EDF-CFG2` vs. `Block-CFG2`，或固定 SP2 下 `round28` vs. `13-chunk`）要求满足严格的 `atol=rtol=1e-5` / 逐位一致（bitwise equivalence），验证轮边界与子步边界状态交接引入零数值损坏。
+- **Tier 2 — 跨 SP 度有界漂移门禁（Cross-SP Acceptance Gate）**：跨**不同**序列并行度（`SP1` vs. `SP2`/`SP4`/`SP8` 或 `CFG2` $\leftrightarrow$ `CFG2SPk`）的执行或弹性切换会自然改变 BF16 Ulysses all-to-all 与注意力归约顺序（产生 $>10^{-5}$ 的逐元素差异），因此跨 SP 验收采用有界漂移门禁，`atol=rtol=1e-5` 逐元素差异仅作为非阻塞的诊断遥测（non-blocking diagnostic telemetry）记录。各门禁实际计算并检查的指标如下：xDiT 解码帧 SP1/SP4 对照（`benchmarks/external_xdit_numerics.py`）要求输出全有限、余弦相似度 $\ge 0.95$、相对 L2 误差 $\le 0.25$、PSNR $\ge 20\text{ dB}$、SSIM $\ge 0.85$（数据范围 1；SSIM 为 11×11、$\sigma=1.5$ 高斯窗，逐帧逐通道取均值）；Wan 首步 SP2/SP8 边界（`benchmarks/external_wan_topology_step.py`）及 SD3.5/TetriServe 跨 SP 对照只检查余弦相似度 $\ge 0.95$ 与相对 L2 误差 $\le 0.25$（Wan 冻结观测器不输出余弦时，使用由相对 L2 推出的下界 $\sqrt{1-\text{relL2}^2}$）。这些是张量/像素级数值门禁：LPIPS 与 VBench 不在任何跨 SP 门禁中计算，配置中的模式名 `semantic_quality_equivalence` 不表示语义或感知质量已经验证。
+
 ## 构建和验证
 
 Linux、C++17、CMake 3.16+、OpenSSL、Python 3.10+。nlohmann/json 固定 3.11.3 并校验 SHA256；保留 `-ffp-contract=off`。模型依赖按 `configs/requirements-*.txt` 和 `docker/artifacts-runtime.json` 锁定；jjjkairos 使用既有运行镜像，禁止在本机 WSL 或集群节点构建镜像。默认摘要仅依赖 Python 标准库；历史 Excel 读取及显式 full 导出需要 openpyxl 3.1.5。
@@ -70,4 +82,4 @@ PYTHONPATH=workers CUDA_VISIBLE_DEVICES='' HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE
 
 默认交付为 `results/<experiment>/<run>/YYYYMMDD-<run_id>.md` 和 `summary.json`，仅保留关键指标、资格、失败摘要与来源/清理凭据。摘要不能续跑或重新评测。累计账本在 `.state/<experiment>/budget.json`；运行控制记录及未闭合评测依赖保留在 `.cache/results-work/`。新增测试用 `test_YYYYMMDD_<事项>.py` 命名；历史报告与兼容测试不因命名要求重写。
 
-[实验配置](docs/experiments.md) · [结果处理](docs/results.md) · [容器镜像](docs/container.md) · [论文设计与评估协议](docs/dit_serving_sections.tex)
+[创新点与实测证据](docs/motivation.md) · [实验配置](docs/experiments.md) · [结果处理](docs/results.md)

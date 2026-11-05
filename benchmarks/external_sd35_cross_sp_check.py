@@ -538,6 +538,96 @@ def valid_pair(pair):
     except (KeyError,TypeError,ValueError): return False
 
 
+def _evaluate_single_pair_gate(pair, name=None):
+    valid = valid_pair(pair)
+    rows = pair.get('boundaries', {}) if isinstance(pair, dict) else {}
+    same_sp_1e5_passed = bool(valid and rows and all(row.get('passed') is True for row in rows.values()))
+    cross_sp_semantic_passed = bool(
+        valid and rows and all(
+            isinstance(row.get('cosine_similarity'), (int, float))
+            and isinstance(row.get('relative_l2_error'), (int, float))
+            and math.isfinite(row['cosine_similarity'])
+            and math.isfinite(row['relative_l2_error'])
+            and row['cosine_similarity'] >= 0.95
+            and row['relative_l2_error'] <= 0.25
+            for row in rows.values()
+        )
+    )
+    label = (name or (pair.get('pair_name') if isinstance(pair, dict) else '') or '').lower()
+    is_same_sp = (
+        label in ('original_sp1_vs_converted_sp1', 'sp1_native_vs_sp1_round', 'same_sp')
+        or ('sp1' in label and 'sp2' not in label)
+    )
+    gate_tier = 'same_parallelism_segmentation_gate' if is_same_sp else 'cross_sp_acceptance_gate'
+    passed = same_sp_1e5_passed if is_same_sp else cross_sp_semantic_passed
+    return dict(
+        passed=passed,
+        gate_tier=gate_tier,
+        same_sp_1e5_passed=same_sp_1e5_passed,
+        cross_sp_semantic_passed=cross_sp_semantic_passed,
+        strict_elementwise_1e5_passed=same_sp_1e5_passed,
+        cross_sp_quality_gate_passed=cross_sp_semantic_passed,
+        first_bitwise=pair.get('first_bitwise') if isinstance(pair, dict) else None,
+        first_tolerance=pair.get('first_tolerance') if isinstance(pair, dict) else None,
+    )
+
+
+def evaluate_cross_sp_step_gate(pair_record, pair_name=None):
+    """Distinguish same-SP wrapper equivalence (1e-5) from cross-SP step drift (cos>=0.95, rel_l2<=0.25)."""
+    if isinstance(pair_record, list):
+        rank_summaries = [evaluate_cross_sp_step_gate(r) for r in pair_record if isinstance(r, dict)]
+        same_sp_passed = bool(rank_summaries) and all(r['same_sp_gate_passed'] for r in rank_summaries)
+        cross_sp_passed = bool(rank_summaries) and all(r['cross_sp_gate_passed'] for r in rank_summaries)
+        return dict(
+            passed=bool(same_sp_passed and cross_sp_passed),
+            two_tier_acceptance_passed=bool(same_sp_passed and cross_sp_passed),
+            same_sp_gate_passed=same_sp_passed,
+            cross_sp_gate_passed=cross_sp_passed,
+            thresholds=dict(atol=1e-5, rtol=1e-5, cosine_similarity_min=0.95, relative_l2_max=0.25),
+            strict_elementwise_1e5_is_diagnostic_only_for_cross_sp=True,
+        )
+    if not isinstance(pair_record, dict):
+        return dict(passed=False, same_sp_gate_passed=False, cross_sp_gate_passed=False)
+    if 'boundaries' in pair_record:
+        single = _evaluate_single_pair_gate(pair_record, pair_name)
+        return dict(
+            **single,
+            same_sp_gate_passed=single['same_sp_1e5_passed'],
+            cross_sp_gate_passed=single['cross_sp_semantic_passed'],
+            thresholds=dict(atol=1e-5, rtol=1e-5, cosine_similarity_min=0.95, relative_l2_max=0.25),
+        )
+    pairs = {}
+    for key, value in pair_record.items():
+        if isinstance(value, dict) and 'boundaries' in value:
+            pairs[key] = _evaluate_single_pair_gate(value, key)
+    candidate = pair_record.get('parallel_wrapper_candidate')
+    if isinstance(candidate, dict):
+        for key, value in candidate.items():
+            if isinstance(value, dict) and 'boundaries' in value:
+                pairs[key] = _evaluate_single_pair_gate(value, key)
+    if 'sp1_vs_sp2' not in pairs:
+        if 'converted_sp1_vs_converted_sp2' in pairs:
+            pairs['sp1_vs_sp2'] = pairs['converted_sp1_vs_converted_sp2']
+        elif 'sp1_round_vs_sp2_round' in pairs:
+            pairs['sp1_vs_sp2'] = pairs['sp1_round_vs_sp2_round']
+        elif 'sp1_native_vs_sp2_round' in pairs:
+            pairs['sp1_vs_sp2'] = pairs['sp1_native_vs_sp2_round']
+    same_sp_entries = [p for p in pairs.values() if p['gate_tier'] == 'same_parallelism_segmentation_gate']
+    cross_sp_entries = [p for p in pairs.values() if p['gate_tier'] == 'cross_sp_acceptance_gate']
+    same_sp_passed = all(p['passed'] for p in same_sp_entries) if same_sp_entries else True
+    cross_sp_passed = all(p['passed'] for p in cross_sp_entries) if cross_sp_entries else False
+    overall = bool(pairs) and same_sp_passed and (cross_sp_passed if cross_sp_entries else True)
+    return dict(
+        passed=overall,
+        two_tier_acceptance_passed=overall,
+        same_sp_gate_passed=same_sp_passed,
+        cross_sp_gate_passed=cross_sp_passed,
+        pairs=pairs,
+        thresholds=dict(atol=1e-5, rtol=1e-5, cosine_similarity_min=0.95, relative_l2_max=0.25),
+        strict_elementwise_1e5_is_diagnostic_only_for_cross_sp=True,
+    )
+
+
 def assess(rows, references):
     try:
         if len(rows)!=2 or {r['rank'] for r in rows}!={0,1}: return False
@@ -663,7 +753,9 @@ def main(argv=None):
             assessment=candidate.assess(rows,candidate_reference,sys.modules[__name__],joint_strategy=args.joint_strategy_default)
             result.update(assessment)
             complete=complete and assessment['candidate_diagnostic_completed']
-        result.update(diagnostic_completed=complete,status='diagnostic_completed' if complete else 'failed')
+        step_gate=evaluate_cross_sp_step_gate(rows)
+        result.update(diagnostic_completed=complete,status='diagnostic_completed' if complete else 'failed',
+            cross_sp_step_gate=step_gate,cross_sp_acceptance_gate=step_gate)
     except BaseException as exc:
         result.update(error=repr(exc),traceback=traceback.format_exc()[-10000:])
     if created:

@@ -50,23 +50,33 @@ const std::map<std::string, PolicyTraits>& named() {
         // ---- baselines (re-implemented on the same executor, workers and profile) ----
         {
             auto t = row("tetriserve", "TetriServe (re-impl.)", "baseline",
-                "TetriServe, ASPLOS'26: step-level SP, round-based scheduling with mid-round GPU hold, "
-                "dominated-degree pruning, survival-aware deadline group knapsack, and 1-GPU best-effort late fallback");
+                "TetriServe, ASPLOS'26: step-level SP regrouped only at round boundaries; inside an unfinished round a "
+                "placed video holds its GPUs from images and other videos (no sub-step preemption); dominated-form "
+                "pruning; each plan sizes the movable videos by a 0/1 deadline group knapsack (value 1 per request kept "
+                "on track, cost its minimal feasible GPUs), leftover GPUs go widest-first in EDF order to requests no "
+                "size saves, and only when no image waits are placed videos widened in EDF order to their next faster "
+                "size; rounds approximated by options.round_steps solver steps; not reproduced: its batching and "
+                "multi-node deployment");
             t.elastic = t.rounds = t.deadline_dp = t.prune_dominated = true;
             add(t);
         }
         {
             auto t = row("sbp-esp", "SBP-ESP", "baseline",
                 "method of GenServe (arXiv:2604.04335, preprint): step-boundary video preemption, elastic SP "
-                "re-planned every step by a joint cross-modal SLO-aware lexicographic DP with slack utility, "
-                "dynamic image batching, single-GPU VAE decode");
+                "re-planned every step by the unit-value deadline group knapsack over videos also used for TetriServe "
+                "(images take GPUs in the same EDF pass, outside the knapsack), every late request demoted behind "
+                "feasible ones (late_short_ms 0), image batches of up to 4 when no GPU is free and the profile prices "
+                "batches, single-GPU VAE decode; not reproduced: its exact utility function and joint cross-modal "
+                "planning");
             t.elastic = t.deadline_dp = t.image_batching = true;
             add(t);
         }
         {
             auto t = row("edf-bestfit", "EDF-BF", "baseline",
-                "method of GF-DiT (arXiv:2606.13501, preprint): strict EDF EdfBestFit policy, smallest SP meeting "
-                "the deadline else fastest fitting degree, then cost-aware head-of-line EDF surplus promotion");
+                "method of GF-DiT (arXiv:2606.13501, preprint): EdfBestFit policy in strict EDF order (no lateness "
+                "demotion), smallest group size meeting the deadline else the largest that fits, then EDF surplus "
+                "redistribution one size at a time while GPUs remain; not reproduced: arbitrary (non-aligned) rank "
+                "groups; group-free collectives require options.collective_backend=gfc");
             t.elastic = t.best_fit = true;
             t.demote_late = false;
             add(t);
@@ -248,9 +258,10 @@ const PolicyTraits& policy_traits(const std::string& raw) {
         t.fixed_form = form; t.fixed_degree = form.degree(); t.blocks = t.v5 = true; t.fission = kind == "approx";
     } else {
         t = row(name, form_text == "sp1" ? "xDiT" : "xDiT-" + form_text, "baseline",
-            "xDiT engine (arXiv:2411.01738) static-partition baseline: each model on its own GPUs, "
-            "unoptimized single-GPU execution without CFG or sequence parallelism by default (cfg=1, sp1), "
-            "FCFS, a started request runs to completion without preemption");
+            "xDiT engine (arXiv:2411.01738) static-partition baseline: each model on its own GPUs (the image share, "
+            "options.partition_image_gpus or max(1, gpus/4), is clamped to leave one " + form_text + " video group), every "
+            "video on a fixed " + form_text + " group" + (form_text == "sp1" ? " (no CFG or sequence parallelism)" : "")
+            + ", FCFS, a started request runs to completion without preemption");
         t.fixed_form = form; t.fixed_degree = form.degree();
         t.hold_diffuse = true; t.order = "fcfs"; t.demote_late = false; t.partition_divisor = 4;
     }
@@ -265,7 +276,9 @@ Json policy_catalog() {
                     {"elastic", t.elastic}, {"blocks", t.blocks}, {"rounds", t.rounds}, {"knapsack", t.knapsack},
                     {"deadline_dp", t.deadline_dp}, {"best_fit", t.best_fit}, {"approximate", t.approx || t.v3 || t.v5},
                     {"fission", t.fission}, {"prune_dominated", t.prune_dominated}, {"min_video_degree", t.min_video_degree},
-                    {"order", t.order}, {"hold_diffuse", t.hold_diffuse}, {"partition_divisor", t.partition_divisor}};
+                    {"order", t.order}, {"hold_diffuse", t.hold_diffuse}, {"partition_divisor", t.partition_divisor},
+                    {"demote_late", t.demote_late}, {"widen", t.widen}, {"image_placement", t.image_placement},
+                    {"image_batching", t.image_batching}, {"round_steps", t.round_steps}};
     };
     for (const auto& item : named()) out.push_back(describe(item.second));
     for (const char* name : {"xdit-sp1", "xdit-sp2", "xdit-cfg2", "static-cfg2", "block-cfg2", "fold-cfg2sp3", "approx-cfg2sp3"})

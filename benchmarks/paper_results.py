@@ -8,7 +8,8 @@ from pathlib import Path
 
 from native_exact import validate_run
 from native_metrics import summarize_run
-from native_serving import IN_FRAMEWORK_MECHANISM_DISPLAY, POLICY_DISPLAY
+# Stdlib-only display tables: importing native_serving would require workers/ (ditserve).
+from policy_display import IN_FRAMEWORK_MECHANISM_DISPLAY, POLICY_DISPLAY
 
 
 POLICY_ORDER = (

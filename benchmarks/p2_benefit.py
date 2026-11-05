@@ -26,7 +26,8 @@ from formal_benchmark import input_shape, shape_spec
 from native_exact import checked_digest, stop_samples, validate_pair_identity
 from native_config_identity import config_identity, match_native_config
 from native_metrics import percentile
-from p2_contrasts import CONTRASTS, audit_native_sources, canonical_policy, validate_contrast
+from p2_contrasts import (CONTRASTS, LEGACY_POLICY_SOURCE, audit_native_sources, canonical_policy,
+                          validate_contrast)
 from stage_gates import canonical_hash, read_json, source_file
 
 
@@ -259,7 +260,9 @@ def audit_arm(record, arm, protocol, *, audited_native_sources=None):
         result['by_kind'] = counts(workload, rows, status)
         if status == 'failed':
             result['error'] = cell.get('error', phase.get('error'))
-        if cell.get('policy') is not None and canonical_policy(cell['policy']) != canonical_policy(arm['phase']['policy']):
+        policy_source = result['native_source_audit']['policy_source_sha256']
+        if (cell.get('policy') is not None and canonical_policy(cell['policy'], policy_source)
+                != canonical_policy(arm['phase']['policy'], policy_source)):
             raise ValueError('executed policy differs from selected frozen cell')
         sessions = [session for session in record.get('budget', {}).get('sessions', [])
                     if session.get('session_id') == phase.get('session_id')]
@@ -406,6 +409,25 @@ def measurement_scope(arm):
         scope='source purpose and measured controls; no unseen-dataset, full-protocol, performance or quality certification')
 
 
+def resolution_source(arms, audits):
+    """Resolve contrast defaults with the policy.cpp the arms executed.
+
+    An audited run source selects its reviewed registry. Without one, the plan's
+    recorded registry applies; plans prepared before it was recorded used 6429a94's.
+    """
+    executed = {audit['native_source_audit']['policy_source_sha256']
+                for audit in audits.values() if 'native_source_audit' in audit}
+    if len(executed) > 1:
+        raise ValueError('paired arms executed different policy.cpp revisions')
+    if executed:
+        return dict(sha256=executed.pop(), basis='audited run native source')
+    planned = {arm['config']['benchmark'].get('p2', {}).get('policy_source_sha256', LEGACY_POLICY_SOURCE)
+               for arm in arms.values()}
+    if len(planned) > 1:
+        raise ValueError('paired arms were prepared with different policy registries')
+    return dict(sha256=planned.pop(), basis='prepared plan registry; no audited run source')
+
+
 def evaluate(manifest, base):
     if manifest.get('schema') != 'ditserve.p2-evidence.v1':
         raise ValueError('unknown P2 evidence schema')
@@ -442,7 +464,6 @@ def evaluate(manifest, base):
             raise ValueError('duplicate seed within one workload contrast')
         arms = {arm: planned_arm(read_json(source_file(plan_base, case[arm]['config'])), case[arm], protocol, seed)
                 for arm in ('reference', 'candidate')}
-        resolved = validate_contrast(case['contrast'], arms['reference']['phase'], arms['candidate']['phase'])
         workload_identity = (key, trace_hash(arms['reference']['workload']))
         if workload_identity in workload_seeds and workload_seeds[workload_identity] != seed:
             raise ValueError('same frozen trace relabelled as independent seeds')
@@ -478,6 +499,10 @@ def evaluate(manifest, base):
                 observed_ids[locator] = seed
             audits[arm] = audit_arm(record, arms[arm], protocol)
             audits[arm]['record'] = supplied_sources.get((case['id'], arm))
+        policy_source = resolution_source(arms, audits)
+        resolved = validate_contrast(case['contrast'], arms['reference']['phase'], arms['candidate']['phase'],
+                                     policy_source['sha256'])
+        resolved['policy_source'] = policy_source
         try:
             expected_models = {protocol['shapes'][row['class']]['model'] for row in arms['reference']['workload']}
             comparison = paired(audits['reference'], audits['candidate'], expected_models)

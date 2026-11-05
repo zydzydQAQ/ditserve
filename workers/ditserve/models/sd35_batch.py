@@ -466,15 +466,13 @@ class SD35AsyncPipelineManager:
             t0 = time.perf_counter()
             if delay_s > 0:
                 time.sleep(delay_s)
-            stage_info = self.backend._ensure_staged(
+            stream = self.encode_stream
+            stage_info, fetched = self.backend._fetch_staged(
                 spec["prompt"],
                 spec["negative_prompt"],
                 spec["max_sequence_length"],
                 spec["guidance_scale"] > 1.0,
-            )
-            stream = self.encode_stream
-            fetched = self.backend.encoder_pool.fetch_to_device(
-                stage_info["key"], self.backend.device, stream=stream
+                stream=stream,
             )
             if stream is not None and hasattr(stream, "synchronize"):
                 stream.synchronize()

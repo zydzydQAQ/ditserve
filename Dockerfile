@@ -1,5 +1,6 @@
 # Lean runtime: C++ controller + resident Python workers on the locked torch 2.10.0+cu126 stack.
-# Offline build: serve the wheelhouse on the host and pass --network host, see docs/container.md.
+# Historical recipe: its offline build guide (docs/container.md) was removed. Building this image locally (WSL)
+# or on jjjkairos is prohibited by /mnt/e/000_code/zyd-2026/AGENTS.md; new images need a user-approved build source.
 ARG PYTHON_BASE=python:3.10.20-slim-bookworm@sha256:019e31cc1f52e4139d338bca44f27b71339a9da261738fd80fab9cf4595152fc
 FROM ${PYTHON_BASE} AS runtime-system
 # GCC/G++ and /usr/local/include/python3.10 are required by torch.compile.

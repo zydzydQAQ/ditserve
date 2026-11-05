@@ -9,41 +9,23 @@ import random
 import re
 from pathlib import Path
 
-from cluster_config import (
+from cluster_config import (  # DEFAULT_CONTINUOUS_BATCH (0, off) is re-exported
     DEFAULT_CONTINUOUS_BATCH,
+    MEMORY_STRATEGIES,
     MODELS,
     allocated_uuids,
+    applied_memory_strategy,
+    continuous_batch_settings,
     default_sd35_batch_step_ms,
     make_workers,
 )
 from ditserve.evaluation.common import read_json, verify_seal
 from ditserve.evaluation.workloads import build_trace, validate_trace
+# Display tables live in a stdlib-only module so paper_results.py does not need
+# workers/; they stay importable from here.
+from policy_display import IN_FRAMEWORK_MECHANISM_DISPLAY, POLICY_DISPLAY
 
 
-# Paper tables (see docs/experiments.md and src/ditserve/control/policy.cpp, the authoritative
-# registry). Preprint-only methods are named by method; TetriServe (ASPLOS'26) and xDiT by system.
-POLICY_DISPLAY = {
-    "xdit": "xDiT", "tetriserve": "TetriServe (re-impl.)", "sbp-esp": "SBP-ESP", "edf-bestfit": "EDF-BF",
-    "edf-cfg2": "EDF-CFG2", "cfg2-first": "CFG2-First", "partition": "Static-Partition",
-    "static-cfg2": "Static-CFG2", "static-cfg2sp2": "Static-CFG2SP2",
-    "static-cfg2sp3": "Static-CFG2SP3", "static-cfg2sp4": "Static-CFG2SP4",
-    "ditserve": "DitServe", "ditserve-approx": "DitServe-Approx",
-    "fold-cfg2sp3": "CFG2SP3 fold only", "approx-cfg2sp3": "CFG2SP3 fold + fission",
-    "abl-no-block": "DitServe w/o block preemption", "abl-no-prune": "DitServe w/o form pruning",
-    "abl-no-mindeg": "DitServe w/o CFG-pair admission", "abl-first-fit": "DitServe w/o pair-fit placement",
-    "ditserve-v1": "DitServe-v1 (knapsack)", "block-cfg2": "Block-cfg2", "block-cfg2sp3": "Block-cfg2sp3",
-}
-IN_FRAMEWORK_MECHANISM_DISPLAY = {
-    "edf-cfg2": "EDF-CFG2",
-    "static-cfg2sp2": "Static-CFG2SP2",
-    "static-cfg2sp3": "Static-CFG2SP3",
-    "static-cfg2sp4": "Static-CFG2SP4",
-    "cfg2-first": "CFG2-First",
-    "tetriserve": "TetriServe-policy",
-    "sbp-esp": "SBP-ESP",
-    "edf-bestfit": "EDF-BF",
-    "ditserve": "DitServe",
-}
 STATIC_POLICY = re.compile(r"^static-(?:sp1|cfg2|sp2|cfg2sp2|sp3|cfg2sp3|sp4|cfg2sp4|sp6|sp8)$")
 IN_FRAMEWORK_COMPARISON_DECLARATION = {
     "enabled": True,
@@ -121,7 +103,14 @@ def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load,
                          image_slo_scale=2.5, quality_per_kind=0, cfg_fold=None, forms=None, doorbell=False,
                          output_mode="check", require_profile_match=False, collective_backend="nccl", cv=1.0,
                          image_batch=1, policy_order="forward", order_seed=None, async_rank0_decode=False,
-                         continuous_batch=None, sequence_packing=True, bubble_free=True):
+                         continuous_batch=None, sequence_packing=None, bubble_free=None, memory_strategy=None):
+    """Build a frozen native serving study.
+
+    SD3.5 continuous batching and worker memory strategies are explicit opt-in:
+    continuous_batch None or 0 keeps atomic image execution for every policy and
+    workers with continuous_batch/sequence_packing/bubble_free off, whatever
+    the profile contains.
+    """
     policies = list(DEFAULT_POLICIES if policies is None else policies)
     requested_policies = list(policies)
     if policy_order not in ("forward", "reverse", "random"):
@@ -132,31 +121,37 @@ def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load,
         random.Random(seed if order_seed is None else order_seed).shuffle(policies)
     if not isinstance(image_batch, int) or isinstance(image_batch, bool) or not 1 <= image_batch <= 8:
         raise ValueError("image_batch must be an integer in [1, 8]")
-    if continuous_batch is not None:
-        if not isinstance(continuous_batch, int) or isinstance(continuous_batch, bool) or not 0 <= continuous_batch <= 8:
-            raise ValueError("continuous_batch must be an integer in [0, 8]")
-        if continuous_batch > 0 and image_batch > 1:
-            raise ValueError("continuous_batch and atomic image_batch are mutually exclusive")
-    if continuous_batch is None:
-        if image_batch > 1:
-            eff_cb = 0
-        else:
-            eff_cb = DEFAULT_CONTINUOUS_BATCH if "batch_step_ms" in profile["classes"]["sd35-preflight"] else 0
-    else:
-        eff_cb = continuous_batch
+    eff_cb, packing, bubble = continuous_batch_settings(continuous_batch, sequence_packing, bubble_free)
+    if eff_cb > 0 and image_batch > 1:
+        raise ValueError("continuous_batch and atomic image_batch are mutually exclusive")
+    applied_memory = None if memory_strategy is None else applied_memory_strategy(memory_strategy)
+    cb_cost_provenance = None
     if eff_cb > 0:
         sd_cls = profile["classes"]["sd35-preflight"]
-        if any(k not in sd_cls for k in ("batch_step_ms", "steps", "prepare_ms", "finish_ms")):
+        table = sd_cls.get("batch_step_ms")
+        if table is not None and (not isinstance(table, dict) or "1" not in table
+                                  or max(int(key) for key in table) < eff_cb):
+            raise ValueError(f"continuous_batch={eff_cb} needs sd35-preflight.batch_step_ms with batch 1 "
+                             f"and a largest size >= {eff_cb}; no synthetic extension of a measured table")
+        cb_cost_provenance = {key: "profile" for key in ("steps", "prepare_ms", "finish_ms", "batch_step_ms")}
+        missing = [key for key in cb_cost_provenance if key not in sd_cls]
+        if missing:
+            # Explicit opt-in only: placeholders are labelled synthetic, never measured.
             profile = copy.deepcopy(profile)
             sd_cls = profile["classes"]["sd35-preflight"]
             sd_steps = int(sd_cls.get("steps", 28))
-            sd_cls.setdefault("steps", sd_steps)
-            sd_cls.setdefault("prepare_ms", 15.0)
-            sd_cls.setdefault("finish_ms", 65.0)
-            sd_cls.setdefault(
-                "batch_step_ms",
-                default_sd35_batch_step_ms(float(sd_cls["service_ms"]), steps=sd_steps, resolution=1024),
-            )
+            synthetic = {
+                "steps": sd_steps, "prepare_ms": 15.0, "finish_ms": 65.0,
+                "batch_step_ms": default_sd35_batch_step_ms(float(sd_cls["service_ms"]), steps=sd_steps,
+                                                            resolution=1024),
+            }
+            for key in missing:
+                sd_cls[key] = synthetic[key]
+                cb_cost_provenance[key] = ("synthetic_default_table" if key == "batch_step_ms"
+                                           else "synthetic_placeholder")
+            source = profile.setdefault("source", {})
+            source["image_cost_provenance"] = dict(source.get("image_cost_provenance", {}),
+                                                   **{key: cb_cost_provenance[key] for key in missing})
     if image_batch > 1:
         table = profile["classes"]["sd35-preflight"].get("batch_ms", {})
         for size in range(2, image_batch + 1):
@@ -196,9 +191,10 @@ def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load,
             "guidance_scale": 4.5, "negative_prompt": "blurry, low quality",
             "max_sequence_length": 256, "prompt": "A lighthouse at dusk.", "seed": 202,
         }, cfg_fold=cfg_fold,
-        continuous_batch=eff_cb if eff_cb > 0 else DEFAULT_CONTINUOUS_BATCH,
-        sequence_packing=sequence_packing,
-        bubble_free=bubble_free,
+        memory_strategy=memory_strategy,
+        continuous_batch=eff_cb,
+        sequence_packing=packing,
+        bubble_free=bubble,
     )
     for item in warmup:
         item["spec"]["steps"] = 1
@@ -255,8 +251,8 @@ def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load,
     }
     if eff_cb > 0:
         phase_options["continuous_batch"] = eff_cb
-        phase_options["sequence_packing"] = bool(sequence_packing)
-        phase_options["bubble_free"] = bool(bubble_free)
+        phase_options["sequence_packing"] = packing
+        phase_options["bubble_free"] = bubble
     benchmark_meta = {
         "native_serving": True,
         "performance_qualified": False,
@@ -296,9 +292,12 @@ def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load,
     if eff_cb > 0:
         benchmark_meta["continuous_batch"] = {
             "max_requests": eff_cb,
-            "sequence_packing": bool(sequence_packing),
-            "bubble_free": bool(bubble_free),
+            "sequence_packing": packing,
+            "bubble_free": bubble,
+            "cost_provenance": cb_cost_provenance,
         }
+    if applied_memory is not None:
+        benchmark_meta["memory_strategy"] = applied_memory
     return {
         "schema": "ditserve.study.v1",
         "experiment": f"kairos-{model}-native-serving-s{seed}-l{str(load).replace('.', 'p')}",
@@ -356,11 +355,14 @@ def main():
     parser.add_argument("--image-batch", type=int, default=1,
                         help="maximum atomic image requests per batch, shared by all policies; >1 requires measured batch_ms")
     parser.add_argument("--continuous-batch", type=int, default=None,
-                        help="maximum step-level continuous image batch size in [0, 8]; mutually exclusive with --image-batch > 1")
-    parser.add_argument("--sequence-packing", action=argparse.BooleanOptionalAction, default=True,
-                        help="enable multi-resolution token sequence packing for SD3.5 continuous batches")
-    parser.add_argument("--bubble-free", action=argparse.BooleanOptionalAction, default=True,
-                        help="overlap T5 encode and VAE decode with MM-DiT denoising rounds")
+                        help="opt-in step-level continuous image batch size in [0, 8]; default off (never "
+                             "enabled from the profile); mutually exclusive with --image-batch > 1")
+    parser.add_argument("--sequence-packing", action=argparse.BooleanOptionalAction, default=None,
+                        help="token sequence packing for SD3.5 continuous batches (default: on iff continuous batching)")
+    parser.add_argument("--bubble-free", action=argparse.BooleanOptionalAction, default=None,
+                        help="overlap T5 encode and VAE decode with continuous rounds (default: on iff continuous batching)")
+    parser.add_argument("--memory-strategy", choices=MEMORY_STRATEGIES,
+                        help="opt-in worker memory strategy; only worker-implemented strategies are accepted")
     parser.add_argument("--quality-arm", choices=["exact", "fixed", "curvature"],
                         help="controlled all-video cfg2sp3 quality arm, with identical runtime settings")
     parser.add_argument("--policies")
@@ -464,6 +466,7 @@ def main():
         require_profile_match=args.require_profile_match, collective_backend=args.collective_backend, cv=args.cv,
         image_batch=args.image_batch, policy_order=args.policy_order, order_seed=args.order_seed,
         continuous_batch=args.continuous_batch, sequence_packing=args.sequence_packing, bubble_free=args.bubble_free,
+        memory_strategy=args.memory_strategy,
     )
     config["benchmark"]["quality_arm"] = args.quality_arm
     if args.experiment is not None:

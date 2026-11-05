@@ -197,6 +197,25 @@ def validate_comparison(row, count, reference, actual):
     return True
 
 
+def valid_comparison(value, elements, reference=None, actual=None):
+    if reference is not None and actual is not None:
+        return validate_comparison(value, elements, reference, actual)
+    if (not isinstance(value, dict) or value.get('elements') != elements
+            or value.get('atol') != 1e-5 or value.get('rtol') != 1e-5
+            or type(value.get('passed')) is not bool or type(value.get('bitwise_equal')) is not bool):
+        return False
+    fields = ('max_abs_error', 'rmse', 'relative_l2_error', 'cosine_similarity')
+    if any(type(value.get(k)) not in (int, float) or not math.isfinite(value[k]) for k in fields):
+        return False
+    if not 0 <= value['rmse'] <= value['max_abs_error'] or value['relative_l2_error'] < 0:
+        return False
+    if not -1.000000000001 <= value['cosine_similarity'] <= 1.000000000001:
+        return False
+    if value['bitwise_equal'] and (not value['passed'] or value['max_abs_error'] != 0 or value['relative_l2_error'] != 0):
+        return False
+    return True
+
+
 def valid_initial(values):
     if set(values) != set(migration.NAMES):
         return False
@@ -375,6 +394,50 @@ def assess(records):
                 inputs[left][k],inputs[right][k]) for k,shape in numerics.raw_shapes(dict(height=1024,width=1024)).items()):
             return False
     return True
+
+
+def assess_two_tier_gates(ranks):
+    """Evaluate same-SP segmentation (strict 1e-5 + bitwise) and cross-SP semantic drift gates."""
+    completed = assess(ranks)
+    rank0 = next((r for r in (ranks or []) if isinstance(r, dict) and r.get('rank') == 0), {})
+    comparisons = rank0.get('comparisons', {}) if isinstance(rank0, dict) else {}
+    same_pair = comparisons.get('round_sp2_full_vs_round_sp2_chunked', {})
+    same_sp_segmentation_gate_passed = bool(
+        completed
+        and set(same_pair) == {'latents', 'decoded'}
+        and all(
+            same_pair[k].get('passed') is True and same_pair[k].get('bitwise_equal') is True
+            for k in ('latents', 'decoded')
+        )
+    )
+    cross_pairs = ('sp1_reference_vs_round_sp2_full', 'sp1_reference_vs_round_sp2_chunked')
+    cross_sp_semantic_gate_passed = bool(
+        completed
+        and all(
+            set(comparisons.get(pair_name, {})) == {'latents', 'decoded'}
+            and all(
+                isinstance(comparisons[pair_name][k].get('cosine_similarity'), (int, float))
+                and isinstance(comparisons[pair_name][k].get('relative_l2_error'), (int, float))
+                and isinstance(comparisons[pair_name][k].get('max_abs_error'), (int, float))
+                and isinstance(comparisons[pair_name][k].get('rmse'), (int, float))
+                and math.isfinite(comparisons[pair_name][k]['cosine_similarity'])
+                and math.isfinite(comparisons[pair_name][k]['relative_l2_error'])
+                and math.isfinite(comparisons[pair_name][k]['max_abs_error'])
+                and math.isfinite(comparisons[pair_name][k]['rmse'])
+                and comparisons[pair_name][k]['cosine_similarity'] >= 0.95
+                and comparisons[pair_name][k]['relative_l2_error'] <= 0.25
+                for k in ('latents', 'decoded')
+            )
+            for pair_name in cross_pairs
+        )
+    )
+    return dict(
+        same_sp_segmentation_gate_passed=same_sp_segmentation_gate_passed,
+        cross_sp_semantic_gate_passed=cross_sp_semantic_gate_passed,
+        two_tier_acceptance_passed=bool(same_sp_segmentation_gate_passed and cross_sp_semantic_gate_passed),
+        thresholds=dict(cosine_similarity_min=0.95, relative_l2_max=0.25),
+        strict_elementwise_1e5_is_diagnostic_only_for_cross_sp=True,
+    )
 
 
 def worker(rank, args, binding):
@@ -647,8 +710,10 @@ def main(argv=None):
             result.update(observation)
             complete = complete and result['observation_admissible']
         comparisons=next((r.get('comparisons',{}) for r in rows if r.get('rank')==0),{})
+        two_tier_gates=assess_two_tier_gates(rows)
         result.update(diagnostic_completed=complete,status='diagnostic_completed' if complete else 'failed',
-            numerical_check_passed=complete and all(c['passed'] for pair in comparisons.values() for c in pair.values()))
+            numerical_check_passed=complete and all(c['passed'] for pair in comparisons.values() for c in pair.values()),
+            two_tier_gates=two_tier_gates)
     except BaseException as exc:
         result.update(error=repr(exc),traceback=traceback.format_exc()[-14000:])
     if created:

@@ -118,7 +118,9 @@ class SD35Backend(AtomicPipelineBackend):
         if not hasattr(self, "encoders_offloaded"):
             self.encoders_offloaded = False
         key = self._prompt_key(prompt, negative_prompt, max_sequence_length, do_cfg)
-        if self.encoder_pool.has_key(key):
+        # A /dev/shm slab staged by another worker is read into this pool now, so the
+        # fetch that follows never depends on a shared file that worker may evict.
+        if self.encoder_pool.ensure_resident(key):
             return dict(key=key, staged=False, cached=True)
         was_offloaded = self.encoders_offloaded
         if was_offloaded:
@@ -152,6 +154,27 @@ class SD35Backend(AtomicPipelineBackend):
             if was_offloaded:
                 self.offload_encoders()
         return dict(key=key, staged=True, cached=False, stage_ms=meta["stage_ms"], bytes=meta["bytes"])
+
+    def _fetch_staged(self, prompt: str, negative_prompt: str, max_sequence_length: int, do_cfg: bool, *,
+                      stream=None, device=None):
+        """Stage (or find) a prompt's embeddings and push them to ``device``.
+
+        The pool is shared with the async encode thread, whose staging may evict
+        this key from the LRU between staging and fetching; a fetch miss restages
+        (encoding again if needed) instead of failing the request.
+        """
+        device = self.device if device is None else device
+        for attempt in range(3):
+            stage_info = self._ensure_staged(prompt, negative_prompt, max_sequence_length, do_cfg)
+            try:
+                fetched = self.encoder_pool.fetch_to_device(stage_info["key"], device, stream=stream)
+            except KeyError:
+                if attempt == 2:
+                    raise
+                continue
+            if attempt:
+                stage_info = dict(stage_info, restaged_after_miss=attempt)
+            return stage_info, fetched
 
     def encode_start(self, request):
         return self._pipeline_manager().submit_encode(request)
@@ -234,8 +257,8 @@ class SD35Backend(AtomicPipelineBackend):
 
         # Fast path when all prompts in the batch are identical
         if len(set(zip(prompt_list, neg_list))) == 1:
-            stage_info = self._ensure_staged(prompt_list[0], neg_list[0], max_seq_len, guidance_scale > 1.0)
-            fetched = self.encoder_pool.fetch_to_device(stage_info["key"], self.device, stream=stream)
+            _, fetched = self._fetch_staged(prompt_list[0], neg_list[0], max_seq_len, guidance_scale > 1.0,
+                                            stream=stream)
             if stream is not None and hasattr(stream, "synchronize"):
                 stream.synchronize()
             tensors = fetched["tensors"]
@@ -264,8 +287,7 @@ class SD35Backend(AtomicPipelineBackend):
         hits = 0
         total_push_ms = 0.0
         for p_str, n_str in zip(prompt_list, neg_list):
-            stage_info = self._ensure_staged(p_str, n_str, max_seq_len, guidance_scale > 1.0)
-            fetched = self.encoder_pool.fetch_to_device(stage_info["key"], self.device, stream=stream)
+            _, fetched = self._fetch_staged(p_str, n_str, max_seq_len, guidance_scale > 1.0, stream=stream)
             hits += int(bool(fetched["hit"]))
             total_push_ms += float(fetched["push_ms"])
             for name, bucket in per_field.items():
@@ -298,10 +320,9 @@ class SD35Backend(AtomicPipelineBackend):
         # 1. Fetch/stage prompt embeddings (using side stream when bubble_free=True)
         stream = self._pipeline_manager().encode_stream if bubble_free else None
         if state.get("embeds") is None:
-            stage_info = self._ensure_staged(
-                spec["prompt"], spec["negative_prompt"], spec["max_sequence_length"], do_cfg
+            _, fetched = self._fetch_staged(
+                spec["prompt"], spec["negative_prompt"], spec["max_sequence_length"], do_cfg, stream=stream
             )
-            fetched = self.encoder_pool.fetch_to_device(stage_info["key"], self.device, stream=stream)
             state["embeds"] = fetched["tensors"]
             state["encode_meta"] = dict(
                 encoder_pool_hit=fetched["hit"],
