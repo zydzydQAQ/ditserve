@@ -328,12 +328,25 @@ class WanStepWorker:
         self._owner = object()
         self._states = {}
         self._encoder_pool = None
-        if encoder_pool is not None:
+        self._encoder_pool_opt = None
+        pool_enabled = encoder_pool is not False and not (
+            isinstance(encoder_pool, dict) and not encoder_pool.get("enabled", True)
+        )
+        if pool_enabled:
             from ..encoder_pool import ProactiveEncoderPool
             self._encoder_pool = (
                 encoder_pool if isinstance(encoder_pool, ProactiveEncoderPool)
-                else ProactiveEncoderPool(encoder_pool)
+                else ProactiveEncoderPool(
+                    encoder_pool if isinstance(encoder_pool, dict) else {"trimmed": True}
+                )
             )
+            if getattr(self._encoder_pool, "trimmed", False):
+                opt_mode = (
+                    "bf16_trimmed" if self.text_encoder_dtype == "bfloat16" else "fp32_trimmed"
+                )
+                self._encoder_pool_opt = self._encoder_pool.optimize_wan_cpu_encoder(
+                    self, mode=opt_mode
+                )
         self._negative_prompt_cache = None
         if cache_config:
             from .prompt_cache import NegativePromptCache

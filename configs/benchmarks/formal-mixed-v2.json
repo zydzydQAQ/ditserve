@@ -1,7 +1,7 @@
 {
   "schema": "ditserve.formal-protocol.v2",
   "id": "formal-mixed-v2",
-  "scope": "GenServe/TetriServe-aligned mixed-modality serving protocol: per-resolution unoptimized SP1 end-to-end latency SLO baseline, SLO scale [1.0, 1.5, 2.0], rate scale [0.5, 1.0, 1.5] relative to R0 (reported in req/min), 100 requests/trace, 81-frame 3-tier video (256p/480p/720p) and 3-tier image (512^2/1024^2/1440^2), video fractions [0.2, 0.5, 0.8], uniform and TetriServe exponential-skewed resolution distributions",
+  "scope": "GenServe/TetriServe-aligned mixed-modality serving protocol: per-resolution unoptimized SP1 end-to-end latency SLO baseline, SLO scale [1.0, 1.5, 2.0], rate scale [1.0, 1.75, 2.5] relative to R0 (reported in req/min), 100 requests/trace, 81-frame 3-tier video (256p/480p/720p) and 3-tier image (512^2/1024^2/1440^2), video fractions [0.2, 0.5, 0.8], uniform and TetriServe exponential-skewed resolution distributions",
   "primary_model": "wan22",
   "sensitivity_models": [
     "wan21"
@@ -79,9 +79,9 @@
     }
   ],
   "loads": [
-    0.5,
     1.0,
-    1.5
+    1.75,
+    2.5
   ],
   "rate_definition": "R0 = slots * 60000 / mean_sp1_gpu_service_ms (req/min); offered rate_rpm = load * R0",
   "slo": {
@@ -115,7 +115,7 @@
   "anchor": {
     "model": "wan22",
     "slo_scale": 1.5,
-    "load": 1.0,
+    "load": 1.75,
     "video_fraction": 0.5,
     "resolution_distribution": "uniform",
     "pattern": "poisson",

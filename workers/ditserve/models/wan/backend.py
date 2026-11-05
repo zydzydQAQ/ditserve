@@ -23,8 +23,10 @@ class WanBackend(Backend):
         # Optional worker-owned negative-embedding cache: both limits or neither, checked before loading.
         cache_config = cache_options(self.options)
         pool_cfg = self.options.get("encoder_pool")
-        if isinstance(pool_cfg, dict) and pool_cfg.get("enabled", True):
-            pool_cfg = dict(pool_cfg)
+        if pool_cfg is False or (isinstance(pool_cfg, dict) and not pool_cfg.get("enabled", True)):
+            cache_config["encoder_pool"] = {"enabled": False}
+        else:
+            pool_cfg = dict(pool_cfg) if isinstance(pool_cfg, dict) else {}
             if "work_dir" in config and "work_dir" not in pool_cfg:
                 pool_cfg["work_dir"] = config["work_dir"]
             cache_config["encoder_pool"] = pool_cfg
@@ -133,7 +135,11 @@ class WanBackend(Backend):
             return dict(ticket=ticket, ready=False)
         payload = future.result()
         receipt = getattr(payload, "negative_prompt_cache", None)
-        return dict(ticket=ticket, ready=True, model_ms=payload.cpu_prompt_encode_ms,
+        neg_cache = receipt if isinstance(receipt, dict) else {}
+        cached = bool(neg_cache.get("pos_cache_hit", False)) and (
+            neg_cache.get("outcome") in ("hit", "bypass") or bool(neg_cache.get("neg_cache_hit", False))
+        )
+        return dict(ticket=ticket, ready=True, model_ms=payload.cpu_prompt_encode_ms, cached=cached,
                     **({"negative_prompt_cache": copy.deepcopy(receipt)} if receipt is not None else {}))
 
     def _spec(self, request):

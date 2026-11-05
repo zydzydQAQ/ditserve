@@ -1723,6 +1723,14 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             }
             return false;
         };
+        auto video_worker_busy=[&](int gpu){
+            for(const auto& task:tasks){
+                if(rows[task.row].at("kind")!="video")continue;
+                const auto& grp=task.assignment.at("group");
+                if(std::find(grp.begin(),grp.end(),Json(gpu))!=grp.end())return true;
+            }
+            return false;
+        };
         auto pick_image_encode_gpu=[&](){
             const int start=static_cast<int>(image_encoders++%gpus);
             int best=start;
@@ -1739,6 +1747,23 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             }
             return best;
         };
+        auto pick_video_encode_gpu=[&](){
+            const int start=static_cast<int>(encoders++%gpus);
+            int best=start;
+            auto score=[&](int gpu){
+                int inflight=0;
+                for(std::size_t k=0;k<live.size();++k)
+                    if(live[k].status=="encoding"&&live[k].encode_gpu==gpu&&rows[k].at("kind")=="video")++inflight;
+                return std::make_tuple(video_worker_busy(gpu)?1:0,inflight,busy[gpu]?1:0);
+            };
+            auto best_score=score(best);
+            for(int offset=1;offset<gpus;++offset){
+                const int candidate=(start+offset)%gpus;
+                const auto cand_score=score(candidate);
+                if(cand_score<best_score){best=candidate;best_score=cand_score;}
+            }
+            return best;
+        };
         for(std::size_t i=0;i<rows.size();++i){
             auto& state=live[i];auto& row=rows[i];
             const bool is_image=row.at("kind")=="image";
@@ -1746,13 +1771,20 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 const bool should_encode=(row.at("kind")=="video"&&prefetch)||(is_image&&image_prefetch);
                 state.status=should_encode?"encoding":"waiting";
                 if(state.status=="encoding"){
-                    state.encode_gpu=is_image?pick_image_encode_gpu():static_cast<int>(encoders++%gpus);
+                    state.encode_gpu=is_image?pick_image_encode_gpu():pick_video_encode_gpu();
                     row["encode_gpu"]=state.encode_gpu;
                 }
                 progressed=true;
             }
             if(state.status!="encoding")continue;
-            if(is_image?image_worker_busy(state.encode_gpu):busy[state.encode_gpu])continue;
+            if(state.ticket.empty()&&(is_image?image_worker_busy(state.encode_gpu):video_worker_busy(state.encode_gpu))){
+                const int repicked=is_image?pick_image_encode_gpu():pick_video_encode_gpu();
+                if(!(is_image?image_worker_busy(repicked):video_worker_busy(repicked))){
+                    state.encode_gpu=repicked;
+                    row["encode_gpu"]=state.encode_gpu;
+                }
+            }
+            if(is_image?image_worker_busy(state.encode_gpu):video_worker_busy(state.encode_gpu))continue;
             const auto encode_worker=is_image?image(state.encode_gpu):video(state.encode_gpu);
             if(state.ticket.empty()){
                 state.ticket=invoke(encode_worker,{{"op","encode_start"},{"spec",spec_of(row)}},row).at("ticket").get<std::string>();

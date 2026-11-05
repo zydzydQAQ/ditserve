@@ -97,7 +97,8 @@ class FormalMixedV2Test(unittest.TestCase):
         self.assertEqual(self.p['requests_per_cell']['test'], 100)
         self.assertEqual(self.p['slo']['scales'], [1.0, 1.5, 2.0])
         self.assertEqual(self.p['slo']['default_scale'], 1.5)
-        self.assertEqual(self.p['loads'], [0.5, 1.0, 1.5])
+        self.assertEqual(self.p['loads'], [1.0, 1.75, 2.5])
+        self.assertEqual(self.p['anchor']['load'], 1.75)
         self.assertEqual(self.p['video_fractions'], [0.2, 0.5, 0.8])
         self.assertEqual([x['name'] for x in self.p['patterns']], ['poisson', 'gamma'])
         gamma_pattern = next(x for x in self.p['patterns'] if x['name'] == 'gamma')
@@ -151,7 +152,7 @@ class FormalMixedV2Test(unittest.TestCase):
         )
         self.assertIn('r0_rpm', manifest)
         self.assertIn('rate_rpm', manifest)
-        self.assertAlmostEqual(manifest['rate_rpm'], manifest['r0_rpm'])
+        self.assertAlmostEqual(manifest['rate_rpm'], manifest['r0_rpm'] * self.p['anchor']['load'])
         for row in trace:
             self.assertAlmostEqual(row['effective_slo_scale'], 1.5)
             self.assertAlmostEqual(row['deadline_ms'] - row['arrival_ms'], row['service_ms'] * 1.5)
@@ -159,7 +160,7 @@ class FormalMixedV2Test(unittest.TestCase):
             cfg = formal.serving(self.p, 'wan22', self.uuids, b, self.pools, self.manifests, slo_scale=scale)
             for row in cfg['phases'][0]['matrix']['/workload'][0]:
                 self.assertAlmostEqual(row['effective_slo_scale'], scale)
-        for load_val in (0.5, 1.0, 1.5):
+        for load_val in (1.0, 1.75, 2.5):
             cfg = formal.serving(self.p, 'wan22', self.uuids, b, self.pools, self.manifests, load=load_val)
             m = cfg['benchmark']['trace']['manifest']
             self.assertAlmostEqual(m['rate_rpm'], m['r0_rpm'] * load_val)

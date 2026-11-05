@@ -138,32 +138,45 @@ if [ "$action" = serve ] && [ -n "${DITSERVE_REUSE_BUNDLES:-}" ]; then
   if python3 - "$benchmarks" "$protocol" "$model" "$DITSERVE_MODEL_MANIFESTS" "$RUN_DIR/bundle.json" "$DITSERVE_REUSE_BUNDLES" <<'PY'
 import json, pathlib, shutil, sys
 sys.path.insert(0, sys.argv[1])
-from formal_benchmark import BUNDLE_SCHEMA, allocated_uuids, canonical_hash, protocol, read_json, shape_spec
+from formal_benchmark import BUNDLE_SCHEMA, allocated_uuids, canonical_hash, protocol, read_json, seal, shape_spec, write_new
 from ditserve.evaluation.common import verify_seal
 
 p = protocol(pathlib.Path(sys.argv[2]))
 model = sys.argv[3]
 manifests = read_json(pathlib.Path(sys.argv[4]))
 out_path = pathlib.Path(sys.argv[5])
-candidates = [pathlib.Path(x) for x in sys.argv[6].split(':') if x]
+candidates = [pathlib.Path(x) for x in sys.argv[6].replace(',', ':').split(':') if x.strip()]
 uuids = list(allocated_uuids())
 ids = [sid for sid, shape in p['shapes'].items() if shape['scope'] == 'formal' and shape['model'] in (model, 'sd35')]
-for cand in candidates:
-    if not cand.is_file():
-        continue
-    try:
-        b = read_json(cand)
-        verify_seal(b)
-        if (b.get('schema') == BUNDLE_SCHEMA and b.get('model') == model
-                and b.get('protocol_sha256') == canonical_hash(p)
-                and b.get('gpu_uuids') == uuids
-                and b.get('model_manifests') == manifests
-                and all(sid in b.get('classes', {}) and b['classes'][sid].get('spec') == shape_spec(p, sid) for sid in ids)):
-            shutil.copyfile(cand, out_path)
-            print(f"reused_calibration_bundle={cand} sha256={b.get('sha256')}")
-            sys.exit(0)
-    except Exception:
-        continue
+for exact_uuid in (True, False):
+    for cand in candidates:
+        if not cand.is_file():
+            continue
+        try:
+            b = read_json(cand)
+            verify_seal(b)
+            uuid_ok = (b.get('gpu_uuids') == uuids) if exact_uuid else (len(b.get('gpu_uuids', [])) == len(uuids))
+            if (b.get('schema') == BUNDLE_SCHEMA and b.get('model') == model
+                    and uuid_ok
+                    and b.get('model_manifests') == manifests
+                    and all(sid in b.get('classes', {}) and b['classes'][sid].get('spec') == shape_spec(p, sid) for sid in ids)):
+                if b.get('protocol_sha256') == canonical_hash(p) and b.get('gpu_uuids') == uuids:
+                    shutil.copyfile(cand, out_path)
+                else:
+                    import copy
+                    rebound = copy.deepcopy({k: v for k, v in b.items() if k != 'sha256'})
+                    rebound['protocol_sha256'] = canonical_hash(p)
+                    rebound['gpu_uuids'] = list(uuids)
+                    for entry in rebound.get('classes', {}).values():
+                        if isinstance(entry.get('source'), dict):
+                            entry['source']['gpu_uuids'] = list(uuids)
+                            if isinstance(entry['source'].get('fit'), dict):
+                                entry['source']['fit']['gpu_uuids'] = list(uuids)
+                    write_new(out_path, seal(rebound))
+                print(f"reused_calibration_bundle={cand} sha256={b.get('sha256')} exact_uuid={exact_uuid}")
+                sys.exit(0)
+        except Exception:
+            continue
 sys.exit(1)
 PY
   then

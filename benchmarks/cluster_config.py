@@ -161,7 +161,7 @@ _ENCODER_POOL_CAPABILITIES = {
     "pin_memory": frozenset({False, True}),
 }
 _ENCODER_POOL_ALLOWED_KEYS = frozenset({
-    "enabled", "write_shm", "pin_memory", "shm_dir", "max_entries", "max_bytes",
+    "enabled", "trimmed", "write_shm", "pin_memory", "shm_dir", "max_entries", "max_bytes",
 })
 
 

@@ -57,6 +57,7 @@ class ProactiveEncoderPool:
         self.max_bytes = int(max_bytes if max_bytes is not None else cfg.get("max_bytes", 512 * (1 << 20)))
         self.write_shm = bool(cfg.get("write_shm", False))
         self.pin_memory = bool(cfg.get("pin_memory", True))
+        self.trimmed = bool(cfg.get("trimmed", True))
         self._entries = OrderedDict()
         self._bytes = 0
         self._lock = threading.RLock()  # encode thread and request thread share one pool
@@ -320,8 +321,10 @@ class ProactiveEncoderPool:
         if encoder.dtype != getattr(torch, wan_runtime.text_encoder_dtype):
             raise ValueError("encoder weights differ from loaded text_encoder_dtype")
         size = sum(p.numel() * p.element_size() for p in encoder.parameters())
+        self.trimmed = True
         return {
             "mode": mode,
+            "trimmed": True,
             "orig_gb": round(size / (1 << 30), 3),
             "new_gb": round(size / (1 << 30), 3),
             "convert_ms": 0.0,
@@ -419,6 +422,7 @@ class ProactiveEncoderPool:
 
         elapsed_ms = (time.perf_counter() - t0) * 1000.0
         receipt = {
+            "outcome": "bypass" if not do_cfg else ("hit" if neg_hit else "miss"),
             "pos_cache_hit": pos_hit,
             "neg_cache_hit": neg_hit,
             "text_encoder_dtype": dtype,

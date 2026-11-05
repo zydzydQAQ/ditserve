@@ -1081,22 +1081,13 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         }
         base_rem[r] = min_rem;
         const double deadline = number_field(*r, "deadline_ms");
-        const double init_laxity = (deadline - number_field(*r, "arrival_ms"))
-                                   - number_field(cost.klass(klass), "encode_ms") - init_min_rem;
-        const double eff_deadband = late_deadband_ms > 0.0 ? late_deadband_ms
-            : (ditserve_sched && r->at("kind") == "video" && r->value("prepared", false) ? 15000.0 : 0.0);
+        const double eff_deadband = late_deadband_ms > 0.0 ? late_deadband_ms : 0.0;
         late[r] = demote_late && remaining > late_short_ms && now + remaining > deadline + eff_deadband;
         rank_key[r] = order_rule == "edf" ? deadline
                     : order_rule == "srtf" ? estimate(*r, Form{}, 1) : number_field(*r, "arrival_ms");
         if (ditserve_sched && order_rule == "edf") {
             if (r->at("kind") == "image" && !late[r]) {
                 sort_key[r] = deadline - 1e6;
-            } else if (r->at("kind") == "video" && !late[r]) {
-                const double tight_slo_bonus = init_min_rem <= 18000.0 ? 65000.0
-                                             : init_laxity < 55000.0 ? 68000.0 : 0.0;
-                sort_key[r] = deadline - 1.35 * init_min_rem - tight_slo_bonus;
-            } else if (r->at("kind") == "video" && late[r]) {
-                sort_key[r] = deadline - 2.5 * init_min_rem - (r->value("prepared", false) ? 120000.0 : 0.0);
             } else {
                 sort_key[r] = rank_key[r];
             }
@@ -1123,67 +1114,6 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             const auto bytes = row.dump().size();
             if (trace->row_bytes + bytes <= trace->max_bytes) { trace->row_bytes += bytes; trace->rows.push_back(std::move(row)); }
             else ++trace->dropped_rows;
-        }
-    }
-    if (ditserve_sched && demote_late && order_rule == "edf" && !options.contains("late_short_ms")) {
-        std::vector<const Json*> feasible_videos, short_late_videos;
-        bool has_prepared_long_late = false;
-        for (const Json* r : rows) {
-            if (r->at("kind") != "video") continue;
-            if (!late.at(r)) feasible_videos.push_back(r);
-            else if (base_rem.at(r) <= 18000.0 || r->value("prepared", false)) {
-                short_late_videos.push_back(r);
-                if (base_rem.at(r) > 18000.0 && r->value("prepared", false)) has_prepared_long_late = true;
-            }
-        }
-        std::sort(short_late_videos.begin(), short_late_videos.end(), [&](const Json* a, const Json* b) {
-            return std::make_tuple(!a->value("prepared", false), base_rem.at(a) > 18000.0, number_field(*a, "deadline_ms"), number_field(*a, "arrival_ms"), a->at("request_id").get<std::string>())
-                 < std::make_tuple(!b->value("prepared", false), base_rem.at(b) > 18000.0, number_field(*b, "deadline_ms"), number_field(*b, "arrival_ms"), b->at("request_id").get<std::string>());
-        });
-        const int min_deg = std::max(1, min_video_option);
-        const int video_slots = std::max(1, (gpus - reserve) / min_deg);
-        int busy_video_gpus = 0;
-        for (int g = 0; g < gpus - reserve; ++g) if (!free[g]) ++busy_video_gpus;
-        const std::size_t busy_slots = static_cast<std::size_t>((busy_video_gpus + min_deg - 1) / min_deg);
-        const std::size_t total_feasible_demand = feasible_videos.size() + busy_slots;
-        std::size_t long_feasible_count = 0;
-        for (const Json* q : feasible_videos) if (base_rem.at(q) > 80000.0) ++long_feasible_count;
-        std::size_t promoted_count = 0;
-        double promoted_rem = 0.0;
-        for (const Json* r : short_late_videos) {
-            if (has_prepared_long_late && !r->value("prepared", false)) continue;
-            if (!r->value("prepared", false) && total_feasible_demand + promoted_count > static_cast<std::size_t>(video_slots)) continue;
-            const double safety_buffer = 78000.0;
-            std::size_t tight_count = busy_slots + promoted_count;
-            std::size_t loose_count = 0;
-            double max_tight_key = -1e18;
-            double min_loose_key = 1e18;
-            for (const Json* q : feasible_videos) {
-                const double q_laxity = number_field(*q, "deadline_ms") - now - base_rem.at(q);
-                if (q_laxity < promoted_rem + base_rem.at(r) + safety_buffer) {
-                    ++tight_count;
-                    max_tight_key = std::max(max_tight_key, sort_key.at(q));
-                } else {
-                    ++loose_count;
-                    min_loose_key = std::min(min_loose_key, sort_key.at(q));
-                }
-            }
-            if (tight_count >= static_cast<std::size_t>(video_slots)) continue;
-            if (!feasible_videos.empty() && (loose_count == 0 || max_tight_key >= min_loose_key)) continue;
-            late[r] = false;
-            sort_key[r] = feasible_videos.empty()
-                ? (number_field(*r, "deadline_ms") - base_rem.at(r))
-                : std::max(max_tight_key + 1.0 + promoted_count, min_loose_key - 1000.0 + promoted_count);
-            promoted_rem += base_rem.at(r);
-            ++promoted_count;
-            if (trace) {
-                for (auto& row : trace->rows) {
-                    if (row.at("request_id") == r->at("request_id")) {
-                        row["demoted_late"] = false;
-                        row["rank_tuple"] = Json::array({false, rank_key.at(r), number_field(*r, "arrival_ms"), r->at("request_id")});
-                    }
-                }
-            }
         }
     }
     auto edf = [&](const Json* r) {
@@ -1711,33 +1641,6 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                     const bool faster_step = !remaining_work
                         || cost.step_ms(klass, form, sp_groups(form)) < cost.step_ms(klass, target_form, sp_groups(target_form)) - 1e-9;
                     if (d > target && efficiency >= widen && faster_step && (!remaining_work || !target_meets || candidate_meets)) target = d;
-                    else if (ditserve_sched && d > target && (!remaining_work || !target_meets || candidate_meets)) {
-                        auto group_step_ms = [&](const Form& f) {
-                            if (!cost.placement_invariant(klass) && f.degree() <= gpus) {
-                                const auto gs = cluster_groups(gpus, {f.degree()});
-                                if (!gs.empty()) return cost.step_ms(klass, f, sp_groups(f), &gs.front());
-                            }
-                            return cost.step_ms(klass, f, sp_groups(f));
-                        };
-                        const double cur_step = group_step_ms(target_form);
-                        const double new_step = group_step_ms(form);
-                        const double target_rem = estimate(r, target_form, sp_groups(target_form)) + target_extra;
-                        if (new_step <= 0.85 * cur_step && candidate < target_rem - 2000.0) {
-                            int free_unreserved = 0;
-                            for (int g = 0; g < gpus; ++g) if (free[g] && !reserved(g) && !mid_owner[g] && !decode_hold[g]) ++free_unreserved;
-                            int other_gpu_need = 0;
-                            for (std::size_t j = index + 1; j < rows.size(); ++j) {
-                                const Json& q = *rows[j];
-                                if (taken.count(&q)) continue;
-                                if (q.at("kind") == "image") { other_gpu_need += 1; continue; }
-                                const auto qklass = q.at("class").get<std::string>();
-                                const int qsteps = int_field(q, "steps_total", int_field(cost.klass(qklass), "steps", 0), 1);
-                                if (q.value("prepared", false) && int_field(q, "steps_done", 0, 0) >= qsteps) { other_gpu_need += 1; continue; }
-                                other_gpu_need += std::max(min_video_option, int_field(cost.klass(qklass), "min_degree", 1));
-                            }
-                            if (d + other_gpu_need <= free_unreserved) target = d;
-                        }
-                    }
                     // The legacy single-step ablation may widen on a pair estimate.
                     // A pair that is not yet assigned cannot justify remaining-work
                     // widening or bypass its regroup/deadline protection.
