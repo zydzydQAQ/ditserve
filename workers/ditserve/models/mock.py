@@ -306,7 +306,9 @@ class MockBackend(Backend):
             event = self._advance_one({"state_id": key})
             results.append(dict(state_id=key, progress=event["progress"], event=event))
         return dict(batch_size=len(keys), model_ms=0., results=results,
-                    memory_before=None, memory_after=None, measured=False)
+                    memory_before=dict(allocated_bytes=0, reserved_bytes=0, peak_allocated_bytes=0, peak_reserved_bytes=0),
+                    memory_after=dict(allocated_bytes=0, reserved_bytes=0, peak_allocated_bytes=0, peak_reserved_bytes=0),
+                    measured=False)
 
     def generate_batch(self, request):
         """Fixture batching: one call serves every prompt; costs.batch_ms[size] or size x step_ms."""

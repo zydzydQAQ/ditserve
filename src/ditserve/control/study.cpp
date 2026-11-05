@@ -962,7 +962,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     };
     auto spec_of=[&](const Json& row){Json spec=row.at("spec");spec["request_id"]=row.at("request_id");return spec;};
     for(auto& row:rows){row["generation"]=spec_of(row);row["output_mode"]=row.value("output_mode",output_mode);}
-    Json cb_stats={{"rounds",0},{"late_joins",0},{"early_exits",0},{"batch_sizes",Json::object()},{"samples",Json::array()}};
+    Json cb_stats={{"rounds",0},{"late_joins",0},{"early_exits",0},{"batch_sizes",Json::object()},{"memory",Json::object()},{"samples",Json::array()}};
     std::size_t terminal=0,encoders=0;
     auto move_state=[&](std::size_t i,bool offload){
         auto& state=live[i];auto& row=rows[i];
@@ -1403,12 +1403,14 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             Json sample={{"batch_size",size},{"ms",elapsed},{"model_ms",number_field(advanced,"model_ms")},
                          {"new_count",out.at("new_count")},{"active_count",out.at("active_count")},
                          {"completed",completed},{"late_joins",joins},{"early_exits",exits}};
-            if(advanced.contains("memory_after")&&!advanced.at("memory_after").is_null()){
+            if(advanced.contains("memory_after")&&advanced.at("memory_after").is_object()){
                 const auto& memory=advanced.at("memory_after");
                 sample["memory_after"]=memory;
+                if(!cb_stats["memory"].is_object())cb_stats["memory"]=Json::object();
+                auto& peak=cb_stats["memory"][batch_key];
+                if(!peak.is_object())peak=Json::object();
                 for(const auto* field:{"peak_allocated_bytes","peak_reserved_bytes"}){
                     const auto current=number_field(memory,field);
-                    auto& peak=cb_stats["memory"][batch_key];
                     peak[field]=std::max(peak.value(field,0.),current);
                 }
             }
@@ -1633,7 +1635,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                     state.status="waiting";row["encode_ready_ms"]=now();progressed=true;
                     // CPU encoding time and, with the negative-prompt cache, whether it hit.
                     if(polled.contains("model_ms"))row["encode_model_ms"]=number_field(polled,"model_ms");
-                    if(polled.contains("negative_prompt_cache"))row["negative_prompt_cache"]=polled.at("negative_prompt_cache").value("outcome",std::string("unknown"));
+                    if(polled.contains("negative_prompt_cache")&&polled.at("negative_prompt_cache").is_object())row["negative_prompt_cache"]=polled.at("negative_prompt_cache").value("outcome",std::string("unknown"));
                 }
             }
         }

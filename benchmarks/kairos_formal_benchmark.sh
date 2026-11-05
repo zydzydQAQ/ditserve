@@ -3,7 +3,7 @@
 set -euo pipefail
 storage_blocked=0
 check_storage() {
-  if df -h /shared && df -BG /shared | python3 -c 'import sys; r=sys.stdin.read().splitlines()[-1].split(); assert int(r[2].rstrip("G"))<=800 and int(r[4].rstrip("%"))<80, "shared storage stop line reached"'; then
+  if df -h /shared && df -BG /shared | python3 -c 'import sys; r=sys.stdin.read().splitlines()[-1].split(); assert int(r[2].rstrip("G"))<=790 and int(r[4].rstrip("%"))<80, "shared storage stop line reached"'; then
     return 0
   fi
   storage_blocked=1
@@ -133,16 +133,57 @@ python3 "$benchmarks/formal_benchmark.py" --protocol "$protocol" preflight \
   --model-manifests "$DITSERVE_MODEL_MANIFESTS" --output "$RUN_DIR/input-preflight.json"
 python3 "$SCRIPTS/kairos_runtime_audit.py"
 calibrations=()
-for i in "${!videos[@]}"; do
-  cfg=$RUN_DIR/calibration-$i.json
-  python3 "$benchmarks/formal_benchmark.py" --protocol "$protocol" calibrate \
-    --model "$model" --video-shape "${videos[$i]}" --image-shape "${images[$i]}" \
-    --datasets "$DATA/datasets" --model-manifests "$DITSERVE_MODEL_MANIFESTS" --output "$cfg"
-  run_config "$cfg" "$DITSERVE_RUN_ID-cal$i"
-  calibrations+=("$last_run")
-done
-python3 "$benchmarks/formal_benchmark.py" --protocol "$protocol" assemble --model "$model" \
-  --runs "${calibrations[@]}" --runtime-facts "$RUN_DIR/runtime-facts.json" --output "$RUN_DIR/bundle.json"
+reused_bundle=0
+if [ "$action" = serve ] && [ -n "${DITSERVE_REUSE_BUNDLES:-}" ]; then
+  if python3 - "$benchmarks" "$protocol" "$model" "$DITSERVE_MODEL_MANIFESTS" "$RUN_DIR/bundle.json" "$DITSERVE_REUSE_BUNDLES" <<'PY'
+import json, pathlib, shutil, sys
+sys.path.insert(0, sys.argv[1])
+from formal_benchmark import BUNDLE_SCHEMA, allocated_uuids, canonical_hash, protocol, read_json, shape_spec
+from ditserve.evaluation.common import verify_seal
+
+p = protocol(pathlib.Path(sys.argv[2]))
+model = sys.argv[3]
+manifests = read_json(pathlib.Path(sys.argv[4]))
+out_path = pathlib.Path(sys.argv[5])
+candidates = [pathlib.Path(x) for x in sys.argv[6].split(':') if x]
+uuids = list(allocated_uuids())
+ids = [sid for sid, shape in p['shapes'].items() if shape['scope'] == 'formal' and shape['model'] in (model, 'sd35')]
+for cand in candidates:
+    if not cand.is_file():
+        continue
+    try:
+        b = read_json(cand)
+        verify_seal(b)
+        if (b.get('schema') == BUNDLE_SCHEMA and b.get('model') == model
+                and b.get('protocol_sha256') == canonical_hash(p)
+                and b.get('gpu_uuids') == uuids
+                and b.get('model_manifests') == manifests
+                and all(sid in b.get('classes', {}) and b['classes'][sid].get('spec') == shape_spec(p, sid) for sid in ids)):
+            shutil.copyfile(cand, out_path)
+            print(f"reused_calibration_bundle={cand} sha256={b.get('sha256')}")
+            sys.exit(0)
+    except Exception:
+        continue
+sys.exit(1)
+PY
+  then
+    reused_bundle=1
+  else
+    echo "no matching calibration bundle for allocated GPUs; running calibration"
+  fi
+fi
+if [ "$reused_bundle" -eq 0 ]; then
+  for i in "${!videos[@]}"; do
+    cfg=$RUN_DIR/calibration-$i.json
+    python3 "$benchmarks/formal_benchmark.py" --protocol "$protocol" calibrate \
+      --model "$model" --video-shape "${videos[$i]}" --image-shape "${images[$i]}" \
+      --datasets "$DATA/datasets" --model-manifests "$DITSERVE_MODEL_MANIFESTS" --output "$cfg"
+    run_config "$cfg" "$DITSERVE_RUN_ID-cal$i"
+    calibrations+=("$last_run")
+  done
+  python3 "$benchmarks/formal_benchmark.py" --protocol "$protocol" assemble --model "$model" \
+    --runs "${calibrations[@]}" --runtime-facts "$RUN_DIR/runtime-facts.json" --output "$RUN_DIR/bundle.json"
+fi
 if [ "$action" = calibration ]; then exit 0; fi
 if [ "$action" = p1_isolated ]; then
   prepared=$RUN_DIR/isolated
