@@ -57,12 +57,45 @@ def _wan_pipeline_class(base_class):
 
     return WanExplicitExecutionPipeline
 
+
+def _sd35_pipeline_class(base_class):
+    """Keep SD3.5 denoising on the DiT/CLIP device when T5-XXL (`text_encoder_3`) lives on CPU."""
+    if not isinstance(base_class, type):
+        return base_class
+
+    class SD35ExplicitExecutionPipeline(base_class):
+        @property
+        def device(self):
+            return self.transformer.device
+
+        @property
+        def _execution_device(self):
+            return self.transformer.device
+
+    return SD35ExplicitExecutionPipeline
+
+
 def _pipeline(torch, diffusers, args):
     load = {"torch_dtype": getattr(torch, args.dtype), "local_files_only": args.local_files_only}
     if args.revision:
         load["revision"] = args.revision
     if args.model == "sd35":
-        pipe = diffusers.StableDiffusion3Pipeline.from_pretrained(args.model_id, **load)
+        te_device = getattr(args, "text_encoder_device", "cuda")
+        te_dtype_name = getattr(args, "text_encoder_dtype", args.dtype)
+        if te_device == "cpu":
+            components = {}
+            if te_dtype_name != args.dtype:
+                transformers = importlib.import_module("transformers")
+                t5_cls = getattr(transformers, "T5EncoderModel", None)
+                if t5_cls is not None:
+                    encoder_args = dict(load, torch_dtype=getattr(torch, te_dtype_name))
+                    components["text_encoder_3"] = t5_cls.from_pretrained(
+                        args.model_id, subfolder="text_encoder_3", **encoder_args
+                    )
+            pipeline_class = _sd35_pipeline_class(diffusers.StableDiffusion3Pipeline)
+            pipe = pipeline_class.from_pretrained(args.model_id, **components, **load)
+        else:
+            pipe = diffusers.StableDiffusion3Pipeline.from_pretrained(args.model_id, **load)
     else:
         vae_args = dict(load, torch_dtype=getattr(torch, args.vae_dtype))
         vae = diffusers.AutoencoderKLWan.from_pretrained(args.model_id, subfolder="vae", **vae_args)
@@ -88,6 +121,21 @@ def _pipeline(torch, diffusers, args):
         pipe.vae.to(device=args.device, dtype=getattr(torch, args.vae_dtype))
         encoder_device = "cpu" if args.text_encoder_device == "cpu" else args.device
         pipe.text_encoder.to(device=encoder_device, dtype=getattr(torch, args.text_encoder_dtype))
+    elif args.model == "sd35" and getattr(args, "text_encoder_device", "cuda") == "cpu":
+        # Never pipe.to(cuda) when T5-XXL is configured for CPU: keep text_encoder_3
+        # on CPU in text_encoder_dtype and move only transformer, vae, CLIP-L, CLIP-G to device.
+        gpu_dtype = getattr(torch, args.dtype)
+        te_dtype = getattr(torch, getattr(args, "text_encoder_dtype", args.dtype))
+        pipe.transformer.to(device=args.device, dtype=gpu_dtype)
+        pipe.vae.to(device=args.device, dtype=gpu_dtype)
+        if getattr(pipe, "text_encoder", None) is not None:
+            pipe.text_encoder.to(device=args.device, dtype=gpu_dtype)
+        if getattr(pipe, "text_encoder_2", None) is not None:
+            pipe.text_encoder_2.to(device=args.device, dtype=gpu_dtype)
+        if getattr(pipe, "text_encoder_3", None) is not None:
+            pipe.text_encoder_3.to(device="cpu", dtype=te_dtype)
+        if not isinstance(getattr(type(pipe), "_execution_device", None), property):
+            pipe._execution_device = getattr(pipe.transformer, "device", args.device)
     else:
         pipe.to(args.device)
     pipe.set_progress_bar_config(disable=True)
@@ -206,11 +254,12 @@ class AtomicPipelineBackend(Backend):
                 raise ValueError("unsupported model/component dtype: " + str(value))
         if args.text_encoder_device not in ("cpu", "cuda"):
             raise ValueError("text_encoder_device must be cpu or cuda")
-        if self.model == "wan":
+        if self.model in ("wan", "sd35"):
             text_encoder_dtype(args.text_encoder_dtype)
-        if args.text_encoder_device == "cpu" and self.model != "wan":
-            raise ValueError("CPU text encoding requires Wan")
+        if args.text_encoder_device == "cpu" and self.model not in ("wan", "sd35"):
+            raise ValueError("CPU text encoding requires Wan or SD3.5")
         self.text_encoder_dtype = args.text_encoder_dtype
+        self.text_encoder_device = args.text_encoder_device
         gpu_dtypes = [args.dtype] + ([args.vae_dtype] if self.model == "wan" else [])
         if args.text_encoder_device == "cuda":
             gpu_dtypes.append(args.text_encoder_dtype)
@@ -226,6 +275,11 @@ class AtomicPipelineBackend(Backend):
             attn_cfg = config.get("attention", config.get("options", {}).get("attention", "math"))
             self.xdit = attach(self.pipe, self.device, attention=attn_cfg)
         self.pipe = self.xdit.pipe
+        exec_dev = getattr(getattr(self.pipe, "module", self.pipe), "_execution_device", None)
+        if exec_dev is not None and str(self.torch.device(exec_dev)) != str(self.torch.device(self.device)):
+            raise RuntimeError(
+                f"{self.model} pipeline _execution_device ({exec_dev}) does not match worker device ({self.device})"
+            )
         self._cache_recipe = None
 
     def _cache_target(self):
@@ -330,6 +384,16 @@ class AtomicPipelineBackend(Backend):
                 dtype=self.config.get("dtype", "float16"), vae_dtype=self.config.get("vae_dtype", "float32"),
                 text_encoder_dtype=self.text_encoder_dtype,
                 text_encoder_device=self.config.get("text_encoder_device", "cpu"))
+        elif self.model == "sd35":
+            te_dev = getattr(self, "text_encoder_device", self.config.get("text_encoder_device", "cuda"))
+            clip_dev = str(getattr(self, "device", self.config.get("device", "cuda")))
+            t5_dev = "cpu" if te_dev == "cpu" else clip_dev
+            result["generation"].update(
+                dtype=self.config.get("dtype", "bfloat16"),
+                text_encoder_dtype=getattr(self, "text_encoder_dtype", self.config.get("text_encoder_dtype", TEXT_ENCODER_DTYPE)),
+                text_encoder_device=te_dev,
+                text_encoder_devices={"clip_l": clip_dev, "clip_g": clip_dev, "t5_xxl": t5_dev},
+            )
         self.release_cache()
         return result
 

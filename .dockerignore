@@ -11,6 +11,7 @@
 !tests/fixtures
 !docker/artifacts-runtime.json
 !docker/install_dependencies.py
+!docker/Dockerfile
 # Pinned header; CMake verifies its SHA256 and downloads it only when absent.
 !.cache/deps/nlohmann3.11.3/nlohmann/json.hpp
 **/__pycache__

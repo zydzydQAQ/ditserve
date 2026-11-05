@@ -89,6 +89,13 @@ def extract_measurements(record):
             raise ValueError("calibration group does not match its parallel form")
         if group is not None and group != list(range(group[0], group[0] + len(group))):
             raise ValueError("calibration placement must use consecutive ranks in topology order")
+        encode_meta = row.get("encode_meta") if isinstance(row.get("encode_meta"), dict) else {}
+        encode_cached = bool(
+            row.get("encode_pool_cached")
+            or row.get("encoder_pool_hit")
+            or encode_meta.get("pos_cache_hit")
+            or encode_meta.get("encoder_pool_hit")
+        )
         videos.append({
             "policy": policy,
             "form": form_of(policy),
@@ -98,6 +105,7 @@ def extract_measurements(record):
             "timing_scope": "median_steady_advance" if steady else "includes_initial_layout_overhead",
             "decode_ms": decode_ms,
             "encode_ms": row.get("encode_model_ms", 0.0),
+            "encode_cached": encode_cached,
             "spec": row["spec"],
             "transfer_export_ms": row.get("transfer_export_ms", 0.0),
             "dispatch_gap_ms": row.get("dispatch_gap_ms", 0.0),
@@ -184,6 +192,7 @@ def build_profile(record, runtime_facts, model_name):
     experiment = record["experiment"]
     model_key = experiment.removeprefix("kairos-").removesuffix("-native-calibration")
     class_name = model_key + "-preflight"
+    uncached_encodes = [row["encode_ms"] for row in videos if not row.get("encode_cached")]
     profile = {
         "provenance": "mixed",
         "sp_efficiency": 1.0,
@@ -197,7 +206,7 @@ def build_profile(record, runtime_facts, model_name):
                 "steps": spec["steps"],
                 "blocks_per_step": 60,
                 "prepare_ms": 0.0,
-                "encode_ms": mean(row["encode_ms"] for row in videos),
+                "encode_ms": mean(uncached_encodes if uncached_encodes else (row["encode_ms"] for row in videos)),
                 "step_compute_ms": step_compute,
                 "comm_mb_per_step": arch["comm_mb_per_step"],
                 "collectives_per_step": arch["collectives_per_step"],
@@ -292,6 +301,8 @@ def build_profile(record, runtime_facts, model_name):
         "predictions": predictions,
         "execution_cost_mode": "placement_bound_form_table_with_analytical_fallback" if forms else "analytical_fallback_only",
         "unbound_measurements": sum(row["group"] is None for row in videos),
+        "encode_uncached_samples": len(uncached_encodes),
+        "encode_cached_samples": sum(bool(row.get("encode_cached")) for row in videos),
         "image_batch_samples": {str(size): len(values) for size, values in image_batches.items()},
         "image_cost_provenance": image_provenance,
         "continuous_batch_round_samples": {str(size): len(values) for size, values in sorted(cb_step_samples.items())},

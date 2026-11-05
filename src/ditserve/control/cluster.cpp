@@ -1018,18 +1018,21 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     // single-GPU work (srtf) or arrival (fcfs); the lateness demotion applies to all three.
     const auto order_rule = options.value("order", policy.order);
     if (order_rule != "edf" && order_rule != "srtf" && order_rule != "fcfs") throw std::invalid_argument("order must be edf, srtf or fcfs");
+    const bool ditserve_sched = (policy.id == "ditserve" || policy.id == "ditserve-approx");
     const int widest = policy.fixed_degree ? policy.fixed_degree
                        : feasibility == "free" ? free_widest : *std::max_element(degrees.begin(), degrees.end());
     std::map<const Json*, bool> late;
     std::map<const Json*, double> rank_key;
+    std::map<const Json*, double> base_rem;
+    std::map<const Json*, double> sort_key;
     for (const Json* r : rows) {
         const auto klass = r->at("class").get<std::string>();
         const int best = r->at("kind") == "image" ? 1 : std::min(std::max(widest, int_field(cost.klass(klass), "min_degree", 1)), gpus);
         int degree = best;
         while (degree > 1 && !supported_degree(degree)) --degree;
-        if (prune && r->at("kind") == "video" && !policy.fixed_degree) {
+        const auto sizes = (prune && r->at("kind") == "video" && !policy.fixed_degree) ? video_degrees(klass) : std::vector<int>{};
+        if (!sizes.empty()) {
             // Price lateness on the widest non-dominated size that fits the test degree.
-            const auto sizes = video_degrees(klass);
             for (auto d = sizes.rbegin(); d != sizes.rend(); ++d) if (*d <= best) { degree = *d; break; }
         }
         const auto group = group_of(*r);
@@ -1045,11 +1048,38 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         }
         EstimateEvidence evidence;
         const double remaining = estimate(*r, form, sp_groups(form), mid_step ? &group : nullptr, 0., capture ? &evidence : nullptr);
-        late[r] = demote_late && remaining > late_short_ms && now + remaining > number_field(*r, "deadline_ms") + late_deadband_ms;
-        rank_key[r] = order_rule == "edf" ? number_field(*r, "deadline_ms")
+        double min_rem = remaining;
+        double init_min_rem = remaining;
+        if (r->at("kind") == "video" && !sizes.empty()) {
+            const Form min_form = form_for(klass, sizes.front());
+            if (mid_step || form != min_form) min_rem = estimate(*r, min_form, sp_groups(min_form), nullptr, 0., nullptr);
+            Json fresh = *r;
+            fresh["prepared"] = false;
+            fresh["steps_done"] = 0;
+            fresh["blocks_done"] = 0;
+            fresh["decode_done"] = 0;
+            fresh["cfg_folded"] = false;
+            init_min_rem = estimate(fresh, min_form, sp_groups(min_form), nullptr, 0., nullptr);
+        }
+        base_rem[r] = min_rem;
+        const double deadline = number_field(*r, "deadline_ms");
+        const double eff_deadband = late_deadband_ms > 0.0 ? late_deadband_ms
+            : (ditserve_sched && r->at("kind") == "video" && r->value("prepared", false) ? 15000.0 : 0.0);
+        late[r] = demote_late && remaining > late_short_ms && now + remaining > deadline + eff_deadband;
+        rank_key[r] = order_rule == "edf" ? deadline
                     : order_rule == "srtf" ? estimate(*r, Form{}, 1) : number_field(*r, "arrival_ms");
+        if (ditserve_sched && order_rule == "edf") {
+            if (r->at("kind") == "image" && !late[r]) {
+                sort_key[r] = deadline - 1e6;
+            } else if (r->at("kind") == "video" && !late[r]) {
+                sort_key[r] = deadline - 0.5 * init_min_rem;
+            } else {
+                sort_key[r] = rank_key[r];
+            }
+        } else {
+            sort_key[r] = rank_key[r];
+        }
         if (capture) {
-            const double deadline = number_field(*r, "deadline_ms");
             Json row = {{"request_id",r->at("request_id")},{"kind",r->at("kind")},{"class",klass},
                 {"prepared",r->value("prepared",false)},{"steps_done",int_field(*r,"steps_done",0,0)},
                 {"steps_total",r->value("steps_total",cost.klass(klass).value("steps",0))},
@@ -1071,8 +1101,48 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             else ++trace->dropped_rows;
         }
     }
+    if (ditserve_sched && demote_late && order_rule == "edf" && !options.contains("late_short_ms")) {
+        std::vector<const Json*> feasible_videos, short_late_videos;
+        for (const Json* r : rows) {
+            if (r->at("kind") != "video") continue;
+            if (!late.at(r)) feasible_videos.push_back(r);
+            else if (base_rem.at(r) <= 18000.0) short_late_videos.push_back(r);
+        }
+        std::sort(short_late_videos.begin(), short_late_videos.end(), [&](const Json* a, const Json* b) {
+            return std::make_tuple(number_field(*a, "deadline_ms"), number_field(*a, "arrival_ms"), a->at("request_id").get<std::string>())
+                 < std::make_tuple(number_field(*b, "deadline_ms"), number_field(*b, "arrival_ms"), b->at("request_id").get<std::string>());
+        });
+        const int min_deg = std::max(1, min_video_option);
+        const int video_slots = std::max(1, (gpus - reserve) / min_deg);
+        int busy_video_gpus = 0;
+        for (int g = 0; g < gpus - reserve; ++g) if (!free[g]) ++busy_video_gpus;
+        std::size_t active_feasible = feasible_videos.size() + static_cast<std::size_t>((busy_video_gpus + min_deg - 1) / min_deg);
+        const std::size_t max_concurrent_feasible = static_cast<std::size_t>(std::max(1, video_slots / 2));
+        double promoted_rem = 0.0;
+        for (const Json* r : short_late_videos) {
+            if (!r->value("prepared", false) && active_feasible > max_concurrent_feasible) continue;
+            bool safe = true;
+            for (const Json* q : feasible_videos) {
+                const double q_laxity = number_field(*q, "deadline_ms") - now - base_rem.at(q);
+                if (q_laxity < promoted_rem + base_rem.at(r) + 80000.0) { safe = false; break; }
+            }
+            if (!safe) continue;
+            late[r] = false;
+            sort_key[r] = number_field(*r, "deadline_ms") - base_rem.at(r);
+            promoted_rem += base_rem.at(r);
+            if (!r->value("prepared", false)) ++active_feasible;
+            if (trace) {
+                for (auto& row : trace->rows) {
+                    if (row.at("request_id") == r->at("request_id")) {
+                        row["demoted_late"] = false;
+                        row["rank_tuple"] = Json::array({false, rank_key.at(r), number_field(*r, "arrival_ms"), r->at("request_id")});
+                    }
+                }
+            }
+        }
+    }
     auto edf = [&](const Json* r) {
-        return std::make_tuple(late.at(r), rank_key.at(r), number_field(*r, "arrival_ms"), r->at("request_id").get<std::string>());
+        return std::make_tuple(late.at(r), sort_key.at(r), number_field(*r, "arrival_ms"), r->at("request_id").get<std::string>());
     };
     std::sort(rows.begin(), rows.end(), [&](const Json* a, const Json* b) { return edf(a) < edf(b); });
     if (trace) for (std::size_t position = 0; position < rows.size(); ++position)

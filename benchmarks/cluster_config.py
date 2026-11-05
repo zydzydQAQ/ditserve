@@ -115,7 +115,7 @@ _MEMORY_STRATEGY_DESCRIPTORS = {
         "offload_text_encoders_after_warmup": True,
         "weight_swap_on_switch": False,
         "release_cache_on_stop": True,
-        "tiered_memory": True,
+        "tiered_memory": False,
         "encoder_pool": {
             "enabled": True,
             "write_shm": True,
@@ -139,27 +139,61 @@ def memory_strategy_Descriptor(strategy: str) -> dict:
 memory_strategy_descriptor = memory_strategy_Descriptor
 
 
-# Behaviour the workers have regardless of options (workers/ditserve/models):
-# WanStepWorker always loads UMT5 on the CPU; AtomicPipelineBackend rejects CPU
-# text encoding for SD3.5, so T5-XXL always encodes on the GPU
-# (offload_text_encoders_after_warmup only parks its weights on the CPU and
-# restores them for every uncached prompt); no worker reads
-# weight_swap_on_switch; native configs keep the phase option tiered_memory
-# False (export transport, while the C++ tiered memory requires pinned SP1).
-_FIXED_WORKER_MEMORY = {
-    "wan_text_encoder_device": "cpu",
-    "sd35_text_encoder_device": "cuda",
-    "weight_swap_on_switch": False,
-    "tiered_memory": False,
+# Per-knob worker capabilities (workers/ditserve/models):
+# WanStepWorker loads UMT5 on the CPU; SD35Backend / AtomicPipelineBackend
+# support either GPU T5-XXL ("cuda") or split CPU T5-XXL + GPU CLIP-L/G ("cpu");
+# when T5-XXL starts on the CPU, offload_text_encoders_after_warmup is satisfied
+# from load without parking/restoring weights on GPU; no worker implements
+# reactive weight_swap_on_switch; export-mode cluster configs keep tiered_memory
+# False (C++ tiered state offload/prefetch applies only to pinned SP1).
+_DESCRIPTOR_METADATA_KEYS = frozenset({"strategy", "code", "label"})
+_WORKER_MEMORY_CAPABILITIES = {
+    "wan_text_encoder_device": frozenset({"cpu"}),
+    "sd35_text_encoder_device": frozenset({"cpu", "cuda"}),
+    "offload_text_encoders_after_warmup": frozenset({False, True}),
+    "weight_swap_on_switch": frozenset({False}),
+    "release_cache_on_stop": frozenset({False, True}),
+    "tiered_memory": frozenset({False}),
 }
+_ENCODER_POOL_CAPABILITIES = {
+    "enabled": frozenset({False, True}),
+    "write_shm": frozenset({False, True}),
+    "pin_memory": frozenset({False, True}),
+}
+_ENCODER_POOL_ALLOWED_KEYS = frozenset({
+    "enabled", "write_shm", "pin_memory", "shm_dir", "max_entries", "max_bytes",
+})
 
 
 def _unimplemented_memory_knobs(descriptor):
-    missing = [f"{key}={descriptor[key]!r}" for key, value in _FIXED_WORKER_MEMORY.items()
-               if descriptor[key] != value]
-    if not descriptor["encoder_pool"].get("enabled", True):
-        # Wan honours encoder_pool.enabled; SD35Backend always uses its pool.
-        missing.append("encoder_pool.enabled=False (SD35Backend always uses its encoder pool)")
+    missing = []
+    allowed_top = _DESCRIPTOR_METADATA_KEYS | set(_WORKER_MEMORY_CAPABILITIES) | {"encoder_pool"}
+    for key in descriptor:
+        if key not in allowed_top:
+            missing.append(f"unknown descriptor knob {key}={descriptor[key]!r}")
+    for key, allowed in _WORKER_MEMORY_CAPABILITIES.items():
+        if key not in descriptor or descriptor[key] not in allowed:
+            missing.append(f"{key}={descriptor.get(key)!r}")
+    sd35_dev = descriptor.get("sd35_text_encoder_device")
+    offload = descriptor.get("offload_text_encoders_after_warmup")
+    if sd35_dev in ("cpu", "cuda") and isinstance(offload, bool):
+        if offload != (sd35_dev == "cpu"):
+            missing.append(
+                f"offload_text_encoders_after_warmup={offload!r} requires "
+                f"sd35_text_encoder_device={'cpu' if offload else 'cuda'!r}"
+            )
+    pool = descriptor.get("encoder_pool")
+    if not isinstance(pool, dict):
+        missing.append(f"encoder_pool={pool!r}")
+    else:
+        for pkey in pool:
+            if pkey not in _ENCODER_POOL_ALLOWED_KEYS:
+                missing.append(f"unknown encoder_pool knob encoder_pool.{pkey}={pool[pkey]!r}")
+        for pkey, allowed in _ENCODER_POOL_CAPABILITIES.items():
+            if pkey not in pool or pool[pkey] not in allowed:
+                missing.append(f"encoder_pool.{pkey}={pool.get(pkey)!r}")
+        if not pool.get("enabled", True) and pool.get("write_shm", False):
+            missing.append("encoder_pool.write_shm=True with encoder_pool.enabled=False")
     return missing
 
 
@@ -172,11 +206,12 @@ WORKER_MEMORY_STRATEGIES = tuple(
 
 
 def applied_memory_strategy(strategy):
-    """Return the worker options a memory strategy actually applies.
+    """Return the worker options and config a memory strategy actually applies.
 
     Raises ValueError for strategies relying on knobs no worker implements, so
     a GPU config never carries a label its workers do not execute. The record
-    lists only applied worker options (never tiered_memory or device claims).
+    lists only applied worker options and worker config (never unapplied
+    tiered_memory or weight_swap_on_switch claims).
     """
     descriptor = memory_strategy_descriptor(strategy)
     missing = _unimplemented_memory_knobs(descriptor)
@@ -198,6 +233,12 @@ def applied_memory_strategy(strategy):
                 "encoder_pool": dict(pool),
             },
         },
+        "applied_worker_config": {
+            "image": {
+                "text_encoder_device": str(descriptor["sd35_text_encoder_device"]),
+            },
+        },
+        "not_applied": [],
     }
 
 
@@ -284,9 +325,19 @@ def make_workers(
         image_options = {"profile": False, "cache": False}
         if cb > 0:
             image_options.update(continuous_batch=True, sequence_packing=packing, bubble_free=bubble)
+        image_config = {
+            "model_path": SD35_PATH,
+            "device": "cuda:0",
+            "revision": SD35_REVISION,
+            "dtype": "bfloat16",
+            "text_encoder_dtype": "bfloat16",
+            "attention": "flash",
+            "options": image_options,
+        }
         if applied is not None:
             options.update(copy.deepcopy(applied["applied_worker_options"]["wan"]))
             image_options.update(copy.deepcopy(applied["applied_worker_options"]["image"]))
+            image_config.update(copy.deepcopy(applied.get("applied_worker_config", {}).get("image", {})))
         workers[f"wan{index}"] = {
             "backend": "wan",
             "python": "/opt/venv/bin/python",
@@ -306,15 +357,7 @@ def make_workers(
             "python": "/opt/venv/bin/python",
             "gpu_uuid": uuid,
             "environment": environment,
-            "config": {
-                "model_path": SD35_PATH,
-                "device": "cuda:0",
-                "revision": SD35_REVISION,
-                "dtype": "bfloat16",
-                "text_encoder_dtype": "bfloat16",
-                "attention": "flash",
-                "options": image_options,
-            },
+            "config": image_config,
         }
         slots.append({"video": f"wan{index}", "image": f"image{index}"})
         warmup.extend([
@@ -436,6 +479,8 @@ def build_config(
                           batch_step_ms=default_sd35_batch_step_ms(1000.0, image_steps, resolution=512))
     if applied is not None:
         benchmark_meta["memory_strategy"] = applied
+        if applied.get("applied_worker_config", {}).get("image", {}).get("text_encoder_device") == "cpu":
+            phase_options["image_text_prefetch"] = True
     return {
         "schema": "ditserve.study.v1",
         "experiment": f"kairos-{model}-native-preflight",

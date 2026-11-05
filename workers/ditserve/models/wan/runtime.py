@@ -512,7 +512,7 @@ class WanStepWorker:
                     self.text_encoder_dtype,
                     spec["guidance_scale"] > 1,
                 )
-                if pool.has_key(pool_key):
+                if pool.ensure_resident(pool_key):
                     try:
                         fetched = pool.fetch_to_device(pool_key, "cpu")["tensors"]
                         prompt = fetched["prompt_embeds"].clone()
@@ -567,10 +567,12 @@ class WanStepWorker:
     def clear_negative_prompt_cache(self):
         """Release retained CPU tensors after encoder shutdown, including failures."""
         cache = getattr(self, "_negative_prompt_cache", None)
-        if cache is None:
-            return
+        pool = getattr(self, "_encoder_pool", None)
         with self._encoder_lock:
-            cache.clear()
+            if cache is not None:
+                cache.clear()
+            if pool is not None:
+                pool.close()
 
     def _validate_cpu_embeddings(self, prompt, negative, spec):
         if prompt is None or (spec["guidance_scale"] > 1 and negative is None):

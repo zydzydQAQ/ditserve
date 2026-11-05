@@ -49,7 +49,7 @@ def bind_generation_identity(result, config, verified_model=None):
     generation = result.get("generation")
     if isinstance(generation, dict):
         generation["runtime_identity"] = runtime_identity()
-        for key in ("model_path", "revision", "dtype", "vae_dtype", "text_encoder_dtype", "attention"):
+        for key in ("model_path", "revision", "dtype", "vae_dtype", "text_encoder_dtype", "text_encoder_device", "attention"):
             if key in config:
                 generation.setdefault(key, config[key])
         # A supplied digest alone is not proof. Only the completed pre-load

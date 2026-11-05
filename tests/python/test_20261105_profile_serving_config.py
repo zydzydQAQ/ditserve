@@ -31,7 +31,7 @@ from test_native_serving import pool, profile as serving_profile  # noqa: E402
 
 UUIDS = [f"GPU-{index}" for index in range(8)]
 LEGACY_IMAGE_OPTIONS = {"profile": False, "cache": False}
-UNIMPLEMENTED = ("s0_naive_gpu", "s1_weight_swap", "s3_both_encoders_cpu", "s4_disaggregated_pool")
+UNIMPLEMENTED = ("s0_naive_gpu", "s1_weight_swap")
 VIDEO_SPEC = dict(frames=49, steps=20, height=512, width=896, guidance_scale=5.0)
 WAN22 = {
     "transformer_config": {
@@ -117,6 +117,23 @@ class ImageCostFitTest(unittest.TestCase):
         self.assertEqual(provenance["finish_ms"], "measured_continuous_batch_stage")
         self.assertEqual(provenance["batch_step_ms"], "measured_continuous_batch_rounds")
         self.assertEqual(fitted["source"]["continuous_batch_round_samples"], {"1": 2, "2": 1})
+
+    def test_video_encode_ms_excludes_cached_pool_hits(self):
+        image = {"cell": 0, "kind": "image", "status": "completed", "model_ms": 4200.0,
+                 "spec": {"steps": 28, "height": 1024, "width": 1024},
+                 "arrival_ms": 1000.0, "finish_ms": 5200.0}
+        record = calibration_record([image])
+        video_rows = [row for row in record["requests"] if row["kind"] == "video"]
+        video_rows[0]["encode_model_ms"] = 50656.4
+        video_rows[0]["encode_pool_cached"] = False
+        for row in video_rows[1:]:
+            row["encode_model_ms"] = 14.7
+            row["encode_pool_cached"] = True
+        fitted = fit_native_profile.build_profile(record, {"models": {"W": WAN22}}, "W")
+        video_cost = fitted["classes"]["wan22-preflight"]
+        self.assertAlmostEqual(video_cost["encode_ms"], 50656.4, places=3)
+        self.assertEqual(fitted["source"]["encode_uncached_samples"], 1)
+        self.assertEqual(fitted["source"]["encode_cached_samples"], len(video_rows) - 1)
 
 
 class ServingContinuousBatchTest(unittest.TestCase):
@@ -204,7 +221,10 @@ class WorkerDefaultsTest(unittest.TestCase):
 
 class MemoryStrategyTest(unittest.TestCase):
     def test_unimplemented_strategies_are_rejected_for_worker_configs(self):
-        self.assertEqual(cluster_config.WORKER_MEMORY_STRATEGIES, ("s2_wan_cpu_sd35_gpu",))
+        self.assertEqual(
+            cluster_config.WORKER_MEMORY_STRATEGIES,
+            ("s2_wan_cpu_sd35_gpu", "s3_both_encoders_cpu", "s4_disaggregated_pool"),
+        )
         for strategy in UNIMPLEMENTED:
             with self.subTest(strategy=strategy):
                 with self.assertRaisesRegex(ValueError, "cross_modal_memory_study"):
@@ -219,28 +239,46 @@ class MemoryStrategyTest(unittest.TestCase):
                 self.assertEqual(cluster_config.memory_strategy_Descriptor(strategy)["strategy"], strategy)
         with tempfile.TemporaryDirectory() as directory:
             argv = ["cluster_config.py", "--model", "wan21", "--gpu-uuids", ",".join(UUIDS[:2]),
-                    "--memory-strategy", "s4_disaggregated_pool", "--output", str(Path(directory, "x.json"))]
+                    "--memory-strategy", "s0_naive_gpu", "--output", str(Path(directory, "x.json"))]
             with patch.object(sys, "argv", argv), patch("sys.stderr"), self.assertRaises(SystemExit):
                 cluster_config.main()
 
     def test_accepted_strategy_records_only_applied_worker_knobs(self):
-        config = cluster_config.build_config("wan22", UUIDS[:4], memory_strategy="s2_wan_cpu_sd35_gpu")
-        recorded = config["benchmark"]["memory_strategy"]
-        self.assertEqual(set(recorded), {"strategy", "code", "label", "applied_worker_options"})
-        flat = json.dumps(recorded)
-        for claim in ("tiered_memory", "text_encoder_device", "weight_swap_on_switch"):
-            self.assertNotIn(claim, flat)
-        applied = recorded["applied_worker_options"]
-        wan = config["workers"]["wan0"]["config"]["options"]
-        image = config["workers"]["image0"]["config"]["options"]
-        self.assertEqual({key: wan[key] for key in applied["wan"]}, applied["wan"])
-        self.assertEqual({key: image[key] for key in applied["image"]}, applied["image"])
-        self.assertEqual(set(wan) - set(applied["wan"]), {"execution", "cfg_fold"})
-        self.assertEqual(set(image) - set(applied["image"]), set(LEGACY_IMAGE_OPTIONS))
-        self.assertFalse(config["phases"][0]["options"]["tiered_memory"])
-        self.assertNotIn("memory_strategy", config["phases"][0]["options"])
-        served = serving(serving_profile(), memory_strategy="s2_wan_cpu_sd35_gpu")
-        self.assertEqual(served["benchmark"]["memory_strategy"], recorded)
+        for strategy, exp_dev in (
+            ("s2_wan_cpu_sd35_gpu", "cuda"),
+            ("s3_both_encoders_cpu", "cpu"),
+            ("s4_disaggregated_pool", "cpu"),
+        ):
+            with self.subTest(strategy=strategy):
+                config = cluster_config.build_config("wan22", UUIDS[:4], memory_strategy=strategy)
+                recorded = config["benchmark"]["memory_strategy"]
+                self.assertEqual(
+                    set(recorded),
+                    {"strategy", "code", "label", "applied_worker_options", "applied_worker_config", "not_applied"},
+                )
+                self.assertEqual(recorded["not_applied"], [])
+                flat = json.dumps(recorded)
+                for claim in ("tiered_memory", "wan_text_encoder_device", "weight_swap_on_switch"):
+                    self.assertNotIn(claim, flat)
+                applied = recorded["applied_worker_options"]
+                wan = config["workers"]["wan0"]["config"]["options"]
+                image = config["workers"]["image0"]["config"]["options"]
+                self.assertEqual({key: wan[key] for key in applied["wan"]}, applied["wan"])
+                self.assertEqual({key: image[key] for key in applied["image"]}, applied["image"])
+                self.assertEqual(set(wan) - set(applied["wan"]), {"execution", "cfg_fold"})
+                self.assertEqual(set(image) - set(applied["image"]), set(LEGACY_IMAGE_OPTIONS))
+                self.assertNotIn("text_encoder_device", image)
+                self.assertEqual(config["workers"]["image0"]["config"]["text_encoder_device"], exp_dev)
+                self.assertFalse(config["phases"][0]["options"]["tiered_memory"])
+                self.assertNotIn("memory_strategy", config["phases"][0]["options"])
+                if exp_dev == "cpu":
+                    self.assertTrue(config["phases"][0]["options"]["image_text_prefetch"])
+                else:
+                    self.assertNotIn("image_text_prefetch", config["phases"][0]["options"])
+                served = serving(serving_profile(), memory_strategy=strategy)
+                self.assertEqual(served["benchmark"]["memory_strategy"], recorded)
+                if exp_dev == "cpu":
+                    self.assertTrue(served["phases"][0]["options"]["image_text_prefetch"])
 
 
 class PaperResultsImportTest(unittest.TestCase):

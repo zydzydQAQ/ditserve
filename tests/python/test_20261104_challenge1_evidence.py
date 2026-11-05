@@ -247,11 +247,18 @@ class Challenge1EvidenceTests(unittest.TestCase):
         self.assertFalse(cfg_default['phases'][0]['options']['tiered_memory'])
         self.assertEqual(set(cfg_default['workers']['wan0']['config']['options']), {'execution', 'cfg_fold'})
         self.assertEqual(cfg_default['workers']['image0']['config']['options'], {'profile': False, 'cache': False})
-        # S4 claims a CPU SD3.5 T5 encoder and tiered memory, which no worker implements:
-        # it stays analytical (cross_modal_memory_study.py) and cannot reach a GPU config.
+        # S0/S1 remain analytical only; S4 is now a runnable worker memory strategy with CPU T5-XXL
+        # and truthful tiered_memory=False under export transport.
         with self.assertRaisesRegex(ValueError, 'cross_modal_memory_study'):
-            ccfg.build_config('wan22', uuids, memory_strategy='s4_disaggregated_pool')
-        self.assertEqual(ccfg.memory_strategy_descriptor('s4_disaggregated_pool')['code'], 'S4')
+            ccfg.build_config('wan22', uuids, memory_strategy='s0_naive_gpu')
+        s4_desc = ccfg.memory_strategy_descriptor('s4_disaggregated_pool')
+        self.assertEqual(s4_desc['code'], 'S4')
+        self.assertFalse(s4_desc['tiered_memory'])
+        cfg_s4 = ccfg.build_config('wan22', uuids, memory_strategy='s4_disaggregated_pool')
+        self.assertEqual(cfg_s4['workers']['image0']['config']['text_encoder_device'], 'cpu')
+        self.assertNotIn('text_encoder_device', cfg_s4['workers']['image0']['config']['options'])
+        self.assertTrue(cfg_s4['phases'][0]['options']['image_text_prefetch'])
+        self.assertFalse(cfg_s4['phases'][0]['options']['tiered_memory'])
 
         # Verify SD35Backend._ensure_staged hits a /dev/shm slab staged by another process
         # WITHOUT calling restore_encoders() (keeping T5-XXL off the denoising GPU).

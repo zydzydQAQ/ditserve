@@ -1,4 +1,65 @@
-# syntax=docker/dockerfile:1
+# Lean runtime: C++ controller + resident Python workers on the locked torch 2.10.0+cu126 stack.
+# Historical recipe: its offline container build guide was removed. Building this image locally (WSL)
+# or on jjjkairos is prohibited by /mnt/e/000_code/zyd-2026/AGENTS.md; new images need a user-approved build source.
+ARG PYTHON_BASE=python:3.10.20-slim-bookworm@sha256:019e31cc1f52e4139d338bca44f27b71339a9da261738fd80fab9cf4595152fc
+ARG BASE_IMAGE
+FROM ${PYTHON_BASE} AS runtime-system
+# GCC/G++ and /usr/local/include/python3.10 are required by torch.compile.
+# CUDA libraries come from the locked PyTorch wheels; no CUDA SDK/nvcc is needed.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates gcc g++ libgomp1 libssl3 \
+    && rm -rf /var/lib/apt/lists/*
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_NO_CACHE_DIR=1
+
+FROM runtime-system AS dependencies
+ARG DITSERVE_WHEELHOUSE_URL=
+COPY docker/artifacts-runtime.json /tmp/artifacts-runtime.json
+COPY docker/install_dependencies.py /tmp/install_dependencies.py
+# Only Triton's static CUPTI archives are pruned; package tests/ stay (numpy.testing imports numpy._core.tests).
+RUN python /tmp/install_dependencies.py /opt/venv /tmp/artifacts-runtime.json \
+    && rm -f /opt/venv/lib/python3.10/site-packages/triton/backends/nvidia/lib/cupti/*.a \
+    && /opt/venv/bin/python -m pip check
+
+FROM runtime-system AS core-builder
+RUN apt-get update && apt-get install -y --no-install-recommends cmake make libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /build/source
+COPY . .
+RUN cmake -S . -B /build/core -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON \
+    && cmake --build /build/core --parallel 4 \
+    && ctest --test-dir /build/core --output-on-failure \
+    && cmake --install /build/core --prefix /opt/ditserve --strip
+
+FROM runtime-system AS runtime-base
+ARG GIT_REVISION=unknown
+LABEL org.opencontainers.image.title=ditserve org.opencontainers.image.revision=${GIT_REVISION}
+COPY --from=dependencies /opt/venv /opt/venv
+COPY --from=core-builder /opt/ditserve /opt/ditserve
+# DITSERVE_ROOT holds results/, .state/ and .cache/results-work/; mount it to keep them.
+ENV PATH=/opt/ditserve/bin:/opt/venv/bin:$PATH \
+    DITSERVE_PYTHON=/opt/venv/bin/python DITSERVE_ROOT=/data \
+    HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
+    HF_HOME=/data/cache/huggingface TORCH_HOME=/models/torch \
+    TORCHINDUCTOR_CACHE_DIR=/data/cache/torchinductor \
+    TRITON_CACHE_DIR=/data/cache/triton \
+    MPLCONFIGDIR=/data/cache/matplotlib \
+    HOME=/data USER=ditserve LOGNAME=ditserve \
+    NVIDIA_VISIBLE_DEVICES=all NVIDIA_DRIVER_CAPABILITIES=compute,utility
+RUN ditserve --version && ditserve doctor \
+    && mkdir -p /data/results /data/cache /models && chmod -R a+rwX /data
+WORKDIR /data
+CMD ["ditserve", "--help"]
+
+FROM runtime-base AS development
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        cmake make libssl-dev pkg-config \
+    && rm -rf /var/lib/apt/lists/* \
+    && cmake --version && g++ --version && pkg-config --modversion openssl
+WORKDIR /src
+CMD ["bash"]
+
+# Target: external-serving (historical superseded recipe)
 # 状态：历史配方，已被取代，不得构建。
 # - 原默认基础镜像 xdit-dev-016e1ca-slim（sha256:2009ea26…）已于 2026-11-04 经授权删除，
 #   AGENTS.md 规定不得再用于后续实验，因此这里不再给出任何默认 BASE_IMAGE。
@@ -13,8 +74,7 @@
 # BASE_IMAGE 故意没有默认值：未显式提供时 FROM 的基础镜像名为空，构建在解析阶段即失败。
 # 单文件：不需要 COPY 项目源码、requirements 或其他构建上下文文件。
 # 未包含 vLLM：其原生 CUDA12.9 路线与现有 cu126 的 ABI 尚待单独验证。
-ARG BASE_IMAGE
-FROM ${BASE_IMAGE}
+FROM ${BASE_IMAGE:-runtime-base} AS external-serving
 # Re-declared so the guard can read the value that was actually supplied.
 ARG BASE_IMAGE
 RUN case "${BASE_IMAGE}" in \
@@ -174,3 +234,5 @@ context.term()
 }, indent=2, sort_keys=True) + "\n")
 print("Dependencies installed; frozen core preserved. GPU/full-service validation remains pending.")
 PYDEPS
+
+FROM runtime-base AS runtime

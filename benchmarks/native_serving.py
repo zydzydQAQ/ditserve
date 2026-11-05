@@ -298,6 +298,8 @@ def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load,
         }
     if applied_memory is not None:
         benchmark_meta["memory_strategy"] = applied_memory
+        if applied_memory.get("applied_worker_config", {}).get("image", {}).get("text_encoder_device") == "cpu":
+            phase_options["image_text_prefetch"] = True
     return {
         "schema": "ditserve.study.v1",
         "experiment": f"kairos-{model}-native-serving-s{seed}-l{str(load).replace('.', 'p')}",

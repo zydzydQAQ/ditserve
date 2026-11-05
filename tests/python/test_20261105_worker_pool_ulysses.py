@@ -103,6 +103,8 @@ class SharedShmPoolRaceTests(unittest.TestCase):
         # The writer still removes its own slab when it evicts it.
         self.worker_b.stage_embeddings(self.other, _embeds(self.torch, 6), write_shm=False)
         self.assertFalse(self.slab(self.key).exists())
+        self.assertGreaterEqual(self.worker_b.stats()["slab_writes"], 1)
+        self.assertGreaterEqual(self.worker_b.stats()["slab_unlinks"], 1)
 
     def sd35(self, pool, encode_calls):
         from ditserve.models.sd35 import SD35Backend
@@ -394,6 +396,37 @@ class InterleavedUlyssesDispatchTests(unittest.TestCase):
         nccl.assert_not_called()
         # cond in, uncond in, cond out, uncond out on each of the two ranks.
         self.assertEqual(collectives.info()["calls"], {"all2all": 4 * self.WORLD})
+        expected_cond, expected_uncond = self.native_outputs()
+        self.torch.testing.assert_close(cond, expected_cond, rtol=1e-5, atol=1e-5)
+        self.torch.testing.assert_close(uncond, expected_uncond, rtol=1e-5, atol=1e-5)
+
+    def test_gfc_oversize_all_to_all_declines_to_nccl_fallback(self):
+        import torch.distributed._functional_collectives as ft_c
+        from ditserve.models.xdit import collectives
+        from ditserve.models.xdit.process_group import PROCESS_GROUP
+
+        loopback, group = _LoopbackAllToAll(self.WORLD), object()
+        saved = (PROCESS_GROUP.ULYSSES_PG, PROCESS_GROUP.ALL_TO_ALL)
+        self.addCleanup(lambda: (setattr(PROCESS_GROUP, "ULYSSES_PG", saved[0]),
+                                 setattr(PROCESS_GROUP, "ALL_TO_ALL", saved[1])))
+        self.addCleanup(collectives.shutdown)
+        collectives._BACKEND = "gfc"
+        collectives._STATS["config"] = {"max_collective_bytes": 16}
+        collectives.bind(group, (0, 1))
+        PROCESS_GROUP.ULYSSES_PG, PROCESS_GROUP.ALL_TO_ALL = group, collectives.all_to_all_flat
+        nccl_calls = []
+
+        def nccl(flat, output_split_sizes=None, input_split_sizes=None, group=None):
+            nccl_calls.append(flat.nbytes)
+            return loopback.exchange(flat)
+
+        with self.fake_xfuser(), mock.patch.object(ft_c, "all_to_all_single", nccl), \
+                mock.patch.object(collectives, "descriptor", lambda ranks: ranks):
+            cond, uncond = self.run_ranks(loopback)
+        # Stacked QKV (cond + uncond) is 3x larger than separate Q/K/V; when flat.nbytes exceeds
+        # max_collective_bytes, all_to_all_flat returns None and _ulysses_all_to_all_launch falls back to NCCL.
+        self.assertEqual(len(nccl_calls), 4 * self.WORLD)
+        self.assertEqual(collectives.info()["calls"].get("all2all_oversize_fallback"), 4 * self.WORLD)
         expected_cond, expected_uncond = self.native_outputs()
         self.torch.testing.assert_close(cond, expected_cond, rtol=1e-5, atol=1e-5)
         self.torch.testing.assert_close(uncond, expected_uncond, rtol=1e-5, atol=1e-5)

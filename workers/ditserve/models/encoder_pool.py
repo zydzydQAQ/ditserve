@@ -19,15 +19,40 @@ import time
 
 # A slab another worker unlinks, replaces or (never, given os.replace) half-writes reads as a miss.
 _SLAB_READ_ERRORS = (OSError, EOFError, RuntimeError, ValueError, pickle.UnpicklingError)
+DEFAULT_SHM_DIR = "/dev/shm/ditserve-hetero-embeds"
+
+
+def resolve_shm_dir(config: dict | None = None, *, work_dir: str | Path | None = None) -> tuple[Path, bool]:
+    """Resolve the `/dev/shm` slab directory, scoping per matrix cell when `work_dir` is set."""
+    cfg = config if isinstance(config, dict) else {}
+    raw = cfg.get("shm_dir")
+    work = work_dir if work_dir is not None else cfg.get("work_dir")
+    is_default = raw is None or str(raw) in ("", "auto", DEFAULT_SHM_DIR)
+    base = Path(DEFAULT_SHM_DIR) if is_default else Path(str(raw))
+    per_cell = bool(cfg.get("per_cell_isolation", is_default))
+    if per_cell and work:
+        wd = Path(str(work)).resolve()
+        cell_scope = wd.parent.parent if wd.parent.name == "artifacts" else wd
+        scope_id = hashlib.sha256(str(cell_scope).encode("utf-8")).hexdigest()[:16]
+        return base / f"cell-{scope_id}", True
+    return base, False
 
 
 class ProactiveEncoderPool:
     """Centralized or cross-worker shared text encoder pool with proactive staging."""
 
-    def __init__(self, config=None, *, max_cache_entries: int | None = None, max_entries: int | None = None, max_bytes: int | None = None):
+    def __init__(
+        self,
+        config=None,
+        *,
+        max_cache_entries: int | None = None,
+        max_entries: int | None = None,
+        max_bytes: int | None = None,
+        work_dir: str | Path | None = None,
+    ):
         cfg = config if isinstance(config, dict) else {}
         eff_entries = max_cache_entries if max_cache_entries is not None else max_entries
-        self.shm_dir = Path(cfg.get("shm_dir", "/dev/shm/ditserve-hetero-embeds"))
+        self.shm_dir, self.cell_scoped = resolve_shm_dir(cfg, work_dir=work_dir)
         self.max_entries = int(eff_entries if eff_entries is not None else cfg.get("max_entries", 64))
         self.max_bytes = int(max_bytes if max_bytes is not None else cfg.get("max_bytes", 512 * (1 << 20)))
         self.write_shm = bool(cfg.get("write_shm", False))
@@ -39,6 +64,8 @@ class ProactiveEncoderPool:
         self.misses = 0
         self.staged_pushes = 0
         self.shm_adoptions = 0
+        self.slab_writes = 0
+        self.slab_unlinks = 0
 
     def _slab_file(self, key: str) -> Path:
         return self.shm_dir / f"{key[:24]}.pt"
@@ -92,18 +119,36 @@ class ProactiveEncoderPool:
         return True
 
     @staticmethod
-    def prompt_key(modality: str, model_id: str, prompt: str, negative_prompt: str = "",
-                   max_sequence_length: int = 256, dtype: str = "bfloat16", do_cfg: bool = True) -> str:
+    def prompt_key(
+        modality: str,
+        model_id: str,
+        prompt: str,
+        negative_prompt: str = "",
+        max_sequence_length: int = 256,
+        dtype: str = "bfloat16",
+        do_cfg: bool = True,
+        *,
+        text_encoder_device: str = "",
+        text_encoder_dtype: str = "",
+        revision: str = "",
+    ) -> str:
+        body = {
+            "modality": modality,
+            "model_id": str(model_id),
+            "prompt": prompt,
+            "negative_prompt": negative_prompt,
+            "max_sequence_length": int(max_sequence_length),
+            "dtype": dtype,
+            "do_cfg": do_cfg,
+        }
+        if text_encoder_device:
+            body["text_encoder_device"] = str(text_encoder_device)
+        if text_encoder_dtype:
+            body["text_encoder_dtype"] = str(text_encoder_dtype)
+        if revision:
+            body["revision"] = str(revision)
         payload = json.dumps(
-            {
-                "modality": modality,
-                "model_id": str(model_id),
-                "prompt": prompt,
-                "negative_prompt": negative_prompt,
-                "max_sequence_length": int(max_sequence_length),
-                "dtype": dtype,
-                "do_cfg": do_cfg,
-            },
+            body,
             sort_keys=True,
             ensure_ascii=False,
         ).encode("utf-8")
@@ -114,7 +159,7 @@ class ProactiveEncoderPool:
         return (stat_result.st_dev, stat_result.st_ino, stat_result.st_size, stat_result.st_mtime_ns)
 
     @classmethod
-    def _unlink_own_slab(cls, record: dict) -> None:
+    def _unlink_own_slab(cls, record: dict) -> bool:
         """Remove the slab this pool wrote, unless another worker has since replaced it.
 
         Slabs are shared by every worker on the node; one this pool only read (or one
@@ -122,12 +167,14 @@ class ProactiveEncoderPool:
         """
         slab_path, slab_id = record.get("slab_path"), record.get("slab_id")
         if not slab_path or slab_id is None:
-            return
+            return False
         try:
             if cls._file_identity(os.stat(slab_path)) == slab_id:
                 os.unlink(slab_path)
+                return True
         except OSError:
             pass
+        return False
 
     def _evict_to_fit(self, needed_bytes: int) -> None:
         while self._entries and (
@@ -135,7 +182,8 @@ class ProactiveEncoderPool:
         ):
             _, evicted = self._entries.popitem(last=False)
             self._bytes -= evicted["bytes"]
-            self._unlink_own_slab(evicted)
+            if self._unlink_own_slab(evicted):
+                self.slab_unlinks += 1
 
     def _admit(self, key: str, record: dict) -> None:
         """Insert ``record`` as the most recent entry; the caller holds ``_lock``."""
@@ -205,6 +253,8 @@ class ProactiveEncoderPool:
             "stage_ms": (time.perf_counter() - started) * 1000.0,
         }
         with self._lock:
+            if slab_id is not None:
+                self.slab_writes += 1
             self._admit(key, record)
             self.staged_pushes += 1
         return {
@@ -396,14 +446,27 @@ class ProactiveEncoderPool:
             "misses": self.misses,
             "staged_pushes": self.staged_pushes,
             "shm_adoptions": self.shm_adoptions,
+            "slab_writes": self.slab_writes,
+            "slab_unlinks": self.slab_unlinks,
+            "shm_dir": str(self.shm_dir),
+            "cell_scoped": self.cell_scoped,
         }
 
     def clear(self) -> None:
         with self._lock:
             for record in self._entries.values():
-                self._unlink_own_slab(record)
+                if self._unlink_own_slab(record):
+                    self.slab_unlinks += 1
             self._entries.clear()
             self._bytes = 0
+
+    def close(self) -> None:
+        self.clear()
+        if self.cell_scoped and self.shm_dir.is_dir():
+            try:
+                self.shm_dir.rmdir()
+            except OSError:
+                pass
 
 
 from contextlib import nullcontext as _null_ctx

@@ -35,7 +35,7 @@ def uses_gfc():
     return _BACKEND == "gfc"
 
 
-def configure(name, *, device=None, max_collective_bytes=128 * 1024 * 1024, use_copy_engine=False):
+def configure(name, *, device=None, max_collective_bytes=512 * 1024 * 1024, use_copy_engine=False):
     """Select the backend on this rank. ``gfc`` is collective over the initialized world group:
     every rank must call it at the same point (the Wan distributed init does)."""
     global _BACKEND, _RUNTIME
@@ -130,7 +130,7 @@ def _submit(tensors, fn):
 
 
 def all_to_all_flat(flat, group):
-    """Equal-split all-to-all of a contiguous 1-D tensor; None when NCCL is the backend."""
+    """Equal-split all-to-all of a contiguous 1-D tensor; None when NCCL is the backend or oversized."""
     if not uses_gfc():
         return None
     ranks = _ranks_of(group)
@@ -138,6 +138,12 @@ def all_to_all_flat(flat, group):
         return flat.clone()
     if flat.nbytes % len(ranks):
         raise ValueError("all-to-all bytes must divide by the group size")
+    max_bytes = getattr(getattr(_RUNTIME, "config", None), "max_collective_bytes", None)
+    if max_bytes is None:
+        max_bytes = _STATS.get("config", {}).get("max_collective_bytes")
+    if max_bytes is not None and int(flat.nbytes) > int(max_bytes):
+        _count("all2all_oversize_fallback", flat.nbytes)
+        return None
     source = flat.contiguous()
     output = importlib.import_module("torch").empty_like(source)
     target = descriptor(ranks)

@@ -274,7 +274,7 @@ class WanTopologyGateTest(unittest.TestCase):
 
 class ImageRecipeAndProvenanceTest(unittest.TestCase):
     def test_external_serving_recipe_has_no_default_base_and_rejects_deleted_slim(self):
-        text = (ROOT / 'Dockerfile.external-serving').read_text(encoding='utf-8')
+        text = (ROOT / 'docker/Dockerfile').read_text(encoding='utf-8')
         args = re.findall(r'^ARG BASE_IMAGE(.*)$', text, re.MULTILINE)
         self.assertTrue(args)
         self.assertTrue(all(rest.strip() == '' for rest in args), 'BASE_IMAGE must have no default')
@@ -335,7 +335,7 @@ class ImageRecipeAndProvenanceTest(unittest.TestCase):
     def test_owned_files_do_not_reference_deleted_paths(self):
         deleted = re.compile(r'docs/container\.md|docs/20261102-[\w-]+\.md|docs/dit_serving_\w+\.(?:bib|tex)'
                              r'|(?<!git:[0-9a-f]{40}:)requirements/external-serving-[\w-]+\.txt')
-        owned = [ROOT / 'README.md', ROOT / 'Dockerfile.external-serving',
+        owned = [ROOT / 'README.md', ROOT / 'docker/Dockerfile',
                  ROOT / 'configs/benchmarks/external-image-build-handoff-v1.json',
                  ROOT / 'configs/benchmarks/external-runtime-r3-followup-v1.json',
                  *sorted((ROOT / 'docs').glob('*.md'))]

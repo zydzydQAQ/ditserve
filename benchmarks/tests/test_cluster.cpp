@@ -1375,6 +1375,37 @@ int main(int argc, char** argv) {
                 && cont_plan[0].value("cfg_folded", false) && cont_plan[0].value("fission", false),
                 "contracted video continues on primary half while companion GPU is busy: " + cont_plan.dump());
     });
+    check("ditserve laxity-aware video ordering and slack-safe short-late admission", [] {
+        Json het = profile();
+        het["classes"]["video_720p"] = {{"kind", "video"}, {"steps", 20}, {"blocks_per_step", 10}, {"prepare_ms", 0}, {"encode_ms", 0},
+                                        {"step_compute_ms", 12000}, {"comm_mb_per_step", 0}, {"collectives_per_step", 0}, {"finish_ms", 0}};
+        het["classes"]["video_480p"] = {{"kind", "video"}, {"steps", 20}, {"blocks_per_step", 10}, {"prepare_ms", 0}, {"encode_ms", 0},
+                                        {"step_compute_ms", 4000}, {"comm_mb_per_step", 0}, {"collectives_per_step", 0}, {"finish_ms", 0}};
+        het["classes"]["video_256p"] = {{"kind", "video"}, {"steps", 20}, {"blocks_per_step", 10}, {"prepare_ms", 0}, {"encode_ms", 0},
+                                        {"step_compute_ms", 1400}, {"comm_mb_per_step", 0}, {"collectives_per_step", 0}, {"finish_ms", 0}};
+        const ClusterCost het_cost(het);
+        // On cfg2 (degree=2): 720p needs 120s, 480p needs 40s, 256p needs 14s.
+        // v_720 has deadline 130s (laxity = 10s, latest_start = 10s).
+        // v_480 has earlier deadline 100s (laxity = 60s, latest_start = 60s).
+        // Strict EDF would pick v_480 first and cause v_720 to miss its deadline; ditserve LLF picks v_720 first.
+        Json v_720 = video("v_720", 130000.0); v_720["class"] = "video_720p";
+        Json v_480 = video("v_480", 100000.0); v_480["class"] = "video_480p";
+        const auto llf_plan = cluster_plan(
+            {{"now_ms", 0}, {"gpus", 2}, {"busy", Json::array()}, {"requests", Json::array({v_480, v_720})}},
+            "ditserve", het_cost, {{"forms", {"cfg2"}}}).at("assignments");
+        require(llf_plan.size() == 1 && llf_plan[0].at("request_id") == "v_720",
+                "ditserve prioritizes tighter-laxity 720p video over high-slack 480p video with earlier deadline");
+
+        // Short late 256p video (14s remaining, expired deadline 5s at now=10s) is promoted ahead of a high-slack 720p video
+        // (deadline 310s, laxity 180s > 14s + 80s safety buffer) when feasible concurrency is within the safe bound.
+        Json v_late_256 = video("v_late_256", 5000.0); v_late_256["class"] = "video_256p";
+        Json v_slack_720 = video("v_slack_720", 310000.0); v_slack_720["class"] = "video_720p";
+        const auto prom_plan = cluster_plan(
+            {{"now_ms", 10000.0}, {"gpus", 2}, {"busy", Json::array()}, {"requests", Json::array({v_slack_720, v_late_256})}},
+            "ditserve", het_cost, {{"forms", {"cfg2"}}}).at("assignments");
+        require(prom_plan.size() == 1 && prom_plan[0].at("request_id") == "v_late_256",
+                "ditserve promotes short late video when all feasible videos have >= 80s spare laxity");
+    });
     std::cout << checks - failures << "/" << checks << " cluster checks passed\n";
     return failures ? 1 : 0;
 }

@@ -11,7 +11,7 @@ def generation_identity(generation, include_cache=True):
     if not isinstance(generation, dict) or any(generation.get(key) is None for key in required):
         return None
     fields = ("model", "revision", "prompt", "negative_prompt", "height", "width", "frames", "steps",
-              "seed", "guidance_scale", "dtype", "fps", "image_path", "image_sha256")
+              "seed", "guidance_scale", "dtype", "text_encoder_device", "fps", "image_path", "image_sha256")
     if include_cache:
         fields += ("cache_enabled", "cache_threshold", "max_continuous", "approximate")
     return {key: generation.get(key) for key in fields}

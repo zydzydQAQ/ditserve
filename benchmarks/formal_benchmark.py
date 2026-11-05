@@ -261,6 +261,21 @@ def assemble(p, model, records, runtime_facts):
         raise ValueError('no completed calibration records')
     if len({entry['source']['core_sha256'] for entry in entries.values()}) != 1:
         raise ValueError('calibration runtime core changed between shapes')
+    uncached_video_encodes = [
+        entry['cost']['encode_ms']
+        for entry in entries.values()
+        if entry['cost'].get('kind') == 'video'
+        and entry['source'].get('fit', {}).get('encode_uncached_samples', 0) > 0
+        and entry['cost'].get('encode_ms', 0.0) > 0.0
+    ]
+    if uncached_video_encodes:
+        fallback_encode_ms = sum(uncached_video_encodes) / len(uncached_video_encodes)
+        for entry in entries.values():
+            if (entry['cost'].get('kind') == 'video'
+                    and entry['source'].get('fit', {}).get('encode_uncached_samples', 0) == 0
+                    and entry['source'].get('fit', {}).get('encode_cached_samples', 0) > 0):
+                entry['cost']['encode_ms'] = fallback_encode_ms
+                entry['source']['fit']['encode_ms_provenance'] = 'propagated_from_uncached_sibling_shape'
     return seal(dict(schema=BUNDLE_SCHEMA, model=model, protocol_sha256=canonical_hash(p),
                      gpu_uuids=uuids, classes=entries, model_manifests=manifests,
                      qualification='measured calibration only; numerical, quality and serving qualification pending'))

@@ -91,7 +91,7 @@
     ],
     "source_and_weights_zh": "只添加依赖层。继承 /opt/ditserve、运行入口和构建选择机制；不复制本地未提交源码、模型、数据、凭据或临时实验结果。运行时仍须指定主线程批准的 DITSERVE_BUILD，不能把历史探针 build 自动当作最新版本。",
     "status": "deleted_2026-11-04_do_not_use",
-    "default_reference_removed_zh": "Dockerfile.external-serving 不再提供默认 BASE_IMAGE，并拒绝该已删除 digest/tag；下列 reference/manifest_digest 仅作历史来源记录。"
+    "default_reference_removed_zh": "docker/Dockerfile (target: external-serving) 不再提供默认 BASE_IMAGE，并拒绝该已删除 digest/tag；下列 reference/manifest_digest 仅作历史来源记录。"
   },
   "profiles": {
     "selected": "common-control-plane-v1",

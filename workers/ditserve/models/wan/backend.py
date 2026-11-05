@@ -24,6 +24,9 @@ class WanBackend(Backend):
         cache_config = cache_options(self.options)
         pool_cfg = self.options.get("encoder_pool")
         if isinstance(pool_cfg, dict) and pool_cfg.get("enabled", True):
+            pool_cfg = dict(pool_cfg)
+            if "work_dir" in config and "work_dir" not in pool_cfg:
+                pool_cfg["work_dir"] = config["work_dir"]
             cache_config["encoder_pool"] = pool_cfg
         self.runtime = WanStepWorker(device=config.get("device", "cuda:0"),
             model_path=config.get("model_path"), attention=config.get("attention", "math"),
@@ -490,7 +493,7 @@ class WanBackend(Backend):
                 raise ValueError("group-free collectives need CUDA (NCCL bootstrap) workers")
             collective_info = collectives.configure(
                 collective_backend, device=self.runtime.device if collective_backend == "gfc" else None,
-                max_collective_bytes=int(request.get("gfc_max_collective_bytes", 128 * 1024 * 1024)),
+                max_collective_bytes=int(request.get("gfc_max_collective_bytes", 512 * 1024 * 1024)),
                 use_copy_engine=bool(request.get("gfc_copy_engine", False)))
             handle = LayoutHandle(torch.distributed.get_rank(), request.get("ranks"),
                                   cfg=request.get("cfg", 1), ring=request.get("ring", 1))

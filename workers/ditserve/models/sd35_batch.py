@@ -466,6 +466,24 @@ class SD35AsyncPipelineManager:
             t0 = time.perf_counter()
             if delay_s > 0:
                 time.sleep(delay_s)
+            if getattr(self.backend, "_effective_t5_device", lambda: "cuda")() == "cpu":
+                stage_info = self.backend._ensure_staged(
+                    spec["prompt"],
+                    spec["negative_prompt"],
+                    spec["max_sequence_length"],
+                    spec["guidance_scale"] > 1.0,
+                )
+                direct_tensors = stage_info.pop("_direct_tensors", None)
+                elapsed_ms = (time.perf_counter() - t0) * 1000.0
+                return {
+                    "spec": spec,
+                    "key": stage_info["key"],
+                    "stage_info": stage_info,
+                    "tensors": direct_tensors,
+                    "push_ms": 0.0,
+                    "encode_ms": round(elapsed_ms, 3),
+                    "bubble_free_prefetch": True,
+                }
             stream = self.encode_stream
             stage_info, fetched = self.backend._fetch_staged(
                 spec["prompt"],
