@@ -51,13 +51,13 @@ const std::map<std::string, PolicyTraits>& named() {
         {
             auto t = row("tetriserve", "TetriServe (re-impl.)", "baseline",
                 "TetriServe, ASPLOS'26: step-level SP regrouped only at round boundaries; inside an unfinished round a "
-                "placed video holds its GPUs from images and other videos (no sub-step preemption); dominated-form "
-                "pruning; each plan sizes the movable videos by a 0/1 deadline group knapsack (value 1 per request kept "
+                "placed video holds its GPUs from images and other videos (no sub-step preemption); each plan sizes "
+                "the movable videos by a 0/1 deadline group knapsack (value 1 per request kept "
                 "on track, cost its minimal feasible GPUs), leftover GPUs go widest-first in EDF order to requests no "
                 "size saves, and only when no image waits are placed videos widened in EDF order to their next faster "
                 "size; rounds approximated by options.round_steps solver steps; not reproduced: its batching and "
                 "multi-node deployment");
-            t.elastic = t.rounds = t.deadline_dp = t.prune_dominated = true;
+            t.elastic = t.rounds = t.deadline_dp = true;
             add(t);
         }
         {
@@ -66,7 +66,7 @@ const std::map<std::string, PolicyTraits>& named() {
                 "re-planned every step by the unit-value deadline group knapsack over videos also used for TetriServe "
                 "(images take GPUs in the same EDF pass, outside the knapsack), every late request demoted behind "
                 "feasible ones (late_short_ms 0), image batches of up to 4 when no GPU is free and the profile prices "
-                "batches, single-GPU VAE decode; not reproduced: its exact utility function and joint cross-modal "
+                "batches; not reproduced: its exact utility function and joint cross-modal "
                 "planning");
             t.elastic = t.deadline_dp = t.image_batching = true;
             add(t);

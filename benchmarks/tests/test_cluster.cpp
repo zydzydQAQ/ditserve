@@ -1230,24 +1230,41 @@ int main(int argc, char** argv) {
         require(img.size() == 1 && img[0].at("request_id") == "i", "image placed while the video waits");
     });
     check("deadline knapsack keeps the most requests on track", [&] {
-        // Four GPUs free, three videos: two can make it on cfg2, the third cannot on any form.
+        // Four GPUs free, three videos: two can make it on sp2, the third cannot on any form.
         const Json busy = {true, true, true, true, false, false, false, false};
-        const double ok = 20 * 583.4 + 1840 + 500, hopeless = 5000;
-        const auto result = pcie_plan(Json::array({video("late", hopeless), video("a", ok), video("b", ok + 1)}), "tetriserve", busy,
-                                      {{"demote_late", false}}).at("assignments");
+        const double ok = 3000, hopeless = 500;
+        const auto result = cluster_plan(
+            {{"now_ms", 0}, {"gpus", 8}, {"busy", busy}, {"requests", Json::array({video("late", hopeless), video("a", ok), video("b", ok + 1)})}},
+            "tetriserve", ClusterCost(profile()), {{"forms", {"sp1", "cfg2", "sp2", "cfg2sp2", "sp4"}}, {"demote_late", false}}).at("assignments");
         std::set<std::string> placed;
-        for (const auto& a : result) { placed.insert(a.at("request_id").get<std::string>()); require(a.at("degree") == 2, "minimal feasible pair"); }
+        for (const auto& a : result) {
+            placed.insert(a.at("request_id").get<std::string>());
+            require(a.at("degree") == 2 && a.at("form") == "sp2", "minimal feasible pure-SP pair: " + a.dump());
+        }
         require(placed == std::set<std::string>{"a", "b"}, "the knapsack drops the hopeless request: " + result.dump());
         // sbp-esp re-plans every step with the same objective.
-        const auto genserve = pcie_plan(Json::array({video("late", hopeless), video("a", ok), video("b", ok + 1)}), "sbp-esp", busy,
-                                        {{"demote_late", false}}).at("assignments");
+        const auto genserve = cluster_plan(
+            {{"now_ms", 0}, {"gpus", 8}, {"busy", busy}, {"requests", Json::array({video("late", hopeless), video("a", ok), video("b", ok + 1)})}},
+            "sbp-esp", ClusterCost(profile()), {{"forms", {"sp1", "cfg2", "sp2", "cfg2sp2", "sp4"}}, {"demote_late", false}}).at("assignments");
         require(genserve.size() == 2, "SBP-ESP keeps the two feasible videos");
+        // External baselines strictly use pure-SP forms, first-fit subgroup placement, and full-group VAE decode.
+        for (const char* base : {"tetriserve", "sbp-esp", "edf-bestfit"}) {
+            const auto p = pcie_plan(Json::array({video("v", 1e9)}), base, {false, false, false, false, true, true, false, false}).at("assignments");
+            require(p.size() == 1 && p[0].at("form").get<std::string>().rfind("sp", 0) == 0,
+                    std::string(base) + " uses pure-SP forms only: " + p.dump());
+            const Json done_req = video("v_done", 1e9, {{"status", "suspended"}, {"prepared", true}, {"steps_done", 20}, {"steps_total", 20},
+                                                        {"group", {0, 1}}, {"form", "sp2"}});
+            const auto dec = pcie_plan(Json::array({done_req}), base).at("assignments");
+            require(dec.size() == 1 && dec[0].at("quantum") == "finish" && dec[0].at("group") == Json::array({0, 1}) && dec[0].at("degree") == 2,
+                    std::string(base) + " holds its full group during VAE decode: " + dec.dump());
+        }
     });
     check("EDF best fit with surplus redistribution", [&] {
         // One feasible video, all 8 GPUs free, nothing else waiting: best fit takes the smallest feasible
-        // size, then surplus promotion widens it step by step while GPUs remain.
+        // size, then surplus promotion widens it step by step to the widest pure-SP size in pcie_forms (sp6).
         const auto result = pcie_plan(Json::array({video("a", 1e9)}), "edf-bestfit").at("assignments");
-        require(result.size() == 1 && result[0].at("degree") == 8, "surplus promotes to the widest size: " + result.dump());
+        require(result.size() == 1 && result[0].at("degree") == 6 && result[0].at("form") == "sp6",
+                "surplus promotes to the widest pure-SP size: " + result.dump());
         // Two videos: both placed, the earlier deadline first.
         const auto two = pcie_plan(Json::array({video("a", 1e9), video("b", 2e9)}), "edf-bestfit").at("assignments");
         require(two.size() == 2, "both placed");

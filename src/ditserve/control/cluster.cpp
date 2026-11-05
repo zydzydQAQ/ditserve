@@ -715,7 +715,13 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             if (!item.is_string()) throw std::invalid_argument("options.forms lists form names");
             forms.push_back(parse_form(item.get<std::string>()));
         }
-    } else if ((policy.knapsack || policy.prune_dominated || policy.deadline_dp || policy.best_fit || policy.id == "diag-2d-usp")
+        if ((policy.deadline_dp || policy.best_fit) && !bool_field(options, "allow_cfg_forms", false)) {
+            std::vector<Form> sp_only;
+            for (const auto& f : forms) if (f.cfg == 1) sp_only.push_back(f);
+            if (!sp_only.empty()) forms = std::move(sp_only);
+        }
+    } else if ((policy.knapsack || policy.prune_dominated || policy.min_video_degree > 1
+                || policy.image_placement == "pair_fit" || policy.id == "diag-2d-usp")
                && !options.contains("degrees")) {
         const auto& links = cost.profile().value("links", Json::object());
         forms.push_back(parse_form("sp1"));
@@ -848,9 +854,10 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         return best;
     };
     auto ceil_div = [](int a, int b) { return (a + b - 1) / b; };
+    const bool shrink_decode = bool_field(options, "shrink_decode", !(policy.deadline_dp || policy.best_fit || policy.hold_diffuse));
     // Latent-frame chunks per decode quantum (0: the decode is one quantum).
     auto decode_frames = [&](const std::string& klass) {
-        if (bool_field(options, "async_rank0_decode", policy.v5)) return 0;
+        if (!policy.blocks || !shrink_decode || bool_field(options, "async_rank0_decode", policy.v5)) return 0;
         int frames = int_field(options, "decode_chunk_frames", 0, 0);
         if (cost.decode_chunks(klass) > 1 && quantum_ms > 0 && bool_field(options, "chunked_decode", true))
             frames = std::max(1, static_cast<int>(std::floor(quantum_ms / cost.chunk_ms(klass))));
@@ -956,13 +963,15 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     // The worker contract behind that hold: an SP video worker keeps one request
     // inside a solver step at a time. The decode hold is scheduling policy only.
     std::vector<const Json*> step_owner(gpus, nullptr);
-    // A chunked decode in progress holds only its decoding GPU.
+    // A chunked decode in progress holds only its decoding GPU (or its full group when decode does not shrink).
     for (const Json* r : rows) {
         if (r->at("kind") != "video") continue;
         const auto rklass = r->at("class").get<std::string>();
         const int rsteps = int_field(*r, "steps_total", int_field(cost.klass(rklass), "steps", 0), 1);
-        if (int_field(*r, "decode_done", 0, 0) > 0) mid_owner[group_of(*r).front()] = r;
-        else if (int_field(*r, "blocks_done", 0, 0) > 0) for (int gpu : group_of(*r)) mid_owner[gpu] = step_owner[gpu] = r;
+        if (int_field(*r, "decode_done", 0, 0) > 0) {
+            if (shrink_decode) mid_owner[group_of(*r).front()] = r;
+            else for (int gpu : group_of(*r)) mid_owner[gpu] = r;
+        } else if (int_field(*r, "blocks_done", 0, 0) > 0) for (int gpu : group_of(*r)) mid_owner[gpu] = step_owner[gpu] = r;
         else if (hold_diffuse && r->value("prepared", false) && int_field(*r, "steps_done", 0, 0) < rsteps)
             for (int gpu : group_of(*r)) mid_owner[gpu] = r;
     }
@@ -976,6 +985,15 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             const int rsteps = int_field(*r, "steps_total", int_field(cost.klass(rklass), "steps", 0), 1);
             const int sdone = int_field(*r, "steps_done", 0, 0);
             if (sdone > 0 && sdone < rsteps && sdone % round_steps != 0)
+                for (int gpu : group_of(*r)) if (!mid_owner[gpu]) mid_owner[gpu] = r;
+        }
+    }
+    if (!shrink_decode) {
+        for (const Json* r : rows) {
+            if (r->at("kind") != "video" || !r->value("prepared", false)) continue;
+            const auto rklass = r->at("class").get<std::string>();
+            const int rsteps = int_field(*r, "steps_total", int_field(cost.klass(rklass), "steps", 0), 1);
+            if (int_field(*r, "steps_done", 0, 0) >= rsteps)
                 for (int gpu : group_of(*r)) if (!mid_owner[gpu]) mid_owner[gpu] = r;
         }
     }
@@ -1374,10 +1392,13 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         const int steps = int_field(r, "steps_total", int_field(cost.klass(klass), "steps", 0), 1);
         if (prepared && int_field(r, "steps_done", 0, 0) >= steps) {
             if (current.empty()) throw std::invalid_argument("finished request has no resident group");
-            if (free[current.front()]) {
-                free[current.front()] = false;
-                Json assignment = {{"request_id", id}, {"group", Json::array({current.front()})}, {"degree", 1}, {"quantum", "finish"},
+            const std::vector<int> decode_group = shrink_decode ? std::vector<int>{current.front()} : current;
+            if (all_free(decode_group) && (pin_started || !held_by_other(decode_group, &r))) {
+                take(decode_group);
+                Json assignment = {{"request_id", id}, {"group", decode_group},
+                                   {"degree", static_cast<int>(decode_group.size())}, {"quantum", "finish"},
                                    {"resize", false}, {"reason", "decode"}};
+                if (!shrink_decode) assignment["form"] = form_name(form_of(r, current));
                 // Chunked decode: frames per quantum follow quantum_ms, else decode_chunk_frames.
                 const int frames = decode_frames(klass);
                 if (frames > 0) assignment["decode_frames"] = std::min(frames, cost.decode_chunks(klass) - int_field(r, "decode_done", 0, 0));
@@ -1746,13 +1767,15 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                 if (std::any_of(group.begin(), group.end(), reserved)) continue;
                 if (affinity >= 0 && std::find(group.begin(), group.end(), affinity) == group.end()) continue;
                 if (held_by_other(group, &r)) continue;
-                // The fastest group of this size (per-group link rates), then best fit:
-                // the group whose aligned parent is most occupied.
+                // The fastest group of this size (per-group link rates), then (with pair_fit)
+                // best fit: the group whose aligned parent is most occupied.
                 const Form form = form_for(klass, *d, &group);
                 const double ms = *d > 1 ? cost.step_ms(klass, form, sp_groups(form), &group) : 0;
-                const int parent = std::min(gpus, *d * 2), start = group.front() / parent * parent;
                 int occupied = 0;
-                for (int gpu = start; gpu < std::min(gpus, start + parent); ++gpu) occupied += !free[gpu];
+                if (image_placement == "pair_fit") {
+                    const int parent = std::min(gpus, *d * 2), start = group.front() / parent * parent;
+                    for (int gpu = start; gpu < std::min(gpus, start + parent); ++gpu) occupied += !free[gpu];
+                }
                 if (chosen.empty() || ms < best_ms - 1e-9 || (std::abs(ms - best_ms) <= 1e-9 && occupied > best_busy)) {
                     best_busy = occupied; best_ms = ms; chosen = group;
                 }

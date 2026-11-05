@@ -159,7 +159,7 @@ class CurrentRegistryMirrorsNativeTest(unittest.TestCase):
         xdit = contrasts.resolved_options('xdit', dict(OPTION_SETS[0]), 8)
         self.assertEqual((xdit['fixed_form'], xdit['forms'], xdit['hold_diffuse'], xdit['order'], xdit['demote_late']),
                          ('sp1', ['sp1'], True, 'fcfs', False))
-        self.assertTrue(contrasts.resolved_options('tetriserve', dict(OPTION_SETS[0]), 8)['prune_dominated'])
+        self.assertFalse(contrasts.resolved_options('tetriserve', dict(OPTION_SETS[0]), 8)['prune_dominated'])
         self.assertFalse(contrasts.resolved_options('edf-bestfit', dict(OPTION_SETS[0]), 8)['demote_late'])
         self.assertEqual(contrasts.resolved_options('sbp-esp', dict(OPTION_SETS[0]), 8)['late_short_ms'], 0.)
         self.assertEqual(self.planner['sbp-esp']['late_short_ms'], 0.)
@@ -214,7 +214,7 @@ class ContrastResolutionTest(unittest.TestCase):
         self.assertIn('late_short_ms', sbp['differing_fields'])
         tetri = contrasts.validate_contrast('system-tetriserve', self.phase('tetriserve'), self.phase('ditserve'))
         self.assertIn('round_hold', tetri['differing_fields'])
-        self.assertNotIn('prune_dominated', tetri['differing_fields'])
+        self.assertIn('prune_dominated', tetri['differing_fields'])
         edf = contrasts.validate_contrast('system-edf-bestfit', self.phase('edf-bestfit'), self.phase('ditserve'))
         self.assertIn('demote_late', edf['differing_fields'])
         # An explicit shared option wins over every policy default.

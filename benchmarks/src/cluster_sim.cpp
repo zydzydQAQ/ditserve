@@ -271,7 +271,8 @@ Json simulate_cluster(const Json& config) {
             const auto klass = row.at("class").get<std::string>();
             if (quantum == "finish" && row.value("decode_done", 0) + it->blocks < cost.decode_chunks(klass)) {
                 row["decode_done"] = row.value("decode_done", 0) + it->blocks; row["status"] = "suspended";
-                row["group"] = it->assignment.at("group"); row["form"] = "sp1";
+                row["group"] = it->assignment.at("group");
+                row["form"] = it->assignment.value("form", "sp" + std::to_string(it->assignment.at("group").size()));
             } else if (quantum == "atomic" || quantum == "finish") {
                 row["status"] = "completed"; row["finish_ms"] = it->end; row["group"] = Json::array(); row.erase("form"); ++completed;
                 for (std::size_t m : it->batch) {

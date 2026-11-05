@@ -147,14 +147,14 @@ def _policy_rows(xdit_form, tetriserve_prunes, edf_bestfit_demotes, sbp_esp_late
 # no fixed-form partition clamp, and late_short_ms is 2000 ms for every policy (not recorded).
 LEGACY_POLICY_SOURCE = _POLICY_SOURCES['src/ditserve/control/policy.cpp']
 # Reviewed after 7ee8beb with the review fixes: xdit is single-GPU sp1 and its image share is
-# clamped to leave one sp1 video GPU; TetriServe prunes dominated degrees and, inside an
+# clamped to leave one sp1 video GPU; TetriServe does not prune dominated degrees and, inside an
 # unfinished round, holds its GPUs from images and other videos (no block preemption);
 # EDF-BF never demotes late requests; SBP-ESP demotes every late request (late_short_ms 0).
-CURRENT_POLICY_SOURCE = '9403cac1bb66f5787bfd567d9e70a27ffa08d4f3210101835e0e647ddd2119e0'
+CURRENT_POLICY_SOURCE = 'df051f1fa4336a55a206c86107cc683724c17bd7bd6184c11dca34716d7823f4'
 POLICY_REGISTRIES = {
     LEGACY_POLICY_SOURCE: dict(xdit='xdit-cfg2', policies=_policy_rows('cfg2', False, True, 2000),
                                planner_fields=False, partition_clamp=False),
-    CURRENT_POLICY_SOURCE: dict(xdit='xdit-sp1', policies=_policy_rows('sp1', True, False, 0),
+    CURRENT_POLICY_SOURCE: dict(xdit='xdit-sp1', policies=_policy_rows('sp1', False, False, 0),
                                 planner_fields=True, partition_clamp=True),
 }
 
