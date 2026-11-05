@@ -1067,17 +1067,9 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         EstimateEvidence evidence;
         const double remaining = estimate(*r, form, sp_groups(form), mid_step ? &group : nullptr, 0., capture ? &evidence : nullptr);
         double min_rem = remaining;
-        double init_min_rem = remaining;
         if (r->at("kind") == "video" && !sizes.empty()) {
             const Form min_form = form_for(klass, sizes.front());
             if (mid_step || form != min_form) min_rem = estimate(*r, min_form, sp_groups(min_form), nullptr, 0., nullptr);
-            Json fresh = *r;
-            fresh["prepared"] = false;
-            fresh["steps_done"] = 0;
-            fresh["blocks_done"] = 0;
-            fresh["decode_done"] = 0;
-            fresh["cfg_folded"] = false;
-            init_min_rem = estimate(fresh, min_form, sp_groups(min_form), nullptr, 0., nullptr);
         }
         base_rem[r] = min_rem;
         const double deadline = number_field(*r, "deadline_ms");
