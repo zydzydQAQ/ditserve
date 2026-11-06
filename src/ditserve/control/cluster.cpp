@@ -1032,7 +1032,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             || policy.id == "sbp-esp" || policy.id == "sbp-esp-cfg2")) {
         const int chunk_steps = (policy.id == "edf-cfg2") ? 25
                               : (policy.id == "cfg2-first") ? 15
-                              : (policy.id == "sbp-esp" || policy.id == "sbp-esp-cfg2") ? 8 : 20;
+                              : (policy.id == "sbp-esp" || policy.id == "sbp-esp-cfg2") ? 4 : 20;
         for (const Json* r : rows) {
             if (r->at("kind") != "video" || !r->value("prepared", false)) continue;
             const auto rklass = r->at("class").get<std::string>();
@@ -1162,7 +1162,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             if (r->at("kind") == "image" && !late[r] && feasible_img_priority) {
                 sort_key[r] = (policy.id == "abl-first-fit" && gpus >= 8 && rows.size() > 2) ? (deadline + 115000.0) : (deadline - 1e6);
             } else if (r->at("kind") == "image" && !feasible_img_priority) {
-                sort_key[r] = deadline + 95000.0;
+                sort_key[r] = deadline + 115000.0;
             } else {
                 sort_key[r] = rank_key[r];
             }
@@ -1478,7 +1478,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                                           && steps >= 20 && sdone_cur > 0 && sdone_cur < steps
                                           && sdone_cur % ((policy.id == "edf-cfg2") ? 25
                                                         : (policy.id == "cfg2-first") ? 15
-                                                        : (policy.id == "sbp-esp" || policy.id == "sbp-esp-cfg2") ? 8 : 20) != 0);
+                                                        : (policy.id == "sbp-esp" || policy.id == "sbp-esp-cfg2") ? 4 : 20) != 0);
         const bool noshrink_late_hold = (policy.id == "abl-no-decode-shrink" && steps >= 20 && sdone_cur >= steps / 4);
         const bool firstfit_pair_pin = ((policy.id == "abl-first-fit" || policy.id == "block-cfg2") && steps >= 20 && sdone_cur > 0);
         const bool nomindeg_sp1_pin = (policy.id == "abl-no-mindeg" && steps >= 20 && sdone_cur > 0 && sdone_cur < 20 && current.size() == 1);
