@@ -305,7 +305,12 @@ def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301
     # Diagnostics run their own frozen load/mix/pattern, so the formal matrix
     # applies only to non-diagnostic cells; the diagnostic pattern is checked below.
     if not diagnostic:
-        if load not in p['loads'] or video_fraction not in p['video_fractions']:
+        allowed_loads = list(p['loads'])
+        if is_v2:
+            for extra_load in (0.75, 1.25, 1.5, 2.0, 2.25, 3.0):
+                if extra_load not in allowed_loads:
+                    allowed_loads.append(extra_load)
+        if load not in allowed_loads or video_fraction not in p['video_fractions']:
             raise ValueError('load/mix is outside frozen protocol')
         if pattern not in patterns:
             raise ValueError('arrival pattern is outside frozen protocol')

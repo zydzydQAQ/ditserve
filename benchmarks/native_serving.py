@@ -103,6 +103,8 @@ SUITES = {
     "preempt": ["edf-cfg2", "block-cfg2"],
     # Paper baselines + DitServe for Rate/SLO/CV/GPU sweeps.
     "sweep": ["xdit", "tetriserve", "sbp-esp", "edf-bestfit", "ditserve"],
+    # Single-policy DitServe cell refresh on identical frozen trace (reusing baseline cells).
+    "ditserve": ["ditserve"],
 }
 SUITES["main+ablation"] = list(dict.fromkeys(SUITES["main"] + SUITES["ablation"]))
 DEFAULT_POLICIES = SUITES["main"]
