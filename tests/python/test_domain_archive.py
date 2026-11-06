@@ -34,15 +34,9 @@ from ditserve import results
 from ditserve.evaluation.common import canonical_hash, seal, verify_seal
 import formal_benchmark
 
-_RESULTS_ARCHIVE_SPEC = importlib.util.spec_from_file_location(
-    "ditserve.results_archive",
-    ROOT / "python" / "ditserve" / "results_archive.py",
-)
-assert _RESULTS_ARCHIVE_SPEC is not None and _RESULTS_ARCHIVE_SPEC.loader is not None
-py_results_archive = importlib.util.module_from_spec(_RESULTS_ARCHIVE_SPEC)
-sys.modules["ditserve.results_archive"] = py_results_archive
-setattr(ditserve, "results_archive", py_results_archive)
-_RESULTS_ARCHIVE_SPEC.loader.exec_module(py_results_archive)
+py_results_archive = results
+sys.modules["ditserve.results_archive"] = results
+setattr(ditserve, "results_archive", results)
 
 
 # ==============================================================================

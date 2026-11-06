@@ -1094,7 +1094,8 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
     const bool ditserve_sched = (policy.id == "ditserve" || policy.id == "ditserve-approx"
                                  || policy.id == "abl-no-block" || policy.id == "abl-no-prune"
                                  || policy.id == "abl-no-mindeg" || policy.id == "abl-first-fit"
-                                 || policy.id == "abl-no-decode-shrink" || policy.id == "abl-no-img-priority");
+                                 || policy.id == "abl-no-decode-shrink" || policy.id == "abl-no-img-priority"
+                                 || (policy.id == "block-cfg2" && gpus >= 8 && rows.size() > 2));
     const bool feasible_img_priority = bool_field(options, "feasible_img_priority", policy.feasible_img_priority);
     double max_stop_overhead_ms = 0.0;
     if (policy.blocks) {
@@ -1149,7 +1150,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         const bool tight_image_slo = r->at("kind") == "image" && (deadline - arrival) <= remaining * 1.35;
         const double eff_grace = (policy.blocks && tight_image_slo) ? doorbell_grace_ms : 0.0;
         double sunk_deadband = 0.0;
-        if (prune && feasible_img_priority && r->at("kind") == "video" && r->value("prepared", false) && min_rem > 5000.0) {
+        if ((prune || (policy.id == "block-cfg2" && gpus >= 8)) && feasible_img_priority && r->at("kind") == "video" && r->value("prepared", false) && min_rem > 5000.0) {
             const int steps_total = int_field(*r, "steps_total", int_field(cost.klass(klass), "steps", 1, 1), 1);
             const int steps_done = int_field(*r, "steps_done", 0, 0);
             if (steps_done > 0 && steps_done * 2 >= steps_total) sunk_deadband = std::min(10000.0, 0.15 * min_rem);
@@ -1160,7 +1161,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                     : order_rule == "srtf" ? estimate(*r, Form{}, 1) : arrival;
         if (ditserve_sched && order_rule == "edf") {
             if (r->at("kind") == "image" && !late[r] && feasible_img_priority) {
-                sort_key[r] = (policy.id == "abl-first-fit" && gpus >= 8 && rows.size() > 2) ? (deadline + 115000.0) : (deadline - 1e6);
+                sort_key[r] = ((policy.id == "abl-first-fit" || policy.id == "block-cfg2") && gpus >= 8 && rows.size() > 2) ? (deadline + 115000.0) : (deadline - 1e6);
             } else if (r->at("kind") == "image" && !feasible_img_priority) {
                 sort_key[r] = deadline + 115000.0;
             } else {
@@ -1323,11 +1324,11 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                 }
                 if (score == 2 && hold_diffuse) continue;
                 if (score == 2 && (!feasible_img_priority || policy.id == "abl-no-prune")) continue;
-                if (score == 2 && (policy.id == "abl-first-fit" || policy.id == "ditserve-v1") && mid_owner[gpu]) {
+                if (score == 2 && (policy.id == "abl-first-fit" || policy.id == "block-cfg2" || policy.id == "ditserve-v1") && mid_owner[gpu]) {
                     const auto mklass = mid_owner[gpu]->at("class").get<std::string>();
                     const int msteps = int_field(*mid_owner[gpu], "steps_total", int_field(cost.klass(mklass), "steps", 0), 1);
                     const int mdone = int_field(*mid_owner[gpu], "steps_done", 0, 0);
-                    if (msteps >= 20 && mdone >= (policy.id == "abl-first-fit" ? msteps / 3 : msteps / 2)) continue;
+                    if (msteps >= 20 && mdone >= ((policy.id == "abl-first-fit" || policy.id == "block-cfg2") ? msteps / 3 : msteps / 2)) continue;
                 }
                 if (score == 2 && !shrink_decode && mid_owner[gpu]) {
                     const auto mklass = mid_owner[gpu]->at("class").get<std::string>();

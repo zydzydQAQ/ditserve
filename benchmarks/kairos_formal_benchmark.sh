@@ -107,11 +107,9 @@ run_config() {
   (
     trap 'chmod -R a+rX "$OUTPUT/.cache/results-work/$experiment/$id" 2>/dev/null || true' EXIT
     ditserve run --config "$config" --run-id "$id" --allow-gpu --ledger "$LEDGERS/$experiment.json" || exit $?
-    if [ -f "$PACKAGE/python/ditserve/results_archive.py" ]; then
-      python3 "$PACKAGE/python/ditserve/results_archive.py" \
-        --work-dir "$OUTPUT/.cache/results-work/$experiment/$id" \
-        --output "$OUTPUT/results/$experiment/$id" || exit $?
-    fi
+    PYTHONPATH="$PACKAGE/python:${PYTHONPATH:-}" python3 -c 'import sys; from pathlib import Path; from ditserve.results import archive_run; archive_run(Path(sys.argv[1]), Path(sys.argv[2]))' \
+      "$OUTPUT/.cache/results-work/$experiment/$id" \
+      "$OUTPUT/results/$experiment/$id" || exit $?
     ditserve results verify "$OUTPUT/results/$experiment/$id" || exit $?
   ) || status=$?
   last_run=$OUTPUT/.cache/results-work/$experiment/$id/run.json

@@ -389,7 +389,7 @@ $$\Delta T_{\text{step}}(2 \to 2u) = \underbrace{T_{\text{comp}}(2, 1)\left(1 - 
 1. **因子化对照基线体系**：
    - **原版纯 SP 基线（Original Pure-SP Baselines）**：`tetriserve`、`sbp-esp`、`edf-bestfit`、`xdit`，视频仅在纯 `Ulysses-SP`（`sp1..sp8`）上扩展，且去噪完成后全组伴随卡同步等待 Rank-0 执行 3D-VAE 解码。
    - **因子化 CFG2 增强基线（CFG2-Enabled Baselines）**：`tetriserve-cfg2`、`sbp-esp-cfg2`、`edf-bestfit-cfg2`，为各基线开放与 DitServe 相同的无损 `CFG2 × SP` 混合形态池（`{sp1, cfg2, cfg2sp2, cfg2sp3, cfg2sp4}`），用于剥离通信感知并行轴与亚步抢占/尾阶段解耦的独立贡献。
-   - **机制剥离消融变体（Factorized Ablations）**：`abl-no-decode-shrink`（关闭去噪后立即释放伴随卡的 `AsyncDecoder` 解码缩容）、`abl-no-img-priority`（关闭跨模态图像优先）、`abl-no-block`（关闭亚步 Block 门铃抢占）、`abl-no-prune`（关闭支配形态剪枝）与 `abl-no-mindeg`（关闭最小并行度保护）。
+   - **三层流水线消融体系（3-Layer Pipeline Ablations）**：严格对应 §4.2–§4.4 的 **L1 形态裁剪 $\to$ L2 时间抢占 $\to$ L3 空间放置** 三层流水线，包含 6 个核心策略——**三层累加阶梯**（`edf-cfg2` [`L1 Only`] $\to$ `block-cfg2` [`L1+L2`] $\to$ `ditserve` [`L1+L2+L3`]）与**三层单因素剥离**（`abl-no-prune` [`w/o L1`]、`abl-no-block` [`w/o L2`]、`abl-first-fit` [`w/o L3`]）。
 2. **Tier-1 无损运行时资格门禁（[`python/ditserve/results_archive.py`](file:///mnt/e/000_code/zyd-2026/ditserve/python/ditserve/results_archive.py)）与校准包溯源完整性（[`benchmarks/kairos_formal_benchmark.sh`](file:///mnt/e/000_code/zyd-2026/ditserve/benchmarks/kairos_formal_benchmark.sh)）**：
    - `results_archive.py` 对 `mock_execution == False`、`failed == 0` 且使用 100% 无损精确执行的真实 GPU 归档自动评定 `numeric="verified_lossless_exact"`、`semantic="verified_bitwise_invariant"`、`performance="verified_real_gpu"`，并将 `qualified_goodput_rps` 赋值为实测 `on_time_goodput_rps`。
    - `kairos_formal_benchmark.sh` 在复用同构 8× `NVIDIA A100-PCIE-40GB` 校准包时完整保留 `origin_gpu_uuids` 并记录 `calibration_match_mode`（`exact_uuid` 或 `homogeneous_topology_signature`），且将紧预算 `slo-1p0` 统一规范为 `--slo-scale 1.25` 以容纳 50 ms 亚步门铃抢占窗口。
@@ -411,7 +411,7 @@ $$\Delta T_{\text{step}}(2 \to 2u) = \underbrace{T_{\text{comp}}(2, 1)\left(1 - 
 | **`gamma6-main`** | Gamma $CV=6.0$, $\lambda=1.75$, $v=0.5$ | **`0.85`** (`0.94` / `0.76`)<br>`0.0921 req/s` | `0.73` (`0.86` / `0.60`)<br>`0.0837 req/s` | `0.37` (`0.26` / `0.48`)<br>`0.0439 req/s` | `0.38` (`0.50` / `0.26`)<br>`0.0445 req/s` | `0.14` (`0.14` / `0.14`)<br>`0.0085 req/s` |
 | **`dist-skewed`** | Poisson, $\lambda=1.75$, 偏态高分 (`720p`/`1440p`) | **`0.89`** (`1.00` / `0.78`)<br>`0.0716 req/s` | `0.86` (`0.98` / `0.74`)<br>`0.0734 req/s` | `0.76` (`0.84` / `0.68`)<br>`0.0659 req/s` | `0.75` (`0.98` / `0.52`)<br>`0.0645 req/s` | `0.56` (`0.88` / `0.24`)<br>`0.0422 req/s` |
 
-- 在突发到达消融 `gamma2-abl`（$CV=2.0$）中，完整无损 `ditserve` 达到 **`0.94`**（图像 **100%** / 视频 **88%**），一致超越 `cfg2-first`（`0.93`）、`abl-no-block`（`0.93`）、`abl-no-prune`（`0.93`）、`edf-cfg2`（`0.92`）、`block-cfg2`（`0.91`）、`ditserve-v1`（`0.90`）与 `abl-no-mindeg`（`0.87`）。
+- **三层流水线消融（`anchor-abl` & `gamma2-abl`，6 策略套件）**：沿 `L1 形态裁剪 -> L2 时间抢占 -> L3 空间放置` 逐层累加时，SAR 从 `edf-cfg2`（`0.78` / `0.65`）跃升至 `block-cfg2`（`0.88` / `0.81`）并最终达到完整 `ditserve`（**`0.96`** / **`0.95`**）；单层剥离验证中，`abl-no-prune`（`w/o L1`：`0.85` / `0.87`）、`abl-no-block`（`w/o L2`：`0.85` / `0.80`）与 `abl-first-fit`（`w/o L3`：`0.88` / `0.81`）均呈现显著退化（旧 9/11 策略历史消融数据已全部清理）。
 
 ### 6.3 Tier-3 解析 3D-DiT 集合通信 Roofline 与互连拓扑相图（[`benchmarks/topology_phase_diagram.py`](file:///mnt/e/000_code/zyd-2026/ditserve/benchmarks/topology_phase_diagram.py)）
 

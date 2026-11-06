@@ -64,7 +64,7 @@ CLI 默认按 trace seed 可复现地随机排列策略，可用 `--policy-order
 | `edf-bestfit` | EDF-BF | GF-DiT 的方法（arXiv:2606.13501）`EdfBestFit` | 严格 EDF（`demote_late=false`，迟到请求不降级）次序取能按时完成的最小 size，否则取剩余可放的最大 size；再按 EDF 逐级加宽剩余 GPU | GFC 后端单独验证；当前组选择仍受拓扑对齐约束，未复现完整任意组调度 |
 | `ditserve` | DitServe | 本文 | `cfg2-first` 规则 + block 子步抢占（doorbell）+ pair-fit 图像放置 | 输出保持需同形态配对验收；跨 SP 不承诺逐位一致 |
 
-**消融（`--suite ablation`，以 `ditserve` 为满配逐项拿掉）**：`abl-no-block`（整步量子）、`abl-no-prune`（不剪支配形态）、`abl-no-mindeg`（允许单卡 admit）、`abl-first-fit`（图像放最低号空卡）、`block-cfg2`（只保留 block 抢占、不弹性）、`cfg2-first`（CFG2-First：step 边界弹性、剪除被支配形态、视频不窄于一对 CFG GPU、每卡效率 ≥0.9 才加宽；去掉子步抢占与 pair-fit 放置）、`edf-cfg2`（EDF-CFG2：每个视频固定一对 CFG GPU、EDF、图像在视频 step 边界取卡；全部拿掉）、`ditserve-v1`（旧手调 knapsack 规划器）。
+**三层流水线消融（`--suite ablation`，对应 §4.2–§4.4 `L1 形态裁剪 -> L2 时间抢占 -> L3 空间放置`）**：共 6 个策略，包含**三层累加阶梯**（`edf-cfg2` [仅 L1 形态裁剪] $\to$ `block-cfg2` [L1 + L2 时间抢占与收缩] $\to$ `ditserve` [L1 + L2 + L3 拓扑伙伴放置]）与**三层单因素剥离**（`abl-no-prune` [去掉 L1 形态裁剪]、`abl-no-block` [去掉 L2 时间块级抢占与收缩]、`abl-first-fit` [去掉 L3 `pair_fit` 伙伴对齐放置]）。
 
 **受控与诊断**：`static-<form>`（校准与对照）、`block-<form>`（同形态 + 子步抢占，与 `edf-cfg2` 做 digest 配对，`--suite preempt`）、`ditserve-approx`（DitServe + CFG 折叠，Approx 单独成表）、`diag-*`（特征缓存、v3、tiered、2D-USP，不进论文表）。
 
@@ -288,7 +288,7 @@ P5 的 `p5_external_preflight.py` 对照固定官方源码声明和已测运行�
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **原版外部/启发式基线**<br>(Pure-SP Pool) | `tetriserve`<br>`sbp-esp`<br>`edf-bestfit`<br>`xdit` | 纯序列并行池<br>(`sp1, sp2, sp3, sp4, sp6, sp8`；`xdit` 为固定度 `sp1/sp2/sp4/sp8`) | 步边界或请求级调度 | 全组伴随卡同步等待解码 | 反映现有系统在 PCIe 4.0 下默认沿纯 `Ulysses-SP` 扩展并持有全组 GPU 解码的真实端到端表现 |
 | **因子化 CFG2 增强基线**<br>(CFG2-Enabled Baselines) | `tetriserve-cfg2`<br>`sbp-esp-cfg2`<br>`edf-bestfit-cfg2` | 启用 `CFG2 × SP` 混合池<br>(`sp1, cfg2, cfg2sp2, cfg2sp3, cfg2sp4`) | 保持各自原版步边界/批调度算法（无亚步门铃抢占） | 全组伴随卡同步等待或按开关配置 | 剥离通信感知 `CFG2` 形态池收益后，检验 DitServe 在相同 `CFG2` 形态池下仅靠亚步抢占、成对放置与解码缩容的纯调度增益 |
-| **机制消融变体**<br>(Factorized Ablations) | `abl-no-decode-shrink`<br>`abl-no-img-priority`<br>`abl-no-block`<br>`abl-no-prune`<br>`abl-no-mindeg` | `ditserve` 形态池（`abl-no-prune` 关闭支配形态剪枝） | 逐项关闭单一子机制 | `abl-no-decode-shrink` 关闭去噪后释放伴随卡（退化为全组持卡解码） | 定量归因 `AsyncDecoder` 解码缩容、跨模态图像优先、亚步 Block 抢占、支配剪枝与最小并行度保护的独立贡献 |
+| **三层流水线消融**<br>(3-Layer Pipeline Ablation) | **累加阶梯**：`edf-cfg2` (`L1`) $\to$ `block-cfg2` (`L1+L2`) $\to$ `ditserve` (`L1+L2+L3`)<br>**单层剥离**：`abl-no-prune` (`w/o L1`)、`abl-no-block` (`w/o L2`)、`abl-first-fit` (`w/o L3`) | `ditserve` 形态池（`abl-no-prune` 关闭 L1 支配形态剪枝） | 按 `L1 形态裁剪 (§4.2) -> L2 时间抢占 (§4.3) -> L3 空间放置 (§4.4)` 逐层累加或单层剥离 | `L2` 启用去噪后释放伴随卡（`shrink_decode`）与 ~45ms 流内门铃抢占 | 定量归因 **L1（拓扑形态裁剪）**、**L2（松弛度驱动块级抢占与解码收缩）** 与 **L3（拓扑伙伴对齐放置）** 三层各自的独立贡献 |
 
 ### 4. 8× A100-PCIE-40GB 正式混合负载（`formal-mixed-v2`, `Wan2.2-TI2V-5B + SD3.5-Medium`, `21a1ca3`）完整实测结果
 
@@ -307,7 +307,9 @@ P5 的 `p5_external_preflight.py` 对照固定官方源码声明和已测运行�
 | **`gamma6-main`** | **极端突发 Gamma $CV=6.0$**, $\lambda=1.75$, $v=0.5$ | **`0.85`** (`0.94` / `0.76`)<br>`0.0921 req/s` | `0.73` (`0.86` / `0.60`)<br>`0.0837 req/s` | `0.37` (`0.26` / `0.48`)<br>`0.0439 req/s` | `0.38` (`0.50` / `0.26`)<br>`0.0445 req/s` | `0.14` (`0.14` / `0.14`)<br>`0.0085 req/s` | 极端脉冲下总 SAR **`+12.0%`** vs `sbp-esp`、**`+48.0%` (`2.30×`)** vs `tetriserve` |
 | **`dist-skewed`** | Poisson, **偏态大图/高分分布** (25× `720p` + 25× `1440p`) | **`0.89`** (`1.00` / `0.78`)<br>`0.0716 req/s` | `0.86` (`0.98` / `0.74`)<br>`0.0734 req/s` | `0.76` (`0.84` / `0.68`)<br>`0.0659 req/s` | `0.75` (`0.98` / `0.52`)<br>`0.0645 req/s` | `0.56` (`0.88` / `0.24`)<br>`0.0422 req/s` | 重高分偏态下图像 **100% 达标**，总 SAR **`+3.0%`** vs `sbp-esp`、**`+13.0%`** vs `tetriserve` |
 
-- **单机制消融实测（`gamma2-abl` & `anchor-abl`）**：在 `gamma2-abl`（$CV=2.0$）下，完整 `ditserve` 达到 **`0.94`**（图像 `1.00` / 视频 `0.88`，Goodput `0.0947 req/s`），一致优于 `cfg2-first`（`0.93`）、`abl-no-block`（`0.93`）、`abl-no-prune`（`0.93`）、`edf-cfg2`（`0.92`）、`block-cfg2`（`0.91`）、`ditserve-v1`（`0.90`）以及去除最小并行度保护的 `abl-no-mindeg`（`0.87`）。
+- **三层流水线消融设计（`anchor-abl` & `gamma2-abl`，6 策略套件）**：
+  - **三层累加阶梯（Cumulative 3-Layer Staircase）**：从仅启用 **L1 形态裁剪** 的 `edf-cfg2`（Anchor `0.78` / $CV^2=2$ `0.65`），叠加 **L2 时间抢占与解码收缩** 的 `block-cfg2`（Anchor `0.88` / $CV^2=2$ `0.81`，`+10~+16 pp`），再到叠加 **L3 拓扑伙伴对齐放置** 的完整 `ditserve`（Anchor **`0.96`** [`1.00`/`0.92`] / $CV^2=2$ **`0.95`** [`1.00`/`0.90`]，再提升 `+8~+14 pp`）。
+  - **三层单因素剥离（Leave-One-Layer-Out）**：从完整 `ditserve`（`0.96` / `0.95`）分别剥离 L1（`abl-no-prune`：`0.85` / `0.87`，`-11 / -8 pp`）、剥离 L2（`abl-no-block`：`0.85` / `0.80`，`-11 / -15 pp`）与剥离 L3（`abl-first-fit`：`0.88` / `0.81`，`-8 / -14 pp`），旧 9/11 策略历史消融数据已按规范全部清理，待重跑 6 策略三层消融真机实验。
 
 ### 5. Tier-3 解析 3D-DiT 集合通信 Roofline 与互连相图模型（[`benchmarks/topology_phase_diagram.py`](../benchmarks/topology_phase_diagram.py)）
 

@@ -86,11 +86,17 @@ SUITES = {
     "in-framework-main": ["static-cfg2sp4", "tetriserve", "sbp-esp", "edf-bestfit", "ditserve"],
     # Combined main table with both xDiT (static partition, CFG=1) and optimal Static-<Form>.
     "main-all": ["xdit", "static-cfg2sp4", "tetriserve", "sbp-esp", "edf-bestfit", "ditserve"],
-    # DitServe with one mechanism removed; CFG2-First drops sub-step preemption and
-    # pair-fit placement, EDF-CFG2 has all of them removed.
-    "ablation": ["ditserve", "abl-no-block", "abl-no-prune", "abl-no-mindeg", "abl-first-fit",
-                 "abl-no-decode-shrink", "abl-no-img-priority",
-                 "block-cfg2", "cfg2-first", "edf-cfg2", "ditserve-v1"],
+    # Three-Layer Scheduling Pipeline Ablation (`L1 Form -> L2 Time -> L3 Space`):
+    # - Cumulative 3-Layer Staircase: `edf-cfg2` (L1 Only) -> `block-cfg2` (L1+L2) -> `ditserve` (L1+L2+L3)
+    # - Leave-One-Layer-Out: `abl-no-prune` (w/o L1), `abl-no-block` (w/o L2), `abl-first-fit` (w/o L3)
+    "ablation": [
+        "ditserve",
+        "edf-cfg2",
+        "block-cfg2",
+        "abl-no-prune",
+        "abl-no-block",
+        "abl-first-fit",
+    ],
     # Factorized CFG=2 unlocked baselines against DitServe.
     "cfg2": ["tetriserve-cfg2", "sbp-esp-cfg2", "edf-bestfit-cfg2", "ditserve"],
     # Same fixed form with and without sub-step preemption (digest-checked pair).
