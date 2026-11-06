@@ -142,6 +142,88 @@ class TestCrossModalMemoryStrategiesAndEncoderPool:
         assert not slab_a.is_file()
         assert producer.slab_unlinks == 1
 
+    def test_encode_wan_prompt_fast_shm_staging_cross_worker_adoption_and_encode_discard(
+        self, tmp_path: pathlib.Path
+    ) -> None:
+        from concurrent.futures import Future
+        from ditserve.models.wan.backend import WanBackend
+
+        shared_shm = tmp_path / "wan-fast-shm"
+        producer_pool = ProactiveEncoderPool(
+            {"shm_dir": str(shared_shm), "per_cell_isolation": False, "write_shm": True, "pin_memory": False}
+        )
+        consumer_pool = ProactiveEncoderPool(
+            {"shm_dir": str(shared_shm), "per_cell_isolation": False, "write_shm": True, "pin_memory": False}
+        )
+
+        encode_calls: list[str] = []
+
+        def _fake_encode_trimmed(text: str, max_seq_len: int = 512):
+            encode_calls.append(text)
+            val = float(len(text))
+            return torch.full((1, max_seq_len, 16), val, dtype=torch.bfloat16), min(max_seq_len, max(1, len(text.split())))
+
+        wan_runtime = SimpleNamespace(
+            text_encoder_dtype="bfloat16",
+            model_path="/shared/data/DITSERVE/models/wan",
+            model_revision="rev1",
+            _owner=object(),
+            pipe=SimpleNamespace(text_encoder=SimpleNamespace(dtype=torch.bfloat16)),
+            _encode_single_wan_text_trimmed=_fake_encode_trimmed,
+            encoder_pool=producer_pool,
+        )
+        spec = {
+            "request_id": "wan-shm-1",
+            "prompt": "golden sunset over calm ocean",
+            "negative_prompt": "blurry low quality",
+            "seed": 7,
+            "height": 32,
+            "width": 32,
+            "frames": 5,
+            "steps": 4,
+            "guidance_scale": 5.0,
+        }
+
+        # 1. Producer encodes pos + neg once and stages both to /dev/shm
+        enc1 = producer_pool.encode_wan_prompt_fast(wan_runtime, spec, pin_memory=False)
+        assert len(encode_calls) == 2
+        assert producer_pool.slab_writes == 2
+        assert enc1.negative_prompt_cache["pos_cache_hit"] is False
+        assert enc1.negative_prompt_cache["neg_cache_hit"] is False
+        assert enc1.negative_prompt_cache["outcome"] == "miss"
+
+        # 2. Second worker's pool adopts both embeddings from /dev/shm via ensure_resident
+        #    without calling wan_runtime._encode_single_wan_text_trimmed again
+        enc2 = consumer_pool.encode_wan_prompt_fast(wan_runtime, spec, pin_memory=False)
+        assert len(encode_calls) == 2
+        assert consumer_pool.shm_adoptions == 2
+        assert enc2.negative_prompt_cache["pos_cache_hit"] is True
+        assert enc2.negative_prompt_cache["neg_cache_hit"] is True
+        assert enc2.negative_prompt_cache["outcome"] == "hit"
+        torch.testing.assert_close(enc2.prompt_embeds, enc1.prompt_embeds)
+        torch.testing.assert_close(enc2.negative_prompt_embeds, enc1.negative_prompt_embeds)
+
+        # 3. Verify WanBackend.operations, encode_poll shm_staged flag, and encode_discard
+        assert "encode_discard" in WanBackend.operations
+        backend = object.__new__(WanBackend)
+        backend.runtime = wan_runtime
+        backend.tickets = {}
+
+        done_fut: Future = Future()
+        done_fut.set_result(enc2)
+        backend.tickets["encode-1"] = (spec, done_fut)
+        polled = backend.encode_poll({"ticket": "encode-1"})
+        assert polled["ready"] is True
+        assert polled["shm_staged"] is True
+        assert polled["cached"] is True
+
+        disc = backend.encode_discard({"ticket": "encode-1"})
+        assert disc == {"discarded": True, "ticket": "encode-1"}
+        assert "encode-1" not in backend.tickets
+        # Discarding an already-absent ticket is idempotent
+        assert backend.encode_discard({"ticket": "encode-1"}) == {"discarded": True, "ticket": "encode-1"}
+        producer_pool.clear()
+
     def test_idle_worker_image_text_prefetch_isolation_in_cluster_controller(
         self, tmp_path: pathlib.Path
     ) -> None:

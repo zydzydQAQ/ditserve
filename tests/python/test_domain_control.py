@@ -298,6 +298,44 @@ class TestControllerPolicyCatalogAndSeparation:
         assert dit_proactive["block_preemptions"] > 0
         assert block_cfg2_proactive["block_preemptions"] == 0
 
+    def test_cross_res_sequence_packing_and_ditserve_control_optimizations(self) -> None:
+        # Verify the C++ simulation-tests suite (including cross-resolution sequence_packing,
+        # multi-video feasibility guard, idle-GPU widening, sunk-work deadband, laxity tie-break,
+        # and same-degree migration guard) passes completely, and verify simulation behavior via RPC.
+        proc = subprocess.run(
+            [str(SIMULATION_TESTS_BIN)],
+            text=True,
+            capture_output=True,
+            check=True,
+        )
+        assert "cluster checks passed" in proc.stdout
+
+        # Simulate multi-video feasibility protection + idle-GPU widening on 8 GPUs
+        prof = _pcie_profile()
+        prof["classes"]["video"]["forms"] = {
+            "sp1": {"step_ms": 4000.0},
+            "cfg2": {"step_ms": 2000.0},
+            "sp2": {"step_ms": 2400.0},
+            "cfg2sp2": {"step_ms": 1250.0},
+            "sp4": {"step_ms": 1600.0},
+        }
+        workload = [
+            {"request_id": "v0", "kind": "video", "class": "video", "arrival_ms": 0.0, "deadline_ms": 35000.0},
+            {"request_id": "v1", "kind": "video", "class": "video", "arrival_ms": 0.0, "deadline_ms": 40000.0},
+        ]
+        res = _rpc_simulate(
+            {
+                "workload": workload,
+                "profile": prof,
+                "policy": "ditserve",
+                "gpus": 8,
+                "options": {"forms": ["sp1", "cfg2", "sp2", "cfg2sp2", "sp4"]},
+            }
+        )
+        v0 = next(r for r in res["requests"] if r["request_id"] == "v0")
+        assert "cfg2sp2" in v0["forms"]
+        assert res["by_kind"]["video"]["ontime"] == 2
+
 
 # ==============================================================================
 # 2. 3-Parameter Identifiable Cost Model & Topology Phase Diagram

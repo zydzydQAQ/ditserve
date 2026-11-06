@@ -372,11 +372,6 @@ out_cfg = pathlib.Path(sys.argv[7])
 extra = sys.argv[8:]
 
 p = fb.protocol(protocol_path)
-tight = p.get("sweep_axes", {}).get("tight_slo", {})
-if isinstance(tight, dict) and tight.get("image") == 1.25:
-    scales = p.get("slo", {}).setdefault("scales", [1.0, 1.5, 2.0])
-    if 1.25 not in scales:
-        scales.append(1.25)
 
 bundle = fb.read_json(bundle_path)
 active_uuids = list(bundle.get("active_gpu_uuids") or fb.allocated_uuids())

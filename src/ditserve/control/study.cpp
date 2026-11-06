@@ -895,12 +895,12 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     // resumed_*: block quanta that followed another request there (the first quantum and regroups excluded).
     struct Live{
         std::string status="pending";
-        bool prepared=false,offloaded=false,cfg_folded=false,cfg_fold_eligible=false;
+        bool prepared=false,offloaded=false,cfg_folded=false,cfg_fold_eligible=false,shm_staged=false;
         int steps=0,blocks=0,total=0,encode_gpu=-1,decode_gpu=-1,decode_done=0,epoch=0;
         std::vector<int> group;
         std::string form="sp1",ticket,pair,decode_ticket,last_stop_event,last_restore_event;
         std::set<int> resident;
-        double steady_ms=0,resumed_ms=0,decode_started=0;
+        double steady_ms=0,resumed_ms=0,decode_started=0,last_encode_poll_ms=-1e9,last_decode_poll_ms=-1e9;
         int steady_blocks=0,resumed_blocks=0,resumes=0;
     };
     int epochs=0,transfers=0,timing_sequence=0;   // placement, packet and timing identities within this cell
@@ -911,6 +911,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     std::vector<bool> busy(gpus,false);
     std::vector<std::string> last_on_gpu(gpus);   // request that last ran on each GPU
     std::vector<std::vector<std::string>> stale(gpus);   // states to release once the GPU is idle
+    std::vector<std::set<std::string>> stale_tickets(gpus);   // unused encode tickets to discard once the GPU is idle
     std::map<std::string,std::size_t> index;
     for(std::size_t i=0;i<rows.size();++i){
         auto& row=rows[i];
@@ -1226,11 +1227,15 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 if(group!=astate.group)astate.epoch=++epochs;
                 int source=-1;
                 if(!astate.prepared){
+                    if(!astate.ticket.empty()&&astate.shm_staged&&astate.encode_gpu!=group.front()){
+                        stale_tickets[astate.encode_gpu].insert(astate.ticket);
+                        astate.ticket.clear();
+                    }
                     // Prepare where the prompt was encoded and export the prepared state into the group. Preparing
                     // on another worker without the ticket re-encodes the prompt while the group's GPUs wait.
                     const bool ticket=!astate.ticket.empty();
                     source=ticket?astate.encode_gpu:group.front();
-                    st.reencode=!ticket;
+                    st.reencode=!ticket&&!astate.shm_staged;
                     // A continuous video on the encoding GPU gives its worker back at the next check point.
                     if(ticket&&doorbell&&!in_group(source)&&busy[source])for(auto& task:tasks)if(task.continuous&&!task.rung){
                         const auto& held=task.assignment.at("group");
@@ -1697,6 +1702,9 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         for(std::size_t i=0;i<rows.size();++i){
             auto& state=live[i];
             if(state.status!="decoding")continue;
+            const double poll_now=now();
+            if(poll_now-state.last_decode_poll_ms<5.0)continue;
+            state.last_decode_poll_ms=poll_now;
             auto polled=invoke(video(state.decode_gpu),{{"op","decode_poll"},{"ticket",state.decode_ticket},{"wait",false}},rows[i]);
             if(!polled.value("ready",false))continue;
             auto& row=rows[i];
@@ -1731,6 +1739,12 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             }
             return false;
         };
+        for(int gpu=0;gpu<gpus;++gpu)if(!busy[gpu]&&!video_worker_busy(gpu)&&!stale_tickets[gpu].empty()){
+            for(const auto& t:stale_tickets[gpu]){
+                try{workers.get(video(gpu)).call({{"op","encode_discard"},{"ticket",t}},budget.deadline());}catch(...){}
+            }
+            stale_tickets[gpu].clear();
+        }
         auto pick_image_encode_gpu=[&](){
             const int start=static_cast<int>(image_encoders++%gpus);
             int best=start;
@@ -1792,8 +1806,12 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 row["encode_worker"]=encode_worker;
                 progressed=true;
             }else{
+                const double poll_now=now();
+                if(poll_now-state.last_encode_poll_ms<5.0)continue;
+                state.last_encode_poll_ms=poll_now;
                 const auto polled=invoke(encode_worker,{{"op","encode_poll"},{"ticket",state.ticket}},row);
                 if(polled.value("ready",false)){
+                    if(polled.value("shm_staged",false))state.shm_staged=true;
                     state.status="waiting";row["encode_ready_ms"]=now();progressed=true;
                     // CPU encoding time and, with the negative-prompt cache, whether it hit.
                     if(polled.contains("model_ms"))row["encode_model_ms"]=number_field(polled,"model_ms");

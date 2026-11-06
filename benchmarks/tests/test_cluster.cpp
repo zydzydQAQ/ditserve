@@ -1509,6 +1509,128 @@ int main(int argc, char** argv) {
                 > sim_noblock.at("by_kind").at("image").at("attainment").get<double>(),
                 "ditserve achieves higher image SAR than abl-no-block under 1.0x image SLO");
     });
+    check("20261106 cross-resolution sequence_packing continuous_batch, multi-video guard, idle widening, sunk-work deadband, laxity tie-break, and migration guard", [&] {
+        // 1. Cross-resolution sequence_packing in continuous_batch:
+        //    Two different image classes (image_1024 and image_512) are packed together when sequence_packing=true,
+        //    but stay separate when sequence_packing=false.
+        Json cb_prof = profile();
+        cb_prof["classes"]["image_1024"] = {{"kind", "image"}, {"service_ms", 120}, {"steps", 2},
+                                            {"prepare_ms", 0}, {"finish_ms", 10}, {"base_pixels", 1048576},
+                                            {"batch_step_ms", {{"1", 40}, {"2", 80}, {"4", 160}}}};
+        cb_prof["classes"]["image_512"] = {{"kind", "image"}, {"service_ms", 40}, {"steps", 2},
+                                           {"prepare_ms", 0}, {"finish_ms", 10}, {"base_pixels", 262144},
+                                           {"batch_step_ms", {{"1", 15}, {"2", 30}, {"4", 60}}}};
+        const ClusterCost cb_cost(cb_prof);
+        Json img1024 = image("img1024", 500);
+        img1024.merge_patch({{"class", "image_1024"}, {"continuous_batch", true},
+                             {"batch_spec", {{"steps", 2}, {"height", 1024}, {"width", 1024}}}});
+        Json img512 = image("img512", 500);
+        img512.merge_patch({{"class", "image_512"}, {"continuous_batch", true},
+                            {"batch_spec", {{"steps", 2}, {"height", 512}, {"width", 512}}}});
+        const Json cb_reqs = Json::array({img1024, img512});
+        const auto cb_unpacked = cluster_plan({{"now_ms", 0}, {"gpus", 1}, {"busy", Json::array()}, {"requests", cb_reqs}},
+                                              "ditserve", cb_cost, {{"continuous_batch", 4}, {"sequence_packing", false}}).at("assignments");
+        const auto cb_packed = cluster_plan({{"now_ms", 0}, {"gpus", 1}, {"busy", Json::array()}, {"requests", cb_reqs}},
+                                            "ditserve", cb_cost, {{"continuous_batch", 4}, {"sequence_packing", true}}).at("assignments");
+        require(cb_unpacked.size() == 1 && cb_unpacked[0].at("batch") == Json::array({"img1024"}),
+                "without sequence_packing different image classes do not join continuous_batch");
+        require(cb_packed.size() == 1 && cb_packed[0].at("batch") == Json::array({"img1024", "img512"})
+                && cb_packed[0].value("sequence_packing", false),
+                "sequence_packing packs heterogeneous-class image requests in continuous_batch: " + cb_packed.dump());
+
+        // 2A. Multi-video feasibility guard:
+        //     On 8 GPUs with 4 feasible videos (v0..v3), v0 has a tight deadline (13400 ms) that requires cfg2sp4 (8 GPUs, 13182 ms)
+        //     over cfg2 (2 GPUs, 13508 ms), while v1, v2, v3 are feasible on cfg2 (20000 ms).
+        //     Allowing v0 to take 8 GPUs would cannibalize 3 other feasible videos (3 - 0 >= 2), so ditserve keeps v0 at 2 GPUs
+        //     and admits all 4 videos in parallel; when v0 is alone, it still widens to 8 GPUs to save its deadline.
+        const Json four_vids = Json::array({
+            video("v0", 13400.0),
+            video("v1", 20000.0),
+            video("v2", 20100.0),
+            video("v3", 20200.0)
+        });
+        const auto guarded = pcie_plan(four_vids, "ditserve").at("assignments");
+        require(guarded.size() == 4 && guarded[0].at("degree") == 2,
+                "multi-video feasibility guard prevents one video from cannibalizing 2+ feasible videos: " + guarded.dump());
+        const auto lone_saved = pcie_plan(Json::array({video("v0", 13400.0)}), "ditserve").at("assignments");
+        require(lone_saved.size() == 1 && lone_saved[0].at("degree") == 8,
+                "lone video without competing feasible videos still widens to 8 GPUs to meet deadline");
+
+        // 2B. Work-conserving idle-GPU widening:
+        //     A 720p video class where cfg2 (2000 ms/step) and cfg2sp2 (1250 ms/step, 37.5% faster per step,
+        //     per-GPU efficiency 4000 / (4 * 1250) = 0.80 < 0.90) are non-dominated.
+        //     With 2 videos waiting on 8 GPUs, target=2 + other_gpu_need=2 = 4 < 8 free GPUs, so v0 widens to 4 GPUs (cfg2sp2).
+        Json prof_720 = pcie_profile();
+        prof_720["classes"]["video"]["forms"] = {
+            {"sp1", {{"step_ms", 4000.0}}},
+            {"cfg2", {{"step_ms", 2000.0}}},
+            {"sp2", {{"step_ms", 2400.0}}},
+            {"cfg2sp2", {{"step_ms", 1250.0}}},
+            {"sp4", {{"step_ms", 1600.0}}}
+        };
+        const ClusterCost cost_720(prof_720);
+        const Json two_720 = Json::array({video("v0", 60000.0), video("v1", 65000.0)});
+        const auto widened_720 = cluster_plan(
+            {{"now_ms", 0}, {"gpus", 8}, {"busy", Json::array()}, {"requests", two_720}},
+            "ditserve", cost_720, {{"forms", {"sp1", "cfg2", "sp2", "cfg2sp2", "sp4"}}}).at("assignments");
+        require(widened_720.size() == 2 && widened_720[0].at("degree") == 4 && widened_720[0].at("form") == "cfg2sp2",
+                "work-conserving idle-GPU widening upgrades 720p video from cfg2 to cfg2sp2 when idle GPUs remain: " + widened_720.dump());
+
+        // 3A. In-flight sunk-work deadband:
+        //     An in-flight video at step 10/20 (50% done) on cfg2 has min_rem = 10 * 583.4 + 1840 = 7674 ms (> 5000 ms).
+        //     With deadline 7000 ms (overrun 674 ms <= min(10000, 0.15 * 7674) = 1151.1 ms), sunk-work deadband keeps it feasible
+        //     ahead of a newly arrived video with deadline 25000 ms. An unstarted video with the same 674 ms overrun is demoted.
+        const Json inflight_half = video("v_inflight", 7000.0, {{"status", "suspended"}, {"prepared", true},
+                                                                {"steps_done", 10}, {"steps_total", 20},
+                                                                {"group", {0, 1}}, {"form", "cfg2"}});
+        const Json fresh_relaxed = video("v_fresh", 25000.0);
+        const auto sunk_plan = cluster_plan(
+            {{"now_ms", 0}, {"gpus", 2}, {"busy", Json::array()}, {"requests", Json::array({inflight_half, fresh_relaxed})}},
+            "ditserve", ClusterCost(pcie_profile()), {{"forms", {"cfg2"}}}).at("assignments");
+        require(sunk_plan.size() == 1 && sunk_plan[0].at("request_id") == "v_inflight",
+                "in-flight video with >=50% sunk steps is protected from minor overrun demotion: " + sunk_plan.dump());
+
+        const Json unstarted_overrun = video("v_unstarted", 13000.0); // needs 13508 ms, overrun 508 ms, steps_done = 0
+        const auto unstarted_plan = cluster_plan(
+            {{"now_ms", 0}, {"gpus", 2}, {"busy", Json::array()}, {"requests", Json::array({unstarted_overrun, fresh_relaxed})}},
+            "ditserve", ClusterCost(pcie_profile()), {{"forms", {"cfg2"}}}).at("assignments");
+        require(unstarted_plan.size() == 1 && unstarted_plan[0].at("request_id") == "v_fresh",
+                "unstarted video without sunk work is still demoted when late");
+
+        // 3B. Step-boundary image placement laxity tie-break:
+        //     On 4 GPUs, v_urgent is suspended at step boundary on {0, 1} (deadline 15000 ms) and v_slack is on {2, 3} (deadline 50000 ms).
+        //     A feasible image under pair_fit borrows GPU 2 (from v_slack) so v_urgent can resume on {0, 1} in the same pass!
+        const Json v_urg = video("v_urgent", 15000.0, {{"status", "suspended"}, {"prepared", true},
+                                                       {"steps_done", 2}, {"steps_total", 20},
+                                                       {"group", {0, 1}}, {"form", "cfg2"}});
+        const Json v_slk = video("v_slack", 50000.0, {{"status", "suspended"}, {"prepared", true},
+                                                      {"steps_done", 2}, {"steps_total", 20},
+                                                      {"group", {2, 3}}, {"form", "cfg2"}});
+        const Json img_borrow = image("img_b", 8000.0);
+        const auto laxity_plan = cluster_plan(
+            {{"now_ms", 0}, {"gpus", 4}, {"busy", Json::array()}, {"requests", Json::array({v_urg, v_slk, img_borrow})}},
+            "ditserve", ClusterCost(pcie_profile()), {{"forms", {"cfg2"}}}).at("assignments");
+        require(laxity_plan.size() == 2 && laxity_plan[0].at("request_id") == "img_b"
+                && laxity_plan[0].at("group") == Json::array({2})
+                && laxity_plan[1].at("request_id") == "v_urgent"
+                && laxity_plan[1].at("group") == Json::array({0, 1})
+                && !laxity_plan[1].at("resize").get<bool>(),
+                "pair_fit image borrows from highest-laxity step-boundary video so urgent video resumes on {0,1}: " + laxity_plan.dump());
+
+        // 4. Same-degree cross-group migration guard:
+        //    v_mig is prepared on {0, 1} with 1 step remaining (583.4 + 1840 = 2423.4 ms), deadline = 2430.0 ms,
+        //    and resize_ms = 50.0 ms. GPU 0 is busy so {0, 1} is unavailable, while {2, 3} is free.
+        //    Migrating to {2, 3} would cost 2423.4 + 50.0 = 2473.4 ms > 2430.0 ms (breaking its deadline), so ditserve waits.
+        Json mig_prof = pcie_profile();
+        mig_prof["resize_ms"] = 50.0;
+        const Json v_mig = video("v_mig", 2430.0, {{"status", "suspended"}, {"prepared", true},
+                                                   {"steps_done", 19}, {"steps_total", 20},
+                                                   {"group", {0, 1}}, {"form", "cfg2"}});
+        const auto mig_guarded = cluster_plan(
+            {{"now_ms", 0}, {"gpus", 4}, {"busy", Json::array({true, false, false, false})}, {"requests", Json::array({v_mig})}},
+            "ditserve", ClusterCost(mig_prof), {{"forms", {"cfg2"}}}).at("assignments");
+        require(mig_guarded.empty(), "same-degree cross-group migration guard refuses deadline-breaking migration: " + mig_guarded.dump());
+    });
     std::cout << checks - failures << "/" << checks << " cluster checks passed\n";
     return failures ? 1 : 0;
 }

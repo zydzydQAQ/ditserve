@@ -476,6 +476,95 @@ class TestWanBlockExecutorAndContinuationState:
         assert grp_rec["blocks"] == 4
         assert reduced_flags == [True]
 
+    def test_doorbell_rung_reuses_two_slot_ring_buffer_without_per_checkpoint_allocations(self) -> None:
+        w_grp, s_grp, _ = _make_wan_worker_and_state(steps=1, num_layers=8)
+        reduced_tensors: list[torch.Tensor] = []
+
+        class _FakeParallel:
+            def __init__(self):
+                self.handle = SimpleNamespace(
+                    rank=0,
+                    current=FixedLayout((0, 1), cfg=2),
+                )
+
+            def reduce_flag(self, flag: torch.Tensor) -> None:
+                reduced_tensors.append(flag)
+
+        ex_grp, _ = _attach_executor(w_grp, s_grp, parallel=_FakeParallel())
+        assert ex_grp._doorbell_ring == {}
+        assert ex_grp._doorbell_slot == 0
+
+        empty_calls = 0
+        event_calls = 0
+        sync_calls = 0
+
+        class _FakeCudaEvent:
+            def __init__(self):
+                nonlocal event_calls
+                event_calls += 1
+                self.recorded = 0
+
+            def record(self) -> None:
+                self.recorded += 1
+
+            def synchronize(self) -> None:
+                nonlocal sync_calls
+                sync_calls += 1
+
+        class _FakeTorch:
+            int32 = torch.int32
+            cuda = SimpleNamespace(Event=_FakeCudaEvent)
+
+            @staticmethod
+            def empty(size, *, dtype=torch.int32, device=None, pin_memory: bool = False):
+                nonlocal empty_calls
+                empty_calls += 1
+                return torch.empty(size, dtype=dtype)
+
+        fake_cuda_device = torch.device("cuda:0")
+        pending: list = []
+        bell_state = False
+
+        # Checkpoint 1: initializes the 2-slot ring buffer (2 dev_flag + 4 host tensors = 6 empty calls, 2 Event calls)
+        assert ex_grp._doorbell_rung(
+            lambda: bell_state, pending, group=True, torch=_FakeTorch, device=fake_cuda_device
+        ) is False
+        assert empty_calls == 6
+        assert event_calls == 2
+        assert ex_grp._doorbell_slot == 1
+        assert "cuda:0" in ex_grp._doorbell_ring
+        slot0, slot1 = ex_grp._doorbell_ring["cuda:0"]
+        assert len(pending) == 1 and pending[0][0] is slot0[3] and pending[0][1] is slot0[2]
+
+        # Checkpoints 2..5: alternate slots 1 -> 0 -> 1 -> 0 with ZERO new tensor or Event allocations
+        for expected_slot_after in (0, 1, 0, 1):
+            stopped = ex_grp._doorbell_rung(
+                lambda: bell_state, pending, group=True, torch=_FakeTorch, device=fake_cuda_device
+            )
+            assert stopped is False
+            assert empty_calls == 6
+            assert event_calls == 2
+            assert ex_grp._doorbell_slot == expected_slot_after
+
+        # Checkpoint 6: doorbell rings True -> staged into current slot without new allocations
+        bell_state = True
+        assert ex_grp._doorbell_rung(
+            lambda: bell_state, pending, group=True, torch=_FakeTorch, device=fake_cuda_device
+        ) is False
+        assert empty_calls == 6
+        assert event_calls == 2
+
+        # Checkpoint 7: synchronizes previous slot's event, observes reduced True, and stops!
+        assert ex_grp._doorbell_rung(
+            lambda: False, pending, group=True, torch=_FakeTorch, device=fake_cuda_device
+        ) is True
+        assert empty_calls == 6
+        assert event_calls == 2
+        assert sync_calls == 6
+        assert pending == []
+        # Every reduce_flag call reused one of the two pre-allocated device flag tensors
+        assert {id(t) for t in reduced_tensors} == {id(slot0[0]), id(slot1[0])}
+
 
 # ==============================================================================
 # 2. AsymmetricCFGStepper & TaylorResidualCompensator

@@ -23,6 +23,7 @@ from ditserve.evaluation.common import read_json, verify_seal
 from ditserve.evaluation.workloads import build_trace, validate_trace
 POLICY_DISPLAY = {
     "xdit": "xDiT", "tetriserve": "TetriServe (re-impl.)", "sbp-esp": "SBP-ESP", "edf-bestfit": "EDF-BF",
+    "tetriserve-cfg2": "TetriServe-CFG2", "sbp-esp-cfg2": "SBP-ESP-CFG2", "edf-bestfit-cfg2": "EDF-BF-CFG2",
     "edf-cfg2": "EDF-CFG2", "cfg2-first": "CFG2-First", "partition": "Static-Partition",
     "static-cfg2": "Static-CFG2", "static-cfg2sp2": "Static-CFG2SP2",
     "static-cfg2sp3": "Static-CFG2SP3", "static-cfg2sp4": "Static-CFG2SP4",
@@ -30,6 +31,8 @@ POLICY_DISPLAY = {
     "fold-cfg2sp3": "CFG2SP3 fold only", "approx-cfg2sp3": "CFG2SP3 fold + fission",
     "abl-no-block": "DitServe w/o block preemption", "abl-no-prune": "DitServe w/o form pruning",
     "abl-no-mindeg": "DitServe w/o CFG-pair admission", "abl-first-fit": "DitServe w/o pair-fit placement",
+    "abl-no-decode-shrink": "DitServe w/o decode shrink",
+    "abl-no-img-priority": "DitServe w/o feasible image priority",
     "ditserve-v1": "DitServe-v1 (knapsack)", "block-cfg2": "Block-cfg2", "block-cfg2sp3": "Block-cfg2sp3",
 }
 IN_FRAMEWORK_MECHANISM_DISPLAY = {
@@ -86,7 +89,10 @@ SUITES = {
     # DitServe with one mechanism removed; CFG2-First drops sub-step preemption and
     # pair-fit placement, EDF-CFG2 has all of them removed.
     "ablation": ["ditserve", "abl-no-block", "abl-no-prune", "abl-no-mindeg", "abl-first-fit",
+                 "abl-no-decode-shrink", "abl-no-img-priority",
                  "block-cfg2", "cfg2-first", "edf-cfg2", "ditserve-v1"],
+    # Factorized CFG=2 unlocked baselines against DitServe.
+    "cfg2": ["tetriserve-cfg2", "sbp-esp-cfg2", "edf-bestfit-cfg2", "ditserve"],
     # Same fixed form with and without sub-step preemption (digest-checked pair).
     "preempt": ["edf-cfg2", "block-cfg2"],
     # Paper baselines + DitServe for Rate/SLO/CV/GPU sweeps.

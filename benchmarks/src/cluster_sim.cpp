@@ -41,8 +41,14 @@ Json simulate_cluster(const Json& config) {
         if (cost.klass(klass).at("kind") != row.at("kind")) throw std::invalid_argument("request kind differs from its cost class");
         // Keep only scheduling fields: every plan copies the queue.
         Json light;
-        for (const auto* key : {"request_id", "kind", "class", "arrival_ms", "deadline_ms", "slo_ms", "service_ms", "steps_total", "decode_done", "batch_spec", "spec"})
+        for (const auto* key : {"request_id", "kind", "class", "arrival_ms", "deadline_ms", "slo_ms", "service_ms", "steps_total", "decode_done", "batch_spec"})
             if (row.contains(key)) light[key] = row.at(key);
+        if (row.contains("spec") && row.at("spec").is_object()) {
+            Json spec_light = Json::object();
+            for (const auto* skey : {"height", "width", "frames", "steps"})
+                if (row.at("spec").contains(skey)) spec_light[skey] = row.at("spec").at(skey);
+            if (!spec_light.empty()) light["spec"] = std::move(spec_light);
+        }
         row = light;
         row["status"] = "pending"; row["steps_done"] = 0; row["blocks_done"] = 0; row["prepared"] = false;
         if (row.at("kind") == "image" && int_field(options, "continuous_batch", 0, 0) > 0) row["continuous_batch"] = true;

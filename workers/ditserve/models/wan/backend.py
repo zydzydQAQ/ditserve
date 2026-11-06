@@ -11,7 +11,7 @@ from .precision import TEXT_ENCODER_DTYPE
 
 class WanBackend(Backend):
     operations = Backend.operations + ("snapshot", "restore", "inventory", "set_cache", "reference",
-        "encode_start", "encode_poll", "decode_start", "decode_poll", "migration_release", "migration_abort", "local_roundtrip", "distributed",
+        "encode_start", "encode_poll", "encode_discard", "decode_start", "decode_poll", "migration_release", "migration_abort", "local_roundtrip", "distributed",
         "block_export", "block_import", "tiered_offload", "tiered_prefetch", "tiered_summary")
 
     def __init__(self, config):
@@ -139,8 +139,21 @@ class WanBackend(Backend):
         cached = bool(neg_cache.get("pos_cache_hit", False)) and (
             neg_cache.get("outcome") in ("hit", "bypass") or bool(neg_cache.get("neg_cache_hit", False))
         )
-        return dict(ticket=ticket, ready=True, model_ms=payload.cpu_prompt_encode_ms, cached=cached,
+        pool = getattr(self.runtime, "encoder_pool", None)
+        if pool is None:
+            pool = getattr(self.runtime, "_encoder_pool", None)
+        shm_staged = bool(pool is not None and getattr(pool, "enabled", True) and pool.write_shm)
+        return dict(ticket=ticket, ready=True, shm_staged=shm_staged, model_ms=payload.cpu_prompt_encode_ms, cached=cached,
                     **({"negative_prompt_cache": copy.deepcopy(receipt)} if receipt is not None else {}))
+
+    def encode_discard(self, request):
+        ticket = request.get("ticket")
+        entry = self.tickets.pop(ticket, None)
+        if entry is not None:
+            _, future = entry
+            if hasattr(future, "done") and not future.done() and hasattr(future, "cancel"):
+                future.cancel()
+        return {"discarded": True, "ticket": ticket}
 
     def _spec(self, request):
         from .runtime import normalize_spec

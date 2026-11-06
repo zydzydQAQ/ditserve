@@ -105,6 +105,8 @@ class WanBlockExecutor:
         self.cfg_fold_options = None if cfg_fold_options is None else dict(cfg_fold_options)
         self.release_cache_on_stop = bool(release_cache_on_stop)
         self._side = None
+        self._doorbell_ring = {}
+        self._doorbell_slot = 0
         self._validate_model()
         self._owner, self._states, self._advancing = object(), {}, False
 
@@ -525,7 +527,7 @@ class WanBlockExecutor:
             check_budget()
             step, initial_branch, initial_block = state.committed_step, state.branch, state.next_block
             events, completed, executed = [], False, 0
-            iterations, pending, rung = 0, [None], False
+            iterations, pending, rung = 0, [], False
             worker._sync()
             started = time.perf_counter()
             self._advancing = True
@@ -624,32 +626,68 @@ class WanBlockExecutor:
             finally:
                 self._advancing = False
 
-    def _doorbell_rung(self, doorbell, pending):
+    def _doorbell_rung(self, doorbell, pending, *, group=None, torch=None, device=None):
         """One check point: keep the CPU within one interval of the GPU, then decide whether to stop."""
-        torch, worker = self.worker.torch, self.worker
-        device = next(self.model.parameters()).device
-        cuda = device.type == "cuda"
-        group = self.parallel is not None and self.parallel.handle.current.degree > 1
-        previous = pending[0]
+        if torch is None:
+            torch = self.worker.torch
+        if device is None:
+            device = next(self.model.parameters()).device
+        if group is None:
+            group = self.parallel is not None and self.parallel.handle.current.degree > 1
+        cuda = getattr(device, "type", str(device)) == "cuda" and hasattr(getattr(torch, "cuda", None), "Event")
+        previous = pending.pop(0) if pending else None
         if previous is not None and previous[0] is not None:
             previous[0].synchronize()
-        if group and previous is not None and bool(int(previous[1][0])):
-            pending[0] = None
+        if group and previous is not None and previous[1] is not None and bool(int(previous[1][0])):
+            pending.clear()
             return True
+        if cuda:
+            key = str(device)
+            slots = self._doorbell_ring.get(key)
+            if slots is None:
+                def _alloc_dev():
+                    try:
+                        return torch.empty(1, dtype=torch.int32, device=device)
+                    except (RuntimeError, TypeError, ValueError):
+                        return torch.empty(1, dtype=torch.int32)
+
+                def _alloc_host():
+                    try:
+                        return torch.empty(1, dtype=torch.int32, pin_memory=True)
+                    except (RuntimeError, TypeError, ValueError):
+                        return torch.empty(1, dtype=torch.int32)
+
+                slots = tuple(
+                    (
+                        _alloc_dev(),
+                        _alloc_host(),
+                        _alloc_host(),
+                        torch.cuda.Event(),
+                    )
+                    for _ in range(2)
+                )
+                self._doorbell_ring[key] = slots
+            dev_flag, host_src, host_dst, event = slots[self._doorbell_slot & 1]
+            self._doorbell_slot = (self._doorbell_slot + 1) & 1
+            if group:
+                host_src[0] = 1 if doorbell() else 0
+                dev_flag.copy_(host_src, non_blocking=True)
+                self.parallel.reduce_flag(dev_flag)
+                host_dst.copy_(dev_flag, non_blocking=True)
+                flag = host_dst
+            else:
+                flag = None
+            event.record()
+            pending.append((event, flag))
+            if not group:
+                return bool(doorbell())
+            return False
         flag = None
         if group:
             # Every rank reaches the same check points; the reduction runs in stream order.
             flag = torch.tensor([1 if doorbell() else 0], dtype=torch.int32, device=device)
             self.parallel.reduce_flag(flag)
-            if cuda:
-                host = torch.empty(1, dtype=torch.int32, pin_memory=True)
-                host.copy_(flag, non_blocking=True)
-                flag = host
-        event = None
-        if cuda:
-            event = torch.cuda.Event()
-            event.record()
-        pending[0] = (event, flag)
+        pending.append((None, flag))
         if not group:
             return bool(doorbell())
         return False

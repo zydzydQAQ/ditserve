@@ -52,6 +52,7 @@ class ProactiveEncoderPool:
     ):
         cfg = config if isinstance(config, dict) else {}
         eff_entries = max_cache_entries if max_cache_entries is not None else max_entries
+        self.enabled = bool(cfg.get("enabled", True))
         self.shm_dir, self.cell_scoped = resolve_shm_dir(cfg, work_dir=work_dir)
         self.max_entries = int(eff_entries if eff_entries is not None else cfg.get("max_entries", 64))
         self.max_bytes = int(max_bytes if max_bytes is not None else cfg.get("max_bytes", 512 * (1 << 20)))
@@ -338,6 +339,9 @@ class ProactiveEncoderPool:
         full length. Trimming reduces work, but different matrix shapes can change
         floating-point rounding; it needs its own numerical/performance validation.
         """
+        override = getattr(wan_runtime, "_encode_single_wan_text_trimmed", None)
+        if callable(override):
+            return override(text, max_sequence_length)
         import torch
         from diffusers.pipelines.wan.pipeline_wan import prompt_clean
 
