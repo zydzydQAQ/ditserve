@@ -9,7 +9,11 @@ from xfuser.core.distributed.parallel_state import (
     get_tensor_model_parallel_world_size,
 )
 from xfuser.core.distributed.runtime_state import get_runtime_state
-from xfuser.core.fast_attention import get_fast_attn_enable
+try:
+    from xfuser.core.fast_attention import get_fast_attn_enable
+except ImportError:
+    def get_fast_attn_enable() -> bool:
+        return False
 
 
 class xFuserBaseWrapper(metaclass=ABCMeta):

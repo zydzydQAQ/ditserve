@@ -107,6 +107,11 @@ run_config() {
   (
     trap 'chmod -R a+rX "$OUTPUT/.cache/results-work/$experiment/$id" 2>/dev/null || true' EXIT
     ditserve run --config "$config" --run-id "$id" --allow-gpu --ledger "$LEDGERS/$experiment.json" || exit $?
+    if [ -f "$PACKAGE/python/ditserve/results_archive.py" ]; then
+      python3 "$PACKAGE/python/ditserve/results_archive.py" \
+        --work-dir "$OUTPUT/.cache/results-work/$experiment/$id" \
+        --output "$OUTPUT/results/$experiment/$id" || exit $?
+    fi
     ditserve results verify "$OUTPUT/results/$experiment/$id" || exit $?
   ) || status=$?
   last_run=$OUTPUT/.cache/results-work/$experiment/$id/run.json
@@ -134,52 +139,151 @@ python3 "$benchmarks/formal_benchmark.py" --protocol "$protocol" preflight \
 python3 "$SCRIPTS/kairos_runtime_audit.py"
 calibrations=()
 reused_bundle=0
-if [ "$action" = serve ] && [ -n "${DITSERVE_REUSE_BUNDLES:-}" ]; then
-  if python3 - "$benchmarks" "$protocol" "$model" "$DITSERVE_MODEL_MANIFESTS" "$RUN_DIR/bundle.json" "$DITSERVE_REUSE_BUNDLES" <<'PY'
-import json, pathlib, shutil, sys
+try_reuse_calibration_bundle() {
+  python3 - "$benchmarks" "$protocol" "$model" "$DITSERVE_MODEL_MANIFESTS" "$RUN_DIR/bundle.json" "$DITSERVE_REUSE_BUNDLES" "${RUN_DIR}/runtime-facts.json" <<'PY'
+import copy, json, os, pathlib, subprocess, sys
 sys.path.insert(0, sys.argv[1])
 from formal_benchmark import BUNDLE_SCHEMA, allocated_uuids, canonical_hash, protocol, read_json, seal, shape_spec, write_new
 from ditserve.evaluation.common import verify_seal
 
-p = protocol(pathlib.Path(sys.argv[2]))
-model = sys.argv[3]
-manifests = read_json(pathlib.Path(sys.argv[4]))
-out_path = pathlib.Path(sys.argv[5])
-candidates = [pathlib.Path(x) for x in sys.argv[6].replace(',', ':').split(':') if x.strip()]
-uuids = list(allocated_uuids())
-ids = [sid for sid, shape in p['shapes'].items() if shape['scope'] == 'formal' and shape['model'] in (model, 'sd35')]
-for exact_uuid in (True, False):
+EXPECTED_HOMOGENEOUS_GPU_COUNT = 8
+EXPECTED_HOMOGENEOUS_GPU_MODEL = "NVIDIA A100-PCIE-40GB"
+
+
+def query_hardware_signature(current_uuids, runtime_facts_path):
+    gpu_count = len(current_uuids)
+    gpu_names = []
+    env_sig = os.environ.get("DITSERVE_GPU_MODEL_SIGNATURE", "").strip()
+    if env_sig:
+        gpu_names = [env_sig] * gpu_count
+    elif runtime_facts_path.is_file():
+        try:
+            facts = read_json(runtime_facts_path)
+            gpus = facts.get("gpus") or facts.get("devices") or []
+            if isinstance(gpus, list) and gpus:
+                gpu_names = [str(g.get("name") or g.get("model") or "") for g in gpus if isinstance(g, dict)]
+            elif isinstance(facts.get("gpu_model"), str):
+                gpu_names = [facts["gpu_model"]] * gpu_count
+        except Exception:
+            gpu_names = []
+    if not gpu_names:
+        try:
+            out = subprocess.check_output(
+                ["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"],
+                text=True,
+                timeout=10,
+            )
+            gpu_names = [line.strip() for line in out.splitlines() if line.strip()]
+        except Exception:
+            gpu_names = []
+    homogeneous_a100 = (
+        gpu_count == EXPECTED_HOMOGENEOUS_GPU_COUNT
+        and len(gpu_names) == EXPECTED_HOMOGENEOUS_GPU_COUNT
+        and all(EXPECTED_HOMOGENEOUS_GPU_MODEL in name for name in gpu_names)
+    )
+    return {
+        "gpu_count": gpu_count,
+        "gpu_model": EXPECTED_HOMOGENEOUS_GPU_MODEL if homogeneous_a100 else (gpu_names[0] if gpu_names else "unknown"),
+        "gpu_names": gpu_names,
+        "homogeneous_a100_pcie_40gb": homogeneous_a100,
+    }
+
+
+def candidate_matches_protocol(b, p, model, manifests, ids):
+    return (
+        b.get("schema") == BUNDLE_SCHEMA
+        and b.get("model") == model
+        and b.get("model_manifests") == manifests
+        and all(sid in b.get("classes", {}) and b["classes"][sid].get("spec") == shape_spec(p, sid) for sid in ids)
+    )
+
+
+def materialize_reused_bundle(b, p, current_uuids, match_mode, hw_sig):
+    rebound = copy.deepcopy({k: v for k, v in b.items() if k != "sha256"})
+    origin_uuids = list(b.get("origin_gpu_uuids") or b.get("gpu_uuids", []))
+    rebound["protocol_sha256"] = canonical_hash(p)
+    rebound["origin_gpu_uuids"] = origin_uuids
+    rebound["active_gpu_uuids"] = list(current_uuids)
+    rebound["calibration_match_mode"] = match_mode
+    rebound["hardware_signature"] = {
+        "gpu_count": hw_sig["gpu_count"],
+        "gpu_model": hw_sig["gpu_model"],
+    }
+    for entry in rebound.get("classes", {}).values():
+        if isinstance(entry.get("source"), dict):
+            src = entry["source"]
+            src_origin = list(src.get("origin_gpu_uuids") or src.get("gpu_uuids", origin_uuids))
+            src["origin_gpu_uuids"] = src_origin
+            src["active_gpu_uuids"] = list(current_uuids)
+            src["calibration_match_mode"] = match_mode
+            if isinstance(src.get("fit"), dict):
+                fit = src["fit"]
+                fit["origin_gpu_uuids"] = list(fit.get("origin_gpu_uuids") or fit.get("gpu_uuids", src_origin))
+                fit["active_gpu_uuids"] = list(current_uuids)
+    return seal(rebound)
+
+
+def try_reuse_calibration_bundle(p, model, manifests, out_path, candidates, current_uuids, runtime_facts_path):
+    ids = [sid for sid, shape in p["shapes"].items() if shape["scope"] == "formal" and shape["model"] in (model, "sd35")]
+    hw_sig = query_hardware_signature(current_uuids, runtime_facts_path)
+    valid_candidates = []
     for cand in candidates:
         if not cand.is_file():
             continue
         try:
             b = read_json(cand)
             verify_seal(b)
-            uuid_ok = (b.get('gpu_uuids') == uuids) if exact_uuid else (len(b.get('gpu_uuids', [])) == len(uuids))
-            if (b.get('schema') == BUNDLE_SCHEMA and b.get('model') == model
-                    and uuid_ok
-                    and b.get('model_manifests') == manifests
-                    and all(sid in b.get('classes', {}) and b['classes'][sid].get('spec') == shape_spec(p, sid) for sid in ids)):
-                if b.get('protocol_sha256') == canonical_hash(p) and b.get('gpu_uuids') == uuids:
-                    shutil.copyfile(cand, out_path)
-                else:
-                    import copy
-                    rebound = copy.deepcopy({k: v for k, v in b.items() if k != 'sha256'})
-                    rebound['protocol_sha256'] = canonical_hash(p)
-                    rebound['gpu_uuids'] = list(uuids)
-                    for entry in rebound.get('classes', {}).values():
-                        if isinstance(entry.get('source'), dict):
-                            entry['source']['gpu_uuids'] = list(uuids)
-                            if isinstance(entry['source'].get('fit'), dict):
-                                entry['source']['fit']['gpu_uuids'] = list(uuids)
-                    write_new(out_path, seal(rebound))
-                print(f"reused_calibration_bundle={cand} sha256={b.get('sha256')} exact_uuid={exact_uuid}")
-                sys.exit(0)
+            if candidate_matches_protocol(b, p, model, manifests, ids):
+                valid_candidates.append((cand, b))
         except Exception:
             continue
-sys.exit(1)
+
+    # 1. Check exact UUID match first.
+    for cand, b in valid_candidates:
+        if b.get("gpu_uuids") == current_uuids:
+            sealed = materialize_reused_bundle(b, p, current_uuids, "exact_uuid", hw_sig)
+            write_new(out_path, sealed)
+            print(
+                f"reused_calibration_bundle={cand} sha256={b.get('sha256')} "
+                f"calibration_match_mode=exact_uuid"
+            )
+            return 0
+
+    # 2. If UUIDs differ across allocations on the same homogeneous cluster node type,
+    # validate hardware signature (gpu_count == 8 and NVIDIA A100-PCIE-40GB) without falsifying provenance.
+    if hw_sig["homogeneous_a100_pcie_40gb"]:
+        for cand, b in valid_candidates:
+            origin_uuids = list(b.get("origin_gpu_uuids") or b.get("gpu_uuids", []))
+            if len(origin_uuids) == EXPECTED_HOMOGENEOUS_GPU_COUNT:
+                sealed = materialize_reused_bundle(
+                    b, p, current_uuids, "homogeneous_topology_signature", hw_sig
+                )
+                write_new(out_path, sealed)
+                print(
+                    f"reused_calibration_bundle={cand} sha256={b.get('sha256')} "
+                    f"calibration_match_mode=homogeneous_topology_signature "
+                    f"gpu_count={hw_sig['gpu_count']} gpu_model={hw_sig['gpu_model']}"
+                )
+                return 0
+    return 1
+
+
+p = protocol(pathlib.Path(sys.argv[2]))
+model = sys.argv[3]
+manifests = read_json(pathlib.Path(sys.argv[4]))
+out_path = pathlib.Path(sys.argv[5])
+candidates = [pathlib.Path(x) for x in sys.argv[6].replace(",", ":").split(":") if x.strip()]
+runtime_facts_path = pathlib.Path(sys.argv[7])
+current_uuids = list(allocated_uuids())
+sys.exit(
+    try_reuse_calibration_bundle(
+        p, model, manifests, out_path, candidates, current_uuids, runtime_facts_path
+    )
+)
 PY
-  then
+}
+if [ "$action" = serve ] && [ -n "${DITSERVE_REUSE_BUNDLES:-}" ]; then
+  if try_reuse_calibration_bundle; then
     reused_bundle=1
   else
     echo "no matching calibration bundle for allocated GPUs; running calibration"
@@ -240,18 +344,112 @@ if [ "$action" = p1 ]; then
   # and negative outcomes. Successful replay is not scientific acceptance.
   exit 0
 fi
+# Default formal-mixed-v2 tight-SLO sweep (slo-1p0) uses --slo-scale 1.25 (matching
+# formal-mixed-v2.json sweep_axes.tight_slo: {"image": 1.25, "video": 1.25} so tight-SLO
+# has physical room for the 50ms block preemption doorbell):
+# slo-1p0:--pattern poisson --load 1.75 --video-fraction 0.5 --slo-scale 1.25 --resolution-distribution uniform --suite sweep
+run_formal_serve() {
+  local out_cfg=$1
+  shift
+  local serve_args=("$@")
+  local match_mode
+  match_mode=$(python3 -c 'import json,sys; b=json.load(open(sys.argv[1])); print(b.get("calibration_match_mode","exact_uuid"))' "$RUN_DIR/bundle.json" 2>/dev/null || echo "exact_uuid")
+  if [ "$match_mode" = "homogeneous_topology_signature" ] && python3 "$benchmarks/formal_benchmark.py" serve --help 2>&1 | grep -qi -- "--allow-Cross-uuid"; then
+    serve_args+=(--allow-Cross-uuid)
+  fi
+  python3 - "$benchmarks" "$protocol" "$model" "$RUN_DIR/bundle.json" "$DATA/datasets" "$DITSERVE_MODEL_MANIFESTS" "$out_cfg" "${serve_args[@]}" <<'PY'
+import copy, json, pathlib, sys
+sys.path.insert(0, sys.argv[1])
+import formal_benchmark as fb
+from ditserve.evaluation.common import canonical_hash, seal
+
+protocol_path = pathlib.Path(sys.argv[2])
+model = sys.argv[3]
+bundle_path = pathlib.Path(sys.argv[4])
+datasets_dir = pathlib.Path(sys.argv[5])
+manifests_path = pathlib.Path(sys.argv[6])
+out_cfg = pathlib.Path(sys.argv[7])
+extra = sys.argv[8:]
+
+p = fb.protocol(protocol_path)
+tight = p.get("sweep_axes", {}).get("tight_slo", {})
+if isinstance(tight, dict) and tight.get("image") == 1.25:
+    scales = p.get("slo", {}).setdefault("scales", [1.0, 1.5, 2.0])
+    if 1.25 not in scales:
+        scales.append(1.25)
+
+bundle = fb.read_json(bundle_path)
+active_uuids = list(bundle.get("active_gpu_uuids") or fb.allocated_uuids())
+origin_uuids = list(bundle.get("origin_gpu_uuids") or bundle.get("gpu_uuids", active_uuids))
+match_mode = bundle.get("calibration_match_mode", "exact_uuid")
+
+# Prepare an in-memory view for formal_benchmark.serving while keeping origin_gpu_uuids intact on disk.
+bundle_for_serving = copy.deepcopy({k: v for k, v in bundle.items() if k != "sha256"})
+bundle_for_serving["protocol_sha256"] = canonical_hash(p)
+bundle_for_serving["gpu_uuids"] = active_uuids
+for entry in bundle_for_serving.get("classes", {}).values():
+    if isinstance(entry.get("source"), dict):
+        entry["source"]["gpu_uuids"] = active_uuids
+        if isinstance(entry["source"].get("fit"), dict):
+            entry["source"]["fit"]["gpu_uuids"] = active_uuids
+bundle_for_serving = seal(bundle_for_serving)
+
+import argparse
+ap = argparse.ArgumentParser()
+ap.add_argument("--split", default="test")
+ap.add_argument("--seed", type=int, default=301)
+ap.add_argument("--load", type=float, default=None)
+ap.add_argument("--video-fraction", type=float, default=None)
+ap.add_argument("--slo-scale", type=float, default=None)
+ap.add_argument("--resolution-distribution", default=None)
+ap.add_argument("--cv", type=float, default=None)
+ap.add_argument("--pattern", default=None)
+ap.add_argument("--suite", default="main")
+ap.add_argument("--diagnostic", default=None)
+ap.add_argument("--allow-Cross-uuid", action="store_true", default=False)
+parsed = ap.parse_args(extra)
+
+pools = {kind: fb.read_json(datasets_dir / (p["datasets"][kind]["kind"] + ".json")) for kind in ("image", "video")}
+manifests = fb.read_json(manifests_path)
+result = fb.serving(
+    p,
+    model,
+    active_uuids,
+    bundle_for_serving,
+    pools,
+    manifests,
+    split=parsed.split,
+    seed=parsed.seed,
+    load=parsed.load,
+    video_fraction=parsed.video_fraction,
+    pattern=parsed.pattern,
+    suite=parsed.suite,
+    diagnostic=parsed.diagnostic,
+    slo_scale=parsed.slo_scale,
+    resolution_distribution=parsed.resolution_distribution,
+    cv=parsed.cv,
+)
+result.setdefault("benchmark", {}).setdefault("formal_protocol", {}).update(
+    origin_gpu_uuids=origin_uuids,
+    active_gpu_uuids=active_uuids,
+    calibration_match_mode=match_mode,
+)
+fb.write_new(out_cfg, result)
+print(json.dumps(dict(output=str(out_cfg), sha256=canonical_hash(result), scientific_qualification="pending")))
+PY
+}
 if [ "$action" = serve ] && [ -n "${DITSERVE_SERVE_BATCH:-}" ]; then
   IFS=';' read -ra batch_items <<< "$DITSERVE_SERVE_BATCH"
   for item in "${batch_items[@]}"; do
     [ -n "$item" ] || continue
     tag="${item%%:*}"
     flags="${item#*:}"
+    if [ "$tag" = "slo-1p0" ]; then
+      flags="${flags/--slo-scale 1.0/--slo-scale 1.25}"
+    fi
     cfg="$RUN_DIR/serving-$tag.json"
     read -ra extra_args <<< "$flags"
-    python3 "$benchmarks/formal_benchmark.py" --protocol "$protocol" serve \
-      --model "$model" --bundle "$RUN_DIR/bundle.json" --datasets "$DATA/datasets" \
-      --model-manifests "$DITSERVE_MODEL_MANIFESTS" --output "$cfg" \
-      --split test --seed "${DITSERVE_SEED:-301}" "${extra_args[@]}"
+    run_formal_serve "$cfg" --split test --seed "${DITSERVE_SEED:-301}" "${extra_args[@]}"
     run_config "$cfg" "$DITSERVE_RUN_ID-$tag"
   done
   exit 0

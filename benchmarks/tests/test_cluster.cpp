@@ -1414,6 +1414,101 @@ int main(int argc, char** argv) {
         require(!img_plan.empty() && img_plan[0].at("request_id") == "i_feas",
                 "ditserve prioritizes feasible interactive image ahead of unstarted video");
     });
+    check("20261106 factorized policy traits and tight-SLO 1.0x doorbell preemption", [&] {
+        const auto catalog = policy_catalog();
+        auto find_in_catalog = [&](const std::string& id) -> Json {
+            for (const auto& entry : catalog)
+                if (entry.at("id") == id) return entry;
+            throw std::runtime_error("missing from policy_catalog: " + id);
+        };
+        for (const char* id : {"tetriserve-cfg2", "sbp-esp-cfg2", "edf-bestfit-cfg2"}) {
+            require(cluster_policy(id), std::string("registered factorized baseline: ") + id);
+            const auto& t = policy_traits(id);
+            require(t.allow_cfg_forms && !t.hold_diffuse && t.feasible_img_priority,
+                    std::string(id) + " traits: allow_cfg_forms=true, hold_diffuse=false, feasible_img_priority=true");
+            const auto cat = find_in_catalog(id);
+            require(cat.at("allow_cfg_forms").get<bool>() && !cat.at("hold_diffuse").get<bool>()
+                    && cat.at("feasible_img_priority").get<bool>(),
+                    std::string(id) + " catalog traits match");
+            const auto p = pcie_plan(Json::array({video("v", 1e9)}), id,
+                                     {false, false, true, true, true, true, true, true}).at("assignments");
+            require(p.size() == 1 && p[0].at("form") == "cfg2",
+                    std::string(id) + " selects cfg2 on a 2-GPU pair: " + p.dump());
+        }
+        {
+            require(cluster_policy("abl-no-decode-shrink"), "abl-no-decode-shrink registered");
+            const auto& t = policy_traits("abl-no-decode-shrink");
+            require(!t.allow_cfg_forms && t.hold_diffuse && t.feasible_img_priority,
+                    "abl-no-decode-shrink traits: allow_cfg_forms=false, hold_diffuse=true, feasible_img_priority=true");
+            const auto cat = find_in_catalog("abl-no-decode-shrink");
+            require(!cat.at("allow_cfg_forms").get<bool>() && cat.at("hold_diffuse").get<bool>()
+                    && cat.at("feasible_img_priority").get<bool>(),
+                    "abl-no-decode-shrink catalog traits match");
+            const Json done_req = video("v_done", 1e9, {{"status", "suspended"}, {"prepared", true},
+                                                        {"steps_done", 20}, {"steps_total", 20},
+                                                        {"group", {0, 1}}, {"form", "cfg2"}});
+            const auto held_dec = pcie_plan(Json::array({done_req}), "abl-no-decode-shrink").at("assignments");
+            const auto shrunk_dec = pcie_plan(Json::array({done_req}), "ditserve").at("assignments");
+            require(held_dec.size() == 1 && held_dec[0].at("degree") == 2 && held_dec[0].at("group") == Json::array({0, 1}),
+                    "abl-no-decode-shrink holds full CFG2 group during VAE decode");
+            require(shrunk_dec.size() == 1 && shrunk_dec[0].at("degree") == 1 && shrunk_dec[0].at("group") == Json::array({0}),
+                    "ditserve shrinks VAE decode to primary rank");
+        }
+        {
+            require(cluster_policy("abl-no-img-priority"), "abl-no-img-priority registered");
+            const auto& t = policy_traits("abl-no-img-priority");
+            require(!t.allow_cfg_forms && !t.hold_diffuse && !t.feasible_img_priority,
+                    "abl-no-img-priority traits: allow_cfg_forms=false, hold_diffuse=false, feasible_img_priority=false");
+            const auto cat = find_in_catalog("abl-no-img-priority");
+            require(!cat.at("allow_cfg_forms").get<bool>() && !cat.at("hold_diffuse").get<bool>()
+                    && !cat.at("feasible_img_priority").get<bool>(),
+                    "abl-no-img-priority catalog traits match");
+        }
+
+        // Tight-SLO (1.0x) image arrival while all GPUs run cfg2 videos:
+        // 1) doorbell_grace_ms prevents false late demotion after the block checkpoint response delay
+        //    and triggers block_preempt in both select_deadline_preemption_groups and cluster_plan.
+        Json prof = pcie_profile();
+        prof["classes"]["video"]["forms"]["cfg2"]["step_ms"] = 600.0; // 10 ms/block, 4-block quantum = 40 ms
+        const ClusterCost cost(prof);
+        const auto sel = select_deadline_preemption_groups(
+            20.0, {{-1, 20.0 + 6450.0, 6450.0}}, {{"v0", {0, 1}, 40.0, 560.0, 0.0, false}});
+        require(sel.selected == std::vector<std::string>{"v0"},
+                "select_deadline_preemption_groups rings cfg2 group for 1.0x SLO image via doorbell_grace_ms");
+
+        const Json mid_v = video("v0", 60000.0, {{"status", "suspended"}, {"prepared", true},
+                                                 {"group", {0, 1}}, {"form", "cfg2"}, {"blocks_done", 4}});
+        const Json tight_img = image("img_1x", 20.0 + 6450.0, 20.0);
+        ClusterPlanTrace dit_trace, noblock_trace;
+        const auto dit_plan = cluster_plan(
+            {{"now_ms", 40.0}, {"gpus", 2}, {"busy", Json::array()}, {"requests", Json::array({mid_v, tight_img})}},
+            "ditserve", cost, pcie_forms, &dit_trace).at("assignments");
+        const auto noblock_plan = cluster_plan(
+            {{"now_ms", 40.0}, {"gpus", 2}, {"busy", Json::array()}, {"requests", Json::array({mid_v, tight_img})}},
+            "abl-no-block", cost, pcie_forms, &noblock_trace).at("assignments");
+        require(dit_plan.size() == 1 && dit_plan[0].at("request_id") == "img_1x"
+                && dit_plan[0].at("reason") == "block_preempt",
+                "ditserve triggers block_preempt for 1.0x SLO image via doorbell_grace_ms: " + dit_plan.dump());
+        require(noblock_plan.size() == 1 && noblock_plan[0].at("request_id") == "v0",
+                "abl-no-block cannot preempt mid-step video: " + noblock_plan.dump());
+
+        // 2) Simulated 2-GPU cluster with cfg2 video and mid-step 1.0x SLO image arrivals:
+        //    ditserve triggers block_preemptions and achieves higher image SAR than abl-no-block.
+        const Json sim_trace = Json::array({
+            trace_row("v0", "video", 0.0, 120000.0),
+            trace_row("i0", "image", 40.0, 40.0 + 6450.0),
+            trace_row("i1", "image", 6610.0, 6610.0 + 6450.0)
+        });
+        const auto sim_dit = simulate_cluster({{"workload", sim_trace}, {"profile", prof},
+                                               {"policy", "ditserve"}, {"gpus", 2}, {"options", pcie_forms}});
+        const auto sim_noblock = simulate_cluster({{"workload", sim_trace}, {"profile", prof},
+                                                   {"policy", "abl-no-block"}, {"gpus", 2}, {"options", pcie_forms}});
+        require(sim_dit.at("block_preemptions").get<int>() > 0 && sim_noblock.at("block_preemptions").get<int>() == 0,
+                "ditserve records block preemptions on tight 1.0x image arrivals");
+        require(sim_dit.at("by_kind").at("image").at("attainment").get<double>()
+                > sim_noblock.at("by_kind").at("image").at("attainment").get<double>(),
+                "ditserve achieves higher image SAR than abl-no-block under 1.0x image SLO");
+    });
     std::cout << checks - failures << "/" << checks << " cluster checks passed\n";
     return failures ? 1 : 0;
 }

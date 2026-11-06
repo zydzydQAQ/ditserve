@@ -23,12 +23,250 @@ import re
 import statistics
 
 from formal_benchmark import input_shape, shape_spec
-from native_exact import checked_digest, stop_samples, validate_pair_identity
-from native_config_identity import config_identity, match_native_config
-from native_metrics import percentile
-from p2_contrasts import (CONTRASTS, LEGACY_POLICY_SOURCE, audit_native_sources, canonical_policy,
-                          validate_contrast)
-from stage_gates import canonical_hash, read_json, source_file
+from native_exact import checked_digest, percentile, stop_samples, validate_pair_identity
+from native_serving import FORM_DEGREES
+from p1_benchmark import canonical_hash, config_identity, match_native_config, read_json, source_file
+
+
+_POLICY_SOURCES = {
+    'src/ditserve/control/policy.cpp': '6a52ff3a2caabd73ccf076a9158050fa8765d772ffedad498ffe4a18f1e1d2fb',
+    'include/ditserve/control/policy.hpp': '10d5ed4df6da5c8a9151a3adcbea76d16bf5a435b8daaf99968ec4114f51b9c8',
+}
+_LEGACY_RUNTIME_SOURCES = {
+    'src/ditserve/control/budget.cpp': 'a0ebe611274ad2d76436cd0a8a550e8039e571ae9d4f0c1d5bc2d2399cda6537',
+    'src/ditserve/control/dispatch.cpp': '3c9bdd18f9d48c708922831bd3e543de3ea232d25bf92236b07c1ced5b2e2f59',
+    'src/ditserve/runtime/process.cpp': 'b632695f39bc692e2474c258c33f6423dfbe32486e64258b837f4dd23c708105',
+    'include/ditserve/runtime/process.hpp': '8af98ae7fd383d8c1ce4e010477bd198ba8eabda40576cf5a6a20305697014f4',
+    'src/ditserve/interface/command.cpp': 'bae8e76882f6efe55c9b50a7a802b55da7f9fc56bc6535c2f4e4038f74bb0a57',
+}
+
+
+def _native_bundle(cluster, study, header, runtime=None):
+    return dict(_POLICY_SOURCES, **(_LEGACY_RUNTIME_SOURCES if runtime is None else runtime), **{
+        'src/ditserve/control/cluster.cpp': cluster, 'src/ditserve/control/study.cpp': study,
+        'include/ditserve/control/cluster.hpp': header})
+
+
+AUDITED_NATIVE_BUNDLES = {
+    '12b0918': _native_bundle('5c2054931ec6d1b8c5dfa3c50f781e0f57594783633494b64f409adad7a5ed54',
+        '34582d968cd1558e826849c86d408f958b9217825b7486f942d2b4e1ecc10374',
+        '38856fb9c9a8f2812bfd9a06e3bc048038e509b051f68d92b78b4e91ae37d34e'),
+    'f79f6fb-cf46c3b': _native_bundle('6cf1044cc837e26ba5bfb4e1b83870a10709e6e989cb58662e8bbf4d46287d0e',
+        '34582d968cd1558e826849c86d408f958b9217825b7486f942d2b4e1ecc10374',
+        '38856fb9c9a8f2812bfd9a06e3bc048038e509b051f68d92b78b4e91ae37d34e'),
+    '92b72ff': _native_bundle('6cf1044cc837e26ba5bfb4e1b83870a10709e6e989cb58662e8bbf4d46287d0e',
+        'c7f104e0cc6da4e0ffd7fae4d4f3cefcb1706bf20efe5f7a32b6145c40ad02f4',
+        '38856fb9c9a8f2812bfd9a06e3bc048038e509b051f68d92b78b4e91ae37d34e'),
+    'c4b9e26-51740c0': _native_bundle('eded7812a8400430f0a1fc97d6ad9f4769c29a211deca7288b4a30d11b9b6ffd',
+        '0b64d3f11b1a90174b77f3297e9536b465f359ce4e8a5365dec7610d4732525a',
+        '5a9c3dff8df8d78df5f16618c8b13057e4d20857f6e0916923b715fda22866f3'),
+    '97f0713': _native_bundle('eded7812a8400430f0a1fc97d6ad9f4769c29a211deca7288b4a30d11b9b6ffd',
+        '20193ea379745bc79b56e3448f72b10ea51e61e60943da0aebe0273010c213bb',
+        '5a9c3dff8df8d78df5f16618c8b13057e4d20857f6e0916923b715fda22866f3', runtime={
+            'src/ditserve/control/budget.cpp': 'c1b1f3dce50073f8f3a858b33382d2c0991af4059eb2c6999b357caafe4f0eb2',
+            'src/ditserve/control/dispatch.cpp': 'fa9ff789cefc8c095a08121d18d6bb62cf7352d623112af08c7bf518fec7d5a6',
+            'src/ditserve/runtime/process.cpp': '30c36b89ef5b69d6fe44910099f6921d581846692e8acc11f7ba76198af0d4ce',
+            'include/ditserve/runtime/process.hpp': 'cb410642d81d755e16cab9ba842ce0e9d6a768d0735a23907d48d95aff84d4ca',
+            'src/ditserve/interface/command.cpp': '52f3a18f7b423ff949cedf5b50da0eaa704fd71a3dfea03b89405b4de7c85a42'}),
+}
+REQUIRED_NATIVE_SOURCES = frozenset(AUDITED_NATIVE_BUNDLES['97f0713'])
+AUDITED_NATIVE_SOURCES = {path: (digest,) for path, digest in AUDITED_NATIVE_BUNDLES['f79f6fb-cf46c3b'].items()}
+CONTRASTS = {
+    'block-fixed': dict(reference='edf-cfg2', candidate='block-cfg2', mechanism='block preemption', field='blocks'),
+    'block-elastic': dict(reference='cfg2-first', candidate='ditserve', mechanism='block preemption', field='blocks'),
+    'pruning': dict(reference='abl-no-prune', candidate='ditserve', mechanism='form pruning', field='prune_dominated'),
+    'minimum-pair': dict(reference='abl-no-mindeg', candidate='ditserve', mechanism='minimum CFG-pair admission', field='min_video_degree'),
+    'placement': dict(reference='abl-first-fit', candidate='ditserve', mechanism='pair-fit image placement', field='image_placement'),
+    'lazy': dict(reference='ditserve', candidate='ditserve', mechanism='deadline utility filter',
+                 option='lazy_preemption', values=[False, True], field='lazy_preemption'),
+    'remaining-work': dict(reference='ditserve', candidate='ditserve', mechanism='remaining-work widening',
+                           option='widen_remaining_work', values=[False, True], field='widen_remaining_work'),
+    'doorbell': dict(reference='ditserve', candidate='ditserve', mechanism='continuous doorbell execution',
+                      option='doorbell', values=[False, True], field='doorbell'),
+}
+for _policy in ('xdit', 'tetriserve', 'sbp-esp', 'edf-bestfit', 'edf-cfg2', 'cfg2-first'):
+    CONTRASTS['system-' + _policy] = dict(reference=_policy, candidate='ditserve', mechanism='system comparison', system=True)
+
+_OURS = ('ditserve', 'cfg2-first', 'abl-no-block', 'abl-no-prune', 'abl-no-mindeg', 'abl-first-fit')
+
+
+def _policy_rows(xdit_form, tetriserve_prunes, edf_bestfit_demotes, sbp_esp_late_short_ms):
+    xdit = 'xdit-' + xdit_form
+    rows = {}
+    for policy in _OURS + ('edf-cfg2', 'block-cfg2', xdit, 'tetriserve', 'sbp-esp', 'edf-bestfit'):
+        ours = policy in _OURS
+        fixed = policy in {'edf-cfg2', 'block-cfg2', xdit}
+        rows[policy] = dict(
+            elastic=not fixed, blocks=policy in {'ditserve', 'abl-no-prune', 'abl-no-mindeg', 'abl-first-fit', 'block-cfg2'},
+            fixed_form=(xdit_form if policy == xdit else 'cfg2') if fixed else None,
+            prune_dominated=ours and policy != 'abl-no-prune' or policy == 'tetriserve' and tetriserve_prunes,
+            min_video_degree=2 if ours and policy != 'abl-no-mindeg' else 1,
+            widen_efficiency=.9 if ours else 0., image_placement='pair_fit' if ours and policy != 'abl-first-fit' else 'first',
+            order='fcfs' if policy == xdit else 'edf', hold_diffuse=policy == xdit,
+            demote_late=policy != xdit and (policy != 'edf-bestfit' or edf_bestfit_demotes),
+            late_short_ms=float(sbp_esp_late_short_ms) if policy == 'sbp-esp' else 2000.,
+            rounds=policy == 'tetriserve', deadline_dp=policy in {'tetriserve', 'sbp-esp'}, best_fit=policy == 'edf-bestfit',
+            image_batching=policy == 'sbp-esp', partition_divisor=4 if policy == xdit else 0)
+    return rows
+
+
+LEGACY_POLICY_SOURCE = _POLICY_SOURCES['src/ditserve/control/policy.cpp']
+CURRENT_POLICY_SOURCE = '8d45d88d2b977fd1edc1501ad4e224a7d28f539c8d35a8d4c86af07bff2ed310'
+POLICY_REGISTRIES = {
+    LEGACY_POLICY_SOURCE: dict(xdit='xdit-cfg2', policies=_policy_rows('cfg2', False, True, 2000),
+                               planner_fields=False, partition_clamp=False),
+    CURRENT_POLICY_SOURCE: dict(xdit='xdit-sp1', policies=_policy_rows('sp1', False, False, 0),
+                                planner_fields=True, partition_clamp=True),
+}
+
+
+def policy_registry(policy_source=CURRENT_POLICY_SOURCE):
+    try:
+        return POLICY_REGISTRIES[policy_source]
+    except (KeyError, TypeError):
+        raise ValueError('no reviewed P2 policy registry for policy.cpp digest: ' + str(policy_source)) from None
+
+
+def canonical_policy(policy, policy_source=CURRENT_POLICY_SOURCE):
+    return policy_registry(policy_source)['xdit'] if policy == 'xdit' else policy
+
+
+def _reviewed_policy_source(pins):
+    digest = pins.get('src/ditserve/control/policy.cpp')
+    policy_registry(digest)
+    return digest
+
+
+def audit_native_sources(native, explicit_pins=None):
+    if not isinstance(native, dict):
+        raise ValueError('native source snapshot is missing')
+    if explicit_pins is None:
+        for name, pins in AUDITED_NATIVE_BUNDLES.items():
+            if all(native.get(path) == digest for path, digest in pins.items()):
+                return dict(bundle=name, pins_sha256=canonical_hash(pins), qualification_eligible=False,
+                            policy_source_sha256=_reviewed_policy_source(pins),
+                            scope='reviewed native source combination only; core, execution and scientific gates remain independent')
+        raise ValueError('native option resolver has not been audited for this source bundle')
+    if (not isinstance(explicit_pins, dict) or not REQUIRED_NATIVE_SOURCES <= set(explicit_pins)
+            or any(not isinstance(path, str) or not path or not isinstance(hashes, (tuple, list))
+                   or len(hashes) != 1 or not isinstance(hashes[0], str)
+                   or re.fullmatch(r'[0-9a-f]{64}', hashes[0]) is None for path, hashes in explicit_pins.items())):
+        raise ValueError('explicit native source pins require a complete singleton hash map')
+    pins = {path: hashes[0] for path, hashes in explicit_pins.items()}
+    if any(native.get(path) != digest for path, digest in pins.items()):
+        raise ValueError('native source snapshot differs from explicit singleton pins')
+    return dict(bundle='explicit-singleton-map', pins_sha256=canonical_hash(pins), qualification_eligible=False,
+                policy_source_sha256=_reviewed_policy_source(pins),
+                scope='explicit internal-caller pins; caller owns source review, independent of all qualification gates')
+
+
+def resolved_options(policy, options, gpus, policy_source=CURRENT_POLICY_SOURCE):
+    if (options.get('sp_transport') != 'export' or options.get('pin_started', False)
+            or options.get('tiered_memory', False) or gpus not in (2, 4, 6, 8)):
+        raise ValueError('unsupported: P2 resolver covers unpinned export transport on 2/4/6/8 GPUs only')
+    registry = policy_registry(policy_source)
+    policy = canonical_policy(policy, policy_source)
+    if policy not in registry['policies']:
+        raise ValueError('policy has no audited exact resolver: ' + policy)
+    traits = registry['policies'][policy]
+    fixed, blocks = traits['fixed_form'], traits['blocks']
+    default = {key: value for key, value in traits.items() if key not in ('late_short_ms', 'partition_divisor')}
+    default.update(lazy_preemption=True, widen_remaining_work=True, doorbell=False, check_blocks=1,
+                   quantum_blocks=4, quantum_ms=0., pin_started=False, round_steps=5)
+    overridable = {'prune_dominated', 'min_video_degree', 'widen_efficiency', 'image_placement', 'order',
+                   'hold_diffuse', 'demote_late', 'lazy_preemption', 'widen_remaining_work', 'doorbell',
+                   'check_blocks', 'quantum_blocks', 'quantum_ms', 'pin_started', 'round_steps'}
+    if registry['planner_fields']:
+        overridable.add('late_short_ms')
+        default['late_short_ms'] = traits['late_short_ms']
+    default.update({key: options[key] for key in overridable if key in options})
+    if registry['planner_fields']:
+        default['round_hold'] = traits['rounds'] and type(default['round_steps']) is int and default['round_steps'] > 1
+    default['forms'] = [fixed] if fixed else options.get('forms')
+    if (not isinstance(default['forms'], list) or not default['forms']
+            or any(form not in FORM_DEGREES for form in default['forms'])):
+        raise ValueError('unsupported or implicit parallel form space')
+    partitioned = traits['partition_divisor'] > 0
+    share = options.get('partition_image_gpus', max(1, gpus // traits['partition_divisor'])) if partitioned else 0
+    if registry['partition_clamp'] and fixed and type(share) is int and share > 0:
+        share = min(share, max(0, gpus - FORM_DEGREES[fixed]))
+    default['reserve_image_gpus'] = options.get('reserve_image_gpus', share)
+    default['strict_partition'] = options.get('strict_partition', partitioned)
+    reserve = default['reserve_image_gpus']
+    if type(reserve) is not int or reserve < 0 or reserve >= gpus or fixed and gpus - reserve < FORM_DEGREES[fixed]:
+        raise ValueError('unsupported baseline: image partition leaves no complete fixed '
+                         + fixed.upper() + ' video group' if fixed else
+                         'unsupported baseline: image partition leaves no video GPU')
+    default['doorbell_effective'] = blocks and default['doorbell']
+    default['image_batching_effective'] = default['image_batching'] and 'image_batch' not in options
+    default['shared_options'] = {key: value for key, value in options.items() if key not in overridable
+                                 and key not in {'forms', 'reserve_image_gpus', 'partition_image_gpus', 'strict_partition'}}
+    return default
+
+
+def validate_contrast(name, reference, candidate, policy_source=CURRENT_POLICY_SOURCE):
+    definition = CONTRASTS[name]
+    for arm, phase in (('reference', reference), ('candidate', candidate)):
+        if canonical_policy(phase['policy'], policy_source) != canonical_policy(definition[arm], policy_source):
+            raise ValueError('selected policy differs from contrast ' + arm)
+    normalized = [copy.deepcopy(phase) for phase in (reference, candidate)]
+    for phase in normalized:
+        phase.pop('policy', None)
+    if 'option' in definition:
+        key = definition['option']
+        for index, phase in enumerate(normalized):
+            if phase.get('options', {}).get(key) is not definition['values'][index]:
+                raise ValueError('both contrast option values must be explicit and different')
+            phase['options'].pop(key)
+    if normalized[0] != normalized[1]:
+        raise ValueError('contrast changes inputs or settings beyond its declared mechanism/policy')
+    resolved = [resolved_options(phase['policy'], phase.get('options', {}), len(phase['gpus']), policy_source)
+                for phase in (reference, candidate)]
+    for phase, options in zip((reference, candidate), resolved):
+        available = len(phase['gpus']) - options['reserve_image_gpus']
+        if any(row.get('kind') == 'video' and row.get('min_degree', 1) > available
+               for row in phase.get('profile', {}).get('classes', {}).values()):
+            raise ValueError('unsupported model: partition cannot accommodate its minimum degree')
+        fixed = options['fixed_form']
+        if fixed and any(row.get('kind') == 'video' and row.get('min_degree', 1) > FORM_DEGREES[fixed]
+                         for row in phase.get('profile', {}).get('classes', {}).values()):
+            raise ValueError('unsupported: class minimum would replace the declared fixed '
+                             + fixed.upper() + ' form with SP')
+    differing = {key for key in resolved[0] if resolved[0][key] != resolved[1][key]}
+    if not differing:
+        raise ValueError('policy/options overrides make the two supposedly different arms identical')
+    if not definition.get('system'):
+        allowed = {definition['field']}
+        if definition['field'] in {'blocks', 'doorbell'}:
+            allowed.add('doorbell_effective')
+        if not differing <= allowed or definition['field'] not in differing:
+            raise ValueError('resolved options do not isolate the declared mechanism')
+    if name == 'lazy' and not all(item['doorbell_effective'] for item in resolved):
+        raise ValueError('lazy doorbell contrast is disabled by the resolved runtime configuration')
+    if name == 'remaining-work' and not all(item['widen_efficiency'] > 0 for item in resolved):
+        raise ValueError('remaining-work widening is disabled by the resolved runtime configuration')
+    if name == 'minimum-pair' and any('sp1' not in item['forms'] for item in resolved):
+        raise ValueError('minimum-pair ablation needs an actually available SP1 form')
+    if name == 'pruning' and any(len(item['forms']) < 2 for item in resolved):
+        raise ValueError('pruning ablation needs multiple candidate forms')
+    if name == 'remaining-work' and any(len({FORM_DEGREES[form] for form in item['forms']}) < 2 for item in resolved):
+        raise ValueError('remaining-work widening needs multiple candidate degrees')
+    if name == 'placement' and len(reference['gpus']) < 4:
+        raise ValueError('placement ablation needs at least two CFG pairs')
+    video_classes = [row for row in reference.get('profile', {}).get('classes', {}).values() if row.get('kind') == 'video']
+    if name == 'minimum-pair' and video_classes and all(row.get('min_degree', 1) >= 2 for row in video_classes):
+        raise ValueError('model minimum degree makes the minimum-pair option ineffective')
+    if name in ('pruning', 'remaining-work') and video_classes:
+        allowed = [[form for form in resolved[1]['forms'] if FORM_DEGREES[form] <= len(reference['gpus'])
+                    and FORM_DEGREES[form] >= max(row.get('min_degree', 1), resolved[1]['min_video_degree'])]
+                   for row in video_classes]
+        if not any(len(forms if name == 'pruning' else {FORM_DEGREES[form] for form in forms}) > 1 for forms in allowed):
+            raise ValueError('model minimum/form constraints disable the declared mechanism')
+    if name == 'doorbell':
+        if any(item['quantum_ms'] != 0 or item['quantum_blocks'] != item['check_blocks'] for item in resolved):
+            raise ValueError('doorbell contrast requires the same explicit block-check spacing')
+    return dict(reference=resolved[0], candidate=resolved[1], differing_fields=sorted(differing),
+                scope='audited registry/options resolution; actual execution evidence is reviewed separately')
 
 
 def finite(value, name, positive=False):

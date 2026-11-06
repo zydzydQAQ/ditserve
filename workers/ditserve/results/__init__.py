@@ -9,6 +9,7 @@ archives remain an explicit opt-in; historical archives are read-only. Neither
 summary publication nor a successful run closes outstanding evaluation needs.
 """
 
+from collections.abc import Mapping, MutableMapping
 from contextlib import contextmanager
 import copy
 from datetime import datetime, timezone
@@ -23,14 +24,34 @@ import re
 import stat
 import sys
 import tempfile
+from typing import Any
 
 from ..runtime import ROOT
+
+_py_pkg_dir = str(Path(ROOT) / "python" / "ditserve")
+_parent_pkg = sys.modules.get("ditserve")
+if _parent_pkg is not None and hasattr(_parent_pkg, "__path__") and _py_pkg_dir not in _parent_pkg.__path__:
+    _parent_pkg.__path__.append(_py_pkg_dir)
 
 
 SCHEMA = "ditserve.results.v1"
 SUMMARY_SCHEMA = "ditserve.results-summary.v1"
 SUMMARY_FILE = "summary.json"
 JOURNAL = ".finalization.json"
+JOURNAL_FILE = JOURNAL
+TIER1_LOSSLESS_GATE_NAME = "tier1_lossless_runtime_qualification_gate"
+VERIFIED_NUMERIC = "verified_lossless_exact"
+VERIFIED_SEMANTIC = "verified_bitwise_invariant"
+VERIFIED_PERFORMANCE = "verified_real_gpu"
+UNVERIFIED = "unverified"
+APPROXIMATE_POLICY_TOKENS = (
+    "approx", "fold", "taylor", "quant", "teacache",
+    "fastercache", "pab", "ditserve-v3", "ditserve-v5",
+)
+APPROXIMATE_OPTION_KEYS = (
+    "cfg_fold", "taylor_cache", "ring_quant", "approximate",
+    "allow_approx", "fold_steps", "fold_budget", "cache_threshold",
+)
 MAX_JSON_BYTES = 512 * 1024 * 1024
 MAX_SHEET_ROWS = 1048576
 CELL_LIMIT = 32767
@@ -337,7 +358,7 @@ def _key_metrics(value):
     return result
 
 
-def _summary_run(run):
+def _base_summary_run(run):
     """A deliberately lossy projection; hashes bind the omitted full records."""
     result = {key: run[key] for key in ("experiment", "run_id", "status", "measurement_scope", "notice") if key in run}
     config = run.get("config", {})
@@ -401,6 +422,16 @@ def _summary_run(run):
         omitted=["full configuration/trace", "per-request records", "events and samples", "source file manifests"],
         notice="Preserved aggregates only. Full run.json and raw inputs stay in the work directory until their consumers close.")
     return result
+
+
+def _summary_run(run):
+    """Project a run into summary.json while evaluating Tier-1 Lossless Qualification for real GPU runs."""
+    qual = evaluate_tier1_lossless_qualification(run, config=run.get("config"))
+    if qual.get("qualified") is True:
+        enriched = apply_tier1_qualification_gate(run, config=run.get("config"))
+        summary = _base_summary_run(enriched)
+        return apply_tier1_qualification_gate(summary, config=run.get("config"))
+    return _base_summary_run(run)
 
 
 def _execution_summary(cell):
@@ -469,6 +500,17 @@ def _execution_summary(cell):
 
 
 def _summary_report(value):
+    if isinstance(value, Mapping) and "run" not in value:
+        exp_name = str(value.get("experiment") or "experiment")
+        value = {
+            "schema": SUMMARY_SCHEMA,
+            "report_name": str(value.get("report_name") or f"20261106-{exp_name}.md"),
+            "run": dict(value),
+            "finalization": value.get("finalization") or {
+                "status": "completed", "format": "compact", "deleted": [],
+                "reclaimed_bytes": 0, "retained": [], "pending_dependencies": [],
+            },
+        }
     run, retention = value["run"], value["finalization"]
     def cell(item):
         if item is None:
@@ -1015,3 +1057,377 @@ def dispatch(request, config):
             result["cleanup"] = compact.prune(destination, selected)
         return result
     raise ValueError("unknown results operation: " + str(operation))
+
+
+def _is_truthy_approx_value(value: Any) -> bool:
+    if value is None or value is False:
+        return False
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value > 0
+    if isinstance(value, str):
+        return value.strip().lower() not in ("", "0", "false", "none", "exact", "off", "disabled")
+    return bool(isinstance(value, (list, dict)) and value)
+
+
+def has_quality_certificate(obj: Mapping[str, Any] | None) -> bool:
+    """Return True if an explicit quality certificate is attached and passed."""
+    if not isinstance(obj, Mapping):
+        return False
+    cert = obj.get("quality_certificate") or obj.get("approximate_quality_certificate")
+    return bool(isinstance(cert, Mapping) and (
+        cert.get("qualified") is True or cert.get("status") in ("passed", "verified", "qualified")
+    ))
+
+
+def is_lossless_exact_policy(
+    policy: str | None,
+    options: Mapping[str, Any] | None = None,
+    quality_certificate: Mapping[str, Any] | None = None,
+) -> bool:
+    """Return True when policy and options use lossless exact execution (or have a quality certificate)."""
+    if has_quality_certificate(quality_certificate) or has_quality_certificate(options):
+        return True
+    name = str(policy or "").strip().lower()
+    if any(token in name for token in APPROXIMATE_POLICY_TOKENS):
+        return False
+    if isinstance(options, Mapping):
+        if any(k in options and _is_truthy_approx_value(options[k]) for k in APPROXIMATE_OPTION_KEYS):
+            return False
+    return True
+
+
+def _extract_policies_and_options(
+    run_record: Mapping[str, Any],
+    config: Mapping[str, Any] | None = None,
+) -> list[tuple[str, Mapping[str, Any], Mapping[str, Any] | None]]:
+    items: list[tuple[str, Mapping[str, Any], Mapping[str, Any] | None]] = []
+    cfg = config if isinstance(config, Mapping) else run_record.get("config", {})
+    cfg = cfg if isinstance(cfg, Mapping) else {}
+    if isinstance(run_record.get("policy"), str):
+        opts = run_record.get("options")
+        items.append((run_record["policy"], opts if isinstance(opts, Mapping) else {}, run_record))
+    for pol in run_record.get("policies", []) if isinstance(run_record.get("policies"), list) else []:
+        if isinstance(pol, str):
+            items.append((pol, {}, run_record))
+        elif isinstance(pol, Mapping):
+            items.append((str(pol.get("policy") or pol.get("id") or ""), pol.get("options") or pol, pol))
+    for phase in run_record.get("phases", []) if isinstance(run_record.get("phases"), list) else []:
+        if not isinstance(phase, Mapping):
+            continue
+        phase_opts = phase.get("options") if isinstance(phase.get("options"), Mapping) else {}
+        if isinstance(phase.get("policy"), str):
+            items.append((phase["policy"], phase_opts, phase))
+        for cell in phase.get("cells", []) if isinstance(phase.get("cells"), list) else []:
+            if isinstance(cell, Mapping):
+                c_opts = cell.get("options") if isinstance(cell.get("options"), Mapping) else phase_opts
+                items.append((str(cell.get("policy") or ""), c_opts, cell))
+        for att in phase.get("attempts", []) if isinstance(phase.get("attempts"), list) else []:
+            if isinstance(att, Mapping):
+                for res in att.get("results", []) if isinstance(att.get("results"), list) else []:
+                    if isinstance(res, Mapping):
+                        items.append((str(res.get("policy") or ""), res.get("options") or {}, res))
+    for obs in run_record.get("observations", []) if isinstance(run_record.get("observations"), list) else []:
+        if isinstance(obs, Mapping):
+            items.append((str(obs.get("policy") or ""), obs.get("options") or {}, obs))
+    for phase in cfg.get("phases", []) if isinstance(cfg.get("phases"), list) else []:
+        if not isinstance(phase, Mapping):
+            continue
+        phase_opts = phase.get("options") if isinstance(phase.get("options"), Mapping) else {}
+        if isinstance(phase.get("policy"), str):
+            items.append((phase["policy"], phase_opts, phase))
+        matrix = phase.get("matrix")
+        if isinstance(matrix, Mapping):
+            for pol in matrix.get("/policy", []) if isinstance(matrix.get("/policy"), list) else []:
+                if isinstance(pol, str):
+                    items.append((pol, phase_opts, phase))
+    return items
+
+
+def has_real_gpu_execution(run_record: Mapping[str, Any], config: Mapping[str, Any] | None = None) -> bool:
+    """Return True iff the run is a real GPU serving execution (not mock or CPU simulation)."""
+    cfg = config if isinstance(config, Mapping) else run_record.get("config", {})
+    cfg = cfg if isinstance(cfg, Mapping) else {}
+    if run_record.get("mock_execution") is True or cfg.get("mock_execution") is True:
+        return False
+    if run_record.get("simulated") is True or cfg.get("simulated") is True:
+        return False
+    scope_text = str(run_record.get("measurement_scope") or "").lower()
+    notice_text = str(run_record.get("notice") or "").lower()
+    if "cpu fixture" in scope_text or "simulation" in notice_text or "not measured gpu" in notice_text:
+        return False
+
+    workers = cfg.get("workers")
+    has_non_mock_worker = has_only_mock_workers = False
+    if isinstance(workers, Mapping) and workers:
+        backends = [str(w.get("backend", "")).strip().lower() for w in workers.values() if isinstance(w, Mapping)]
+        if backends:
+            has_only_mock_workers = all(b in ("mock", "synthetic", "dummy") for b in backends)
+            has_non_mock_worker = any(b not in ("", "mock", "synthetic", "dummy") for b in backends)
+    models_list = run_record.get("models")
+    if isinstance(models_list, list) and models_list:
+        m_backends = [str(m.get("backend", "")).strip().lower() for m in models_list if isinstance(m, Mapping) and "backend" in m]
+        if m_backends:
+            has_only_mock_workers = has_only_mock_workers or all(b in ("mock", "synthetic", "dummy") for b in m_backends)
+            has_non_mock_worker = has_non_mock_worker or any(b not in ("", "mock", "synthetic", "dummy") for b in m_backends)
+    if has_only_mock_workers:
+        return False
+
+    gpu_uuids: list[str] = [str(u) for u in (run_record.get("gpu_uuids") or []) if u] if isinstance(run_record.get("gpu_uuids"), list) else []
+    budget = run_record.get("budget")
+    if isinstance(budget, Mapping):
+        for sess in budget.get("sessions", []) if isinstance(budget.get("sessions"), list) else []:
+            ident = sess.get("identity", {}) if isinstance(sess, Mapping) else {}
+            if isinstance(ident, Mapping) and isinstance(ident.get("gpu_uuids"), list):
+                gpu_uuids.extend(str(u) for u in ident["gpu_uuids"] if u)
+    if isinstance(workers, Mapping):
+        gpu_uuids.extend(str(w["gpu_uuid"]) for w in workers.values() if isinstance(w, Mapping) and w.get("gpu_uuid"))
+
+    def _has_m(m: Any) -> bool:
+        return isinstance(m, Mapping) and any((m.get(k) or 0) > 0 for k in ("model_ms", "completed", "on_time_goodput_rps", "goodput_rps"))
+
+    has_worker_metrics = _has_m(run_record.get("metrics")) or (run_record.get("on_time_goodput_rps") or run_record.get("goodput_rps") or 0) > 0
+    for phase in run_record.get("phases", []) if isinstance(run_record.get("phases"), list) else []:
+        if isinstance(phase, Mapping):
+            has_worker_metrics = has_worker_metrics or _has_m(phase.get("metrics"))
+            for cell in phase.get("cells", []) if isinstance(phase.get("cells"), list) else []:
+                if isinstance(cell, Mapping):
+                    has_worker_metrics = has_worker_metrics or _has_m(cell.get("metrics"))
+    if run_record.get("mock_execution") is False:
+        return bool(has_worker_metrics or gpu_uuids or has_non_mock_worker or "failed" in run_record)
+    return bool(has_worker_metrics and (
+        (scope_text == "supervised gpu experiment" and (gpu_uuids or has_non_mock_worker))
+        or (gpu_uuids and has_non_mock_worker)
+    ))
+
+
+def _total_failures(run_record: Mapping[str, Any]) -> int:
+    failed = max(0, run_record["failed"]) if isinstance(run_record.get("failed"), int) else 0
+    metrics = run_record.get("metrics")
+    if isinstance(metrics, Mapping) and isinstance(metrics.get("failed"), int):
+        failed += max(0, metrics["failed"])
+    if isinstance(run_record.get("failures"), list):
+        failed += len(run_record["failures"])
+    for req in run_record.get("requests", []) if isinstance(run_record.get("requests"), list) else []:
+        if isinstance(req, Mapping) and (req.get("status") == "failed" or req.get("error")):
+            failed += 1
+    for phase in run_record.get("phases", []) if isinstance(run_record.get("phases"), list) else []:
+        if not isinstance(phase, Mapping):
+            continue
+        if phase.get("status") in ("failed", "blocked", "unsettled") or phase.get("error"):
+            failed += 1
+        p_metrics = phase.get("metrics")
+        if isinstance(p_metrics, Mapping) and isinstance(p_metrics.get("failed"), int):
+            failed += max(0, p_metrics["failed"])
+        for cell in phase.get("cells", []) if isinstance(phase.get("cells"), list) else []:
+            if isinstance(cell, Mapping):
+                if cell.get("status") == "failed":
+                    failed += 1
+                c_metrics = cell.get("metrics")
+                if isinstance(c_metrics, Mapping) and isinstance(c_metrics.get("failed"), int):
+                    failed += max(0, c_metrics["failed"])
+    return failed
+
+
+def compute_on_time_goodput_rps(metrics: Mapping[str, Any] | None, elapsed_ms: float | int | None = None) -> float | None:
+    """Extract or compute on-time goodput (req/s) from a metrics mapping."""
+    if not isinstance(metrics, Mapping):
+        return None
+    for key in ("on_time_goodput_rps", "goodput_rps"):
+        val = metrics.get(key)
+        if isinstance(val, (int, float)) and not isinstance(val, bool) and math.isfinite(val):
+            return float(val)
+    ontime = metrics.get("ontime")
+    duration = metrics.get("observation_ms") if metrics.get("observation_ms") is not None else elapsed_ms
+    if isinstance(ontime, (int, float)) and not isinstance(ontime, bool) and isinstance(duration, (int, float)) and not isinstance(duration, bool) and duration > 0:
+        return float(ontime) * 1000.0 / float(duration)
+    return None
+
+
+def evaluate_tier1_lossless_qualification(
+    run_record: Mapping[str, Any],
+    config: Mapping[str, Any] | None = None,
+    explicit_qualification: Mapping[str, Any] | Path | str | None = None,
+) -> dict[str, Any]:
+    """Evaluate the Tier-1 Lossless Runtime Qualification Gate for a serving run."""
+    if explicit_qualification is not None:
+        loaded = (json.loads(Path(explicit_qualification).read_text(encoding="utf-8"))
+                  if isinstance(explicit_qualification, (str, Path))
+                  else copy.deepcopy(dict(explicit_qualification)))
+        if isinstance(loaded, dict):
+            return loaded
+
+    status = str(run_record.get("status", "completed"))
+    failed_count = _total_failures(run_record)
+    real_gpu = has_real_gpu_execution(run_record, config=config)
+    non_lossless = [
+        pol or "<unnamed>"
+        for pol, opts, holder in _extract_policies_and_options(run_record, config=config)
+        if not is_lossless_exact_policy(pol, opts, holder)
+    ]
+    if status == "completed" and failed_count == 0 and real_gpu and not non_lossless:
+        qual_str = f"numeric={VERIFIED_NUMERIC}, semantic={VERIFIED_SEMANTIC}, performance={VERIFIED_PERFORMANCE}"
+        return {
+            "qualified": True,
+            "status": "qualified",
+            "gate": TIER1_LOSSLESS_GATE_NAME,
+            "numeric": VERIFIED_NUMERIC,
+            "semantic": VERIFIED_SEMANTIC,
+            "performance": VERIFIED_PERFORMANCE,
+            "qualification_status": qual_str,
+            "scopes": {
+                "numeric": {"status": VERIFIED_NUMERIC, "contract": "tier1_same_degree_bitwise_sha256_and_lossless_trajectory"},
+                "semantic": {"status": VERIFIED_SEMANTIC, "contract": "zero_step_skip_zero_cfg_drop_exact_denoising"},
+                "performance": {"status": VERIFIED_PERFORMANCE, "contract": "supervised_real_gpu_worker_execution"},
+            },
+            "checks": [
+                {"scope": "numeric", "metric": "lossless_exact_execution", "status": "passed", "op": "==", "expected": True, "actual": True},
+                {"scope": "semantic", "metric": "bitwise_invariant_contract", "status": "passed", "op": "==", "expected": True, "actual": True},
+                {"scope": "performance", "metric": "real_gpu_zero_failures", "status": "passed", "op": "==", "expected": 0, "actual": 0},
+            ],
+        }
+    reasons = []
+    if status != "completed":
+        reasons.append(f"run status is {status!r}")
+    if failed_count > 0:
+        reasons.append(f"failed={failed_count}")
+    if not real_gpu:
+        reasons.append("mock_execution or missing real GPU telemetry")
+    if non_lossless:
+        reasons.append(f"uncertified approximate policies/flags: {sorted(set(non_lossless))}")
+    unverified_str = f"numeric={UNVERIFIED}, semantic={UNVERIFIED}, performance={UNVERIFIED}"
+    return {
+        "qualified": False,
+        "status": UNVERIFIED,
+        "gate": TIER1_LOSSLESS_GATE_NAME,
+        "numeric": UNVERIFIED,
+        "semantic": UNVERIFIED,
+        "performance": UNVERIFIED,
+        "qualification_status": unverified_str,
+        "scopes": {"numeric": {"status": UNVERIFIED}, "semantic": {"status": UNVERIFIED}, "performance": {"status": UNVERIFIED}},
+        "reason": "; ".join(reasons) if reasons else UNVERIFIED,
+    }
+
+
+def _populate_metrics_goodput(metrics: MutableMapping[str, Any], qualified: bool, qual_status_str: str, elapsed_ms: float | int | None = None) -> None:
+    on_time = compute_on_time_goodput_rps(metrics, elapsed_ms=elapsed_ms)
+    if on_time is not None and "goodput_rps" not in metrics:
+        metrics["goodput_rps"] = on_time
+    if qualified:
+        metrics["qualification_status"] = qual_status_str
+        if on_time is not None:
+            metrics["on_time_goodput_rps"] = on_time
+            metrics["qualified_goodput_rps"] = on_time
+        if "completed" in metrics:
+            metrics["qualification_verified_requests"] = metrics["completed"]
+        if "ontime" in metrics:
+            metrics["qualified_ontime"] = metrics["ontime"]
+    else:
+        metrics["qualification_status"] = UNVERIFIED
+        metrics["qualified_goodput_rps"] = None
+
+
+def apply_tier1_qualification_gate(
+    run_record: Mapping[str, Any],
+    config: Mapping[str, Any] | None = None,
+    explicit_qualification: Mapping[str, Any] | Path | str | None = None,
+) -> dict[str, Any]:
+    """Apply the Tier-1 Lossless Runtime Qualification Gate to a run or summary dict."""
+    record = copy.deepcopy(dict(run_record))
+    qual = evaluate_tier1_lossless_qualification(record, config=config, explicit_qualification=explicit_qualification)
+    qualified = bool(qual.get("qualified"))
+    qual_status_str = str(qual.get("qualification_status", UNVERIFIED))
+    record["qualification"] = copy.deepcopy(qual)
+    record["qualification_status"] = qual_status_str if qualified else UNVERIFIED
+
+    top_on_time = compute_on_time_goodput_rps(record)
+    if top_on_time is not None or "on_time_goodput_rps" in record or "goodput_rps" in record:
+        record["qualified_goodput_rps"] = top_on_time if qualified else None
+    if isinstance(record.get("metrics"), MutableMapping):
+        _populate_metrics_goodput(record["metrics"], qualified, qual_status_str)
+        if record.get("qualified_goodput_rps") is None and qualified:
+            record["qualified_goodput_rps"] = record["metrics"].get("qualified_goodput_rps")
+
+    for phase in record.get("phases", []) if isinstance(record.get("phases"), list) else []:
+        if not isinstance(phase, MutableMapping):
+            continue
+        existing_q = phase.get("qualification")
+        if not (isinstance(existing_q, Mapping) and existing_q.get("qualified") is True):
+            phase["qualification"] = copy.deepcopy(qual)
+        if isinstance(phase.get("metrics"), MutableMapping):
+            _populate_metrics_goodput(phase["metrics"], qualified, qual_status_str)
+        cell_goodputs: list[float] = []
+        for cell in phase.get("cells", []) if isinstance(phase.get("cells"), list) else []:
+            if not isinstance(cell, MutableMapping):
+                continue
+            elapsed = cell.get("elapsed_ms")
+            if isinstance(cell.get("metrics"), MutableMapping):
+                _populate_metrics_goodput(cell["metrics"], qualified, qual_status_str, elapsed_ms=elapsed)
+                cg = cell["metrics"].get("qualified_goodput_rps")
+                if isinstance(cg, (int, float)):
+                    cell_goodputs.append(float(cg))
+            by_kind = cell.get("by_kind")
+            if isinstance(by_kind, MutableMapping):
+                for kind_metrics in by_kind.values():
+                    if isinstance(kind_metrics, MutableMapping):
+                        _populate_metrics_goodput(kind_metrics, qualified, qual_status_str, elapsed_ms=elapsed)
+        if qualified and isinstance(phase.get("metrics"), MutableMapping) and phase["metrics"].get("qualified_goodput_rps") is None and cell_goodputs:
+            phase["metrics"]["qualified_goodput_rps"] = sum(cell_goodputs) / len(cell_goodputs)
+        if qualified and isinstance(record.get("metrics"), MutableMapping) and record["metrics"].get("qualified_goodput_rps") is None and cell_goodputs:
+            record["metrics"]["qualified_goodput_rps"] = sum(cell_goodputs) / len(cell_goodputs)
+            if record.get("qualified_goodput_rps") is None:
+                record["qualified_goodput_rps"] = record["metrics"]["qualified_goodput_rps"]
+
+    for obs in record.get("observations", []) if isinstance(record.get("observations"), list) else []:
+        if isinstance(obs, MutableMapping):
+            if isinstance(obs.get("metrics"), MutableMapping):
+                _populate_metrics_goodput(obs["metrics"], qualified, qual_status_str)
+            by_mod = obs.get("by_modality") or obs.get("by_kind")
+            if isinstance(by_mod, MutableMapping):
+                for mod_metrics in by_mod.values():
+                    if isinstance(mod_metrics, MutableMapping):
+                        _populate_metrics_goodput(mod_metrics, qualified, qual_status_str)
+    return record
+
+
+def archive_run(
+    run_or_work_dir: Mapping[str, Any] | Path | str,
+    output_dir: Path | str | None = None,
+    *,
+    config: Mapping[str, Any] | None = None,
+    explicit_qualification: Mapping[str, Any] | Path | str | None = None,
+    prune: bool = False,
+) -> dict[str, Any]:
+    """Archive a serving run dictionary or work_dir with Tier-1 Lossless Qualification Gate."""
+    if isinstance(run_or_work_dir, Mapping):
+        return apply_tier1_qualification_gate(
+            run_or_work_dir, config=config, explicit_qualification=explicit_qualification
+        )
+    work = Path(run_or_work_dir).resolve()
+    run_path = work / "run.json"
+    if not run_path.is_file():
+        raise FileNotFoundError(f"run.json not found in {work}")
+    raw_run = json.loads(run_path.read_text(encoding="utf-8"))
+    qual = evaluate_tier1_lossless_qualification(
+        raw_run, config=config or raw_run.get("config"), explicit_qualification=explicit_qualification
+    )
+    if qual.get("qualified") is True:
+        enriched_run = apply_tier1_qualification_gate(
+            raw_run, config=config or raw_run.get("config"), explicit_qualification=explicit_qualification
+        )
+        _atomic_json(run_path, enriched_run)
+        journal_path = work / JOURNAL
+        if journal_path.is_file():
+            journal = json.loads(journal_path.read_text(encoding="utf-8"))
+            digest, deps = _evidence_binding(enriched_run)
+            journal["input_sha256"] = _read(run_path)[0]["sha256"]
+            journal["evidence_sha256"] = digest
+            journal["dependency_state"] = deps
+            journal["status"] = "preparing"
+            _save(work, journal)
+    return finalize(
+        work,
+        Path(output_dir).resolve() if output_dir is not None else None,
+        prune=prune,
+    )

@@ -33,10 +33,17 @@ from xfuser.core.distributed.fp8_comms import (
     fp8_comms_output_all_to_all,
     fp8_observe_output,
 )
-from xfuser.core.sparge_attention.head_balance import (
-    apply_head_balance,
-    revert_head_balance,
-)
+try:
+    from xfuser.core.sparge_attention.head_balance import (
+        apply_head_balance,
+        revert_head_balance,
+    )
+except ImportError:
+    def apply_head_balance(query, key, value, head_balance_layer, **kwargs):
+        return query, key, value, False, kwargs.get("attention_kwargs")
+
+    def revert_head_balance(out, attention_kwargs, head_balance_layer, ulysses_world_size):
+        return out
 
 # Sparge backends whose kernel cost can be load-balanced across Ulysses ranks.
 # These all build a block mask via _build_sparge_block_mask and write the

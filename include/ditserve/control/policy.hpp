@@ -48,6 +48,8 @@ struct PolicyTraits {
     bool tiered_memory = false;            // options.tiered_memory
     bool image_batching = false;           // batch waiting images when the profile prices batches
     bool pin_started = false;              // options.pin_started
+    bool allow_cfg_forms = false;          // options.allow_cfg_forms: allow CFG=2 forms for baseline planners
+    bool feasible_img_priority = true;     // options.feasible_img_priority: boost feasible images in DitServe EDF queue
 };
 
 // Throws std::invalid_argument for unknown or retired names. Accepts the

@@ -18,7 +18,7 @@ import random
 from formal_benchmark import shape_spec, split_pools
 from native_serving import partition_image_gpus
 from p2_benefit import expanded, finite, trace_hash
-from stage_gates import canonical_hash, read_json
+from p1_benchmark import canonical_hash, read_json
 
 
 SCHEMA = 'ditserve.p3-stream-plan.v1'

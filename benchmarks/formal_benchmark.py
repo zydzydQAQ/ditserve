@@ -11,8 +11,7 @@ import math
 import re
 from pathlib import Path
 
-from cluster_config import MODELS, allocated_uuids, make_workers
-from native_study import build_calibration_config
+from cluster_config import MODELS, allocated_uuids, build_calibration_config, make_workers
 from native_serving import (
     IN_FRAMEWORK_COMPARISON_DECLARATION,
     IN_FRAMEWORK_MECHANISM_DISPLAY,

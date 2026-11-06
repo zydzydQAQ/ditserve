@@ -116,8 +116,9 @@ def child(case):
                                 'asleep': usage_asleep, 'awake': allocator.get_current_usage()},
                 'usage_scope': 'Tracked reserved bytes, not physical resident bytes while asleep.'}
     if case == 'gfdit_imports':
-        import external_gfdit as gf
-        manifest = gf.verify_source(GF_ROOT, GF_MANIFEST, GF_MANIFEST_SHA256)
+        if runtime.sha(GF_MANIFEST) != GF_MANIFEST_SHA256:
+            raise ValueError('official source manifest SHA256 differs')
+        manifest = json.loads(GF_MANIFEST.read_text(encoding='utf-8'))
         sys.path.insert(0, str(GF_ROOT))
         names = [
             'vllm', 'vllm_omni.diffusion.runtime_v2.runner',

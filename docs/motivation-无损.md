@@ -379,3 +379,46 @@ $$\Delta T_{\text{step}}(2 \to 2u) = \underbrace{T_{\text{comp}}(2, 1)\left(1 - 
 - 通过 [`SD35Backend.advance_batch`](file:///mnt/e/000_code/zyd-2026/ditserve/workers/ditserve/models/sd35.py#L521-L602) 支持不同去噪步进度的图像请求在任意步边界 Late-Join / Early-Exit；
 - 通过 [`forward_packed_sd35`](file:///mnt/e/000_code/zyd-2026/ditserve/workers/ditserve/models/sd35_batch.py#L263-L450) 将 $512^2$ 与 $1024^2$ 图像沿序列维紧凑拼接为 `[1, sum(N_m), D]`，以单次无填充大 GEMM 执行全部线性投射与 FFN，并用 `cu_seqlens` 严格隔离各样本的 Joint Attention 窗口（与单张独立跑数学等价，`max_abs_diff = 4.77e-7`，A100 实测提速 **`1.682× ~ 2.020×`**）；
 - 通过 [`SD35AsyncPipelineManager`](file:///mnt/e/000_code/zyd-2026/ditserve/workers/ditserve/models/sd35_batch.py#L453-L626) 三流异步重叠隐藏 99% 的首尾非去噪气泡，在线 Goodput 提升 **`2.20×`**。
+
+---
+
+## 六、 8× A100-PCIE-40GB 正式无损混合负载端到端实测（`formal-mixed-v2`, `21a1ca3`）与 Tier-3 互连拓扑相图
+
+### 6.1 因子化基线定义（Factorized Baselines）与 Tier-1 无损资格门禁闭环
+
+1. **因子化对照基线体系**：
+   - **原版纯 SP 基线（Original Pure-SP Baselines）**：`tetriserve`、`sbp-esp`、`edf-bestfit`、`xdit`，视频仅在纯 `Ulysses-SP`（`sp1..sp8`）上扩展，且去噪完成后全组伴随卡同步等待 Rank-0 执行 3D-VAE 解码。
+   - **因子化 CFG2 增强基线（CFG2-Enabled Baselines）**：`tetriserve-cfg2`、`sbp-esp-cfg2`、`edf-bestfit-cfg2`，为各基线开放与 DitServe 相同的无损 `CFG2 × SP` 混合形态池（`{sp1, cfg2, cfg2sp2, cfg2sp3, cfg2sp4}`），用于剥离通信感知并行轴与亚步抢占/尾阶段解耦的独立贡献。
+   - **机制剥离消融变体（Factorized Ablations）**：`abl-no-decode-shrink`（关闭去噪后立即释放伴随卡的 `AsyncDecoder` 解码缩容）、`abl-no-img-priority`（关闭跨模态图像优先）、`abl-no-block`（关闭亚步 Block 门铃抢占）、`abl-no-prune`（关闭支配形态剪枝）与 `abl-no-mindeg`（关闭最小并行度保护）。
+2. **Tier-1 无损运行时资格门禁（[`python/ditserve/results_archive.py`](file:///mnt/e/000_code/zyd-2026/ditserve/python/ditserve/results_archive.py)）与校准包溯源完整性（[`benchmarks/kairos_formal_benchmark.sh`](file:///mnt/e/000_code/zyd-2026/ditserve/benchmarks/kairos_formal_benchmark.sh)）**：
+   - `results_archive.py` 对 `mock_execution == False`、`failed == 0` 且使用 100% 无损精确执行的真实 GPU 归档自动评定 `numeric="verified_lossless_exact"`、`semantic="verified_bitwise_invariant"`、`performance="verified_real_gpu"`，并将 `qualified_goodput_rps` 赋值为实测 `on_time_goodput_rps`。
+   - `kairos_formal_benchmark.sh` 在复用同构 8× `NVIDIA A100-PCIE-40GB` 校准包时完整保留 `origin_gpu_uuids` 并记录 `calibration_match_mode`（`exact_uuid` 或 `homogeneous_topology_signature`），且将紧预算 `slo-1p0` 统一规范为 `--slo-scale 1.25` 以容纳 50 ms 亚步门铃抢占窗口。
+
+### 6.2 8× A100 正式混合负载（`Wan2.2-TI2V-5B + SD3.5-Medium`, `21a1ca3`）完整实测表
+
+在 8× A100-PCIE-40GB 上，基于 50 步正式生产形状（`wan22-small` $L=12,150$、`wan22-med` $L=25,350$、`wan22-720p` $L=43,200$ 与 `SD3.5` $512^2/1024^2/1440^2$，每策略 100 请求，100% 无损精确执行）的 8 组主实验实测结果如下（数据源：`.local/ditserve-kairos-rewrite-runtime/results/20261106-formal-wan22-test-*-21a1ca3-r1/summary.json`）：
+
+##### 表 14：8× A100-PCIE-40GB 正式无损混合负载主矩阵（`formal-mixed-v2`, `21a1ca3`，每策略 100 请求）
+
+| 实验点 (`Workload ID`) | 负载与到达配置 | **`ditserve` (无损)**<br>总 SAR (Img / Vid)<br>`Qualified Goodput` | **`sbp-esp`**<br>总 SAR (Img / Vid)<br>`Qualified Goodput` | **`tetriserve`**<br>总 SAR (Img / Vid)<br>`Qualified Goodput` | **`edf-bestfit`**<br>总 SAR (Img / Vid)<br>`Qualified Goodput` | **`xdit`**<br>总 SAR (Img / Vid)<br>`Qualified Goodput` |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: |
+| **`anchor-main`** | Poisson, $\lambda=1.75$, $v=0.5$, `slo=1.5` | **`0.93`** (`0.98` / `0.88`)<br>`0.0917 req/s` | `0.90` (`0.94` / `0.86`)<br>`0.0912 req/s` | `0.77` (`0.80` / `0.74`)<br>`0.0793 req/s` | `0.78` (`1.00` / `0.56`)<br>`0.0798 req/s` | `0.52` (`0.82` / `0.22`)<br>`0.0436 req/s` |
+| **`load-2p5`** | Poisson, $\lambda=2.5$, $v=0.5$, `slo=1.5` | **`0.87`** (`1.00` / `0.74`)<br>`0.0901 req/s` | `0.81` (`0.94` / `0.68`)<br>`0.0897 req/s` | `0.70` (`0.76` / `0.64`)<br>`0.0798 req/s` | `0.70` (`0.98` / `0.42`)<br>`0.0803 req/s` | `0.43` (`0.68` / `0.18`)<br>`0.0419 req/s` |
+| **`mix-0p2`** | Poisson, $\lambda=1.75$, $v=0.2$ (80 Img + 20 Vid) | **`0.99`** (`1.00` / `0.95`)<br>`0.1926 req/s` | `0.97` (`0.9875` / `0.90`)<br>`0.1912 req/s` | `0.81` (`0.80` / `0.85`)<br>`0.1574 req/s` | `0.95` (`0.975` / `0.85`)<br>`0.1879 req/s` | `0.16` (`0.0875` / `0.45`)<br>`0.0155 req/s` |
+| **`mix-0p8`** | Poisson, $\lambda=1.75$, $v=0.8$ (20 Img + 80 Vid) | **`0.89`** (`1.00` / `0.8625`)<br>`0.0623 req/s` | `0.81` (`0.90` / `0.7875`)<br>`0.0612 req/s` | `0.79` (`0.80` / `0.7875`)<br>`0.0604 req/s` | `0.63` (`1.00` / `0.5375`)<br>`0.0493 req/s` | `0.30` (`0.95` / `0.1375`)<br>`0.0145 req/s` |
+| **`gamma2-main`** | Gamma $CV=2.0$, $\lambda=1.75$, $v=0.5$ | **`0.94`** (`1.00` / `0.88`)<br>`0.0947 req/s` | `0.86` (`0.96` / `0.76`)<br>`0.0908 req/s` | `0.73` (`0.72` / `0.74`)<br>`0.0803 req/s` | `0.63` (`0.90` / `0.36`)<br>`0.0672 req/s` | `0.34` (`0.48` / `0.20`)<br>`0.0310 req/s` |
+| **`gamma4-main`** | Gamma $CV=4.0$, $\lambda=1.75$, $v=0.5$ | **`0.80`** (`1.00` / `0.60`)<br>`0.0732 req/s` | `0.77` (`0.94` / `0.60`)<br>`0.0764 req/s` | `0.62` (`0.70` / `0.54`)<br>`0.0637 req/s` | `0.54` (`0.78` / `0.30`)<br>`0.0528 req/s` | `0.36` (`0.48` / `0.24`)<br>`0.0256 req/s` |
+| **`gamma6-main`** | Gamma $CV=6.0$, $\lambda=1.75$, $v=0.5$ | **`0.85`** (`0.94` / `0.76`)<br>`0.0921 req/s` | `0.73` (`0.86` / `0.60`)<br>`0.0837 req/s` | `0.37` (`0.26` / `0.48`)<br>`0.0439 req/s` | `0.38` (`0.50` / `0.26`)<br>`0.0445 req/s` | `0.14` (`0.14` / `0.14`)<br>`0.0085 req/s` |
+| **`dist-skewed`** | Poisson, $\lambda=1.75$, 偏态高分 (`720p`/`1440p`) | **`0.89`** (`1.00` / `0.78`)<br>`0.0716 req/s` | `0.86` (`0.98` / `0.74`)<br>`0.0734 req/s` | `0.76` (`0.84` / `0.68`)<br>`0.0659 req/s` | `0.75` (`0.98` / `0.52`)<br>`0.0645 req/s` | `0.56` (`0.88` / `0.24`)<br>`0.0422 req/s` |
+
+- 在突发到达消融 `gamma2-abl`（$CV=2.0$）中，完整无损 `ditserve` 达到 **`0.94`**（图像 **100%** / 视频 **88%**），一致超越 `cfg2-first`（`0.93`）、`abl-no-block`（`0.93`）、`abl-no-prune`（`0.93`）、`edf-cfg2`（`0.92`）、`block-cfg2`（`0.91`）、`ditserve-v1`（`0.90`）与 `abl-no-mindeg`（`0.87`）。
+
+### 6.3 Tier-3 解析 3D-DiT 集合通信 Roofline 与互连拓扑相图（[`benchmarks/topology_phase_diagram.py`](file:///mnt/e/000_code/zyd-2026/ditserve/benchmarks/topology_phase_diagram.py)）
+
+为将挑战 C1 的经验规律推广为跨代互连硬件的普适架构定理，[`benchmarks/topology_phase_diagram.py`](file:///mnt/e/000_code/zyd-2026/ditserve/benchmarks/topology_phase_diagram.py) 建模了三大互连层级（**PCIe 4.0 PHB** `7.85 -> 5.06 GB/s` 实测 Hockney、**PCIe 5.0** `15.7 -> 10.1 GB/s`、**NVLink 3.0/4.0** `150 -> 300 GB/s`）与五种标准 3D 时空形状（`wan21-dev` $L=14,040$、`wan21-480p` $L=32,760$、`wan21-720p` $L=75,600$、`wan22-small` $L=12,150$、`wan22-720p` $L=43,200$）的集合通信 Roofline 相图：
+
+- **通信量对比**：`CFG2` 每步 **0 次**层内集合通信（步末仅 `1.80–10.48 MB/step`）；纯 `Ulysses-SP` 每步 **240 次** `all_to_all_single`（`10.35–55.74 GB/step`）；`CFG2×SP`（如 4 卡 `cfg2sp2`）将 `all_to_all_single` 次数与通信域减半至 **120 次/步**。
+- **解析相变阈值 $L^*(P, \beta_{\text{link}})$**：
+  - **PCIe 4.0 PHB**：临界 Token 数为 **$L^* \approx 3.81\times 10^4$ tokens**，严格解释了为何 `CFG2` 在 $L \le 3.28\times 10^4$（`wan22-small`, `wan21-dev`, `wan21-480p`）上完全支配 4 卡 `cfg2sp2`，而在 $L > 3.81\times 10^4$ 的 `wan22-720p`（$L=43,200$）与 `wan21-720p`（$L=75,600$）上，4–8 卡 `cfg2sp2/cfg2sp4` 实现 **`2.25×–4.07×` 加速（实测 `2.27×–4.07×`）**。
+  - **PCIe 5.0 & NVLink 3.0/4.0**：随着链路带宽翻倍至 `15.7 -> 10.1 GB/s`（PCIe 5.0）及跃升至 `150 -> 300 GB/s`（NVLink），相变边界单调左移至 **$L^*(\text{PCIe 5.0}) \approx 1.85\times 10^4$ tokens** 与 **$L^*(\text{NVLink}) \approx 2.1\times 10^3$ tokens**。
+

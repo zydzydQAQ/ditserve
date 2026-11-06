@@ -581,7 +581,8 @@ class WanStepWorker:
         """Release retained CPU tensors after encoder shutdown, including failures."""
         cache = getattr(self, "_negative_prompt_cache", None)
         pool = getattr(self, "_encoder_pool", None)
-        with self._encoder_lock:
+        lock = getattr(self, "_encoder_lock", None)
+        with (lock if lock is not None else contextlib.nullcontext()):
             if cache is not None:
                 cache.clear()
             if pool is not None:

@@ -18,14 +18,12 @@ import argparse
 import copy
 import hashlib
 import json
-from native_config_identity import config_identity, match_native_config
 import math
 from pathlib import Path, PurePosixPath
 
 import formal_benchmark as formal
 from native_serving import FORM_DEGREES, build_serving_config
-from p1_benchmark import validate_plan
-from stage_gates import source_file
+from p1_benchmark import config_identity, match_native_config, source_file, validate_plan
 from ditserve.evaluation.common import canonical_hash, read_json, verify_seal
 from ditserve.evaluation.workloads import build_trace, validate_trace
 

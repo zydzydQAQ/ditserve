@@ -32,9 +32,14 @@ def form_of(policy):
     return 1, int(name.removeprefix("sp"))
 
 
-def tokens_and_dim(model, spec):
-    transformer = model["transformer_config"]
-    vae = model["vae_config"]
+def tokens_and_dim(model_or_transformer, vae_or_spec, spec=None):
+    if spec is None:
+        transformer = model_or_transformer["transformer_config"]
+        vae = model_or_transformer["vae_config"]
+        spec = vae_or_spec
+    else:
+        transformer = model_or_transformer
+        vae = vae_or_spec
     patch_t, patch_h, patch_w = transformer["patch_size"]
     temporal = vae.get("scale_factor_temporal", 4)
     spatial = vae.get("scale_factor_spatial", 8)
@@ -114,9 +119,14 @@ def extract_measurements(record):
     return videos, images
 
 
-def architecture(model, spec):
-    tokens, dim, layers, out_channels = tokens_and_dim(model, spec)
-    patch_volume = math.prod(model["transformer_config"]["patch_size"])
+def architecture(model_or_transformer, vae_or_spec, spec=None):
+    if spec is None:
+        transformer = model_or_transformer["transformer_config"]
+        tokens, dim, layers, out_channels = tokens_and_dim(model_or_transformer, vae_or_spec)
+    else:
+        transformer = model_or_transformer
+        tokens, dim, layers, out_channels = tokens_and_dim(model_or_transformer, vae_or_spec, spec)
+    patch_volume = math.prod(transformer["patch_size"])
     return {
         "tokens": tokens,
         "dim": dim,

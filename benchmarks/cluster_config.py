@@ -541,6 +541,116 @@ def build_config(
     }
 
 
+CALIBRATION_POLICIES = [
+    "static_sp1", "static_cfg2", "static_sp2", "static_cfg2sp2", "static_sp3",
+    "static_cfg2sp3", "static_sp4", "static_cfg2sp4", "static_sp6", "static_sp8",
+]
+FIT_POLICIES = ["static_sp1", "static_cfg2", "static_sp2", "static_cfg2sp2", "static_sp4"]
+HELD_OUT_POLICIES = [name for name in CALIBRATION_POLICIES if name not in FIT_POLICIES]
+
+
+def build_calibration_config(model, gpu_uuids, *, image_batch_calibration=1,
+                             video_spec_override=None, image_spec_override=None):
+    if not isinstance(image_batch_calibration, int) or not 1 <= image_batch_calibration <= 8:
+        raise ValueError("image_batch_calibration must be in [1, 8]")
+    if model == "wan21":
+        frames = 33
+    elif model == "wan22":
+        frames = 49
+    else:
+        raise ValueError("unknown model: " + model)
+    from native_serving import FORM_DEGREES
+    policies = [name for name in CALIBRATION_POLICIES
+                if (model != "wan21" or name != "static_sp8")
+                and FORM_DEGREES[name.removeprefix("static_")] <= len(gpu_uuids)]
+    held_out = [name for name in policies if name not in FIT_POLICIES]
+    steps, image_steps = 20, 28
+    video_spec = {
+        "steps": steps, "height": 480 if model == "wan21" else 512,
+        "width": 832 if model == "wan21" else 896, "frames": frames,
+        "guidance_scale": 5.0, "cache": False, "threshold": 0.0,
+        "max_continuous": 1, "negative_prompt": "",
+        "prompt": "A red ceramic kettle on a wooden table.", "seed": 201,
+    }
+    image_spec = {
+        "height": 1024, "width": 1024, "steps": image_steps, "frames": 1,
+        "batch_size": 1, "guidance_scale": 4.5, "negative_prompt": "blurry, low quality",
+        "max_sequence_length": 256, "prompt": "A lighthouse at dusk.", "seed": 202,
+    }
+    if video_spec_override is not None:
+        video_spec.update(copy.deepcopy(video_spec_override))
+    if image_spec_override is not None:
+        image_spec.update(copy.deepcopy(image_spec_override))
+    frames, steps, image_steps = video_spec["frames"], video_spec["steps"], image_spec["steps"]
+    selected, workers, slots, warmup = make_workers(
+        model, gpu_uuids, video_spec=video_spec, image_spec=image_spec,
+        memory_strategy=None, continuous_batch=0,
+    )
+    for item in warmup:
+        item["spec"]["steps"] = 1
+    gpus = len(gpu_uuids)
+    video_row = {
+        "request_id": "video-calibration", "kind": "video", "class": selected["class"],
+        "arrival_ms": 0, "deadline_ms": 3600000, "service_ms": 60000,
+        "spec": video_spec, "output_mode": "check",
+    }
+    image_row = {
+        "request_id": "image-calibration", "kind": "image", "class": "sd35-preflight",
+        "arrival_ms": 1000, "deadline_ms": 3600000, "service_ms": 10000,
+        "spec": image_spec, "output_mode": "check",
+    }
+    config = {
+        "schema": "ditserve.study.v1",
+        "experiment": f"kairos-{model}-native-calibration",
+        "note": "Native per-form calibration. Synthetic fields are scheduling placeholders, not measured results.",
+        "workers": workers,
+        "budget": {
+            "limit_gpu_seconds": (len(policies) + image_batch_calibration - 1) * gpus * 7200,
+            "watchdog_seconds": (len(policies) + image_batch_calibration - 1) * 7200,
+            "repair_reserve_gpu_seconds": 0, "carry": "none",
+        },
+        "phases": [{
+            "id": "cluster", "kind": "cluster", "policy": "static_sp1",
+            "profile": {
+                "provenance": "synthetic", "sp_efficiency": 1.0, "resize_ms": 100.0,
+                "quantum_overhead_ms": 0.0, "block_overhead_ms": 0.0,
+                "classes": {
+                    selected["class"]: {
+                        "kind": "video", "blocks_per_step": 60, "prepare_ms": 100.0,
+                        "encode_ms": 1000.0, "step_compute_ms": 1000.0, "comm_mb_per_step": 1000.0,
+                        "collectives_per_step": 240, "cfg_exchange_mb": 4.0, "finish_ms": 1000.0,
+                        "steps": steps, "decode_chunks": (frames - 1) // 4 + 1,
+                    },
+                    "sd35-preflight": {"kind": "image", "service_ms": 1000.0},
+                },
+                "links": {str(degree): {"gbps": 3.0, "latency_ms": 0.1} for degree in (2, 3, 4, 6, 8)},
+            },
+            "occupancy_backend": "nvml", "occupancy_thread": True,
+            "video_worker_options": {"negative_prompt_cache_entries": 2, "negative_prompt_cache_bytes": 67108864},
+            "gpus": slots, "text_prefetch": 1, "output_mode": "check",
+            "warmup": warmup, "workload": [video_row, image_row],
+            "options": {"sp_transport": "export", "async_rank0_decode": False, "image_batch": 1, "tiered_memory": False},
+            "matrix": {"/policy": policies}, "artifact_dependencies": [],
+        }],
+        "benchmark": {
+            "native_calibration": True, "performance_qualified": False, "quality_qualified": False,
+            "models": [selected["name"], "SD3.5-Medium"], "fit_policies": FIT_POLICIES,
+            "held_out_policies": held_out, "shape": {"frames": frames, "steps": steps, "image_steps": image_steps},
+        },
+    }
+    for size in range(2, image_batch_calibration + 1):
+        phase = copy.deepcopy(config["phases"][0])
+        phase["id"] = f"image-batch-{size}"
+        phase.pop("matrix")
+        phase["options"]["image_batch"] = size
+        phase["warmup"] = [item for item in phase["warmup"] if item["worker"].startswith("image")]
+        phase["workload"] = [dict(image_row, request_id=f"image-batch-{size}-{index}", arrival_ms=0,
+                                  spec=dict(image_spec, seed=202 + index)) for index in range(size)]
+        config["phases"].append(phase)
+    config["benchmark"]["image_batch_calibration"] = image_batch_calibration
+    return config
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", choices=sorted(MODELS), required=True)

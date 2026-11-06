@@ -10,8 +10,7 @@ import numpy as np
 from scipy.ndimage import gaussian_filter
 
 from ditserve.evaluation.quality import evaluate_quality
-from native_exact import validate_pair_identity, validate_run
-from native_metrics import distribution, percentile
+from native_exact import distribution, percentile, validate_pair_identity, validate_run
 
 
 def sha256(path):

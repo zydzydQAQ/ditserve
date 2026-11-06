@@ -9,13 +9,19 @@ from typing import Optional
 
 import torch
 
-from xfuser.core.sparge_attention.head_balance import COST_SINK_KEY
-from xfuser.core.sparge_attention.sparge import (
-    compute_sparge_block_mask,
-    mask_padded_kv_blocks,
-    restore_sparge_output,
-    setup_sparge,
-)
+COST_SINK_KEY: str = "_hb_cost_sink"
+try:
+    from xfuser.core.sparge_attention.sparge import (
+        compute_sparge_block_mask,
+        mask_padded_kv_blocks,
+        restore_sparge_output,
+        setup_sparge,
+    )
+except ImportError:
+    compute_sparge_block_mask = None
+    mask_padded_kv_blocks = None
+    restore_sparge_output = None
+    setup_sparge = None
 
 
 @dataclass(frozen=True)

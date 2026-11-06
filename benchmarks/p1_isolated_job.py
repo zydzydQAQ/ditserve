@@ -21,8 +21,7 @@ import sys
 import formal_benchmark as formal
 import p1_isolated_batch as isolated
 from cluster_config import allocated_uuids
-from p1_benchmark import validate_plan
-from stage_gates import read_json, source_file, verify_receipt
+from p1_benchmark import read_json, source_file, validate_plan, verify_receipt
 from ditserve.evaluation.common import canonical_hash, seal, verify_seal
 
 SCHEMA = 'ditserve.p1-isolated-job.v1'

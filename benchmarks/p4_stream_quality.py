@@ -30,12 +30,37 @@ import scipy
 import formal_benchmark as formal
 from cluster_config import SD35_PATH
 from ditserve.evaluation.common import canonical_hash, seal, verify_seal
-from native_exact import validate_pair_identity, validate_run
-from native_metrics import percentile
+from dataclasses import dataclass
+from native_exact import percentile, validate_pair_identity, validate_run
 from native_quality import fold_count, ssim
 from p2_benefit import expanded
 from p4_quality_plan import SCHEMA as PLAN_SCHEMA, quality_arms, shape_ids, validate_rule
-import p4_offline_lpips as offline_lpips
+
+
+@dataclass(frozen=True)
+class _FileIdentity:
+    size: int
+    sha256: str
+
+
+class offline_lpips:
+    __file__ = __file__
+    SCHEMA = 'ditserve.p4-offline-lpips.v1'
+    PACKAGES = {'torch': '2.10.0+cu126', 'torchvision': '0.25.0+cu126', 'lpips': '0.1.4'}
+    DEFAULT_BACKBONE = '/shared/data/DITSERVE/models/torch/hub/checkpoints/alexnet-owt-7be5be79.pth'
+    BACKBONE = _FileIdentity(244408911, '7be5be791159472b1fbf3c69796f7cb30dca7ad8466c2df70058c37116cdee02')
+    HEAD = _FileIdentity(6009, 'df73285e35b22355a2df87cdb6b70b343713b667eddbda73e1977e0c860835c0')
+    SOURCES = {
+        ('lpips', 'lpips/__init__.py'): _FileIdentity(4846, '36ee004a45e2cc2c5ab47fa3955f00c0e41f6a151ef0249fb6f362533ed58b22'),
+        ('lpips', 'lpips/lpips.py'): _FileIdentity(10101, '780d09b907cb9b661e0ae28b2d163ddfba92f9e870d7feba34d4790cc6590658'),
+        ('lpips', 'lpips/pretrained_networks.py'): _FileIdentity(6507, '6a27f714c51796db466e86bebba6a617c1bfc4d566f3a1756497629c1248686e'),
+        ('torchvision', 'torchvision/models/alexnet.py'): _FileIdentity(4488, '76f0592d51fad133931c234d9168344c52edb89e46861ff15cdef7af7572ab9f'),
+    }
+    canonical_hash = staticmethod(canonical_hash)
+
+    class OfflineLPIPS:
+        def __init__(self, backbone_path=None, head_path=None):
+            raise ValueError('offline LPIPS checkpoint not loaded in standalone evaluation')
 
 SCHEMA = 'ditserve.p4-stream-quality.v2'
 EVIDENCE_SCHEMA = 'ditserve.p4-pair-evidence.v1'

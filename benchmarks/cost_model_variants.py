@@ -45,73 +45,18 @@ import math
 import random
 from pathlib import Path
 
+from fit_native_profile import (
+    architecture,
+    extract_measurements,
+    form_of,
+    mean,
+    median,
+    predict as baseline_predict,
+    tokens_and_dim,
+)
+
 SCHEMA = "ditserve.cost-model-variants.v1"
 FIT_POLICIES = ("static_sp1", "static_cfg2", "static_sp2", "static_cfg2sp2", "static_sp4")
-
-
-# ---------------------------------------------------------------------------
-# Helpers copied from fit_native_profile.py (behaviour must stay identical).
-# ---------------------------------------------------------------------------
-
-def mean(values):
-    values = list(values)
-    return math.fsum(values) / len(values) if values else 0.0
-
-
-def median(values):
-    values = sorted(values)
-    if not values:
-        raise ValueError("median requires at least one sample")
-    middle = len(values) // 2
-    return values[middle] if len(values) % 2 else (values[middle - 1] + values[middle]) / 2
-
-
-def form_of(policy):
-    name = policy.removeprefix("static_")
-    if name.startswith("cfg2"):
-        rest = name[4:]
-        return 2, 1 if rest == "" else int(rest.removeprefix("sp"))
-    return 1, int(name.removeprefix("sp"))
-
-
-def tokens_and_dim(transformer, vae, spec):
-    patch_t, patch_h, patch_w = transformer["patch_size"]
-    temporal = vae.get("scale_factor_temporal", 4)
-    spatial = vae.get("scale_factor_spatial", 8)
-    frames = (spec["frames"] - 1) // temporal + 1
-    tokens = ((frames // patch_t) * (spec["height"] // (spatial * patch_h))
-              * (spec["width"] // (spatial * patch_w)))
-    dim = transformer["num_attention_heads"] * transformer["attention_head_dim"]
-    return tokens, dim, transformer["num_layers"], transformer["out_channels"]
-
-
-def architecture(transformer, vae, spec):
-    tokens, dim, layers, out_channels = tokens_and_dim(transformer, vae, spec)
-    patch_volume = math.prod(transformer["patch_size"])
-    return {
-        "tokens": tokens,
-        "dim": dim,
-        "layers": layers,
-        "comm_mb_per_step": 4.0 * tokens * dim * 2.0 * layers * 2.0 / 1e6,
-        "collectives_per_step": layers * 8,
-        "cfg_exchange_mb": tokens * patch_volume * out_channels * 2.0 / 1e6,
-    }
-
-
-def baseline_predict(step_compute, arch, cfg, sp, bandwidth_inf, gamma, latency):
-    """Verbatim copy of fit_native_profile.predict."""
-    compute = step_compute / (cfg * sp)
-    if sp == 1:
-        communication = 0.0
-    else:
-        bandwidth = bandwidth_inf * sp / (sp + gamma)
-        communication = (arch["comm_mb_per_step"] / cfg) * (sp - 1) / (sp * sp) / bandwidth
-        communication += (arch["collectives_per_step"] / cfg) * latency
-    exchange = 0.0
-    if cfg == 2:
-        bandwidth2 = bandwidth_inf * 2 / (2 + gamma)
-        exchange = arch["cfg_exchange_mb"] / bandwidth2 + latency
-    return compute + communication + exchange
 
 
 GRID_BANDWIDTH = tuple(0.25 * index for index in range(1, 201))

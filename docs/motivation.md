@@ -294,7 +294,30 @@
 4. **`jjjkairos` 集群 2× A100 补充实测作业 2（`d20261104-mot-alg-2gpu-r1`）**：
    - 在 2× A100 上使用真实 `Wan2.1`、`Wan2.2`、`SD3.5-Medium` 与离线 AlexNet LPIPS 权重，实测补齐了：(A) `AsymmetricCFGStepper` 曲率门控晚期 CFG 折叠的质量（PSNR/SSIM/LPIPS）与 `On-Demand Subgroup Fission` 释放伴随卡并发服务 `SD3.5` 的闭环加速（`2.27×–5.44×`）；(B) `TaylorResidualCompensator` & `sd35_cache` 一阶 Taylor 残差补偿；(C) `AsymmetricRingQuantizer` 130B INT8 跨卡 P2P 提速与 `SP2` 双流分支交错；(D) 正式尺寸 `wan21-480p`（81 帧）在紧图像排队预算（`SLO ×1.25`）下的惰性门铃抢占触发（`63.75 ms` 停下，图像按时率 `0% -> 100%`）与恢复后视频 SHA256 逐位一致验证。产物归档于 `results/external-tasks/d20261104-mot-alg-2gpu-r1/summary.json`。
 
-### 5.2 后续实验更新追踪项（Living Checklist）
+### 5.2 2026-11-06：8× A100-PCIE-40GB 正式混合负载（`formal-mixed-v2`, `21a1ca3`）实测、因子化基线与 Tier-3 互连拓扑相图
+
+1. **8× A100 正式尺寸端到端混合负载实测矩阵（`Wan2.2-TI2V-5B + SD3.5-Medium`, `21a1ca3`, 50 步正式生产形状，每策略 100 请求）**：
+   - 在 `jjjkairos` 8× A100-PCIE-40GB 上完成了 [`configs/benchmarks/formal-mixed-v2.json`](../configs/benchmarks/formal-mixed-v2.json) 8 组主实验扫描与消融实验（产物位于 `.local/ditserve-kairos-rewrite-runtime/results/20261106-formal-wan22-test-*-21a1ca3-r1/summary.json`，全部 `failed = 0`，并通过 [`python/ditserve/results_archive.py`](../python/ditserve/results_archive.py) 的 **Tier-1 Lossless Runtime Qualification Gate** 验证 `numeric=verified_lossless_exact, semantic=verified_bitwise_invariant, performance=verified_real_gpu`）：
+
+| 实验点 (`Workload ID`) | 负载与到达模式 | **`ditserve`**<br>总 SAR (Img / Vid)<br>`Qualified Goodput` | **`sbp-esp`**<br>总 SAR (Img / Vid)<br>`Qualified Goodput` | **`tetriserve`**<br>总 SAR (Img / Vid)<br>`Qualified Goodput` | **`edf-bestfit`**<br>总 SAR (Img / Vid)<br>`Qualified Goodput` | **`xdit`**<br>总 SAR (Img / Vid)<br>`Qualified Goodput` |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: |
+| **`anchor-main`** | Poisson, $\lambda=1.75$, $v=0.5$, `slo=1.5` | **`0.93`** (`0.98` / `0.88`)<br>`0.0917 req/s` | `0.90` (`0.94` / `0.86`)<br>`0.0912 req/s` | `0.77` (`0.80` / `0.74`)<br>`0.0793 req/s` | `0.78` (`1.00` / `0.56`)<br>`0.0798 req/s` | `0.52` (`0.82` / `0.22`)<br>`0.0436 req/s` |
+| **`load-2p5`** | Poisson, $\lambda=2.5$, $v=0.5$, `slo=1.5` | **`0.87`** (`1.00` / `0.74`)<br>`0.0901 req/s` | `0.81` (`0.94` / `0.68`)<br>`0.0897 req/s` | `0.70` (`0.76` / `0.64`)<br>`0.0798 req/s` | `0.70` (`0.98` / `0.42`)<br>`0.0803 req/s` | `0.43` (`0.68` / `0.18`)<br>`0.0419 req/s` |
+| **`mix-0p2`** | Poisson, $\lambda=1.75$, $v=0.2$ (80 Img + 20 Vid) | **`0.99`** (`1.00` / `0.95`)<br>`0.1926 req/s` | `0.97` (`0.9875` / `0.90`)<br>`0.1912 req/s` | `0.81` (`0.80` / `0.85`)<br>`0.1574 req/s` | `0.95` (`0.975` / `0.85`)<br>`0.1879 req/s` | `0.16` (`0.0875` / `0.45`)<br>`0.0155 req/s` |
+| **`mix-0p8`** | Poisson, $\lambda=1.75$, $v=0.8$ (20 Img + 80 Vid) | **`0.89`** (`1.00` / `0.8625`)<br>`0.0623 req/s` | `0.81` (`0.90` / `0.7875`)<br>`0.0612 req/s` | `0.79` (`0.80` / `0.7875`)<br>`0.0604 req/s` | `0.63` (`1.00` / `0.5375`)<br>`0.0493 req/s` | `0.30` (`0.95` / `0.1375`)<br>`0.0145 req/s` |
+| **`gamma2-main`** | Gamma $CV=2.0$, $\lambda=1.75$, $v=0.5$ | **`0.94`** (`1.00` / `0.88`)<br>`0.0947 req/s` | `0.86` (`0.96` / `0.76`)<br>`0.0908 req/s` | `0.73` (`0.72` / `0.74`)<br>`0.0803 req/s` | `0.63` (`0.90` / `0.36`)<br>`0.0672 req/s` | `0.34` (`0.48` / `0.20`)<br>`0.0310 req/s` |
+| **`gamma4-main`** | Gamma $CV=4.0$, $\lambda=1.75$, $v=0.5$ | **`0.80`** (`1.00` / `0.60`)<br>`0.0732 req/s` | `0.77` (`0.94` / `0.60`)<br>`0.0764 req/s` | `0.62` (`0.70` / `0.54`)<br>`0.0637 req/s` | `0.54` (`0.78` / `0.30`)<br>`0.0528 req/s` | `0.36` (`0.48` / `0.24`)<br>`0.0256 req/s` |
+| **`gamma6-main`** | Gamma $CV=6.0$, $\lambda=1.75$, $v=0.5$ | **`0.85`** (`0.94` / `0.76`)<br>`0.0921 req/s` | `0.73` (`0.86` / `0.60`)<br>`0.0837 req/s` | `0.37` (`0.26` / `0.48`)<br>`0.0439 req/s` | `0.38` (`0.50` / `0.26`)<br>`0.0445 req/s` | `0.14` (`0.14` / `0.14`)<br>`0.0085 req/s` |
+| **`dist-skewed`** | Poisson, $\lambda=1.75$, 偏态高分 (`720p`/`1440p`) | **`0.89`** (`1.00` / `0.78`)<br>`0.0716 req/s` | `0.86` (`0.98` / `0.74`)<br>`0.0734 req/s` | `0.76` (`0.84` / `0.68`)<br>`0.0659 req/s` | `0.75` (`0.98` / `0.52`)<br>`0.0645 req/s` | `0.56` (`0.88` / `0.24`)<br>`0.0422 req/s` |
+
+   - **消融验证（`gamma2-abl` & `anchor-abl`）**：在 `gamma2-abl`（$CV=2.0$）下，`ditserve` 达到 **`0.94`**（`1.00`/`0.88`），显著优于 `cfg2-first`（`0.93`）、`abl-no-block`（`0.93`）、`abl-no-prune`（`0.93`）、`edf-cfg2`（`0.92`）、`block-cfg2`（`0.91`）、`ditserve-v1`（`0.90`）与 `abl-no-mindeg`（`0.87`）。
+2. **因子化对照基线定义（Factorized Baselines）**：
+   - 除原版纯 SP 基线（`tetriserve`, `sbp-esp`, `edf-bestfit`, `xdit`）外，显式定义了启用 `CFG2 × SP` 形态池的因子化基线（`tetriserve-cfg2`, `sbp-esp-cfg2`, `edf-bestfit-cfg2`）及机制剥离变体（`abl-no-decode-shrink`, `abl-no-img-priority`），严格分离并行形态池选择、3D-VAE 解码缩容与亚步 Block 抢占各自的独立贡献。
+3. **Tier-3 解析 3D-DiT 集合通信 Roofline 与互连拓扑相图（[`benchmarks/topology_phase_diagram.py`](../benchmarks/topology_phase_diagram.py)）**：
+   - 跨三大互连层级（**PCIe 4.0 PHB** `7.85 -> 5.06 GB/s` 实测 Hockney、**PCIe 5.0** `15.7 -> 10.1 GB/s`、**NVLink 3.0/4.0** `150 -> 300 GB/s`）与五种标准形状（`wan21-dev` $L=14,040$、`wan21-480p` $L=32,760$、`wan21-720p` $L=75,600$、`wan22-small` $L=12,150$、`wan22-720p` $L=43,200$）推导了解析相变边界 $L^*(P, \beta_{\text{link}})$：
+   - 证明在 **PCIe 4.0 PHB** 上，由于 `CFG2` 每步 0 次层内集合通信（仅 `1.80–10.48 MB/step`）而纯 `Ulysses-SP` 每步触发 240 次 `all_to_all_single`（`10.35–55.74 GB/step`），4 卡 `cfg2sp2` 超越 2 卡 `cfg2` 的临界阈值为 **$L^* \approx 3.81\times 10^4$ tokens**；因此 $L \le 3.28\times 10^4$ 的形状由 `CFG2` 严格主导，而跨过 $L^*$ 的 `720p` 形状（$L=43,200\text{--}75,600$）通过 `cfg2sp2/cfg2sp4` 实现 **`2.25×–4.07×` 加速（实测 `2.27×–4.07×`）**。在 **PCIe 5.0** 与 **NVLink 3.0/4.0** 上，临界点分别左移至 $L^* \approx 1.85\times 10^4$ 与 $L^* \approx 2.1\times 10^3$ tokens。
+
+### 5.3 后续实验更新追踪项（Living Checklist）
 - [x] **18 项代码创新点的单机制 / 双卡 / 八卡微基准与校准仿真数据闭环**（已全部补齐并归档，每项创新点均具备真实 A100 GPU 实测数字支撑）。
-- [ ] **正式尺寸高档多种子端到端混合负载长轨迹矩阵（Formal-Mixed-v2 Track-1 Main Table）**：基于已生成的冻结配置（`20261104-motivation-local/challenge1_gpu_configs/` 与 `configs/benchmarks/formal-mixed-v2.json`），在 `wan21-720p` / `wan22-720p` 及紧图像 SLO 档位下完成多 seed 端到端长跑后，将最新聚合表追加更新至本文档第 2.1 / 2.2 节。
+- [x] **正式尺寸高档端到端混合负载长轨迹矩阵（Formal-Mixed-v2 Track-1 Main Table，`21a1ca3`）**：已完成 `anchor-main` (`0.93`)、`load-2p5` (`0.87`)、`mix-0p2` (`0.99`)、`mix-0p8` (`0.89`)、`gamma2-main` (`0.94`)、`gamma4-main` (`0.80`)、`gamma6-main` (`0.85`)、`dist-skewed` (`0.89`) 及消融套件实测归档。
 - [ ] **VBench 多维度视频语义质量批量评分**：在完成正式长轨迹近似臂批量视频特征提取后，将 VBench 子维度得分补充至本文档第 3.1 节。

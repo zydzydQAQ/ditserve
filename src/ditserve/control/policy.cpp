@@ -81,6 +81,25 @@ const std::map<std::string, PolicyTraits>& named() {
             t.demote_late = false;
             add(t);
         }
+        {
+            auto t = row("tetriserve-cfg2", "TetriServe-CFG2", "baseline",
+                "TetriServe with CFG=2 parallel forms unlocked alongside SP forms");
+            t.elastic = t.rounds = t.deadline_dp = t.allow_cfg_forms = true;
+            add(t);
+        }
+        {
+            auto t = row("sbp-esp-cfg2", "SBP-ESP-CFG2", "baseline",
+                "SBP-ESP with CFG=2 parallel forms unlocked alongside SP forms");
+            t.elastic = t.deadline_dp = t.image_batching = t.allow_cfg_forms = true;
+            add(t);
+        }
+        {
+            auto t = row("edf-bestfit-cfg2", "EDF-BF-CFG2", "baseline",
+                "EDF-BF with CFG=2 parallel forms unlocked alongside SP forms");
+            t.elastic = t.best_fit = t.allow_cfg_forms = true;
+            t.demote_late = false;
+            add(t);
+        }
 
         // ---- heuristics ----
         {
@@ -125,6 +144,18 @@ const std::map<std::string, PolicyTraits>& named() {
             auto t = ditserve_row("abl-first-fit", "DitServe w/o pair-fit placement", "ablation",
                 "DitServe placing images on the lowest free GPU");
             t.image_placement = "first";
+            add(t);
+        }
+        {
+            auto t = ditserve_row("abl-no-decode-shrink", "DitServe w/o decode shrink", "ablation",
+                "DitServe holding the full video group during VAE decode");
+            t.hold_diffuse = true;
+            add(t);
+        }
+        {
+            auto t = ditserve_row("abl-no-img-priority", "DitServe w/o feasible image priority", "ablation",
+                "DitServe ordering feasible images by pure EDF deadline without cross-modal priority boost");
+            t.feasible_img_priority = false;
             add(t);
         }
         {
@@ -278,7 +309,8 @@ Json policy_catalog() {
                     {"fission", t.fission}, {"prune_dominated", t.prune_dominated}, {"min_video_degree", t.min_video_degree},
                     {"order", t.order}, {"hold_diffuse", t.hold_diffuse}, {"partition_divisor", t.partition_divisor},
                     {"demote_late", t.demote_late}, {"widen", t.widen}, {"image_placement", t.image_placement},
-                    {"image_batching", t.image_batching}, {"round_steps", t.round_steps}};
+                    {"image_batching", t.image_batching}, {"round_steps", t.round_steps},
+                    {"allow_cfg_forms", t.allow_cfg_forms}, {"feasible_img_priority", t.feasible_img_priority}};
     };
     for (const auto& item : named()) out.push_back(describe(item.second));
     for (const char* name : {"xdit-sp1", "xdit-sp2", "xdit-cfg2", "static-cfg2", "block-cfg2", "fold-cfg2sp3", "approx-cfg2sp3"})

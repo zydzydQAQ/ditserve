@@ -21,7 +21,77 @@ import threading
 import time
 import traceback
 
-import external_xdit as source
+class source:
+    __file__ = __file__
+    COMMIT = "16c34e7f070de65d9d2c67a6d74e0007dd8b426a"
+    REPOSITORY = "xdit-project/xDiT"
+    ARCHIVE_SHA256 = "c09e48fa4792290b299ab3cfc0afc9c11ce60ac24affee933b1a0ce146e52f5b"
+    MODEL_IDS = {
+        "wan21": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+        "wan22": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+        "sd35": "stabilityai/stable-diffusion-3.5-medium",
+    }
+    DEFAULT_PROTOCOL = Path(__file__).resolve().parents[1] / "configs/benchmarks/formal-mixed-v1.json"
+
+    @staticmethod
+    def digest(raw):
+        return hashlib.sha256(raw).hexdigest()
+
+    @staticmethod
+    def canonical(value):
+        return source.digest(json.dumps(value, sort_keys=True, ensure_ascii=False,
+                                        separators=(",", ":"), allow_nan=False).encode())
+
+    @staticmethod
+    def read_json(raw):
+        def unique(pairs):
+            value = {}
+            for key, item in pairs:
+                if key in value:
+                    raise ValueError("duplicate JSON key: " + key)
+                value[key] = item
+            return value
+        def nonfinite(value):
+            raise ValueError("nonfinite JSON value: " + value)
+        return json.loads(raw, object_pairs_hook=unique, parse_constant=nonfinite)
+
+    @staticmethod
+    def verify_source(source_root, manifest_path, manifest_sha256):
+        root = Path(source_root)
+        if root.is_symlink():
+            raise ValueError("symlink source root")
+        root = root.resolve(strict=True)
+        raw = Path(manifest_path).read_bytes()
+        if not re.fullmatch("[0-9a-f]{64}", manifest_sha256) or source.digest(raw) != manifest_sha256:
+            raise ValueError("official source manifest SHA256 differs")
+        manifest = source.read_json(raw)
+        if (manifest.get("schema") != "ditserve.official-source-archive.v1"
+                or manifest.get("repository") != source.REPOSITORY
+                or manifest.get("commit") != source.COMMIT
+                or manifest.get("archive_sha256") != source.ARCHIVE_SHA256):
+            raise ValueError("official source identity differs")
+        files = manifest.get("files")
+        if not isinstance(files, dict) or not files:
+            raise ValueError("official source inventory is empty")
+        for relative, expected in files.items():
+            parts = PurePosixPath(relative)
+            if (parts.is_absolute() or ".." in parts.parts or str(parts) != relative
+                    or not isinstance(expected, str) or not re.fullmatch("[0-9a-f]{64}", expected)):
+                raise ValueError("invalid source inventory entry: " + relative)
+            path = root / relative
+            if any(root.joinpath(*parts.parts[:n]).is_symlink() for n in range(1, len(parts.parts) + 1)):
+                raise ValueError("symlink in source: " + relative)
+            if not path.is_file() or source.digest(path.read_bytes()) != expected:
+                raise ValueError("official source file SHA256 differs: " + relative)
+        actual = set()
+        for path in root.rglob("*"):
+            if path.is_symlink():
+                raise ValueError("symlink in source: " + str(path))
+            if path.is_file():
+                actual.add(path.relative_to(root).as_posix())
+        if actual != set(files):
+            raise ValueError("official source inventory differs (extra or missing files)")
+        return manifest
 
 DEFAULT_MODELS = Path("/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/models.official-all.json")
 DEFAULT_MODELS_SHA256 = "3e612738984ae56ac369f48b5a207c94d31cd1071d6506c633692ed9ccce37be"
@@ -368,9 +438,8 @@ def execute_native(model, request, identity, config, source_root, manifest, capt
         summary = summarize_video(output.videos, request)
         artifact = None
         if capture_context is not None:
-            import external_xdit_numerics as numerics
             phase = "retain_decoded_output"
-            artifact = numerics.capture(output.videos, summary, capture_context)
+            artifact = capture_context.get("capture", lambda *a: None)(output.videos, summary, capture_context)
             summary["retained_arrays"] = True
         attention = attention_observation(pipeline, runner.config.attention_backend)
         result = {"status": "native_request_completed", "completed_requests": 1, "requested_requests": 1,
@@ -461,11 +530,7 @@ def main(argv=None):
             measurement_scope="one cold native request; no arrival replay, batching, baseline comparison, or quality qualification")
         capture_context = None
         if args.numerics_contract:
-            import external_xdit_numerics as numerics
-            capture_context = numerics.prepare(args.numerics_contract, args.numerics_contract_sha256,
-                output, request, identity, result["source"], args.protocol_sha256, 1, 0)
-            result["decoded_capture"] = numerics.capture_receipt(capture_context)
-            result["performance_eligible"] = False
+            raise ValueError("standalone numerics capture script has been retired")
         if args.command == "run":
             if not output.is_relative_to(Path("/shared/output/DITSERVE")):
                 raise ValueError("GPU outputs must be under /shared/output/DITSERVE")
@@ -473,8 +538,6 @@ def main(argv=None):
             created_output = True
             with (output/"started.json").open("x") as stream:
                 json.dump(result, stream, sort_keys=True, indent=2, allow_nan=False)
-            if capture_context is not None:
-                numerics.begin(capture_context)
             # Actual native logs go to stderr; stdout stays machine-readable JSON.
             phase = "execute_native"
             with contextlib.redirect_stdout(sys.stderr):

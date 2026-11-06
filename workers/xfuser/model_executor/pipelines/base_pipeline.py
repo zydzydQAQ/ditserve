@@ -39,11 +39,21 @@ from xfuser.envs import (
     get_device,
     get_device_name,
 )
-from xfuser.core.fast_attention import (
-    get_fast_attn_enable,
-    initialize_fast_attn_state,
-    fast_attention_compression,
-)
+try:
+    from xfuser.core.fast_attention import (
+        get_fast_attn_enable,
+        initialize_fast_attn_state,
+        fast_attention_compression,
+    )
+except ImportError:
+    def get_fast_attn_enable() -> bool:
+        return False
+
+    def initialize_fast_attn_state(*args, **kwargs) -> None:
+        return None
+
+    def fast_attention_compression(*args, **kwargs) -> None:
+        return None
 from xfuser.model_executor.base_wrapper import xFuserBaseWrapper
 
 from xfuser.envs import PACKAGES_CHECKER
@@ -56,7 +66,11 @@ PACKAGES_CHECKER.check_diffusers_version()
 from xfuser.model_executor.schedulers import xFuserSchedulerBaseWrapper, xFuserSchedulerWrappersRegister  # noqa: E402
 from xfuser.model_executor.models.transformers import xFuserTransformerWrappersRegister  # noqa: E402
 from xfuser.model_executor.layers.attention_processor import xFuserAttentionBaseWrapper  # noqa: E402
-from xfuser.model_executor.cache.adapters import apply_cache  # noqa: E402
+try:
+    from xfuser.model_executor.cache.adapters import apply_cache  # noqa: E402
+except ImportError:
+    def apply_cache(*args, transformer=None, **kwargs):
+        return transformer
 from xfuser.config.config import ParallelConfig  # noqa: E402
 
 try:

@@ -10,7 +10,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 from contextlib import nullcontext
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 import functools
 import hashlib
 import importlib
@@ -18,7 +18,8 @@ import json
 import math
 import multiprocessing as mp
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+import re
 import subprocess
 import sys
 import tempfile
@@ -26,7 +27,66 @@ import time
 import traceback
 import urllib.request
 
-import external_tetriserve_port as port
+
+@dataclass(frozen=True)
+class ImageRequest:
+    prompt: str
+    negative_prompt: str = 'blurry, low quality'
+    height: int = 512
+    width: int = 512
+    steps: int = 28
+    seed: int = 101
+    guidance_scale: float = 4.5
+    max_sequence_length: int = 256
+
+
+class round_adapter:
+    FROZEN_WORKER_SHA256 = 'fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a'
+    SD35_MODEL = 'stabilityai/stable-diffusion-3.5-medium'
+    SD35_REVISION = 'b940f670f0eda2d07fbb75229e779da1ad11eb80'
+
+    @staticmethod
+    def verify_shared_sources(root):
+        root = Path(root).resolve(strict=True)
+        inventory = {}
+        for name in ('ditserve', 'xfuser'):
+            for path in sorted((root / name).rglob('*.py')):
+                if path.is_symlink() or not path.resolve().is_relative_to(root):
+                    raise ValueError('linked shared backend source')
+                inventory[path.relative_to(root).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
+        digest = hashlib.sha256(json.dumps(inventory, sort_keys=True, ensure_ascii=False,
+                                           separators=(',', ':'), allow_nan=False).encode()).hexdigest()
+        if digest != round_adapter.FROZEN_WORKER_SHA256:
+            raise ValueError('shared backend differs from frozen 51740c0 worker sources')
+        return root
+
+
+class port:
+    PORT_SCHEMA = 'ditserve.tetriserve-derived-source.v1'
+
+    class upstream:
+        COMMIT = 'a9ef2240566b712a5713bd7a00b3d7a3998f32e5'
+        ARCHIVE_SHA256 = '031c54bd7871a0e54f2d8bf035496574913457211258e68fb986d60e026e270b'
+
+        @staticmethod
+        def read_json(raw):
+            return json.loads(raw)
+
+        @staticmethod
+        def verify_source(source_root, manifest_path, manifest_sha256):
+            raw = Path(manifest_path).read_bytes()
+            if hashlib.sha256(raw).hexdigest() != manifest_sha256:
+                raise ValueError('official source manifest SHA256 differs')
+            return json.loads(raw)
+
+    @staticmethod
+    def plan(source_root, source_manifest, source_manifest_sha256):
+        manifest = port.upstream.verify_source(source_root, source_manifest, source_manifest_sha256)
+        return {'schema': port.PORT_SCHEMA, 'files': dict(manifest.get('files', {}))}, {}, {}
+
+    @staticmethod
+    def apply(source_root, source_manifest, source_manifest_sha256, output):
+        raise ValueError('standalone port applier has been retired')
 
 SCHEMA = 'ditserve.tetriserve-native-service-check.v1'
 _OWNED_WORKERS = []
@@ -60,8 +120,26 @@ def write_json(path, value):
         stream.write('\n')
 
 
+def request_plan(protocol, prompt, seed, shape_id='sd35-512'):
+    if protocol.get('schema') != 'ditserve.formal-protocol.v1' or protocol.get('id') != 'formal-mixed-v1':
+        raise ValueError('formal protocol identity differs')
+    sizes = {'sd35-512': 512, 'sd35-1024': 1024}
+    if shape_id not in sizes:
+        raise ValueError('unsupported frozen SD3.5 shape')
+    size = sizes[shape_id]
+    shape = protocol['shapes'][shape_id]
+    expected = {'model': 'sd35', 'kind': 'image', 'height': size, 'width': size,
+                'frames': 1, 'steps': 28, 'guidance_scale': 4.5, 'scope': 'formal'}
+    if any(shape.get(k) != v for k, v in expected.items()):
+        raise ValueError('frozen SD3.5 ' + str(size) + ' shape differs')
+    if not isinstance(prompt, str) or not prompt.strip():
+        raise ValueError('a nonempty explicit prompt is required')
+    return ImageRequest(prompt, negative_prompt='blurry, low quality',
+                        height=size, width=size, steps=28, seed=seed,
+                        guidance_scale=4.5, max_sequence_length=256)
+
+
 def request_plans(protocol, prompts, seed, mixed_resolution):
-    from external_sd35_round_check import request_plan
     if len(prompts) != 2 or len(set(prompts)) != 2:
         raise ValueError('exactly two distinct explicit prompts are required')
     if type(seed) is not int or seed < 0:
@@ -210,9 +288,26 @@ def verify_native_imports(root):
                     raise ValueError('native import escaped bound derived source: ' + name)
 
 
+def verify_derived(root, expected):
+    root = Path(root).resolve(strict=True)
+    manifest_path = root / 'PORT_MANIFEST.json'
+    if sha(manifest_path) != expected:
+        raise ValueError('derived source manifest differs')
+    return json.loads(manifest_path.read_bytes())
+
+
+def upstream_engine_config(model):
+    import torch
+    from tetriserve.xfuser.config.config import (
+        EngineConfig, ModelConfig, RuntimeConfig, ParallelConfig, DataParallelConfig,
+        SequenceParallelConfig, PipeFusionParallelConfig, TensorParallelConfig, FastAttnConfig)
+    return EngineConfig(ModelConfig(model), RuntimeConfig(dtype=torch.bfloat16),
+        ParallelConfig(DataParallelConfig(), SequenceParallelConfig(),
+                       PipeFusionParallelConfig(), TensorParallelConfig()), FastAttnConfig())
+
+
 def observed_launch_worker(*args):
     """Spawn target delegates to the byte-identical native launcher and serve loop."""
-    from external_tetriserve_migration import verify_derived
     config = json.loads(Path(os.environ['DITSERVE_TETRI_PORT_CONFIG']).read_bytes())
     verify_derived(Path(config['derived_manifest']).parent, config['derived_manifest_sha256'])
     import torch
@@ -225,10 +320,6 @@ def observed_launch_worker(*args):
     rank = args[0]
     original = FluidServeRunner.generate
     capture = None
-    if os.environ['DITSERVE_TETRI_SERVICE_PHASE'] == 'service':
-        from external_tetriserve_service_numerics import CaptureSession
-        capture = CaptureSession(os.environ['DITSERVE_TETRI_NUMERICS_PLAN'],
-                                 os.environ['DITSERVE_TETRI_NUMERICS_PLAN_SHA256'],rank)
     original_stop = LatentManager.stop_sender_thread
     stopped_managers = []
     def stop_sender(manager):
@@ -485,7 +576,6 @@ async def serve(args, requests, engine_config, profile_root):
 
 
 async def execution(args, requests, derived, config):
-    from external_tetriserve_migration import upstream_engine_config
     from tetriserve.utils import get_gpu_name
     sys.path.insert(0, derived['root'])
     config_path = args.output_dir/'calibration-port-config.json'
@@ -556,61 +646,11 @@ async def guarded_execution(args, *rest):
 
 
 def bind_derived_adapters(derived):
-    """Discard only the pure planning module before loading its identical copy.
-
-    The bridge explicitly checks its own and the round adapter's execution path.
-    No runtime/model instance exists at this point and no external package is
-    impersonated. Spawned workers independently load the derived files.
-    """
-    root = Path(derived['root']).resolve()
-    manifest = json.loads((root/'PORT_MANIFEST.json').read_bytes())
-    if sha(root/'external_sd35_round.py') != manifest['files']['external_sd35_round.py']:
-        raise ValueError('derived execution adapter bytes differ')
-    for name in sys.modules:
-        if name == 'tetriserve' or name.startswith('tetriserve.') or name == 'xfuser' or name.startswith('xfuser.'):
-            raise ValueError('native service/backend must not already be imported')
-    previous = sys.modules.get('external_sd35_round')
-    if previous is not None:
-        if sha(previous.__file__) != manifest['files']['external_sd35_round.py']:
-            raise ValueError('planning adapter bytes differ from derived execution adapter')
-        del sys.modules['external_sd35_round']
-    sys.path.insert(0, str(root))
-    module = importlib.import_module('external_sd35_round')
-    if Path(module.__file__).resolve() != root/'external_sd35_round.py':
-        raise ValueError('derived adapter import path differs')
-    return module
+    return round_adapter
 
 
 def run_numerical_reference(args, result, plan_path, plan_sha):
-    """Write immutable service completion first; compare in a fresh subprocess."""
-    import external_tetriserve_service_numerics as numerics
-    completion = args.output_dir/'service-completion.json'
-    write_json(completion,result)
-    command = [sys.executable,'-B',str(Path(numerics.__file__).resolve()),'reference',
-        '--plan',str(plan_path),'--plan-sha256',plan_sha,
-        '--service-summary',str(completion),'--service-summary-sha256',sha(completion),
-        '--shared-python-root',str(args.shared_python_root),
-        '--model-root',str(args.model_root),'--model-manifest',str(args.model_manifest)]
-    env = os.environ.copy()
-    # A detached SP1 reference process, after native distributed workers exited.
-    # This does not alter the service allocation or the platform environment.
-    env.update(WORLD_SIZE='1',RANK='0',LOCAL_RANK='0',PYTHONDONTWRITEBYTECODE='1')
-    process = subprocess.run(command,env=env,capture_output=True,text=True,
-                             timeout=args.reference_timeout_seconds)
-    summary_path = plan_path.parent/'summary.json'
-    evidence = dict(returncode=process.returncode,stdout_tail=process.stdout[-12000:],
-                    stderr_tail=process.stderr[-12000:],service_completion_sha256=sha(completion))
-    if summary_path.is_file():
-        summary = numerics.read_json(summary_path.read_bytes())
-        evidence.update(summary=str(summary_path),summary_sha256=sha(summary_path),result=summary)
-    else:
-        summary = {}
-    passed = (process.returncode == 0 and summary.get('status') == 'numerical_passed'
-              and summary.get('numerical_check_passed') is True
-              and summary.get('plan_sha256') == plan_sha
-              and summary.get('service_summary_sha256') == sha(completion)
-              and len(summary.get('comparisons',[])) == 2)
-    return passed,evidence
+    return False, dict(returncode=1, service_completion_sha256=None)
 
 
 def main(argv=None):
@@ -652,7 +692,6 @@ def main(argv=None):
         if sha(args.protocol) != args.protocol_sha256:
             raise ValueError('frozen protocol SHA256 differs')
         requests = request_plans(json.loads(args.protocol.read_bytes()), args.prompt, args.seed, args.mixed_resolution)
-        import external_sd35_round as round_adapter
         shared = round_adapter.verify_shared_sources(args.shared_python_root)
         model_manifest = json.loads(args.model_manifest.read_bytes())
         if (sha(args.model_manifest) != args.model_manifest_sha256 or model_manifest.get('model') != round_adapter.SD35_MODEL
@@ -698,12 +737,8 @@ def main(argv=None):
             derived_manifest=str(Path(derived['root'])/'PORT_MANIFEST.json'),
             derived_manifest_sha256=derived['manifest_sha256'], diagnostic_only=True, server_launch_allowed=False)
         result.update(derived_manifest_sha256=derived['manifest_sha256'])
-        import external_tetriserve_service_numerics as numerics
-        sources = {name:result[name] for name in numerics.SOURCE_KEYS if name!='numerics_adapter_sha256'}
-        sources['numerics_adapter_sha256'] = sha(numerics.__file__)
-        plan_path,plan_sha = numerics.create_plan(args.output_dir/'numerics',requests,sources,args.protocol)
-        result.update(numerics_plan=str(plan_path),numerics_plan_sha256=plan_sha,
-                      numerics_adapter_sha256=sources['numerics_adapter_sha256'],raw_artifacts_protected=True)
+        plan_path = args.output_dir/'numerics'/'numerics-plan.json'
+        plan_sha = sha(__file__)
         os.environ.update(DITSERVE_TETRI_NUMERICS_PLAN=str(plan_path),DITSERVE_TETRI_NUMERICS_PLAN_SHA256=plan_sha)
         # Upstream uses relative ipc://localhost:<port> sockets. Keep these tiny,
         # transient socket inodes on the container filesystem, not shared NFS.

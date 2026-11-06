@@ -14,10 +14,8 @@ from pathlib import Path
 import random
 import statistics
 
-from native_exact import checked_digest, compare, same_policy, stop_samples, validate_run
-from native_metrics import distribution, percentile
-from p1_benchmark import validate_plan
-from stage_gates import canonical_hash, p0_controls, read_json, source_file, verify_receipt
+from native_exact import checked_digest, compare, distribution, percentile, same_policy, stop_samples, validate_run
+from p1_benchmark import canonical_hash, p0_controls, read_json, source_file, validate_plan, verify_receipt
 
 
 def finite(value, name, *, positive=False):

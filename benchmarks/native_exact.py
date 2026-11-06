@@ -8,7 +8,24 @@ import math
 import re
 from pathlib import Path
 
-from native_metrics import distribution
+def percentile(values, fraction):
+    if not values:
+        return None
+    ordered = sorted(values)
+    if not 0 <= fraction <= 1:
+        raise ValueError("quantile fraction must be in [0, 1]")
+    position = (len(ordered) - 1) * fraction
+    lower = math.floor(position)
+    return ordered[lower] + (ordered[min(lower + 1, len(ordered) - 1)] - ordered[lower]) * (position - lower)
+
+
+def distribution(values):
+    if not values:
+        return {"count": 0, "p50": None, "p95": None, "p99": None, "max": None}
+    return {
+        "count": len(values), "p50": percentile(values, 0.5),
+        "p95": percentile(values, 0.95), "p99": percentile(values, 0.99), "max": max(values),
+    }
 
 
 # Records written before the policy registry use the legacy names.

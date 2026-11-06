@@ -14,11 +14,16 @@ from typing import Optional
 
 import torch
 
-from xfuser.core.sparge_attention.sparge import (
-    mask_padded_kv_blocks,
-    restore_sparge_output,
-    setup_sparge,
-)
+try:
+    from xfuser.core.sparge_attention.sparge import (
+        mask_padded_kv_blocks,
+        restore_sparge_output,
+        setup_sparge,
+    )
+except ImportError:
+    mask_padded_kv_blocks = None
+    restore_sparge_output = None
+    setup_sparge = None
 
 _SEQSTART_CACHE: dict[tuple, torch.Tensor] = {}
 _DELTA_LUT_WORKSPACE_CACHE: dict[
