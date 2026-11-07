@@ -507,6 +507,8 @@ class TestCalibrationBundleProvenanceAndBenchmarkScript:
         assert "--allow-cross-uuid" in text.lower()
         assert 'DITSERVE_REQUIRE_REUSE_BUNDLE:-0' in text
         assert "reuse is required" in text
+        assert 'rate_group.add_argument("--rate-rpm", type=float, default=None)' in text
+        assert "rate_rpm=parsed.rate_rpm" in text
 
         assert "--slo-scale 1.25" in text
         assert 'flags="${flags/--slo-scale 1.0/--slo-scale 1.25}"' in text

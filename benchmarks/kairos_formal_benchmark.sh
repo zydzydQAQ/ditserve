@@ -394,7 +394,9 @@ import argparse
 ap = argparse.ArgumentParser()
 ap.add_argument("--split", default="test")
 ap.add_argument("--seed", type=int, default=301)
-ap.add_argument("--load", type=float, default=None)
+rate_group = ap.add_mutually_exclusive_group()
+rate_group.add_argument("--load", type=float, default=None)
+rate_group.add_argument("--rate-rpm", type=float, default=None)
 ap.add_argument("--video-fraction", type=float, default=None)
 ap.add_argument("--slo-scale", type=float, default=None)
 ap.add_argument("--resolution-distribution", default=None)
@@ -417,6 +419,7 @@ result = fb.serving(
     split=parsed.split,
     seed=parsed.seed,
     load=parsed.load,
+    rate_rpm=parsed.rate_rpm,
     video_fraction=parsed.video_fraction,
     pattern=parsed.pattern,
     suite=parsed.suite,
