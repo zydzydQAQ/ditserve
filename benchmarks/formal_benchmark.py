@@ -281,12 +281,20 @@ def assemble(p, model, records, runtime_facts):
 
 
 def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301,
-            load=None, video_fraction=None, pattern=None, suite='main', diagnostic=None,
+            load=None, rate_rpm=None, video_fraction=None, pattern=None, suite='main', diagnostic=None,
             p1_plan=None, p1_pair=None, slo_scale=None, resolution_distribution=None, cv=None):
     is_v2 = p.get('schema') == 'ditserve.formal-protocol.v2'
     # Record exactly what the caller asked for; diagnostics replace these.
-    requested_workload = dict(load=load, video_fraction=video_fraction, pattern=pattern)
-    if load is None:
+    requested_workload = dict(load=load, rate_rpm=rate_rpm, video_fraction=video_fraction, pattern=pattern)
+    if rate_rpm is not None:
+        if load is not None:
+            raise ValueError('load and rate_rpm are mutually exclusive')
+        if not is_v2 or diagnostic:
+            raise ValueError('absolute rate_rpm requires a non-diagnostic v2 serving cell')
+        rate_rpm = float(rate_rpm)
+        if not math.isfinite(rate_rpm) or rate_rpm <= 0:
+            raise ValueError('rate_rpm must be finite and positive')
+    elif load is None:
         load = p['anchor']['load'] if is_v2 and 'anchor' in p else 0.6
     if video_fraction is None:
         video_fraction = p['anchor']['video_fraction'] if is_v2 and 'anchor' in p else 0.2
@@ -310,8 +318,9 @@ def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301
             for extra_load in (0.75, 1.25, 1.5, 2.0, 2.25, 3.0):
                 if extra_load not in allowed_loads:
                     allowed_loads.append(extra_load)
-        if load not in allowed_loads or video_fraction not in p['video_fractions']:
-            raise ValueError('load/mix is outside frozen protocol')
+        if ((rate_rpm is None and load not in allowed_loads)
+                or video_fraction not in p['video_fractions']):
+            raise ValueError('load/rate/mix is outside frozen protocol')
         if pattern not in patterns:
             raise ValueError('arrival pattern is outside frozen protocol')
     if diagnostic not in (None, 'contention', 'no_preemption'):
@@ -412,19 +421,33 @@ def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301
         effective_cv = float(cv)
     else:
         effective_cv = float(default_cv)
-    config = build_serving_config(model, uuids, singleton, selected, seed=seed, load=actual_load,
-        pattern=actual_pattern, cv=effective_cv, video_fraction=actual_fraction, count=count, policies=policies,
-        image_slo_scale=image_scale, video_slo_scale=video_scale,
-        require_profile_match=True, forms=['cfg2'] if diagnostic else None, output_mode=mode,
-        doorbell=True, image_batch=p['batch_limit'], policy_order='random')
-    window = dict(count=count, video_fraction=actual_fraction, pattern=actual_pattern, load=actual_load)
+    window = dict(count=count, video_fraction=actual_fraction, pattern=actual_pattern,
+                  load=1.0 if rate_rpm is not None else actual_load)
     window.update({k: v for k, v in patterns[actual_pattern].items() if k not in ('name', 'cvs')})
     if actual_pattern == 'gamma':
         window['cv'] = effective_cv
     if not diagnostic and (is_v2 or resolution_distribution is not None):
         window['resolution_distribution'] = copy.deepcopy(dist_map[dist_name])
+    r0_rpm = None
+    if rate_rpm is not None:
+        probe = build_trace(classes, selected, [window], slots=len(uuids), seed=seed, output_mode=mode)
+        r0_rpm = probe['manifest']['r0_rpm']
+        actual_load = rate_rpm / r0_rpm
+        anchor_load = float(p['anchor']['load'])
+        if math.isclose(rate_rpm, r0_rpm * anchor_load, rel_tol=1e-12, abs_tol=1e-9):
+            actual_load = anchor_load
+        window['load'] = actual_load
+        window['requested_rate_rpm'] = rate_rpm
+    config = build_serving_config(model, uuids, singleton, selected, seed=seed, load=actual_load,
+        pattern=actual_pattern, cv=effective_cv, video_fraction=actual_fraction, count=count, policies=policies,
+        image_slo_scale=image_scale, video_slo_scale=video_scale,
+        require_profile_match=True, forms=['cfg2'] if diagnostic else None, output_mode=mode,
+        doorbell=True, image_batch=p['batch_limit'], policy_order='random')
     trace = build_trace(classes, selected, [window], slots=len(uuids), seed=seed, output_mode=mode)
     validate_trace(trace)
+    if rate_rpm is not None and not math.isclose(
+            trace['manifest']['rate_rpm'], rate_rpm, rel_tol=1e-12, abs_tol=1e-9):
+        raise RuntimeError('resolved load does not preserve the requested absolute rate')
     provenance = dict(path='generated:frozen-formal-split', sha256=trace['manifest']['workload_sha256'], manifest=trace['manifest'])
     phase = config['phases'][0]
     if diagnostic:
@@ -462,8 +485,13 @@ def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301
             extra_tags += f"-{dist_name.replace('_', '-')}"
         if actual_pattern == 'gamma':
             extra_tags += f"-cv{str(effective_cv).replace('.', 'p')}"
+    if rate_rpm is None:
+        workload_tag = 'l' + str(actual_load).replace('.', 'p')
+    else:
+        rate_tag = f'{rate_rpm:.6f}'.rstrip('0').rstrip('.').replace('.', 'p')
+        workload_tag = 'r' + rate_tag + 'rpm'
     config['experiment'] = (
-        f"formal-{model}-{split}-{actual_pattern}-s{seed}-l{str(actual_load).replace('.', 'p')}"
+        f"formal-{model}-{split}-{actual_pattern}-s{seed}-{workload_tag}"
         f"-v{str(actual_fraction).replace('.', 'p')}{extra_tags}"
         + (f'-{diagnostic}' if diagnostic else f'-{experiment_suite}')
     )
@@ -472,6 +500,13 @@ def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301
         preemption_diagnostic=diagnostic, mixed_resolution=True,
         partition_image_gpus=dict(value=image_share, rule=share_rule),
         scope='finite public-prompt trace; not sustained-capacity or semantic qualification')
+    if rate_rpm is not None:
+        config['benchmark']['absolute_rate'] = dict(
+            requested_rate_rpm=rate_rpm, rate_rpm=trace['manifest']['rate_rpm'], r0_rpm=r0_rpm,
+            resolved_load=actual_load, anchor_load=float(p['anchor']['load']),
+            anchor_rate_rpm=r0_rpm * float(p['anchor']['load']),
+            anchor_multiplier=actual_load / float(p['anchor']['load']),
+            basis='mean offered arrival rate over the frozen finite-trace duration')
     if not diagnostic and (is_v2 or slo_scale is not None or resolution_distribution is not None):
         config['benchmark']['slo_scale'] = effective_slo_scale
         config['benchmark']['resolution_distribution'] = copy.deepcopy(dist_map[dist_name])
@@ -534,7 +569,10 @@ def main():
             ap.add_argument('--bundle', type=Path, required=True)
             ap.add_argument('--split', choices=['development', 'test'], default='test')
             ap.add_argument('--seed', type=int, default=301)
-            ap.add_argument('--load', type=float, default=None)
+            rate_group = ap.add_mutually_exclusive_group()
+            rate_group.add_argument('--load', type=float, default=None)
+            rate_group.add_argument('--rate-rpm', type=float, default=None,
+                help='absolute mean arrival rate in requests/minute; resolved against the frozen calibration bundle')
             ap.add_argument('--video-fraction', type=float, default=None)
             ap.add_argument('--slo-scale', type=float, default=None)
             ap.add_argument('--resolution-distribution', default=None)
@@ -558,8 +596,8 @@ def main():
         else:
             uuids = args.gpu_uuids.split(',') if args.gpu_uuids else allocated_uuids()
             result = serving(p, args.model, uuids, read_json(args.bundle), pools, manifests,
-                split=args.split, seed=args.seed, load=args.load, video_fraction=args.video_fraction,
-                pattern=args.pattern, suite=args.suite, diagnostic=args.diagnostic,
+                split=args.split, seed=args.seed, load=args.load, rate_rpm=args.rate_rpm,
+                video_fraction=args.video_fraction, pattern=args.pattern, suite=args.suite, diagnostic=args.diagnostic,
                 slo_scale=args.slo_scale, resolution_distribution=args.resolution_distribution,
                 cv=args.cv)
     write_new(args.output, result)

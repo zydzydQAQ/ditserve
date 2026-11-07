@@ -283,6 +283,9 @@ PY
 if [ "$action" = serve ] && [ -n "${DITSERVE_REUSE_BUNDLES:-}" ]; then
   if try_reuse_calibration_bundle; then
     reused_bundle=1
+  elif [ "${DITSERVE_REQUIRE_REUSE_BUNDLE:-0}" = 1 ]; then
+    echo "no matching calibration bundle for allocated GPUs; reuse is required" >&2
+    exit 1
   else
     echo "no matching calibration bundle for allocated GPUs; running calibration"
   fi

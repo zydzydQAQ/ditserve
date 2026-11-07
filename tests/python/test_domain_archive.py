@@ -12,6 +12,8 @@ Consolidates and verifies:
    preserving `origin_gpu_uuids` without falsifying `gpu_uuids`, rejecting
    non-homogeneous allocations, and `kairos_formal_benchmark.sh` `--slo-scale 1.25`
    tight-SLO contract).
+4. Absolute-rate serving cells (`--rate-rpm`) resolved against frozen calibration
+   costs with explicit Anchor provenance and unchanged normalized-load behavior.
 """
 
 from __future__ import annotations
@@ -503,6 +505,8 @@ class TestCalibrationBundleProvenanceAndBenchmarkScript:
         assert "origin_gpu_uuids" in text
         assert "calibration_match_mode" in text
         assert "--allow-cross-uuid" in text.lower()
+        assert 'DITSERVE_REQUIRE_REUSE_BUNDLE:-0' in text
+        assert "reuse is required" in text
 
         assert "--slo-scale 1.25" in text
         assert 'flags="${flags/--slo-scale 1.0/--slo-scale 1.25}"' in text
@@ -586,3 +590,99 @@ class TestCalibrationBundleProvenanceAndBenchmarkScript:
         )
         assert rc_reject == 1
         assert not out_reject.exists()
+
+
+class TestAbsoluteRateServing:
+    @staticmethod
+    def _build(**overrides):
+        proto = formal_benchmark.protocol(ROOT / "configs" / "benchmarks" / "formal-mixed-v2.json")
+        model = "wan22"
+        uuids = [f"GPU-00000000-0000-0000-0000-00000000030{i}" for i in range(8)]
+        manifests = {
+            key: {
+                "path": f"/shared/data/DITSERVE/models/{key}/manifest.json",
+                "sha256": str(index + 1) * 64,
+            }
+            for index, key in enumerate((model, "sd35"))
+        }
+        classes = {}
+        for sid, shape in proto["shapes"].items():
+            if shape["scope"] != "formal" or shape["model"] not in (model, "sd35"):
+                continue
+            if shape["kind"] == "video":
+                cost = {
+                    "kind": "video",
+                    "steps": shape["steps"],
+                    "prepare_ms": 0.0,
+                    "step_compute_ms": 100.0 * (shape["height"] / 480.0),
+                    "finish_ms": 50.0,
+                    "encode_ms": 10.0,
+                    "links": {str(degree): {"gbps": 5.0, "latency_ms": 0.1} for degree in (2, 3, 4, 6, 8)},
+                }
+            else:
+                cost = {"kind": "image", "service_ms": 250.0 * (shape["height"] / 512.0) ** 2}
+            classes[sid] = {
+                "spec": formal_benchmark.shape_spec(proto, sid),
+                "cost": cost,
+                "source": {
+                    "gpu_uuids": list(uuids),
+                    "resize_ms": 10.0,
+                    "quantum_overhead_ms": 1.0,
+                },
+            }
+        bundle = seal({
+            "schema": formal_benchmark.BUNDLE_SCHEMA,
+            "protocol_sha256": canonical_hash(proto),
+            "model": model,
+            "model_manifests": manifests,
+            "gpu_uuids": uuids,
+            "classes": classes,
+        })
+        pools = {
+            kind: {
+                "kind": kind,
+                "sha256": str(index + 3) * 64,
+                "samples": [
+                    {"sample_id": f"{kind}-{sample}", "prompt": f"{kind} prompt {sample}"}
+                    for sample in range(50)
+                ],
+            }
+            for index, kind in enumerate(("image", "video"))
+        }
+        kwargs = dict(
+            seed=301,
+            video_fraction=0.5,
+            pattern="poisson",
+            suite="sweep",
+            slo_scale=1.5,
+            resolution_distribution="uniform",
+        )
+        kwargs.update(overrides)
+        with patch.object(formal_benchmark, "split_pools", return_value=pools):
+            return formal_benchmark.serving(proto, model, uuids, bundle, {}, manifests, **kwargs)
+
+    def test_absolute_rate_preserves_anchor_and_records_provenance(self):
+        anchor = self._build(load=1.75)
+        anchor_trace = anchor["benchmark"]["trace"]["manifest"]
+        anchor_rate = anchor_trace["rate_rpm"]
+        for factor in (0.5, 1.0, 1.5):
+            target = anchor_rate * factor
+            config = self._build(rate_rpm=target)
+            benchmark = config["benchmark"]
+            absolute = benchmark["absolute_rate"]
+            assert benchmark["trace"]["manifest"]["rate_rpm"] == pytest.approx(target, rel=1e-12)
+            assert benchmark["load"] == pytest.approx(1.75 * factor, rel=1e-12)
+            assert absolute["requested_rate_rpm"] == target
+            assert absolute["r0_rpm"] == pytest.approx(anchor_trace["r0_rpm"], rel=1e-12)
+            assert absolute["anchor_multiplier"] == pytest.approx(factor, rel=1e-12)
+            assert len(config["phases"][0]["matrix"]["/policy"]) == 5
+            assert "-r" in config["experiment"] and "rpm-" in config["experiment"]
+            if factor == 1.0:
+                assert benchmark["load"] == 1.75
+                assert config["phases"][0]["matrix"]["/workload"] == anchor["phases"][0]["matrix"]["/workload"]
+
+    def test_absolute_rate_rejects_ambiguous_or_nonpositive_input(self):
+        with pytest.raises(ValueError, match="mutually exclusive"):
+            self._build(load=1.75, rate_rpm=13.214364517877618)
+        with pytest.raises(ValueError, match="finite and positive"):
+            self._build(rate_rpm=0.0)
