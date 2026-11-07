@@ -10,7 +10,7 @@ if(BUILD_TESTING)
 endif()
 
 if(BUILD_TESTING)
-    add_executable(controller-decisions-tests tests/test_20261103_controller_decisions.cpp)
+    add_executable(controller-decisions-tests tests/test_controller_decisions.cpp)
     target_link_libraries(controller-decisions-tests PRIVATE ditserve_core)
     add_test(NAME controller-decisions-contracts COMMAND controller-decisions-tests)
 endif()

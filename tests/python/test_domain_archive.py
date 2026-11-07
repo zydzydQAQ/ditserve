@@ -13,7 +13,9 @@ Consolidates and verifies:
    non-homogeneous allocations, and `kairos_formal_benchmark.sh` `--slo-scale 1.25`
    tight-SLO contract).
 4. Absolute-rate serving cells (`--rate-rpm`) resolved against frozen calibration
-   costs with explicit Anchor provenance and unchanged normalized-load behavior.
+   costs with explicit Anchor provenance, bit-identical traces for protocol-load
+   rates, bursty rejection, and identical workload hashes when forwarded through
+   the `kairos_formal_benchmark.sh` embedded serving wrapper.
 """
 
 from __future__ import annotations
@@ -505,10 +507,9 @@ class TestCalibrationBundleProvenanceAndBenchmarkScript:
         assert "origin_gpu_uuids" in text
         assert "calibration_match_mode" in text
         assert "--allow-cross-uuid" in text.lower()
-        assert 'DITSERVE_REQUIRE_REUSE_BUNDLE:-0' in text
+        assert 'require_reuse=${DITSERVE_REQUIRE_REUSE_BUNDLE:-0}' in text
+        assert "refusing to calibrate" in text
         assert "reuse is required" in text
-        assert 'rate_group.add_argument("--rate-rpm", type=float, default=None)' in text
-        assert "rate_rpm=parsed.rate_rpm" in text
 
         assert "--slo-scale 1.25" in text
         assert 'flags="${flags/--slo-scale 1.0/--slo-scale 1.25}"' in text
@@ -595,21 +596,25 @@ class TestCalibrationBundleProvenanceAndBenchmarkScript:
 
 
 class TestAbsoluteRateServing:
-    @staticmethod
-    def _build(**overrides):
-        proto = formal_benchmark.protocol(ROOT / "configs" / "benchmarks" / "formal-mixed-v2.json")
-        model = "wan22"
-        uuids = [f"GPU-00000000-0000-0000-0000-00000000030{i}" for i in range(8)]
+    MODEL = "wan22"
+    UUIDS = [f"GPU-00000000-0000-0000-0000-00000000030{i}" for i in range(8)]
+    PROTOCOL_PATH = ROOT / "configs" / "benchmarks" / "formal-mixed-v2.json"
+    CELL_FLAGS = ("--pattern", "poisson", "--video-fraction", "0.5", "--slo-scale", "1.5",
+                  "--resolution-distribution", "uniform", "--suite", "sweep")
+
+    @classmethod
+    def _fixture(cls):
+        proto = formal_benchmark.protocol(cls.PROTOCOL_PATH)
         manifests = {
             key: {
                 "path": f"/shared/data/DITSERVE/models/{key}/manifest.json",
                 "sha256": str(index + 1) * 64,
             }
-            for index, key in enumerate((model, "sd35"))
+            for index, key in enumerate((cls.MODEL, "sd35"))
         }
         classes = {}
         for sid, shape in proto["shapes"].items():
-            if shape["scope"] != "formal" or shape["model"] not in (model, "sd35"):
+            if shape["scope"] != "formal" or shape["model"] not in (cls.MODEL, "sd35"):
                 continue
             if shape["kind"] == "video":
                 cost = {
@@ -627,7 +632,7 @@ class TestAbsoluteRateServing:
                 "spec": formal_benchmark.shape_spec(proto, sid),
                 "cost": cost,
                 "source": {
-                    "gpu_uuids": list(uuids),
+                    "gpu_uuids": list(cls.UUIDS),
                     "resize_ms": 10.0,
                     "quantum_overhead_ms": 1.0,
                 },
@@ -635,9 +640,9 @@ class TestAbsoluteRateServing:
         bundle = seal({
             "schema": formal_benchmark.BUNDLE_SCHEMA,
             "protocol_sha256": canonical_hash(proto),
-            "model": model,
+            "model": cls.MODEL,
             "model_manifests": manifests,
-            "gpu_uuids": uuids,
+            "gpu_uuids": list(cls.UUIDS),
             "classes": classes,
         })
         pools = {
@@ -651,6 +656,11 @@ class TestAbsoluteRateServing:
             }
             for index, kind in enumerate(("image", "video"))
         }
+        return proto, manifests, bundle, pools
+
+    @classmethod
+    def _build(cls, **overrides):
+        proto, manifests, bundle, pools = cls._fixture()
         kwargs = dict(
             seed=301,
             video_fraction=0.5,
@@ -661,7 +671,43 @@ class TestAbsoluteRateServing:
         )
         kwargs.update(overrides)
         with patch.object(formal_benchmark, "split_pools", return_value=pools):
-            return formal_benchmark.serving(proto, model, uuids, bundle, {}, manifests, **kwargs)
+            return formal_benchmark.serving(proto, cls.MODEL, cls.UUIDS, bundle, {}, manifests, **kwargs)
+
+    @staticmethod
+    def _wrapper_snippet() -> str:
+        text = (ROOT / "benchmarks" / "kairos_formal_benchmark.sh").read_text(encoding="utf-8")
+        start_marker = (
+            '  python3 - "$benchmarks" "$protocol" "$model" "$RUN_DIR/bundle.json" "$DATA/datasets" '
+            '"$DITSERVE_MODEL_MANIFESTS" "$out_cfg" "${serve_args[@]}" <<\'PY\'\n'
+        )
+        end_marker = "\nPY\n}"
+        start = text.index(start_marker) + len(start_marker)
+        return text[start:text.index(end_marker, start)]
+
+    @classmethod
+    def _run_wrapper(cls, tmp_path: pathlib.Path, tag: str, *flags: str) -> dict:
+        proto, manifests, bundle, pools = cls._fixture()
+        # Same shape as a bundle materialized by try_reuse_calibration_bundle.
+        on_disk = seal(dict(
+            {k: v for k, v in bundle.items() if k != "sha256"},
+            origin_gpu_uuids=list(cls.UUIDS), active_gpu_uuids=list(cls.UUIDS),
+            calibration_match_mode="exact_uuid",
+        ))
+        bundle_path = tmp_path / f"bundle-{tag}.json"
+        bundle_path.write_text(json.dumps(on_disk), encoding="utf-8")
+        manifests_path = tmp_path / "manifests.json"
+        manifests_path.write_text(json.dumps(manifests), encoding="utf-8")
+        datasets = tmp_path / "datasets"
+        datasets.mkdir(exist_ok=True)
+        for kind in ("image", "video"):
+            (datasets / (proto["datasets"][kind]["kind"] + ".json")).write_text("{}", encoding="utf-8")
+        out_cfg = tmp_path / f"serving-{tag}.json"
+        argv = ["-", str(ROOT / "benchmarks"), str(cls.PROTOCOL_PATH), cls.MODEL, str(bundle_path),
+                str(datasets), str(manifests_path), str(out_cfg), "--split", "test", "--seed", "301", *flags]
+        code = compile(cls._wrapper_snippet(), "kairos_formal_benchmark.sh:run_formal_serve", "exec")
+        with patch.object(sys, "argv", argv), patch.object(formal_benchmark, "split_pools", return_value=pools):
+            exec(code, {"__name__": "__main__"})
+        return json.loads(out_cfg.read_text(encoding="utf-8"))
 
     def test_absolute_rate_preserves_anchor_and_records_provenance(self):
         anchor = self._build(load=1.75)
@@ -681,10 +727,45 @@ class TestAbsoluteRateServing:
             assert "-r" in config["experiment"] and "rpm-" in config["experiment"]
             if factor == 1.0:
                 assert benchmark["load"] == 1.75
+                assert absolute["protocol_load"] == 1.75
                 assert config["phases"][0]["matrix"]["/workload"] == anchor["phases"][0]["matrix"]["/workload"]
+            else:
+                assert absolute["protocol_load"] is None
+
+    def test_protocol_load_rates_reproduce_load_cells(self):
+        integer_point = self._build(rate_rpm=8.0)["benchmark"]
+        assert integer_point["absolute_rate"]["protocol_load"] is None
+        r0 = integer_point["absolute_rate"]["r0_rpm"]
+        for load in (0.75, 1.0, 1.75, 2.5, 3.0):
+            by_load = self._build(load=load)
+            by_rate = self._build(rate_rpm=r0 * load)
+            assert by_rate["benchmark"]["absolute_rate"]["protocol_load"] == load
+            assert by_rate["benchmark"]["load"] == load
+            assert by_rate["benchmark"]["trace"]["sha256"] == by_load["benchmark"]["trace"]["sha256"]
 
     def test_absolute_rate_rejects_ambiguous_or_nonpositive_input(self):
         with pytest.raises(ValueError, match="mutually exclusive"):
             self._build(load=1.75, rate_rpm=13.214364517877618)
         with pytest.raises(ValueError, match="finite and positive"):
             self._build(rate_rpm=0.0)
+        with pytest.raises(ValueError, match="continuous arrival pattern"):
+            self._build(rate_rpm=8.0, pattern="bursty")
+
+    def test_kairos_wrapper_forwards_rate_and_load_identically(self, tmp_path: pathlib.Path):
+        direct_rate = self._build(rate_rpm=8.0)
+        via_rate = self._run_wrapper(tmp_path, "rate-08", *self.CELL_FLAGS, "--rate-rpm", "8")
+        assert via_rate["benchmark"]["trace"]["sha256"] == direct_rate["benchmark"]["trace"]["sha256"]
+        assert via_rate["experiment"] == direct_rate["experiment"]
+        assert via_rate["benchmark"]["absolute_rate"] == direct_rate["benchmark"]["absolute_rate"]
+        assert via_rate["benchmark"]["formal_protocol"]["calibration_match_mode"] == "exact_uuid"
+        assert via_rate["benchmark"]["formal_protocol"]["active_gpu_uuids"] == self.UUIDS
+
+        direct_load = self._build(load=1.75)
+        via_load = self._run_wrapper(tmp_path, "load-1p75", *self.CELL_FLAGS, "--load", "1.75")
+        assert via_load["benchmark"]["trace"]["sha256"] == direct_load["benchmark"]["trace"]["sha256"]
+        assert via_load["experiment"] == direct_load["experiment"]
+        assert "absolute_rate" not in via_load["benchmark"]
+
+        with pytest.raises(SystemExit):
+            self._run_wrapper(tmp_path, "both", *self.CELL_FLAGS, "--load", "1.75", "--rate-rpm", "8")
+        assert not (tmp_path / "serving-both.json").exists()

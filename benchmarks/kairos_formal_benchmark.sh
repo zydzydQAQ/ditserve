@@ -280,10 +280,15 @@ sys.exit(
 )
 PY
 }
+require_reuse=${DITSERVE_REQUIRE_REUSE_BUNDLE:-0}
+if [ "$require_reuse" = 1 ] && { [ "$action" != serve ] || [ -z "${DITSERVE_REUSE_BUNDLES:-}" ]; }; then
+  echo "DITSERVE_REQUIRE_REUSE_BUNDLE=1 needs action=serve and a non-empty DITSERVE_REUSE_BUNDLES; refusing to calibrate" >&2
+  exit 1
+fi
 if [ "$action" = serve ] && [ -n "${DITSERVE_REUSE_BUNDLES:-}" ]; then
   if try_reuse_calibration_bundle; then
     reused_bundle=1
-  elif [ "${DITSERVE_REQUIRE_REUSE_BUNDLE:-0}" = 1 ]; then
+  elif [ "$require_reuse" = 1 ]; then
     echo "no matching calibration bundle for allocated GPUs; reuse is required" >&2
     exit 1
   else

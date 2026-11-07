@@ -291,6 +291,9 @@ def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301
             raise ValueError('load and rate_rpm are mutually exclusive')
         if not is_v2 or diagnostic:
             raise ValueError('absolute rate_rpm requires a non-diagnostic v2 serving cell')
+        if pattern == 'bursty':
+            raise ValueError('absolute rate_rpm requires a continuous arrival pattern; bursty idle gaps '
+                             'make the mean offered rate differ from load * R0')
         rate_rpm = float(rate_rpm)
         if not math.isfinite(rate_rpm) or rate_rpm <= 0:
             raise ValueError('rate_rpm must be finite and positive')
@@ -429,13 +432,16 @@ def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301
     if not diagnostic and (is_v2 or resolution_distribution is not None):
         window['resolution_distribution'] = copy.deepcopy(dist_map[dist_name])
     r0_rpm = None
+    protocol_load = None
     if rate_rpm is not None:
         probe = build_trace(classes, selected, [window], slots=len(uuids), seed=seed, output_mode=mode)
         r0_rpm = probe['manifest']['r0_rpm']
         actual_load = rate_rpm / r0_rpm
-        anchor_load = float(p['anchor']['load'])
-        if math.isclose(rate_rpm, r0_rpm * anchor_load, rel_tol=1e-12, abs_tol=1e-9):
-            actual_load = anchor_load
+        # A rate equal to protocol_load * R0 must reproduce that --load trace bit-for-bit.
+        protocol_load = next((float(x) for x in allowed_loads
+                              if math.isclose(rate_rpm, r0_rpm * float(x), rel_tol=1e-12, abs_tol=1e-9)), None)
+        if protocol_load is not None:
+            actual_load = protocol_load
         window['load'] = actual_load
         window['requested_rate_rpm'] = rate_rpm
     config = build_serving_config(model, uuids, singleton, selected, seed=seed, load=actual_load,
@@ -503,7 +509,8 @@ def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301
     if rate_rpm is not None:
         config['benchmark']['absolute_rate'] = dict(
             requested_rate_rpm=rate_rpm, rate_rpm=trace['manifest']['rate_rpm'], r0_rpm=r0_rpm,
-            resolved_load=actual_load, anchor_load=float(p['anchor']['load']),
+            resolved_load=actual_load, protocol_load=protocol_load,
+            anchor_load=float(p['anchor']['load']),
             anchor_rate_rpm=r0_rpm * float(p['anchor']['load']),
             anchor_multiplier=actual_load / float(p['anchor']['load']),
             basis='mean offered arrival rate over the frozen finite-trace duration')
