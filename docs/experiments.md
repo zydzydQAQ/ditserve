@@ -145,7 +145,7 @@ python3 benchmarks/formal_benchmark.py serve --model wan21 \
 
 `formal-mixed-v2` 的 `serve` 也可用 `--rate-rpm <REQ/MIN>` 替代 `--load`，直接指定有限 trace 的平均绝对到达率；两者互斥。生成器先从同一冻结校准 bundle、模态比例和分辨率分布计算 $R_0$，再换算内部 load，并在 `benchmark.absolute_rate` 记录目标速率、实际 `rate_rpm`、$R_0$、换算 load 与相对 Anchor 的倍率。该入口是协议外的显式 Rate Scale 扩展，不改写 frozen JSON 的 load 列表，也不代表持续容量测量。
 
-2026-11-07 的九点扩展采用整数绝对速率 `7, 8, 10, 12, 13, 15, 17, 18, 20 req/min`，由原 Anchor 相对倍率候选值就近取整且不合并重复点。固定 b1 时 $R_0=7.5510654387872105$，原 `load=1.75` 对应 `13.214364517877618 req/min`；新默认点取最近整数 **13 req/min**，其内部 load 为 $13/R_0\approx1.721611354766$，不得再标为精确的 `load=1.75`。原 Anchor 仅用于校验 prompt、shape 和校准来源，不与新整数点混作同一 workload。每点固定 100 请求、50:50、uniform、SLO 1.5、seed 301 并运行全部五策略；所有点必须复用同一 b1，禁止校准失配时静默重校准。提交前除逐点检查配置与轨迹外，还须用物化的 `active_gpu_uuids` bundle 执行 `kairos_formal_benchmark.sh` 内嵌 wrapper，确认 `--rate-rpm` 经真实提交路径转发后得到相同 workload 哈希。
+2026-11-07 最终八点扩展采用整数绝对速率 `8, 12, 16, 20, 24, 28, 32, 36 req/min`，不再设置默认 Anchor 点。p1 运行前四点、p2 运行后四点，每点固定 100 请求、50:50、uniform、SLO 1.5、seed 301 并运行全部五策略，合计 40 个 policy-cell。固定 b1 时 $R_0=7.5510654387872105$，各点内部 load 均为 `rate_rpm/R0`；原 `load=1.75` 轨迹仅用于校验 prompt、shape 和校准来源。所有点必须复用同一 b1，禁止校准失配时静默重校准。此前九点作业已停止且未形成结果归档，其输入配置只保留为 superseded 记录，不与新八点矩阵合并。提交前除逐点检查配置与轨迹外，还须用物化的 `active_gpu_uuids` bundle 执行 `kairos_formal_benchmark.sh` 内嵌 wrapper，确认 `--rate-rpm` 经真实提交路径转发后得到相同 workload 哈希。
 
 `manifests.json` 格式为 `{ "wan21": { "path": "/shared/data/DITSERVE/models/.../manifest.json", "sha256": "..." }, "sd35": { "path": "...", "sha256": "..." } }`。生成器只绑定声明，worker 必须实核文件清单才能授予权重资格。`assemble` 拒绝旧版无协议记录、混杂 shape、跨 GPU 分配、跨核心版本及重复 shape；每个组合分别组装，不能拿 Wan2.1 的画像代替 Wan2.2。运行时若换到其他 GPU 分配，必须重新校准。
 
