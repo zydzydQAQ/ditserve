@@ -354,8 +354,10 @@ def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301
         effective_slo_scale = None
     elif slo_scale is not None or is_v2:
         allowed_scales = list(p['slo'].get('scales', [p['slo']['video_scale']]))
-        if is_v2 and 1.25 not in allowed_scales:
-            allowed_scales.append(1.25)
+        if is_v2:
+            for extra_scale in (1.25, 1.75):
+                if extra_scale not in allowed_scales:
+                    allowed_scales.append(extra_scale)
         effective_slo_scale = float(p['slo'].get('default_scale', p['slo']['video_scale'])
                                     if slo_scale is None else slo_scale)
         if effective_slo_scale not in allowed_scales:

@@ -841,3 +841,121 @@ class TestBudgetLedgerStudyRunnerAndCliContracts:
         verified = invoke(["results", "verify", str(dest)])
         assert verified["status"] == "verified"
         assert verified["format"] == "ditserve.results-summary.v1"
+
+    def test_formal_benchmark_serving_5point_slo_scale_sweep(self) -> None:
+        from unittest.mock import patch
+
+        import formal_benchmark
+        from ditserve.evaluation.common import canonical_hash, seal
+
+        model = "wan22"
+        uuids = [f"GPU-00000000-0000-0000-0000-00000000030{i}" for i in range(8)]
+        proto = formal_benchmark.protocol(ROOT / "configs" / "benchmarks" / "formal-mixed-v2.json")
+        assert canonical_hash(proto) == "1531fe434654134d508d59fc88073a68585ef43a400a9113c0b300f0a08734de"
+
+        manifests = {
+            key: {
+                "path": f"/shared/data/DITSERVE/models/{key}/manifest.json",
+                "sha256": str(index + 1) * 64,
+            }
+            for index, key in enumerate((model, "sd35"))
+        }
+        classes = {}
+        for sid, shape in proto["shapes"].items():
+            if shape["scope"] != "formal" or shape["model"] not in (model, "sd35"):
+                continue
+            if shape["kind"] == "video":
+                cost = {
+                    "kind": "video",
+                    "steps": shape["steps"],
+                    "prepare_ms": 0.0,
+                    "step_compute_ms": 100.0 * (shape["height"] / 480.0),
+                    "finish_ms": 50.0,
+                    "encode_ms": 10.0,
+                    "links": {str(degree): {"gbps": 5.0, "latency_ms": 0.1} for degree in (2, 3, 4, 6, 8)},
+                }
+            else:
+                cost = {"kind": "image", "service_ms": 250.0 * (shape["height"] / 512.0) ** 2}
+            classes[sid] = {
+                "spec": formal_benchmark.shape_spec(proto, sid),
+                "cost": cost,
+                "source": {
+                    "gpu_uuids": list(uuids),
+                    "resize_ms": 10.0,
+                    "quantum_overhead_ms": 1.0,
+                },
+            }
+        bundle = seal(
+            {
+                "schema": formal_benchmark.BUNDLE_SCHEMA,
+                "protocol_sha256": canonical_hash(proto),
+                "model": model,
+                "model_manifests": manifests,
+                "gpu_uuids": list(uuids),
+                "classes": classes,
+            }
+        )
+        pools = {
+            kind: {
+                "kind": kind,
+                "sha256": str(index + 3) * 64,
+                "samples": [
+                    {"sample_id": f"{kind}-{sample}", "prompt": f"{kind} prompt {sample}"}
+                    for sample in range(50)
+                ],
+            }
+            for index, kind in enumerate(("image", "video"))
+        }
+
+        scales = (1.0, 1.25, 1.5, 1.75, 2.0)
+        scale_tags = ("1p0", "1p25", "1p5", "1p75", "2p0")
+        observed_experiments = []
+        with patch.object(formal_benchmark, "split_pools", return_value=pools):
+            for slo_scale, stag in zip(scales, scale_tags):
+                cfg_p = formal_benchmark.serving(
+                    proto,
+                    model,
+                    uuids,
+                    bundle,
+                    {},
+                    manifests,
+                    split="test",
+                    seed=301,
+                    rate_rpm=12.0,
+                    video_fraction=0.5,
+                    pattern="poisson",
+                    suite="sweep",
+                    slo_scale=slo_scale,
+                    resolution_distribution="uniform",
+                )
+                exp_p = f"formal-wan22-test-poisson-s301-r12rpm-v0p5-slo{stag}-sweep"
+                assert cfg_p["experiment"] == exp_p
+                assert cfg_p["benchmark"]["slo_scale"] == slo_scale
+                assert cfg_p["benchmark"]["absolute_rate"]["requested_rate_rpm"] == 12.0
+                observed_experiments.append(cfg_p["experiment"])
+
+                cfg_g = formal_benchmark.serving(
+                    proto,
+                    model,
+                    uuids,
+                    bundle,
+                    {},
+                    manifests,
+                    split="test",
+                    seed=301,
+                    rate_rpm=12.0,
+                    video_fraction=0.5,
+                    pattern="gamma",
+                    cv=2.0,
+                    suite="sweep",
+                    slo_scale=slo_scale,
+                    resolution_distribution="uniform",
+                )
+                exp_g = f"formal-wan22-test-gamma-s301-r12rpm-v0p5-slo{stag}-cv2p0-sweep"
+                assert cfg_g["experiment"] == exp_g
+                assert cfg_g["benchmark"]["slo_scale"] == slo_scale
+                assert cfg_g["benchmark"]["absolute_rate"]["requested_rate_rpm"] == 12.0
+                observed_experiments.append(cfg_g["experiment"])
+
+        assert len(observed_experiments) == 10
+        assert len(set(observed_experiments)) == 10
