@@ -143,6 +143,10 @@ python3 benchmarks/formal_benchmark.py serve --model wan21 \
   --suite main --output serving.json
 ```
 
+`formal-mixed-v2` 的 `serve` 也可用 `--rate-rpm <REQ/MIN>` 替代 `--load`，直接指定有限 trace 的平均绝对到达率；两者互斥。生成器先从同一冻结校准 bundle、模态比例和分辨率分布计算 $R_0$，再换算内部 load，并在 `benchmark.absolute_rate` 记录目标速率、实际 `rate_rpm`、$R_0$、换算 load 与相对 Anchor 的倍率。该入口是协议外的显式 Rate Scale 扩展，不改写 frozen JSON 的 load 列表，也不代表持续容量测量。
+
+2026-11-07 的九点扩展以原 Anchor `load=1.75` 为默认点；固定 b1 时 $R_0=7.5510654387872105$、Anchor 为 `13.214364517877618 req/min`，按 Anchor 的 `0.5, 0.625, 0.75, 0.875, 1, 1.125, 1.25, 1.375, 1.5` 倍扫描，对应 `6.607182258939, 8.258977823674, 9.910773388408, 11.562568953143, 13.214364517878, 14.866160082612, 16.517955647347, 18.169751212082, 19.821546776816 req/min`。每点固定 100 请求、50:50、uniform、SLO 1.5、seed 301 并运行全部五策略；所有点必须复用同一 b1，禁止校准失配时静默重校准。
+
 `manifests.json` 格式为 `{ "wan21": { "path": "/shared/data/DITSERVE/models/.../manifest.json", "sha256": "..." }, "sd35": { "path": "...", "sha256": "..." } }`。生成器只绑定声明，worker 必须实核文件清单才能授予权重资格。`assemble` 拒绝旧版无协议记录、混杂 shape、跨 GPU 分配、跨核心版本及重复 shape；每个组合分别组装，不能拿 Wan2.1 的画像代替 Wan2.2。运行时若换到其他 GPU 分配，必须重新校准。
 
 P0 用 `wan21-dev/sd35-dev` 或 `wan22-dev/sd35-dev` 校准，再用 `serve --split development --seed 201 --diagnostic contention` 生成固定 CFG2 digest 对照；`--diagnostic no_preemption` 生成低负载全视频对照。无图像的 no-preemption 对照仍需检查实际停止数为零；contention 对照必须实际发生抢占，不能靠名称授予资格。开发 P0 通过仅放行正式 shape 的资格/校准，不自动证明正式性能。
