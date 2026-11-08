@@ -658,7 +658,21 @@ double ClusterCost::continuous_effective_batch_size(const std::string& name, con
 
 double ClusterCost::continuous_batch_step_ms(const std::string& name, const std::vector<const Json*>& batch,
                                              bool sequence_packing) const {
-    return continuous_step_ms(name, continuous_effective_batch_size(name, batch, sequence_packing));
+    std::string anchor = name;
+    double best_solo = klass(name).contains("batch_step_ms") ? continuous_step_ms(name, 1) : -1.0;
+    for (const Json* m : batch) {
+        if (!m || !m->contains("class") || !m->at("class").is_string()) continue;
+        const auto mklass = m->at("class").get<std::string>();
+        if (!profile_.at("classes").contains(mklass)) continue;
+        const auto& mrow = klass(mklass);
+        if (mrow.value("kind", "") != "image" || !mrow.contains("batch_step_ms")) continue;
+        const double solo = continuous_step_ms(mklass, 1);
+        if (solo > best_solo + 1e-9) {
+            best_solo = solo;
+            anchor = mklass;
+        }
+    }
+    return continuous_step_ms(anchor, continuous_effective_batch_size(anchor, batch, sequence_packing));
 }
 
 int ClusterCost::blocks_per_step(const std::string& name) const { return int_field(klass(name), "blocks_per_step", 1); }
@@ -704,8 +718,9 @@ double ClusterCost::remaining_ms(const Json& request, const Form& form, int sp_g
     const auto name = request.at("class").get<std::string>();
     const auto& row = klass(name);
     if (row.at("kind") == "image") {
-        if (source) *source = request.value("continuous_batch", false) ? "image_continuous" : "image_service";
-        if (!request.value("continuous_batch", false)) return number_field(row, "service_ms");
+        const bool cb = request.value("continuous_batch", false) && row.contains("batch_step_ms");
+        if (source) *source = cb ? "image_continuous" : "image_service";
+        if (!cb) return number_field(row, "service_ms");
         const int steps = int_field(request, "steps_total", int_field(row, "steps", 2), 1);
         const int done = int_field(request, "steps_done", 0, 0);
         double total = request.value("prepared", false) ? 0 : number_field(row, "prepare_ms");
@@ -929,19 +944,35 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         return quanta + (chunks <= 0 ? 0 : frames > 0 ? ceil_div(chunks, frames) : 1);
     };
     // Remaining GPU time plus the fixed dispatch cost of every quantum still to come.
+    const int raw_cb = int_field(options, "continuous_batch", 0, 0);
+    if (raw_cb > 8) throw std::invalid_argument("continuous_batch must be in [0, 8]");
+    const bool allow_cb = policy.continuous_batch || policy.family == "diagnostic" || policy.id.rfind("static-", 0) == 0;
+    const int continuous_batch = allow_cb ? raw_cb : 0;
+    const int raw_image_batch = int_field(options, "image_batch", 1);
+    if (!policy.continuous_batch && continuous_batch > 0 && raw_image_batch > 1)
+        throw std::invalid_argument("continuous_batch and atomic image_batch are mutually exclusive");
+    const int image_batch = (policy.continuous_batch && continuous_batch > 0) ? 1 : raw_image_batch;
     struct EstimateEvidence { double remaining = 0; int quanta = -1; const char* source = nullptr; };
     auto estimate = [&](const Json& r, const Form& form, int n, const std::vector<int>* group = nullptr, double cache_threshold = 0.0,
                         EstimateEvidence* evidence = nullptr) {
-        const double remaining = cost.remaining_ms(r, form, n, group, cache_threshold, evidence ? &evidence->source : nullptr);
+        Json r_view;
+        const Json* req_ptr = &r;
+        if (r.at("kind") == "image" && !allow_cb && r.value("continuous_batch", false)) {
+            r_view = r;
+            r_view["continuous_batch"] = false;
+            req_ptr = &r_view;
+        }
+        const double remaining = cost.remaining_ms(*req_ptr, form, n, group, cache_threshold, evidence ? &evidence->source : nullptr);
         if (evidence) evidence->remaining = remaining;
         if (cost.quantum_overhead_ms() <= 0) return remaining;
-        if (r.at("kind") == "image" && r.value("continuous_batch", false)) {
-            const int steps = int_field(r, "steps_total", int_field(cost.klass(r.at("class").get<std::string>()), "steps", 2), 1);
-            const int rounds = std::max(0, steps - int_field(r, "steps_done", 0, 0));
+        if (req_ptr->at("kind") == "image" && req_ptr->value("continuous_batch", false)
+            && cost.klass(req_ptr->at("class").get<std::string>()).contains("batch_step_ms")) {
+            const int steps = int_field(*req_ptr, "steps_total", int_field(cost.klass(req_ptr->at("class").get<std::string>()), "steps", 2), 1);
+            const int rounds = std::max(0, steps - int_field(*req_ptr, "steps_done", 0, 0));
             if (evidence) evidence->quanta = rounds;
             return remaining + cost.quantum_overhead_ms() * rounds;
         }
-        const int quanta = r.at("kind") == "image" ? 1 : quanta_left(r, form, n, group);
+        const int quanta = req_ptr->at("kind") == "image" ? 1 : quanta_left(*req_ptr, form, n, group);
         if (evidence) evidence->quanta = quanta;
         return remaining + cost.quantum_overhead_ms() * quanta;
     };
@@ -1095,6 +1126,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                                  || policy.id == "abl-no-block" || policy.id == "abl-no-prune"
                                  || policy.id == "abl-no-mindeg" || policy.id == "abl-first-fit"
                                  || policy.id == "abl-no-decode-shrink" || policy.id == "abl-no-img-priority"
+                                 || policy.id == "abl-no-cb"
                                  || (policy.id == "block-cfg2" && gpus >= 8 && rows.size() > 2));
     const bool feasible_img_priority = bool_field(options, "feasible_img_priority", policy.feasible_img_priority);
     double max_stop_overhead_ms = 0.0;
@@ -1244,10 +1276,6 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         const double block = cost.pair_ms(a, b, form, n, group) / bps;
         return static_cast<int>(std::max(1., std::min(std::floor(quantum_ms / block), double(bps))));
     };
-    const int image_batch = int_field(options, "image_batch", 1);
-    const int continuous_batch = int_field(options, "continuous_batch", 0, 0);
-    if (continuous_batch > 8) throw std::invalid_argument("continuous_batch must be in [0, 8]");
-    if (continuous_batch > 0 && image_batch > 1) throw std::invalid_argument("continuous_batch and atomic image_batch are mutually exclusive");
     std::vector<double> cache_thresholds = {0.0};
     if (options.contains("cache_thresholds")) {
         cache_thresholds.clear();
@@ -1271,7 +1299,8 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         if (r.at("kind") == "image") {
             const auto current = group_of(r);
             const bool prepared = r.value("prepared", false);
-            if (continuous_batch > 0 && prepared && current.size() != 1)
+            const int class_cb = cost.klass(klass).contains("batch_step_ms") ? continuous_batch : 0;
+            if (class_cb > 0 && prepared && current.size() != 1)
                 throw std::invalid_argument("a continuous image state must have exactly one resident GPU");
             const double slack = number_field(r, "deadline_ms") - now - estimate(r, Form{}, 1);
             int chosen = -1, rank = 3, chosen_fit = -1;  // rank: -1 reserved, 0 idle, 1 step-boundary video group, 2 mid-step group
@@ -1304,9 +1333,98 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             } else {
                 for (int g = 0; g < gpus; ++g) gpu_order[g] = g;
             }
+            const bool bubble_free = allow_cb && class_cb > 0 ? bool_field(options, "bubble_free", policy.bubble_free) : false;
+            const bool sequence_packing = allow_cb ? bool_field(options, "sequence_packing", class_cb > 0 ? policy.sequence_packing : false) : false;
+            auto compatible_batch_spec = [&](const Json& lhs, const Json& rhs) {
+                if (!lhs.contains("batch_spec")) return true;
+                Json a = lhs.at("batch_spec"), b = rhs.value("batch_spec", Json::object());
+                if (sequence_packing && a.is_object() && b.is_object()) {
+                    a.erase("height"); a.erase("width");
+                    b.erase("height"); b.erase("width");
+                }
+                return a == b;
+            };
+            auto round_cost = [&](const std::vector<const Json*>& batch) {
+                double value = cost.continuous_batch_step_ms(klass, batch, sequence_packing) + cost.quantum_overhead_ms();
+                if (!bubble_free) {
+                    for (const Json* m : batch) {
+                        const auto mklass = m->at("class").get<std::string>();
+                        if (!m->value("prepared", false)) value += number_field(cost.klass(mklass), "prepare_ms");
+                        const int steps = int_field(*m, "steps_total", int_field(cost.klass(mklass), "steps", 2), 1);
+                        if (int_field(*m, "steps_done", 0, 0) + 1 >= steps) value += number_field(cost.klass(mklass), "finish_ms");
+                    }
+                }
+                return value;
+            };
+            auto rem_steps_of = [&](const Json* m) {
+                const auto mklass = m->at("class").get<std::string>();
+                const int steps = int_field(*m, "steps_total", int_field(cost.klass(mklass), "steps", 2), 1);
+                return std::max(0, steps - int_field(*m, "steps_done", 0, 0) - 1);
+            };
+            auto fits = [&](const std::vector<const Json*>& batch) {
+                const double service = round_cost(batch);
+                std::vector<const Json*> active_after;
+                int min_shared_rem = std::numeric_limits<int>::max();
+                for (const Json* x : batch) {
+                    const int rx = rem_steps_of(x);
+                    if (rx > 0) {
+                        active_after.push_back(x);
+                        min_shared_rem = std::min(min_shared_rem, rx);
+                    }
+                }
+                const double shared_step_ms = active_after.size() > 1
+                    ? cost.continuous_batch_step_ms(klass, active_after, sequence_packing)
+                    : 0.0;
+                for (const Json* m : batch) {
+                    const auto mklass = m->at("class").get<std::string>();
+                    const int remaining = rem_steps_of(m);
+                    double complete = service;
+                    if (remaining > 0) {
+                        if (active_after.size() <= 1) {
+                            complete += remaining * (cost.continuous_step_ms(mklass, 1) + cost.quantum_overhead_ms());
+                        } else {
+                            const int shared = std::min(remaining, min_shared_rem);
+                            const int solo = remaining - shared;
+                            complete += shared * (shared_step_ms + cost.quantum_overhead_ms())
+                                        + solo * (cost.continuous_step_ms(mklass, 1) + cost.quantum_overhead_ms());
+                        }
+                        complete += number_field(cost.klass(mklass), "finish_ms");
+                    } else if (bubble_free) {
+                        complete += number_field(cost.klass(mklass), "finish_ms");
+                    }
+                    if (now + complete > number_field(*m, "deadline_ms")) return false;
+                }
+                return true;
+            };
             for (int gpu : gpu_order) {
-                if (!free[gpu] || (continuous_batch > 0 && prepared && gpu != current.front())) continue;
+                if (!free[gpu] || (class_cb > 0 && prepared && gpu != current.front())) continue;
                 if (strict_partition && reserve > 0 && !reserved(gpu)) continue;
+                std::vector<const Json*> resident_cb_on_gpu;
+                if (class_cb > 0 && !prepared) {
+                    for (const Json* other : rows) {
+                        if (other != &r && other->at("kind") == "image" && other->value("prepared", false) && !taken.count(other)) {
+                            const auto ogroup = group_of(*other);
+                            if (!ogroup.empty() && ogroup.front() == gpu) resident_cb_on_gpu.push_back(other);
+                        }
+                    }
+                    if (!resident_cb_on_gpu.empty()) {
+                        bool can_join_resident = static_cast<int>(resident_cb_on_gpu.size()) + 1 <= class_cb;
+                        bool any_feasible_resident = false;
+                        std::vector<const Json*> probe = {&r};
+                        for (const Json* cb_m : resident_cb_on_gpu) {
+                            if (!late.at(cb_m)) any_feasible_resident = true;
+                            const auto cb_klass = cb_m->at("class").get<std::string>();
+                            if (!cost.klass(cb_klass).contains("batch_step_ms")
+                                || (!sequence_packing && cb_klass != klass)
+                                || !compatible_batch_spec(r, *cb_m)) {
+                                can_join_resident = false;
+                            }
+                            probe.push_back(cb_m);
+                        }
+                        if (can_join_resident && !fits(probe)) can_join_resident = false;
+                        if (!can_join_resident && any_feasible_resident) continue;
+                    }
+                }
                 // Prefer idle GPUs; then GPUs of videos at step boundaries; a
                 // mid-step group only when waiting for its boundary would miss.
                 int score = reserved(gpu) ? -1 : mid_owner[gpu] ? 2 : 0;
@@ -1343,10 +1461,11 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                 if (score == 2 && !policy.blocks) continue;
                 const double max_boundary_wait = (policy.id == "abl-first-fit" || policy.id == "block-cfg2") ? (1.25 * slack)
                                                : (ditserve_sched && policy.blocks) ? (0.65 * slack) : slack;
-                if (score == 2 && lazy && slack > 0.0 && time_to_boundary(mid_owner[gpu]) <= max_boundary_wait) continue;
+                if (score == 2 && !prepared && lazy && slack > 0.0 && time_to_boundary(mid_owner[gpu]) <= max_boundary_wait) continue;
                 const int gpu_fit = (image_placement == "pair_fit" ? fit(gpu)
                                     : (rows.size() > 2 && (policy.id == "abl-first-fit" || policy.id == "block-cfg2")) ? -fit(gpu) : 0)
-                                    + (score == 1 ? companion_bonus(gpu) : 0);
+                                    + (score == 1 ? companion_bonus(gpu) : 0)
+                                    - (!resident_cb_on_gpu.empty() ? 8 : 0);
                 double gpu_laxity = -std::numeric_limits<double>::infinity();
                 if (score == 1 && image_placement == "pair_fit" && boundary_owner) {
                     gpu_laxity = (late.at(boundary_owner) ? 1e15 : 0.0)
@@ -1360,62 +1479,69 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             }
             if (chosen < 0) continue;
             free[chosen] = false;
-            const bool bubble_free = bool_field(options, "bubble_free", false);
-            const bool sequence_packing = bool_field(options, "sequence_packing", false);
-            auto compatible_batch_spec = [&](const Json& lhs, const Json& rhs) {
-                if (!lhs.contains("batch_spec")) return true;
-                Json a = lhs.at("batch_spec"), b = rhs.value("batch_spec", Json::object());
-                if (sequence_packing && a.is_object() && b.is_object()) {
-                    a.erase("height"); a.erase("width");
-                    b.erase("height"); b.erase("width");
-                }
-                return a == b;
-            };
             Json assignment = {{"request_id", id}, {"group", Json::array({chosen})}, {"degree", 1},
-                               {"quantum", continuous_batch > 0 ? "continuous_batch" : "atomic"},
+                               {"quantum", class_cb > 0 ? "continuous_batch" : "atomic"},
                                {"resize", false}, {"reason", rank == 2 ? "block_preempt" : "edf"}};
             if (bubble_free) assignment["bubble_free"] = true;
             if (sequence_packing) assignment["sequence_packing"] = true;
-            if (continuous_batch > 0) {
+            if (class_cb > 0) {
                 std::vector<const Json*> members = {&r};
-                auto round_cost = [&](const std::vector<const Json*>& batch) {
-                    double value = cost.continuous_batch_step_ms(klass, batch, sequence_packing) + cost.quantum_overhead_ms();
-                    if (!bubble_free) {
-                        for (const Json* m : batch) {
-                            const auto mklass = m->at("class").get<std::string>();
-                            if (!m->value("prepared", false)) value += number_field(cost.klass(mklass), "prepare_ms");
-                            const int steps = int_field(*m, "steps_total", int_field(cost.klass(mklass), "steps", 2), 1);
-                            if (int_field(*m, "steps_done", 0, 0) + 1 >= steps) value += number_field(cost.klass(mklass), "finish_ms");
-                        }
+                int other_free_image_gpus = 0;
+                for (int g = 0; g < gpus; ++g) {
+                    if (g == chosen || !free[g] || decode_hold[g] || mid_owner[g]) continue;
+                    if (strict_partition && reserve > 0 && !reserved(g)) continue;
+                    bool has_resident = false;
+                    for (std::size_t k = index + 1; k < rows.size(); ++k) {
+                        const Json& rk = *rows[k];
+                        if (taken.count(&rk) || !rk.value("prepared", false)) continue;
+                        for (int rg : group_of(rk)) if (rg == g) { has_resident = true; break; }
+                        if (has_resident) break;
                     }
-                    return value;
-                };
-                auto fits = [&](const std::vector<const Json*>& batch) {
-                    const double service = round_cost(batch);
-                    for (const Json* m : batch) {
-                        const auto mklass = m->at("class").get<std::string>();
-                        const int steps = int_field(*m, "steps_total", int_field(cost.klass(mklass), "steps", 2), 1);
-                        const int remaining = std::max(0, steps - int_field(*m, "steps_done", 0, 0) - 1);
-                        double complete = service;
-                        if (remaining > 0) complete += remaining * (cost.continuous_batch_step_ms(klass, batch, sequence_packing)
-                            + cost.quantum_overhead_ms()) + number_field(cost.klass(mklass), "finish_ms");
-                        else if (bubble_free) complete += number_field(cost.klass(mklass), "finish_ms");
-                        if (now + complete > number_field(*m, "deadline_ms")) return false;
-                    }
-                    return true;
-                };
-                for (std::size_t j = index + 1; j < rows.size() && static_cast<int>(members.size()) < continuous_batch; ++j) {
+                    if (!has_resident) ++other_free_image_gpus;
+                }
+                int unstarted_waiting_images = !prepared ? 1 : 0;
+                for (std::size_t k = index + 1; k < rows.size(); ++k) {
+                    const Json& rk = *rows[k];
+                    if (taken.count(&rk) || rk.at("kind") != "image" || rk.value("prepared", false)) continue;
+                    ++unstarted_waiting_images;
+                }
+                const int total_free_image_gpus = 1 + other_free_image_gpus;
+                const int fair_unstarted_cap = std::max(1, ceil_div(unstarted_waiting_images, total_free_image_gpus));
+                int unstarted_in_members = !prepared ? 1 : 0;
+                // First, include any already-prepared continuous-batch images pinned to `chosen` GPU
+                for (std::size_t j = index + 1; j < rows.size() && static_cast<int>(members.size()) < class_cb; ++j) {
                     const Json& q = *rows[j];
-                    if (q.at("kind") != "image" || taken.count(&q) || (!sequence_packing && q.at("class") != r.at("class"))) continue;
+                    const auto qklass = q.at("class").get<std::string>();
+                    if (q.at("kind") != "image" || taken.count(&q) || !q.value("prepared", false)
+                        || !cost.klass(qklass).contains("batch_step_ms")
+                        || (!sequence_packing && qklass != klass)) continue;
                     if (!compatible_batch_spec(r, q)) continue;
-                    if (q.value("prepared", false)) {
-                        const auto other = group_of(q);
-                        if (other.size() != 1) throw std::invalid_argument("a continuous image state must have exactly one resident GPU");
-                        if (other.front() != chosen) continue;
-                    }
+                    const auto other = group_of(q);
+                    if (other.size() != 1) throw std::invalid_argument("a continuous image state must have exactly one resident GPU");
+                    if (other.front() != chosen) continue;
                     auto candidate = members;
                     candidate.push_back(&q);
                     if (!fits(candidate)) continue;
+                    members = std::move(candidate);
+                }
+                // Second, pack unstarted waiting images when contended
+                for (std::size_t j = index + 1; j < rows.size() && static_cast<int>(members.size()) < class_cb; ++j) {
+                    const Json& q = *rows[j];
+                    const auto qklass = q.at("class").get<std::string>();
+                    if (q.at("kind") != "image" || taken.count(&q) || q.value("prepared", false)
+                        || !cost.klass(qklass).contains("batch_step_ms")
+                        || (!sequence_packing && qklass != klass)) continue;
+                    if (!compatible_batch_spec(r, q)) continue;
+                    if (std::find(members.begin(), members.end(), &q) != members.end()) continue;
+                    auto candidate = members;
+                    candidate.push_back(&q);
+                    if (other_free_image_gpus > 0 && unstarted_in_members >= fair_unstarted_cap) {
+                        const double cur_step = cost.continuous_batch_step_ms(klass, members, sequence_packing);
+                        const double cand_step = cost.continuous_batch_step_ms(klass, candidate, sequence_packing);
+                        if (cand_step > cur_step * 1.02) continue;
+                    }
+                    if (!fits(candidate)) continue;
+                    ++unstarted_in_members;
                     members = std::move(candidate);
                 }
                 Json batch = Json::array();
@@ -1969,7 +2095,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         for (const Json* r : rows) by_id[r->at("request_id").get<std::string>()] = r;
         for (const auto& assignment : assignments) {
             const auto& quantum = assignment.at("quantum");
-            if (quantum == "atomic" || quantum == "finish") continue;
+            if (quantum == "atomic" || quantum == "continuous_batch" || quantum == "finish") continue;
             const auto id = assignment.at("request_id").get<std::string>();
             const Json* partner = assignment.contains("pair") ? by_id.at(assignment.at("pair").get<std::string>()) : nullptr;
             for (const auto& gpu : assignment.at("group")) {

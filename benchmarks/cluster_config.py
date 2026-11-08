@@ -30,12 +30,12 @@ MEMORY_STRATEGIES = (
     "s3_both_encoders_cpu",
     "s4_disaggregated_pool",
 )
-# Worker memory strategies and SD3.5 continuous batching are explicit opt-in.
-# None / 0 keep the legacy worker options (Wan {"execution": "block"}, SD3.5
-# {"profile": False, "cache": False}) and atomic SD3.5 execution.
+# Worker memory strategies are explicit opt-in; SD3.5 continuous batching is
+# enabled by default (DEFAULT_CONTINUOUS_BATCH = 4, sequence_packing = True,
+# bubble_free = True). Passing continuous_batch = 0 keeps atomic SD3.5 execution.
 DEFAULT_MEMORY_STRATEGY = None
 CONTINUOUS_BATCH_SIZES = (1, 2, 3, 4, 6, 8)
-DEFAULT_CONTINUOUS_BATCH = 0
+DEFAULT_CONTINUOUS_BATCH = 4
 
 _MEMORY_STRATEGY_DESCRIPTORS = {
     "s0_naive_gpu": {
@@ -242,14 +242,18 @@ def applied_memory_strategy(strategy):
     }
 
 
-def continuous_batch_settings(continuous_batch=0, sequence_packing=None, bubble_free=None):
-    """Resolve an explicit SD3.5 continuous-batch request; None or 0 means off.
+def continuous_batch_settings(
+    continuous_batch=DEFAULT_CONTINUOUS_BATCH,
+    sequence_packing=None,
+    bubble_free=None,
+):
+    """Resolve an SD3.5 continuous-batch request; None defaults to DEFAULT_CONTINUOUS_BATCH (4).
 
     sequence_packing/bubble_free are continuous-batch sub-options: None means
     on with continuous batching and off without it; an explicit True without
-    continuous batching is rejected rather than reaching atomic workers.
+    continuous batching (continuous_batch=0) is rejected rather than reaching atomic workers.
     """
-    value = 0 if continuous_batch is None else continuous_batch
+    value = DEFAULT_CONTINUOUS_BATCH if continuous_batch is None else continuous_batch
     if not isinstance(value, int) or isinstance(value, bool) or not 0 <= value <= 8:
         raise ValueError("continuous_batch must be an integer in [0, 8]")
     if value == 0:
@@ -268,22 +272,127 @@ def allocated_uuids():
     return [value.strip() for value in output.splitlines() if value.strip()]
 
 
-def default_sd35_batch_step_ms(service_ms: float = 1000.0, steps: int = 28, *, resolution: int = 1024) -> dict:
+def default_sd35_batch_step_ms(
+    service_ms: float = 1000.0,
+    steps: int = 28,
+    resolution: int = 512,
+    *,
+    prepare_ms: float | None = None,
+    finish_ms: float | None = None,
+) -> dict[str, float]:
     """Calibrated SD3.5-Medium MM-DiT 1-step forward scaling table on A100-PCIE-40GB (BF16 FlashAttention).
 
-    For 512x512 (256 patch tokens per branch), B=1..8 scales sub-linearly because B=1 under-utilizes SMs.
-    For 1024x1024 (1024 patch tokens per branch), B=1..8 still amortizes weight reads, kernel launch, and CFG overhead.
+    For <=768px (e.g. 512x512, 256 patch tokens per branch), B=1..8 scales sub-linearly because B=1 under-utilizes SMs.
+    For >768px (e.g. 1024x1024 / 1440x1440), B=1..8 still amortizes weight reads, kernel launch, and CFG overhead.
     """
     steps = max(1, int(steps))
-    decode_and_prep = min(service_ms * 0.12, 180.0)
-    step1_ms = max(4.0, (float(service_ms) - decode_and_prep) / steps)
-    if int(resolution) <= 512:
+    svc = float(service_ms)
+    if prepare_ms is None:
+        prep_ms = min(45.0, round(svc * 0.05, 3)) if svc < 500.0 else 45.0
+    else:
+        prep_ms = float(prepare_ms)
+    if finish_ms is None:
+        fin_ms = (
+            min(135.0, max(10.0, round(svc * 0.05, 3)))
+            if svc < 500.0
+            else min(135.0, max(10.0, round(svc * 0.075, 3)))
+        )
+    else:
+        fin_ms = float(finish_ms)
+    b1_step_ms = max(0.5, (svc - prep_ms - fin_ms) / steps)
+    if int(resolution) <= 768:
         # 512x512 sub-linear scaling ratios on A100-PCIE-40GB (d20261104-sd35-cb-sweep-r3)
         ratios = {1: 1.00, 2: 1.838, 3: 2.669, 4: 3.567, 6: 5.194, 8: 6.941}
     else:
         # 1024x1024 sub-linear scaling ratios on A100-PCIE-40GB (d20261104-sd35-cb-sweep-r3)
         ratios = {1: 1.00, 2: 1.940, 3: 2.834, 4: 3.788, 6: 5.636, 8: 7.514}
-    return {str(k): round(step1_ms * mult, 3) for k, mult in ratios.items()}
+    return {str(k): round(b1_step_ms * mult, 3) for k, mult in ratios.items()}
+
+
+CALIBRATED_PCIE_PROFILE = {
+    "provenance": "mixed",
+    "sp_efficiency": 1.0,
+    "sp_overlap": 0.0,
+    "resize_ms": 15.0,
+    "quantum_overhead_ms": 1.5,
+    "block_overhead_ms": 0.0,
+    "classes": {
+        "wan21-preflight": {
+            "kind": "video",
+            "steps": 20,
+            "blocks_per_step": 60,
+            "prepare_ms": 0.0,
+            "encode_ms": 420.0,
+            "step_compute_ms": 1147.0,
+            "comm_mb_per_step": 10351.0,
+            "collectives_per_step": 240,
+            "cfg_exchange_mb": 1.8,
+            "finish_ms": 1840.0,
+            "decode_chunks": 9,
+        },
+        "wan22-preflight": {
+            "kind": "video",
+            "steps": 20,
+            "blocks_per_step": 60,
+            "prepare_ms": 0.0,
+            "encode_ms": 480.0,
+            "step_compute_ms": 2150.0,
+            "comm_mb_per_step": 24153.2928,
+            "collectives_per_step": 240,
+            "cfg_exchange_mb": 4.19328,
+            "finish_ms": 2200.0,
+            "decode_chunks": 13,
+        },
+        "sd35-preflight": {
+            "kind": "image",
+            "service_ms": 6450.0,
+            "steps": 28,
+            "prepare_ms": 45.0,
+            "finish_ms": 135.0,
+            "batch_step_ms": default_sd35_batch_step_ms(6450.0, steps=28, resolution=1024),
+        },
+    },
+    "links": {
+        str(degree): {"gbps": 6.0 * degree / (degree + 1.0), "latency_ms": 0.1}
+        for degree in (2, 3, 4, 6, 8)
+    },
+    "source": {
+        "gpu_uuids": [f"GPU-00000000-0000-0000-0000-00000000000{i}" for i in range(8)],
+        "shape": {"frames": 49, "steps": 20, "height": 512, "width": 896, "guidance_scale": 5.0},
+    },
+}
+
+
+def expected_worker_options(
+    memory_strategy=DEFAULT_MEMORY_STRATEGY,
+    *,
+    continuous_batch=DEFAULT_CONTINUOUS_BATCH,
+    sequence_packing=None,
+    bubble_free=None,
+    cfg_fold=None,
+):
+    """Return expected Wan and SD3.5 worker option dictionaries for a configuration."""
+    cb, packing, bubble = continuous_batch_settings(continuous_batch, sequence_packing, bubble_free)
+    applied = None if memory_strategy is None else applied_memory_strategy(memory_strategy)
+    wan_options = {"execution": "block"}
+    if cfg_fold is not None:
+        wan_options["cfg_fold"] = copy.deepcopy(cfg_fold)
+    image_options = {"profile": False, "cache": False}
+    if cb > 0:
+        image_options.update(continuous_batch=True, sequence_packing=packing, bubble_free=bubble)
+    image_config = {}
+    if applied is not None:
+        wan_options.update(copy.deepcopy(applied["applied_worker_options"]["wan"]))
+        image_options.update(copy.deepcopy(applied["applied_worker_options"]["image"]))
+        image_config.update(copy.deepcopy(applied.get("applied_worker_config", {}).get("image", {})))
+    return {
+        "wan": wan_options,
+        "image": image_options,
+        "image_config": image_config,
+        "continuous_batch": cb,
+        "sequence_packing": packing,
+        "bubble_free": bubble,
+    }
 
 
 def make_workers(
@@ -475,8 +584,14 @@ def build_config(
             "max_requests": eff_cb, "sequence_packing": packing, "bubble_free": bubble,
         }
         # Synthetic like the rest of this functional-preflight profile.
-        image_cost.update(steps=image_steps, prepare_ms=20.0, finish_ms=80.0,
-                          batch_step_ms=default_sd35_batch_step_ms(1000.0, image_steps, resolution=512))
+        image_cost.update(
+            steps=image_steps,
+            prepare_ms=20.0,
+            finish_ms=80.0,
+            batch_step_ms=default_sd35_batch_step_ms(
+                1000.0, image_steps, resolution=512, prepare_ms=20.0, finish_ms=80.0
+            ),
+        )
     if applied is not None:
         benchmark_meta["memory_strategy"] = applied
         if applied.get("applied_worker_config", {}).get("image", {}).get("text_encoder_device") == "cpu":
@@ -651,15 +766,48 @@ def build_calibration_config(model, gpu_uuids, *, image_batch_calibration=1,
     return config
 
 
+def self_check():
+    """Run deterministic self-checks on cluster_config defaults, profiles, and memory strategies."""
+    assert DEFAULT_CONTINUOUS_BATCH == 4, f"expected DEFAULT_CONTINUOUS_BATCH == 4, got {DEFAULT_CONTINUOUS_BATCH}"
+    assert continuous_batch_settings() == (4, True, True)
+    assert continuous_batch_settings(0) == (0, False, False)
+
+    sd_cal = CALIBRATED_PCIE_PROFILE["classes"]["sd35-preflight"]
+    assert sd_cal["steps"] == 28
+    assert sd_cal["prepare_ms"] == 45.0
+    assert sd_cal["finish_ms"] == 135.0
+    assert set(sd_cal["batch_step_ms"].keys()) == {"1", "2", "3", "4", "6", "8"}
+    reconstructed = sd_cal["prepare_ms"] + sd_cal["steps"] * sd_cal["batch_step_ms"]["1"] + sd_cal["finish_ms"]
+    assert abs(reconstructed - sd_cal["service_ms"]) < 0.1
+
+    uuids = [f"GPU-00000000-0000-0000-0000-00000000000{i}" for i in range(4)]
+    for model in sorted(MODELS):
+        cfg = build_config(model, uuids)
+        phase = cfg["phases"][0]
+        assert phase["options"]["continuous_batch"] == DEFAULT_CONTINUOUS_BATCH
+        assert phase["options"]["sequence_packing"] is True
+        assert phase["options"]["bubble_free"] is True
+        expected = expected_worker_options(continuous_batch=DEFAULT_CONTINUOUS_BATCH)
+        assert cfg["workers"]["image0"]["config"]["options"] == expected["image"]
+        img_cls = phase["profile"]["classes"]["sd35-preflight"]
+        assert "batch_step_ms" in img_cls and "1" in img_cls["batch_step_ms"]
+
+    for strategy in WORKER_MEMORY_STRATEGIES:
+        applied = applied_memory_strategy(strategy)
+        assert applied["strategy"] == strategy
+    return {"status": "ok", "default_continuous_batch": DEFAULT_CONTINUOUS_BATCH}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--model", choices=sorted(MODELS), required=True)
+    parser.add_argument("--self-check", action="store_true", help="run deterministic module self-checks and exit")
+    parser.add_argument("--model", choices=sorted(MODELS))
     parser.add_argument("--gpu-uuids", help="comma-separated UUIDs; defaults to nvidia-smi in this job")
     parser.add_argument(
         "--continuous-batch",
         type=int,
         default=DEFAULT_CONTINUOUS_BATCH,
-        help="opt-in maximum continuous step-level image batch size in [0, 8]; default 0 (off)",
+        help="maximum continuous step-level image batch size in [0, 8]; default 4",
     )
     parser.add_argument(
         "--sequence-packing",
@@ -679,8 +827,14 @@ def main():
         help="opt-in worker memory strategy; only strategies the workers implement are accepted "
              "(default: none, legacy worker options)",
     )
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output", type=Path)
     args = parser.parse_args()
+    if args.self_check:
+        result = self_check()
+        print(json.dumps(result))
+        return
+    if not args.model or args.output is None:
+        parser.error("--model and --output are required unless --self-check is passed")
     uuids = args.gpu_uuids.split(",") if args.gpu_uuids else allocated_uuids()
     try:
         config = build_config(

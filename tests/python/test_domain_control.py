@@ -135,6 +135,7 @@ class TestControllerPolicyCatalogAndSeparation:
             "abl-first-fit",
             "abl-no-decode-shrink",
             "abl-no-img-priority",
+            "abl-no-cb",
         )
         for pid in required_policies:
             assert pid in by_id, f"missing policy {pid} in policy_catalog()"
@@ -147,9 +148,33 @@ class TestControllerPolicyCatalogAndSeparation:
         assert by_id["ditserve"]["image_placement"] == "pair_fit"
         assert by_id["ditserve"]["feasible_img_priority"] is True
         assert by_id["ditserve"]["hold_diffuse"] is False
+        assert by_id["ditserve"]["continuous_batch"] is True
+        assert by_id["ditserve"]["sequence_packing"] is True
+        assert by_id["ditserve"]["bubble_free"] is True
         assert by_id["ditserve-approx"]["blocks"] is True
         assert by_id["ditserve-approx"]["elastic"] is True
         assert by_id["ditserve-approx"]["approximate"] is True
+        assert by_id["ditserve-approx"]["continuous_batch"] is True
+        assert by_id["ditserve-approx"]["sequence_packing"] is True
+        assert by_id["ditserve-approx"]["bubble_free"] is True
+
+        # Ablation w/o continuous batching and external baselines keep continuous_batch=False
+        assert by_id["abl-no-cb"]["continuous_batch"] is False
+        assert by_id["abl-no-cb"]["sequence_packing"] is False
+        assert by_id["abl-no-cb"]["bubble_free"] is False
+        assert by_id["abl-no-cb"]["blocks"] is True
+        assert by_id["abl-no-cb"]["prune_dominated"] is True
+        for baseline_id in (
+            "xdit-sp1",
+            "tetriserve",
+            "sbp-esp",
+            "edf-bestfit",
+            "edf-cfg2",
+            "block-cfg2",
+        ):
+            assert by_id[baseline_id]["continuous_batch"] is False
+            assert by_id[baseline_id]["sequence_packing"] is False
+            assert by_id[baseline_id]["bubble_free"] is False
 
         # Factorized CFG2 baselines vs SP-only counterparts
         assert by_id["tetriserve-cfg2"]["allow_cfg_forms"] is True
@@ -336,6 +361,132 @@ class TestControllerPolicyCatalogAndSeparation:
         assert "cfg2sp2" in v0["forms"]
         assert res["by_kind"]["video"]["ontime"] == 2
 
+    def test_policy_level_continuous_batching_ownership_and_baseline_isolation(self) -> None:
+        prof = _pcie_profile()
+        prof["classes"]["image"] = {
+            "kind": "image",
+            "service_ms": 1778.08,
+            "steps": 4,
+            "prepare_ms": 45.0,
+            "finish_ms": 135.0,
+            "batch_step_ms": {"1": 400.0, "2": 720.0, "3": 1020.0, "4": 1350.0},
+        }
+        workload = [
+            {"request_id": "i0", "kind": "image", "class": "image", "arrival_ms": 0.0, "deadline_ms": 12000.0},
+            {"request_id": "i1", "kind": "image", "class": "image", "arrival_ms": 0.0, "deadline_ms": 12000.0},
+        ]
+        cb_options = {"continuous_batch": 4, "sequence_packing": True, "bubble_free": True, "forms": ["cfg2"]}
+
+        dit_res = _rpc_simulate(
+            {"workload": workload, "profile": prof, "policy": "ditserve", "gpus": 2, "options": cb_options}
+        )
+        for req in dit_res["requests"]:
+            assert "continuous_batch" in req["action_ms"]
+            assert "atomic" not in req["action_ms"]
+            assert req["quanta"] == 4
+
+        for non_cb_policy in (
+            "abl-no-cb",
+            "xdit",
+            "tetriserve",
+            "sbp-esp",
+            "edf-bestfit",
+            "edf-cfg2",
+            "block-cfg2",
+        ):
+            res = _rpc_simulate(
+                {"workload": workload, "profile": prof, "policy": non_cb_policy, "gpus": 2, "options": cb_options}
+            )
+            for req in res["requests"]:
+                assert "atomic" in req["action_ms"], f"{non_cb_policy} did not execute atomic quantum"
+                assert "continuous_batch" not in req["action_ms"], (
+                    f"{non_cb_policy} leaked continuous_batch quantum"
+                )
+                assert req["quanta"] == 1
+
+    def test_work_conserving_idle_gpu_placement_and_cross_class_slo_guard(self) -> None:
+        # 1. Idle-GPU spreading: 2 free GPUs + 2 unstarted images spread across GPU 0 and GPU 1 at B=1 each
+        prof = _pcie_profile()
+        prof["classes"]["image"] = {
+            "kind": "image",
+            "service_ms": 1778.08,
+            "steps": 4,
+            "prepare_ms": 45.0,
+            "finish_ms": 135.0,
+            "batch_step_ms": {"1": 400.0, "2": 720.0, "3": 1020.0, "4": 1350.0},
+        }
+        workload_2img = [
+            {"request_id": "i0", "kind": "image", "class": "image", "arrival_ms": 0.0, "deadline_ms": 10000.0},
+            {"request_id": "i1", "kind": "image", "class": "image", "arrival_ms": 0.0, "deadline_ms": 10000.0},
+        ]
+        cb_opts = {"continuous_batch": 4, "sequence_packing": True, "bubble_free": True, "forms": ["sp1", "cfg2"]}
+
+        spread_2gpu = _rpc_simulate(
+            {"workload": workload_2img, "profile": prof, "policy": "ditserve", "gpus": 2, "options": cb_opts}
+        )
+        # B=1 over 4 steps on GPU: 4 * (400 + 1.5) = 1606.0 ms GPU makespan, with finish_ms=1741.0 ms per request
+        assert spread_2gpu["makespan_ms"] == pytest.approx(4 * 401.5, abs=1.0)
+        for req in spread_2gpu["requests"]:
+            assert req["finish_ms"] == pytest.approx(4 * 401.5 + 135.0, abs=1.0)
+        assert spread_2gpu["batches"] == 8
+        assert spread_2gpu["batched_images"] == 8  # 8 solo rounds (B=1 on GPU 0 and B=1 on GPU 1)
+
+        # When 1 GPU is available (contended), the 2 images co-batch at B=2 and beat 2 sequential B=1 images
+        cobatch_1gpu = _rpc_simulate(
+            {"workload": workload_2img, "profile": prof, "policy": "ditserve", "gpus": 1, "options": cb_opts}
+        )
+        assert cobatch_1gpu["batches"] == 4
+        assert cobatch_1gpu["batched_images"] == 8  # 4 co-batched B=2 rounds
+        assert cobatch_1gpu["makespan_ms"] == pytest.approx(4 * 721.5, abs=1.0)
+        for req in cobatch_1gpu["requests"]:
+            assert req["finish_ms"] == pytest.approx(4 * 721.5 + 135.0, abs=1.0)
+        assert cobatch_1gpu["makespan_ms"] < 2 * spread_2gpu["makespan_ms"]
+
+        # 2. Cross-class SLO guard: tight-SLO sd35-512 image refuses to co-batch with slow sd35-1440 image
+        prof_multi = _pcie_profile()
+        prof_multi["classes"]["sd35-512"] = {
+            "kind": "image",
+            "service_ms": 1778.08,
+            "steps": 28,
+            "prepare_ms": 45.0,
+            "finish_ms": 135.0,
+            "batch_step_ms": {"1": 57.074, "2": 104.903, "3": 152.331, "4": 203.584},
+        }
+        prof_multi["classes"]["sd35-1440"] = {
+            "kind": "image",
+            "service_ms": 18235.67,
+            "steps": 28,
+            "prepare_ms": 45.0,
+            "finish_ms": 135.0,
+            "batch_step_ms": {"1": 644.845, "2": 1251.0, "3": 1827.49, "4": 2442.67},
+        }
+        mixed_img_workload = [
+            {
+                "request_id": "img_512_tight",
+                "kind": "image",
+                "class": "sd35-512",
+                "arrival_ms": 0.0,
+                "deadline_ms": 2220.0,
+                "spec": {"height": 512, "width": 512, "steps": 28},
+            },
+            {
+                "request_id": "img_1440_relaxed",
+                "kind": "image",
+                "class": "sd35-1440",
+                "arrival_ms": 0.0,
+                "deadline_ms": 30000.0,
+                "spec": {"height": 1440, "width": 1440, "steps": 28},
+            },
+        ]
+        guard_res = _rpc_simulate(
+            {"workload": mixed_img_workload, "profile": prof_multi, "policy": "ditserve", "gpus": 1, "options": cb_opts}
+        )
+        r512 = next(r for r in guard_res["requests"] if r["request_id"] == "img_512_tight")
+        r1440 = next(r for r in guard_res["requests"] if r["request_id"] == "img_1440_relaxed")
+        assert r512["finish_ms"] <= 2220.0
+        assert r1440["finish_ms"] <= 30000.0
+        assert guard_res["by_kind"]["image"]["ontime"] == 2
+
 
 # ==============================================================================
 # 2. 3-Parameter Identifiable Cost Model & Topology Phase Diagram
@@ -506,6 +657,93 @@ class TestIdentifiableCostModelAndPhaseDiagram:
         assert profile["classes"]["sd35-preflight"]["service_ms"] == 250.0
         assert profile["classes"]["wan22-preflight"]["step_compute_ms"] == 500.0
         assert profile["source"]["execution_cost_mode"] == "placement_bound_form_table_with_analytical_fallback"
+
+    def test_calibration_bundle_finish_ms_consistency_and_multires_batch_step_ms(self) -> None:
+        # 1. Verify default_sd35_batch_step_ms across 512, 768, 1024, 1440
+        for res, svc_ms in ((512, 1778.081), (768, 2200.0), (1024, 2856.256), (1440, 4892.341)):
+            table = fnp.default_sd35_batch_step_ms(svc_ms, steps=28, resolution=res)
+            assert {"1", "2", "3", "4"}.issubset(set(table.keys()))
+            assert table["1"] < table["2"] < table["3"] < table["4"]
+            # Sublinear scaling: B=4 step latency is strictly less than 4 * B=1
+            assert table["4"] < 4.0 * table["1"]
+
+        # 2. Verify build_profile does not mistake request completion timestamp req["finish_ms"]
+        # for 2D-VAE decode duration.
+        policies = list(fnp.FIT_POLICIES)
+        spec = {"frames": 49, "steps": 20, "height": 512, "width": 896, "guidance_scale": 5.0}
+        model = {
+            "transformer_config": {
+                "patch_size": [1, 2, 2],
+                "num_attention_heads": 24,
+                "attention_head_dim": 128,
+                "num_layers": 30,
+                "out_channels": 48,
+            },
+            "vae_config": {"scale_factor_temporal": 4, "scale_factor_spatial": 16},
+        }
+        facts = {"models": {"Wan2.2-TI2V-5B": model}}
+        arch = fnp.architecture(model, spec)
+        requests = []
+        for index, policy in enumerate(policies):
+            cfg, sp = fnp.form_of(policy)
+            step_ms = fnp.predict(500.0, arch, cfg, sp, 12.0, 1.0, 0.05)
+            requests.append(
+                {
+                    "cell": index,
+                    "kind": "video",
+                    "status": "completed",
+                    "model_ms": 20 * step_ms + 100.0,
+                    "outputs": [{"model_ms": 100.0}],
+                    "spec": spec,
+                    "encode_model_ms": 20.0,
+                    "advance_samples": [
+                        {"steady": False, "model_ms": 999999.0},
+                        {"steady": True, "model_ms": step_ms, "group": list(range(cfg * sp))},
+                        {"steady": True, "model_ms": step_ms, "group": list(range(cfg * sp))},
+                    ],
+                }
+            )
+        # Image request with wall-clock completion timestamp finish_ms=2840.694 > model_ms=1778.081
+        requests.append(
+            {
+                "cell": 0,
+                "kind": "image",
+                "status": "completed",
+                "model_ms": 1778.0806655064225,
+                "finish_ms": 2840.694,
+                "spec": {"height": 512, "width": 512, "steps": 28},
+            }
+        )
+        record = {
+            "experiment": "kairos-wan22-native-calibration",
+            "run_id": "fixture-finish-ms",
+            "status": "completed",
+            "phases": [{"cells": [{"config": {"policy": policy}} for policy in policies]}],
+            "requests": requests,
+            "budget": {"sessions": [{"identity": {"gpu_uuids": [f"GPU-{i}" for i in range(8)]}}]},
+        }
+        profile = fnp.build_profile(record, facts, "Wan2.2-TI2V-5B")
+        img_cost = profile["classes"]["sd35-preflight"]
+        assert img_cost["finish_ms"] < 200.0
+        assert (
+            img_cost["prepare_ms"] + img_cost["steps"] * img_cost["batch_step_ms"]["1"] + img_cost["finish_ms"]
+            == pytest.approx(img_cost["service_ms"], abs=0.1)
+        )
+
+        # 3. Verify local calibration bundles b1 and b2 if present on disk
+        import formal_benchmark as fb
+
+        bundle_paths = [
+            pathlib.Path("/mnt/e/000_code/zyd-2026/.local/formal-v2-21a1ca3-results/acceptance/d20261106-formal-v2-wan22-b1-21a1ca3-r1/bundle.json"),
+            pathlib.Path("/mnt/e/000_code/zyd-2026/.local/formal-v2-21a1ca3-results/acceptance/d20261106-formal-v2-wan22-b2-21a1ca3-r1/bundle.json"),
+        ]
+        for bpath in bundle_paths:
+            if bpath.exists():
+                loaded = fb.load_bundle(bpath)
+                for sid in ("sd35-512", "sd35-1024", "sd35-1440"):
+                    c = loaded["classes"][sid]["cost"]
+                    total_b1 = c["prepare_ms"] + c["steps"] * c["batch_step_ms"]["1"] + c["finish_ms"]
+                    assert total_b1 == pytest.approx(c["service_ms"], abs=0.1)
 
     def test_topology_phase_diagram_crossovers_and_5_canonical_shapes(self) -> None:
         report = tpd.build_phase_diagram_summary()

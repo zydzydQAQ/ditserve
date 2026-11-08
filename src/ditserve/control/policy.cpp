@@ -20,6 +20,7 @@ PolicyTraits ditserve_row(const std::string& id, const std::string& display, con
     t.min_video_degree = 2;
     t.widen = 0.90;
     t.image_placement = "pair_fit";
+    t.continuous_batch = t.sequence_packing = t.bubble_free = true;
     return t;
 }
 
@@ -156,6 +157,12 @@ const std::map<std::string, PolicyTraits>& named() {
             auto t = ditserve_row("abl-no-img-priority", "DitServe w/o feasible image priority", "ablation",
                 "DitServe ordering feasible images by pure EDF deadline without cross-modal priority boost");
             t.feasible_img_priority = false;
+            add(t);
+        }
+        {
+            auto t = ditserve_row("abl-no-cb", "DitServe-noCB", "ablation",
+                "Ablation: DitServe without image continuous batching, sequence packing, or bubble-free overlap.");
+            t.continuous_batch = t.sequence_packing = t.bubble_free = false;
             add(t);
         }
         {
@@ -310,7 +317,9 @@ Json policy_catalog() {
                     {"order", t.order}, {"hold_diffuse", t.hold_diffuse}, {"partition_divisor", t.partition_divisor},
                     {"demote_late", t.demote_late}, {"widen", t.widen}, {"image_placement", t.image_placement},
                     {"image_batching", t.image_batching}, {"round_steps", t.round_steps},
-                    {"allow_cfg_forms", t.allow_cfg_forms}, {"feasible_img_priority", t.feasible_img_priority}};
+                    {"allow_cfg_forms", t.allow_cfg_forms}, {"feasible_img_priority", t.feasible_img_priority},
+                    {"continuous_batch", t.continuous_batch}, {"sequence_packing", t.sequence_packing},
+                    {"bubble_free", t.bubble_free}};
     };
     for (const auto& item : named()) out.push_back(describe(item.second));
     for (const char* name : {"xdit-sp1", "xdit-sp2", "xdit-cfg2", "static-cfg2", "block-cfg2", "fold-cfg2sp3", "approx-cfg2sp3"})

@@ -28,8 +28,13 @@ Json simulate_cluster(const Json& config) {
     const ClusterCost cost(config.at("profile"));
     const ClusterCost planner(config.contains("planner_profile") ? config.at("planner_profile") : config.at("profile"));
     const auto policy = config.at("policy").get<std::string>();
+    const PolicyTraits& policy_tr = policy_traits(policy);
     const int gpus = int_field(config, "gpus", 1);
     const Json options = config.value("options", Json::object());
+    const int raw_cb = int_field(options, "continuous_batch", 0, 0);
+    if (raw_cb > 8) throw std::invalid_argument("continuous_batch must be in [0, 8]");
+    const bool allow_cb = policy_tr.continuous_batch || policy_tr.family == "diagnostic" || policy_tr.id.rfind("static-", 0) == 0;
+    const int continuous_batch = allow_cb ? raw_cb : 0;
     const int encode_slots = int_field(config, "encode_slots", gpus);
     const double dispatch = number_field(config, "dispatch_ms");
     Json rows = config.at("workload");
@@ -51,7 +56,7 @@ Json simulate_cluster(const Json& config) {
         }
         row = light;
         row["status"] = "pending"; row["steps_done"] = 0; row["blocks_done"] = 0; row["prepared"] = false;
-        if (row.at("kind") == "image" && int_field(options, "continuous_batch", 0, 0) > 0) row["continuous_batch"] = true;
+        if (row.at("kind") == "image" && continuous_batch > 0 && cost.klass(klass).contains("batch_step_ms")) row["continuous_batch"] = true;
         row["group"] = Json::array(); row["ready"] = false; row["degrees"] = Json::array(); row["forms"] = Json::array();
         index[row.at("request_id").get<std::string>()] = i;
     }
@@ -149,8 +154,8 @@ Json simulate_cluster(const Json& config) {
                 if (quantum == "atomic") duration += assignment.contains("batch") ? cost.batch_ms(klass, static_cast<int>(assignment.at("batch").size()))
                                                                                : number_field(cost.klass(klass), "service_ms");
                 else if (quantum == "continuous_batch") {
-                    const bool bubble_free = bool_field(options, "bubble_free", false);
-                    const bool sequence_packing = assignment.value("sequence_packing", bool_field(options, "sequence_packing", false));
+                    const bool bubble_free = assignment.value("bubble_free", bool_field(options, "bubble_free", policy_tr.bubble_free));
+                    const bool sequence_packing = assignment.value("sequence_packing", bool_field(options, "sequence_packing", policy_tr.sequence_packing));
                     const auto& batch_arr = assignment.at("batch");
                     std::vector<const Json*> batch_ptrs;
                     batch_ptrs.reserve(batch_arr.size());
@@ -160,9 +165,10 @@ Json simulate_cluster(const Json& config) {
                     if (!bubble_free) {
                         for (const Json* mptr : batch_ptrs) {
                             const auto& mrow = *mptr;
-                            if (!mrow.value("prepared", false)) duration += number_field(cost.klass(klass), "prepare_ms");
-                            const int steps = int_field(mrow, "steps_total", int_field(cost.klass(klass), "steps", 2), 1);
-                            if (int_field(mrow, "steps_done", 0, 0) + 1 >= steps) duration += number_field(cost.klass(klass), "finish_ms");
+                            const auto mklass = mrow.at("class").get<std::string>();
+                            if (!mrow.value("prepared", false)) duration += number_field(cost.klass(mklass), "prepare_ms");
+                            const int steps = int_field(mrow, "steps_total", int_field(cost.klass(mklass), "steps", 2), 1);
+                            if (int_field(mrow, "steps_done", 0, 0) + 1 >= steps) duration += number_field(cost.klass(mklass), "finish_ms");
                         }
                     }
                 }
@@ -286,7 +292,7 @@ Json simulate_cluster(const Json& config) {
                     other["status"] = "completed"; other["finish_ms"] = it->end; other["group"] = Json::array(); ++completed;
                 }
             } else if (quantum == "continuous_batch") {
-                const bool bubble_free = bool_field(options, "bubble_free", false);
+                const bool bubble_free = it->assignment.value("bubble_free", bool_field(options, "bubble_free", policy_tr.bubble_free));
                 std::vector<std::size_t> members = {it->row};
                 members.insert(members.end(), it->batch.begin(), it->batch.end());
                 for (std::size_t m : members) {

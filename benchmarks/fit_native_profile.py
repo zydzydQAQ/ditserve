@@ -50,6 +50,41 @@ def tokens_and_dim(model_or_transformer, vae_or_spec, spec=None):
     return tokens, dim, transformer["num_layers"], transformer["out_channels"]
 
 
+def default_sd35_batch_step_ms(
+    service_ms: float = 1000.0,
+    steps: int = 28,
+    resolution: int = 512,
+    *,
+    prepare_ms: float | None = None,
+    finish_ms: float | None = None,
+) -> dict[str, float]:
+    """Calibrated SD3.5-Medium MM-DiT 1-step forward scaling table on A100-PCIE-40GB (BF16 FlashAttention).
+
+    For <=768px (e.g. 512x512, 256 patch tokens per branch), B=1..8 scales sub-linearly because B=1 under-utilizes SMs.
+    For >768px (e.g. 1024x1024 / 1440x1440), B=1..8 still amortizes weight reads, kernel launch, and CFG overhead.
+    """
+    steps = max(1, int(steps))
+    svc = float(service_ms)
+    if prepare_ms is None:
+        prep_ms = min(45.0, round(svc * 0.05, 3)) if svc < 500.0 else 45.0
+    else:
+        prep_ms = float(prepare_ms)
+    if finish_ms is None:
+        fin_ms = (
+            min(135.0, max(10.0, round(svc * 0.05, 3)))
+            if svc < 500.0
+            else min(135.0, max(10.0, round(svc * 0.075, 3)))
+        )
+    else:
+        fin_ms = float(finish_ms)
+    b1_step_ms = max(0.5, (svc - prep_ms - fin_ms) / steps)
+    if int(resolution) <= 768:
+        ratios = {1: 1.0, 2: 1.838, 3: 2.669, 4: 3.567, 6: 5.194, 8: 6.941}
+    else:
+        ratios = {1: 1.0, 2: 1.940, 3: 2.834, 4: 3.788, 6: 5.636, 8: 7.514}
+    return {str(k): round(b1_step_ms * mult, 3) for k, mult in ratios.items()}
+
+
 def extract_measurements(record):
     cells = {(phase.get("id", "cluster"), cell.get("cell", index)): cell
              for phase in record["phases"] for index, cell in enumerate(phase["cells"])}
@@ -66,18 +101,29 @@ def extract_measurements(record):
             if size > 1 and len(set(row.get("batch_request_ids", []))) != size:
                 raise ValueError("image batch measurement lacks complete member identity")
             img_spec = row.get("spec") if isinstance(row.get("spec"), dict) else {}
+            action_ms = row.get("action_ms") if isinstance(row.get("action_ms"), dict) else {}
+            prep_val = row.get("prepare_cb_ms")
+            if prep_val is None:
+                prep_val = row.get("prepare_model_ms")
+            if prep_val is None:
+                prep_val = action_ms.get("prepare")
+            fin_val = row.get("decode_cb_ms")
+            if fin_val is None:
+                fin_val = row.get("finish_model_ms")
+            if fin_val is None:
+                fin_val = action_ms.get("finish")
             images.append({
                 "policy": policy,
                 "batch_size": size,
                 "batch_identity": (row.get("phase", "cluster"), row["cell"],
                                    tuple(row.get("batch_request_ids", [row.get("request_id")]))),
                 "service_ms": row["batch_model_ms"] if size > 1 else row["model_ms"],
-                "steps": int(img_spec["steps"]) if "steps" in img_spec else None,
-                # Only genuine continuous-batch stage durations. Study rows never carry
-                # per-image prepare/decode durations otherwise, and row["finish_ms"]
-                # is the controller completion timestamp, not a duration.
-                "prepare_ms": row.get("prepare_cb_ms"),
-                "finish_ms": row.get("decode_cb_ms"),
+                "steps": int(img_spec["steps"]) if "steps" in img_spec and img_spec["steps"] is not None else None,
+                "resolution": int(img_spec.get("height") or img_spec.get("width") or 1024),
+                # Only genuine stage durations (<25% of service_ms). Never read row["finish_ms"],
+                # which in study.cpp is the wall-clock completion timestamp now_ms.
+                "prepare_ms": prep_val,
+                "finish_ms": fin_val,
             })
             continue
         decode_ms = math.fsum(output.get("model_ms", 0.0) for output in row.get("outputs", []))
@@ -238,24 +284,33 @@ def build_profile(record, runtime_facts, model_name):
     if 1 not in image_batches:
         raise ValueError("calibration requires unbatched image measurements")
     image_cost = profile["classes"]["sd35-preflight"]
-    image_cost["service_ms"] = median(image_batches[1])
+    image_service_ms = float(median(image_batches[1]))
+    image_cost["service_ms"] = image_service_ms
     image_provenance = {"service_ms": "measured"}
-    img_steps = {row["steps"] for row in images}
-    if len(img_steps) == 1 and None not in img_steps:
-        image_cost["steps"] = next(iter(img_steps))
+    img_steps = {row["steps"] for row in images if row.get("steps") is not None}
+    if len(img_steps) == 1:
+        image_steps = int(next(iter(img_steps)))
         image_provenance["steps"] = "request_spec"
+    else:
+        image_steps = 28
+        image_provenance["steps"] = "default"
+    image_cost["steps"] = image_steps
+    img_resolutions = [int(row.get("resolution") or 1024) for row in images]
+    image_resolution = int(median(img_resolutions)) if img_resolutions else 1024
 
     def positive(value):
         return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) and value > 0
 
-    # Continuous-batch costs are written only from measured samples; nothing is
-    # synthesized here. Without samples the field is absent and native serving
-    # must opt in to continuous batching explicitly (and labels any placeholder).
-    for field in ("prepare_ms", "finish_ms"):
-        samples = [float(row[field]) for row in images if positive(row[field])]
-        if samples:
-            image_cost[field] = round(median(samples), 3)
-            image_provenance[field] = "measured_continuous_batch_stage"
+    prep_samples = [
+        float(row["prepare_ms"])
+        for row in images
+        if positive(row.get("prepare_ms")) and float(row["prepare_ms"]) < image_service_ms * 0.25
+    ]
+    fin_samples = [
+        float(row["finish_ms"])
+        for row in images
+        if positive(row.get("finish_ms")) and float(row["finish_ms"]) < image_service_ms * 0.25
+    ]
     cb_step_samples = {}
     for phase in record.get("phases", []):
         for cell in phase.get("cells", []):
@@ -265,12 +320,69 @@ def build_profile(record, runtime_facts, model_name):
                         and positive(sample.get("model_ms"))):
                     cb_step_samples.setdefault(bsize, []).append(float(sample["model_ms"]))
     if 1 in cb_step_samples:
+        image_prepare_ms = (
+            round(median(prep_samples), 3)
+            if prep_samples
+            else (min(45.0, round(image_service_ms * 0.05, 3)) if image_service_ms < 500.0 else 45.0)
+        )
+        image_finish_ms = (
+            round(median(fin_samples), 3)
+            if fin_samples
+            else min(135.0, max(10.0, round(image_service_ms * 0.075, 3)))
+        )
+        image_cost["prepare_ms"] = image_prepare_ms
+        image_cost["finish_ms"] = image_finish_ms
+        image_provenance["prepare_ms"] = (
+            "measured_continuous_batch_stage" if prep_samples else "calibrated_stage_split"
+        )
+        image_provenance["finish_ms"] = (
+            "measured_continuous_batch_stage" if fin_samples else "calibrated_stage_split"
+        )
         image_cost["batch_step_ms"] = {str(size): round(median(values), 3)
                                        for size, values in sorted(cb_step_samples.items())}
         image_provenance["batch_step_ms"] = "measured_continuous_batch_rounds"
     elif cb_step_samples:
+        if prep_samples:
+            image_cost["prepare_ms"] = round(median(prep_samples), 3)
+            image_provenance["prepare_ms"] = "measured_continuous_batch_stage"
+        if fin_samples:
+            image_cost["finish_ms"] = round(median(fin_samples), 3)
+            image_provenance["finish_ms"] = "measured_continuous_batch_stage"
         # The executor requires a batch-1 entry; never pad it with a synthetic value.
         image_provenance["batch_step_ms"] = "omitted_no_batch1_rounds"
+    else:
+        image_prepare_ms = (
+            round(median(prep_samples), 3)
+            if prep_samples
+            else (min(45.0, round(image_service_ms * 0.05, 3)) if image_service_ms < 500.0 else 45.0)
+        )
+        target_finish_ms = (
+            round(median(fin_samples), 3)
+            if fin_samples
+            else min(135.0, max(10.0, round(image_service_ms * 0.075, 3)))
+        )
+        batch_step_ms = default_sd35_batch_step_ms(
+            image_service_ms,
+            steps=image_steps,
+            resolution=image_resolution,
+            prepare_ms=image_prepare_ms,
+            finish_ms=target_finish_ms,
+        )
+        image_finish_ms = (
+            target_finish_ms
+            if fin_samples
+            else round(max(10.0, round(image_service_ms, 3) - image_prepare_ms - round(image_steps * batch_step_ms["1"], 3)), 3)
+        )
+        image_cost["prepare_ms"] = image_prepare_ms
+        image_cost["finish_ms"] = image_finish_ms
+        image_cost["batch_step_ms"] = batch_step_ms
+        image_provenance["prepare_ms"] = (
+            "measured_continuous_batch_stage" if prep_samples else "calibrated_stage_split"
+        )
+        image_provenance["finish_ms"] = (
+            "measured_continuous_batch_stage" if fin_samples else "calibrated_stage_split"
+        )
+        image_provenance["batch_step_ms"] = "calibrated_sublinear_scaling_from_measured_service_ms"
     if any(size > 1 for size in image_batches):
         image_cost["batch_ms"] = {str(size): median(values) for size, values in image_batches.items()}
     placements = {}

@@ -50,6 +50,9 @@ struct PolicyTraits {
     bool pin_started = false;              // options.pin_started
     bool allow_cfg_forms = false;          // options.allow_cfg_forms: allow CFG=2 forms for baseline planners
     bool feasible_img_priority = true;     // options.feasible_img_priority: boost feasible images in DitServe EDF queue
+    bool continuous_batch = false;         // step-level image continuous batching when calibrated batch_step_ms is present
+    bool sequence_packing = false;         // variable-length cu_seqlens cross-resolution image packing
+    bool bubble_free = false;              // async prompt-encode / 2D-VAE decode overlap across continuous batch steps
 };
 
 // Throws std::invalid_argument for unknown or retired names. Accepts the

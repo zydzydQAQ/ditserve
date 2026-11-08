@@ -11,7 +11,16 @@ import math
 import re
 from pathlib import Path
 
-from cluster_config import MODELS, allocated_uuids, build_calibration_config, make_workers
+from cluster_config import (
+    DEFAULT_CONTINUOUS_BATCH,
+    MEMORY_STRATEGIES,
+    MODELS,
+    allocated_uuids,
+    build_calibration_config,
+    continuous_batch_settings,
+    default_sd35_batch_step_ms,
+    make_workers,
+)
 from native_serving import (
     IN_FRAMEWORK_COMPARISON_DECLARATION,
     IN_FRAMEWORK_MECHANISM_DISPLAY,
@@ -20,6 +29,7 @@ from native_serving import (
     build_serving_config,
     in_framework_main_policies,
     partition_image_gpus,
+    sanitize_image_cost,
 )
 from fit_native_profile import build_profile
 from ditserve.evaluation.common import canonical_hash, read_json, seal, verify_seal
@@ -249,10 +259,20 @@ def assemble(p, model, records, runtime_facts):
         for sid, klass in zip(ids, (model + '-preflight', 'sd35-preflight')):
             if sid in entries:
                 raise ValueError('duplicate shape calibration; aggregate repetitions explicitly before assembly')
+            spec = shape_spec(p, sid)
             cost = copy.deepcopy(fitted['classes'][klass])
             if cost['kind'] == 'video':
                 cost['links'] = copy.deepcopy(fitted['links'])
-            entries[sid] = dict(spec=shape_spec(p, sid), cost=cost,
+            elif cost['kind'] == 'image' and float(cost.get('service_ms', 0.0) or 0.0) > 0:
+                cost, src_label, prov = sanitize_image_cost(
+                    cost, resolution=int(spec.get('height') or 1024), eff_cb=DEFAULT_CONTINUOUS_BATCH
+                )
+                if src_label is not None:
+                    fitted['source']['image_batch_step_ms_source'] = src_label
+                    fitted['source']['image_cost_provenance'] = dict(
+                        fitted['source'].get('image_cost_provenance', {}), **prov
+                    )
+            entries[sid] = dict(spec=spec, cost=cost,
                 source=dict(run_sha256=fitted['source']['run_sha256'], run_id=record['run_id'],
                             core_sha256=core, gpu_uuids=current, fit=fitted['source'],
                             resize_ms=fitted['resize_ms'], quantum_overhead_ms=fitted['quantum_overhead_ms']))
@@ -280,9 +300,37 @@ def assemble(p, model, records, runtime_facts):
                      qualification='measured calibration only; numerical, quality and serving qualification pending'))
 
 
+def load_bundle(path_or_bundle, *, continuous_batch=DEFAULT_CONTINUOUS_BATCH):
+    """Load and verify a sealed shape-profile bundle, sanitizing image continuous-batch costs."""
+    if isinstance(path_or_bundle, (str, Path)):
+        bundle = read_json(Path(path_or_bundle))
+    else:
+        bundle = copy.deepcopy(path_or_bundle)
+    verify_seal(bundle)
+    if bundle.get('schema') != BUNDLE_SCHEMA:
+        raise ValueError('invalid shape profile bundle schema')
+    mutated = False
+    for sid, item in bundle.get('classes', {}).items():
+        if not isinstance(item, dict) or not isinstance(item.get('cost'), dict):
+            continue
+        cost = item['cost']
+        if cost.get('kind') == 'image' and float(cost.get('service_ms', 0.0) or 0.0) > 0:
+            spec = item.get('spec') if isinstance(item.get('spec'), dict) else {}
+            res = int(spec.get('height') or spec.get('width') or (512 if '512' in sid else (1440 if '1440' in sid else 1024)))
+            sanitized, _, _ = sanitize_image_cost(cost, resolution=res, eff_cb=max(1, int(continuous_batch or 1)))
+            if sanitized != cost:
+                item['cost'] = sanitized
+                mutated = True
+    if mutated:
+        unsealed = {k: v for k, v in bundle.items() if k != 'sha256'}
+        bundle = seal(unsealed)
+    return bundle
+
+
 def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301,
             load=None, rate_rpm=None, video_fraction=None, pattern=None, suite='main', diagnostic=None,
-            p1_plan=None, p1_pair=None, slo_scale=None, resolution_distribution=None, cv=None):
+            p1_plan=None, p1_pair=None, slo_scale=None, resolution_distribution=None, cv=None,
+            continuous_batch=None, sequence_packing=None, bubble_free=None, memory_strategy=None):
     is_v2 = p.get('schema') == 'ditserve.formal-protocol.v2'
     # Record exactly what the caller asked for; diagnostics replace these.
     requested_workload = dict(load=load, rate_rpm=rate_rpm, video_fraction=video_fraction, pattern=pattern)
@@ -384,6 +432,7 @@ def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301
         raise ValueError('every frozen shape needs its own measured calibration; no shape may be silently omitted')
     selected = split_pools(pools, p, split)
     classes, cost_classes = {}, {}
+    eff_cb_req = DEFAULT_CONTINUOUS_BATCH if continuous_batch is None else continuous_batch
     for sid in ids:
         item = bundle['classes'][sid]
         spec = shape_spec(p, sid)
@@ -399,6 +448,10 @@ def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301
             scale = image_scale
         if not math.isfinite(service) or service <= 0:
             raise ValueError('nonpositive or nonfinite measured service time')
+        if cost['kind'] == 'image':
+            cost, _, _ = sanitize_image_cost(
+                cost, resolution=int(spec.get('height') or 1024), eff_cb=max(1, int(eff_cb_req or 1))
+            )
         classes[sid] = dict(cost, **{'class': sid, 'spec': spec, 'service_ms': service,
                                     'gpu_service_ms': gpu_ms, 'slo_scale': scale})
         cost_classes[sid] = cost
@@ -455,7 +508,9 @@ def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301
         pattern=actual_pattern, cv=effective_cv, video_fraction=actual_fraction, count=count, policies=policies,
         image_slo_scale=image_scale, video_slo_scale=video_scale,
         require_profile_match=True, forms=['cfg2'] if diagnostic else None, output_mode=mode,
-        doorbell=True, image_batch=p['batch_limit'], policy_order='random')
+        doorbell=True, image_batch=p['batch_limit'], policy_order='random',
+        continuous_batch=continuous_batch, sequence_packing=sequence_packing,
+        bubble_free=bubble_free, memory_strategy=memory_strategy)
     trace = build_trace(classes, selected, [window], slots=len(uuids), seed=seed, output_mode=mode)
     validate_trace(trace)
     if rate_rpm is not None and not math.isclose(
@@ -595,6 +650,10 @@ def main():
             ap.add_argument('--pattern', choices=['poisson', 'gamma', 'bursty'], default=None)
             ap.add_argument('--suite', choices=sorted(SUITES), default='main')
             ap.add_argument('--diagnostic', choices=['contention', 'no_preemption'])
+            ap.add_argument('--continuous-batch', type=int, default=None)
+            ap.add_argument('--sequence-packing', action=argparse.BooleanOptionalAction, default=None)
+            ap.add_argument('--bubble-free', action=argparse.BooleanOptionalAction, default=None)
+            ap.add_argument('--memory-strategy', choices=MEMORY_STRATEGIES, default=None)
     args = parser.parse_args()
     p = protocol(args.protocol)
     if args.command == 'assemble':
@@ -609,11 +668,12 @@ def main():
             result = calibration(p, args.model, uuids, pools, manifests, args.video_shape, args.image_shape)
         else:
             uuids = args.gpu_uuids.split(',') if args.gpu_uuids else allocated_uuids()
-            result = serving(p, args.model, uuids, read_json(args.bundle), pools, manifests,
+            result = serving(p, args.model, uuids, load_bundle(args.bundle, continuous_batch=args.continuous_batch), pools, manifests,
                 split=args.split, seed=args.seed, load=args.load, rate_rpm=args.rate_rpm,
                 video_fraction=args.video_fraction, pattern=args.pattern, suite=args.suite, diagnostic=args.diagnostic,
                 slo_scale=args.slo_scale, resolution_distribution=args.resolution_distribution,
-                cv=args.cv)
+                cv=args.cv, continuous_batch=args.continuous_batch, sequence_packing=args.sequence_packing,
+                bubble_free=args.bubble_free, memory_strategy=args.memory_strategy)
     write_new(args.output, result)
     print(json.dumps(dict(output=str(args.output), sha256=canonical_hash(result), scientific_qualification='pending')))
 

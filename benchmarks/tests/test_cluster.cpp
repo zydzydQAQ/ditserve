@@ -1631,6 +1631,150 @@ int main(int argc, char** argv) {
             "ditserve", ClusterCost(mig_prof), {{"forms", {"cfg2"}}}).at("assignments");
         require(mig_guarded.empty(), "same-degree cross-group migration guard refuses deadline-breaking migration: " + mig_guarded.dump());
     });
+    check("20261108 policy-gated continuous_batch, abl-no-cb, work-conserving multi-GPU CB, and cross-class deadline guard", [&] {
+        // 1. Policy traits & catalog registration for continuous_batch, sequence_packing, bubble_free, and abl-no-cb.
+        require(cluster_policy("abl-no-cb"), "abl-no-cb registered");
+        const auto& dit_t = policy_traits("ditserve");
+        const auto& nocb_t = policy_traits("abl-no-cb");
+        require(dit_t.continuous_batch && dit_t.sequence_packing && dit_t.bubble_free,
+                "ditserve owns continuous_batch + sequence_packing + bubble_free");
+        require(nocb_t.family == "ablation" && nocb_t.display == "DitServe-noCB"
+                && !nocb_t.continuous_batch && !nocb_t.sequence_packing && !nocb_t.bubble_free
+                && nocb_t.blocks && nocb_t.elastic && nocb_t.prune_dominated && nocb_t.min_video_degree == 2,
+                "abl-no-cb disables only continuous batching, sequence packing, and bubble-free overlap");
+        for (const char* base : {"xdit", "tetriserve", "sbp-esp", "edf-bestfit", "tetriserve-cfg2",
+                                 "sbp-esp-cfg2", "edf-bestfit-cfg2", "edf-cfg2", "cfg2-first", "partition", "block-cfg2"}) {
+            const auto& bt = policy_traits(base);
+            require(!bt.continuous_batch && !bt.sequence_packing && !bt.bubble_free,
+                    std::string(base) + " does not own continuous_batch");
+        }
+        const auto catalog = policy_catalog();
+        bool found_nocb = false;
+        for (const auto& entry : catalog) {
+            require(entry.contains("continuous_batch") && entry.contains("sequence_packing") && entry.contains("bubble_free"),
+                    "catalog exposes continuous_batch, sequence_packing, bubble_free");
+            if (entry.at("id") == "abl-no-cb") {
+                found_nocb = true;
+                require(!entry.at("continuous_batch").get<bool>() && !entry.at("sequence_packing").get<bool>()
+                        && !entry.at("bubble_free").get<bool>(), "abl-no-cb catalog flags are false");
+            }
+            if (entry.at("id") == "ditserve") {
+                require(entry.at("continuous_batch").get<bool>() && entry.at("sequence_packing").get<bool>()
+                        && entry.at("bubble_free").get<bool>(), "ditserve catalog flags are true");
+            }
+        }
+        require(found_nocb, "abl-no-cb present in policy_catalog()");
+
+        // 2. Policy-aware continuous_batch gate & baseline isolation under shared phase options.
+        Json cb_prof = profile();
+        cb_prof["classes"]["image"].merge_patch({{"steps", 2}, {"prepare_ms", 5}, {"finish_ms", 10},
+            {"batch_ms", {{"2", 80}, {"4", 140}}},
+            {"batch_step_ms", {{"1", 20}, {"2", 35}, {"4", 60}, {"8", 110}}}});
+        const ClusterCost cb_cost(cb_prof);
+        const Json shared_opts = {{"continuous_batch", 4}, {"sequence_packing", true}, {"bubble_free", true}};
+        const Json two_imgs = Json::array({image("i0", 1000), image("i1", 1000)});
+
+        // On 1 GPU, ditserve uses continuous_batch with bubble_free and sequence_packing,
+        // whereas baselines and abl-no-cb ignore continuous_batch and execute atomically.
+        const auto dit_cb = cluster_plan({{"now_ms", 0}, {"gpus", 1}, {"busy", Json::array()}, {"requests", two_imgs}},
+                                         "ditserve", cb_cost, shared_opts).at("assignments");
+        require(dit_cb.size() == 1 && dit_cb[0].at("quantum") == "continuous_batch"
+                && dit_cb[0].at("batch") == Json::array({"i0", "i1"})
+                && dit_cb[0].value("bubble_free", false) && dit_cb[0].value("sequence_packing", false),
+                "ditserve honors continuous_batch + bubble_free + sequence_packing: " + dit_cb.dump());
+
+        for (const char* non_cb : {"abl-no-cb", "xdit", "tetriserve", "sbp-esp", "edf-bestfit", "edf-cfg2", "block-cfg2"}) {
+            const auto p = cluster_plan({{"now_ms", 0}, {"gpus", 2}, {"busy", Json::array({true, false})}, {"requests", two_imgs}},
+                                        non_cb, cb_cost, shared_opts).at("assignments");
+            require(p.size() == 1 && p[0].at("quantum") == "atomic"
+                    && !p[0].value("bubble_free", false) && !p[0].value("sequence_packing", false),
+                    std::string(non_cb) + " gates off continuous_batch: " + p.dump());
+        }
+
+        // Mixed continuous_batch + image_batch options: ditserve uses continuous_batch, sbp-esp uses atomic image_batch.
+        const Json both_opts = {{"continuous_batch", 4}, {"image_batch", 2}};
+        const auto dit_both = cluster_plan({{"now_ms", 0}, {"gpus", 1}, {"busy", Json::array()}, {"requests", two_imgs}},
+                                           "ditserve", cb_cost, both_opts).at("assignments");
+        const auto sbp_both = cluster_plan({{"now_ms", 0}, {"gpus", 1}, {"busy", Json::array()}, {"requests", two_imgs}},
+                                           "sbp-esp", cb_cost, both_opts).at("assignments");
+        require(dit_both.size() == 1 && dit_both[0].at("quantum") == "continuous_batch",
+                "ditserve selects continuous_batch when both continuous_batch and image_batch are given");
+        require(sbp_both.size() == 1 && sbp_both[0].at("quantum") == "atomic"
+                && sbp_both[0].at("batch") == Json::array({"i0", "i1"}),
+                "sbp-esp ignores continuous_batch and uses atomic image_batch: " + sbp_both.dump());
+
+        // Profile fallback: when profile lacks batch_step_ms, ditserve falls back to atomic without throwing.
+        const auto fallback_plan = pcie_plan(Json::array({image("i0", 10000)}), "ditserve", Json::array(), shared_opts).at("assignments");
+        require(fallback_plan.size() == 1 && fallback_plan[0].at("quantum") == "atomic",
+                "ditserve falls back to atomic when profile has no batch_step_ms");
+
+        // 3. Work-conserving multi-GPU continuous batching:
+        //    With 2 free GPUs and 2 unstarted images, ditserve spreads them across GPU 0 and GPU 1 at B=1 in parallel;
+        //    with 4 unstarted images on 2 free GPUs, ditserve balances 2 images per GPU.
+        const auto spread_two = cluster_plan({{"now_ms", 0}, {"gpus", 2}, {"busy", Json::array()}, {"requests", two_imgs}},
+                                             "ditserve", cb_cost, shared_opts).at("assignments");
+        require(spread_two.size() == 2
+                && spread_two[0].at("batch") == Json::array({"i0"})
+                && spread_two[1].at("batch") == Json::array({"i1"}),
+                "work-conserving multi-GPU CB spreads 2 unstarted images across 2 idle GPUs: " + spread_two.dump());
+
+        const Json four_imgs = Json::array({image("i0", 1000), image("i1", 1000), image("i2", 1000), image("i3", 1000)});
+        const auto spread_four = cluster_plan({{"now_ms", 0}, {"gpus", 2}, {"busy", Json::array()}, {"requests", four_imgs}},
+                                              "ditserve", cb_cost, shared_opts).at("assignments");
+        require(spread_four.size() == 2
+                && spread_four[0].at("batch").size() == 2
+                && spread_four[1].at("batch").size() == 2,
+                "work-conserving multi-GPU CB load-balances 4 images as 2+2 across 2 idle GPUs: " + spread_four.dump());
+
+        // 4. Cross-resolution multi-step deadline guard & symmetric anchor pricing:
+        //    sd35_512 (28 steps, 57 ms/step, tight deadline 2667 ms) and sd35_1440 (28 steps, 531 ms/step, deadline 22587 ms).
+        //    Co-batching them on 1 GPU for 28 steps (~588 ms/step) would take >16 s >> 2667 ms, so fits() rejects co-batching!
+        Json multi_prof = profile();
+        multi_prof["classes"]["sd35_512"] = {{"kind", "image"}, {"service_ms", 1778}, {"steps", 28},
+                                             {"prepare_ms", 100}, {"finish_ms", 75}, {"base_pixels", 262144},
+                                             {"batch_step_ms", {{"1", 57.0}, {"2", 105.0}, {"4", 210.0}}}};
+        multi_prof["classes"]["sd35_1440"] = {{"kind", "image"}, {"service_ms", 15058}, {"steps", 28},
+                                              {"prepare_ms", 100}, {"finish_ms", 230}, {"base_pixels", 2073600},
+                                              {"batch_step_ms", {{"1", 531.0}, {"2", 980.0}, {"4", 1960.0}}}};
+        const ClusterCost multi_cost(multi_prof);
+        Json r512_tight = image("r512", 2667.0);
+        r512_tight.merge_patch({{"class", "sd35_512"}, {"steps_total", 28}, {"continuous_batch", true},
+                                {"batch_spec", {{"steps", 28}, {"height", 512}, {"width", 512}}}});
+        Json r1440 = image("r1440", 22587.0);
+        r1440.merge_patch({{"class", "sd35_1440"}, {"steps_total", 28}, {"continuous_batch", true},
+                           {"batch_spec", {{"steps", 28}, {"height", 1440}, {"width", 1440}}}});
+
+        // Symmetric step cost regardless of member order:
+        near(multi_cost.continuous_batch_step_ms("sd35_512", {&r512_tight, &r1440}, true),
+             multi_cost.continuous_batch_step_ms("sd35_1440", {&r1440, &r512_tight}, true));
+
+        const auto guarded_cb = cluster_plan({{"now_ms", 0}, {"gpus", 1}, {"busy", Json::array()},
+                                              {"requests", Json::array({r512_tight, r1440})}},
+                                             "ditserve", multi_cost, shared_opts).at("assignments");
+        require(guarded_cb.size() == 1 && guarded_cb[0].at("batch") == Json::array({"r512"}),
+                "cross-class deadline guard prevents 1440x1440 from trapping tight 512x512 in a 16s co-batch: " + guarded_cb.dump());
+
+        // When r512 has a relaxed deadline (20000 ms), it safely co-batches with r1440 even when r512 is the lead request.
+        Json r512_relaxed = r512_tight;
+        r512_relaxed["deadline_ms"] = 20000.0;
+        const auto co_cb = cluster_plan({{"now_ms", 0}, {"gpus", 1}, {"busy", Json::array()},
+                                         {"requests", Json::array({r512_relaxed, r1440})}},
+                                        "ditserve", multi_cost, shared_opts).at("assignments");
+        require(co_cb.size() == 1 && co_cb[0].at("batch") == Json::array({"r512", "r1440"}),
+                "relaxed 512x512 co-batches with 1440x1440 using anchor-normalized sequence packing: " + co_cb.dump());
+
+        // Simulation parity: ditserve uses continuous_batch while abl-no-cb uses atomic execution under shared_opts.
+        const Json sim_trace = Json::array({
+            trace_row("i0", "image", 0, 500),
+            trace_row("i1", "image", 10, 500)
+        });
+        const auto sim_dit = simulate_cluster({{"workload", sim_trace}, {"profile", cb_prof},
+                                               {"policy", "ditserve"}, {"gpus", 1}, {"options", shared_opts}});
+        const auto sim_nocb = simulate_cluster({{"workload", sim_trace}, {"profile", cb_prof},
+                                                {"policy", "abl-no-cb"}, {"gpus", 1}, {"options", shared_opts}});
+        require(sim_dit.at("batches").get<int>() > 0 && sim_nocb.at("batches").get<int>() == 0,
+                "ditserve batches continuous steps while abl-no-cb executes atomically");
+    });
     std::cout << checks - failures << "/" << checks << " cluster checks passed\n";
     return failures ? 1 : 0;
 }

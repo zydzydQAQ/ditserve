@@ -761,9 +761,12 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     const auto policy=phase.at("policy").get<std::string>();
     const PolicyTraits& traits=policy_traits(policy);
     Json options=phase.value("options",Json::object());
-    const int continuous_batch=int_field(options,"continuous_batch",0,0);
-    if(continuous_batch>8)throw std::invalid_argument("continuous_batch must be in [0, 8]");
-    if(continuous_batch>0&&int_field(options,"image_batch",1)>1)throw std::invalid_argument("continuous_batch and atomic image_batch are mutually exclusive");
+    const int raw_cb=int_field(options,"continuous_batch",0,0);
+    if(raw_cb>8)throw std::invalid_argument("continuous_batch must be in [0, 8]");
+    const bool allow_cb=traits.continuous_batch||traits.family=="diagnostic"||traits.id.rfind("static-",0)==0;
+    const int continuous_batch=allow_cb?raw_cb:0;
+    if(!traits.continuous_batch&&continuous_batch>0&&int_field(options,"image_batch",1)>1)
+        throw std::invalid_argument("continuous_batch and atomic image_batch are mutually exclusive");
     const auto slots=phase.at("gpus");
     const int gpus=static_cast<int>(slots.size());
     bool fixtures=true;
@@ -849,7 +852,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         const auto name=slot.at(role).get<std::string>();
         const auto backend=workers.backend(name);
         const auto capabilities=engine_contract(workers.get(name),backend,budget.deadline());
-        const bool batch_requested=int_field(options,"image_batch",1)>1||(!options.contains("image_batch")&&traits.image_batching);
+        const bool batch_requested=(continuous_batch==0&&int_field(options,"image_batch",1)>1)||(!options.contains("image_batch")&&traits.image_batching);
         if(std::string(role)=="image"&&batch_requested&&backend!="mock"&&!capabilities.value("request_batch",false))
             throw std::invalid_argument("image batching requires a per-request batch output capability");
         if(std::string(role)=="video"&&backend=="wan"){
@@ -1836,7 +1839,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                     view["cfg_fold_eligible"]=state.cfg_fold_eligible;
                 }
                 if(row.at("kind")=="image"){
-                    view["continuous_batch"]=continuous_batch>0;
+                    view["continuous_batch"]=continuous_batch>0&&cost.klass(row.at("class").get<std::string>()).contains("batch_step_ms");
                     Json batch_spec=spec_of(row);
                     for(const auto* field:{"request_id","prompt","negative_prompt","seed"})batch_spec.erase(field);
                     view["batch_spec"]=batch_spec;
@@ -1974,7 +1977,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 const int affinity=state.prepared&&!state.group.empty()?state.group.front():-1;
                 if(lazy){
                     Json view={{"class",row.at("class")},{"prepared",state.prepared},{"steps_done",state.steps},
-                               {"continuous_batch",continuous_batch>0}};
+                               {"continuous_batch",continuous_batch>0&&cost.klass(row.at("class").get<std::string>()).contains("batch_step_ms")}};
                     if(state.total>0)view["steps_total"]=state.total;
                     const double service=cost.remaining_ms(view,Form{},1)+cost.quantum_overhead_ms();
                     deadline_waiting.push_back({affinity,number_field(row,"deadline_ms"),service});

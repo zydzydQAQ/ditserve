@@ -52,6 +52,9 @@ APPROXIMATE_OPTION_KEYS = (
     "cfg_fold", "taylor_cache", "ring_quant", "approximate",
     "allow_approx", "fold_steps", "fold_budget", "cache_threshold",
 )
+LOSSLESS_CONTINUOUS_BATCH_OPTION_KEYS = (
+    "continuous_batch", "sequence_packing", "bubble_free",
+)
 MAX_JSON_BYTES = 512 * 1024 * 1024
 MAX_SHEET_ROWS = 1048576
 CELL_LIMIT = 32767
@@ -393,6 +396,22 @@ def _base_summary_run(run):
             for key in ("metrics", "by_kind", "doorbell", "continuous_batch", "guard_telemetry"):
                 if key in cell:
                     selected[key] = _key_metrics(cell[key])
+            if isinstance(selected.get("continuous_batch"), dict):
+                cb = selected["continuous_batch"]
+                batch_sizes = cb.get("batch_sizes") if isinstance(cb.get("batch_sizes"), dict) else {}
+                size_counts = {
+                    int(k): int(v)
+                    for k, v in batch_sizes.items()
+                    if str(k).isdigit() and type(v) is int and v > 0
+                }
+                if size_counts:
+                    rounds_val = cb.get("rounds") if type(cb.get("rounds")) is int and cb["rounds"] > 0 else sum(size_counts.values())
+                    cb.setdefault("rounds", rounds_val)
+                    cb.setdefault("batched_rounds", sum(cnt for sz, cnt in size_counts.items() if sz > 1))
+                    member_steps = sum(sz * cnt for sz, cnt in size_counts.items())
+                    cb.setdefault("member_steps", member_steps)
+                    cb.setdefault("max_batch_size", max(size_counts))
+                    cb.setdefault("mean_batch_size", round(member_steps / rounds_val, 6) if rounds_val > 0 else 0.0)
             if "image_batch" in cell:
                 selected["image_batch"] = (_key_metrics(cell["image_batch"]) if isinstance(cell["image_batch"], dict)
                                            else cell["image_batch"] if type(cell["image_batch"]) is int else None)

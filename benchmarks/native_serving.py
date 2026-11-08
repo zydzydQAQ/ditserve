@@ -9,7 +9,7 @@ import random
 import re
 from pathlib import Path
 
-from cluster_config import (  # DEFAULT_CONTINUOUS_BATCH (0, off) is re-exported
+from cluster_config import (  # DEFAULT_CONTINUOUS_BATCH (4) is re-exported
     DEFAULT_CONTINUOUS_BATCH,
     MEMORY_STRATEGIES,
     MODELS,
@@ -33,6 +33,7 @@ POLICY_DISPLAY = {
     "abl-no-mindeg": "DitServe w/o CFG-pair admission", "abl-first-fit": "DitServe w/o pair-fit placement",
     "abl-no-decode-shrink": "DitServe w/o decode shrink",
     "abl-no-img-priority": "DitServe w/o feasible image priority",
+    "abl-no-cb": "DitServe w/o continuous batching",
     "ditserve-v1": "DitServe-v1 (knapsack)", "block-cfg2": "Block-cfg2", "block-cfg2sp3": "Block-cfg2sp3",
 }
 IN_FRAMEWORK_MECHANISM_DISPLAY = {
@@ -88,7 +89,7 @@ SUITES = {
     "main-all": ["xdit", "static-cfg2sp4", "tetriserve", "sbp-esp", "edf-bestfit", "ditserve"],
     # Three-Layer Scheduling Pipeline Ablation (`L1 Form -> L2 Time -> L3 Space`):
     # - Cumulative 3-Layer Staircase: `edf-cfg2` (L1 Only) -> `block-cfg2` (L1+L2) -> `ditserve` (L1+L2+L3)
-    # - Leave-One-Layer-Out: `abl-no-prune` (w/o L1), `abl-no-block` (w/o L2), `abl-first-fit` (w/o L3)
+    # - Leave-One-Layer-Out: `abl-no-prune` (w/o L1), `abl-no-block` (w/o L2), `abl-first-fit` (w/o L3), `abl-no-cb` (w/o CB)
     "ablation": [
         "ditserve",
         "edf-cfg2",
@@ -96,6 +97,7 @@ SUITES = {
         "abl-no-prune",
         "abl-no-block",
         "abl-first-fit",
+        "abl-no-cb",
     ],
     # Factorized CFG=2 unlocked baselines against DitServe.
     "cfg2": ["tetriserve-cfg2", "sbp-esp-cfg2", "edf-bestfit-cfg2", "ditserve"],
@@ -113,6 +115,108 @@ APPROXIMATE_POLICIES = ("ditserve-approx", "ditserve-v1-approx", "heterodit_v5",
 FORMS = ["sp1", "cfg2", "sp2", "cfg2sp2", "sp3", "cfg2sp3", "sp4", "cfg2sp4", "sp6", "sp8"]
 FORM_DEGREES = {"sp1": 1, "cfg2": 2, "sp2": 2, "sp3": 3, "cfg2sp2": 4,
                 "sp4": 4, "cfg2sp3": 6, "sp6": 6, "cfg2sp4": 8, "sp8": 8}
+
+
+def _validate_batch_step_table(table, eff_cb):
+    if not isinstance(table, dict) or not table or "1" not in table:
+        return False
+    try:
+        b1 = float(table["1"])
+        max_b = max(int(key) for key in table)
+        all_pos = all(
+            isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(float(v)) and float(v) > 0
+            for v in table.values()
+        )
+    except (TypeError, ValueError):
+        return False
+    return math.isfinite(b1) and b1 > 0 and all_pos and max_b >= max(1, int(eff_cb))
+
+
+def sanitize_image_cost(image_cost, *, resolution=1024, eff_cb=DEFAULT_CONTINUOUS_BATCH):
+    """Ensure an image cost dictionary has consistent steps, prepare_ms, batch_step_ms, and finish_ms."""
+    cost = copy.deepcopy(image_cost)
+    svc = float(cost.get("service_ms", 0.0) or 0.0)
+    if svc <= 0:
+        return cost, None, {}
+    min_cb = max(1, int(eff_cb)) if eff_cb and int(eff_cb) > 0 else 1
+    if "batch_step_ms" in cost and cost["batch_step_ms"] is not None:
+        table = cost["batch_step_ms"]
+        if not _validate_batch_step_table(table, min_cb):
+            raise ValueError(
+                f"continuous_batch={min_cb} needs sd35-preflight.batch_step_ms with batch 1 > 0 "
+                f"and a largest size >= {min_cb}; no synthetic extension of a measured table"
+            )
+        sd_steps = int(cost.get("steps") or 28)
+        cost["steps"] = sd_steps
+        if "prepare_ms" not in cost or not isinstance(cost.get("prepare_ms"), (int, float)):
+            cost["prepare_ms"] = min(45.0, round(svc * 0.05, 3)) if svc < 500.0 else 45.0
+        prep_ms = float(cost["prepare_ms"])
+        b1_ms = float(table["1"])
+        if "finish_ms" not in cost or not isinstance(cost.get("finish_ms"), (int, float)):
+            cost["finish_ms"] = round(max(10.0, svc - prep_ms - sd_steps * b1_ms), 3)
+        else:
+            fin_ms = float(cost["finish_ms"])
+            if prep_ms + sd_steps * b1_ms + fin_ms > svc * 1.15 or fin_ms > svc * 0.25:
+                cost["finish_ms"] = round(max(10.0, svc - prep_ms - sd_steps * b1_ms), 3)
+        provenance = {key: "profile" for key in ("steps", "prepare_ms", "finish_ms", "batch_step_ms")}
+        return cost, "profile", provenance
+
+    sd_steps = int(cost.get("steps") or 28)
+    prep_ms = (
+        float(cost["prepare_ms"])
+        if isinstance(cost.get("prepare_ms"), (int, float)) and float(cost["prepare_ms"]) > 0
+        else (min(45.0, round(svc * 0.05, 3)) if svc < 500.0 else 45.0)
+    )
+    target_fin_ms = (
+        float(cost["finish_ms"])
+        if isinstance(cost.get("finish_ms"), (int, float)) and 0 < float(cost["finish_ms"]) < svc * 0.25
+        else (
+            min(135.0, max(10.0, round(svc * 0.05, 3)))
+            if svc < 500.0
+            else min(135.0, max(10.0, round(svc * 0.075, 3)))
+        )
+    )
+    table = default_sd35_batch_step_ms(
+        svc, steps=sd_steps, resolution=resolution, prepare_ms=prep_ms, finish_ms=target_fin_ms
+    )
+    fin_ms = round(max(10.0, svc - prep_ms - sd_steps * float(table["1"])), 3)
+    cost["steps"] = sd_steps
+    cost["prepare_ms"] = prep_ms
+    cost["batch_step_ms"] = table
+    cost["finish_ms"] = fin_ms
+    source_label = "calibrated_sublinear_scaling_from_measured_service_ms"
+    provenance = {
+        "steps": "profile" if "steps" in image_cost else "calibrated_stage_split",
+        "prepare_ms": "profile" if "prepare_ms" in image_cost else "calibrated_stage_split",
+        "finish_ms": "calibrated_stage_split",
+        "batch_step_ms": source_label,
+    }
+    return cost, source_label, provenance
+
+
+def load_calibrated_profile(profile_or_path, *, resolution=1024, continuous_batch=DEFAULT_CONTINUOUS_BATCH):
+    """Load a calibrated profile (from path or dict) and sanitize image continuous-batch costs."""
+    if isinstance(profile_or_path, (str, Path)):
+        profile = json.loads(Path(profile_or_path).read_text(encoding="utf-8"))
+    else:
+        profile = copy.deepcopy(profile_or_path)
+    classes = profile.get("classes", {})
+    for cid, cls_cost in list(classes.items()):
+        if isinstance(cls_cost, dict) and cls_cost.get("kind") == "image" and float(cls_cost.get("service_ms", 0.0) or 0.0) > 0:
+            res = resolution
+            if "512" in cid:
+                res = 512
+            elif "768" in cid:
+                res = 768
+            elif "1440" in cid:
+                res = 1440
+            sanitized, src_label, prov = sanitize_image_cost(cls_cost, resolution=res, eff_cb=continuous_batch)
+            classes[cid] = sanitized
+            if cid == "sd35-preflight" and src_label is not None:
+                source = profile.setdefault("source", {})
+                source["image_batch_step_ms_source"] = src_label
+                source["image_cost_provenance"] = dict(source.get("image_cost_provenance", {}), **prov)
+    return profile
 
 
 def partition_image_gpus(gpus, video_fraction, video_cost, image_service_ms):
@@ -139,10 +243,9 @@ def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load,
                          continuous_batch=None, sequence_packing=None, bubble_free=None, memory_strategy=None):
     """Build a frozen native serving study.
 
-    SD3.5 continuous batching and worker memory strategies are explicit opt-in:
-    continuous_batch None or 0 keeps atomic image execution for every policy and
-    workers with continuous_batch/sequence_packing/bubble_free off, whatever
-    the profile contains.
+    SD3.5 continuous batching is enabled by default (DEFAULT_CONTINUOUS_BATCH = 4)
+    when atomic image_batch == 1. Passing continuous_batch = 0 (or image_batch > 1
+    with continuous_batch=None) uses atomic image execution.
     """
     policies = list(DEFAULT_POLICIES if policies is None else policies)
     requested_policies = list(policies)
@@ -154,37 +257,30 @@ def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load,
         random.Random(seed if order_seed is None else order_seed).shuffle(policies)
     if not isinstance(image_batch, int) or isinstance(image_batch, bool) or not 1 <= image_batch <= 8:
         raise ValueError("image_batch must be an integer in [1, 8]")
-    eff_cb, packing, bubble = continuous_batch_settings(continuous_batch, sequence_packing, bubble_free)
+    if continuous_batch is None and image_batch > 1:
+        cb_arg = 0
+    else:
+        cb_arg = DEFAULT_CONTINUOUS_BATCH if continuous_batch is None else continuous_batch
+    eff_cb, packing, bubble = continuous_batch_settings(cb_arg, sequence_packing, bubble_free)
     if eff_cb > 0 and image_batch > 1:
         raise ValueError("continuous_batch and atomic image_batch are mutually exclusive")
     applied_memory = None if memory_strategy is None else applied_memory_strategy(memory_strategy)
+    profile = copy.deepcopy(profile)
     cb_cost_provenance = None
-    if eff_cb > 0:
-        sd_cls = profile["classes"]["sd35-preflight"]
-        table = sd_cls.get("batch_step_ms")
-        if table is not None and (not isinstance(table, dict) or "1" not in table
-                                  or max(int(key) for key in table) < eff_cb):
-            raise ValueError(f"continuous_batch={eff_cb} needs sd35-preflight.batch_step_ms with batch 1 "
-                             f"and a largest size >= {eff_cb}; no synthetic extension of a measured table")
-        cb_cost_provenance = {key: "profile" for key in ("steps", "prepare_ms", "finish_ms", "batch_step_ms")}
-        missing = [key for key in cb_cost_provenance if key not in sd_cls]
-        if missing:
-            # Explicit opt-in only: placeholders are labelled synthetic, never measured.
-            profile = copy.deepcopy(profile)
-            sd_cls = profile["classes"]["sd35-preflight"]
-            sd_steps = int(sd_cls.get("steps", 28))
-            synthetic = {
-                "steps": sd_steps, "prepare_ms": 15.0, "finish_ms": 65.0,
-                "batch_step_ms": default_sd35_batch_step_ms(float(sd_cls["service_ms"]), steps=sd_steps,
-                                                            resolution=1024),
-            }
-            for key in missing:
-                sd_cls[key] = synthetic[key]
-                cb_cost_provenance[key] = ("synthetic_default_table" if key == "batch_step_ms"
-                                           else "synthetic_placeholder")
-            source = profile.setdefault("source", {})
-            source["image_cost_provenance"] = dict(source.get("image_cost_provenance", {}),
-                                                   **{key: cb_cost_provenance[key] for key in missing})
+    image_batch_step_ms_source = None
+    for cid, cls_cost in list(profile.get("classes", {}).items()):
+        if isinstance(cls_cost, dict) and cls_cost.get("kind") == "image" and float(cls_cost.get("service_ms", 0.0) or 0.0) > 0:
+            if eff_cb > 0 or "batch_step_ms" not in cls_cost or "finish_ms" in cls_cost:
+                res = 512 if "512" in cid else (768 if "768" in cid else (1440 if "1440" in cid else 1024))
+                sanitized, src_label, prov = sanitize_image_cost(cls_cost, resolution=res, eff_cb=max(1, eff_cb))
+                profile["classes"][cid] = sanitized
+                if cid == "sd35-preflight":
+                    cb_cost_provenance = prov
+                    image_batch_step_ms_source = src_label
+                    source = profile.setdefault("source", {})
+                    if src_label is not None:
+                        source["image_batch_step_ms_source"] = src_label
+                    source["image_cost_provenance"] = dict(source.get("image_cost_provenance", {}), **prov)
     if image_batch > 1:
         table = profile["classes"]["sd35-preflight"].get("batch_ms", {})
         for size in range(2, image_batch + 1):
@@ -328,6 +424,7 @@ def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load,
             "sequence_packing": packing,
             "bubble_free": bubble,
             "cost_provenance": cb_cost_provenance,
+            "image_batch_step_ms_source": image_batch_step_ms_source,
         }
     if applied_memory is not None:
         benchmark_meta["memory_strategy"] = applied_memory
@@ -370,6 +467,9 @@ def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load,
     }
 
 
+build_config = build_serving_config
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", choices=sorted(MODELS), required=True)
@@ -390,8 +490,8 @@ def main():
     parser.add_argument("--image-batch", type=int, default=1,
                         help="maximum atomic image requests per batch, shared by all policies; >1 requires measured batch_ms")
     parser.add_argument("--continuous-batch", type=int, default=None,
-                        help="opt-in step-level continuous image batch size in [0, 8]; default off (never "
-                             "enabled from the profile); mutually exclusive with --image-batch > 1")
+                        help="step-level continuous image batch size in [0, 8]; defaults to 4 when --image-batch == 1 "
+                             "and 0 when --image-batch > 1; mutually exclusive with --image-batch > 1")
     parser.add_argument("--sequence-packing", action=argparse.BooleanOptionalAction, default=None,
                         help="token sequence packing for SD3.5 continuous batches (default: on iff continuous batching)")
     parser.add_argument("--bubble-free", action=argparse.BooleanOptionalAction, default=None,

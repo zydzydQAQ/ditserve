@@ -457,6 +457,89 @@ class TestTier1LosslessQualificationGate:
         assert approx_summary["phases"][0]["qualification"]["qualified"] is False
         assert approx_summary["phases"][0]["cells"][0]["metrics"]["qualified_goodput_rps"] is None
 
+    def test_tier1_lossless_qualification_with_continuous_batching_and_abl_no_cb(
+        self, tmp_path: pathlib.Path
+    ) -> None:
+        cb_opts = {"continuous_batch": 4, "sequence_packing": True, "bubble_free": True}
+        assert py_results_archive.is_lossless_exact_policy("ditserve", cb_opts) is True
+        assert py_results_archive.is_lossless_exact_policy("abl-no-cb", cb_opts) is True
+        assert py_results_archive.is_lossless_exact_policy("xdit", cb_opts) is True
+
+        run = self._make_real_gpu_serving_run(mock_execution=False, failed=0, approx_fold_steps=0)
+        run["config"]["phases"][0]["options"] = dict(cb_opts)
+        run["config"]["phases"][0]["matrix"] = {"/policy": ["ditserve", "abl-no-cb"]}
+        run["phases"][0]["options"] = dict(cb_opts)
+        run["phases"][0]["cells"][0]["options"] = dict(cb_opts)
+        run["phases"][0]["cells"][0]["continuous_batch"] = {
+            "enabled": True,
+            "limit": 4,
+            "rounds": 42,
+            "batched_rounds": 14,
+            "member_steps": 68,
+            "max_batch_size": 4,
+            "mean_batch_size": round(68 / 42, 6),
+            "bubble_free": True,
+            "sequence_packing": True,
+            "late_joins": 5,
+            "early_exits": 3,
+            "batch_sizes": {"1": 28, "2": 8, "3": 4, "4": 2},
+            "samples": [{"batch_size": 2, "ms": 34.5, "model_ms": 33.9}],
+        }
+        run["phases"][0]["cells"][1]["policy"] = "abl-no-cb"
+        run["phases"][0]["cells"][1]["options"] = dict(cb_opts)
+        run["phases"][0]["cells"][1]["continuous_batch"] = {
+            "enabled": False,
+            "limit": 0,
+            "rounds": 0,
+            "batched_rounds": 0,
+            "member_steps": 0,
+            "max_batch_size": 0,
+            "mean_batch_size": 0.0,
+            "bubble_free": False,
+            "sequence_packing": False,
+            "batch_sizes": {},
+            "samples": [],
+        }
+
+        qual = py_results_archive.evaluate_tier1_lossless_qualification(run, config=run["config"])
+        assert qual["qualified"] is True
+        assert qual["numeric"] == "verified_lossless_exact"
+        assert qual["semantic"] == "verified_bitwise_invariant"
+        assert qual["performance"] == "verified_real_gpu"
+
+        work, output = tmp_path / "work_cb", tmp_path / "results_cb"
+        work.mkdir()
+        (work / "run.json").write_text(json.dumps(run), encoding="utf-8")
+        assert results.finalize(work, output)["status"] == "completed"
+        saved = results.load(output)["run"]
+        assert saved["qualification"]["qualified"] is True
+        assert saved["qualification"]["numeric"] == "verified_lossless_exact"
+        assert saved["qualification"]["semantic"] == "verified_bitwise_invariant"
+        assert saved["qualification"]["performance"] == "verified_real_gpu"
+
+        cb_cell = saved["phases"][0]["cells"][0]["continuous_batch"]
+        for key in (
+            "enabled",
+            "limit",
+            "rounds",
+            "batched_rounds",
+            "member_steps",
+            "max_batch_size",
+            "mean_batch_size",
+            "bubble_free",
+            "sequence_packing",
+        ):
+            assert key in cb_cell
+        assert cb_cell["enabled"] is True
+        assert cb_cell["limit"] == 4
+        assert cb_cell["rounds"] == 42
+        assert cb_cell["batched_rounds"] == 14
+        assert cb_cell["member_steps"] == 68
+        assert cb_cell["max_batch_size"] == 4
+        assert cb_cell["bubble_free"] is True
+        assert cb_cell["sequence_packing"] is True
+        assert "samples" not in cb_cell
+
 
 # ==============================================================================
 # 3. Calibration Bundle Provenance & Kairos Formal Benchmark Tight-SLO Contract
