@@ -321,8 +321,13 @@ def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301
             for extra_load in (0.75, 1.25, 1.5, 2.0, 2.25, 3.0):
                 if extra_load not in allowed_loads:
                     allowed_loads.append(extra_load)
+        allowed_video_fractions = list(p['video_fractions'])
+        if is_v2:
+            for extra_vf in (0.1, 0.3, 0.4, 0.6, 0.7, 0.9):
+                if extra_vf not in allowed_video_fractions:
+                    allowed_video_fractions.append(extra_vf)
         if ((rate_rpm is None and load not in allowed_loads)
-                or video_fraction not in p['video_fractions']):
+                or video_fraction not in allowed_video_fractions):
             raise ValueError('load/rate/mix is outside frozen protocol')
         if pattern not in patterns:
             raise ValueError('arrival pattern is outside frozen protocol')
