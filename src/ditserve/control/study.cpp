@@ -774,7 +774,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     const auto transport=string_field(options,"sp_transport",fixtures?"resume":"pinned");
     if(transport!="pinned"&&transport!="resume"&&transport!="export")throw std::invalid_argument("sp_transport must be pinned, resume or export");
     if(transport=="resume"&&!fixtures)throw std::invalid_argument("resume transport re-prepares from counters and is mock only");
-    if(transport=="export"&&gpus!=2&&gpus!=4&&gpus!=6&&gpus!=8)throw std::invalid_argument("export transport needs 2, 4, 6 or 8 GPUs");
+    if(transport=="export"&&gpus!=2&&gpus!=4&&gpus!=6&&gpus!=8&&gpus!=16)throw std::invalid_argument("export transport needs 2, 4, 6, 8 or 16 GPUs");
     // Pinning lets a started request resume while another is inside a step on the
     // same worker; SP workers hold one request inside a solver step at a time.
     if(transport!="pinned"&&bool_field(options,"pin_started",false))throw std::invalid_argument("pin_started needs pinned transport");
@@ -869,7 +869,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 throw std::invalid_argument("asynchronous decode requires a compatible Wan attention and VAE configuration");
             if(transport=="export"&&std::find(migration.begin(),migration.end(),"state")==migration.end())
                 throw std::invalid_argument("export transport requires xDiT solver-step state migration");
-            if(transport=="export"&&std::find(degrees.begin(),degrees.end(),slots.size())==degrees.end())
+            if(transport=="export"&&std::find(degrees.begin(),degrees.end(),std::min<std::size_t>(slots.size(),8))==degrees.end())
                 throw std::invalid_argument("requested Wan SP degree is not enabled on every worker");
         }
         if(transport=="export"&&std::string(role)=="video"&&backend!="mock"&&backend!="wan")
@@ -878,14 +878,20 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     const auto warmed=warmup(phase,workers,budget);
     if(transport=="export"){
         // init_process_group is collective: every video worker joins at once, each starting at SP1 on its GPU.
+        // For multi-node 16-GPU clusters, each 8-GPU node forms an independent intra-node 8-rank world.
         static std::atomic<int> worlds{0};
-        const int port=int_field(options,"sp_port",29600,1024)+worlds++%100;
+        const int num_nodes=std::max(1,(gpus+7)/8);
+        const int port=int_field(options,"sp_port",29600,1024)+(worlds.fetch_add(num_nodes)%100);
         fs::create_directories(transfer_dir);
         std::vector<std::future<Json>> ranks;
         for(int gpu=0;gpu<gpus;++gpu){
             const auto name=slots.at(gpu).at("video").get<std::string>();
-            Json init={{"op","distributed"},{"action","init"},{"init_method","tcp://127.0.0.1:"+std::to_string(port)},
-                       {"rank",gpu},{"world_size",gpus},{"ranks",Json::array({gpu})},{"collective_backend",collective_backend}};
+            const int node_id=gpu/8;
+            const int local_rank=gpu%8;
+            const int local_world=std::min(8,gpus-node_id*8);
+            const int node_port=port+node_id;
+            Json init={{"op","distributed"},{"action","init"},{"init_method","tcp://127.0.0.1:"+std::to_string(node_port)},
+                       {"rank",local_rank},{"world_size",local_world},{"ranks",Json::array({local_rank})},{"collective_backend",collective_backend}};
             if(options.contains("gfc_max_collective_bytes"))init["gfc_max_collective_bytes"]=int_field(options,"gfc_max_collective_bytes",1,1);
             if(options.contains("gfc_copy_engine"))init["gfc_copy_engine"]=bool_field(options,"gfc_copy_engine",false);
             ranks.push_back(std::async(std::launch::async,[&workers,name,init,deadline=budget.deadline()]{return workers.get(name).call(init,deadline);}));
@@ -1230,7 +1236,8 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 if(group!=astate.group)astate.epoch=++epochs;
                 int source=-1;
                 if(!astate.prepared){
-                    if(!astate.ticket.empty()&&astate.shm_staged&&astate.encode_gpu!=group.front()){
+                    const bool same_node=(astate.encode_gpu>=0)&&((astate.encode_gpu/8)==(group.front()/8));
+                    if(!astate.ticket.empty()&&((astate.shm_staged&&same_node&&astate.encode_gpu!=group.front())||!same_node)){
                         stale_tickets[astate.encode_gpu].insert(astate.ticket);
                         astate.ticket.clear();
                     }
@@ -1270,8 +1277,10 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             if(unprepared)row["prompt_reencoded"]=stagings[0].reencode;
             if(pair_unprepared)rows[j]["prompt_reencoded"]=stagings[1].reencode;
             std::vector<std::pair<std::string,Json>> advances;
+            Json local_group=Json::array();
+            for(int g:group)local_group.push_back(g%8);
             for(int gpu:group){
-                Json advance={{"op","advance"},{"state_id",id},{"sp_degree",degree},{"group",group},{"epoch",state.epoch}};
+                Json advance={{"op","advance"},{"state_id",id},{"sp_degree",degree},{"group",local_group},{"epoch",state.epoch}};
                 advance["cfg"]=form.cfg;advance["ring"]=form.ring;advance["cfg_folded"]=cfg_folded;
                 if(assignment.contains("cache_threshold"))advance["cache_threshold"]=assignment.at("cache_threshold");
                 if(!pair.empty())advance["pair_state_id"]=pair;
@@ -2522,8 +2531,8 @@ void validate(const Json& config){
                         throw std::invalid_argument("sp_transport must be pinned, resume or export");
                     if(bool_field(cell.value("options",Json::object()),"doorbell",false)&&transport!="export")
                         throw std::invalid_argument("doorbell needs the export transport");
-                    if(transport=="export"&&slots.size()!=2&&slots.size()!=4&&slots.size()!=6&&slots.size()!=8)
-                        throw std::invalid_argument("export transport needs 2, 4, 6 or 8 GPUs");
+                    if(transport=="export"&&slots.size()!=2&&slots.size()!=4&&slots.size()!=6&&slots.size()!=8&&slots.size()!=16)
+                        throw std::invalid_argument("export transport needs 2, 4, 6, 8 or 16 GPUs");
                     for(const auto& row:rows)if(cost.klass(row.at("class").get<std::string>()).at("kind")!=row.at("kind"))
                         throw std::invalid_argument("request kind differs from its cost class");
                     continue;

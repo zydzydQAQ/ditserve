@@ -364,7 +364,7 @@ run_formal_serve() {
     serve_args+=(--allow-Cross-uuid)
   fi
   python3 - "$benchmarks" "$protocol" "$model" "$RUN_DIR/bundle.json" "$DATA/datasets" "$DITSERVE_MODEL_MANIFESTS" "$out_cfg" "${serve_args[@]}" <<'PY'
-import copy, json, pathlib, sys
+import copy, json, os, pathlib, sys
 sys.path.insert(0, sys.argv[1])
 import formal_benchmark as fb
 from ditserve.evaluation.common import canonical_hash, seal
@@ -379,10 +379,51 @@ extra = sys.argv[8:]
 
 p = fb.protocol(protocol_path)
 
+import argparse
+ap = argparse.ArgumentParser()
+ap.add_argument("--split", default="test")
+ap.add_argument("--seed", type=int, default=301)
+rate_group = ap.add_mutually_exclusive_group()
+rate_group.add_argument("--load", type=float, default=None)
+rate_group.add_argument("--rate-rpm", type=float, default=None)
+ap.add_argument("--video-fraction", "--video-Ratio", dest="video_fraction", type=float, default=None)
+ap.add_argument("--slo-scale", type=float, default=None)
+ap.add_argument("--resolution-distribution", default=None)
+ap.add_argument("--cv", type=float, default=None)
+ap.add_argument("--pattern", default=None)
+ap.add_argument("--suite", default="main")
+ap.add_argument("--policies", default=None)
+ap.add_argument("--num-gpus", type=int, choices=[2, 4, 6, 8, 16], default=8)
+ap.add_argument("--diagnostic", default=None)
+ap.add_argument("--allow-Cross-uuid", action="store_true", default=False)
+parsed = ap.parse_args(extra)
+
 bundle = fb.read_json(bundle_path)
-active_uuids = list(bundle.get("active_gpu_uuids") or fb.allocated_uuids())
-origin_uuids = list(bundle.get("origin_gpu_uuids") or bundle.get("gpu_uuids", active_uuids))
+base_uuids = list(bundle.get("active_gpu_uuids") or fb.allocated_uuids())
+origin_uuids = list(bundle.get("origin_gpu_uuids") or bundle.get("gpu_uuids", base_uuids))
 match_mode = bundle.get("calibration_match_mode", "exact_uuid")
+
+if parsed.num_gpus in (2, 4, 6, 8):
+    if len(base_uuids) < parsed.num_gpus:
+        raise RuntimeError(f"requested --num-gpus {parsed.num_gpus}, but only {len(base_uuids)} local GPUs found")
+    active_uuids = base_uuids[:parsed.num_gpus]
+elif parsed.num_gpus == 16:
+    if len(base_uuids) >= 16:
+        active_uuids = base_uuids[:16]
+    else:
+        node1_json_path = os.environ.get("DITSERVE_MULTINODE_NODE1_JSON", "")
+        if not node1_json_path and os.environ.get("DITSERVE_MULTINODE_DIR"):
+            node1_json_path = str(pathlib.Path(os.environ["DITSERVE_MULTINODE_DIR"]) / "node1.json")
+        if not node1_json_path or not pathlib.Path(node1_json_path).is_file():
+            raise RuntimeError("16-GPU serving requires DITSERVE_MULTINODE_NODE1_JSON pointing to node1.json")
+        node1_info = fb.read_json(pathlib.Path(node1_json_path))
+        remote_uuids = list(node1_info.get("gpu_uuids") or [])
+        if len(base_uuids) < 8 or len(remote_uuids) < 8:
+            raise RuntimeError(f"16-GPU serving requires 8 local + 8 remote GPUs (got {len(base_uuids)} + {len(remote_uuids)})")
+        active_uuids = base_uuids[:8] + remote_uuids[:8]
+        if not os.environ.get("DITSERVE_REMOTE_ENDPOINT") and node1_info.get("endpoint"):
+            os.environ["DITSERVE_REMOTE_ENDPOINT"] = str(node1_info["endpoint"])
+        match_mode = "multinode_2x8_uuid"
 
 # Prepare an in-memory view for formal_benchmark.serving while keeping origin_gpu_uuids intact on disk.
 bundle_for_serving = copy.deepcopy({k: v for k, v in bundle.items() if k != "sha256"})
@@ -394,23 +435,6 @@ for entry in bundle_for_serving.get("classes", {}).values():
         if isinstance(entry["source"].get("fit"), dict):
             entry["source"]["fit"]["gpu_uuids"] = active_uuids
 bundle_for_serving = seal(bundle_for_serving)
-
-import argparse
-ap = argparse.ArgumentParser()
-ap.add_argument("--split", default="test")
-ap.add_argument("--seed", type=int, default=301)
-rate_group = ap.add_mutually_exclusive_group()
-rate_group.add_argument("--load", type=float, default=None)
-rate_group.add_argument("--rate-rpm", type=float, default=None)
-ap.add_argument("--video-fraction", type=float, default=None)
-ap.add_argument("--slo-scale", type=float, default=None)
-ap.add_argument("--resolution-distribution", default=None)
-ap.add_argument("--cv", type=float, default=None)
-ap.add_argument("--pattern", default=None)
-ap.add_argument("--suite", default="main")
-ap.add_argument("--diagnostic", default=None)
-ap.add_argument("--allow-Cross-uuid", action="store_true", default=False)
-parsed = ap.parse_args(extra)
 
 pools = {kind: fb.read_json(datasets_dir / (p["datasets"][kind]["kind"] + ".json")) for kind in ("image", "video")}
 manifests = fb.read_json(manifests_path)
@@ -428,6 +452,7 @@ result = fb.serving(
     video_fraction=parsed.video_fraction,
     pattern=parsed.pattern,
     suite=parsed.suite,
+    policies=parsed.policies,
     diagnostic=parsed.diagnostic,
     slo_scale=parsed.slo_scale,
     resolution_distribution=parsed.resolution_distribution,
@@ -437,6 +462,7 @@ result.setdefault("benchmark", {}).setdefault("formal_protocol", {}).update(
     origin_gpu_uuids=origin_uuids,
     active_gpu_uuids=active_uuids,
     calibration_match_mode=match_mode,
+    num_gpus=len(active_uuids),
 )
 fb.write_new(out_cfg, result)
 print(json.dumps(dict(output=str(out_cfg), sha256=canonical_hash(result), scientific_qualification="pending")))
@@ -453,6 +479,14 @@ if [ "$action" = serve ] && [ -n "${DITSERVE_SERVE_BATCH:-}" ]; then
     fi
     cfg="$RUN_DIR/serving-$tag.json"
     read -ra extra_args <<< "$flags"
+    if [[ " $flags " == *" --num-gpus 16 "* ]]; then
+      if [ -z "${DITSERVE_REMOTE_ENDPOINT:-}" ] && [ -n "${DITSERVE_MULTINODE_NODE1_JSON:-}" ] && [ -f "$DITSERVE_MULTINODE_NODE1_JSON" ]; then
+        DITSERVE_REMOTE_ENDPOINT=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["endpoint"])' "$DITSERVE_MULTINODE_NODE1_JSON")
+        export DITSERVE_REMOTE_ENDPOINT
+      fi
+    else
+      unset DITSERVE_REMOTE_ENDPOINT || true
+    fi
     run_formal_serve "$cfg" --split test --seed "${DITSERVE_SEED:-301}" "${extra_args[@]}"
     run_config "$cfg" "$DITSERVE_RUN_ID-$tag"
   done

@@ -328,7 +328,7 @@ def load_bundle(path_or_bundle, *, continuous_batch=DEFAULT_CONTINUOUS_BATCH):
 
 
 def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301,
-            load=None, rate_rpm=None, video_fraction=None, pattern=None, suite='main', diagnostic=None,
+            load=None, rate_rpm=None, video_fraction=None, pattern=None, suite='main', policies=None, diagnostic=None,
             p1_plan=None, p1_pair=None, slo_scale=None, resolution_distribution=None, cv=None,
             continuous_batch=None, sequence_packing=None, bubble_free=None, memory_strategy=None):
     is_v2 = p.get('schema') == 'ditserve.formal-protocol.v2'
@@ -354,7 +354,14 @@ def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301
     verify_seal(bundle)
     if bundle.get('schema') != BUNDLE_SCHEMA or bundle.get('model') != model or bundle.get('protocol_sha256') != canonical_hash(p):
         raise ValueError('profile bundle does not match model/protocol')
-    if bundle.get('gpu_uuids') != list(uuids):
+    bundle_uuids = list(bundle.get('gpu_uuids') or [])
+    uuid_list = list(uuids)
+    uuids_ok = (
+        bundle_uuids == uuid_list
+        or (len(bundle_uuids) == 8 and len(uuid_list) in (2, 4, 6) and bundle_uuids[:len(uuid_list)] == uuid_list)
+        or (len(bundle_uuids) == 8 and len(uuid_list) == 16 and bundle_uuids == uuid_list[:8] and len(set(uuid_list)) == 16)
+    )
+    if not uuids_ok:
         raise ValueError('profile bundle GPU UUIDs differ from exact allocation')
     if bundle.get('model_manifests') != manifests:
         raise ValueError('profile model identity differs from serving')
@@ -468,7 +475,10 @@ def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301
     # profile/trace/warmup data with the exact mixed-shape equivalents.
     singleton = copy.deepcopy(profile)
     singleton['classes'] = {model + '-preflight': cost_classes[videos[0]], 'sd35-preflight': cost_classes[images[0]]}
-    policies = SUITES['preempt'] if diagnostic else SUITES[suite]
+    if policies is not None:
+        resolved_policies = [x.strip() for x in policies.split(',') if x.strip()] if isinstance(policies, str) else list(policies)
+    else:
+        resolved_policies = SUITES['preempt'] if diagnostic else SUITES[suite]
     count = diagnostic_controls['count'] if diagnostic else p['requests_per_cell'][split]
     actual_fraction = diagnostic_controls['video_fraction'] if diagnostic else video_fraction
     actual_load = diagnostic_controls['load'] if diagnostic else load
@@ -505,7 +515,7 @@ def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301
         window['load'] = actual_load
         window['requested_rate_rpm'] = rate_rpm
     config = build_serving_config(model, uuids, singleton, selected, seed=seed, load=actual_load,
-        pattern=actual_pattern, cv=effective_cv, video_fraction=actual_fraction, count=count, policies=policies,
+        pattern=actual_pattern, cv=effective_cv, video_fraction=actual_fraction, count=count, policies=resolved_policies,
         image_slo_scale=image_scale, video_slo_scale=video_scale,
         require_profile_match=True, forms=['cfg2'] if diagnostic else None, output_mode=mode,
         doorbell=True, image_batch=p['batch_limit'], policy_order='random',
@@ -553,6 +563,8 @@ def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301
             extra_tags += f"-{dist_name.replace('_', '-')}"
         if actual_pattern == 'gamma':
             extra_tags += f"-cv{str(effective_cv).replace('.', 'p')}"
+    if len(uuids) != 8:
+        extra_tags += f"-g{len(uuids)}gpu"
     if rate_rpm is None:
         workload_tag = 'l' + str(actual_load).replace('.', 'p')
     else:
@@ -642,13 +654,15 @@ def main():
             rate_group.add_argument('--load', type=float, default=None)
             rate_group.add_argument('--rate-rpm', type=float, default=None,
                 help='absolute mean arrival rate in requests/minute; resolved against the frozen calibration bundle')
-            ap.add_argument('--video-fraction', type=float, default=None)
+            ap.add_argument('--video-fraction', '--video-Ratio', dest='video_fraction', type=float, default=None)
             ap.add_argument('--slo-scale', type=float, default=None)
             ap.add_argument('--resolution-distribution', default=None)
             ap.add_argument('--cv', type=float, default=None)
             # Default: protocol anchor (v2) or poisson; P0 diagnostics ignore it.
             ap.add_argument('--pattern', choices=['poisson', 'gamma', 'bursty'], default=None)
             ap.add_argument('--suite', choices=sorted(SUITES), default='main')
+            ap.add_argument('--policies', default=None)
+            ap.add_argument('--num-gpus', type=int, choices=[2, 4, 6, 8, 16], default=None)
             ap.add_argument('--diagnostic', choices=['contention', 'no_preemption'])
             ap.add_argument('--continuous-batch', type=int, default=None)
             ap.add_argument('--sequence-packing', action=argparse.BooleanOptionalAction, default=None)
@@ -668,9 +682,14 @@ def main():
             result = calibration(p, args.model, uuids, pools, manifests, args.video_shape, args.image_shape)
         else:
             uuids = args.gpu_uuids.split(',') if args.gpu_uuids else allocated_uuids()
+            if args.num_gpus is not None:
+                if args.num_gpus > len(uuids):
+                    parser.error(f'--num-gpus={args.num_gpus} exceeds allocated GPUs ({len(uuids)})')
+                uuids = uuids[:args.num_gpus]
             result = serving(p, args.model, uuids, load_bundle(args.bundle, continuous_batch=args.continuous_batch), pools, manifests,
                 split=args.split, seed=args.seed, load=args.load, rate_rpm=args.rate_rpm,
-                video_fraction=args.video_fraction, pattern=args.pattern, suite=args.suite, diagnostic=args.diagnostic,
+                video_fraction=args.video_fraction, pattern=args.pattern, suite=args.suite, policies=args.policies,
+                diagnostic=args.diagnostic,
                 slo_scale=args.slo_scale, resolution_distribution=args.resolution_distribution,
                 cv=args.cv, continuous_batch=args.continuous_batch, sequence_packing=args.sequence_packing,
                 bubble_free=args.bubble_free, memory_strategy=args.memory_strategy)

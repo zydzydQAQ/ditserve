@@ -91,7 +91,7 @@ def _model_capabilities(name, config, backend):
         dynamic_cache=name == "wan" and execution == "step",
         batch="packed" if (name == "sd35" and options.get("sequence_packing", False)) else "fixed",
         migration=[] if name != "wan" else ["state"] + ([] if execution == "step" else ["block"]),
-        parallel=dict(sp_degrees=[1, 2, 3, 4, 6, 8] if name == "wan" else [1], cfg=name == "wan"),
+        parallel=dict(sp_degrees=[1, 2, 3, 4, 6, 8, 16] if name == "wan" else [1], cfg=name == "wan"),
     )
     if name == "sd35" and (options.get("bubble_free", False) or options.get("sequence_packing", False)):
         capabilities.update(
@@ -339,28 +339,52 @@ def occupancy(request, *, mock=False, nvml_probe=None):
                                    capture_output=True, text=True, timeout=10, check=True)
         devices = {row.split(",", 1)[0].strip(): row.split(",", 1)[1].strip()
                    for row in available.stdout.splitlines() if row.strip()}
-        if any(value not in devices for value in requested):
+        remote_endpoint = "" if request.get("_local_only") else os.environ.get("DITSERVE_REMOTE_ENDPOINT", "")
+        local_requested = [value for value in requested if value in devices]
+        remote_requested = [value for value in requested if value not in devices]
+        if remote_requested and not remote_endpoint:
             raise ValueError("requested full GPU UUID is not present")
-        result = subprocess.run(["nvidia-smi", "--query-compute-apps=pid,gpu_uuid,used_memory",
-                                 "--format=csv,noheader,nounits"], capture_output=True, text=True, timeout=10, check=True)
         allowed = set(request.get("allowed_pids", []))
         groups = set(request.get("allowed_pgids", []))
         owned, foreign = [], []
-        for line in result.stdout.splitlines():
-            pid, gpu, memory = (item.strip() for item in line.split(","))
-            if gpu not in requested:
-                continue
-            pid = int(pid)
-            try:
-                pgid = os.getpgid(pid)
-            except ProcessLookupError:
-                # NVML may retain an exiting owner or expose a PID outside
-                # this namespace. Its GPU allocation is not proof of idle.
-                pgid = None
-            row = dict(pid=pid, pgid=pgid, gpu_uuid=gpu, memory_mib=memory)
-            (owned if pid in allowed or pgid in groups else foreign).append(row)
+        if local_requested:
+            result = subprocess.run(["nvidia-smi", "--query-compute-apps=pid,gpu_uuid,used_memory",
+                                     "--format=csv,noheader,nounits"], capture_output=True, text=True, timeout=10, check=True)
+            local_set = set(local_requested)
+            for line in result.stdout.splitlines():
+                pid, gpu, memory = (item.strip() for item in line.split(","))
+                if gpu not in local_set:
+                    continue
+                pid = int(pid)
+                try:
+                    pgid = os.getpgid(pid)
+                except ProcessLookupError:
+                    # NVML may retain an exiting owner or expose a PID outside
+                    # this namespace. Its GPU allocation is not proof of idle.
+                    pgid = None
+                row = dict(pid=pid, pgid=pgid, gpu_uuid=gpu, memory_mib=memory)
+                (owned if pid in allowed or pgid in groups else foreign).append(row)
+        device_map = {value: dict(uuid=value, name=devices[value]) for value in local_requested}
+        if remote_requested:
+            from .remote_bridge import query_remote_occupancy
+            rem = query_remote_occupancy(
+                remote_endpoint,
+                occupancy_backend="nvidia_smi",
+                gpu_uuids=remote_requested,
+                allowed_pids=list(allowed),
+                allowed_pgids=list(groups),
+            )
+            if rem.get("status") not in ("exclusive_observed", "busy"):
+                raise ValueError(rem.get("reason") or "remote occupancy probe failed")
+            owned.extend(rem.get("owned", []))
+            foreign.extend(rem.get("foreign", []))
+            for dev in rem.get("devices", []):
+                if isinstance(dev, dict) and dev.get("uuid"):
+                    device_map[dev["uuid"]] = dev
+            if any(value not in device_map for value in remote_requested):
+                raise ValueError("requested full GPU UUID is not present on remote node")
         return dict(status="busy" if foreign else "exclusive_observed", owned=owned, foreign=foreign,
-                    devices=[dict(uuid=value, name=devices[value]) for value in requested], cuda_initialized=False,
+                    devices=[device_map[value] for value in requested], cuda_initialized=False,
                     occupancy_backend="nvidia_smi")
     except (OSError, subprocess.SubprocessError, ValueError, TypeError) as error:
         return dict(empty, reason=str(error))
@@ -398,6 +422,9 @@ def main(argv=None):
     parser.add_argument("--backend", choices=tuple(BACKENDS), required=True)
     parser.add_argument("--config", type=Path)
     args = parser.parse_args(argv)
+    if os.environ.get("DITSERVE_REMOTE_WORKER") == "1" and os.environ.get("DITSERVE_REMOTE_ENDPOINT"):
+        from .remote_bridge import run_proxy
+        return run_proxy(backend=args.backend, config_path=str(args.config) if args.config else None)
     config = strict_json(args.config.read_text(encoding="utf-8")) if args.config else {}
     if not isinstance(config, dict):
         parser.error("worker config must be an object")

@@ -119,10 +119,21 @@ std::vector<std::vector<int>> cluster_groups(int gpus, const std::vector<int>& d
     for (int degree : degrees) {
         if (!supported_degree(degree)) throw std::invalid_argument("unsupported Wan SP degree");
         if (degree > gpus || !seen.insert(degree).second) continue;
-        for (int start = 0; start + degree <= gpus; start += degree) {
-            std::vector<int> group(degree);
-            for (int i = 0; i < degree; ++i) group[i] = start + i;
-            groups.push_back(group);
+        if (degree <= 8) {
+            for (int base = 0; base < gpus; base += 8) {
+                const int limit = std::min(gpus, base + 8);
+                for (int start = base; start + degree <= limit; start += degree) {
+                    std::vector<int> group(degree);
+                    for (int i = 0; i < degree; ++i) group[i] = start + i;
+                    groups.push_back(group);
+                }
+            }
+        } else {
+            for (int start = 0; start + degree <= gpus; start += degree) {
+                std::vector<int> group(degree);
+                for (int i = 0; i < degree; ++i) group[i] = start + i;
+                groups.push_back(group);
+            }
         }
     }
     return groups;
@@ -1998,6 +2009,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                 if (static_cast<int>(group.size()) != *d || !all_free(group)) continue;
                 if (std::any_of(group.begin(), group.end(), reserved)) continue;
                 if (affinity >= 0 && std::find(group.begin(), group.end(), affinity) == group.end()) continue;
+                if (gpus > 8 && prepared && !current.empty() && (group.front() / 8) != (current.front() / 8)) continue;
                 if (held_by_other(group, &r)) continue;
                 // The fastest group of this size (per-group link rates), then (with pair_fit)
                 // best fit: the group whose aligned parent is most occupied.

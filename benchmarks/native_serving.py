@@ -105,6 +105,8 @@ SUITES = {
     "preempt": ["edf-cfg2", "block-cfg2"],
     # Paper baselines + DitServe for Rate/SLO/CV/GPU sweeps.
     "sweep": ["xdit", "tetriserve", "sbp-esp", "edf-bestfit", "ditserve"],
+    # Weak-scaling GPU scalability suite (3-layer staircase across N_GPU in {2, 4, 8, 16}).
+    "scalability": ["ditserve", "edf-cfg2", "block-cfg2"],
     # Single-policy DitServe cell refresh on identical frozen trace (reusing baseline cells).
     "ditserve": ["ditserve"],
 }
@@ -294,7 +296,8 @@ def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load,
         raise ValueError("unknown parallel form")
     if model == "wan21":
         forms = [name for name in forms if name != "sp8"]
-    forms = [name for name in forms if FORM_DEGREES.get(name, 99) <= len(gpu_uuids)]
+    max_form_degree = min(8, len(gpu_uuids))
+    forms = [name for name in forms if FORM_DEGREES.get(name, 99) <= max_form_degree]
     if not policies or len(set(policies)) != len(policies):
         raise ValueError("policies must be nonempty and unique")
     if not forms or len(set(forms)) != len(forms):
@@ -302,7 +305,10 @@ def build_serving_config(model, gpu_uuids, profile, prompt_pools, *, seed, load,
     if output_mode not in ("check", "digest") or quality_per_kind and output_mode != "check":
         raise ValueError("digest trace mode requires quality_per_kind=0")
     profile_uuids = profile["source"].get("gpu_uuids")
-    profile_match = bool(profile_uuids) and profile_uuids[:len(gpu_uuids)] == list(gpu_uuids)
+    profile_match = bool(profile_uuids) and (
+        profile_uuids[:len(gpu_uuids)] == list(gpu_uuids)
+        or (len(profile_uuids) == 8 and len(gpu_uuids) == 16 and list(profile_uuids) == list(gpu_uuids[:8]))
+    )
     if require_profile_match and not profile_match:
         raise ValueError("calibration GPU UUIDs are absent or differ from this allocation")
     if any(name in ("heterodit_approx", "heterodit_v3", "diag-feature-cache", "diag-v3") for name in policies):
@@ -476,8 +482,8 @@ def main():
     parser.add_argument("--profile", type=Path, required=True)
     parser.add_argument("--datasets", type=Path, required=True)
     parser.add_argument("--gpu-uuids")
-    parser.add_argument("--num-gpus", type=int, choices=[2, 4, 6, 8],
-                        help="use the first N allocated GPUs for intra-node GPU scaling studies")
+    parser.add_argument("--num-gpus", type=int, choices=[2, 4, 6, 8, 16],
+                        help="use the first N allocated GPUs for GPU scaling studies")
     parser.add_argument("--seed", type=int, default=201)
     parser.add_argument("--load", type=float, default=1.0)
     parser.add_argument("--pattern", choices=["poisson", "gamma", "bursty", "offline_all"], default="poisson")

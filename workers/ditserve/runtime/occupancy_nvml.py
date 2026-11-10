@@ -134,17 +134,25 @@ class NvmlOccupancy:
                 raise ValueError("explicit unique full GPU UUIDs are required")
             allowed, groups = self._allowed(request, "allowed_pids"), self._allowed(request, "allowed_pgids")
             self._open()
-            devices, owned, foreign = [], [], []
+            remote_endpoint = "" if request.get("_local_only") else os.environ.get("DITSERVE_REMOTE_ENDPOINT", "")
+            device_map, owned, foreign, remote_requested = {}, [], [], []
             for uuid in requested:
                 handle = ctypes.c_void_p()
-                self._check(self._function("nvmlDeviceGetHandleByUUID", [ctypes.c_char_p,
-                    ctypes.POINTER(ctypes.c_void_p)])(uuid.encode(), ctypes.byref(handle)),
-                    "nvmlDeviceGetHandleByUUID")
+                code = self._function("nvmlDeviceGetHandleByUUID", [ctypes.c_char_p,
+                    ctypes.POINTER(ctypes.c_void_p)])(uuid.encode(), ctypes.byref(handle))
+                if code != 0:
+                    if remote_endpoint:
+                        remote_requested.append(uuid)
+                        continue
+                    self._check(code, "nvmlDeviceGetHandleByUUID")
                 if not handle.value or self._string("nvmlDeviceGetUUID", handle) != uuid:
+                    if remote_endpoint:
+                        remote_requested.append(uuid)
+                        continue
                     raise NvmlError("requested full GPU UUID does not match resolved device")
                 name = self._string("nvmlDeviceGetName", handle)
                 processes, api = self._processes(handle)
-                devices.append(dict(uuid=uuid, name=name, process_api=api))
+                device_map[uuid] = dict(uuid=uuid, name=name, process_api=api)
                 for pid, memory in processes:
                     try:
                         pgid = os.getpgid(pid)
@@ -155,6 +163,25 @@ class NvmlOccupancy:
                     row = dict(pid=pid, pgid=pgid, gpu_uuid=uuid,
                         memory_mib="N/A" if memory == (1 << 64) - 1 else format(memory / (1 << 20), ".6f"))
                     (owned if pid in allowed or pgid in groups else foreign).append(row)
+            if remote_requested:
+                from .remote_bridge import query_remote_occupancy
+                rem = query_remote_occupancy(
+                    remote_endpoint,
+                    occupancy_backend="nvml",
+                    gpu_uuids=remote_requested,
+                    allowed_pids=list(allowed),
+                    allowed_pgids=list(groups),
+                )
+                if rem.get("status") not in ("exclusive_observed", "busy"):
+                    raise NvmlError(rem.get("reason") or "remote NVML occupancy probe failed")
+                owned.extend(rem.get("owned", []))
+                foreign.extend(rem.get("foreign", []))
+                for dev in rem.get("devices", []):
+                    if isinstance(dev, dict) and dev.get("uuid"):
+                        device_map[dev["uuid"]] = dev
+                if any(u not in device_map for u in remote_requested):
+                    raise NvmlError("requested full GPU UUID is not present on remote node")
+            devices = [device_map[uuid] for uuid in requested]
             return dict(empty, status="busy" if foreign else "exclusive_observed",
                         owned=owned, foreign=foreign, devices=devices)
         except (OSError, AttributeError, ValueError, TypeError, NvmlError) as error:

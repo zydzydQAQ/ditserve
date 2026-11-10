@@ -458,6 +458,12 @@ int main(int argc, char** argv) {
         for (const auto& group : groups) require(group.front() % static_cast<int>(group.size()) == 0, "group is aligned");
         require(cluster_groups(6, {4}).size() == 1, "partial node keeps only whole groups");
         require(cluster_groups(8, {6})[0] == std::vector<int>({0, 1, 2, 3, 4, 5}), "six-GPU video group");
+        const auto groups16 = cluster_groups(16, {1, 2, 3, 4, 6, 8});
+        require(groups16.size() == 36, "two 8-GPU nodes produce 18+18 node-aligned groups");
+        for (const auto& group : groups16) {
+            require((group.front() / 8) == (group.back() / 8), "no group crosses 8-GPU node boundary");
+            require((group.front() % 8) % static_cast<int>(group.size()) == 0, "group is node-aligned");
+        }
         rejects([] { cluster_groups(8, {5}); });
         rejects([] { cluster_groups(0, {1}); });
     });

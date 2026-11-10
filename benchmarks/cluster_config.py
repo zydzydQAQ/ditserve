@@ -4,6 +4,7 @@
 import argparse
 import copy
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -415,11 +416,13 @@ def make_workers(
     """
     if model not in MODELS:
         raise ValueError("unknown model: " + model)
-    if len(gpu_uuids) not in (2, 4, 6, 8) or len(set(gpu_uuids)) != len(gpu_uuids):
-        raise ValueError("native studies require 2, 4, 6 or 8 distinct GPU UUIDs")
+    if len(gpu_uuids) not in (2, 4, 6, 8, 16) or len(set(gpu_uuids)) != len(gpu_uuids):
+        raise ValueError("native studies require 2, 4, 6, 8 or 16 distinct GPU UUIDs")
     cb, packing, bubble = continuous_batch_settings(continuous_batch, sequence_packing, bubble_free)
     applied = None if memory_strategy is None else applied_memory_strategy(memory_strategy)
     selected = MODELS[model]
+    remote_endpoint = os.environ.get("DITSERVE_REMOTE_ENDPOINT", "")
+    proxy_script = str(Path(__file__).resolve().parent / "remote_worker_proxy.py")
     workers, slots, warmup = {}, [], []
     for index, uuid in enumerate(gpu_uuids):
         environment = {
@@ -428,6 +431,11 @@ def make_workers(
             "OPENBLAS_NUM_THREADS": "4",
             "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True",
         }
+        if index >= 8:
+            environment["DITSERVE_REMOTE_WORKER"] = "1"
+            environment["DITSERVE_REMOTE_SLOT"] = str(index)
+            if remote_endpoint:
+                environment["DITSERVE_REMOTE_ENDPOINT"] = remote_endpoint
         options = {"execution": "block"}
         if cfg_fold is not None:
             options["cfg_fold"] = cfg_fold
@@ -465,9 +473,12 @@ def make_workers(
             "backend": "sd35",
             "python": "/opt/venv/bin/python",
             "gpu_uuid": uuid,
-            "environment": environment,
+            "environment": dict(environment),
             "config": image_config,
         }
+        if index >= 8:
+            workers[f"wan{index}"]["script"] = proxy_script
+            workers[f"image{index}"]["script"] = proxy_script
         slots.append({"video": f"wan{index}", "image": f"image{index}"})
         warmup.extend([
             {"worker": f"wan{index}", "spec": dict(video_spec, prompt="warmup", seed=7), "quantum": "step"},
@@ -490,12 +501,12 @@ def build_config(
 ):
     if frames != 17 or steps != 4 or image_steps != 4:
         raise ValueError("the functional preflight is fixed at Wan 17f/4 steps and SD3.5 4 steps")
-    if len(gpu_uuids) not in (2, 4, 6, 8) or len(set(gpu_uuids)) != len(gpu_uuids):
-        raise ValueError("preflight requires 2, 4, 6 or 8 distinct GPU UUIDs")
+    if len(gpu_uuids) not in (2, 4, 6, 8, 16) or len(set(gpu_uuids)) != len(gpu_uuids):
+        raise ValueError("preflight requires 2, 4, 6, 8 or 16 distinct GPU UUIDs")
     eff_cb, packing, bubble = continuous_batch_settings(continuous_batch, sequence_packing, bubble_free)
     applied = None if memory_strategy is None else applied_memory_strategy(memory_strategy)
     gpus = len(gpu_uuids)
-    form = {2: "cfg2", 4: "cfg2sp2", 6: "cfg2sp3", 8: "cfg2sp3"}[gpus]
+    form = {2: "cfg2", 4: "cfg2sp2", 6: "cfg2sp3", 8: "cfg2sp3", 16: "cfg2sp3"}[gpus]
     video_spec = {
         "steps": steps,
         "height": 480,

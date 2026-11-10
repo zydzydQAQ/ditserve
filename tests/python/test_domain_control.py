@@ -1084,6 +1084,7 @@ class TestBudgetLedgerStudyRunnerAndCliContracts:
         from unittest.mock import patch
 
         import formal_benchmark
+        import native_serving
         from ditserve.evaluation.common import canonical_hash, seal
 
         model = "wan22"
@@ -1202,6 +1203,7 @@ class TestBudgetLedgerStudyRunnerAndCliContracts:
         from unittest.mock import patch
 
         import formal_benchmark
+        import native_serving
         from ditserve.evaluation.common import canonical_hash, seal
 
         model = "wan22"
@@ -1324,4 +1326,237 @@ class TestBudgetLedgerStudyRunnerAndCliContracts:
 
         assert len(observed_experiments) == 10
         assert len(set(observed_experiments)) == 10
+
+    def test_formal_benchmark_serving_gpu_scalability_2_4_8_16(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from unittest.mock import patch
+
+        import formal_benchmark
+        import native_serving
+        from ditserve.evaluation.common import canonical_hash, seal
+
+        model = "wan22"
+        uuids_16 = [f"GPU-00000000-0000-0000-0000-0000000004{i:02d}" for i in range(16)]
+        uuids_8 = uuids_16[:8]
+        proto = formal_benchmark.protocol(ROOT / "configs" / "benchmarks" / "formal-mixed-v2.json")
+
+        manifests = {
+            key: {
+                "path": f"/shared/data/DITSERVE/models/{key}/manifest.json",
+                "sha256": str(index + 1) * 64,
+            }
+            for index, key in enumerate((model, "sd35"))
+        }
+        classes = {}
+        for sid, shape in proto["shapes"].items():
+            if shape["scope"] != "formal" or shape["model"] not in (model, "sd35"):
+                continue
+            if shape["kind"] == "video":
+                cost = {
+                    "kind": "video",
+                    "steps": shape["steps"],
+                    "prepare_ms": 0.0,
+                    "step_compute_ms": 100.0 * (shape["height"] / 480.0),
+                    "finish_ms": 50.0,
+                    "encode_ms": 10.0,
+                    "links": {str(degree): {"gbps": 5.0, "latency_ms": 0.1} for degree in (2, 3, 4, 6, 8)},
+                }
+            else:
+                cost = {"kind": "image", "service_ms": 250.0 * (shape["height"] / 512.0) ** 2}
+            classes[sid] = {
+                "spec": formal_benchmark.shape_spec(proto, sid),
+                "cost": cost,
+                "source": {
+                    "gpu_uuids": list(uuids_8),
+                    "resize_ms": 10.0,
+                    "quantum_overhead_ms": 1.0,
+                },
+            }
+        bundle = seal(
+            {
+                "schema": formal_benchmark.BUNDLE_SCHEMA,
+                "protocol_sha256": canonical_hash(proto),
+                "model": model,
+                "model_manifests": manifests,
+                "gpu_uuids": list(uuids_8),
+                "classes": classes,
+            }
+        )
+        pools = {
+            kind: {
+                "kind": kind,
+                "sha256": str(index + 3) * 64,
+                "samples": [
+                    {"sample_id": f"{kind}-{sample}", "prompt": f"{kind} prompt {sample}"}
+                    for sample in range(250)
+                ],
+            }
+            for index, kind in enumerate(("image", "video"))
+        }
+
+        monkeypatch.setenv("DITSERVE_REMOTE_ENDPOINT", "127.0.0.1:29750")
+        scale_points = (
+            (2, 3.0, "-g2gpu"),
+            (4, 6.0, "-g4gpu"),
+            (8, 12.0, ""),
+            (16, 24.0, "-g16gpu"),
+        )
+        observed_experiments = []
+        with patch.object(formal_benchmark, "split_pools", return_value=pools):
+            for num_gpus, rate_rpm, gpu_tag in scale_points:
+                active_uuids = uuids_16[:num_gpus]
+                cfg_p = formal_benchmark.serving(
+                    proto,
+                    model,
+                    active_uuids,
+                    bundle,
+                    {},
+                    manifests,
+                    split="test",
+                    seed=301,
+                    rate_rpm=rate_rpm,
+                    video_fraction=0.5,
+                    pattern="poisson",
+                    suite="scalability",
+                    slo_scale=1.5,
+                    resolution_distribution="uniform",
+                )
+                rtag = str(int(rate_rpm))
+                assert cfg_p["experiment"] == f"formal-wan22-test-poisson-s301-r{rtag}rpm-v0p5-slo1p5{gpu_tag}-scalability"
+                phase = cfg_p["phases"][0]
+                assert len(phase["gpus"]) == num_gpus
+                assert set(phase["matrix"]["/policy"]) == {"ditserve", "edf-cfg2", "block-cfg2"}
+                assert all(
+                    native_serving.FORM_DEGREES[f] <= min(8, num_gpus)
+                    for f in phase["options"]["forms"]
+                )
+                for idx in range(num_gpus):
+                    wan_w = cfg_p["workers"][f"wan{idx}"]
+                    img_w = cfg_p["workers"][f"image{idx}"]
+                    if idx < 8:
+                        assert "DITSERVE_REMOTE_WORKER" not in wan_w["environment"]
+                        assert "script" not in wan_w
+                    else:
+                        assert wan_w["environment"]["DITSERVE_REMOTE_WORKER"] == "1"
+                        assert wan_w["environment"]["DITSERVE_REMOTE_ENDPOINT"] == "127.0.0.1:29750"
+                        assert wan_w["environment"]["DITSERVE_REMOTE_SLOT"] == str(idx)
+                        assert wan_w["script"].endswith("remote_worker_proxy.py")
+                        assert img_w["script"].endswith("remote_worker_proxy.py")
+                observed_experiments.append(cfg_p["experiment"])
+
+                cfg_g = formal_benchmark.serving(
+                    proto,
+                    model,
+                    active_uuids,
+                    bundle,
+                    {},
+                    manifests,
+                    split="test",
+                    seed=301,
+                    rate_rpm=rate_rpm,
+                    video_fraction=0.5,
+                    pattern="gamma",
+                    cv=2.0,
+                    suite="scalability",
+                    slo_scale=1.5,
+                    resolution_distribution="uniform",
+                )
+                assert cfg_g["experiment"] == f"formal-wan22-test-gamma-s301-r{rtag}rpm-v0p5-slo1p5-cv2p0{gpu_tag}-scalability"
+                observed_experiments.append(cfg_g["experiment"])
+
+        assert len(observed_experiments) == 8
+        assert len(set(observed_experiments)) == 8
+
+    def test_remote_worker_daemon_and_proxy_end_to_end_tcp_rpc_and_doorbell(
+        self, tmp_path: pathlib.Path
+    ) -> None:
+        import struct
+        import threading
+        import time
+
+        from ditserve.runtime.remote_bridge import (
+            RemoteWorkerDaemon,
+            ping_daemon,
+            query_remote_occupancy,
+            release_daemon,
+        )
+
+        daemon = RemoteWorkerDaemon(
+            host="127.0.0.1",
+            port=0,
+            coord_dir=tmp_path,
+        )
+        daemon.start_background()
+        try:
+            endpoint = daemon.endpoint
+            assert (tmp_path / "node1.json").is_file()
+            pong = ping_daemon(endpoint)
+            assert pong["ok"] is True
+
+            cfg_file = tmp_path / "mock_worker.json"
+            cfg_file.write_text(json.dumps({"backend": "mock", "options": {"execution": "block"}}), encoding="utf-8")
+            doorbell_file = tmp_path / "doorbell_gpu8.bin"
+            doorbell_file.write_bytes(struct.pack("<Q", 0))
+
+            env = dict(
+                os.environ,
+                PYTHONPATH=str(ROOT / "workers"),
+                DITSERVE_REMOTE_WORKER="1",
+                DITSERVE_REMOTE_ENDPOINT=endpoint,
+                DITSERVE_REMOTE_SLOT="8",
+                DITSERVE_DOORBELL_FILE=str(doorbell_file),
+                CUDA_VISIBLE_DEVICES="GPU-00000000-0000-0000-0000-000000000408",
+            )
+            proxy_proc = subprocess.Popen(
+                [
+                    sys.executable,
+                    "-u",
+                    "-m",
+                    "ditserve.runtime.worker",
+                    "--backend",
+                    "mock",
+                    "--config",
+                    str(cfg_file),
+                ],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                env=env,
+            )
+            try:
+                assert proxy_proc.stdin is not None and proxy_proc.stdout is not None
+                proxy_proc.stdin.write(json.dumps({"version": 1, "id": 1, "op": "hello"}) + "\n")
+                proxy_proc.stdin.flush()
+                hello_reply = json.loads(proxy_proc.stdout.readline())
+                assert hello_reply["ok"] is True
+                assert hello_reply["result"]["backend"] == "mock"
+
+                # Ring doorbell on Node 0 and verify it mirrors to Node 1's local doorbell file in <50ms
+                doorbell_file.write_bytes(struct.pack("<Q", 7))
+                deadline = time.monotonic() + 1.0
+                mirrored = 0
+                while time.monotonic() < deadline:
+                    with daemon._lock:
+                        sessions = list(daemon._sessions.values())
+                    if sessions and sessions[0].bell_path.is_file():
+                        raw = sessions[0].bell_path.read_bytes()
+                        if len(raw) == 8:
+                            mirrored = struct.unpack("<Q", raw)[0]
+                            if mirrored == 7:
+                                break
+                    time.sleep(0.002)
+                assert mirrored == 7
+
+                proxy_proc.stdin.write(json.dumps({"version": 1, "id": 2, "op": "shutdown"}) + "\n")
+                proxy_proc.stdin.flush()
+                shut_reply = json.loads(proxy_proc.stdout.readline())
+                assert shut_reply["ok"] is True
+                assert shut_reply["result"]["shutdown"] is True
+                proxy_proc.wait(timeout=5)
+            finally:
+                if proxy_proc.poll() is None:
+                    proxy_proc.kill()
+        finally:
+            release_daemon(daemon.endpoint)
+            daemon.shutdown()
 
