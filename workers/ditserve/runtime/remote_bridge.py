@@ -559,6 +559,7 @@ class RemoteWorkerDaemon:
         self._session_seq = 0
         self._sessions: dict[int, _WorkerSession] = {}
         self._file_locks: dict[str, threading.Lock] = {}
+        self._exported_files: set[str] = set()
         self._active_shm_dir: str | None = None
         self.stop_event = threading.Event()
         self._accept_thread: threading.Thread | None = None
@@ -710,10 +711,6 @@ class RemoteWorkerDaemon:
             "allowed_pgids": sorted(local_pgids),
             "_local_only": True,
         }
-        if backend == "nvml":
-            from . import occupancy_nvml
-
-            return occupancy_nvml.observe(local_req)
         from . import worker as worker_mod
 
         return worker_mod.occupancy(local_req)
@@ -914,7 +911,10 @@ class RemoteWorkerDaemon:
                     res_dict = resp_obj["result"]
                     if op == "encode_poll" and res_dict.get("ready"):
                         _sync_remote_shm_to_proxy()
-                    if op != "block_export":
+                    if op == "block_export" and isinstance(res_dict.get("path"), str):
+                        with self._lock:
+                            self._exported_files.add(res_dict["path"])
+                    elif op != "block_export":
                         for art_path in _collect_artifact_paths(res_dict):
                             p = Path(art_path)
                             if p.is_file():
@@ -938,6 +938,16 @@ class RemoteWorkerDaemon:
             log_file.close()
             with self._lock:
                 self._sessions.pop(session_id, None)
+                if not self._sessions and self._exported_files:
+                    stale_exports = list(self._exported_files)
+                    self._exported_files.clear()
+                else:
+                    stale_exports = []
+            for exp_path in stale_exports:
+                try:
+                    Path(exp_path).unlink(missing_ok=True)
+                except OSError:
+                    pass
 
 
 def main_daemon(argv: list[str] | None = None) -> int:
