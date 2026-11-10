@@ -479,8 +479,15 @@ def serving(p, model, uuids, bundle, pools, manifests, *, split='test', seed=301
         resolved_policies = [x.strip() for x in policies.split(',') if x.strip()] if isinstance(policies, str) else list(policies)
     else:
         resolved_policies = SUITES['preempt'] if diagnostic else SUITES[suite]
-    count = diagnostic_controls['count'] if diagnostic else p['requests_per_cell'][split]
+    base_count = diagnostic_controls['count'] if diagnostic else p['requests_per_cell'][split]
     actual_fraction = diagnostic_controls['video_fraction'] if diagnostic else video_fraction
+    if not diagnostic and len(uuids) != 8:
+        scaled_count = max(2, int(round(base_count * len(uuids) / 8.0)))
+        if abs(scaled_count * actual_fraction - round(scaled_count * actual_fraction)) > 1e-9:
+            scaled_count = max(2, 2 * (scaled_count // 2))
+        count = scaled_count
+    else:
+        count = base_count
     actual_load = diagnostic_controls['load'] if diagnostic else load
     actual_pattern = diagnostic_controls['pattern'] if diagnostic else pattern
     mode = 'digest' if diagnostic else 'check'

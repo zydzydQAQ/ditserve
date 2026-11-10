@@ -404,6 +404,12 @@ def serve(worker, incoming, outgoing):
                 encoded = json.dumps(response, allow_nan=False, ensure_ascii=False)
             except Exception as error:
                 identity = request.get("id") if isinstance(request, dict) else None
+                op_name = request.get("op") if isinstance(request, dict) else None
+                try:
+                    sys.stderr.write(f"[ditserve.worker] op={op_name!r} id={identity!r} error={type(error).__name__}: {error}\n")
+                    sys.stderr.flush()
+                except Exception:
+                    pass
                 response = {"version": 1, "id": identity if type(identity) is int else None,
                             "ok": False, "error": {"type": type(error).__name__, "message": str(error)}}
                 encoded = json.dumps(response, allow_nan=False, ensure_ascii=False)

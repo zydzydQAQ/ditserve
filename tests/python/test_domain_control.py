@@ -1424,6 +1424,9 @@ class TestBudgetLedgerStudyRunnerAndCliContracts:
                 assert cfg_p["experiment"] == f"formal-wan22-test-poisson-s301-r{rtag}rpm-v0p5-slo1p5{gpu_tag}-scalability"
                 phase = cfg_p["phases"][0]
                 assert len(phase["gpus"]) == num_gpus
+                expected_counts = {2: 24, 4: 50, 8: 100, 16: 200}
+                workload_rows = phase["matrix"]["/workload"][0]
+                assert len(workload_rows) == expected_counts[num_gpus]
                 assert set(phase["matrix"]["/policy"]) == {"ditserve", "edf-cfg2", "block-cfg2"}
                 assert all(
                     native_serving.FORM_DEGREES[f] <= min(8, num_gpus)
@@ -1505,6 +1508,8 @@ class TestBudgetLedgerStudyRunnerAndCliContracts:
                 DITSERVE_REMOTE_SLOT="8",
                 DITSERVE_DOORBELL_FILE=str(doorbell_file),
                 CUDA_VISIBLE_DEVICES="GPU-00000000-0000-0000-0000-000000000408",
+                PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True",
+                OMP_NUM_THREADS="4",
             )
             proxy_proc = subprocess.Popen(
                 [
@@ -1530,6 +1535,15 @@ class TestBudgetLedgerStudyRunnerAndCliContracts:
                 hello_reply = json.loads(proxy_proc.stdout.readline())
                 assert hello_reply["ok"] is True
                 assert hello_reply["result"]["backend"] == "mock"
+                with daemon._lock:
+                    active_sessions = list(daemon._sessions.values())
+                assert len(active_sessions) == 1
+                remote_pid = active_sessions[0].worker_pid
+                proc_env_path = pathlib.Path(f"/proc/{remote_pid}/environ")
+                if proc_env_path.is_file():
+                    raw_env = proc_env_path.read_bytes().decode("utf-8", errors="replace")
+                    assert "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True" in raw_env
+                    assert "OMP_NUM_THREADS=4" in raw_env
 
                 # Ring doorbell on Node 0 and verify it mirrors to Node 1's local doorbell file in <50ms
                 doorbell_file.write_bytes(struct.pack("<Q", 7))

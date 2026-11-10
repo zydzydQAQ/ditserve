@@ -227,16 +227,25 @@ def run_proxy(
     forwarded_env = {
         k: v
         for k, v in os.environ.items()
-        if k.startswith(
-            (
-                "DITSERVE_",
-                "HF_",
-                "TORCH",
-                "TRITON_",
-                "WAN_",
-                "PYTHONPATH",
-                "PYTHONDONTWRITEBYTECODE",
-                "TRANSFORMERS_",
+        if (
+            k.startswith(
+                (
+                    "DITSERVE_",
+                    "HF_",
+                    "PYTORCH_",
+                    "TORCH",
+                    "TRITON_",
+                    "WAN_",
+                    "PYTHONPATH",
+                    "PYTHONDONTWRITEBYTECODE",
+                    "TRANSFORMERS_",
+                    "TOKENIZERS_",
+                    "OMP_",
+                    "MKL_",
+                    "OPENBLAS_",
+                    "NCCL_",
+                    "CUDA_DEVICE_MAX_CONNECTIONS",
+                )
             )
         )
         and k
@@ -254,6 +263,7 @@ def run_proxy(
     send_lock = threading.Lock()
     stop_event = threading.Event()
 
+    stderr_path = str(Path(config_path).with_suffix(".log")) if config_path else ""
     handshake = {
         "_bridge_op": "spawn_worker",
         "backend": backend or config_dict.get("backend", "mock"),
@@ -266,6 +276,7 @@ def run_proxy(
         "target_script": target_script,
         "target_argv": list(target_argv or []),
         "env": forwarded_env,
+        "stderr_path": stderr_path,
     }
     env_doorbell = os.environ.get("DITSERVE_DOORBELL_FILE", "")
     if env_doorbell:
@@ -550,6 +561,7 @@ class RemoteWorkerDaemon:
         self.server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server_sock.bind((self.bind_host, self.bind_port))
         self.server_sock.listen(128)
+        self.server_sock.settimeout(0.5)
         self.actual_port = int(self.server_sock.getsockname()[1])
         self.host_ip = _detect_host_ip() if self.bind_host == "0.0.0.0" else self.bind_host
         self.endpoint = f"{self.host_ip}:{self.actual_port}"
@@ -607,10 +619,13 @@ class RemoteWorkerDaemon:
         while not self.stop_event.is_set():
             try:
                 client_sock, _ = self.server_sock.accept()
+            except socket.timeout:
+                continue
             except OSError:
                 if self.stop_event.is_set():
                     break
                 continue
+            client_sock.settimeout(None)
             _set_nodelay(client_sock)
             t = threading.Thread(target=self._handle_client, args=(client_sock,), daemon=True)
             t.start()
@@ -787,7 +802,15 @@ class RemoteWorkerDaemon:
                 str(local_cfg_path),
             ]
 
+        requested_stderr = str(hdr.get("stderr_path") or "")
         log_path = session_dir / "worker.stderr.log"
+        if requested_stderr:
+            try:
+                req_log = Path(requested_stderr)
+                if req_log.parent.is_dir():
+                    log_path = req_log
+            except OSError:
+                pass
         log_file = open(log_path, "ab")
         try:
             proc = subprocess.Popen(

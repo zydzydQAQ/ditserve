@@ -90,13 +90,17 @@ public:
 };
 
 // A real model/RPC fault must survive when another fanout rank merely reaches
-// its deadline while peers are being joined.
+// its deadline or sees a closed pipe while peers are being joined.
+bool secondary_worker_failure(const std::exception_ptr& err) {
+    if(!err)return false;
+    try{std::rethrow_exception(err);}
+    catch(const WorkerDeadlineExceeded&){return true;}
+    catch(const std::exception& e){return std::string(e.what())=="worker is closed";}
+    catch(...){return false;}
+}
 void keep_failure(std::exception_ptr& prior, std::exception_ptr next) {
     if(!prior){prior=next;return;}
-    try{std::rethrow_exception(prior);}
-    catch(const WorkerDeadlineExceeded&){
-        try{std::rethrow_exception(next);}catch(const WorkerDeadlineExceeded&){}catch(...){prior=next;}
-    }catch(...){}
+    if(secondary_worker_failure(prior)&&!secondary_worker_failure(next))prior=next;
 }
 
 struct Worker {
@@ -195,7 +199,7 @@ public:
         std::vector<std::future<Json>> calls;
         for(auto& item:workers_)calls.push_back(std::async(std::launch::async,[worker=item.second.get(),deadline]{return worker->call({{"op","shutdown"}},deadline);}));
         std::exception_ptr error;
-        for(auto& call:calls)try{call.get();}catch(...){if(!error)error=std::current_exception();}
+        for(auto& call:calls)try{call.get();}catch(...){keep_failure(error,std::current_exception());}
         if(error)std::rethrow_exception(error);
     }
     std::string backend(const std::string& name)const{return definitions_.at(name).at("backend").get<std::string>();}
@@ -401,12 +405,31 @@ Json warmup(const Json& phase,Workers& workers,Budget& budget) {
         worker.call({{"op","release"},{"state_id",state}},deadline);
         return {{"worker",item.at("worker")},{"load_ms",load},{"elapsed_ms",(monotonic_seconds()-started)*1000}};
     };
-    std::vector<std::future<Json>> pending;
-    for(std::size_t index=0;index<items.size();++index)pending.push_back(std::async(std::launch::async,run,index));
-    Json results=Json::array();
+    std::vector<Worker*> distinct_workers;
+    std::map<Worker*,std::vector<std::size_t>> items_by_worker;
+    for(std::size_t index=0;index<items.size();++index){
+        Worker* w=targets[index];
+        if(!items_by_worker.count(w))distinct_workers.push_back(w);
+        items_by_worker[w].push_back(index);
+    }
+    std::vector<std::future<std::vector< std::pair<std::size_t,Json> >>> pending;
+    for(Worker* w:distinct_workers){
+        const auto indices=items_by_worker.at(w);
+        pending.push_back(std::async(std::launch::async,[&run,indices]{
+            std::vector<std::pair<std::size_t,Json>> out;
+            out.reserve(indices.size());
+            for(std::size_t index:indices)out.emplace_back(index,run(index));
+            return out;
+        }));
+    }
+    std::vector<Json> ordered(items.size());
     std::exception_ptr error;
-    for(auto& call:pending)try{results.push_back(call.get());}catch(...){if(!error)error=std::current_exception();}
+    for(auto& call:pending)try{
+        for(auto& entry:call.get())ordered[entry.first]=std::move(entry.second);
+    }catch(...){keep_failure(error,std::current_exception());}
     if(error)std::rethrow_exception(error);
+    Json results=Json::array();
+    for(auto& item_res:ordered)results.push_back(std::move(item_res));
     budget.check();
     return results;
 }
@@ -896,9 +919,13 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             if(options.contains("gfc_copy_engine"))init["gfc_copy_engine"]=bool_field(options,"gfc_copy_engine",false);
             ranks.push_back(std::async(std::launch::async,[&workers,name,init,deadline=budget.deadline()]{return workers.get(name).call(init,deadline);}));
         }
-        std::string error;
-        for(auto& rank:ranks){try{rank.get();}catch(const std::exception& failure){error=failure.what();}}
-        if(!error.empty())throw std::runtime_error("SP process group initialization failed: "+error);
+        std::exception_ptr init_error;
+        for(auto& rank:ranks){try{rank.get();}catch(...){keep_failure(init_error,std::current_exception());}}
+        if(init_error){
+            std::string error;
+            try{std::rethrow_exception(init_error);}catch(const std::exception& failure){error=failure.what();}
+            throw std::runtime_error("SP process group initialization failed: "+error);
+        }
     }
     // steady_*: block quanta that followed this request's own previous quantum on the same GPUs;
     // resumed_*: block quanta that followed another request there (the first quantum and regroups excluded).
@@ -2109,7 +2136,7 @@ Json operations(const Json& phase,Workers& workers,Budget& budget,Json& record,c
             pending.push_back(std::async(std::launch::async,[&,rank,message]{return group[rank]->call(message,budget.deadline());}));
         }
         Json results=Json::array();std::exception_ptr error;
-        for(std::size_t rank=0;rank<pending.size();++rank)try{auto result=pending[rank].get();result["worker_pid"]=group[rank]->process->pid();add_artifacts(record,result,work,phase.value("artifact_dependencies",Json::array()));results.push_back(result);}catch(...){if(!error)error=std::current_exception();}
+        for(std::size_t rank=0;rank<pending.size();++rank)try{auto result=pending[rank].get();result["worker_pid"]=group[rank]->process->pid();add_artifacts(record,result,work,phase.value("artifact_dependencies",Json::array()));results.push_back(result);}catch(...){keep_failure(error,std::current_exception());}
         if(error)std::rethrow_exception(error);
         rows.push_back({{"action",action},{"ranks",results}});
     }
