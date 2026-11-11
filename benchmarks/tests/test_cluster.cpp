@@ -1780,6 +1780,50 @@ int main(int argc, char** argv) {
                                                 {"policy", "abl-no-cb"}, {"gpus", 1}, {"options", shared_opts}});
         require(sim_dit.at("batches").get<int>() > 0 && sim_nocb.at("batches").get<int>() == 0,
                 "ditserve batches continuous steps while abl-no-cb executes atomically");
+
+        // 5. Prepared-leader idle-GPU fair cap, late-join prepare_ms guard, and co-resident continuity:
+        //    (a) Prepared image on GPU 0 must not steal an unstarted image onto B=2 when GPU 1 is idle.
+        Json leader_512 = r512_tight;
+        leader_512.merge_patch({{"request_id", "i44"}, {"status", "suspended"}, {"prepared", true},
+                                {"group", {0}}, {"steps_done", 14}, {"deadline_ms", 2000.0}});
+        Json newcomer_512 = r512_tight;
+        newcomer_512.merge_patch({{"request_id", "i47"}, {"status", "waiting"}, {"prepared", false},
+                                  {"steps_done", 0}, {"deadline_ms", 2667.0}});
+        const auto idle_spread = cluster_plan({{"now_ms", 0}, {"gpus", 2}, {"busy", Json::array()},
+                                               {"requests", Json::array({leader_512, newcomer_512})}},
+                                              "ditserve", multi_cost, shared_opts).at("assignments");
+        require(idle_spread.size() == 2
+                && idle_spread[0].at("group") == Json::array({0}) && idle_spread[0].at("batch") == Json::array({"i44"})
+                && idle_spread[1].at("group") == Json::array({1}) && idle_spread[1].at("batch") == Json::array({"i47"}),
+                "prepared leader leaves unstarted image for idle GPU 1 instead of stealing into B=2: " + idle_spread.dump());
+
+        //    (b) Late-joining an unstarted image onto an active prepared batch charges prepare_ms even under bubble_free.
+        Json leader_1440 = r1440;
+        leader_1440.merge_patch({{"request_id", "i09"}, {"status", "suspended"}, {"prepared", true},
+                                 {"group", {0}}, {"steps_done", 13}, {"deadline_ms", 16000.0}});
+        // Without prepare_ms (100 ms): 15 * 980 + 13 * 531 + 230 = 21833 ms; set deadline to 21880 ms (< 21933 ms with prepare_ms).
+        Json tight_late_1440 = r1440;
+        tight_late_1440.merge_patch({{"request_id", "i17"}, {"status", "waiting"}, {"prepared", false},
+                                     {"steps_done", 0}, {"deadline_ms", 21880.0}});
+        const auto reject_marginal_join = cluster_plan({{"now_ms", 0}, {"gpus", 1}, {"busy", Json::array()},
+                                                        {"requests", Json::array({leader_1440, tight_late_1440})}},
+                                                       "ditserve", multi_cost, shared_opts).at("assignments");
+        require(reject_marginal_join.size() == 1 && reject_marginal_join[0].at("batch") == Json::array({"i09"}),
+                "late-join prepare_ms guard rejects sub-prepare-margin join onto active batch: " + reject_marginal_join.dump());
+
+        //    (c) Co-resident prepared non-late CB image pinned to the same GPU is never stranded mid-batch when leader fits.
+        Json pinned_partner_1440 = r1440;
+        pinned_partner_1440.merge_patch({{"request_id", "i17_pinned"}, {"status", "suspended"}, {"prepared", true},
+                                         {"group", {0}}, {"steps_done", 1}, {"deadline_ms", 20800.0}});
+        // Solo remaining of i17_pinned is ~14.6s <= 20.8s (so !late), while shared 14*980 + 13*531 + 230 = 20853 > 20800,
+        // and leader i09 at step 14/28 finishes at 14*980 + 230 = 13950 <= 16000 (leader easily fits).
+        leader_1440["steps_done"] = 14;
+        const auto keep_coresident = cluster_plan({{"now_ms", 0}, {"gpus", 1}, {"busy", Json::array()},
+                                                   {"requests", Json::array({leader_1440, pinned_partner_1440})}},
+                                                  "ditserve", multi_cost, shared_opts).at("assignments");
+        require(keep_coresident.size() == 1
+                && keep_coresident[0].at("batch") == Json::array({"i09", "i17_pinned"}),
+                "co-resident prepared non-late CB image stays in batch instead of stranding behind solo leader: " + keep_coresident.dump());
     });
     std::cout << checks - failures << "/" << checks << " cluster checks passed\n";
     return failures ? 1 : 0;

@@ -1364,6 +1364,22 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                         const int steps = int_field(*m, "steps_total", int_field(cost.klass(mklass), "steps", 2), 1);
                         if (int_field(*m, "steps_done", 0, 0) + 1 >= steps) value += number_field(cost.klass(mklass), "finish_ms");
                     }
+                } else if (batch.size() > 1) {
+                    bool any_prepared = false;
+                    for (const Json* m : batch) {
+                        if (m->value("prepared", false)) {
+                            any_prepared = true;
+                            break;
+                        }
+                    }
+                    if (any_prepared) {
+                        for (const Json* m : batch) {
+                            if (!m->value("prepared", false)) {
+                                const auto mklass = m->at("class").get<std::string>();
+                                value += number_field(cost.klass(mklass), "prepare_ms");
+                            }
+                        }
+                    }
                 }
                 return value;
             };
@@ -1372,7 +1388,8 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                 const int steps = int_field(*m, "steps_total", int_field(cost.klass(mklass), "steps", 2), 1);
                 return std::max(0, steps - int_field(*m, "steps_done", 0, 0) - 1);
             };
-            auto fits = [&](const std::vector<const Json*>& batch) {
+            auto fits_subset = [&](const std::vector<const Json*>& batch, const std::vector<const Json*>& must_fit) {
+                if (must_fit.empty()) return true;
                 const double service = round_cost(batch);
                 std::vector<const Json*> active_after;
                 int min_shared_rem = std::numeric_limits<int>::max();
@@ -1386,7 +1403,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                 const double shared_step_ms = active_after.size() > 1
                     ? cost.continuous_batch_step_ms(klass, active_after, sequence_packing)
                     : 0.0;
-                for (const Json* m : batch) {
+                for (const Json* m : must_fit) {
                     const auto mklass = m->at("class").get<std::string>();
                     const int remaining = rem_steps_of(m);
                     double complete = service;
@@ -1406,6 +1423,9 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                     if (now + complete > number_field(*m, "deadline_ms")) return false;
                 }
                 return true;
+            };
+            auto fits = [&](const std::vector<const Json*>& batch) {
+                return fits_subset(batch, batch);
             };
             for (int gpu : gpu_order) {
                 if (!free[gpu] || (class_cb > 0 && prepared && gpu != current.front())) continue;
@@ -1510,15 +1530,13 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                     }
                     if (!has_resident) ++other_free_image_gpus;
                 }
-                int unstarted_waiting_images = !prepared ? 1 : 0;
+                int unstarted_other_images = 0;
                 for (std::size_t k = index + 1; k < rows.size(); ++k) {
                     const Json& rk = *rows[k];
                     if (taken.count(&rk) || rk.at("kind") != "image" || rk.value("prepared", false)) continue;
-                    ++unstarted_waiting_images;
+                    ++unstarted_other_images;
                 }
                 const int total_free_image_gpus = 1 + other_free_image_gpus;
-                const int fair_unstarted_cap = std::max(1, ceil_div(unstarted_waiting_images, total_free_image_gpus));
-                int unstarted_in_members = !prepared ? 1 : 0;
                 // First, include any already-prepared continuous-batch images pinned to `chosen` GPU
                 for (std::size_t j = index + 1; j < rows.size() && static_cast<int>(members.size()) < class_cb; ++j) {
                     const Json& q = *rows[j];
@@ -1532,9 +1550,19 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                     if (other.front() != chosen) continue;
                     auto candidate = members;
                     candidate.push_back(&q);
-                    if (!fits(candidate)) continue;
+                    if (late.at(&q)) {
+                        if (!fits(candidate)) continue;
+                    } else {
+                        std::vector<const Json*> protect;
+                        for (const Json* m : members) {
+                            if (!late.at(m)) protect.push_back(m);
+                        }
+                        if (!fits_subset(candidate, protect)) continue;
+                    }
                     members = std::move(candidate);
                 }
+                const int fair_member_cap = std::max(
+                    1, ceil_div(static_cast<int>(members.size()) + unstarted_other_images, total_free_image_gpus));
                 // Second, pack unstarted waiting images when contended
                 for (std::size_t j = index + 1; j < rows.size() && static_cast<int>(members.size()) < class_cb; ++j) {
                     const Json& q = *rows[j];
@@ -1546,13 +1574,12 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                     if (std::find(members.begin(), members.end(), &q) != members.end()) continue;
                     auto candidate = members;
                     candidate.push_back(&q);
-                    if (other_free_image_gpus > 0 && unstarted_in_members >= fair_unstarted_cap) {
+                    if (other_free_image_gpus > 0 && static_cast<int>(members.size()) >= fair_member_cap) {
                         const double cur_step = cost.continuous_batch_step_ms(klass, members, sequence_packing);
                         const double cand_step = cost.continuous_batch_step_ms(klass, candidate, sequence_packing);
                         if (cand_step > cur_step * 1.02) continue;
                     }
                     if (!fits(candidate)) continue;
-                    ++unstarted_in_members;
                     members = std::move(candidate);
                 }
                 Json batch = Json::array();

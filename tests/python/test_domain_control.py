@@ -487,6 +487,33 @@ class TestControllerPolicyCatalogAndSeparation:
         assert r1440["finish_ms"] <= 30000.0
         assert guard_res["by_kind"]["image"]["ontime"] == 2
 
+        # 3. Prepared-leader idle-GPU fair cap & co-resident continuity:
+        #    When i0 is mid-generation on GPU 0 and i1 arrives while GPU 1 is idle, i1 runs solo on GPU 1
+        #    instead of late-joining GPU 0 into a slower B=2 batch.
+        staggered_2gpu_workload = [
+            {
+                "request_id": "img_mid_gpu0",
+                "kind": "image",
+                "class": "sd35-512",
+                "arrival_ms": 0.0,
+                "deadline_ms": 2667.0,
+                "spec": {"height": 512, "width": 512, "steps": 28},
+            },
+            {
+                "request_id": "img_late_arrival",
+                "kind": "image",
+                "class": "sd35-512",
+                "arrival_ms": 800.0,
+                "deadline_ms": 800.0 + 2000.0,
+                "spec": {"height": 512, "width": 512, "steps": 28},
+            },
+        ]
+        staggered_res = _rpc_simulate(
+            {"workload": staggered_2gpu_workload, "profile": prof_multi, "policy": "ditserve", "gpus": 2, "options": cb_opts}
+        )
+        assert staggered_res["by_kind"]["image"]["ontime"] == 2
+        assert staggered_res["batches"] == 56  # 28 solo steps on GPU 0 + 28 solo steps on GPU 1 (zero B=2 stealing)
+
 
 # ==============================================================================
 # 2. 3-Parameter Identifiable Cost Model & Topology Phase Diagram
@@ -734,8 +761,8 @@ class TestIdentifiableCostModelAndPhaseDiagram:
         import formal_benchmark as fb
 
         bundle_paths = [
-            pathlib.Path("/mnt/e/000_code/zyd-2026/.local/formal-v2-21a1ca3-results/acceptance/d20261106-formal-v2-wan22-b1-21a1ca3-r1/bundle.json"),
-            pathlib.Path("/mnt/e/000_code/zyd-2026/.local/formal-v2-21a1ca3-results/acceptance/d20261106-formal-v2-wan22-b2-21a1ca3-r1/bundle.json"),
+            pathlib.Path("/mnt/e/000_code/zyd-2026/.local/formal-v2-cb-refresh-jobs/calibration-bundles/d20261106-formal-v2-wan22-b1-21a1ca3-r1/bundle.json"),
+            pathlib.Path("/mnt/e/000_code/zyd-2026/.local/formal-v2-cb-refresh-jobs/calibration-bundles/d20261106-formal-v2-wan22-b2-21a1ca3-r1/bundle.json"),
         ]
         for bpath in bundle_paths:
             if bpath.exists():
