@@ -265,7 +265,7 @@ P5 的 `p5_external_preflight.py` 对照固定官方源码声明和已测运行�
 
 ---
 
-## 2026-11-06：8× A100-PCIE-40GB 正式混合负载（`formal-mixed-v2`, `21a1ca3`）实测、Tier-1 无损资格门禁闭环与 Tier-3 互连拓扑相图
+## 2026-11-09 / 2026-11-10：8×–16× A100-PCIE-40GB 正式混合负载（`formal-mixed-v2`, `1b54f37` / `ae4ba3d`）42 负载矩阵、Tier-1 无损资格门禁闭环与 Tier-3 互连拓扑相图
 
 ### 1. 校准包溯源完整性（Calibration Bundle Provenance）与紧 SLO 扫描规范（[`kairos_formal_benchmark.sh`](../benchmarks/kairos_formal_benchmark.sh)）
 
@@ -294,26 +294,19 @@ P5 的 `p5_external_preflight.py` 对照固定官方源码声明和已测运行�
 | **因子化 CFG2 增强基线**<br>(CFG2-Enabled Baselines) | `tetriserve-cfg2`<br>`sbp-esp-cfg2`<br>`edf-bestfit-cfg2` | 启用 `CFG2 × SP` 混合池<br>(`sp1, cfg2, cfg2sp2, cfg2sp3, cfg2sp4`) | 保持各自原版步边界/批调度算法（无亚步门铃抢占） | 全组伴随卡同步等待或按开关配置 | 剥离通信感知 `CFG2` 形态池收益后，检验 DitServe 在相同 `CFG2` 形态池下仅靠亚步抢占、成对放置与解码缩容的纯调度增益 |
 | **三层流水线消融**<br>(3-Layer Pipeline Ablation) | **累加阶梯**：`edf-cfg2` (`L1`) $\to$ `block-cfg2` (`L1+L2`) $\to$ `ditserve` (`L1+L2+L3`)<br>**单层剥离**：`abl-no-prune` (`w/o L1`)、`abl-no-block` (`w/o L2`)、`abl-first-fit` (`w/o L3`) | `ditserve` 形态池（`abl-no-prune` 关闭 L1 支配形态剪枝） | 按 `L1 形态裁剪 (§4.2) -> L2 时间抢占 (§4.3) -> L3 空间放置 (§4.4)` 逐层累加或单层剥离 | `L2` 启用去噪后释放伴随卡（`shrink_decode`）与 ~45ms 流内门铃抢占 | 定量归因 **L1（拓扑形态裁剪）**、**L2（松弛度驱动块级抢占与解码收缩）** 与 **L3（拓扑伙伴对齐放置）** 三层各自的独立贡献 |
 
-### 4. 8× A100-PCIE-40GB 正式混合负载（`formal-mixed-v2`, `Wan2.2-TI2V-5B + SD3.5-Medium`, `21a1ca3`）完整实测结果
+### 4. 2–16× A100-PCIE-40GB 正式混合负载（`formal-mixed-v2`, `Wan2.2-TI2V-5B + SD3.5-Medium`, `1b54f37` / `ae4ba3d`）42 负载实测结果
 
-在 8× A100-PCIE-40GB（唯一镜像 `external-serving-vllm-cu126-sm80-20261104-r3`，构建 `21a1ca3`）上，使用 50 步正式生产形状（`wan22-small` $L=12,150$、`wan22-med` $L=25,350$、`wan22-720p` $L=43,200$ 与 `SD3.5` $512^2/1024^2/1440^2$，每策略单元 100 条独立请求，`failed = 0`）完成了 8 个核心主实验工作负载与消融矩阵（数据源自 `.local/ditserve-kairos-rewrite-runtime/results/20261106-formal-wan22-test-*-21a1ca3-r1/summary.json`）：
+在 2–16× A100-PCIE-40GB（唯一镜像 `external-serving-vllm-cu126-sm80-20261104-r3`，主矩阵构建 `1b54f37`、GPU 弱扩展构建 `ae4ba3d`）上，使用 50 步正式生产形状与每策略单元 100 条独立请求（弱扩展按 `1.5 req/min/GPU` 为 `24/50/100/200` 条请求，`failed = 0`）完成了全部 **42 个正式工作负载**与 **7 策略消融矩阵**（完整结构化数据与报告归档于 `.local/formal-v2-cb-refresh-jobs/results/summary.json` 与 `20261109-formal-v2-cb-1b54f37.md`，早期演进过程中的 `21a1ca3`/`5d9ee3f`/`7a77c45` 临时汇总已归档清理）：
 
-#### 表 A：8× A100 正式混合负载主矩阵（8 组 Workload Sweep，每策略 100 请求）
+#### 表 A：正式混合负载 42 点扫描与消融核心指标汇总
 
-| 实验点 (`Workload ID`) | 负载与分布配置 | **`ditserve`**<br>总 SAR (Img / Vid)<br>`Goodput (req/s)` | **`sbp-esp`**<br>总 SAR (Img / Vid)<br>`Goodput (req/s)` | **`tetriserve`**<br>总 SAR (Img / Vid)<br>`Goodput (req/s)` | **`edf-bestfit`**<br>总 SAR (Img / Vid)<br>`Goodput (req/s)` | **`xdit`**<br>总 SAR (Img / Vid)<br>`Goodput (req/s)` | DitServe 相对次优基线核心增益 |
-| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :--- |
-| **`anchor-main`** | Poisson, $\lambda=1.75$, $v=0.5$, `slo=1.5`, uniform | **`0.93`** (`0.98` / `0.88`)<br>`0.0917 req/s` | `0.90` (`0.94` / `0.86`)<br>`0.0912 req/s` | `0.77` (`0.80` / `0.74`)<br>`0.0793 req/s` | `0.78` (`1.00` / `0.56`)<br>`0.0798 req/s` | `0.52` (`0.82` / `0.22`)<br>`0.0436 req/s` | 总 SAR **`+3.0%`** vs `sbp-esp`，**`+16.0%`** vs `tetriserve`；图像 P95 仅 `15,568.8 ms` |
-| **`load-2p5`** | Poisson, **高负载 $\lambda=2.5$**, $v=0.5$, `slo=1.5` | **`0.87`** (`1.00` / `0.74`)<br>`0.0901 req/s` | `0.81` (`0.94` / `0.68`)<br>`0.0897 req/s` | `0.70` (`0.76` / `0.64`)<br>`0.0798 req/s` | `0.70` (`0.98` / `0.42`)<br>`0.0803 req/s` | `0.43` (`0.68` / `0.18`)<br>`0.0419 req/s` | 高负载下图像保持 **100% 达标**，总 SAR **`+6.0%`** vs `sbp-esp`、**`+17.0%`** vs `tetriserve` |
-| **`mix-0p2`** | Poisson, $\lambda=1.75$, **图像密集 $v=0.2$** (80 Img + 20 Vid) | **`0.99`** (`1.00` / `0.95`)<br>`0.1926 req/s` | `0.97` (`0.9875` / `0.90`)<br>`0.1912 req/s` | `0.81` (`0.80` / `0.85`)<br>`0.1574 req/s` | `0.95` (`0.975` / `0.85`)<br>`0.1879 req/s` | `0.16` (`0.0875` / `0.45`)<br>`0.0155 req/s` | 80 张图像 **100% 达标**（P95 `14,689.2 ms`），视频达标 **95%**，总 SAR **`0.99`** |
-| **`mix-0p8`** | Poisson, $\lambda=1.75$, **视频密集 $v=0.8$** (20 Img + 80 Vid) | **`0.89`** (`1.00` / `0.8625`)<br>`0.0623 req/s` | `0.81` (`0.90` / `0.7875`)<br>`0.0612 req/s` | `0.79` (`0.80` / `0.7875`)<br>`0.0604 req/s` | `0.63` (`1.00` / `0.5375`)<br>`0.0493 req/s` | `0.30` (`0.95` / `0.1375`)<br>`0.0145 req/s` | 重视频争用下图像仍 **100% 达标**，总 SAR **`+8.0%`** vs `sbp-esp`、**`+10.0%`** vs `tetriserve` |
-| **`gamma2-main`** | **突发到达 Gamma $CV=2.0$**, $\lambda=1.75$, $v=0.5$ | **`0.94`** (`1.00` / `0.88`)<br>`0.0947 req/s` | `0.86` (`0.96` / `0.76`)<br>`0.0908 req/s` | `0.73` (`0.72` / `0.74`)<br>`0.0803 req/s` | `0.63` (`0.90` / `0.36`)<br>`0.0672 req/s` | `0.34` (`0.48` / `0.20`)<br>`0.0310 req/s` | $CV=2$ 突发下图像 **100% 达标**，总 SAR **`+8.0%`** vs `sbp-esp`、**`+21.0%`** vs `tetriserve` |
-| **`gamma4-main`** | **强突发到达 Gamma $CV=4.0$**, $\lambda=1.75$, $v=0.5$ | **`0.80`** (`1.00` / `0.60`)<br>`0.0732 req/s` | `0.77` (`0.94` / `0.60`)<br>`0.0764 req/s` | `0.62` (`0.70` / `0.54`)<br>`0.0637 req/s` | `0.54` (`0.78` / `0.30`)<br>`0.0528 req/s` | `0.36` (`0.48` / `0.24`)<br>`0.0256 req/s` | $CV=4$ 下图像依然 **100% 达标**，总 SAR **`+3.0%`** vs `sbp-esp`、**`+18.0%`** vs `tetriserve` |
-| **`gamma6-main`** | **极端突发 Gamma $CV=6.0$**, $\lambda=1.75$, $v=0.5$ | **`0.85`** (`0.94` / `0.76`)<br>`0.0921 req/s` | `0.73` (`0.86` / `0.60`)<br>`0.0837 req/s` | `0.37` (`0.26` / `0.48`)<br>`0.0439 req/s` | `0.38` (`0.50` / `0.26`)<br>`0.0445 req/s` | `0.14` (`0.14` / `0.14`)<br>`0.0085 req/s` | 极端脉冲下总 SAR **`+12.0%`** vs `sbp-esp`、**`+48.0%` (`2.30×`)** vs `tetriserve` |
-| **`dist-skewed`** | Poisson, **偏态大图/高分分布** (25× `720p` + 25× `1440p`) | **`0.89`** (`1.00` / `0.78`)<br>`0.0716 req/s` | `0.86` (`0.98` / `0.74`)<br>`0.0734 req/s` | `0.76` (`0.84` / `0.68`)<br>`0.0659 req/s` | `0.75` (`0.98` / `0.52`)<br>`0.0645 req/s` | `0.56` (`0.88` / `0.24`)<br>`0.0422 req/s` | 重高分偏态下图像 **100% 达标**，总 SAR **`+3.0%`** vs `sbp-esp`、**`+13.0%`** vs `tetriserve` |
-
-- **三层流水线消融设计（`anchor-abl` & `gamma2-abl`，6 策略套件）**：
-  - **三层累加阶梯（Cumulative 3-Layer Staircase）**：从仅启用 **L1 形态裁剪** 的 `edf-cfg2`（Anchor `0.78` / $CV^2=2$ `0.65`），叠加 **L2 时间抢占与解码收缩** 的 `block-cfg2`（Anchor `0.88` / $CV^2=2$ `0.81`，`+10~+16 pp`），再到叠加 **L3 拓扑伙伴对齐放置** 的完整 `ditserve`（Anchor **`0.96`** [`1.00`/`0.92`] / $CV^2=2$ **`0.95`** [`1.00`/`0.90`]，再提升 `+8~+14 pp`）。
-  - **三层单因素剥离（Leave-One-Layer-Out）**：从完整 `ditserve`（`0.96` / `0.95`）分别剥离 L1（`abl-no-prune`：`0.85` / `0.87`，`-11 / -8 pp`）、剥离 L2（`abl-no-block`：`0.85` / `0.80`，`-11 / -15 pp`）与剥离 L3（`abl-first-fit`：`0.88` / `0.81`，`-8 / -14 pp`），旧 9/11 策略历史消融数据已按规范全部清理，待重跑 6 策略三层消融真机实验。
+| 扫描维度 (`Summary Ledger`) | 负载点与到达分布 (`Poisson CV=1.0` / `Gamma CV=2.0`) | **`ditserve`**<br>SAR 区间 / 池化 SAR | 次优基线池化 SAR<br>(`sbp-esp` / `tetriserve` / `edf-bestfit` / `xdit`) | 核心增益与系统指标 |
+| :--- | :--- | :---: | :---: | :--- |
+| **Modality Mix** (`10` 点)<br>`modality_mix_summary.json` | $v \in \{0.1, 0.3, 0.5, 0.7, 0.9\}$, $12\text{ req/min}$, $\kappa=1.5\times$ | Poisson: **`97%–100%–96%–87%–77%`** (**`91.4%`**)<br>Gamma: **`100%–99%–92%–83%–73%`** (**`89.4%`**) | Poisson: `82.4%` / `80.6%` / `77.6%` / `58.8%`<br>Gamma: `78.0%` / `77.0%` / `70.4%` / `47.2%` | 全比例保持 **`96.0%–100.0%`** 图像 SAR；P50 降至 **`15.3 / 15.4 s`** |
+| **Rate Scale** (`16` 点)<br>`rate_scale_summary.json` | $R \in \{8, 12, 16, 20, 24, 28, 32, 36\}\text{ req/min}$, $v=0.5$, $\kappa=1.5\times$ | Poisson: **`100% -> 81%`** (**`87.2%`**)<br>Gamma: **`99% -> 81%`** (**`87.0%`**) | Poisson: `76.6%` / `74.9%` / `74.4%` / `38.5%`<br>Gamma: `73.1%` / `70.9%` / `68.5%` / `29.2%` | 按时吞吐稳定在 **`0.0831–0.1028 req/s`**，成本 **`77.85–96.23 GPU·s/req`** |
+| **SLO Scale** (`10` 点)<br>`slo_scale_summary.json` | $\kappa \in \{1.0\times, 1.25\times, 1.5\times, 1.75\times, 2.0\times\}$, $12\text{ req/min}$, $v=0.5$ | Poisson: **`66%–91%–96%–96%–99%`** (**`89.6%`**)<br>Gamma: **`56%–88%–92%–96%–98%`** (**`86.0%`**) | Poisson: `66.2%` / `63.2%` / `65.2%` / `45.4%`<br>Gamma: `62.8%` / `64.6%` / `60.0%` / `31.4%` | 在 $\kappa=1.0\times$ 紧预算下从基线 `1%–5%` 跃升至 **`66.0% / 56.0%`**（`13.2× / 11.2×`） |
+| **GPU Weak Scaling** (`6` 新增点)<br>`gpu_scale_summary.json` | $N_{\text{GPU}} \in \{2, 4, 8, 16\}$ (`1.5 req/min/GPU`) | Poisson: **`91.7%–92.0%–96.0%–93.5%`** (**`93.9%`**)<br>Gamma: **`83.3%–94.0%–92.0%–94.5%`** (**`93.0%`**) | `block-cfg2`: `90.9%` / `87.7%`<br>`edf-cfg2`: `76.5%` / `73.0%` | 2 卡至 16 卡按时 Goodput 实现 **`8.08×`（Poisson）/ `8.84×`（Gamma）** 超线性扩展 |
+| **7-Policy Ablation**<br>`ablation_summary.json` | $12\text{ req/min}$, $v=0.5$, $\kappa=1.5\times$ | `edf-cfg2` (`74%/64%`) $\to$ `block-cfg2` (`87%/78%`) $\to$ `abl-no-cb` (`92%/93%`) $\to$ **`ditserve`** (**`93%–96% / 91%–92%`**) | 单层剥离：`abl-no-block` `80%/78%`、`abl-first-fit` `82%/71%`、`abl-no-prune` `84%/87%` | 完整验证 `L1 裁剪 -> L2 伙伴放置 -> L3 门铃抢占与连续批处理` 缺一不可 |
 
 ### 5. Tier-3 解析 3D-DiT 集合通信 Roofline 与互连相图模型（[`benchmarks/topology_phase_diagram.py`](../benchmarks/topology_phase_diagram.py)）
 
