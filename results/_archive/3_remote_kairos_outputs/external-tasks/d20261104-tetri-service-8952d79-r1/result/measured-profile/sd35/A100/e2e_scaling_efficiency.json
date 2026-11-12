@@ -1,0 +1,90 @@
+[
+  {
+    "avg_denoising_time": 1.9425797387957573,
+    "avg_text_encoding_time": 0.4100297521799803,
+    "bs": 1,
+    "height": 512,
+    "mlp_world_size": 1,
+    "ring_degree": 1,
+    "steps": 28,
+    "ulysses_degree": 1,
+    "width": 512
+  },
+  {
+    "avg_denoising_time": 2.230636389926076,
+    "avg_text_encoding_time": 0.44187208265066147,
+    "bs": 1,
+    "height": 512,
+    "mlp_world_size": 2,
+    "ring_degree": 1,
+    "steps": 28,
+    "ulysses_degree": 2,
+    "width": 512
+  },
+  {
+    "avg_denoising_time": 3.1780515648424625,
+    "avg_text_encoding_time": 0.22099206782877445,
+    "bs": 2,
+    "height": 512,
+    "mlp_world_size": 1,
+    "ring_degree": 1,
+    "steps": 28,
+    "ulysses_degree": 1,
+    "width": 512
+  },
+  {
+    "avg_denoising_time": 2.0505553614348173,
+    "avg_text_encoding_time": 0.27098309993743896,
+    "bs": 2,
+    "height": 512,
+    "mlp_world_size": 2,
+    "ring_degree": 1,
+    "steps": 28,
+    "ulysses_degree": 2,
+    "width": 512
+  },
+  {
+    "avg_denoising_time": 6.546387385576963,
+    "avg_text_encoding_time": 0.11700155027210712,
+    "bs": 1,
+    "height": 1024,
+    "mlp_world_size": 1,
+    "ring_degree": 1,
+    "steps": 28,
+    "ulysses_degree": 1,
+    "width": 1024
+  },
+  {
+    "avg_denoising_time": 3.3138027116656303,
+    "avg_text_encoding_time": 0.13607798889279366,
+    "bs": 1,
+    "height": 1024,
+    "mlp_world_size": 2,
+    "ring_degree": 1,
+    "steps": 28,
+    "ulysses_degree": 2,
+    "width": 1024
+  },
+  {
+    "avg_denoising_time": 12.690663319081068,
+    "avg_text_encoding_time": 0.23368881456553936,
+    "bs": 2,
+    "height": 1024,
+    "mlp_world_size": 1,
+    "ring_degree": 1,
+    "steps": 28,
+    "ulysses_degree": 1,
+    "width": 1024
+  },
+  {
+    "avg_denoising_time": 6.344004090875387,
+    "avg_text_encoding_time": 0.2660577520728111,
+    "bs": 2,
+    "height": 1024,
+    "mlp_world_size": 2,
+    "ring_degree": 1,
+    "steps": 28,
+    "ulysses_degree": 2,
+    "width": 1024
+  }
+]

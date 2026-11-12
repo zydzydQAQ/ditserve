@@ -1,0 +1,17 @@
+{
+ "commit": "8c50c7ad286004aa1364ba88fd5be3f449af4d3d",
+ "subject": "fix(control): guard CB late-join prepare slack, idle-GPU fair cap, and co-resident batch continuity",
+ "built_utc": "2026-11-11T04:41:08+00:00",
+ "builder_image": "cluster-cmake-install",
+ "runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "tested_runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "core_sha256": "067c9a1a7ea6485396738390b049a3417ac73fd23a93be85508fe0e830d76107",
+ "runtime_smoke": "passed_cluster",
+ "local_checks": [
+  "cmake",
+  "ctest",
+  "installed_doctor"
+ ],
+ "files": 269,
+ "bytes": 5488293
+}

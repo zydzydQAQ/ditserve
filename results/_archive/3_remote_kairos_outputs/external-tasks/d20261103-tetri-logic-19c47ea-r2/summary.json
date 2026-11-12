@@ -1,0 +1,557 @@
+{
+  "schema": "ditserve.external-task.v1",
+  "run_id": "d20261103-tetri-logic-19c47ea-r2",
+  "binding": {
+    "commit": "19c47ea45a1ea78eedf71f8f2b5f44669a58cca4",
+    "manifest_sha256": "4e4666d0de9d7c7e2f61614e0242195c73ca77e274dfdff0707ce36b2dcd838d",
+    "job_spec_sha256": "ed4157b5bc670ee4ab06ed3c25dfe2fff4cc7e5d43dd3f0c8094c954d90869b5",
+    "build_info_sha256": "76a70cb4246b15b0e82c3749841b81cb79e8f0692da812c19831108d27e7e0a6",
+    "core_sha256": "e358e29d1a3ca238bbf2b7f981db71e951519715aedf46d58454738aabcbd42b",
+    "worker_sources_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a",
+    "gfc_sources_sha256": "e6c7f47a26d02a8091463bf9cb8ca58835c2b07c3c2cd4827d1b319c3bebf6e6",
+    "image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:2009ea26f63bcf0360ce7b4d71ed508c91c0702c97dd97e372cecfb672a818a1",
+    "image_identity_scope": "digest-pinned submitted spec, not independent pod imageID",
+    "probe_plan_sha256": "e6930a7a9ac1d8e443d3329707b2b09a2759180c2d4ccaec793d55a834ee3164"
+  },
+  "allocation_gpus": 1,
+  "initial_storage": {
+    "used_gib": 769,
+    "percent": 76
+  },
+  "final_storage": {
+    "used_gib": 769,
+    "percent": 76
+  },
+  "task": "official-tetriserve-scheduler-and-real-gloo-bridge-logic",
+  "execution": {
+    "argv": [
+      "/opt/venv/bin/python",
+      "-B",
+      "/shared/data/DITSERVE/external-probes/tetri-logic-19c47ea-r2/external_tetriserve_logic.py",
+      "--source-root",
+      "/shared/data/DITSERVE/external-systems/20261103-source-v1/TetriServe",
+      "--source-manifest",
+      "/shared/data/DITSERVE/external-systems/20261103-source-v1/TetriServe.source.json",
+      "--source-manifest-sha256",
+      "2d0d9f9efaf4b3749063458d56c74b0ef79ef72de22096b39889e798e792d027",
+      "--shared-python-root",
+      "/shared/code/DITSERVE/builds/51740c0/share/ditserve/python",
+      "--bridge-test-file",
+      "/shared/data/DITSERVE/external-probes/tetri-logic-19c47ea-r2/test_20261103_external_tetriserve_bridge.py",
+      "--bridge-test-sha256",
+      "99c38df9c0ff0ec8eeabbeee180fbdf1929b77b5e1b5fa140b49cc3ecc8fcf7a",
+      "--output",
+      "/shared/output/DITSERVE/external-tasks/d20261103-tetri-logic-19c47ea-r2/result",
+      "--timeout-seconds",
+      "180"
+    ],
+    "returncode": 0,
+    "timed_out": false,
+    "seconds": 34.7462937887758,
+    "stderr_tail": "",
+    "result": {
+      "logic_gate_passed": true,
+      "qualification_eligible": false,
+      "sha256": "ef20660181a546affcf53bc90903861382992c5ba5f15f5e4b39fdbbf4396880",
+      "status": "logic_passed",
+      "summary": "/shared/output/DITSERVE/external-tasks/d20261103-tetri-logic-19c47ea-r2/result/summary.json"
+    },
+    "child_summary_path": "/shared/output/DITSERVE/external-tasks/d20261103-tetri-logic-19c47ea-r2/result/summary.json",
+    "child_summary_sha256": "ef20660181a546affcf53bc90903861382992c5ba5f15f5e4b39fdbbf4396880",
+    "child_summary": {
+      "allows": [],
+      "binding": {
+        "bridge_sha256": "7b9bbac7a6d009ab3099b226e6d9f1bdebefb78b0bc7831b8f51de940e926336",
+        "bridge_test_sha256": "99c38df9c0ff0ec8eeabbeee180fbdf1929b77b5e1b5fa140b49cc3ecc8fcf7a",
+        "derived_manifest_sha256": "5ab5b86ee32a96039a50bcaed54bf10ce1cdc5415cac473bc4504375ce8485fb",
+        "logic_sha256": "d8389e1608acce67df88756e9864a219f32a1a002a2e14373db2414376df5a40",
+        "port_sha256": "519e89ccd933bacfbc29dbc8fd337a08e2925d87a90f1b4f10b19d90e2a41baa",
+        "round_sha256": "11fd66b622f848d446aed543041ca8269c1b3d1fb3f7e4055028dda5dcaff377",
+        "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a",
+        "upstream_commit": "414ec2956c09466ccd7842fda9851511462bd42a",
+        "upstream_manifest_sha256": "2d0d9f9efaf4b3749063458d56c74b0ef79ef72de22096b39889e798e792d027"
+      },
+      "eligible_for_next_gpu_migration_check": true,
+      "gloo": {
+        "assessment": {
+          "covered": true,
+          "issues": [],
+          "passed": true
+        },
+        "execution": {
+          "argv": [
+            "/opt/venv/bin/python",
+            "-I",
+            "-B",
+            "-c",
+            "\nimport hashlib, importlib.util, io, json, os, signal, sys, unittest\npackage, shared, test_file, test_sha, timeout = sys.argv[1:]\nsys.path[:0] = [package, shared, os.path.dirname(test_file)]\nos.environ['DITSERVE_SHARED_PYTHON_ROOT'] = shared\nwith open(test_file, 'rb') as stream:\n    if hashlib.sha256(stream.read()).hexdigest() != test_sha:\n        raise ValueError('bridge test source changed before execution')\nspec = importlib.util.spec_from_file_location('test_20261103_external_tetriserve_bridge', test_file)\nmodule = importlib.util.module_from_spec(spec)\nsys.modules[spec.name] = module\nspec.loader.exec_module(module)\nsuite = unittest.defaultTestLoader.loadTestsFromModule(module)\ndef ids(node):\n    if isinstance(node, unittest.TestSuite):\n        return [name for child in node for name in ids(child)]\n    return [node.id()]\nselected = ids(suite)\ndef expired(*unused):\n    raise TimeoutError('real CPU Gloo diagnostic deadline exceeded')\nsignal.signal(signal.SIGALRM, expired)\nsignal.alarm(int(timeout))\nlog = io.StringIO()\nresult = unittest.TextTestRunner(stream=log, verbosity=2).run(suite)\nrecord = dict(schema='ditserve.tetriserve-bridge-tests.v1', selected=selected,\n    tests_run=result.testsRun, successful=result.wasSuccessful(),\n    skipped=[dict(test=test.id(), reason=why) for test, why in result.skipped],\n    failures=[dict(test=test.id(), traceback=why) for test, why in result.failures],\n    errors=[dict(test=test.id(), traceback=why) for test, why in result.errors],\n    log_tail=log.getvalue()[-16000:], qualification_eligible=False, allows=[])\nprint('DITSERVE_TEST_RESULT=' + json.dumps(record, sort_keys=True, allow_nan=False), flush=True)\nsys.exit(0 if result.wasSuccessful() and not result.skipped and result.testsRun == 5 else 1)\n",
+            "/shared/data/DITSERVE/external-probes/tetri-logic-19c47ea-r2",
+            "/shared/code/DITSERVE/builds/51740c0/share/ditserve/python",
+            "/shared/data/DITSERVE/external-probes/tetri-logic-19c47ea-r2/test_20261103_external_tetriserve_bridge.py",
+            "99c38df9c0ff0ec8eeabbeee180fbdf1929b77b5e1b5fa140b49cc3ecc8fcf7a",
+            "180"
+          ],
+          "returncode": 0,
+          "seconds": 16.35377936810255,
+          "stderr_tail": "",
+          "stdout_tail": "[Gloo] Rank 1 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1\n[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0\n[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0\n[Gloo] Rank 0 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1\n[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0\n[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0\n[Gloo] Rank 0 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1\n[Gloo] Rank 1 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1\n[Gloo] Rank 1 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1\n[Gloo] Rank 0 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1\nDITSERVE_TEST_RESULT={\"allows\": [], \"errors\": [], \"failures\": [], \"log_tail\": \"test_batch_identity_guidance_and_final_marker_fail_closed (test_20261103_external_tetriserve_bridge.TetriBridgeTests) ... ok\\ntest_native_future_cursor_must_match_new_absolute_round (test_20261103_external_tetriserve_bridge.TetriBridgeTests) ... ok\\ntest_real_cpu_tensors_reject_mixed_schedules_and_broken_cfg_pairs (test_20261103_external_tetriserve_bridge.TetriBridgeTests) ... ok\\ntest_real_gloo_sp1_sp2_rank_switch_without_new_groups (test_20261103_external_tetriserve_bridge.TetriBridgeTests) ... ok\\ntest_sorted_native_rank_contract_and_group_inventory (test_20261103_external_tetriserve_bridge.TetriBridgeTests) ... ok\\n\\n----------------------------------------------------------------------\\nRan 5 tests in 15.715s\\n\\nOK\\n\", \"qualification_eligible\": false, \"schema\": \"ditserve.tetriserve-bridge-tests.v1\", \"selected\": [\"test_20261103_external_tetriserve_bridge.TetriBridgeTests.test_batch_identity_guidance_and_final_marker_fail_closed\", \"test_20261103_external_tetriserve_bridge.TetriBridgeTests.test_native_future_cursor_must_match_new_absolute_round\", \"test_20261103_external_tetriserve_bridge.TetriBridgeTests.test_real_cpu_tensors_reject_mixed_schedules_and_broken_cfg_pairs\", \"test_20261103_external_tetriserve_bridge.TetriBridgeTests.test_real_gloo_sp1_sp2_rank_switch_without_new_groups\", \"test_20261103_external_tetriserve_bridge.TetriBridgeTests.test_sorted_native_rank_contract_and_group_inventory\"], \"skipped\": [], \"successful\": true, \"tests_run\": 5}\n",
+          "tests": {
+            "allows": [],
+            "errors": [],
+            "failures": [],
+            "log_tail": "test_batch_identity_guidance_and_final_marker_fail_closed (test_20261103_external_tetriserve_bridge.TetriBridgeTests) ... ok\ntest_native_future_cursor_must_match_new_absolute_round (test_20261103_external_tetriserve_bridge.TetriBridgeTests) ... ok\ntest_real_cpu_tensors_reject_mixed_schedules_and_broken_cfg_pairs (test_20261103_external_tetriserve_bridge.TetriBridgeTests) ... ok\ntest_real_gloo_sp1_sp2_rank_switch_without_new_groups (test_20261103_external_tetriserve_bridge.TetriBridgeTests) ... ok\ntest_sorted_native_rank_contract_and_group_inventory (test_20261103_external_tetriserve_bridge.TetriBridgeTests) ... ok\n\n----------------------------------------------------------------------\nRan 5 tests in 15.715s\n\nOK\n",
+            "qualification_eligible": false,
+            "schema": "ditserve.tetriserve-bridge-tests.v1",
+            "selected": [
+              "test_20261103_external_tetriserve_bridge.TetriBridgeTests.test_batch_identity_guidance_and_final_marker_fail_closed",
+              "test_20261103_external_tetriserve_bridge.TetriBridgeTests.test_native_future_cursor_must_match_new_absolute_round",
+              "test_20261103_external_tetriserve_bridge.TetriBridgeTests.test_real_cpu_tensors_reject_mixed_schedules_and_broken_cfg_pairs",
+              "test_20261103_external_tetriserve_bridge.TetriBridgeTests.test_real_gloo_sp1_sp2_rank_switch_without_new_groups",
+              "test_20261103_external_tetriserve_bridge.TetriBridgeTests.test_sorted_native_rank_contract_and_group_inventory"
+            ],
+            "skipped": [],
+            "successful": true,
+            "tests_run": 5
+          },
+          "timed_out": false
+        },
+        "status": "executed"
+      },
+      "gpu_migration_verified": false,
+      "logic_gate_passed": true,
+      "model_loaded": false,
+      "qualification_eligible": false,
+      "scheduler": {
+        "assessment": {
+          "covered": true,
+          "issues": [],
+          "passed": true
+        },
+        "evidence": {
+          "allows": [],
+          "completion_payload_is_synthetic": true,
+          "cost_fixture_sha256": "fca7642f3e009b967543bc31dc0fd637a66ffe09f590db7a1559cc65e73ed8f1",
+          "costs_are_measurements": false,
+          "derived_manifest_sha256": "5ab5b86ee32a96039a50bcaed54bf10ce1cdc5415cac473bc4504375ce8485fb",
+          "model_loaded": false,
+          "native_scheduler_sha256": "44eb6d060ff1b1fb4efa36304f35af97210198fbb0b2b966eb82c0ce03a8153e",
+          "native_tracker_sha256": "8fd986cf384bd70a874277027abec2095870d591e25bddd864e75dd79f382f24",
+          "qualification_eligible": false,
+          "records": [
+            {
+              "batch": 1,
+              "batch_metadata_aligned": true,
+              "complete_steps_covered": true,
+              "completed_steps": {
+                "1": 10
+              },
+              "cpp_optimizer_used": false,
+              "cursor_contiguous": true,
+              "final_completed_steps": {
+                "1": 28
+              },
+              "first": [
+                {
+                  "batch": 1,
+                  "end": 10,
+                  "final": [
+                    false
+                  ],
+                  "origin_steps": [
+                    28
+                  ],
+                  "prompts": [
+                    "fox"
+                  ],
+                  "ranks": [
+                    0,
+                    1
+                  ],
+                  "start": 0,
+                  "steps": 10,
+                  "sub_req_ids": [
+                    1
+                  ]
+                }
+              ],
+              "rounds": [
+                [
+                  {
+                    "batch": 1,
+                    "end": 10,
+                    "final": [
+                      false
+                    ],
+                    "origin_steps": [
+                      28
+                    ],
+                    "prompts": [
+                      "fox"
+                    ],
+                    "ranks": [
+                      0,
+                      1
+                    ],
+                    "start": 0,
+                    "steps": 10,
+                    "sub_req_ids": [
+                      1
+                    ]
+                  }
+                ],
+                [
+                  {
+                    "batch": 1,
+                    "end": 20,
+                    "final": [
+                      false
+                    ],
+                    "origin_steps": [
+                      28
+                    ],
+                    "prompts": [
+                      "fox"
+                    ],
+                    "ranks": [
+                      0,
+                      1
+                    ],
+                    "start": 10,
+                    "steps": 10,
+                    "sub_req_ids": [
+                      1
+                    ]
+                  }
+                ],
+                [
+                  {
+                    "batch": 1,
+                    "end": 28,
+                    "final": [
+                      true
+                    ],
+                    "origin_steps": [
+                      28
+                    ],
+                    "prompts": [
+                      "fox"
+                    ],
+                    "ranks": [
+                      0,
+                      1
+                    ],
+                    "start": 20,
+                    "steps": 8,
+                    "sub_req_ids": [
+                      1
+                    ]
+                  }
+                ]
+              ],
+              "second": [
+                {
+                  "batch": 1,
+                  "end": 20,
+                  "final": [
+                    false
+                  ],
+                  "origin_steps": [
+                    28
+                  ],
+                  "prompts": [
+                    "fox"
+                  ],
+                  "ranks": [
+                    0,
+                    1
+                  ],
+                  "start": 10,
+                  "steps": 10,
+                  "sub_req_ids": [
+                    1
+                  ]
+                }
+              ],
+              "terminal_items": 1,
+              "tracker_remaining": 0
+            },
+            {
+              "batch": 2,
+              "batch_metadata_aligned": true,
+              "complete_steps_covered": true,
+              "completed_steps": {
+                "1": 10,
+                "2": 10
+              },
+              "cpp_optimizer_used": false,
+              "cursor_contiguous": true,
+              "final_completed_steps": {
+                "1": 28,
+                "2": 28
+              },
+              "first": [
+                {
+                  "batch": 1,
+                  "end": 10,
+                  "final": [
+                    false
+                  ],
+                  "origin_steps": [
+                    28
+                  ],
+                  "prompts": [
+                    "fox"
+                  ],
+                  "ranks": [
+                    0
+                  ],
+                  "start": 0,
+                  "steps": 10,
+                  "sub_req_ids": [
+                    1
+                  ]
+                },
+                {
+                  "batch": 1,
+                  "end": 10,
+                  "final": [
+                    false
+                  ],
+                  "origin_steps": [
+                    28
+                  ],
+                  "prompts": [
+                    "hare"
+                  ],
+                  "ranks": [
+                    1
+                  ],
+                  "start": 0,
+                  "steps": 10,
+                  "sub_req_ids": [
+                    2
+                  ]
+                }
+              ],
+              "rounds": [
+                [
+                  {
+                    "batch": 1,
+                    "end": 10,
+                    "final": [
+                      false
+                    ],
+                    "origin_steps": [
+                      28
+                    ],
+                    "prompts": [
+                      "fox"
+                    ],
+                    "ranks": [
+                      0
+                    ],
+                    "start": 0,
+                    "steps": 10,
+                    "sub_req_ids": [
+                      1
+                    ]
+                  },
+                  {
+                    "batch": 1,
+                    "end": 10,
+                    "final": [
+                      false
+                    ],
+                    "origin_steps": [
+                      28
+                    ],
+                    "prompts": [
+                      "hare"
+                    ],
+                    "ranks": [
+                      1
+                    ],
+                    "start": 0,
+                    "steps": 10,
+                    "sub_req_ids": [
+                      2
+                    ]
+                  }
+                ],
+                [
+                  {
+                    "batch": 1,
+                    "end": 20,
+                    "final": [
+                      false
+                    ],
+                    "origin_steps": [
+                      28
+                    ],
+                    "prompts": [
+                      "fox"
+                    ],
+                    "ranks": [
+                      0
+                    ],
+                    "start": 10,
+                    "steps": 10,
+                    "sub_req_ids": [
+                      1
+                    ]
+                  },
+                  {
+                    "batch": 1,
+                    "end": 20,
+                    "final": [
+                      false
+                    ],
+                    "origin_steps": [
+                      28
+                    ],
+                    "prompts": [
+                      "hare"
+                    ],
+                    "ranks": [
+                      1
+                    ],
+                    "start": 10,
+                    "steps": 10,
+                    "sub_req_ids": [
+                      2
+                    ]
+                  }
+                ],
+                [
+                  {
+                    "batch": 1,
+                    "end": 28,
+                    "final": [
+                      true
+                    ],
+                    "origin_steps": [
+                      28
+                    ],
+                    "prompts": [
+                      "fox"
+                    ],
+                    "ranks": [
+                      0
+                    ],
+                    "start": 20,
+                    "steps": 8,
+                    "sub_req_ids": [
+                      1
+                    ]
+                  },
+                  {
+                    "batch": 1,
+                    "end": 28,
+                    "final": [
+                      true
+                    ],
+                    "origin_steps": [
+                      28
+                    ],
+                    "prompts": [
+                      "hare"
+                    ],
+                    "ranks": [
+                      1
+                    ],
+                    "start": 20,
+                    "steps": 8,
+                    "sub_req_ids": [
+                      2
+                    ]
+                  }
+                ]
+              ],
+              "second": [
+                {
+                  "batch": 1,
+                  "end": 20,
+                  "final": [
+                    false
+                  ],
+                  "origin_steps": [
+                    28
+                  ],
+                  "prompts": [
+                    "fox"
+                  ],
+                  "ranks": [
+                    0
+                  ],
+                  "start": 10,
+                  "steps": 10,
+                  "sub_req_ids": [
+                    1
+                  ]
+                },
+                {
+                  "batch": 1,
+                  "end": 20,
+                  "final": [
+                    false
+                  ],
+                  "origin_steps": [
+                    28
+                  ],
+                  "prompts": [
+                    "hare"
+                  ],
+                  "ranks": [
+                    1
+                  ],
+                  "start": 10,
+                  "steps": 10,
+                  "sub_req_ids": [
+                    2
+                  ]
+                }
+              ],
+              "terminal_items": 2,
+              "tracker_remaining": 0
+            }
+          ],
+          "schema": "ditserve.tetriserve-native-scheduler-logic.v1",
+          "status": "native_logic_observed",
+          "upstream_commit": "414ec2956c09466ccd7842fda9851511462bd42a"
+        },
+        "execution": {
+          "argv": [
+            "/opt/venv/bin/python",
+            "-I",
+            "-B",
+            "-c",
+            "\nimport runpy, signal, sys\npackage, shared, timeout, *args = sys.argv[1:]\nsys.path[:0] = [package, shared]\ndef expired(*unused):\n    raise TimeoutError('native scheduler diagnostic deadline exceeded')\nsignal.signal(signal.SIGALRM, expired)\nsignal.alarm(int(timeout))\nsys.argv = [package + '/external_tetriserve_port.py', *args]\nrunpy.run_path(sys.argv[0], run_name='__main__')\n",
+            "/shared/data/DITSERVE/external-probes/tetri-logic-19c47ea-r2",
+            "/shared/code/DITSERVE/builds/51740c0/share/ditserve/python",
+            "180",
+            "scheduler-check",
+            "--derived-root",
+            "/shared/output/DITSERVE/external-tasks/d20261103-tetri-logic-19c47ea-r2/result/derived",
+            "--derived-manifest-sha256",
+            "5ab5b86ee32a96039a50bcaed54bf10ce1cdc5415cac473bc4504375ce8485fb",
+            "--output",
+            "/shared/output/DITSERVE/external-tasks/d20261103-tetri-logic-19c47ea-r2/result/scheduler"
+          ],
+          "returncode": 0,
+          "seconds": 13.029430786147714,
+          "stderr_tail": "",
+          "stdout_tail": "WARNING 11-03 08:36:28 [envs.py:111] Flash Attention library \"flash_attn\" not found, using pytorch attention implementation\nINFO 11-03 08:36:33 [dyn_step_scheduler.py:1510] _combo_search_with_algorithm_selection execution time: 0.0001 seconds\nINFO 11-03 08:36:33 [dyn_step_scheduler.py:1516] best_combo_list: [(0, [0], 20, 0.2)]\nINFO 11-03 08:36:33 [dyn_step_scheduler.py:1510] _combo_search_with_algorithm_selection execution time: 0.0001 seconds\nINFO 11-03 08:36:33 [dyn_step_scheduler.py:1516] best_combo_list: [(0, [0], 18, 0.18)]\nINFO 11-03 08:36:33 [dyn_step_scheduler.py:1510] _combo_search_with_algorithm_selection execution time: 0.0000 seconds\nINFO 11-03 08:36:33 [dyn_step_scheduler.py:1516] best_combo_list: [(0, [0], 8, 0.08)]\nINFO 11-03 08:36:33 [request_tracker.py:122] image: <PIL.Image.Image image mode=RGB size=1x1 at 0x70D5BB5D51E0>\nINFO 11-03 08:36:33 [dyn_step_scheduler.py:1510] _combo_search_with_algorithm_selection execution time: 0.0000 seconds\nINFO 11-03 08:36:33 [dyn_step_scheduler.py:1516] best_combo_list: [(0, [0], 20, 0.6)]\nINFO 11-03 08:36:33 [dyn_step_scheduler.py:1510] _combo_search_with_algorithm_selection execution time: 0.0000 seconds\nINFO 11-03 08:36:33 [dyn_step_scheduler.py:1516] best_combo_list: [(0, [0], 18, 0.54)]\nINFO 11-03 08:36:33 [dyn_step_scheduler.py:1510] _combo_search_with_algorithm_selection execution time: 0.0000 seconds\nINFO 11-03 08:36:33 [dyn_step_scheduler.py:1516] best_combo_list: [(0, [0], 8, 0.24)]\nINFO 11-03 08:36:33 [request_tracker.py:122] image: <PIL.Image.Image image mode=RGB size=1x1 at 0x70D5BB5D5FC0>\nINFO 11-03 08:36:33 [request_tracker.py:122] image: <PIL.Image.Image image mode=RGB size=1x1 at 0x70D5BB5D5210>\n{\n  \"allows\": [],\n  \"completion_payload_is_synthetic\": true,\n  \"cost_fixture_sha256\": \"fca7642f3e009b967543bc31dc0fd637a66ffe09f590db7a1559cc65e73ed8f1\",\n  \"costs_are_measurements\": false,\n  \"derived_manifest_sha256\": \"5ab5b86ee32a96039a50bcaed54bf10ce1cdc5415cac473bc4504375ce8485fb\",\n  \"model_loaded\": false,\n  \"native_scheduler_sha256\": \"44eb6d060ff1b1fb4efa36304f35af97210198fbb0b2b966eb82c0ce03a8153e\",\n  \"native_tracker_sha256\": \"8fd986cf384bd70a874277027abec2095870d591e25bddd864e75dd79f382f24\",\n  \"qualification_eligible\": false,\n  \"records\": [\n    {\n      \"batch\": 1,\n      \"batch_metadata_aligned\": true,\n      \"complete_steps_covered\": true,\n      \"completed_steps\": {\n        \"1\": 10\n      },\n      \"cpp_optimizer_used\": false,\n      \"cursor_contiguous\": true,\n      \"final_completed_steps\": {\n        \"1\": 28\n      },\n      \"first\": [\n        {\n          \"batch\": 1,\n          \"end\": 10,\n          \"final\": [\n            false\n          ],\n          \"origin_steps\": [\n            28\n          ],\n          \"prompts\": [\n            \"fox\"\n          ],\n          \"ranks\": [\n            0,\n            1\n          ],\n          \"start\": 0,\n          \"steps\": 10,\n          \"sub_req_ids\": [\n            1\n          ]\n        }\n      ],\n      \"rounds\": [\n        [\n          {\n            \"batch\": 1,\n            \"end\": 10,\n            \"final\": [\n              false\n            ],\n            \"origin_steps\": [\n              28\n            ],\n            \"prompts\": [\n              \"fox\"\n            ],\n            \"ranks\": [\n              0,\n              1\n            ],\n            \"start\": 0,\n            \"steps\": 10,\n            \"sub_req_ids\": [\n              1\n            ]\n          }\n        ],\n        [\n          {\n            \"batch\": 1,\n            \"end\": 20,\n            \"final\": [\n              false\n            ],\n            \"origin_steps\": [\n              28\n            ],\n            \"prompts\": [\n              \"fox\"\n            ],\n            \"ranks\": [\n              0,\n              1\n            ],\n            \"start\": 10,\n            \"steps\": 10,\n            \"sub_req_ids\": [\n              1\n            ]\n          }\n        ],\n        [\n          {\n            \"batch\": 1,\n            \"end\": 28,\n            \"final\": [\n              true\n            ],\n            \"origin_steps\": [\n              28\n            ],\n            \"prompts\": [\n              \"fox\"\n            ],\n            \"ranks\": [\n              0,\n              1\n            ],\n            \"start\": 20,\n            \"steps\": 8,\n            \"sub_req_ids\": [\n              1\n            ]\n          }\n        ]\n      ],\n      \"second\": [\n        {\n          \"batch\": 1,\n          \"end\": 20,\n          \"final\": [\n            false\n          ],\n          \"origin_steps\": [\n            28\n          ],\n          \"prompts\": [\n            \"fox\"\n          ],\n          \"ranks\": [\n            0,\n            1\n          ],\n          \"start\": 10,\n          \"steps\": 10,\n          \"sub_req_ids\": [\n            1\n          ]\n        }\n      ],\n      \"terminal_items\": 1,\n      \"tracker_remaining\": 0\n    },\n    {\n      \"batch\": 2,\n      \"batch_metadata_aligned\": true,\n      \"complete_steps_covered\": true,\n      \"completed_steps\": {\n        \"1\": 10,\n        \"2\": 10\n      },\n      \"cpp_optimizer_used\": false,\n      \"cursor_contiguous\": true,\n      \"final_completed_steps\": {\n        \"1\": 28,\n        \"2\": 28\n      },\n      \"first\": [\n        {\n          \"batch\": 1,\n          \"end\": 10,\n          \"final\": [\n            false\n          ],\n          \"origin_steps\": [\n            28\n          ],\n          \"prompts\": [\n            \"fox\"\n          ],\n          \"ranks\": [\n            0\n          ],\n          \"start\": 0,\n          \"steps\": 10,\n          \"sub_req_ids\": [\n            1\n          ]\n        },\n        {\n          \"batch\": 1,\n          \"end\": 10,\n          \"final\": [\n            false\n          ],\n          \"origin_steps\": [\n            28\n          ],\n          \"prompts\": [\n            \"hare\"\n          ],\n          \"ranks\": [\n            1\n          ],\n          \"start\": 0,\n          \"steps\": 10,\n          \"sub_req_ids\": [\n            2\n          ]\n        }\n      ],\n      \"rounds\": [\n        [\n          {\n            \"batch\": 1,\n            \"end\": 10,\n            \"final\": [\n              false\n            ],\n            \"origin_steps\": [\n              28\n            ],\n            \"prompts\": [\n              \"fox\"\n            ],\n            \"ranks\": [\n              0\n            ],\n            \"start\": 0,\n            \"steps\": 10,\n            \"sub_req_ids\": [\n              1\n            ]\n          },\n          {\n            \"batch\": 1,\n            \"end\": 10,\n            \"final\": [\n              false\n            ],\n            \"origin_steps\": [\n              28\n            ],\n            \"prompts\": [\n              \"hare\"\n            ],\n            \"ranks\": [\n              1\n            ],\n            \"start\": 0,\n            \"steps\": 10,\n            \"sub_req_ids\": [\n              2\n            ]\n          }\n        ],\n        [\n          {\n            \"batch\": 1,\n            \"end\": 20,\n            \"final\": [\n              false\n            ],\n            \"origin_steps\": [\n              28\n            ],\n            \"prompts\": [\n              \"fox\"\n            ],\n            \"ranks\": [\n              0\n            ],\n            \"start\": 10,\n            \"steps\": 10,\n            \"sub_req_ids\": [\n              1\n            ]\n          },\n          {\n            \"batch\": 1,\n            \"end\": 20,\n            \"final\": [\n              false\n            ],\n            \"origin_steps\": [\n              28\n            ],\n            \"prompts\": [\n              \"hare\"\n            ],\n            \"ranks\": [\n              1\n            ],\n            \"start\": 10,\n            \"steps\": 10,\n            \"sub_req_ids\": [\n              2\n            ]\n          }\n        ],\n        [\n          {\n            \"batch\": 1,\n            \"end\": 28,\n            \"final\": [\n              true\n            ],\n            \"origin_steps\": [\n              28\n            ],\n            \"prompts\": [\n              \"fox\"\n            ],\n            \"ranks\": [\n              0\n            ],\n            \"start\": 20,\n            \"steps\": 8,\n            \"sub_req_ids\": [\n              1\n            ]\n          },\n          {\n            \"batch\": 1,\n            \"end\": 28,\n            \"final\": [\n              true\n            ],\n            \"origin_steps\": [\n              28\n            ],\n            \"prompts\": [\n              \"hare\"\n            ],\n            \"ranks\": [\n              1\n            ],\n            \"start\": 20,\n            \"steps\": 8,\n            \"sub_req_ids\": [\n              2\n            ]\n          }\n        ]\n      ],\n      \"second\": [\n        {\n          \"batch\": 1,\n          \"end\": 20,\n          \"final\": [\n            false\n          ],\n          \"origin_steps\": [\n            28\n          ],\n          \"prompts\": [\n            \"fox\"\n          ],\n          \"ranks\": [\n            0\n          ],\n          \"start\": 10,\n          \"steps\": 10,\n          \"sub_req_ids\": [\n            1\n          ]\n        },\n        {\n          \"batch\": 1,\n          \"end\": 20,\n          \"final\": [\n            false\n          ],\n          \"origin_steps\": [\n            28\n          ],\n          \"prompts\": [\n            \"hare\"\n          ],\n          \"ranks\": [\n            1\n          ],\n          \"start\": 10,\n          \"steps\": 10,\n          \"sub_req_ids\": [\n            2\n          ]\n        }\n      ],\n      \"terminal_items\": 2,\n      \"tracker_remaining\": 0\n    }\n  ],\n  \"schema\": \"ditserve.tetriserve-native-scheduler-logic.v1\",\n  \"status\": \"native_logic_observed\",\n  \"upstream_commit\": \"414ec2956c09466ccd7842fda9851511462bd42a\"\n}\n",
+          "timed_out": false
+        },
+        "status": "executed",
+        "summary_sha256": "7ba56d55144f67b375bccfacefc083b070ba5948db7a68035f447bcf7c3129b6"
+      },
+      "schema": "ditserve.tetriserve-logic-check.v1",
+      "serving_executed": false,
+      "status": "logic_passed"
+    }
+  },
+  "qualification_eligible": false,
+  "allows": [],
+  "scope": "Native implementation diagnostic; not full-system serving or quality qualification."
+}

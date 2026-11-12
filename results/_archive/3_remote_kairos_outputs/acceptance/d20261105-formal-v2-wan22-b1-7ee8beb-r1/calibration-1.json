@@ -1,0 +1,1062 @@
+{
+  "schema": "ditserve.study.v1",
+  "experiment": "kairos-wan22-native-calibration",
+  "note": "Native per-form calibration. Synthetic fields are scheduling placeholders, not measured results.",
+  "workers": {
+    "wan0": {
+      "backend": "wan",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-afb5ebb2-a584-abce-e912-6cd50477f4bb",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b-official-b8fff731",
+        "device": "cuda:0",
+        "attention": "flash",
+        "vae_dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "options": {
+          "execution": "block",
+          "memory_strategy": "s4_disaggregated_pool",
+          "release_cache_on_stop": true,
+          "encoder_pool": {
+            "enabled": true,
+            "write_shm": true,
+            "pin_memory": true,
+            "shm_dir": "/dev/shm/ditserve-hetero-embeds",
+            "max_entries": 64,
+            "max_bytes": 536870912
+          }
+        },
+        "model_manifest_path": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/wan22-official-b8fff731.manifest.json",
+        "model_manifest_sha256": "02ac66402d23a0ad25fa9fece1f6f57e2dc08783dda18ff4c9904fddf28d2c5f"
+      }
+    },
+    "image0": {
+      "backend": "sd35",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-afb5ebb2-a584-abce-e912-6cd50477f4bb",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/sd3.5-medium",
+        "device": "cuda:0",
+        "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+        "dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "attention": "flash",
+        "options": {
+          "profile": false,
+          "cache": false,
+          "continuous_batch": true,
+          "sequence_packing": true,
+          "bubble_free": true,
+          "memory_strategy": "s4_disaggregated_pool",
+          "offload_text_encoders_after_warmup": true,
+          "encoder_pool": {
+            "enabled": true,
+            "write_shm": true,
+            "pin_memory": true,
+            "shm_dir": "/dev/shm/ditserve-hetero-embeds",
+            "max_entries": 64,
+            "max_bytes": 536870912
+          }
+        },
+        "model_manifest_path": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/sd35.manifest.json",
+        "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424"
+      }
+    },
+    "wan1": {
+      "backend": "wan",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-c2195fc4-0579-e149-dcd5-8f912dfb44c2",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b-official-b8fff731",
+        "device": "cuda:0",
+        "attention": "flash",
+        "vae_dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "options": {
+          "execution": "block",
+          "memory_strategy": "s4_disaggregated_pool",
+          "release_cache_on_stop": true,
+          "encoder_pool": {
+            "enabled": true,
+            "write_shm": true,
+            "pin_memory": true,
+            "shm_dir": "/dev/shm/ditserve-hetero-embeds",
+            "max_entries": 64,
+            "max_bytes": 536870912
+          }
+        },
+        "model_manifest_path": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/wan22-official-b8fff731.manifest.json",
+        "model_manifest_sha256": "02ac66402d23a0ad25fa9fece1f6f57e2dc08783dda18ff4c9904fddf28d2c5f"
+      }
+    },
+    "image1": {
+      "backend": "sd35",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-c2195fc4-0579-e149-dcd5-8f912dfb44c2",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/sd3.5-medium",
+        "device": "cuda:0",
+        "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+        "dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "attention": "flash",
+        "options": {
+          "profile": false,
+          "cache": false,
+          "continuous_batch": true,
+          "sequence_packing": true,
+          "bubble_free": true,
+          "memory_strategy": "s4_disaggregated_pool",
+          "offload_text_encoders_after_warmup": true,
+          "encoder_pool": {
+            "enabled": true,
+            "write_shm": true,
+            "pin_memory": true,
+            "shm_dir": "/dev/shm/ditserve-hetero-embeds",
+            "max_entries": 64,
+            "max_bytes": 536870912
+          }
+        },
+        "model_manifest_path": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/sd35.manifest.json",
+        "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424"
+      }
+    },
+    "wan2": {
+      "backend": "wan",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-a331a424-15be-fa45-6b08-d951d2dce277",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b-official-b8fff731",
+        "device": "cuda:0",
+        "attention": "flash",
+        "vae_dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "options": {
+          "execution": "block",
+          "memory_strategy": "s4_disaggregated_pool",
+          "release_cache_on_stop": true,
+          "encoder_pool": {
+            "enabled": true,
+            "write_shm": true,
+            "pin_memory": true,
+            "shm_dir": "/dev/shm/ditserve-hetero-embeds",
+            "max_entries": 64,
+            "max_bytes": 536870912
+          }
+        },
+        "model_manifest_path": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/wan22-official-b8fff731.manifest.json",
+        "model_manifest_sha256": "02ac66402d23a0ad25fa9fece1f6f57e2dc08783dda18ff4c9904fddf28d2c5f"
+      }
+    },
+    "image2": {
+      "backend": "sd35",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-a331a424-15be-fa45-6b08-d951d2dce277",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/sd3.5-medium",
+        "device": "cuda:0",
+        "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+        "dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "attention": "flash",
+        "options": {
+          "profile": false,
+          "cache": false,
+          "continuous_batch": true,
+          "sequence_packing": true,
+          "bubble_free": true,
+          "memory_strategy": "s4_disaggregated_pool",
+          "offload_text_encoders_after_warmup": true,
+          "encoder_pool": {
+            "enabled": true,
+            "write_shm": true,
+            "pin_memory": true,
+            "shm_dir": "/dev/shm/ditserve-hetero-embeds",
+            "max_entries": 64,
+            "max_bytes": 536870912
+          }
+        },
+        "model_manifest_path": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/sd35.manifest.json",
+        "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424"
+      }
+    },
+    "wan3": {
+      "backend": "wan",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-6c6892f8-1aa0-4c8f-d1ec-bc514adcbd42",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b-official-b8fff731",
+        "device": "cuda:0",
+        "attention": "flash",
+        "vae_dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "options": {
+          "execution": "block",
+          "memory_strategy": "s4_disaggregated_pool",
+          "release_cache_on_stop": true,
+          "encoder_pool": {
+            "enabled": true,
+            "write_shm": true,
+            "pin_memory": true,
+            "shm_dir": "/dev/shm/ditserve-hetero-embeds",
+            "max_entries": 64,
+            "max_bytes": 536870912
+          }
+        },
+        "model_manifest_path": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/wan22-official-b8fff731.manifest.json",
+        "model_manifest_sha256": "02ac66402d23a0ad25fa9fece1f6f57e2dc08783dda18ff4c9904fddf28d2c5f"
+      }
+    },
+    "image3": {
+      "backend": "sd35",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-6c6892f8-1aa0-4c8f-d1ec-bc514adcbd42",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/sd3.5-medium",
+        "device": "cuda:0",
+        "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+        "dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "attention": "flash",
+        "options": {
+          "profile": false,
+          "cache": false,
+          "continuous_batch": true,
+          "sequence_packing": true,
+          "bubble_free": true,
+          "memory_strategy": "s4_disaggregated_pool",
+          "offload_text_encoders_after_warmup": true,
+          "encoder_pool": {
+            "enabled": true,
+            "write_shm": true,
+            "pin_memory": true,
+            "shm_dir": "/dev/shm/ditserve-hetero-embeds",
+            "max_entries": 64,
+            "max_bytes": 536870912
+          }
+        },
+        "model_manifest_path": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/sd35.manifest.json",
+        "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424"
+      }
+    },
+    "wan4": {
+      "backend": "wan",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-9bd9082d-b7d4-f4de-cd0a-5788492a5247",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b-official-b8fff731",
+        "device": "cuda:0",
+        "attention": "flash",
+        "vae_dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "options": {
+          "execution": "block",
+          "memory_strategy": "s4_disaggregated_pool",
+          "release_cache_on_stop": true,
+          "encoder_pool": {
+            "enabled": true,
+            "write_shm": true,
+            "pin_memory": true,
+            "shm_dir": "/dev/shm/ditserve-hetero-embeds",
+            "max_entries": 64,
+            "max_bytes": 536870912
+          }
+        },
+        "model_manifest_path": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/wan22-official-b8fff731.manifest.json",
+        "model_manifest_sha256": "02ac66402d23a0ad25fa9fece1f6f57e2dc08783dda18ff4c9904fddf28d2c5f"
+      }
+    },
+    "image4": {
+      "backend": "sd35",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-9bd9082d-b7d4-f4de-cd0a-5788492a5247",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/sd3.5-medium",
+        "device": "cuda:0",
+        "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+        "dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "attention": "flash",
+        "options": {
+          "profile": false,
+          "cache": false,
+          "continuous_batch": true,
+          "sequence_packing": true,
+          "bubble_free": true,
+          "memory_strategy": "s4_disaggregated_pool",
+          "offload_text_encoders_after_warmup": true,
+          "encoder_pool": {
+            "enabled": true,
+            "write_shm": true,
+            "pin_memory": true,
+            "shm_dir": "/dev/shm/ditserve-hetero-embeds",
+            "max_entries": 64,
+            "max_bytes": 536870912
+          }
+        },
+        "model_manifest_path": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/sd35.manifest.json",
+        "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424"
+      }
+    },
+    "wan5": {
+      "backend": "wan",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-bb1751f0-c0e1-a4e8-ae83-008e4246cced",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b-official-b8fff731",
+        "device": "cuda:0",
+        "attention": "flash",
+        "vae_dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "options": {
+          "execution": "block",
+          "memory_strategy": "s4_disaggregated_pool",
+          "release_cache_on_stop": true,
+          "encoder_pool": {
+            "enabled": true,
+            "write_shm": true,
+            "pin_memory": true,
+            "shm_dir": "/dev/shm/ditserve-hetero-embeds",
+            "max_entries": 64,
+            "max_bytes": 536870912
+          }
+        },
+        "model_manifest_path": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/wan22-official-b8fff731.manifest.json",
+        "model_manifest_sha256": "02ac66402d23a0ad25fa9fece1f6f57e2dc08783dda18ff4c9904fddf28d2c5f"
+      }
+    },
+    "image5": {
+      "backend": "sd35",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-bb1751f0-c0e1-a4e8-ae83-008e4246cced",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/sd3.5-medium",
+        "device": "cuda:0",
+        "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+        "dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "attention": "flash",
+        "options": {
+          "profile": false,
+          "cache": false,
+          "continuous_batch": true,
+          "sequence_packing": true,
+          "bubble_free": true,
+          "memory_strategy": "s4_disaggregated_pool",
+          "offload_text_encoders_after_warmup": true,
+          "encoder_pool": {
+            "enabled": true,
+            "write_shm": true,
+            "pin_memory": true,
+            "shm_dir": "/dev/shm/ditserve-hetero-embeds",
+            "max_entries": 64,
+            "max_bytes": 536870912
+          }
+        },
+        "model_manifest_path": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/sd35.manifest.json",
+        "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424"
+      }
+    },
+    "wan6": {
+      "backend": "wan",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-979da027-ad90-4f70-6203-0e86fce22d4c",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b-official-b8fff731",
+        "device": "cuda:0",
+        "attention": "flash",
+        "vae_dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "options": {
+          "execution": "block",
+          "memory_strategy": "s4_disaggregated_pool",
+          "release_cache_on_stop": true,
+          "encoder_pool": {
+            "enabled": true,
+            "write_shm": true,
+            "pin_memory": true,
+            "shm_dir": "/dev/shm/ditserve-hetero-embeds",
+            "max_entries": 64,
+            "max_bytes": 536870912
+          }
+        },
+        "model_manifest_path": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/wan22-official-b8fff731.manifest.json",
+        "model_manifest_sha256": "02ac66402d23a0ad25fa9fece1f6f57e2dc08783dda18ff4c9904fddf28d2c5f"
+      }
+    },
+    "image6": {
+      "backend": "sd35",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-979da027-ad90-4f70-6203-0e86fce22d4c",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/sd3.5-medium",
+        "device": "cuda:0",
+        "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+        "dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "attention": "flash",
+        "options": {
+          "profile": false,
+          "cache": false,
+          "continuous_batch": true,
+          "sequence_packing": true,
+          "bubble_free": true,
+          "memory_strategy": "s4_disaggregated_pool",
+          "offload_text_encoders_after_warmup": true,
+          "encoder_pool": {
+            "enabled": true,
+            "write_shm": true,
+            "pin_memory": true,
+            "shm_dir": "/dev/shm/ditserve-hetero-embeds",
+            "max_entries": 64,
+            "max_bytes": 536870912
+          }
+        },
+        "model_manifest_path": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/sd35.manifest.json",
+        "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424"
+      }
+    },
+    "wan7": {
+      "backend": "wan",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-e6a7b9a6-b668-5e8d-5989-b9934c468d94",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b-official-b8fff731",
+        "device": "cuda:0",
+        "attention": "flash",
+        "vae_dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "options": {
+          "execution": "block",
+          "memory_strategy": "s4_disaggregated_pool",
+          "release_cache_on_stop": true,
+          "encoder_pool": {
+            "enabled": true,
+            "write_shm": true,
+            "pin_memory": true,
+            "shm_dir": "/dev/shm/ditserve-hetero-embeds",
+            "max_entries": 64,
+            "max_bytes": 536870912
+          }
+        },
+        "model_manifest_path": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/wan22-official-b8fff731.manifest.json",
+        "model_manifest_sha256": "02ac66402d23a0ad25fa9fece1f6f57e2dc08783dda18ff4c9904fddf28d2c5f"
+      }
+    },
+    "image7": {
+      "backend": "sd35",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-e6a7b9a6-b668-5e8d-5989-b9934c468d94",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/sd3.5-medium",
+        "device": "cuda:0",
+        "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+        "dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "attention": "flash",
+        "options": {
+          "profile": false,
+          "cache": false,
+          "continuous_batch": true,
+          "sequence_packing": true,
+          "bubble_free": true,
+          "memory_strategy": "s4_disaggregated_pool",
+          "offload_text_encoders_after_warmup": true,
+          "encoder_pool": {
+            "enabled": true,
+            "write_shm": true,
+            "pin_memory": true,
+            "shm_dir": "/dev/shm/ditserve-hetero-embeds",
+            "max_entries": 64,
+            "max_bytes": 536870912
+          }
+        },
+        "model_manifest_path": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/sd35.manifest.json",
+        "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424"
+      }
+    }
+  },
+  "budget": {
+    "limit_gpu_seconds": 576000,
+    "watchdog_seconds": 72000,
+    "repair_reserve_gpu_seconds": 0,
+    "carry": "none"
+  },
+  "phases": [
+    {
+      "id": "cluster",
+      "kind": "cluster",
+      "policy": "static_sp1",
+      "profile": {
+        "provenance": "synthetic",
+        "sp_efficiency": 1.0,
+        "resize_ms": 100.0,
+        "quantum_overhead_ms": 0.0,
+        "block_overhead_ms": 0.0,
+        "classes": {
+          "wan22-preflight": {
+            "kind": "video",
+            "blocks_per_step": 60,
+            "prepare_ms": 100.0,
+            "encode_ms": 1000.0,
+            "step_compute_ms": 1000.0,
+            "comm_mb_per_step": 1000.0,
+            "collectives_per_step": 240,
+            "cfg_exchange_mb": 4.0,
+            "finish_ms": 1000.0,
+            "steps": 50,
+            "decode_chunks": 21
+          },
+          "sd35-preflight": {
+            "kind": "image",
+            "service_ms": 1000.0
+          }
+        },
+        "links": {
+          "2": {
+            "gbps": 3.0,
+            "latency_ms": 0.1
+          },
+          "3": {
+            "gbps": 3.0,
+            "latency_ms": 0.1
+          },
+          "4": {
+            "gbps": 3.0,
+            "latency_ms": 0.1
+          },
+          "6": {
+            "gbps": 3.0,
+            "latency_ms": 0.1
+          },
+          "8": {
+            "gbps": 3.0,
+            "latency_ms": 0.1
+          }
+        }
+      },
+      "occupancy_backend": "nvml",
+      "occupancy_thread": true,
+      "video_worker_options": {
+        "negative_prompt_cache_entries": 2,
+        "negative_prompt_cache_bytes": 67108864
+      },
+      "gpus": [
+        {
+          "video": "wan0",
+          "image": "image0"
+        },
+        {
+          "video": "wan1",
+          "image": "image1"
+        },
+        {
+          "video": "wan2",
+          "image": "image2"
+        },
+        {
+          "video": "wan3",
+          "image": "image3"
+        },
+        {
+          "video": "wan4",
+          "image": "image4"
+        },
+        {
+          "video": "wan5",
+          "image": "image5"
+        },
+        {
+          "video": "wan6",
+          "image": "image6"
+        },
+        {
+          "video": "wan7",
+          "image": "image7"
+        }
+      ],
+      "text_prefetch": 1,
+      "output_mode": "check",
+      "warmup": [
+        {
+          "worker": "wan0",
+          "spec": {
+            "steps": 1,
+            "height": 512,
+            "width": 896,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "warmup",
+            "seed": 7
+          },
+          "quantum": "step"
+        },
+        {
+          "worker": "image0",
+          "spec": {
+            "height": 1024,
+            "width": 1024,
+            "steps": 1,
+            "frames": 1,
+            "batch_size": 1,
+            "guidance_scale": 4.5,
+            "negative_prompt": "blurry, low quality",
+            "max_sequence_length": 256,
+            "prompt": "warmup",
+            "seed": 7
+          }
+        },
+        {
+          "worker": "wan1",
+          "spec": {
+            "steps": 1,
+            "height": 512,
+            "width": 896,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "warmup",
+            "seed": 7
+          },
+          "quantum": "step"
+        },
+        {
+          "worker": "image1",
+          "spec": {
+            "height": 1024,
+            "width": 1024,
+            "steps": 1,
+            "frames": 1,
+            "batch_size": 1,
+            "guidance_scale": 4.5,
+            "negative_prompt": "blurry, low quality",
+            "max_sequence_length": 256,
+            "prompt": "warmup",
+            "seed": 7
+          }
+        },
+        {
+          "worker": "wan2",
+          "spec": {
+            "steps": 1,
+            "height": 512,
+            "width": 896,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "warmup",
+            "seed": 7
+          },
+          "quantum": "step"
+        },
+        {
+          "worker": "image2",
+          "spec": {
+            "height": 1024,
+            "width": 1024,
+            "steps": 1,
+            "frames": 1,
+            "batch_size": 1,
+            "guidance_scale": 4.5,
+            "negative_prompt": "blurry, low quality",
+            "max_sequence_length": 256,
+            "prompt": "warmup",
+            "seed": 7
+          }
+        },
+        {
+          "worker": "wan3",
+          "spec": {
+            "steps": 1,
+            "height": 512,
+            "width": 896,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "warmup",
+            "seed": 7
+          },
+          "quantum": "step"
+        },
+        {
+          "worker": "image3",
+          "spec": {
+            "height": 1024,
+            "width": 1024,
+            "steps": 1,
+            "frames": 1,
+            "batch_size": 1,
+            "guidance_scale": 4.5,
+            "negative_prompt": "blurry, low quality",
+            "max_sequence_length": 256,
+            "prompt": "warmup",
+            "seed": 7
+          }
+        },
+        {
+          "worker": "wan4",
+          "spec": {
+            "steps": 1,
+            "height": 512,
+            "width": 896,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "warmup",
+            "seed": 7
+          },
+          "quantum": "step"
+        },
+        {
+          "worker": "image4",
+          "spec": {
+            "height": 1024,
+            "width": 1024,
+            "steps": 1,
+            "frames": 1,
+            "batch_size": 1,
+            "guidance_scale": 4.5,
+            "negative_prompt": "blurry, low quality",
+            "max_sequence_length": 256,
+            "prompt": "warmup",
+            "seed": 7
+          }
+        },
+        {
+          "worker": "wan5",
+          "spec": {
+            "steps": 1,
+            "height": 512,
+            "width": 896,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "warmup",
+            "seed": 7
+          },
+          "quantum": "step"
+        },
+        {
+          "worker": "image5",
+          "spec": {
+            "height": 1024,
+            "width": 1024,
+            "steps": 1,
+            "frames": 1,
+            "batch_size": 1,
+            "guidance_scale": 4.5,
+            "negative_prompt": "blurry, low quality",
+            "max_sequence_length": 256,
+            "prompt": "warmup",
+            "seed": 7
+          }
+        },
+        {
+          "worker": "wan6",
+          "spec": {
+            "steps": 1,
+            "height": 512,
+            "width": 896,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "warmup",
+            "seed": 7
+          },
+          "quantum": "step"
+        },
+        {
+          "worker": "image6",
+          "spec": {
+            "height": 1024,
+            "width": 1024,
+            "steps": 1,
+            "frames": 1,
+            "batch_size": 1,
+            "guidance_scale": 4.5,
+            "negative_prompt": "blurry, low quality",
+            "max_sequence_length": 256,
+            "prompt": "warmup",
+            "seed": 7
+          }
+        },
+        {
+          "worker": "wan7",
+          "spec": {
+            "steps": 1,
+            "height": 512,
+            "width": 896,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "warmup",
+            "seed": 7
+          },
+          "quantum": "step"
+        },
+        {
+          "worker": "image7",
+          "spec": {
+            "height": 1024,
+            "width": 1024,
+            "steps": 1,
+            "frames": 1,
+            "batch_size": 1,
+            "guidance_scale": 4.5,
+            "negative_prompt": "blurry, low quality",
+            "max_sequence_length": 256,
+            "prompt": "warmup",
+            "seed": 7
+          }
+        }
+      ],
+      "workload": [
+        {
+          "request_id": "video-calibration",
+          "kind": "video",
+          "class": "wan22-preflight",
+          "arrival_ms": 0,
+          "deadline_ms": 3600000,
+          "service_ms": 60000,
+          "spec": {
+            "steps": 50,
+            "height": 512,
+            "width": 896,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "cinematic drama, steaming coffee mug on table in modern kitchen, sunbeams falling through window, -neg &quot;morphing, erratic fluctuation in motion, noisy, bad quality, distorted, stabilized, blurry&quot; -camera rotate ccw  ",
+            "seed": 101
+          },
+          "output_mode": "check"
+        },
+        {
+          "request_id": "image-calibration",
+          "kind": "image",
+          "class": "sd35-preflight",
+          "arrival_ms": 1000,
+          "deadline_ms": 3600000,
+          "service_ms": 10000,
+          "spec": {
+            "height": 1024,
+            "width": 1024,
+            "steps": 28,
+            "frames": 1,
+            "batch_size": 1,
+            "guidance_scale": 4.5,
+            "negative_prompt": "blurry, low quality",
+            "max_sequence_length": 256,
+            "prompt": "chemical woekshop, by victo ngai and greg rutkowski, trending on artstation, unreal engine, 4 k hd wallpaper ",
+            "seed": 101
+          },
+          "output_mode": "check"
+        }
+      ],
+      "options": {
+        "sp_transport": "export",
+        "async_rank0_decode": false,
+        "image_batch": 1,
+        "tiered_memory": false
+      },
+      "matrix": {
+        "/policy": [
+          "static_sp1",
+          "static_cfg2",
+          "static_sp2",
+          "static_cfg2sp2",
+          "static_sp3",
+          "static_cfg2sp3",
+          "static_sp4",
+          "static_cfg2sp4",
+          "static_sp6",
+          "static_sp8"
+        ]
+      },
+      "artifact_dependencies": []
+    }
+  ],
+  "benchmark": {
+    "native_calibration": true,
+    "performance_qualified": false,
+    "quality_qualified": false,
+    "models": [
+      "Wan2.2-TI2V-5B",
+      "SD3.5-Medium"
+    ],
+    "fit_policies": [
+      "static_sp1",
+      "static_cfg2",
+      "static_sp2",
+      "static_cfg2sp2",
+      "static_sp4"
+    ],
+    "held_out_policies": [
+      "static_sp3",
+      "static_cfg2sp3",
+      "static_cfg2sp4",
+      "static_sp6",
+      "static_sp8"
+    ],
+    "shape": {
+      "frames": 81,
+      "steps": 50,
+      "image_steps": 28
+    },
+    "image_batch_calibration": 1,
+    "formal_protocol": {
+      "schema": "ditserve.formal-protocol.v2",
+      "id": "formal-mixed-v2",
+      "sha256": "7039ac6717c73023eb77332c3026d1951cd190fd931adfea3a70731d73e607ba",
+      "split": "calibration",
+      "role": "calibration",
+      "shape_ids": [
+        "wan22-480p",
+        "sd35-1024"
+      ],
+      "profile_bundle_sha256": null,
+      "dataset_split_sha256": {
+        "image": "c159b184f50363d9e00d34ae311cfddf178c1d9261ed8687c918d02bd97f9770",
+        "video": "bff63ddedb3bd987e876cfe96377bd5bf555480364fc3831a890ed65bc762c16"
+      }
+    },
+    "model_manifests": {
+      "sd35": {
+        "path": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/sd35.manifest.json",
+        "sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424"
+      },
+      "wan21": {
+        "path": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/wan21.manifest.json",
+        "sha256": "3c0dbaa3dab1ac025a95dc4d0f3a835a83e044fc811fa7512387e094aeb006ca"
+      },
+      "wan22": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b-official-b8fff731",
+        "path": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/wan22-official-b8fff731.manifest.json",
+        "sha256": "02ac66402d23a0ad25fa9fece1f6f57e2dc08783dda18ff4c9904fddf28d2c5f"
+      }
+    }
+  }
+}

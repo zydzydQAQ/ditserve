@@ -1,0 +1,11 @@
+{
+  "published_at_utc": "2026-11-02T23:34:37.342751+00:00",
+  "remote_specs": "/data/share/jjjkairos/data/DITSERVE/job-specs/20261103-cal8-51740c0",
+  "spec_sha256": {
+    "d20261103-formal-cal8-wan22-51740c0-r1.json": "d1e1279e9cf783938b5143deef547ebab65cee0aa80b8bcd13c1f88b51aee017",
+    "d20261103-formal-cal8-wan21-51740c0-r1.json": "606374752ba070849d121a7a49ead74831a3db5c482caac3f75ce228dc1c6eda"
+  },
+  "current_docs_asset_sha256": "99eb63b0704abdc2cc99f28b73c9693be35248d0449f7a02416be5abd90fd94f",
+  "qualification_eligible": false,
+  "allows": []
+}

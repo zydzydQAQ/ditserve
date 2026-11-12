@@ -1,0 +1,315 @@
+{
+  "schema": "ditserve.external-reproduction-contract.v1",
+  "id": "external-reproduction-v1",
+  "status": "implementation_and_compatibility_validation",
+  "qualified": false,
+  "formal_protocol_file": "formal-mixed-v1.json",
+  "formal_protocol_sha256": "6bcefd0a15088214dcde21c787007f52cfe79fbb262532a5d5c3682bcb0e801c",
+  "models": [
+    "wan21",
+    "wan22",
+    "sd35"
+  ],
+  "comparison_cells": [
+    {
+      "id": "wan21-sd35",
+      "models": [
+        "wan21",
+        "sd35"
+      ],
+      "scope": "existing frozen pairwise mixed-modality, mixed-resolution trace"
+    },
+    {
+      "id": "wan22-sd35",
+      "models": [
+        "wan22",
+        "sd35"
+      ],
+      "scope": "existing frozen pairwise mixed-modality, mixed-resolution trace"
+    }
+  ],
+  "three_model_mixture": "not in the current frozen formal protocol; requires a separately versioned protocol and calibration",
+  "baseline_comparison_tracks": {
+    "in_framework_policy_comparison": {
+      "scope": "Wan + SD3.5 mixed-workload main table on the shared verified DitServe executor comparing scheduling mechanisms",
+      "comparison_cells": [
+        "wan21-sd35",
+        "wan22-sd35"
+      ],
+      "policies": [
+        "Static-<Form>",
+        "TetriServe-policy",
+        "SBP-ESP",
+        "EDF-BF",
+        "DitServe"
+      ],
+      "ablation_only_policies": [
+        "EDF-CFG2",
+        "CFG2-First"
+      ],
+      "executor": "shared verified DitServe executor"
+    },
+    "external_system_native_intersection": {
+      "scope": "Native supported workload intersections for external systems",
+      "TetriServe": {
+        "models": [
+          "sd35"
+        ],
+        "shapes": [
+          "sd35-512",
+          "sd35-1024"
+        ],
+        "workload": "native SD3.5 512^2/1024^2 image workloads"
+      },
+      "xDiT": {
+        "models": [
+          "wan21",
+          "wan22",
+          "sd35"
+        ],
+        "workload": "native single-model fixed partition/SP workloads"
+      }
+    }
+  },
+  "quality_and_numerical_verification": {
+    "acceptance_gate_hierarchy": {
+      "same_parallelism_segmentation_gate": {
+        "scope": "Uninterrupted vs. round-segmented/resumed execution at the same parallelism degree (e.g., fixed-CFG2 EDF-CFG2 vs. Block-CFG2, or fixed-SP2 round_sp2_full vs. round_sp2_chunked)",
+        "mode": "strict_elementwise_equivalence",
+        "atol": 1e-05,
+        "rtol": 1e-05,
+        "require_bitwise_when_deterministic": true
+      },
+      "cross_sp_acceptance_gate": {
+        "scope": "Execution across different sequence-parallel degrees (SP1 vs. SP2/SP4/SP8 or elastic CFG2 <-> CFG2SPk)",
+        "mode": "semantic_quality_equivalence",
+        "require_finite_outputs": true,
+        "cosine_similarity_min": 0.95,
+        "relative_l2_max": 0.25,
+        "psnr_db_min": 20.0,
+        "ssim_min": 0.85,
+        "lpips_max": 0.15,
+        "thresholds": {
+          "cosine_similarity_min": 0.95,
+          "relative_l2_max": 0.25,
+          "psnr_db_min": 20.0,
+          "ssim_min": 0.85,
+          "lpips_max": 0.15
+        },
+        "diagnostic_elementwise_tolerance": {
+          "atol": 1e-05,
+          "rtol": 1e-05
+        },
+        "strict_elementwise_1e5_is_diagnostic_only": true
+      }
+    }
+  },
+  "sources": [
+    {
+      "id": "TetriServe",
+      "repository": "DiT-Serving/TetriServe",
+      "commit": "414ec2956c09466ccd7842fda9851511462bd42a",
+      "preserve": [
+        "original scheduler",
+        "round batching",
+        "ZMQ worker dispatch",
+        "NCCL latent transfer",
+        "dynamic SP regroup"
+      ]
+    },
+    {
+      "id": "GF-DiT",
+      "repository": "SJTU-Liquid/GF-DiT",
+      "commit": "442531e499891d4ffa654e87c076f03326a37b98",
+      "preserve": [
+        "runtime_v2 EDF-best-fit",
+        "original cost model and admission policy",
+        "original migration engine",
+        "GFC online execution groups"
+      ]
+    },
+    {
+      "id": "xDiT",
+      "repository": "xdit-project/xDiT",
+      "commit": "16c34e7f070de65d9d2c67a6d74e0007dd8b426a",
+      "preserve": [
+        "official pipeline/runner",
+        "native parallel decomposition"
+      ],
+      "serving_scope": "Any added multi-model queue/router is a disclosed port, not an upstream native serving feature"
+    },
+    {
+      "id": "GenServe",
+      "paper": "2604.04335v2",
+      "source_status": "official code release not yet located",
+      "eligibility": "unavailable until official code is found or a separately labeled paper reimplementation is validated; SBP-ESP policy is not a full-system result"
+    }
+  ],
+  "shared_backend": {
+    "frozen_build": "51740c05944b063e39bc325b64241cd611a73b41",
+    "xfuser_base_commit": "16c34e7f070de65d9d2c67a6d74e0007dd8b426a",
+    "identity": "complete source inventory, patch digest, actual import origins, kernel selection and dependency versions; revision label alone is insufficient",
+    "gfc_commit": "9aadcdc6d4abc30af13feac908fbb4be98313398",
+    "rule": "Share validated model/kernel components while preserving each external system scheduler, batching, state movement and communication design. A GFC-to-NCCL substitution is not a faithful GF-DiT reproduction."
+  },
+  "fairness": {
+    "input": "Export each frozen request once; reuse identical prompt bytes, model manifest, resolution, frames, steps, CFG scale, negative prompt, scheduler settings, seed, arrival and absolute deadline.",
+    "quality": "Decode the full required output before completion. Separate semantic/visual quality evaluation from finite-value and digest checks; no skipped steps, hidden cache approximation or altered precision without a separately labeled variant.",
+    "batching": {
+      "outputs_per_request": 1,
+      "native_dynamic_batching": "enabled where supported; tune using calibration only",
+      "legacy_batch_limit_1": "existing DITSERVE controller configuration, not a requirement to disable an external system native batching"
+    },
+    "hardware": "Equal total allocated GPUs, actual GPU types and topology; report resident model memory, host CPU/RAM, and cross-node placement. Time comparison runs sequentially or on disjoint nodes to control co-tenant contention.",
+    "arrival": "Open-loop arrivals from one client monotonic origin. Queueing and dispatch lag count toward latency; never postpone the original deadline when admission is delayed.",
+    "denominator": "All offered requests remain in SLO attainment, including rejected, failed, cancelled, unexecuted and timed-out requests. Missing results are failures, never dropped.",
+    "timing": "Same start and completion boundary for every system. Report scheduled-arrival-to-output-ready and wire/serialization separately; do not compare a digest-only server to a base64 image/video response as one latency metric.",
+    "slo": "One frozen per-shape SP1 service reference shared by every system; no baseline-specific SLO rescaling.",
+    "calibration": "Identical split and comparable tuning budgets; allow native batching/parallelism tuning without test-set feedback; record model-specific cost profiles.",
+    "report": "Per-model and per-resolution SLO attainment, goodput and latency; throughput with measurement horizon/drain convention; memory and GPU-time; three fixed test seeds and uncertainty across independent runs.",
+    "unsupported": "Mark exact unsupported cells and reasons. A supported subset has its own table and cannot stand in for full mixed-workload results."
+  },
+  "qualification_sequence": [
+    "full source and shared-backend identity verification",
+    "actual fixed-image imports and dependencies",
+    "offline exact model loading and native single-request generation",
+    "uninterrupted versus segmented/reassigned numerical validation, where applicable",
+    "two-request overlap, mixed-resolution and cross-model state isolation",
+    "common quality/output-completion validation",
+    "calibration split tuning and source-bound profile freeze",
+    "identical held-out trace replay under equal resource allocation",
+    "independent result accounting and full-system comparison eligibility"
+  ],
+  "current_policy_reimplementations": "in-framework policy controls only; excluded from official external-system claims",
+  "allows": [],
+  "native_support_boundaries": {
+    "evidence_scope": "Static audit of the frozen official commits, plus separately recorded component GPU diagnostics; not full-system qualification.",
+    "TetriServe": {
+      "model_scope": "One model per CServeRuntime; a same-pool SD3.5/Wan mixture requires an explicitly labelled extension.",
+      "batch_scope": "Original split/merge regroups samples of one request ID. It is not independent-request dynamic coalescing. Each tensor batch has one resolution/seed/profile; mixed resolutions are separate requests.",
+      "required_runtime_dependency": "pyzmq is required by the original Router/Dealer worker control plane. Direct CServeRuntime.generate bypasses only the HTTP front door.",
+      "source_locations": [
+        "tetriserve/engine/runtime.py:65",
+        "tetriserve/engine/runtime.py:104",
+        "tetriserve/engine/runtime.py:177",
+        "tetriserve/engine/runner.py:178",
+        "tetriserve/engine/request_tracker.py:63"
+      ],
+      "pending_compatibility": [
+        "Convert original remote Future/Work.wait float timeouts to timedelta on Torch2.10 without replacing transport.",
+        "Validate BS1/BS2 and reject unsupported nondivisible splitting; arbitrary mixed-step batches are not established.",
+        "Wan requires a video output contract and complete UniPC history, beyond the five SD3 tensors."
+      ]
+    },
+    "GF-DiT": {
+      "model_scope": "runtime_v2 registry contains Wan/Qwen; the ordinary diffusion registry SD3 entry does not establish runtime_v2 SD3 support. Runner and workers share one model configuration.",
+      "required_runtime_dependency": "Native WorkerWrapperBase, VllmConfig/workspace/model loader and Wan parallel layers use real vLLM. Lightweight control-plane dependencies alone do not satisfy this path.",
+      "shared_port_scope": "Preserve original MultiprocWorkerPool spawn/Pipe/readers/event loop, EDF/DAG and migration, with an explicit real xfuser model/session adapter. Do not synthesize fake vllm modules.",
+      "source_locations": [
+        "vllm_omni/diffusion/runtime_v2/registry.py:16",
+        "vllm_omni/diffusion/runtime_v2/runner.py:101",
+        "vllm_omni/diffusion/runtime_v2/multiproc_worker.py:905",
+        "vllm_omni/diffusion/worker/diffusion_worker.py:127"
+      ],
+      "pending_compatibility": [
+        "Bridge online logical groups and actual attention collectives to original GF collective_runtime, beyond successful SP1 migration.",
+        "Do not accept missing cost profiles returning zero for formal EDF comparison.",
+        "Treat cross-model same-pool scheduling as an added port feature, not an upstream capability."
+      ]
+    },
+    "xDiT": {
+      "model_scope": "Official native Wan runners can validate model/parallel execution; added serving queues or cross-model routing remain explicitly disclosed extensions."
+    },
+    "interpretation": "An unsupported native comparison cell remains visible. A common-backend extended port has a separate label, source/patch identity and validation; it is not an untouched native-oracle result."
+  },
+  "remaining_implementation": [
+    {
+      "order": 1,
+      "task": "Freeze common numerical profile",
+      "requires": [
+        "Versioned Wan recipe: DiT/UMT5/VAE learned components BF16, UMT5 on CPU; latent and UniPC solver/history remain FP32 where required",
+        "Identical CPU Generator producing FP32 initial noise, plus initial-noise and positive/negative embedding digests",
+        "Same explicit DiT attention; VAE math attention and FP32 inverse-normalization before BF16 VAE, followed by FP32 postprocessing",
+        "Real timesteps/sigmas plus scheduler-order/flow-shift receipts",
+        "Profile-bound actual VAE temporal/spatial factors, component dtype/device and BF16 migration/cache validation; cache-off first, approximation separately qualified"
+      ],
+      "acceptance": "Fresh uninterrupted-versus-segmented/parallel validation on every supported formal shape; historical517 outputs remain separate."
+    },
+    {
+      "order": 2,
+      "task": "Build source-bound calibration profiles",
+      "requires": [
+        "SD3.5 512/1024 x BS1/BS2 x SP1/SP2, with explicit OOM/unsupported cells",
+        "Wan formal shapes and relevant SP degrees",
+        "Common calibration split and tuning budget"
+      ],
+      "acceptance": "Before the real service loop starts, measured nonzero costs cover every initially permitted shape/batch/SP; record unsupported cells. Recalibrate later Wan/model/SP extensions before their replay. No synthetic costs or test-trace feedback in formal runs."
+    },
+    {
+      "order": 3,
+      "task": "Integrate original full service execution loops",
+      "requires": [
+        "Tetri pyzmq image dependency and explicit timeout compatibility"
+      ],
+      "acceptance": "Two overlapping independent seeds at 512/1024, real dispatch, identities, complete outputs, timeout/failure reporting and process cleanup.",
+      "optional_gfdit_extension": "Original process pool with genuine shared model/session adapter or separately qualified native vLLM stack; not a prerequisite for xDiT/TetriServe comparison."
+    },
+    {
+      "order": 4,
+      "task": "Complete scheduler-driven migration and SP changes",
+      "requires": [
+        "Original scheduler causes the move",
+        "SP1-to-SP2-to-SP1",
+        "Noncontiguous ranks and concurrent requests",
+        "Original Tetri NCCL transport or GF online GFC collectives respectively"
+      ],
+      "acceptance": "State ownership, solver/RNG/cache continuation and actual communication are validated against independent full-model results; no scheduler or collective replacement."
+    },
+    {
+      "order": 5,
+      "task": "Add explicit video and mixed-model ports",
+      "requires": [
+        "Complete Wan UniPC model_outputs/last_sample/cursor history",
+        "Video decode and completion protocol",
+        "Model residency and switching accounting",
+        "Separate native supported intersections and extended mixed-model labels"
+      ],
+      "acceptance": "Per-request state isolation and quality validation across each frozen two-model mixture; unsupported native cells retained."
+    },
+    {
+      "order": 6,
+      "task": "Run fair held-out serving comparison",
+      "requires": [
+        "Same immutable input export and all-offered denominator",
+        "Equal allocated GPU/CPU resources and controlled co-tenancy",
+        "Three fixed seeds and per-modality/resolution metrics"
+      ],
+      "acceptance": "Independent accounting of failures, SLO goodput, long tails, quality and GPU-time; only then full-system comparison eligibility."
+    }
+  ],
+  "baseline_priority": {
+    "as_of": "2026-11-04",
+    "basis": "User requests maximum alignment on the existing image and models; GF-DiT is optional.",
+    "primary": [
+      "xDiT",
+      "TetriServe"
+    ],
+    "optional_mechanism_reference": [
+      "GF-DiT"
+    ],
+    "gfdit_full_native_service_blocks_primary_comparison": false,
+    "gfdit_reference_scope": [
+      "Source-bound original EDF-Best-Fit/EDF-Greedy decisions with common absolute deadlines and explicit model/shape/stage/SP costs",
+      "Original group-free collective correctness and elastic-group mechanism checks; independently qualified from scheduling",
+      "Optional shared-backend task and migration execution after numerical validation"
+    ],
+    "claim_boundary": "A policy event replay, a GFC microbenchmark, and a model migration check are separate mechanisms; their combination is not evidence of a complete GF-DiT service. Reused GF mechanisms remain prior work, not new DitServe contributions.",
+    "unchanged_primary_gates": [
+      "identical workload/model/backend recipes",
+      "numerical and quality acceptance",
+      "measured calibration costs",
+      "all-offered serving accounting",
+      "explicit native-support and shared-backend-port labels"
+    ]
+  }
+}

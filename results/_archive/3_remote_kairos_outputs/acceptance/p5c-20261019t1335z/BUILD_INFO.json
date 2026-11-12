@@ -1,0 +1,10 @@
+{
+ "commit": "bcf569d6fef470248a7dca56caa1010e1021c10d",
+ "subject": "Interleave the two CFG branches block by block on two CUDA streams",
+ "built_utc": "2026-10-19T13:08:26+00:00",
+ "builder_image": "sha256:524c56a3d528dd3ce1e6a54d432927bde23b27de95015c796c919ac8bdecf5ad",
+ "tested_runtime_image": "127.0.0.1:30500/jjjkairos/ditserve:8a100-224099f",
+ "core_sha256": "87cfb16cbc6f732c8f538555bb042c23a8e17104c5b418fb5fc14059a6ad7abd",
+ "files": 113,
+ "bytes": 3035432
+}

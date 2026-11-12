@@ -1,0 +1,619 @@
+{
+  "schema": "ditserve.hetero.8gpu_baselines_and_ablation.v1",
+  "provenance": "measured: real 8-GPU distributed Wan2.1+SD3.5 execution on jjjkairos",
+  "hosts_by_rank": [
+    "heterodit-v5-8gpu-1x8-20261031-r9-master-0",
+    "heterodit-v5-8gpu-1x8-20261031-r9-master-0",
+    "heterodit-v5-8gpu-1x8-20261031-r9-master-0",
+    "heterodit-v5-8gpu-1x8-20261031-r9-master-0",
+    "heterodit-v5-8gpu-1x8-20261031-r9-master-0",
+    "heterodit-v5-8gpu-1x8-20261031-r9-master-0",
+    "heterodit-v5-8gpu-1x8-20261031-r9-master-0",
+    "heterodit-v5-8gpu-1x8-20261031-r9-master-0"
+  ],
+  "cross_node": false,
+  "gpu": "NVIDIA A100-PCIE-40GB",
+  "torch": "2.10.0+cu126",
+  "nccl": "2.27.5",
+  "measured_pcie_swap_roundtrip_ms": 4500.3,
+  "part_a_all_11_baselines_and_sota_8gpu": [
+    {
+      "policy": "B1: Vanilla-xDiT-8GPU (Static u4r2, Non-Preemptive FCFS, FP32-VAE, SDPA_MATH)",
+      "image_wave1_latency_ms": 14551.2,
+      "image_wave2_latency_ms": 13451.2,
+      "image_wave3_latency_ms": 14621.5,
+      "image_mean_latency_ms": 14311.3,
+      "image_p99_latency_ms": 14621.5,
+      "video_latency_ms": 12879.6,
+      "image_slo_pct": 0.0,
+      "video_slo_pct": 0.0,
+      "total_slo_pct": 0.0,
+      "video_slo_12s_pct": 0.0,
+      "total_slo_12s_pct": 0.0
+    },
+    {
+      "policy": "B2: Static-SP1-EDF (8x Independent SP1 Workers, Non-Preemptive EDF, FP32-VAE)",
+      "image_wave1_latency_ms": 2314.3,
+      "image_wave2_latency_ms": 3531.0,
+      "image_wave3_latency_ms": 6953.5,
+      "image_mean_latency_ms": 4938.1,
+      "image_p99_latency_ms": 6953.5,
+      "video_latency_ms": 12346.4,
+      "image_slo_pct": 0.0,
+      "video_slo_pct": 0.0,
+      "video_slo_12s_pct": 0.0,
+      "total_slo_pct": 0.0,
+      "total_slo_12s_pct": 0.0,
+      "notes": "Rank 0 runs unpreemptible SP1 video; Ranks 1..7 serve T2I bursts (8-image Wave 3 overflows 7 free GPUs)."
+    },
+    {
+      "policy": "B3: Static-Partition-4v4i (4-GPU Video u4r1 + 4-GPU Dedicated T2I)",
+      "image_wave1_latency_ms": 651.8,
+      "image_wave2_latency_ms": 621.0,
+      "image_wave3_latency_ms": 1006.1,
+      "image_mean_latency_ms": 821.3,
+      "image_p99_latency_ms": 1006.1,
+      "video_latency_ms": 10947.3,
+      "image_slo_pct": 100.0,
+      "video_slo_pct": 0.0,
+      "total_slo_pct": 94.12,
+      "video_slo_12s_pct": 100.0,
+      "total_slo_12s_pct": 100.0
+    },
+    {
+      "policy": "B4: Static-Partition-6v2i (6-GPU Video u3r2 + 2-GPU Dedicated T2I, No Elastic Borrowing)",
+      "image_wave1_latency_ms": 1419.2,
+      "image_wave2_latency_ms": 1729.2,
+      "image_wave3_latency_ms": 3252.4,
+      "image_mean_latency_ms": 2413.3,
+      "image_p99_latency_ms": 3252.4,
+      "video_latency_ms": 14327.3,
+      "image_slo_pct": 25.0,
+      "video_slo_pct": 0.0,
+      "video_slo_12s_pct": 0.0,
+      "total_slo_pct": 23.53,
+      "total_slo_12s_pct": 23.53,
+      "notes": "Fixed 6+2 partition: 2 T2I GPUs handle 4-image Wave 1/2 but overload on 8-image Wave 3 without elastic borrowing."
+    },
+    {
+      "policy": "B5: TridentServe-Stage (8-GPU u4r2 Stage-Boundary Preemption, FP32-VAE)",
+      "image_wave1_latency_ms": 12916.8,
+      "image_wave2_latency_ms": 14135.5,
+      "image_wave3_latency_ms": 15286.8,
+      "image_mean_latency_ms": 14406.5,
+      "image_p99_latency_ms": 15286.8,
+      "video_latency_ms": 19720.6,
+      "image_slo_pct": 0.0,
+      "video_slo_pct": 0.0,
+      "video_slo_12s_pct": 0.0,
+      "total_slo_pct": 0.0,
+      "total_slo_12s_pct": 0.0,
+      "notes": "Preempts only between the 20-step Diffusion stage and 3D-VAE stage; holds 8 GPUs during all 20 steps."
+    },
+    {
+      "policy": "B6: TetriServe-Round (8-GPU u4r2 Coarse 5-Step Round Preemption, FP32-VAE)",
+      "image_wave1_latency_ms": 2917.0,
+      "image_wave2_latency_ms": 2597.8,
+      "image_wave3_latency_ms": 2179.5,
+      "image_mean_latency_ms": 2468.5,
+      "image_p99_latency_ms": 2917.0,
+      "video_latency_ms": 15038.3,
+      "image_slo_pct": 0.0,
+      "video_slo_pct": 0.0,
+      "video_slo_12s_pct": 0.0,
+      "total_slo_pct": 0.0,
+      "total_slo_12s_pct": 0.0,
+      "notes": "Preempts only at coarse 5-step round boundaries (steps 5, 10, 15, 20)."
+    },
+    {
+      "policy": "B7 / A0: GenServe-40GB (8-GPU u4r2 1-Step Gang Preempt + Real Cold PCIe Weight Swap + FP32-VAE)",
+      "image_wave1_latency_ms": 2915.3,
+      "image_wave2_latency_ms": 5920.4,
+      "image_wave3_latency_ms": 8742.0,
+      "image_mean_latency_ms": 6579.9,
+      "image_p99_latency_ms": 8742.0,
+      "video_latency_ms": 24295.3,
+      "image_slo_pct": 0.0,
+      "video_slo_pct": 0.0,
+      "video_slo_12s_pct": 0.0,
+      "total_slo_pct": 0.0,
+      "total_slo_12s_pct": 0.0,
+      "notes": "Incurs real PCIe weight swap (4500.3 ms roundtrip) on each preempted wave."
+    },
+    {
+      "policy": "B8 / A1: + Tier-0 Permanent HBM Co-Residency & Opt #3 Fast CPU Encoder (8-GPU u4r2 Gang Step-Preempt, Exact)",
+      "image_wave1_latency_ms": 1211.2,
+      "image_wave2_latency_ms": 871.6,
+      "image_wave3_latency_ms": 1014.4,
+      "image_mean_latency_ms": 1027.9,
+      "image_p99_latency_ms": 1211.2,
+      "video_latency_ms": 14991.3,
+      "image_slo_pct": 100.0,
+      "video_slo_pct": 0.0,
+      "video_slo_12s_pct": 0.0,
+      "total_slo_pct": 94.12,
+      "total_slo_12s_pct": 94.12,
+      "notes": "Eliminates PCIe weight swaps via Tier-0 HBM co-residency and CPU EncoderPool LRU cache."
+    },
+    {
+      "policy": "B9: HeteroDiT-Joint-v4 (8-GPU Gang u4r2 + Static AsymCFG + Taylor + Sync BF16-VAE)",
+      "image_wave1_latency_ms": 1038.5,
+      "image_wave2_latency_ms": 1072.0,
+      "image_wave3_latency_ms": 1044.7,
+      "image_mean_latency_ms": 1050.0,
+      "image_p99_latency_ms": 1072.0,
+      "video_latency_ms": 9431.8,
+      "image_slo_pct": 100.0,
+      "video_slo_pct": 0.0,
+      "total_slo_pct": 94.12,
+      "video_slo_12s_pct": 100.0,
+      "total_slo_12s_pct": 100.0
+    },
+    {
+      "policy": "Ours-1 / A6: HeteroDiT-Elastic-v5 (+ Opt #1a Asymmetric 6+2 Sub-Cluster u3r2 + Opt #2-#5)",
+      "image_wave1_latency_ms": 1006.7,
+      "image_wave2_latency_ms": 1003.0,
+      "image_wave3_latency_ms": 1065.6,
+      "image_mean_latency_ms": 1035.2,
+      "image_p99_latency_ms": 1065.6,
+      "video_latency_ms": 8251.3,
+      "image_slo_pct": 100.0,
+      "video_slo_pct": 100.0,
+      "total_slo_pct": 100.0,
+      "video_slo_12s_pct": 100.0,
+      "total_slo_12s_pct": 100.0
+    },
+    {
+      "policy": "Ours-2 / A7: HeteroDiT-Morphing-v5 (+ Opt #1b+#4 Dynamic CFG-Morphing 6+2->3+5 Sub-Cluster + Opt #2-#5)",
+      "image_wave1_latency_ms": 1006.6,
+      "image_wave2_latency_ms": 918.2,
+      "image_wave3_latency_ms": 597.5,
+      "image_mean_latency_ms": 780.0,
+      "image_p99_latency_ms": 1006.6,
+      "video_latency_ms": 7358.8,
+      "image_slo_pct": 100.0,
+      "video_slo_pct": 100.0,
+      "total_slo_pct": 100.0,
+      "video_slo_12s_pct": 100.0,
+      "total_slo_12s_pct": 100.0
+    }
+  ],
+  "part_b_cumulative_8stage_ablation_8gpu": [
+    {
+      "policy": "B7 / A0: GenServe-40GB (8-GPU u4r2 1-Step Gang Preempt + Real Cold PCIe Weight Swap + FP32-VAE)",
+      "image_wave1_latency_ms": 2915.3,
+      "image_wave2_latency_ms": 5920.4,
+      "image_wave3_latency_ms": 8742.0,
+      "image_mean_latency_ms": 6579.9,
+      "image_p99_latency_ms": 8742.0,
+      "video_latency_ms": 24295.3,
+      "image_slo_pct": 0.0,
+      "video_slo_pct": 0.0,
+      "video_slo_12s_pct": 0.0,
+      "total_slo_pct": 0.0,
+      "total_slo_12s_pct": 0.0,
+      "notes": "Incurs real PCIe weight swap (4500.3 ms roundtrip) on each preempted wave.",
+      "stage_id": "A0",
+      "stage_label": "A0: Baseline (8-GPU u4r2 Gang Step-Preempt + Cold PCIe Weight Swap + FP32 Sync VAE)",
+      "delta_vs_prev": null
+    },
+    {
+      "policy": "B8 / A1: + Tier-0 Permanent HBM Co-Residency & Opt #3 Fast CPU Encoder (8-GPU u4r2 Gang Step-Preempt, Exact)",
+      "image_wave1_latency_ms": 1211.2,
+      "image_wave2_latency_ms": 871.6,
+      "image_wave3_latency_ms": 1014.4,
+      "image_mean_latency_ms": 1027.9,
+      "image_p99_latency_ms": 1211.2,
+      "video_latency_ms": 14991.3,
+      "image_slo_pct": 100.0,
+      "video_slo_pct": 0.0,
+      "video_slo_12s_pct": 0.0,
+      "total_slo_pct": 94.12,
+      "total_slo_12s_pct": 94.12,
+      "notes": "Eliminates PCIe weight swaps via Tier-0 HBM co-residency and CPU EncoderPool LRU cache.",
+      "stage_id": "A1",
+      "stage_label": "A1: + Tier-0 Permanent HBM Co-Residency & Opt #3 Fast CPU Encoder + Pinned LRU Cache",
+      "delta_vs_prev": {
+        "delta_image_mean_ms": -5552.0,
+        "delta_video_latency_ms": -9304.0,
+        "delta_total_slo_pct": 94.12,
+        "delta_total_slo_12s_pct": 94.12
+      }
+    },
+    {
+      "policy": "A2: + Opt #5 Embedded AsymmetricRingQuantizer INT8 Ring P2P Hook in xfuser USP (8-GPU u4r2)",
+      "image_wave1_latency_ms": 1092.9,
+      "image_wave2_latency_ms": 1192.8,
+      "image_wave3_latency_ms": 1219.9,
+      "image_mean_latency_ms": 1181.4,
+      "image_p99_latency_ms": 1219.9,
+      "video_latency_ms": 12655.9,
+      "image_slo_pct": 100.0,
+      "video_slo_pct": 0.0,
+      "video_slo_12s_pct": 0.0,
+      "total_slo_pct": 94.12,
+      "total_slo_12s_pct": 94.12,
+      "notes": "Compresses USP Ring KV P2P traffic by 49.22% via INT8 per-row quantization.",
+      "stage_id": "A2",
+      "stage_label": "A2: + Opt #5 Embedded AsymmetricRingQuantizer INT8 Ring P2P Hook in xfuser USP",
+      "delta_vs_prev": {
+        "delta_image_mean_ms": 153.5,
+        "delta_video_latency_ms": -2335.4,
+        "delta_total_slo_pct": 0.0,
+        "delta_total_slo_12s_pct": 0.0
+      }
+    },
+    {
+      "policy": "A3: + Taylor-Compensated DBCache (Wan2.1 tau=0.18) & Hooked MM-DiT Block Cache (SD3.5 tau=0.22)",
+      "image_wave1_latency_ms": 777.5,
+      "image_wave2_latency_ms": 673.7,
+      "image_wave3_latency_ms": 945.5,
+      "image_mean_latency_ms": 835.5,
+      "image_p99_latency_ms": 945.5,
+      "video_latency_ms": 10387.9,
+      "image_slo_pct": 100.0,
+      "video_slo_pct": 0.0,
+      "video_slo_12s_pct": 100.0,
+      "total_slo_pct": 94.12,
+      "total_slo_12s_pct": 100.0,
+      "notes": "Adds second-order Taylor-compensated block caching on Wan2.1 and hooked MM-DiT caching on SD3.5.",
+      "stage_id": "A3",
+      "stage_label": "A3: + Taylor-Compensated DBCache (Wan2.1) & Hooked MM-DiT Block Cache (SD3.5)",
+      "delta_vs_prev": {
+        "delta_image_mean_ms": -345.9,
+        "delta_video_latency_ms": -2268.0,
+        "delta_total_slo_pct": 0.0,
+        "delta_total_slo_12s_pct": 5.88
+      }
+    },
+    {
+      "policy": "A4: + Opt #4 Curvature-Guided Dynamic CFG Folding (8-GPU u4r2 + INT8-Ring + Taylor + Curvature-CFG)",
+      "image_wave1_latency_ms": 767.9,
+      "image_wave2_latency_ms": 668.5,
+      "image_wave3_latency_ms": 934.7,
+      "image_mean_latency_ms": 826.4,
+      "image_p99_latency_ms": 934.7,
+      "video_latency_ms": 8349.1,
+      "image_slo_pct": 100.0,
+      "video_slo_pct": 100.0,
+      "video_slo_12s_pct": 100.0,
+      "total_slo_pct": 100.0,
+      "total_slo_12s_pct": 100.0,
+      "notes": "Dynamically folds uncond branch when trajectory curvature stabilizes, with exact final-step anchor.",
+      "stage_id": "A4",
+      "stage_label": "A4: + Opt #4 Curvature-Guided Dynamic CFG Folding",
+      "delta_vs_prev": {
+        "delta_image_mean_ms": -9.1,
+        "delta_video_latency_ms": -2038.8,
+        "delta_total_slo_pct": 5.88,
+        "delta_total_slo_12s_pct": 0.0
+      }
+    },
+    {
+      "policy": "A5: + Opt #2 Rank-0 Disaggregated Async BF16 3D-VAE Decode Overlap (on 8-GPU u4r2)",
+      "image_wave1_latency_ms": 765.6,
+      "image_wave2_latency_ms": 658.4,
+      "image_wave3_latency_ms": 910.7,
+      "image_mean_latency_ms": 811.4,
+      "image_p99_latency_ms": 910.7,
+      "video_latency_ms": 7889.1,
+      "image_slo_pct": 100.0,
+      "video_slo_pct": 100.0,
+      "video_slo_12s_pct": 100.0,
+      "total_slo_pct": 100.0,
+      "total_slo_12s_pct": 100.0,
+      "notes": "Frees Ranks 1..7 in <1 ms after step 20 and overlaps Rank-0 BF16 3D-VAE decode on background stream.",
+      "stage_id": "A5",
+      "stage_label": "A5: + Opt #2 Rank-0 Disaggregated Async BF16 3D-VAE Decode Overlap",
+      "delta_vs_prev": {
+        "delta_image_mean_ms": -15.0,
+        "delta_video_latency_ms": -460.0,
+        "delta_total_slo_pct": 0.0,
+        "delta_total_slo_12s_pct": 0.0
+      }
+    },
+    {
+      "policy": "Ours-1 / A6: HeteroDiT-Elastic-v5 (+ Opt #1a Asymmetric 6+2 Sub-Cluster u3r2 + Opt #2-#5)",
+      "image_wave1_latency_ms": 1006.7,
+      "image_wave2_latency_ms": 1003.0,
+      "image_wave3_latency_ms": 1065.6,
+      "image_mean_latency_ms": 1035.2,
+      "image_p99_latency_ms": 1065.6,
+      "video_latency_ms": 8251.3,
+      "image_slo_pct": 100.0,
+      "video_slo_pct": 100.0,
+      "total_slo_pct": 100.0,
+      "video_slo_12s_pct": 100.0,
+      "total_slo_12s_pct": 100.0,
+      "stage_id": "A6",
+      "stage_label": "A6: + Opt #1a Asymmetric 6+2 Sub-Cluster Partitioning (HeteroDiT-Elastic-v5)",
+      "delta_vs_prev": {
+        "delta_image_mean_ms": 223.8,
+        "delta_video_latency_ms": 362.2,
+        "delta_total_slo_pct": 0.0,
+        "delta_total_slo_12s_pct": 0.0
+      }
+    },
+    {
+      "policy": "Ours-2 / A7: HeteroDiT-Morphing-v5 (+ Opt #1b+#4 Dynamic CFG-Morphing 6+2->3+5 Sub-Cluster + Opt #2-#5)",
+      "image_wave1_latency_ms": 1006.6,
+      "image_wave2_latency_ms": 918.2,
+      "image_wave3_latency_ms": 597.5,
+      "image_mean_latency_ms": 780.0,
+      "image_p99_latency_ms": 1006.6,
+      "video_latency_ms": 7358.8,
+      "image_slo_pct": 100.0,
+      "video_slo_pct": 100.0,
+      "total_slo_pct": 100.0,
+      "video_slo_12s_pct": 100.0,
+      "total_slo_12s_pct": 100.0,
+      "stage_id": "A7",
+      "stage_label": "A7: + Opt #1b+#4 Dynamic CFG-Morphing 6+2->3+5 Sub-Cluster (HeteroDiT-Morphing-v5)",
+      "delta_vs_prev": {
+        "delta_image_mean_ms": -255.2,
+        "delta_video_latency_ms": -892.5,
+        "delta_total_slo_pct": 0.0,
+        "delta_total_slo_12s_pct": 0.0
+      }
+    }
+  ],
+  "part_c_component_orthogonal_ablations_8gpu": {
+    "opt1_subcluster_topology_ablation": [
+      {
+        "topology": "8+0 Gang All-8-GPU (u4r2)",
+        "policy": "A5: + Opt #2 Rank-0 Disaggregated Async BF16 3D-VAE Decode Overlap (on 8-GPU u4r2)",
+        "image_wave1_latency_ms": 765.6,
+        "image_wave2_latency_ms": 658.4,
+        "image_wave3_latency_ms": 910.7,
+        "image_mean_latency_ms": 811.4,
+        "image_p99_latency_ms": 910.7,
+        "video_latency_ms": 7889.1,
+        "image_slo_pct": 100.0,
+        "video_slo_pct": 100.0,
+        "video_slo_12s_pct": 100.0,
+        "total_slo_pct": 100.0,
+        "total_slo_12s_pct": 100.0,
+        "notes": "Frees Ranks 1..7 in <1 ms after step 20 and overlaps Rank-0 BF16 3D-VAE decode on background stream."
+      },
+      {
+        "topology": "4+4 Static Partition (4v u4r1 + 4i)",
+        "policy": "B3: Static-Partition-4v4i (4-GPU Video u4r1 + 4-GPU Dedicated T2I)",
+        "image_wave1_latency_ms": 651.8,
+        "image_wave2_latency_ms": 621.0,
+        "image_wave3_latency_ms": 1006.1,
+        "image_mean_latency_ms": 821.3,
+        "image_p99_latency_ms": 1006.1,
+        "video_latency_ms": 10947.3,
+        "image_slo_pct": 100.0,
+        "video_slo_pct": 0.0,
+        "total_slo_pct": 94.12,
+        "video_slo_12s_pct": 100.0,
+        "total_slo_12s_pct": 100.0
+      },
+      {
+        "topology": "6+2 Static Partition (6v u3r2 + 2i, No Borrow)",
+        "policy": "B4: Static-Partition-6v2i (6-GPU Video u3r2 + 2-GPU Dedicated T2I, No Elastic Borrowing)",
+        "image_wave1_latency_ms": 1419.2,
+        "image_wave2_latency_ms": 1729.2,
+        "image_wave3_latency_ms": 3252.4,
+        "image_mean_latency_ms": 2413.3,
+        "image_p99_latency_ms": 3252.4,
+        "video_latency_ms": 14327.3,
+        "image_slo_pct": 25.0,
+        "video_slo_pct": 0.0,
+        "video_slo_12s_pct": 0.0,
+        "total_slo_pct": 23.53,
+        "total_slo_12s_pct": 23.53,
+        "notes": "Fixed 6+2 partition: 2 T2I GPUs handle 4-image Wave 1/2 but overload on 8-image Wave 3 without elastic borrowing."
+      },
+      {
+        "topology": "6+2 Elastic Asymmetric Sub-Cluster (u3r2 + 2i Absorber)",
+        "policy": "Ours-1 / A6: HeteroDiT-Elastic-v5 (+ Opt #1a Asymmetric 6+2 Sub-Cluster u3r2 + Opt #2-#5)",
+        "image_wave1_latency_ms": 1006.7,
+        "image_wave2_latency_ms": 1003.0,
+        "image_wave3_latency_ms": 1065.6,
+        "image_mean_latency_ms": 1035.2,
+        "image_p99_latency_ms": 1065.6,
+        "video_latency_ms": 8251.3,
+        "image_slo_pct": 100.0,
+        "video_slo_pct": 100.0,
+        "total_slo_pct": 100.0,
+        "video_slo_12s_pct": 100.0,
+        "total_slo_12s_pct": 100.0
+      },
+      {
+        "topology": "6+2 -> 3+5 Dynamic CFG-Morphing Sub-Cluster (cfg2u3r1 -> u3r1 + 5i Absorber)",
+        "policy": "Ours-2 / A7: HeteroDiT-Morphing-v5 (+ Opt #1b+#4 Dynamic CFG-Morphing 6+2->3+5 Sub-Cluster + Opt #2-#5)",
+        "image_wave1_latency_ms": 1006.6,
+        "image_wave2_latency_ms": 918.2,
+        "image_wave3_latency_ms": 597.5,
+        "image_mean_latency_ms": 780.0,
+        "image_p99_latency_ms": 1006.6,
+        "video_latency_ms": 7358.8,
+        "image_slo_pct": 100.0,
+        "video_slo_pct": 100.0,
+        "total_slo_pct": 100.0,
+        "video_slo_12s_pct": 100.0,
+        "total_slo_12s_pct": 100.0
+      }
+    ],
+    "opt2_vae_decode_ablation": [
+      {
+        "mode": "FP32 Synchronous 8-GPU Barrier 3D-VAE",
+        "blocking_barrier_ms": 1535.96,
+        "wasted_worker_gpu_ms_across_ranks_1_to_7": 10751.7,
+        "vae_hbm_mb": 484.23
+      },
+      {
+        "mode": "BF16 Synchronous 8-GPU Barrier 3D-VAE",
+        "blocking_barrier_ms": 1087.7,
+        "wasted_worker_gpu_ms_across_ranks_1_to_7": 7613.9,
+        "vae_hbm_mb": 242.12
+      },
+      {
+        "mode": "BF16 Rank-0 Disaggregated Async 3D-VAE (Opt #2)",
+        "blocking_barrier_ms": 1.244,
+        "wasted_worker_gpu_ms_across_ranks_1_to_7": 8.71,
+        "vae_hbm_mb": 242.12,
+        "bubble_reduction_factor": 1234.4
+      }
+    ],
+    "opt3_cpu_encoder_ablation": [
+      {
+        "mode": "FP32 Full-512 Sequence (Diffusers Default)",
+        "weights_gb": 21.163,
+        "latency_ms": 23360.05,
+        "speedup_vs_fp32_full512": 1.0,
+        "cosine_sim_vs_fp32": 1.0
+      },
+      {
+        "mode": "FP32 + Active-Token Sequence Trimming",
+        "weights_gb": 21.163,
+        "latency_ms": 1137.14,
+        "speedup_vs_fp32_full512": 20.54,
+        "cosine_sim_vs_fp32": 1.0
+      },
+      {
+        "mode": "BF16 Weight Conversion + Active-Token Trimming",
+        "weights_gb": 10.582,
+        "latency_ms": 3882.09,
+        "speedup_vs_fp32_full512": 6.02,
+        "cosine_sim_vs_fp32": 0.999632
+      },
+      {
+        "mode": "INT8 Dynamic Weight-Only Quantization (torch.ao) + Active-Token Trimming",
+        "weights_gb": 8.226,
+        "convert_ms": 166094.79,
+        "latency_ms": 474.77,
+        "speedup_vs_fp32_full512": 49.2,
+        "cosine_sim_vs_fp32": 0.77221
+      },
+      {
+        "mode": "ProactiveEncoderPool Pinned Memory LRU Cache Hit (Opt #3)",
+        "weights_gb": 8.226,
+        "latency_ms": 1.1885,
+        "speedup_vs_fp32_full512": 19654.7,
+        "cosine_sim_vs_fp32": 1.0
+      }
+    ],
+    "opt4_curvature_cfg_sensitivity": [
+      {
+        "profile": "Baseline: Exact 20-Step Full 2-Branch CFG (40 Forwards)",
+        "min_full_cfg_steps": 20,
+        "curvature_threshold": null,
+        "dynamic_fold_start_step": null,
+        "folded_cfg_steps": 0,
+        "forward_calls": 40,
+        "latency_ms": 10927.79,
+        "speedup_vs_exact": 1.0,
+        "psnr_db": 99.99,
+        "ssim": 1.0
+      },
+      {
+        "profile": "Profile A (High-Fidelity Curvature Trigger: min_full=11, eps_cfg=0.35)",
+        "min_full_cfg_steps": 11,
+        "curvature_threshold": 0.35,
+        "dynamic_fold_start_step": 11,
+        "folded_cfg_steps": 8,
+        "saved_uncond_forwards": 8,
+        "curvature_triggered_folds": 8,
+        "latency_ms": 7471.33,
+        "speedup_vs_exact": 1.463,
+        "psnr_db": 28.55,
+        "ssim": 0.9041
+      },
+      {
+        "profile": "Profile B (Balanced Curvature Trigger: min_full=8, eps_cfg=0.35)",
+        "min_full_cfg_steps": 8,
+        "curvature_threshold": 0.35,
+        "dynamic_fold_start_step": 9,
+        "folded_cfg_steps": 10,
+        "saved_uncond_forwards": 10,
+        "curvature_triggered_folds": 10,
+        "latency_ms": 7160.98,
+        "speedup_vs_exact": 1.526,
+        "psnr_db": 26.72,
+        "ssim": 0.8687
+      },
+      {
+        "profile": "Profile C (Aggressive Throughput Trigger: min_full=6, eps_cfg=0.95)",
+        "min_full_cfg_steps": 6,
+        "curvature_threshold": 0.95,
+        "dynamic_fold_start_step": 7,
+        "folded_cfg_steps": 12,
+        "saved_uncond_forwards": 12,
+        "curvature_triggered_folds": 12,
+        "latency_ms": 6849.05,
+        "speedup_vs_exact": 1.596,
+        "psnr_db": 25.1,
+        "ssim": 0.8377
+      }
+    ],
+    "opt5_ring_attention_hook_ablation": [
+      {
+        "mode": "8-GPU u4r2: FP16 Ring P2P (Baseline)",
+        "gpus": 8,
+        "median_step_ms": 560.93,
+        "mean_step_ms": 560.85,
+        "est_20step_ms": 11216.9,
+        "latent_cos_sim_vs_fp16": 1.0
+      },
+      {
+        "mode": "8-GPU u4r2: INT8 Ring Hook (Warmup=1, Tail=1 FP16 Anchors)",
+        "gpus": 8,
+        "median_step_ms": 500.15,
+        "mean_step_ms": 500.37,
+        "est_20step_ms": 10007.5,
+        "latent_cos_sim_vs_fp16": 1.0,
+        "hook_stats": {
+          "quantized_packets": 120,
+          "fp16_anchor_packets": 120,
+          "orig_bytes": 1437696000,
+          "wire_bytes": 1083888000,
+          "compression_ratio": 1.3264,
+          "bandwidth_saving_pct": 24.61
+        }
+      },
+      {
+        "mode": "8-GPU u4r2: INT8 Ring Hook (All Steps Quantized - Opt #5)",
+        "gpus": 8,
+        "median_step_ms": 440.56,
+        "mean_step_ms": 440.37,
+        "est_20step_ms": 8807.5,
+        "latent_cos_sim_vs_fp16": 1.0,
+        "hook_stats": {
+          "quantized_packets": 240,
+          "fp16_anchor_packets": 0,
+          "orig_bytes": 1437696000,
+          "wire_bytes": 730080000,
+          "compression_ratio": 1.9692,
+          "bandwidth_saving_pct": 49.22
+        }
+      },
+      {
+        "mode": "6-GPU u3r2: FP16 Ring P2P (Asymmetric 6+2 Baseline)",
+        "gpus": 6,
+        "median_step_ms": 661.07,
+        "mean_step_ms": 660.85,
+        "est_20step_ms": 13217.0,
+        "latent_cos_sim_vs_fp16": 1.0
+      },
+      {
+        "mode": "6-GPU u3r2: INT8 Ring Hook (All Steps Quantized - Opt #1+#5)",
+        "gpus": 6,
+        "median_step_ms": 519.65,
+        "mean_step_ms": 519.34,
+        "est_20step_ms": 10386.7,
+        "latent_cos_sim_vs_fp16": 1.0,
+        "hook_stats": {
+          "quantized_packets": 240,
+          "fp16_anchor_packets": 0,
+          "orig_bytes": 1916928000,
+          "wire_bytes": 973440000,
+          "compression_ratio": 1.9692,
+          "bandwidth_saving_pct": 49.22
+        }
+      }
+    ]
+  }
+}

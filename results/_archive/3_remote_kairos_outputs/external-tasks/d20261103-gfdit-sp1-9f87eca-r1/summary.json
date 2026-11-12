@@ -1,0 +1,805 @@
+{
+  "schema": "ditserve.external-task.v1",
+  "run_id": "d20261103-gfdit-sp1-9f87eca-r1",
+  "binding": {
+    "commit": "9f87eca23d033fd08a8748d055bae4d22f0c8e29",
+    "manifest_sha256": "ba7ceff022701f545e3cd86514a4f132fa48066a8d8e5af05e1554bf65f8b590",
+    "job_spec_sha256": "f4daa4cfa1f59f0b235889d555d1edc5ee4a69a1a07d659ea5bbadafdccff43d",
+    "build_info_sha256": "76a70cb4246b15b0e82c3749841b81cb79e8f0692da812c19831108d27e7e0a6",
+    "core_sha256": "e358e29d1a3ca238bbf2b7f981db71e951519715aedf46d58454738aabcbd42b",
+    "worker_sources_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a",
+    "gfc_sources_sha256": "e6c7f47a26d02a8091463bf9cb8ca58835c2b07c3c2cd4827d1b319c3bebf6e6",
+    "image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:2009ea26f63bcf0360ce7b4d71ed508c91c0702c97dd97e372cecfb672a818a1",
+    "image_identity_scope": "digest-pinned submitted spec, not independent pod imageID",
+    "probe_plan_sha256": "989f7c92135e4ed58f2378eb5909841e00de76a16e06f95a80c71c6d377e513f"
+  },
+  "allocation_gpus": 1,
+  "initial_storage": {
+    "used_gib": 769,
+    "percent": 76
+  },
+  "final_storage": {
+    "used_gib": 769,
+    "percent": 76
+  },
+  "task": "original-gfdit-edf-dag-shared-sd35-sp1",
+  "execution": {
+    "argv": [
+      "/opt/venv/bin/python",
+      "-B",
+      "/shared/data/DITSERVE/external-probes/gfdit-sp1-9f87eca-r1/external_gfdit_shared.py",
+      "run",
+      "--source-root",
+      "/shared/data/DITSERVE/external-systems/20261103-source-v1/GF-DiT",
+      "--source-manifest",
+      "/shared/data/DITSERVE/external-systems/20261103-source-v1/GF-DiT.source.json",
+      "--source-manifest-sha256",
+      "e1b54cf09241ff70fc27e9d1666a44cbe38e00eaf1713b57cd5c9ade9c9db3f4",
+      "--shared-python-root",
+      "/shared/code/DITSERVE/builds/51740c0/share/ditserve/python",
+      "--model-root",
+      "/shared/data/DITSERVE/models/sd3.5-medium",
+      "--model-manifest",
+      "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/sd35.manifest.json",
+      "--model-manifest-sha256",
+      "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+      "--protocol",
+      "/shared/data/DITSERVE/external-probes/gfdit-sp1-9f87eca-r1/formal-mixed-v1.json",
+      "--protocol-sha256",
+      "86aae608c7f86d194e77a5e2e9645b192b921d8137174cbcdb2825ed7d94b392",
+      "--prompt",
+      "A dog walking in a park.",
+      "--seed",
+      "101",
+      "--output-dir",
+      "/shared/output/DITSERVE/external-tasks/d20261103-gfdit-sp1-9f87eca-r1/result",
+      "--chunk-size",
+      "2",
+      "--timeout-seconds",
+      "1800"
+    ],
+    "returncode": 0,
+    "timed_out": false,
+    "seconds": 84.27868561446667,
+    "stderr_tail": "\nLoading pipeline components...:   0%|          | 0/9 [00:00<?, ?it/s]`torch_dtype` is deprecated! Use `dtype` instead!\n\nLoading pipeline components...:  11%|█         | 1/9 [00:01<00:15,  1.92s/it]You set `add_prefix_space`. The tokenizer needs to be converted from the slow tokenizers\n\nLoading pipeline components...:  33%|███▎      | 3/9 [00:02<00:03,  1.62it/s]\nLoading pipeline components...:  44%|████▍     | 4/9 [00:02<00:02,  1.87it/s]\nLoading pipeline components...:  56%|█████▌    | 5/9 [00:02<00:01,  2.43it/s]\nLoading pipeline components...:  78%|███████▊  | 7/9 [00:08<00:03,  1.52s/it]\n\nLoading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]\u001b[A\n\nLoading checkpoint shards:  50%|█████     | 1/2 [00:06<00:06,  6.20s/it]\u001b[A\n\nLoading checkpoint shards: 100%|██████████| 2/2 [00:11<00:00,  5.87s/it]\u001b[A\nLoading checkpoint shards: 100%|██████████| 2/2 [00:11<00:00,  5.92s/it]\n\nLoading pipeline components...:  89%|████████▉ | 8/9 [00:20<00:04,  4.19s/it]\nLoading pipeline components...: 100%|██████████| 9/9 [00:20<00:00,  2.24s/it]\n\n  0%|          | 0/2 [00:00<?, ?it/s]\n 50%|█████     | 1/2 [00:00<00:00,  5.98it/s]\n100%|██████████| 2/2 [00:00<00:00,  7.95it/s]\n\n  0%|          | 0/2 [00:00<?, ?it/s]\n100%|██████████| 2/2 [00:00<00:00, 16.82it/s]\n100%|██████████| 2/2 [00:00<00:00, 16.79it/s]\n\n  0%|          | 0/2 [00:00<?, ?it/s]\n100%|██████████| 2/2 [00:00<00:00, 16.47it/s]\n100%|██████████| 2/2 [00:00<00:00, 16.43it/s]\n\n  0%|          | 0/2 [00:00<?, ?it/s]\n100%|██████████| 2/2 [00:00<00:00, 16.31it/s]\n100%|██████████| 2/2 [00:00<00:00, 16.27it/s]\n\n  0%|          | 0/2 [00:00<?, ?it/s]\n100%|██████████| 2/2 [00:00<00:00, 16.62it/s]\n100%|██████████| 2/2 [00:00<00:00, 16.58it/s]\n\n  0%|          | 0/2 [00:00<?, ?it/s]\n100%|██████████| 2/2 [00:00<00:00, 16.51it/s]\n100%|██████████| 2/2 [00:00<00:00, 16.47it/s]\n\n  0%|          | 0/2 [00:00<?, ?it/s]\n100%|██████████| 2/2 [00:00<00:00, 16.95it/s]\n100%|██████████| 2/2 [00:00<00:00, 16.92it/s]\n\n  0%|          | 0/2 [00:00<?, ?it/s]\n100%|██████████| 2/2 [00:00<00:00, 16.99it/s]\n100%|██████████| 2/2 [00:00<00:00, 16.95it/s]\n\n  0%|          | 0/2 [00:00<?, ?it/s]\n100%|██████████| 2/2 [00:00<00:00, 16.76it/s]\n100%|██████████| 2/2 [00:00<00:00, 16.73it/s]\n\n  0%|          | 0/2 [00:00<?, ?it/s]\n100%|██████████| 2/2 [00:00<00:00, 17.09it/s]\n100%|██████████| 2/2 [00:00<00:00, 17.06it/s]\n\n  0%|          | 0/2 [00:00<?, ?it/s]\n100%|██████████| 2/2 [00:00<00:00, 17.19it/s]\n100%|██████████| 2/2 [00:00<00:00, 17.16it/s]\n\n  0%|          | 0/2 [00:00<?, ?it/s]\n100%|██████████| 2/2 [00:00<00:00, 17.19it/s]\n100%|██████████| 2/2 [00:00<00:00, 17.16it/s]\n\n  0%|          | 0/2 [00:00<?, ?it/s]\n100%|██████████| 2/2 [00:00<00:00, 16.23it/s]\n100%|██████████| 2/2 [00:00<00:00, 16.19it/s]\n\n  0%|          | 0/2 [00:00<?, ?it/s]\n100%|██████████| 2/2 [00:00<00:00, 16.72it/s]\n100%|██████████| 2/2 [00:00<00:00, 16.68it/s]\n\n  0%|          | 0/28 [00:00<?, ?it/s]\n  7%|▋         | 2/28 [00:00<00:01, 16.19it/s]\n 14%|█▍        | 4/28 [00:00<00:01, 16.52it/s]\n 21%|██▏       | 6/28 [00:00<00:01, 16.77it/s]\n 29%|██▊       | 8/28 [00:00<00:01, 16.89it/s]\n 36%|███▌      | 10/28 [00:00<00:01, 16.72it/s]\n 43%|████▎     | 12/28 [00:00<00:00, 16.66it/s]\n 50%|█████     | 14/28 [00:00<00:00, 16.79it/s]\n 57%|█████▋    | 16/28 [00:00<00:00, 16.56it/s]\n 64%|██████▍   | 18/28 [00:01<00:00, 16.68it/s]\n 71%|███████▏  | 20/28 [00:01<00:00, 16.75it/s]\n 79%|███████▊  | 22/28 [00:01<00:00, 16.82it/s]\n 86%|████████▌ | 24/28 [00:01<00:00, 16.80it/s]\n 93%|█████████▎| 26/28 [00:01<00:00, 16.86it/s]\n100%|██████████| 28/28 [00:01<00:00, 16.63it/s]\n100%|██████████| 28/28 [00:01<00:00, 16.70it/s]\n",
+    "stdout_tail": "INFO 11-03 08:25:13 [config.py:207] Pipeline patch number not set, using default value 1\nINFO 11-03 08:25:13 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)\nDEBUG 11-03 08:25:13 [compat.py:39] xfuser has no installed metadata; not checking diffusers version\nWARNING 11-03 08:25:13 [logger.py:126] Using SDPA_MATH as attention backend.\nINFO 11-03 08:25:13 [base_pipeline.py:494] Scheduler found, trying to parallel scheduler...\n{\"status\": \"numerical_passed\", \"summary\": \"/shared/output/DITSERVE/external-tasks/d20261103-gfdit-sp1-9f87eca-r1/result/summary.json\", \"sha256\": \"ffdb9b5d585bb4f8cfb9b8be427bd763879c2a19da83052334192852a3df61fe\", \"qualification_eligible\": false}\n",
+    "json_output": false,
+    "child_summary_path": "/shared/output/DITSERVE/external-tasks/d20261103-gfdit-sp1-9f87eca-r1/result/summary.json",
+    "child_summary_sha256": "ffdb9b5d585bb4f8cfb9b8be427bd763879c2a19da83052334192852a3df61fe",
+    "child_summary": {
+      "allows": [],
+      "attention": "sdpa_math",
+      "backend": {
+        "attention": "SDPA_MATH",
+        "name": "xdit",
+        "pipeline": "SD35XDitPipeline",
+        "revision": "16c34e7f070de65d9d2c67a6d74e0007dd8b426a",
+        "sp_ranks": [
+          0
+        ],
+        "transformer": "xFuserSD3Transformer2DWrapper"
+      },
+      "comparisons": {
+        "images": {
+          "atol": 1e-05,
+          "bitwise_equal": true,
+          "cosine_similarity": 0.9999999999999999,
+          "elements": 786432,
+          "max_abs_error": 0.0,
+          "passed": true,
+          "relative_l2_error": 0.0,
+          "rmse": 0.0,
+          "rtol": 1e-05
+        },
+        "latents": {
+          "atol": 1e-05,
+          "bitwise_equal": true,
+          "cosine_similarity": 1.0000000000000002,
+          "elements": 65536,
+          "max_abs_error": 0.0,
+          "passed": true,
+          "relative_l2_error": 0.0,
+          "rmse": 0.0,
+          "rtol": 1e-05
+        }
+      },
+      "completed_trajectories": 2,
+      "costs": "explicit synthetic positive SP1 logic fixture",
+      "costs_are_measurements": false,
+      "derived_manifest_sha256": "d857908eb3c308410f55d782ee3a981c03fd5deaf94f69966d47ee72cd7c4d78",
+      "event_counts": {
+        "request_failed": 0,
+        "request_finished": 0,
+        "task_exec_begin": 19,
+        "task_exec_end": 19,
+        "task_failed": 0,
+        "task_launch_begin": 19,
+        "task_launch_end": 19
+      },
+      "generator_device": "cpu",
+      "graph": {
+        "intervals": [
+          [
+            0,
+            2
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            4,
+            6
+          ],
+          [
+            6,
+            8
+          ],
+          [
+            8,
+            10
+          ],
+          [
+            10,
+            12
+          ],
+          [
+            12,
+            14
+          ],
+          [
+            14,
+            16
+          ],
+          [
+            16,
+            18
+          ],
+          [
+            18,
+            20
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            22,
+            24
+          ],
+          [
+            24,
+            26
+          ],
+          [
+            26,
+            28
+          ]
+        ],
+        "original_steps": 28,
+        "task_count": 19,
+        "tasks": [
+          {
+            "dependencies": [],
+            "kind": "text_encode",
+            "task_id": "gfdit-shared-sd35:text_encode:0"
+          },
+          {
+            "dependencies": [
+              "gfdit-shared-sd35:text_encode:0"
+            ],
+            "kind": "dit_prepare",
+            "task_id": "gfdit-shared-sd35:dit_prepare:0"
+          },
+          {
+            "dependencies": [
+              "gfdit-shared-sd35:dit_prepare:0"
+            ],
+            "kind": "timestep_prepare",
+            "task_id": "gfdit-shared-sd35:timestep_prepare:0"
+          },
+          {
+            "dependencies": [
+              "gfdit-shared-sd35:dit_step_chunk:13"
+            ],
+            "kind": "vae_decode",
+            "task_id": "gfdit-shared-sd35:vae_decode:0"
+          },
+          {
+            "dependencies": [
+              "gfdit-shared-sd35:vae_decode:0"
+            ],
+            "kind": "finalize",
+            "task_id": "gfdit-shared-sd35:finalize:0"
+          },
+          {
+            "dependencies": [
+              "gfdit-shared-sd35:timestep_prepare:0"
+            ],
+            "kind": "dit_step_chunk",
+            "task_id": "gfdit-shared-sd35:dit_step_chunk:0"
+          },
+          {
+            "dependencies": [
+              "gfdit-shared-sd35:dit_step_chunk:0"
+            ],
+            "kind": "dit_step_chunk",
+            "task_id": "gfdit-shared-sd35:dit_step_chunk:1"
+          },
+          {
+            "dependencies": [
+              "gfdit-shared-sd35:dit_step_chunk:1"
+            ],
+            "kind": "dit_step_chunk",
+            "task_id": "gfdit-shared-sd35:dit_step_chunk:2"
+          },
+          {
+            "dependencies": [
+              "gfdit-shared-sd35:dit_step_chunk:2"
+            ],
+            "kind": "dit_step_chunk",
+            "task_id": "gfdit-shared-sd35:dit_step_chunk:3"
+          },
+          {
+            "dependencies": [
+              "gfdit-shared-sd35:dit_step_chunk:3"
+            ],
+            "kind": "dit_step_chunk",
+            "task_id": "gfdit-shared-sd35:dit_step_chunk:4"
+          },
+          {
+            "dependencies": [
+              "gfdit-shared-sd35:dit_step_chunk:4"
+            ],
+            "kind": "dit_step_chunk",
+            "task_id": "gfdit-shared-sd35:dit_step_chunk:5"
+          },
+          {
+            "dependencies": [
+              "gfdit-shared-sd35:dit_step_chunk:5"
+            ],
+            "kind": "dit_step_chunk",
+            "task_id": "gfdit-shared-sd35:dit_step_chunk:6"
+          },
+          {
+            "dependencies": [
+              "gfdit-shared-sd35:dit_step_chunk:6"
+            ],
+            "kind": "dit_step_chunk",
+            "task_id": "gfdit-shared-sd35:dit_step_chunk:7"
+          },
+          {
+            "dependencies": [
+              "gfdit-shared-sd35:dit_step_chunk:7"
+            ],
+            "kind": "dit_step_chunk",
+            "task_id": "gfdit-shared-sd35:dit_step_chunk:8"
+          },
+          {
+            "dependencies": [
+              "gfdit-shared-sd35:dit_step_chunk:8"
+            ],
+            "kind": "dit_step_chunk",
+            "task_id": "gfdit-shared-sd35:dit_step_chunk:9"
+          },
+          {
+            "dependencies": [
+              "gfdit-shared-sd35:dit_step_chunk:9"
+            ],
+            "kind": "dit_step_chunk",
+            "task_id": "gfdit-shared-sd35:dit_step_chunk:10"
+          },
+          {
+            "dependencies": [
+              "gfdit-shared-sd35:dit_step_chunk:10"
+            ],
+            "kind": "dit_step_chunk",
+            "task_id": "gfdit-shared-sd35:dit_step_chunk:11"
+          },
+          {
+            "dependencies": [
+              "gfdit-shared-sd35:dit_step_chunk:11"
+            ],
+            "kind": "dit_step_chunk",
+            "task_id": "gfdit-shared-sd35:dit_step_chunk:12"
+          },
+          {
+            "dependencies": [
+              "gfdit-shared-sd35:dit_step_chunk:12"
+            ],
+            "kind": "dit_step_chunk",
+            "task_id": "gfdit-shared-sd35:dit_step_chunk:13"
+          }
+        ],
+        "terminal_task_ids": [
+          "gfdit-shared-sd35:finalize:0"
+        ]
+      },
+      "migration_executed": false,
+      "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+      "model_provenance": {
+        "model_integrity": {
+          "model_integrity": "manifest_verified",
+          "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+          "model_verified_bytes": 16274913511,
+          "model_verified_files": 28,
+          "model_verified_revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80"
+        },
+        "model_revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+        "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a"
+      },
+      "model_weights_loaded": true,
+      "native_scheduler_executed": true,
+      "native_vllm_worker_executed": false,
+      "numerical_check_passed": true,
+      "online_regroup_verified": false,
+      "outputs": {
+        "actual": {
+          "dtype": "torch.bfloat16",
+          "finite": true,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "retained_array": false,
+          "sha256": "44b6e154c710acf96e7102b41e4457fec0331d7c3faab35ae00c3ea564b8efd7",
+          "shape": [
+            1,
+            3,
+            512,
+            512
+          ]
+        },
+        "actual_latents": {
+          "dtype": "torch.bfloat16",
+          "finite": true,
+          "maximum": 2.828125,
+          "minimum": -3.8125,
+          "retained_array": false,
+          "sha256": "63671ac2bc2d70164f5231fbce0b72148300e3f401e72ec6142459a8746239c6",
+          "shape": [
+            1,
+            16,
+            64,
+            64
+          ]
+        },
+        "reference": {
+          "dtype": "torch.bfloat16",
+          "finite": true,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "retained_array": false,
+          "sha256": "44b6e154c710acf96e7102b41e4457fec0331d7c3faab35ae00c3ea564b8efd7",
+          "shape": [
+            1,
+            3,
+            512,
+            512
+          ]
+        },
+        "reference_latents": {
+          "dtype": "torch.bfloat16",
+          "finite": true,
+          "maximum": 2.828125,
+          "minimum": -3.8125,
+          "retained_array": false,
+          "sha256": "63671ac2bc2d70164f5231fbce0b72148300e3f401e72ec6142459a8746239c6",
+          "shape": [
+            1,
+            16,
+            64,
+            64
+          ]
+        }
+      },
+      "performance_measurements": false,
+      "port_sha256": "4ad145195091d5ca053f921465e156e63ecfda347bb09d014a855b3bcdb7106a",
+      "protocol_sha256": "86aae608c7f86d194e77a5e2e9645b192b921d8137174cbcdb2825ed7d94b392",
+      "qualification_eligible": false,
+      "request": {
+        "chunk_size": 2,
+        "image": {
+          "guidance_scale": 4.5,
+          "height": 512,
+          "max_sequence_length": 256,
+          "negative_prompt": "blurry, low quality",
+          "prompt": "A dog walking in a park.",
+          "seed": 101,
+          "steps": 28,
+          "width": 512
+        },
+        "request_id": "gfdit-shared-sd35",
+        "runtime_v2_arrival_ms": 0.0,
+        "runtime_v2_deadline_ms": 60000.0
+      },
+      "round_sha256": "11fd66b622f848d446aed543041ca8269c1b3d1fb3f7e4055028dda5dcaff377",
+      "runtime": {
+        "cuda": "12.6",
+        "diffusers": "0.36.0",
+        "gpu": "NVIDIA A100-PCIE-40GB",
+        "gpu_uuid": "bf5b40f5-b606-6ff3-8bb6-375c58fca67a",
+        "torch": "2.10.0+cu126"
+      },
+      "schema": "ditserve.gfdit-shared-sp1-check.v1",
+      "scope": "SP1 shared-backend numerical check using original GF-DiT EDF/DAG; not full GF-DiT",
+      "serving_executed": false,
+      "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a",
+      "source_manifest_sha256": "e1b54cf09241ff70fc27e9d1666a44cbe38e00eaf1713b57cd5c9ade9c9db3f4",
+      "stage": "completed",
+      "status": "numerical_passed",
+      "task_trace": [
+        {
+          "group_id": "sp1-rank0",
+          "kind": "text_encode",
+          "parallel_spec": {
+            "cfg": 1,
+            "cfg_parallel": false,
+            "sp": 1,
+            "tp": 1
+          },
+          "ranks": [
+            0
+          ],
+          "request_id": "gfdit-shared-sd35",
+          "status": "completed",
+          "step_range": null,
+          "task_id": "gfdit-shared-sd35:text_encode:0"
+        },
+        {
+          "group_id": "sp1-rank0",
+          "kind": "dit_prepare",
+          "parallel_spec": {
+            "cfg": 1,
+            "cfg_parallel": false,
+            "sp": 1,
+            "tp": 1
+          },
+          "ranks": [
+            0
+          ],
+          "request_id": "gfdit-shared-sd35",
+          "status": "completed",
+          "step_range": null,
+          "task_id": "gfdit-shared-sd35:dit_prepare:0"
+        },
+        {
+          "group_id": "sp1-rank0",
+          "kind": "timestep_prepare",
+          "parallel_spec": {
+            "cfg": 1,
+            "cfg_parallel": false,
+            "sp": 1,
+            "tp": 1
+          },
+          "ranks": [
+            0
+          ],
+          "request_id": "gfdit-shared-sd35",
+          "status": "completed",
+          "step_range": null,
+          "task_id": "gfdit-shared-sd35:timestep_prepare:0"
+        },
+        {
+          "group_id": "sp1-rank0",
+          "kind": "dit_step_chunk",
+          "parallel_spec": {
+            "cfg": 1,
+            "cfg_parallel": false,
+            "sp": 1,
+            "tp": 1
+          },
+          "ranks": [
+            0
+          ],
+          "request_id": "gfdit-shared-sd35",
+          "status": "completed",
+          "step_range": {
+            "end": 2,
+            "start": 0
+          },
+          "task_id": "gfdit-shared-sd35:dit_step_chunk:0"
+        },
+        {
+          "group_id": "sp1-rank0",
+          "kind": "dit_step_chunk",
+          "parallel_spec": {
+            "cfg": 1,
+            "cfg_parallel": false,
+            "sp": 1,
+            "tp": 1
+          },
+          "ranks": [
+            0
+          ],
+          "request_id": "gfdit-shared-sd35",
+          "status": "completed",
+          "step_range": {
+            "end": 4,
+            "start": 2
+          },
+          "task_id": "gfdit-shared-sd35:dit_step_chunk:1"
+        },
+        {
+          "group_id": "sp1-rank0",
+          "kind": "dit_step_chunk",
+          "parallel_spec": {
+            "cfg": 1,
+            "cfg_parallel": false,
+            "sp": 1,
+            "tp": 1
+          },
+          "ranks": [
+            0
+          ],
+          "request_id": "gfdit-shared-sd35",
+          "status": "completed",
+          "step_range": {
+            "end": 6,
+            "start": 4
+          },
+          "task_id": "gfdit-shared-sd35:dit_step_chunk:2"
+        },
+        {
+          "group_id": "sp1-rank0",
+          "kind": "dit_step_chunk",
+          "parallel_spec": {
+            "cfg": 1,
+            "cfg_parallel": false,
+            "sp": 1,
+            "tp": 1
+          },
+          "ranks": [
+            0
+          ],
+          "request_id": "gfdit-shared-sd35",
+          "status": "completed",
+          "step_range": {
+            "end": 8,
+            "start": 6
+          },
+          "task_id": "gfdit-shared-sd35:dit_step_chunk:3"
+        },
+        {
+          "group_id": "sp1-rank0",
+          "kind": "dit_step_chunk",
+          "parallel_spec": {
+            "cfg": 1,
+            "cfg_parallel": false,
+            "sp": 1,
+            "tp": 1
+          },
+          "ranks": [
+            0
+          ],
+          "request_id": "gfdit-shared-sd35",
+          "status": "completed",
+          "step_range": {
+            "end": 10,
+            "start": 8
+          },
+          "task_id": "gfdit-shared-sd35:dit_step_chunk:4"
+        },
+        {
+          "group_id": "sp1-rank0",
+          "kind": "dit_step_chunk",
+          "parallel_spec": {
+            "cfg": 1,
+            "cfg_parallel": false,
+            "sp": 1,
+            "tp": 1
+          },
+          "ranks": [
+            0
+          ],
+          "request_id": "gfdit-shared-sd35",
+          "status": "completed",
+          "step_range": {
+            "end": 12,
+            "start": 10
+          },
+          "task_id": "gfdit-shared-sd35:dit_step_chunk:5"
+        },
+        {
+          "group_id": "sp1-rank0",
+          "kind": "dit_step_chunk",
+          "parallel_spec": {
+            "cfg": 1,
+            "cfg_parallel": false,
+            "sp": 1,
+            "tp": 1
+          },
+          "ranks": [
+            0
+          ],
+          "request_id": "gfdit-shared-sd35",
+          "status": "completed",
+          "step_range": {
+            "end": 14,
+            "start": 12
+          },
+          "task_id": "gfdit-shared-sd35:dit_step_chunk:6"
+        },
+        {
+          "group_id": "sp1-rank0",
+          "kind": "dit_step_chunk",
+          "parallel_spec": {
+            "cfg": 1,
+            "cfg_parallel": false,
+            "sp": 1,
+            "tp": 1
+          },
+          "ranks": [
+            0
+          ],
+          "request_id": "gfdit-shared-sd35",
+          "status": "completed",
+          "step_range": {
+            "end": 16,
+            "start": 14
+          },
+          "task_id": "gfdit-shared-sd35:dit_step_chunk:7"
+        },
+        {
+          "group_id": "sp1-rank0",
+          "kind": "dit_step_chunk",
+          "parallel_spec": {
+            "cfg": 1,
+            "cfg_parallel": false,
+            "sp": 1,
+            "tp": 1
+          },
+          "ranks": [
+            0
+          ],
+          "request_id": "gfdit-shared-sd35",
+          "status": "completed",
+          "step_range": {
+            "end": 18,
+            "start": 16
+          },
+          "task_id": "gfdit-shared-sd35:dit_step_chunk:8"
+        },
+        {
+          "group_id": "sp1-rank0",
+          "kind": "dit_step_chunk",
+          "parallel_spec": {
+            "cfg": 1,
+            "cfg_parallel": false,
+            "sp": 1,
+            "tp": 1
+          },
+          "ranks": [
+            0
+          ],
+          "request_id": "gfdit-shared-sd35",
+          "status": "completed",
+          "step_range": {
+            "end": 20,
+            "start": 18
+          },
+          "task_id": "gfdit-shared-sd35:dit_step_chunk:9"
+        },
+        {
+          "group_id": "sp1-rank0",
+          "kind": "dit_step_chunk",
+          "parallel_spec": {
+            "cfg": 1,
+            "cfg_parallel": false,
+            "sp": 1,
+            "tp": 1
+          },
+          "ranks": [
+            0
+          ],
+          "request_id": "gfdit-shared-sd35",
+          "status": "completed",
+          "step_range": {
+            "end": 22,
+            "start": 20
+          },
+          "task_id": "gfdit-shared-sd35:dit_step_chunk:10"
+        },
+        {
+          "group_id": "sp1-rank0",
+          "kind": "dit_step_chunk",
+          "parallel_spec": {
+            "cfg": 1,
+            "cfg_parallel": false,
+            "sp": 1,
+            "tp": 1
+          },
+          "ranks": [
+            0
+          ],
+          "request_id": "gfdit-shared-sd35",
+          "status": "completed",
+          "step_range": {
+            "end": 24,
+            "start": 22
+          },
+          "task_id": "gfdit-shared-sd35:dit_step_chunk:11"
+        },
+        {
+          "group_id": "sp1-rank0",
+          "kind": "dit_step_chunk",
+          "parallel_spec": {
+            "cfg": 1,
+            "cfg_parallel": false,
+            "sp": 1,
+            "tp": 1
+          },
+          "ranks": [
+            0
+          ],
+          "request_id": "gfdit-shared-sd35",
+          "status": "completed",
+          "step_range": {
+            "end": 26,
+            "start": 24
+          },
+          "task_id": "gfdit-shared-sd35:dit_step_chunk:12"
+        },
+        {
+          "group_id": "sp1-rank0",
+          "kind": "dit_step_chunk",
+          "parallel_spec": {
+            "cfg": 1,
+            "cfg_parallel": false,
+            "sp": 1,
+            "tp": 1
+          },
+          "ranks": [
+            0
+          ],
+          "request_id": "gfdit-shared-sd35",
+          "status": "completed",
+          "step_range": {
+            "end": 28,
+            "start": 26
+          },
+          "task_id": "gfdit-shared-sd35:dit_step_chunk:13"
+        },
+        {
+          "group_id": "sp1-rank0",
+          "kind": "vae_decode",
+          "parallel_spec": {
+            "cfg": 1,
+            "cfg_parallel": false,
+            "sp": 1,
+            "tp": 1
+          },
+          "ranks": [
+            0
+          ],
+          "request_id": "gfdit-shared-sd35",
+          "status": "completed",
+          "step_range": null,
+          "task_id": "gfdit-shared-sd35:vae_decode:0"
+        },
+        {
+          "group_id": "sp1-rank0",
+          "kind": "finalize",
+          "parallel_spec": {
+            "cfg": 1,
+            "cfg_parallel": false,
+            "sp": 1,
+            "tp": 1
+          },
+          "ranks": [
+            0
+          ],
+          "request_id": "gfdit-shared-sd35",
+          "status": "completed",
+          "step_range": null,
+          "task_id": "gfdit-shared-sd35:finalize:0"
+        }
+      ],
+      "upstream_commit": "442531e499891d4ffa654e87c076f03326a37b98",
+      "worker_requests_evicted": [
+        "gfdit-shared-sd35"
+      ]
+    }
+  },
+  "qualification_eligible": false,
+  "allows": [],
+  "scope": "Native implementation diagnostic; not full-system serving or quality qualification."
+}

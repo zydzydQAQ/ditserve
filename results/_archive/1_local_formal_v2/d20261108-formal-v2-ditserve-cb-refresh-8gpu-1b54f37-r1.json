@@ -1,0 +1,90 @@
+{
+  "name": "d20261108-formal-v2-ditserve-cb-refresh-8gpu-1b54f37-r1",
+  "image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+  "command": "bash /shared/data/DITSERVE/scripts/releases/1b54f37/scripts/kairos_formal_benchmark.sh",
+  "workers": 1,
+  "gpus_per_worker": 8,
+  "mount_shared": true,
+  "env": [
+    {
+      "name": "DITSERVE_BUILD",
+      "value": "1b54f37"
+    },
+    {
+      "name": "DITSERVE_RUN_ID",
+      "value": "d20261108-formal-v2-ditserve-cb-refresh-8gpu-1b54f37-r1"
+    },
+    {
+      "name": "DITSERVE_KAIROS_RUNTIME_ROOT",
+      "value": "/shared/data/DITSERVE/scripts/releases/1b54f37"
+    },
+    {
+      "name": "DITSERVE_BENCHMARK_ROOT",
+      "value": "/shared/data/DITSERVE/scripts/releases/1b54f37/benchmarks"
+    },
+    {
+      "name": "DITSERVE_TEST_REVISION",
+      "value": "1b54f3773a7f4fffe20dfcaf3b23171b613925b0"
+    },
+    {
+      "name": "DITSERVE_FORMAL_PROTOCOL",
+      "value": "/shared/data/DITSERVE/scripts/releases/1b54f37/configs/benchmarks/formal-mixed-v2.json"
+    },
+    {
+      "name": "DITSERVE_PROTOCOL_SHA256",
+      "value": "1531fe434654134d508d59fc88073a68585ef43a400a9113c0b300f0a08734de"
+    },
+    {
+      "name": "DITSERVE_FORMAL_BENCHMARK_SHA256",
+      "value": "797ddb1adb72fe546cd5976a648cfc68a96a26ffa8ff8029b9208a60644ee820"
+    },
+    {
+      "name": "DITSERVE_IMAGE_DIGEST",
+      "value": "sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05"
+    },
+    {
+      "name": "DITSERVE_EXECUTION_IMAGE",
+      "value": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05"
+    },
+    {
+      "name": "DITSERVE_JOB_SPEC_PATH",
+      "value": "/shared/data/DITSERVE/job-specs/20261108-formal-v2-ditserve-cb-1b54f37/d20261108-formal-v2-ditserve-cb-refresh-8gpu-1b54f37-r1.json"
+    },
+    {
+      "name": "DITSERVE_REUSE_BUNDLES",
+      "value": "/shared/output/DITSERVE/acceptance/d20261106-formal-v2-wan22-b1-21a1ca3-r1/bundle.json"
+    },
+    {
+      "name": "DITSERVE_REQUIRE_REUSE_BUNDLE",
+      "value": "1"
+    },
+    {
+      "name": "DITSERVE_BENCHMARK_MODE",
+      "value": "formal"
+    },
+    {
+      "name": "DITSERVE_FORMAL_ACTION",
+      "value": "serve"
+    },
+    {
+      "name": "DITSERVE_STAGE_ACTION",
+      "value": "p1_diagnostics"
+    },
+    {
+      "name": "WAN_MODEL",
+      "value": "wan2.2-ti2v-5b"
+    },
+    {
+      "name": "DITSERVE_MODEL_MANIFESTS",
+      "value": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/models.official-all.json"
+    },
+    {
+      "name": "DITSERVE_SEED",
+      "value": "301"
+    },
+    {
+      "name": "DITSERVE_SERVE_BATCH",
+      "value": "p-rate-8:--split test --pattern poisson --seed 301 --rate-rpm 8 --video-fraction 0.5 --slo-scale 1.5 --resolution-distribution uniform --suite ditserve;p-rate-12:--split test --pattern poisson --seed 301 --rate-rpm 12 --video-fraction 0.5 --slo-scale 1.5 --resolution-distribution uniform --suite ditserve;p-rate-16:--split test --pattern poisson --seed 301 --rate-rpm 16 --video-fraction 0.5 --slo-scale 1.5 --resolution-distribution uniform --suite ditserve;p-rate-20:--split test --pattern poisson --seed 301 --rate-rpm 20 --video-fraction 0.5 --slo-scale 1.5 --resolution-distribution uniform --suite ditserve;p-rate-24:--split test --pattern poisson --seed 301 --rate-rpm 24 --video-fraction 0.5 --slo-scale 1.5 --resolution-distribution uniform --suite ditserve;p-rate-28:--split test --pattern poisson --seed 301 --rate-rpm 28 --video-fraction 0.5 --slo-scale 1.5 --resolution-distribution uniform --suite ditserve;p-rate-32:--split test --pattern poisson --seed 301 --rate-rpm 32 --video-fraction 0.5 --slo-scale 1.5 --resolution-distribution uniform --suite ditserve;p-rate-36:--split test --pattern poisson --seed 301 --rate-rpm 36 --video-fraction 0.5 --slo-scale 1.5 --resolution-distribution uniform --suite ditserve;p-slo-1p0:--split test --pattern poisson --seed 301 --rate-rpm 12 --video-fraction 0.5 --slo-scale 1.0 --resolution-distribution uniform --suite ditserve;p-slo-1p25:--split test --pattern poisson --seed 301 --rate-rpm 12 --video-fraction 0.5 --slo-scale 1.25 --resolution-distribution uniform --suite ditserve;p-slo-1p75:--split test --pattern poisson --seed 301 --rate-rpm 12 --video-fraction 0.5 --slo-scale 1.75 --resolution-distribution uniform --suite ditserve;p-slo-2p0:--split test --pattern poisson --seed 301 --rate-rpm 12 --video-fraction 0.5 --slo-scale 2.0 --resolution-distribution uniform --suite ditserve;g2-slo-1p0:--split test --pattern gamma --cv 2.0 --seed 301 --rate-rpm 12 --video-fraction 0.5 --slo-scale 1.0 --resolution-distribution uniform --suite ditserve;g2-slo-1p25:--split test --pattern gamma --cv 2.0 --seed 301 --rate-rpm 12 --video-fraction 0.5 --slo-scale 1.25 --resolution-distribution uniform --suite ditserve;g2-slo-1p5:--split test --pattern gamma --cv 2.0 --seed 301 --rate-rpm 12 --video-fraction 0.5 --slo-scale 1.5 --resolution-distribution uniform --suite ditserve;g2-slo-1p75:--split test --pattern gamma --cv 2.0 --seed 301 --rate-rpm 12 --video-fraction 0.5 --slo-scale 1.75 --resolution-distribution uniform --suite ditserve;g2-slo-2p0:--split test --pattern gamma --cv 2.0 --seed 301 --rate-rpm 12 --video-fraction 0.5 --slo-scale 2.0 --resolution-distribution uniform --suite ditserve;p-mix-0p1:--split test --pattern poisson --seed 301 --rate-rpm 12 --video-fraction 0.1 --slo-scale 1.5 --resolution-distribution uniform --suite ditserve;p-mix-0p3:--split test --pattern poisson --seed 301 --rate-rpm 12 --video-fraction 0.3 --slo-scale 1.5 --resolution-distribution uniform --suite ditserve;p-mix-0p7:--split test --pattern poisson --seed 301 --rate-rpm 12 --video-fraction 0.7 --slo-scale 1.5 --resolution-distribution uniform --suite ditserve;p-mix-0p9:--split test --pattern poisson --seed 301 --rate-rpm 12 --video-fraction 0.9 --slo-scale 1.5 --resolution-distribution uniform --suite ditserve"
+    }
+  ]
+}

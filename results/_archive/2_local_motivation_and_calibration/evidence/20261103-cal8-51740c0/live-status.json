@@ -1,0 +1,71 @@
+{
+  "observed_at_utc": "2026-11-02T23:47:19.379332+00:00",
+  "storage": {
+    "used_gib": 777,
+    "percent": 76
+  },
+  "capacity": {
+    "namespace": "user-jjjkairos",
+    "quota": 16,
+    "reserved_gpus": 16,
+    "account_free_gpus": 0,
+    "nodes": [
+      {
+        "name": "gpu01",
+        "free_gpus": 4
+      },
+      {
+        "name": "gpu02",
+        "free_gpus": 8
+      },
+      {
+        "name": "gpu03",
+        "free_gpus": 0
+      },
+      {
+        "name": "gpu04",
+        "free_gpus": 4
+      },
+      {
+        "name": "gpu05",
+        "free_gpus": 0
+      },
+      {
+        "name": "gpu06",
+        "free_gpus": 0
+      },
+      {
+        "name": "gpu07",
+        "free_gpus": 8
+      }
+    ],
+    "cluster_free_gpus": 24,
+    "unplaced_account_jobs": []
+  },
+  "jobs": [
+    {
+      "name": "d20261103-formal-cal8-wan22-51740c0-r1",
+      "state": "Running",
+      "total_gpus": 8,
+      "created_at": "2026-11-02T23:35:09Z"
+    },
+    {
+      "name": "d20261103-formal-p0-wan22-idle-51740c0-r1",
+      "state": "Running",
+      "total_gpus": 2,
+      "created_at": "2026-11-02T20:54:15Z"
+    },
+    {
+      "name": "d20261103-formal-p0-wan21-idle-51740c0-r1",
+      "state": "Running",
+      "total_gpus": 2,
+      "created_at": "2026-11-02T20:53:35Z"
+    },
+    {
+      "name": "catio-1102-2",
+      "state": "Running",
+      "total_gpus": 4,
+      "created_at": "2026-11-02T11:26:00Z"
+    }
+  ]
+}

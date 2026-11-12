@@ -1,0 +1,10 @@
+{
+ "commit": "4d636381ccda835f350a60d0285c5c32c95f15bc",
+ "subject": "Use matched predictors for CFG-fold comparison",
+ "built_utc": "2026-11-01T13:05:51+00:00",
+ "builder_image": "local-cmake-install",
+ "tested_runtime_image": "192.168.1.114:30500/jjjkairos/ditserve:xdit-dev-016e1ca-slim",
+ "core_sha256": "672959098b90ac13a458aa89dd479fe6b8848559fb1d117d71ac4662a32fc4c5",
+ "files": 246,
+ "bytes": 3849370
+}

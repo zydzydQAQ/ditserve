@@ -1,0 +1,10 @@
+{
+ "commit": "1b4ca646147c4e7584ee59ea7b66197bbb88e246",
+ "subject": "Rebuild native DitServe execution and evidence pipeline",
+ "built_utc": "2026-11-01T09:38:57+00:00",
+ "builder_image": "local-cmake-install",
+ "tested_runtime_image": "192.168.1.114:30500/jjjkairos/ditserve:xdit-dev-016e1ca-slim",
+ "core_sha256": "cfc74ab3be7a0912558c0d425be866bb48d7ee4506a8fad97e7b49be0ead7b93",
+ "files": 240,
+ "bytes": 3785230
+}

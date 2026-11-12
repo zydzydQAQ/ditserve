@@ -1,0 +1,24 @@
+{
+  "verdict": "pid_visible",
+  "pid": 88,
+  "occupancy": {
+    "status": "exclusive_observed",
+    "owned": [
+      {
+        "pid": 88,
+        "pgid": 1,
+        "gpu_uuid": "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+        "memory_mib": "670"
+      }
+    ],
+    "foreign": [],
+    "devices": [
+      {
+        "uuid": "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+        "name": "NVIDIA A100-PCIE-40GB"
+      }
+    ],
+    "cuda_initialized": false,
+    "occupancy_backend": "nvidia_smi"
+  }
+}

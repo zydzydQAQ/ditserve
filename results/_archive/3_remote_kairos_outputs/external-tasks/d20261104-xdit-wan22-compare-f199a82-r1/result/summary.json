@@ -1,0 +1,89 @@
+{
+  "artifact_manifest_sha256": [
+    "50a359bfee587156f413947608f6bf7a5b1346250a40c6340490e0ba9d899fef",
+    "fcd70bcf6c860527921d29d3c0e35c25880bf500438abcbb693cf133a9295543"
+  ],
+  "atol": 1e-05,
+  "candidate": "sp4",
+  "contract_sha256": "b11aa699d27e86e031a470811bdb0e4a41075dc4b42acfa01f0195ab4a93c2b2",
+  "dtype": "float32",
+  "failed_elements": 146575620,
+  "formula": "abs(candidate-reference) <= atol + rtol*abs(SP1 reference)",
+  "input_receipts": {
+    "sp1": {
+      "/shared/output/DITSERVE/external-tasks/d20261104-xdit-wan22-raw-sp1-f199a82-r1/result/decoded-numerics/DEPENDENCY-PROTECTED.json": "0748cc625d6366621cc36cbe61eef4b4a42fba0eb7120aa54a81dda558683a06",
+      "/shared/output/DITSERVE/external-tasks/d20261104-xdit-wan22-raw-sp1-f199a82-r1/result/summary.json": "fa3aaffa4aa678be66f9a219591b70994fd8090c14e084a6696d2503542f35f2",
+      "/shared/output/DITSERVE/external-tasks/d20261104-xdit-wan22-raw-sp1-f199a82-r1/summary.json": "db821d017b5645923ce931f32a9c982b4f93b93285d66d66e5bfe422d421ef57"
+    },
+    "sp4": {
+      "/shared/output/DITSERVE/external-tasks/d20261104-xdit-wan22-raw-sp4-f199a82-r1/result/decoded-numerics/DEPENDENCY-PROTECTED.json": "60479f9b68a0273f83896992c2202eba0c6c507166d3e9478f04e0538c7d186f",
+      "/shared/output/DITSERVE/external-tasks/d20261104-xdit-wan22-raw-sp4-f199a82-r1/result/summary.json": "4adf2b5e3611da7b4c2e401bce02de2b82178ecfe751e4fe069f343f5a5b7497",
+      "/shared/output/DITSERVE/external-tasks/d20261104-xdit-wan22-raw-sp4-f199a82-r1/summary.json": "3db775e99f721b56a85b2d4812666e41db44c135c02c392788ff30b71ccb7a88"
+    }
+  },
+  "latent_comparison": false,
+  "max_abs": 1.0,
+  "max_total_bytes": 2147483648,
+  "mean_abs": 0.02804172108230606,
+  "native_output_sha256": [
+    "1e92f4e2b8bf1f999b5ff69b02ff07b7ae7e9ab754cbe46b412a26c866dbc287",
+    "45108ce4d343d4382b5f3eae9148bc2ffee7d8099153ed7d5839a58700204518"
+  ],
+  "payload_bytes": 1332215808,
+  "payload_file_sha256": [
+    "1fa3cdf757d62cabe92eb7c6b71faedf5e60a70d6ec65e87852a9d853cf3a8c2",
+    "8209aae8905c86c8563d9cd8f689861236fa6cb4526fc1f1de4a128df3d556e4"
+  ],
+  "performance_eligible": false,
+  "platform_succeeded_must_be_checked_independently": true,
+  "protected_inputs_retained": true,
+  "qualification_eligible": false,
+  "reference": "sp1",
+  "request": {
+    "changed_protocol_parameters": {},
+    "guidance_scale": 5.0,
+    "height": 512,
+    "mode": "formal",
+    "negative_prompt": "",
+    "num_frames": 121,
+    "num_inference_steps": 50,
+    "num_outputs": 1,
+    "prompt": "A dog walking in a park.",
+    "protocol_steps": 50,
+    "seed": 42,
+    "shape_id": "wan22-small",
+    "shape_scope": "formal",
+    "width": 896
+  },
+  "rmse": 0.053129043748273694,
+  "rtol": 1e-05,
+  "run_ids": {
+    "sp1": "d20261104-xdit-wan22-raw-sp1-f199a82-r1",
+    "sp4": "d20261104-xdit-wan22-raw-sp4-f199a82-r1"
+  },
+  "schema": "ditserve.xdit-decoded-comparison.v1",
+  "semantic_quality_evaluated": false,
+  "shape": [
+    121,
+    512,
+    896,
+    3
+  ],
+  "source_bindings": {
+    "build": "51740c0",
+    "code_sha256": {
+      "external_xdit.py": "719ff99683a5a29341233254e622b9deb4bb7b374e9bba0ba749940adceddbbb",
+      "external_xdit_distributed.py": "e0c737925505e1b3e1668d2295d158e12a47e64f7800dbab0da38a45ac68b0cd",
+      "external_xdit_native.py": "b1a2fec877a063d0a750015c4bbbca6105cc32dd7eb904a340884dab0a99f839",
+      "external_xdit_numerics.py": "e46d0fb27b90d878610e4cd7934708fb6fb7129e2fc322738f7b8744bd93fc78"
+    },
+    "image_digest": "sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+    "model_manifest_sha256": "02ac66402d23a0ad25fa9fece1f6f57e2dc08783dda18ff4c9904fddf28d2c5f",
+    "official_source_manifest_sha256": "49595ace72ba61efd7c7ec9d28f11ed1c430a3848903031dcf9e0913925125e5",
+    "protocol_sha256": "86aae608c7f86d194e77a5e2e9645b192b921d8137174cbcdb2825ed7d94b392"
+  },
+  "space": "returned decoded float32 frames after pipeline postprocessing",
+  "status": "comparison_completed",
+  "strict_decoded_consistency_passed": false,
+  "total_elements": 166526976
+}

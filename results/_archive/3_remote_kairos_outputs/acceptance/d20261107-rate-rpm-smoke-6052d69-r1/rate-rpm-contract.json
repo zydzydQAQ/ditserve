@@ -1,0 +1,77 @@
+{
+  "schema": "ditserve.rate-rpm-contract.v1",
+  "status": "passed",
+  "commit": "6052d69e2eb0036f33b6aa4ba9604684375824f6",
+  "protocol_sha256": "1531fe434654134d508d59fc88073a68585ef43a400a9113c0b300f0a08734de",
+  "bundle_sha256": "94c3238aee42925b57eb10dc1ad086c656db280cfba5c079b0a53d195aa62ff6",
+  "source_anchor_workload_sha256": "5ca20e217a44c630f382c857474d30411ccb717a325a215a953e5bd2fb0bd7ea",
+  "integer_anchor_rate_rpm": 13,
+  "rate_points": 9,
+  "policies_per_point": 5,
+  "cells": [
+    {
+      "tag": "rate-07",
+      "rate_rpm": 7.0,
+      "load": 0.9270214987203557,
+      "workload_sha256": "85151a4b3a061a26cb00ea7574886d67087c4be1195e0517a04ebceb42bd49a1",
+      "watchdog_seconds": 57736
+    },
+    {
+      "tag": "rate-08",
+      "rate_rpm": 8.0,
+      "load": 1.0594531413946922,
+      "workload_sha256": "f845787c750afd4c24914b78a482c2a705d2452a802db1267e274b7b8cbc1acf",
+      "watchdog_seconds": 56935
+    },
+    {
+      "tag": "rate-10",
+      "rate_rpm": 10.0,
+      "load": 1.3243164267433651,
+      "workload_sha256": "d1b6d4ad68f96186f6b4467b16fd157bbe924719ddb61ed1a0d119c9f79db484",
+      "watchdog_seconds": 55813
+    },
+    {
+      "tag": "rate-12",
+      "rate_rpm": 12.0,
+      "load": 1.5891797120920383,
+      "workload_sha256": "798a051e97fd9c1d729eddf84269ef792c01cf1d49eadeb8b15264af4438c950",
+      "watchdog_seconds": 55066
+    },
+    {
+      "tag": "rate-13",
+      "rate_rpm": 12.999999999999998,
+      "load": 1.7216113547663747,
+      "workload_sha256": "748aca2da92989d415cb270eb0a151c8cc55f9019f092ed6833d9f163f474ee5",
+      "watchdog_seconds": 54778
+    },
+    {
+      "tag": "rate-15",
+      "rate_rpm": 15.0,
+      "load": 1.986474640115048,
+      "workload_sha256": "7b72094e51791ddeb70dd15c31feac188d865869eb8c3ff0f184ab418b218547",
+      "watchdog_seconds": 54318
+    },
+    {
+      "tag": "rate-17",
+      "rate_rpm": 17.000000000000004,
+      "load": 2.251337925463721,
+      "workload_sha256": "828fd42b1a8607a826157745198b285840a08b7412f5d03aebfbb3e3c1645a66",
+      "watchdog_seconds": 53966
+    },
+    {
+      "tag": "rate-18",
+      "rate_rpm": 18.000000000000004,
+      "load": 2.3837695681380575,
+      "workload_sha256": "cf881b861256ee428c951cace0fb28c0b53cea76663c2026ca54241c9d16ebd4",
+      "watchdog_seconds": 53820
+    },
+    {
+      "tag": "rate-20",
+      "rate_rpm": 20.0,
+      "load": 2.6486328534867303,
+      "workload_sha256": "b93a85eedcf4cf5644fe5bf5ed8fe28bc3bf78ee741be268eec5b97415d525a5",
+      "watchdog_seconds": 53570
+    }
+  ],
+  "scope": "CPU-only frozen-input config and trace contract; serving performance pending"
+}

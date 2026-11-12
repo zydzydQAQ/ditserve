@@ -1,0 +1,35 @@
+{
+  "core_binary": "/shared/code/DITSERVE/builds/1b54f37/bin/ditserve",
+  "core_version": {
+    "checkpoint_version": 2,
+    "fingerprint_version": "sha256-nlohmann-json.v2",
+    "rng_version": "mt19937_64-box-muller.v1",
+    "version": "ditserve-core.v2"
+  },
+  "gpu_driver": {
+    "available": true,
+    "detail": "0, GPU-7bb0920b-6181-9486-380c-042e9fe68433, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20"
+  },
+  "gpu_stack_versions": {
+    "cache-dit": "1.5.0",
+    "diffusers": "0.36.0",
+    "lpips": "0.1.4",
+    "torch": "2.10.0+cu126",
+    "transformers": "4.57.6"
+  },
+  "gpu_venv_present": false,
+  "load_ms": 0.0,
+  "notice": "No model weights loaded, CUDA validation or performance measurements.",
+  "packages": {
+    "diffusers": true,
+    "openpyxl": true,
+    "torch": true
+  },
+  "platform": "Linux-6.8.0-57-generic-x86_64-with-glibc2.36",
+  "python": "3.10.20",
+  "python_executable": "/opt/venv/bin/python",
+  "reference_simulation_ready": true,
+  "root": "/shared/output/DITSERVE",
+  "weights_present": false,
+  "worker_operation_ms": 45.80028913915157
+}

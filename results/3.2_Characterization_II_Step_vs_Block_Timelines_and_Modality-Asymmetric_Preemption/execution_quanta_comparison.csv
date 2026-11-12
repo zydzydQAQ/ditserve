@@ -1,0 +1,5 @@
+modality,granularity,duration_ms_min,duration_ms_max,ratio_vs_tight_t2i_slack_429p7ms,stop_sync_overhead_pct,pci_swap_bytes,suitability
+Video (Wan2.1/2.2),Full Denoising Step (30 blocks on CFG2),1544.55,8154.03,3.6x - 19.0x (> B),0.0%,0,"Fails tight T2I SLO (1,706.3 ms HoL wait, 0% SAR)"
+Video (Wan2.1/2.2),Single Transformer Block (1 block safe-point),45.0,94.0,0.10x - 0.22x (<< B),< 2.0% (0.60-1.62 ms),0,"Optimal safe-point (63.75 ms stop, 100% SAR, 100% SHA256 parity)"
+Image (SD3.5-Medium),Full Denoising Step (24 blocks on 1 GPU),59.2,221.4,0.14x - 0.52x (< B),0.0%,0,Optimal quantum for non-preemptive CB + cu_seqlens packing
+Image (SD3.5-Medium),Single MM-DiT JointBlock (1 block),2.5,9.1,0.006x - 0.021x,24.0% - 65.0% stall,0,"Counterproductive (sync breaks pipelining, dual-stream mutation, breaks packing)"

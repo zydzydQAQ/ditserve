@@ -1,0 +1,10 @@
+{
+ "commit": "6a9702922adb03a3ef3cf39cf4ba237ab6448163",
+ "subject": "Wan worker option vae_dtype (float32 default, bfloat16 halves the decode transient)",
+ "built_utc": "2026-10-19T15:09:46+00:00",
+ "builder_image": "sha256:524c56a3d528dd3ce1e6a54d432927bde23b27de95015c796c919ac8bdecf5ad",
+ "tested_runtime_image": "127.0.0.1:30500/jjjkairos/ditserve:8a100-224099f",
+ "core_sha256": "3681c2638e083764d695636ce5a321b1cb990098e1ea66020853efc68ecc9e88",
+ "files": 114,
+ "bytes": 3096343
+}

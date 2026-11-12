@@ -1,0 +1,168 @@
+{
+  "provenance": "mixed",
+  "sp_efficiency": 1.0,
+  "sp_overlap": 0.0,
+  "resize_ms": 53.34971100091934,
+  "quantum_overhead_ms": 1.2825588123840197,
+  "block_overhead_ms": 0.0,
+  "classes": {
+    "wan22-preflight": {
+      "kind": "video",
+      "steps": 20,
+      "blocks_per_step": 60,
+      "prepare_ms": 0.0,
+      "encode_ms": 57945.08229568601,
+      "step_compute_ms": 1060.111042112112,
+      "comm_mb_per_step": 8587.83744,
+      "collectives_per_step": 240,
+      "cfg_exchange_mb": 2.236416,
+      "finish_ms": 3783.3308409899473,
+      "decode_chunks": 13,
+      "forms": {
+        "sp1": {
+          "placements": {
+            "0-0": {
+              "step_ms": 1060.111042112112
+            }
+          }
+        },
+        "cfg2": {
+          "placements": {
+            "0-1": {
+              "step_ms": 533.8778980076313
+            }
+          }
+        },
+        "sp2": {
+          "placements": {
+            "0-1": {
+              "step_ms": 1055.4587244987488
+            }
+          }
+        }
+      }
+    },
+    "sd35-preflight": {
+      "kind": "image",
+      "service_ms": 6389.610065147281
+    }
+  },
+  "links": {
+    "2": {
+      "gbps": 5.3,
+      "latency_ms": 0.5
+    },
+    "3": {
+      "gbps": 7.2272727272727275,
+      "latency_ms": 0.5
+    },
+    "4": {
+      "gbps": 8.833333333333334,
+      "latency_ms": 0.5
+    },
+    "6": {
+      "gbps": 11.357142857142858,
+      "latency_ms": 0.5
+    },
+    "8": {
+      "gbps": 13.25,
+      "latency_ms": 0.5
+    }
+  },
+  "source": {
+    "experiment": "kairos-wan22-native-calibration",
+    "run_id": "d20261104-preempt-wan22-b97479e-s205-r3img-calibration",
+    "gpu_uuids": [
+      "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+      "GPU-7bb0920b-6181-9486-380c-042e9fe68433"
+    ],
+    "run_sha256": "da88734b61b01fcefe45d497c7b39baa70f480c2b5dc6178ec438ca7b4f19e58",
+    "model": "Wan2.2-TI2V-5B",
+    "shape": {
+      "cache": false,
+      "frames": 49,
+      "guidance_scale": 5.0,
+      "height": 512,
+      "max_continuous": 1,
+      "negative_prompt": "",
+      "prompt": "A red ceramic kettle on a wooden table.",
+      "request_id": "video-calibration",
+      "seed": 201,
+      "steps": 20,
+      "threshold": 0.0,
+      "width": 896
+    },
+    "architecture": {
+      "tokens": 5824,
+      "dim": 3072,
+      "layers": 30,
+      "comm_mb_per_step": 8587.83744,
+      "collectives_per_step": 240,
+      "cfg_exchange_mb": 2.236416
+    },
+    "timing_scopes": {
+      "static_sp1": "median_steady_advance",
+      "static_cfg2": "median_steady_advance",
+      "static_sp2": "median_steady_advance"
+    },
+    "steady_samples": {
+      "static_sp1": 19,
+      "static_cfg2": 19,
+      "static_sp2": 19
+    },
+    "bandwidth_saturation_gbps": 26.5,
+    "bandwidth_gamma": 8.0,
+    "fit_policies": [
+      "static_cfg2",
+      "static_cfg2sp2",
+      "static_sp1",
+      "static_sp2",
+      "static_sp4"
+    ],
+    "fit_mean_relative_error_pct": 0.19108748125350514,
+    "held_out_mean_relative_error_pct": null,
+    "held_out_max_relative_error_pct": null,
+    "predictions": [
+      {
+        "policy": "static_sp1",
+        "form": [
+          1,
+          1
+        ],
+        "measured_step_ms": 1060.111042112112,
+        "predicted_step_ms": 1060.111042112112,
+        "relative_error_pct": 0.0,
+        "partition": "fit"
+      },
+      {
+        "policy": "static_cfg2",
+        "form": [
+          2,
+          1
+        ],
+        "measured_step_ms": 533.8778980076313,
+        "predicted_step_ms": 530.9774863390749,
+        "relative_error_pct": 0.5432724747325999,
+        "partition": "fit"
+      },
+      {
+        "policy": "static_sp2",
+        "form": [
+          1,
+          2
+        ],
+        "measured_step_ms": 1055.4587244987488,
+        "predicted_step_ms": 1055.1421927541692,
+        "relative_error_pct": 0.02998996902791546,
+        "partition": "fit"
+      }
+    ],
+    "execution_cost_mode": "placement_bound_form_table_with_analytical_fallback",
+    "unbound_measurements": 0,
+    "image_batch_samples": {
+      "1": 3
+    },
+    "validation_scope": "held-out forms on calibration hardware and shape; not held-out request, placement or workload validation",
+    "method": "single constrained saturation model fitted once; no per-form bandwidth or overlap overrides"
+  }
+}

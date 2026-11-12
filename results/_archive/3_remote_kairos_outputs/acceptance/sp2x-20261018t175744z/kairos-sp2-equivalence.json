@@ -1,0 +1,605 @@
+{
+  "schema": "ditserve.study.v1",
+  "experiment": "kairos-sp2-equivalence",
+  "note": "Ulysses SP2 on Wan2.1-1.3B 480x832x17, 8 steps, Flash, cache off: whole-step SP and 13-block SP quanta vs an unsharded SP1 step worker. Exact gate only for block vs whole-step SP.",
+  "workers": {
+    "ref": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-7bb0920b-6181-9486-380c-042e9fe68433",
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "step"
+        }
+      }
+    },
+    "0": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-7bb0920b-6181-9486-380c-042e9fe68433",
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "step"
+        }
+      }
+    },
+    "1": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-56f9344d-f279-ae6b-d287-b9024e4eb7fe",
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "step"
+        }
+      }
+    },
+    "b0": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-7bb0920b-6181-9486-380c-042e9fe68433",
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "block"
+        }
+      }
+    },
+    "b1": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-56f9344d-f279-ae6b-d287-b9024e4eb7fe",
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "block"
+        }
+      }
+    }
+  },
+  "budget": {
+    "limit_gpu_seconds": 3600,
+    "watchdog_seconds": 1800,
+    "repair_reserve_gpu_seconds": 0,
+    "carry": "none"
+  },
+  "phases": [
+    {
+      "id": "sp1",
+      "kind": "state",
+      "workers": [
+        "ref"
+      ],
+      "artifact_dependencies": [],
+      "actions": [
+        {
+          "op": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 8,
+            "height": 480,
+            "width": 832,
+            "frames": 17,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "ref"
+          },
+          "state_id": "ref"
+        },
+        {
+          "op": "advance",
+          "state_id": "ref",
+          "steps": 8
+        },
+        {
+          "op": "finish",
+          "state_id": "ref",
+          "output_path": "ref.npy",
+          "save_latents": true
+        },
+        {
+          "op": "release",
+          "state_id": "ref"
+        }
+      ]
+    },
+    {
+      "id": "sp2",
+      "kind": "sp",
+      "requires": [
+        "sp1"
+      ],
+      "workers": [
+        "0",
+        "1"
+      ],
+      "artifact_dependencies": [],
+      "actions": [
+        {
+          "op": "distributed",
+          "action": "init",
+          "init_method": "tcp://127.0.0.1:29501",
+          "ranks": [
+            0,
+            1
+          ]
+        },
+        {
+          "op": "distributed",
+          "action": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 8,
+            "height": 480,
+            "width": 832,
+            "frames": 17,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "sp"
+          },
+          "state_id": "sp"
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "sp",
+          "steps": 8
+        },
+        {
+          "op": "finish",
+          "state_id": "sp",
+          "output_path": "sp.npy",
+          "save_latents": true
+        },
+        {
+          "op": "evaluate",
+          "reference": "/shared/output/DITSERVE/.cache/results-work/kairos-sp2-equivalence/sp2x-20261018t175744z/attempts/sp1/attempt-1/cell-0/artifacts/0/ref.latent.npy",
+          "output": "sp.latent.npy",
+          "atol": 0,
+          "rtol": 0
+        },
+        {
+          "op": "evaluate",
+          "reference": "/shared/output/DITSERVE/.cache/results-work/kairos-sp2-equivalence/sp2x-20261018t175744z/attempts/sp1/attempt-1/cell-0/artifacts/0/ref.npy",
+          "output": "sp.npy",
+          "atol": 0,
+          "rtol": 0
+        },
+        {
+          "op": "release",
+          "state_id": "sp"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "/cells/0/operations/4/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/4/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/4/ranks/1/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/4/ranks/1/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/1/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/1/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        }
+      ]
+    },
+    {
+      "id": "sp2-block",
+      "kind": "sp",
+      "requires": [
+        "sp2"
+      ],
+      "workers": [
+        "b0",
+        "b1"
+      ],
+      "artifact_dependencies": [],
+      "actions": [
+        {
+          "op": "distributed",
+          "action": "init",
+          "init_method": "tcp://127.0.0.1:29502",
+          "ranks": [
+            0,
+            1
+          ]
+        },
+        {
+          "op": "distributed",
+          "action": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 8,
+            "height": 480,
+            "width": 832,
+            "frames": 17,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "spb"
+          },
+          "state_id": "spb"
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "spb",
+          "blocks": 13
+        },
+        {
+          "op": "finish",
+          "state_id": "spb",
+          "output_path": "spb.npy",
+          "save_latents": true
+        },
+        {
+          "op": "evaluate",
+          "reference": "/shared/output/DITSERVE/.cache/results-work/kairos-sp2-equivalence/sp2x-20261018t175744z/attempts/sp2/attempt-1/cell-0/artifacts/0/sp.latent.npy",
+          "output": "spb.latent.npy",
+          "atol": 0,
+          "rtol": 0
+        },
+        {
+          "op": "evaluate",
+          "reference": "/shared/output/DITSERVE/.cache/results-work/kairos-sp2-equivalence/sp2x-20261018t175744z/attempts/sp2/attempt-1/cell-0/artifacts/0/sp.npy",
+          "output": "spb.npy",
+          "atol": 0,
+          "rtol": 0
+        },
+        {
+          "op": "evaluate",
+          "reference": "/shared/output/DITSERVE/.cache/results-work/kairos-sp2-equivalence/sp2x-20261018t175744z/attempts/sp1/attempt-1/cell-0/artifacts/0/ref.latent.npy",
+          "output": "spb.latent.npy",
+          "atol": 0,
+          "rtol": 0
+        },
+        {
+          "op": "release",
+          "state_id": "spb"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "/cells/0/operations/43/ranks/0/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/43/ranks/1/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/44/ranks/0/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/44/ranks/1/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/45/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/45/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/45/ranks/1/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/45/ranks/1/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        }
+      ]
+    }
+  ]
+}

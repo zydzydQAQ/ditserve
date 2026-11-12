@@ -1,0 +1,859 @@
+{"at": "2026-11-02T23:39:10.071216+00:00", "execute": true, "expected_requests": 76, "jobs": {"wan21": {"job": "d20261103-formal-cal8-wan21-51740c0-r1", "gpu_count": 8, "pairs": [{"pair": ["wan21-480p", "sd35-512"], "run_id": "d20261103-formal-cal8-wan21-51740c0-r1-cal0", "policies": ["static_sp1", "static_cfg2", "static_sp2", "static_cfg2sp2", "static_sp3", "static_cfg2sp3", "static_sp4", "static_cfg2sp4", "static_sp6"], "fit_policies": ["static_sp1", "static_cfg2", "static_sp2", "static_cfg2sp2", "static_sp4"], "held_out_policies": ["static_sp3", "static_cfg2sp3", "static_cfg2sp4", "static_sp6"], "expected_cells": 9, "expected_requests": 18}, {"pair": ["wan21-720p", "sd35-1024"], "run_id": "d20261103-formal-cal8-wan21-51740c0-r1-cal1", "policies": ["static_sp1", "static_cfg2", "static_sp2", "static_cfg2sp2", "static_sp3", "static_cfg2sp3", "static_sp4", "static_cfg2sp4", "static_sp6"], "fit_policies": ["static_sp1", "static_cfg2", "static_sp2", "static_cfg2sp2", "static_sp4"], "held_out_policies": ["static_sp3", "static_cfg2sp3", "static_cfg2sp4", "static_sp6"], "expected_cells": 9, "expected_requests": 18}], "expected_cells": 18, "expected_requests": 36}, "wan22": {"job": "d20261103-formal-cal8-wan22-51740c0-r1", "gpu_count": 8, "pairs": [{"pair": ["wan22-small", "sd35-512"], "run_id": "d20261103-formal-cal8-wan22-51740c0-r1-cal0", "policies": ["static_sp1", "static_cfg2", "static_sp2", "static_cfg2sp2", "static_sp3", "static_cfg2sp3", "static_sp4", "static_cfg2sp4", "static_sp6", "static_sp8"], "fit_policies": ["static_sp1", "static_cfg2", "static_sp2", "static_cfg2sp2", "static_sp4"], "held_out_policies": ["static_sp3", "static_cfg2sp3", "static_cfg2sp4", "static_sp6", "static_sp8"], "expected_cells": 10, "expected_requests": 20}, {"pair": ["wan22-720p", "sd35-1024"], "run_id": "d20261103-formal-cal8-wan22-51740c0-r1-cal1", "policies": ["static_sp1", "static_cfg2", "static_sp2", "static_cfg2sp2", "static_sp3", "static_cfg2sp3", "static_sp4", "static_cfg2sp4", "static_sp6", "static_sp8"], "fit_policies": ["static_sp1", "static_cfg2", "static_sp2", "static_cfg2sp2", "static_sp4"], "held_out_policies": ["static_sp3", "static_cfg2sp3", "static_cfg2sp4", "static_sp6", "static_sp8"], "expected_cells": 10, "expected_requests": 20}], "expected_cells": 20, "expected_requests": 40}}}
+storage: 776G, 76%
+Filesystem      Size  Used Avail Use% Mounted on
+E:\             147G  107G   41G  73% /mnt/e
+login ok, namespace: user-jjjkairos
+storage: 776G, 76%
+{"at": "2026-11-02T23:39:18.011278+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 776G, 76%
+{"at": "2026-11-02T23:39:51.674025+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 776G, 76%
+{"at": "2026-11-02T23:40:26.547394+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 776G, 76%
+{"at": "2026-11-02T23:41:06.047763+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 776G, 76%
+{"at": "2026-11-02T23:41:45.253620+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 776G, 76%
+{"at": "2026-11-02T23:42:23.099090+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 776G, 76%
+{"at": "2026-11-02T23:43:02.771279+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 776G, 76%
+{"at": "2026-11-02T23:43:42.801257+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 776G, 76%
+{"at": "2026-11-02T23:44:21.854039+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-02T23:44:59.497021+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-02T23:45:39.136914+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-02T23:46:18.843853+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-02T23:46:55.526873+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-02T23:47:31.035613+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-02T23:48:10.447091+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 776G, 76%
+{"at": "2026-11-02T23:48:50.874332+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 776G, 76%
+{"at": "2026-11-02T23:49:28.877148+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 776G, 76%
+{"at": "2026-11-02T23:50:09.491581+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 776G, 76%
+{"at": "2026-11-02T23:50:49.400867+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 776G, 76%
+{"at": "2026-11-02T23:51:27.545442+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 776G, 76%
+{"at": "2026-11-02T23:52:07.613346+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 776G, 76%
+{"at": "2026-11-02T23:52:48.680550+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-02T23:53:26.015276+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-02T23:54:05.744620+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-02T23:54:45.544764+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-02T23:55:25.295465+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-02T23:56:02.638590+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-02T23:56:42.299587+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-02T23:57:21.829014+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-02T23:57:59.216229+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-02T23:58:40.277798+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-02T23:59:20.999334+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-02T23:59:58.089759+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:00:39.232747+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:01:19.678104+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:01:58.725540+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:02:36.177604+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:03:15.704242+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:03:55.732603+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:04:32.772786+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:05:12.649182+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:05:52.685145+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:06:32.866957+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:07:10.196072+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:07:49.936981+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:08:33.728144+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:09:11.810685+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:09:52.586372+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:10:32.559939+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:11:10.130072+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:11:49.775510+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:12:29.432430+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:13:07.567765+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:13:46.983150+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:14:26.609867+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:15:07.234548+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:15:44.073282+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:16:23.389535+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:17:02.895128+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:17:41.159263+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:18:20.635671+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:19:00.666902+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:19:38.408896+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:20:19.605651+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:20:58.917946+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:21:38.203862+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:22:17.007106+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:22:57.464313+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:23:37.674582+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:24:15.517417+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:24:56.341982+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:25:35.720447+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:26:13.561016+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:26:53.748645+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:27:33.932084+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:28:13.046258+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:28:50.339994+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:29:30.709315+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:30:10.370514+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:30:47.559172+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:31:26.982473+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:32:07.262892+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:32:46.774367+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:33:23.652593+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:34:04.344970+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:34:43.745117+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:35:21.004396+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:36:01.025201+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:36:41.116520+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:37:21.459579+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:37:59.795011+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:38:36.932247+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:39:16.795275+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:39:56.956430+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:40:33.952966+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:41:13.686485+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:41:53.085057+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:42:32.865165+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:43:10.015306+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:43:48.334226+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:44:29.289952+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:45:09.266087+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:45:48.158866+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:46:25.395443+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:47:05.145765+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:47:43.528485+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:48:23.241871+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:49:03.221617+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:49:41.172215+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:50:20.384241+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:50:59.891013+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:51:37.100768+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:52:16.729773+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:52:56.494369+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:53:36.078740+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:54:13.196347+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:54:53.589562+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:55:33.738367+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:56:10.682157+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:56:50.794894+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:57:30.535317+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:58:10.382533+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:58:46.687286+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T00:59:26.228667+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:00:05.962367+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:00:43.532278+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:01:22.914558+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:02:02.154498+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:02:41.880059+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:03:19.335917+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:03:59.235134+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:04:38.830140+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:05:15.542242+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:05:56.042384+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:06:36.117966+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:07:14.205669+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:07:54.020952+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:08:33.855522+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:09:13.478104+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:09:50.409692+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:10:29.668608+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:11:08.981251+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:11:47.201108+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:12:26.126891+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:13:05.750202+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:13:44.915329+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:14:23.916018+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:15:03.195996+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:15:43.124142+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:16:23.121044+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:17:02.189283+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:17:39.961383+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:18:19.437232+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:18:58.911787+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:19:36.064293+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:20:16.201025+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:20:56.079553+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:21:35.921602+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:22:13.064361+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:22:52.687118+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:23:32.422907+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:24:09.888404+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:24:49.963202+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:25:29.881115+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:26:07.823564+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:26:47.896408+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:27:27.316094+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:28:06.736846+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:28:44.001557+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:29:23.383583+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:30:02.722067+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:30:40.182406+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:31:19.957312+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:32:00.115255+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:32:40.019728+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:33:16.817394+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:33:56.362951+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:34:37.140780+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:35:14.436421+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:35:54.264703+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:36:34.289010+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:37:13.965435+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:37:51.608139+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "not_submitted", "d20261103-formal-cal8-wan22-51740c0-r1": "Running"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:38:32.402627+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:39:12.543314+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:39:49.904198+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:40:29.487607+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:41:09.626908+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:41:47.173233+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:42:26.569918+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:43:06.696425+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:43:46.557649+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:44:25.365972+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:45:04.552516+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:45:44.810711+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:46:24.681249+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:47:02.860699+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:47:40.392367+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:48:20.463830+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:49:00.595210+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:49:38.154773+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:50:17.780067+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:50:59.179671+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:51:37.141281+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:52:17.245748+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:52:57.138550+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:53:37.719759+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:54:14.910381+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:54:54.861587+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:55:35.268321+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:56:12.784821+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:56:53.210101+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:57:33.248161+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:58:10.937477+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:58:51.075213+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T01:59:31.080609+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:00:11.646097+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:00:49.318195+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:01:29.415837+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:02:10.387884+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:02:48.533771+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:03:28.109420+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:04:03.251628+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:04:38.691016+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:05:13.057712+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:05:47.781217+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:06:20.578536+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:06:56.028618+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:07:30.803603+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:08:05.802893+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:08:40.472652+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:09:15.110012+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:09:50.063552+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:10:22.671328+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:10:57.576612+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:11:31.977889+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:12:06.398825+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:12:41.085010+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:13:15.671834+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:13:50.328655+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:14:24.999413+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:14:58.480444+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:15:33.195261+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:16:07.691663+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:16:41.155543+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:17:16.110002+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:17:51.332346+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:18:23.147817+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:18:58.084625+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:19:33.879994+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:20:08.618635+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:20:43.031895+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:21:17.261967+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:21:52.232571+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:22:26.765891+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:22:59.988609+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:23:34.364321+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:24:08.768174+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:24:40.817666+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:25:15.367963+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:25:50.110621+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:26:24.432194+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:26:58.922012+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:27:33.764942+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:28:08.210381+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:28:41.663314+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:29:14.637486+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:29:49.969514+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:30:26.088776+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:30:59.354297+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:31:34.477377+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:32:14.805254+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:32:47.555684+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:33:24.246954+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:33:59.958121+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:34:34.820355+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:35:10.548773+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:35:45.914294+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:36:18.480794+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:36:53.939597+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:37:28.720510+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:38:03.643451+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:38:41.176875+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:39:18.514508+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:39:55.099232+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:40:30.766391+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:41:05.876922+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 777G, 76%
+{"at": "2026-11-03T02:41:38.382176+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 778G, 76%
+{"at": "2026-11-03T02:42:13.709289+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 778G, 76%
+{"at": "2026-11-03T02:42:48.770445+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 778G, 76%
+{"at": "2026-11-03T02:43:26.240262+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 778G, 76%
+{"at": "2026-11-03T02:43:58.145760+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 779G, 77%
+{"at": "2026-11-03T02:44:33.615334+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 779G, 77%
+{"at": "2026-11-03T02:45:14.357216+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 780G, 77%
+{"at": "2026-11-03T02:45:52.348409+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 780G, 77%
+{"at": "2026-11-03T02:46:26.459586+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 780G, 77%
+{"at": "2026-11-03T02:47:02.405756+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 781G, 77%
+{"at": "2026-11-03T02:47:38.130986+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 781G, 77%
+{"at": "2026-11-03T02:48:14.298488+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 781G, 77%
+{"at": "2026-11-03T02:48:50.579989+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 782G, 77%
+{"at": "2026-11-03T02:49:26.202727+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 782G, 77%
+{"at": "2026-11-03T02:50:02.098209+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 782G, 77%
+{"at": "2026-11-03T02:50:40.332019+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 782G, 77%
+{"at": "2026-11-03T02:51:19.015730+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T02:51:58.119179+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T02:52:33.748927+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T02:53:13.091499+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T02:53:58.394227+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T02:54:36.737592+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T02:55:17.083020+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T02:55:57.682064+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T02:56:34.906960+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T02:57:14.318824+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T02:57:54.276370+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T02:58:35.125918+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T02:59:15.179427+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T02:59:57.182056+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:00:37.332433+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:01:21.371622+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:02:01.263965+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:02:40.216408+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:03:22.500344+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:04:03.489685+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:04:42.177586+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:05:18.187984+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:05:59.743563+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:06:41.728448+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:07:21.568400+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:08:00.562634+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:08:41.734284+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:09:16.982099+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:09:59.600757+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:10:34.288186+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:11:16.677511+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:11:57.121633+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:12:33.143984+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:13:11.894362+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:13:50.770860+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:14:28.699010+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:15:05.599503+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:15:42.384507+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:16:21.772350+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:16:57.989233+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:17:35.791014+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:18:12.647907+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:18:48.324200+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:19:26.737249+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:20:04.260807+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:20:40.989214+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:21:15.471732+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:21:52.446075+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:22:29.139761+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:23:04.883797+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:23:40.975907+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:24:17.035627+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:24:50.943292+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:25:26.344783+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:26:01.803894+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:26:37.143717+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:27:12.655026+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:27:48.956496+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:28:25.077620+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:29:00.397107+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:29:37.000255+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:30:11.453681+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:30:51.029001+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:31:23.832332+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:32:00.129245+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:32:36.906035+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:33:13.861215+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:33:50.422029+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:34:24.176826+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:35:00.641147+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:35:37.110643+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:36:12.187359+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:36:47.338219+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:37:22.801652+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:37:56.909763+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:38:32.197843+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:39:07.304554+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:39:42.286215+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:40:15.106315+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:40:57.589145+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:41:29.207960+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:42:04.509639+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:42:39.544537+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:43:14.669701+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:43:47.267658+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:44:24.659492+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:45:01.523573+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:45:36.810851+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:46:11.830942+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:46:46.844071+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:47:19.386691+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 783G, 77%
+{"at": "2026-11-03T03:47:54.635685+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 784G, 77%
+{"at": "2026-11-03T03:48:30.972996+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 784G, 77%
+{"at": "2026-11-03T03:49:06.909427+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 784G, 77%
+{"at": "2026-11-03T03:49:48.507377+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 784G, 77%
+{"at": "2026-11-03T03:50:23.611863+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Running", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 785G, 77%
+{"at": "2026-11-03T03:50:59.266230+00:00", "platform_states": {"d20261103-formal-cal8-wan21-51740c0-r1": "Succeeded", "d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}}
+storage: 785G, 77%
+storage: 785G, 77%
+Filesystem      Size  Used Avail Use% Mounted on
+E:\             147G  116G   32G  79% /mnt/e
+storage: 785G, 77%
+Filesystem      Size  Used Avail Use% Mounted on
+E:\             147G  116G   32G  79% /mnt/e
+storage: 785G, 77%
+Filesystem      Size  Used Avail Use% Mounted on
+E:\             147G  116G   32G  79% /mnt/e
+storage: 785G, 77%
+Filesystem      Size  Used Avail Use% Mounted on
+E:\             147G  116G   32G  79% /mnt/e
+storage: 785G, 77%
+Filesystem      Size  Used Avail Use% Mounted on
+E:\             147G  116G   32G  79% /mnt/e
+storage: 785G, 77%
+Filesystem      Size  Used Avail Use% Mounted on
+E:\             147G  116G   32G  79% /mnt/e
+storage: 785G, 77%
+Filesystem      Size  Used Avail Use% Mounted on
+E:\             147G  116G   32G  79% /mnt/e
+storage: 785G, 77%
+Filesystem      Size  Used Avail Use% Mounted on
+E:\             147G  116G   32G  79% /mnt/e
+storage: 785G, 77%
+storage: 785G, 77%
+storage: 785G, 77%
+Filesystem      Size  Used Avail Use% Mounted on
+E:\             147G  116G   32G  79% /mnt/e
+storage: 785G, 77%
+Filesystem      Size  Used Avail Use% Mounted on
+E:\             147G  116G   32G  79% /mnt/e
+storage: 785G, 77%
+Filesystem      Size  Used Avail Use% Mounted on
+E:\             147G  116G   32G  79% /mnt/e
+storage: 785G, 77%
+Filesystem      Size  Used Avail Use% Mounted on
+E:\             147G  116G   32G  79% /mnt/e
+storage: 785G, 77%
+Filesystem      Size  Used Avail Use% Mounted on
+E:\             147G  116G   32G  79% /mnt/e
+storage: 785G, 77%
+Filesystem      Size  Used Avail Use% Mounted on
+E:\             147G  116G   32G  79% /mnt/e
+storage: 785G, 77%
+Filesystem      Size  Used Avail Use% Mounted on
+E:\             147G  116G   32G  79% /mnt/e
+storage: 785G, 77%
+Filesystem      Size  Used Avail Use% Mounted on
+E:\             147G  116G   32G  79% /mnt/e
+storage: 786G, 77%
+storage: 786G, 77%
+{"at": "2026-11-03T03:54:19.334718+00:00", "summary": "/mnt/e/000_code/zyd-2026/.local/ditserve-kairos-rewrite-runtime/evidence/20261103-cal8-51740c0/calibration-local/summary.json", "status": "measured_calibration"}

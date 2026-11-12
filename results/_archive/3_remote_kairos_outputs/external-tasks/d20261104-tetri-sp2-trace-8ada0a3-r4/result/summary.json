@@ -1,0 +1,895 @@
+{
+  "allows": [],
+  "binding": {
+    "chunk_ends": [
+      4,
+      6,
+      8,
+      10,
+      12,
+      14,
+      16,
+      18,
+      20,
+      22,
+      24,
+      26,
+      28
+    ],
+    "config": {
+      "attention": "math",
+      "cost_profile_sha256": "49ba7834c34a7f2d6d602fe7ce4679e391e67e4fbdef1de14cc1132fa2f58fb4",
+      "derived_manifest": "/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-630ea30-r2/result/derived/PORT_MANIFEST.json",
+      "derived_manifest_sha256": "5ab5b86ee32a96039a50bcaed54bf10ce1cdc5415cac473bc4504375ce8485fb",
+      "diagnostic_only": true,
+      "guidance_scale": 4.5,
+      "max_sequence_length": 256,
+      "model": "stabilityai/stable-diffusion-3.5-medium",
+      "model_manifest": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/sd35.manifest.json",
+      "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+      "model_path": "/shared/data/DITSERVE/models/sd3.5-medium",
+      "resolutions": [
+        [
+          512,
+          512
+        ],
+        [
+          1024,
+          1024
+        ]
+      ],
+      "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+      "schema": "ditserve.tetriserve-sd35-port.v1",
+      "server_launch_allowed": true,
+      "shared_python_root": "/shared/code/DITSERVE/builds/51740c0/share/ditserve/python",
+      "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a"
+    },
+    "config_path": "/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-630ea30-r2/result/service-port-config.json",
+    "config_sha256": "6d3060dd9ceda5809447cb9d5e176546a0330749809807fc1bc4613e99d840af",
+    "derived": {
+      "manifest_sha256": "5ab5b86ee32a96039a50bcaed54bf10ce1cdc5415cac473bc4504375ce8485fb",
+      "root": "/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-630ea30-r2/result/derived"
+    },
+    "plan_sha256": "300db58b53936e474598043dcfb0bbe44cfcf1157928f408d7729e61a3855cde",
+    "prior_numerics_sha256": "b95a8e296736978db27234cceb72233dccd378d46f1d39483d282020252b02ba",
+    "prior_summary_sha256": "2c8a3983634f7403b07f71876b9ee1700968447bb1a6caa2ce11d94952ecdcab",
+    "reference": "/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-630ea30-r2/result/numerics/reference/request-101.safetensors",
+    "reference_sha256": "d1bae19bf24c68d76f640ae3ef987508776321f3da92d01b97958b614bf28cd2",
+    "request": {
+      "guidance_scale": 4.5,
+      "height": 1024,
+      "max_sequence_length": 256,
+      "negative_prompt": "blurry, low quality",
+      "prompt": "A white rabbit in a field of blue flowers.",
+      "seed": 102,
+      "steps": 28,
+      "width": 1024
+    },
+    "service_raw": "/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-630ea30-r2/result/numerics/raw/request-101.safetensors",
+    "service_raw_sha256": "d7fe78f22a21e5732774c45abd19327e83b4bbb087954b14c80365a2d7bb5f31",
+    "sources": {
+      "derived_manifest_sha256": "5ab5b86ee32a96039a50bcaed54bf10ce1cdc5415cac473bc4504375ce8485fb",
+      "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+      "numerics_adapter_sha256": "924b557ffa7066317bd81bb8e950d6125ae4f485dd15589e425652e3398b6958",
+      "protocol_sha256": "86aae608c7f86d194e77a5e2e9645b192b921d8137174cbcdb2825ed7d94b392",
+      "service_adapter_sha256": "a6694e570c22cc485c7b61513018594e2cf492984ef89e1860d898aed29ee773",
+      "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a",
+      "source_manifest_sha256": "2d0d9f9efaf4b3749063458d56c74b0ef79ef72de22096b39889e798e792d027"
+    }
+  },
+  "diagnostic_completed": true,
+  "last_progress": [
+    {
+      "adapter_sha256": "7fe9a06f4d3f107f744dd950e1d7575e3bc0cd2f947173afeae070ccd8386c72",
+      "call_count_scope": "Python forward entry/return; no new CUDA synchronization",
+      "cursor": 28,
+      "diagnostic_completed": false,
+      "error": null,
+      "failed_stage": null,
+      "monotonic_ns": 8533135448824116,
+      "observation_only": true,
+      "pid": 77,
+      "prior_summary_sha256": "2c8a3983634f7403b07f71876b9ee1700968447bb1a6caa2ce11d94952ecdcab",
+      "qualification_eligible": false,
+      "rank": 0,
+      "request_sha256": "322f6325298a57bda08d8cfbfe3fd487b5d27b6d0e4ffedfad73e210ed435a07",
+      "returned_calls": 28,
+      "schema": "ditserve.tetriserve-sp2-progress.v1",
+      "stage": "distributed_cleanup_return",
+      "started_calls": 28,
+      "trajectory": "round_sp2_chunked"
+    },
+    {
+      "adapter_sha256": "7fe9a06f4d3f107f744dd950e1d7575e3bc0cd2f947173afeae070ccd8386c72",
+      "call_count_scope": "Python forward entry/return; no new CUDA synchronization",
+      "cursor": 28,
+      "diagnostic_completed": false,
+      "error": null,
+      "failed_stage": null,
+      "monotonic_ns": 8533135444136729,
+      "observation_only": true,
+      "pid": 78,
+      "prior_summary_sha256": "2c8a3983634f7403b07f71876b9ee1700968447bb1a6caa2ce11d94952ecdcab",
+      "qualification_eligible": false,
+      "rank": 1,
+      "request_sha256": "322f6325298a57bda08d8cfbfe3fd487b5d27b6d0e4ffedfad73e210ed435a07",
+      "returned_calls": 28,
+      "schema": "ditserve.tetriserve-sp2-progress.v1",
+      "stage": "distributed_cleanup_return",
+      "started_calls": 28,
+      "trajectory": "round_sp2_chunked"
+    }
+  ],
+  "migration_executed": false,
+  "native_normal_output_owner_rank": 1,
+  "normal_rank_equality_independent": false,
+  "normal_rank_equality_scope": "Owner-returned normal latent replicated by post-inference broadcast; not independent rank agreement",
+  "numerical_check_passed": false,
+  "observation_admissible": true,
+  "observer_reproduced": true,
+  "performance_measurements": false,
+  "qualification_eligible": false,
+  "ranks": [
+    {
+      "actual_dp": 1,
+      "actual_sp": 2,
+      "chunk_ends": [
+        4,
+        6,
+        8,
+        10,
+        12,
+        14,
+        16,
+        18,
+        20,
+        22,
+        24,
+        26,
+        28
+      ],
+      "comparison_inputs": {
+        "service": {
+          "decoded": {
+            "dtype": "torch.bfloat16",
+            "finite": true,
+            "maximum": 1.203125,
+            "minimum": -1.171875,
+            "retained_array": false,
+            "sha256": "51a91d46c55da6ae4d547295e3cedfc9159896e1fd5ddbada80d94ce1a773073",
+            "shape": [
+              1,
+              3,
+              1024,
+              1024
+            ]
+          },
+          "latents": {
+            "dtype": "torch.bfloat16",
+            "finite": true,
+            "maximum": 3.40625,
+            "minimum": -3.875,
+            "retained_array": false,
+            "sha256": "51e54491234d5453efeed9caa05924764a0274ceb7107ce67a40db5b03660303",
+            "shape": [
+              1,
+              16,
+              128,
+              128
+            ]
+          }
+        },
+        "sp1_reference": {
+          "decoded": {
+            "dtype": "torch.bfloat16",
+            "finite": true,
+            "maximum": 1.2109375,
+            "minimum": -1.15625,
+            "retained_array": false,
+            "sha256": "6ecf1689f04545aab61f7158259cb52dc8a3b99afdfd2d50edf3e73e69f7be0b",
+            "shape": [
+              1,
+              3,
+              1024,
+              1024
+            ]
+          },
+          "latents": {
+            "dtype": "torch.bfloat16",
+            "finite": true,
+            "maximum": 3.53125,
+            "minimum": -3.8125,
+            "retained_array": false,
+            "sha256": "c94027e64e45eb3afc7e04e22b82eadd6a00f10a70d1d86434c34af5436dea46",
+            "shape": [
+              1,
+              16,
+              128,
+              128
+            ]
+          }
+        }
+      },
+      "comparisons": {
+        "normal_sp2_vs_round_sp2_full": {
+          "decoded": {
+            "atol": 1e-05,
+            "bitwise_equal": false,
+            "cosine_similarity": 0.9989697503560693,
+            "elements": 3145728,
+            "max_abs_error": 1.421875,
+            "passed": false,
+            "relative_l2_error": 0.04541065266221936,
+            "rmse": 0.024536945143161053,
+            "rtol": 1e-05
+          },
+          "latents": {
+            "atol": 1e-05,
+            "bitwise_equal": false,
+            "cosine_similarity": 0.9995258698122423,
+            "elements": 262144,
+            "max_abs_error": 1.56640625,
+            "passed": false,
+            "relative_l2_error": 0.03079209634179644,
+            "rmse": 0.032643782634304085,
+            "rtol": 1e-05
+          }
+        },
+        "round_sp2_full_vs_round_sp2_chunked": {
+          "decoded": {
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 1.0000000000000002,
+            "elements": 3145728,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "latents": {
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 0.9999999999999998,
+            "elements": 262144,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          }
+        },
+        "service_vs_round_sp2_chunked": {
+          "decoded": {
+            "atol": 1e-05,
+            "bitwise_equal": false,
+            "cosine_similarity": 0.542810733693445,
+            "elements": 3145728,
+            "max_abs_error": 2.09375,
+            "passed": false,
+            "relative_l2_error": 0.9394251614805451,
+            "rmse": 0.5270351441545238,
+            "rtol": 1e-05
+          },
+          "latents": {
+            "atol": 1e-05,
+            "bitwise_equal": false,
+            "cosine_similarity": 0.7798386560735836,
+            "elements": 262144,
+            "max_abs_error": 4.5,
+            "passed": false,
+            "relative_l2_error": 0.651211428119251,
+            "rmse": 0.7195297679353029,
+            "rtol": 1e-05
+          }
+        },
+        "sp1_reference_vs_normal_sp2": {
+          "decoded": {
+            "atol": 1e-05,
+            "bitwise_equal": false,
+            "cosine_similarity": 0.5424796590959357,
+            "elements": 3145728,
+            "max_abs_error": 2.03125,
+            "passed": false,
+            "relative_l2_error": 0.9418728674139809,
+            "rmse": 0.5255329712750889,
+            "rtol": 1e-05
+          },
+          "latents": {
+            "atol": 1e-05,
+            "bitwise_equal": false,
+            "cosine_similarity": 0.7823151859790558,
+            "elements": 262144,
+            "max_abs_error": 4.484375,
+            "passed": false,
+            "relative_l2_error": 0.6488958576496976,
+            "rmse": 0.7134574973715382,
+            "rtol": 1e-05
+          }
+        },
+        "sp1_reference_vs_round_sp2_chunked": {
+          "decoded": {
+            "atol": 1e-05,
+            "bitwise_equal": false,
+            "cosine_similarity": 0.5437348380446084,
+            "elements": 3145728,
+            "max_abs_error": 2.0390625,
+            "passed": false,
+            "relative_l2_error": 0.9408481842051418,
+            "rmse": 0.5249612329545706,
+            "rtol": 1e-05
+          },
+          "latents": {
+            "atol": 1e-05,
+            "bitwise_equal": false,
+            "cosine_similarity": 0.7827785984285719,
+            "elements": 262144,
+            "max_abs_error": 4.5,
+            "passed": false,
+            "relative_l2_error": 0.6481715145357768,
+            "rmse": 0.7126610860226231,
+            "rtol": 1e-05
+          }
+        },
+        "sp1_reference_vs_round_sp2_full": {
+          "decoded": {
+            "atol": 1e-05,
+            "bitwise_equal": false,
+            "cosine_similarity": 0.5437348380446084,
+            "elements": 3145728,
+            "max_abs_error": 2.0390625,
+            "passed": false,
+            "relative_l2_error": 0.9408481842051418,
+            "rmse": 0.5249612329545706,
+            "rtol": 1e-05
+          },
+          "latents": {
+            "atol": 1e-05,
+            "bitwise_equal": false,
+            "cosine_similarity": 0.7827785984285719,
+            "elements": 262144,
+            "max_abs_error": 4.5,
+            "passed": false,
+            "relative_l2_error": 0.6481715145357768,
+            "rmse": 0.7126610860226231,
+            "rtol": 1e-05
+          }
+        }
+      },
+      "distributed_closed": true,
+      "gpu_uuid": "6c6892f8-1aa0-4c8f-d1ec-bc514adcbd42",
+      "groups": [
+        0,
+        1
+      ],
+      "initial_five_tensors": {
+        "latents": {
+          "dtype": "torch.bfloat16",
+          "finite": true,
+          "maximum": 3.328125,
+          "minimum": -3.328125,
+          "retained_array": false,
+          "sha256": "83904595e01e3d02f92f355a7d28b75831774669586a6fd343cc54d79055d0c9",
+          "shape": [
+            1,
+            16,
+            128,
+            128
+          ]
+        },
+        "pooled_prompt_embeds": {
+          "dtype": "torch.bfloat16",
+          "finite": true,
+          "maximum": 6.5625,
+          "minimum": -5.375,
+          "retained_array": false,
+          "sha256": "26d0b9830ba99dcc9988bae838061d1e57340d3f04b073cd4adf49f57da7a5f1",
+          "shape": [
+            2,
+            2048
+          ]
+        },
+        "prompt_embeds": {
+          "dtype": "torch.bfloat16",
+          "finite": true,
+          "maximum": 856.0,
+          "minimum": -808.0,
+          "retained_array": false,
+          "sha256": "c8cc92d97aab5fbb2f02d80b31d7d9793950f44ecd3a317d43a4098064abb53a",
+          "shape": [
+            2,
+            333,
+            4096
+          ]
+        },
+        "sigmas": {
+          "dtype": "torch.float32",
+          "finite": true,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "retained_array": false,
+          "sha256": "4c213b991b25a4355f1f5afba6ac1942bb0e2167b19411a9f4766ef2a1acf2c9",
+          "shape": [
+            29
+          ]
+        },
+        "timesteps": {
+          "dtype": "torch.float32",
+          "finite": true,
+          "maximum": 1000.0,
+          "minimum": 8.928571701049805,
+          "retained_array": false,
+          "sha256": "ac5e0569db004651b24d8da459e117606324698b110ada9784492c9b2fffd98b",
+          "shape": [
+            28
+          ]
+        }
+      },
+      "normal_collection": {
+        "broadcast_backend": "nccl",
+        "broadcast_group_ranks": [
+          0,
+          1
+        ],
+        "collection_role": "receiver",
+        "created_process_groups": 0,
+        "dtype": "torch.bfloat16",
+        "equality_scope": "Owner-returned normal latent replicated by post-inference broadcast; not independent rank agreement",
+        "independent_rank_agreement": false,
+        "native_output_owner_rank": 1,
+        "native_return": "none",
+        "native_return_validations": [
+          {
+            "dtype": "torch.bfloat16",
+            "error": null,
+            "is_native_owner": false,
+            "native_return": "none",
+            "owner_rank": 1,
+            "rank": 0,
+            "shape": [
+              1,
+              16,
+              128,
+              128
+            ],
+            "valid": true
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "error": null,
+            "is_native_owner": true,
+            "native_return": "pipeline_output",
+            "owner_rank": 1,
+            "rank": 1,
+            "shape": [
+              1,
+              16,
+              128,
+              128
+            ],
+            "valid": true
+          }
+        ],
+        "operation": "post_inference_broadcast",
+        "rank": 0,
+        "received_from_rank": 1,
+        "schema": "ditserve.tetriserve-normal-output-collection.v1",
+        "shape": [
+          1,
+          16,
+          128,
+          128
+        ],
+        "validation_backend": "gloo",
+        "validation_group_ranks": [
+          0,
+          1
+        ]
+      },
+      "outputs": {
+        "normal_sp2": {
+          "decoded": {
+            "dtype": "torch.bfloat16",
+            "finite": true,
+            "maximum": 1.1875,
+            "minimum": -1.203125,
+            "retained_array": false,
+            "sha256": "2716e5614cd09bffebe81af8120fcbce3727496cba6dcd9177e84c8e8bb16fac",
+            "shape": [
+              1,
+              3,
+              1024,
+              1024
+            ]
+          },
+          "latents": {
+            "dtype": "torch.bfloat16",
+            "finite": true,
+            "maximum": 3.53125,
+            "minimum": -3.875,
+            "retained_array": false,
+            "sha256": "c91ee9fc02602fead0d68aa7e6834a1be90cdce9294393fc93c64cfad5bcf621",
+            "shape": [
+              1,
+              16,
+              128,
+              128
+            ]
+          }
+        },
+        "round_sp2_chunked": {
+          "decoded": {
+            "dtype": "torch.bfloat16",
+            "finite": true,
+            "maximum": 1.1640625,
+            "minimum": -1.2109375,
+            "retained_array": false,
+            "sha256": "497231128b00b6e636cd713b6caa0c63ab1e1b4672ab112b64d33ded7b27126f",
+            "shape": [
+              1,
+              3,
+              1024,
+              1024
+            ]
+          },
+          "latents": {
+            "dtype": "torch.bfloat16",
+            "finite": true,
+            "maximum": 3.546875,
+            "minimum": -3.875,
+            "retained_array": false,
+            "sha256": "eeee8c90598dd41ad72a98498abf6cbaa922943ead2ee0c3d2785e1a9fdbdb3f",
+            "shape": [
+              1,
+              16,
+              128,
+              128
+            ]
+          }
+        },
+        "round_sp2_full": {
+          "decoded": {
+            "dtype": "torch.bfloat16",
+            "finite": true,
+            "maximum": 1.1640625,
+            "minimum": -1.2109375,
+            "retained_array": false,
+            "sha256": "497231128b00b6e636cd713b6caa0c63ab1e1b4672ab112b64d33ded7b27126f",
+            "shape": [
+              1,
+              3,
+              1024,
+              1024
+            ]
+          },
+          "latents": {
+            "dtype": "torch.bfloat16",
+            "finite": true,
+            "maximum": 3.546875,
+            "minimum": -3.875,
+            "retained_array": false,
+            "sha256": "eeee8c90598dd41ad72a98498abf6cbaa922943ead2ee0c3d2785e1a9fdbdb3f",
+            "shape": [
+              1,
+              16,
+              128,
+              128
+            ]
+          }
+        }
+      },
+      "provenance": {
+        "group_ownership": "official TetriServe",
+        "model_integrity": {
+          "model_integrity": "manifest_verified",
+          "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+          "model_verified_bytes": 16274913511,
+          "model_verified_files": 28,
+          "model_verified_revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80"
+        },
+        "new_groups_created_by_bridge": 0,
+        "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a"
+      },
+      "rank": 0,
+      "stage": "cleanup",
+      "status": "completed",
+      "trace": {
+        "bytes": 330017,
+        "complete": true,
+        "file": "rank-0.trace.json",
+        "performance_measurements": false,
+        "sha256": "619cb83e1a8b41f2a817d39962eb6202f598da6639bbb7f7c0bd38995d1aca66"
+      },
+      "transformer_calls": {
+        "normal_sp2": 28,
+        "round_sp2_chunked": 28,
+        "round_sp2_full": 28
+      }
+    },
+    {
+      "actual_dp": 1,
+      "actual_sp": 2,
+      "chunk_ends": [
+        4,
+        6,
+        8,
+        10,
+        12,
+        14,
+        16,
+        18,
+        20,
+        22,
+        24,
+        26,
+        28
+      ],
+      "distributed_closed": true,
+      "gpu_uuid": "9bd9082d-b7d4-f4de-cd0a-5788492a5247",
+      "groups": [
+        0,
+        1
+      ],
+      "initial_five_tensors": {
+        "latents": {
+          "dtype": "torch.bfloat16",
+          "finite": true,
+          "maximum": 3.328125,
+          "minimum": -3.328125,
+          "retained_array": false,
+          "sha256": "83904595e01e3d02f92f355a7d28b75831774669586a6fd343cc54d79055d0c9",
+          "shape": [
+            1,
+            16,
+            128,
+            128
+          ]
+        },
+        "pooled_prompt_embeds": {
+          "dtype": "torch.bfloat16",
+          "finite": true,
+          "maximum": 6.5625,
+          "minimum": -5.375,
+          "retained_array": false,
+          "sha256": "26d0b9830ba99dcc9988bae838061d1e57340d3f04b073cd4adf49f57da7a5f1",
+          "shape": [
+            2,
+            2048
+          ]
+        },
+        "prompt_embeds": {
+          "dtype": "torch.bfloat16",
+          "finite": true,
+          "maximum": 856.0,
+          "minimum": -808.0,
+          "retained_array": false,
+          "sha256": "c8cc92d97aab5fbb2f02d80b31d7d9793950f44ecd3a317d43a4098064abb53a",
+          "shape": [
+            2,
+            333,
+            4096
+          ]
+        },
+        "sigmas": {
+          "dtype": "torch.float32",
+          "finite": true,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "retained_array": false,
+          "sha256": "4c213b991b25a4355f1f5afba6ac1942bb0e2167b19411a9f4766ef2a1acf2c9",
+          "shape": [
+            29
+          ]
+        },
+        "timesteps": {
+          "dtype": "torch.float32",
+          "finite": true,
+          "maximum": 1000.0,
+          "minimum": 8.928571701049805,
+          "retained_array": false,
+          "sha256": "ac5e0569db004651b24d8da459e117606324698b110ada9784492c9b2fffd98b",
+          "shape": [
+            28
+          ]
+        }
+      },
+      "normal_collection": {
+        "broadcast_backend": "nccl",
+        "broadcast_group_ranks": [
+          0,
+          1
+        ],
+        "collection_role": "owner",
+        "created_process_groups": 0,
+        "dtype": "torch.bfloat16",
+        "equality_scope": "Owner-returned normal latent replicated by post-inference broadcast; not independent rank agreement",
+        "independent_rank_agreement": false,
+        "native_output_owner_rank": 1,
+        "native_return": "pipeline_output",
+        "native_return_validations": [
+          {
+            "dtype": "torch.bfloat16",
+            "error": null,
+            "is_native_owner": false,
+            "native_return": "none",
+            "owner_rank": 1,
+            "rank": 0,
+            "shape": [
+              1,
+              16,
+              128,
+              128
+            ],
+            "valid": true
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "error": null,
+            "is_native_owner": true,
+            "native_return": "pipeline_output",
+            "owner_rank": 1,
+            "rank": 1,
+            "shape": [
+              1,
+              16,
+              128,
+              128
+            ],
+            "valid": true
+          }
+        ],
+        "operation": "post_inference_broadcast",
+        "rank": 1,
+        "received_from_rank": 1,
+        "schema": "ditserve.tetriserve-normal-output-collection.v1",
+        "shape": [
+          1,
+          16,
+          128,
+          128
+        ],
+        "validation_backend": "gloo",
+        "validation_group_ranks": [
+          0,
+          1
+        ]
+      },
+      "outputs": {
+        "normal_sp2": {
+          "decoded": {
+            "dtype": "torch.bfloat16",
+            "finite": true,
+            "maximum": 1.1875,
+            "minimum": -1.203125,
+            "retained_array": false,
+            "sha256": "2716e5614cd09bffebe81af8120fcbce3727496cba6dcd9177e84c8e8bb16fac",
+            "shape": [
+              1,
+              3,
+              1024,
+              1024
+            ]
+          },
+          "latents": {
+            "dtype": "torch.bfloat16",
+            "finite": true,
+            "maximum": 3.53125,
+            "minimum": -3.875,
+            "retained_array": false,
+            "sha256": "c91ee9fc02602fead0d68aa7e6834a1be90cdce9294393fc93c64cfad5bcf621",
+            "shape": [
+              1,
+              16,
+              128,
+              128
+            ]
+          }
+        },
+        "round_sp2_chunked": {
+          "decoded": {
+            "dtype": "torch.bfloat16",
+            "finite": true,
+            "maximum": 1.1640625,
+            "minimum": -1.2109375,
+            "retained_array": false,
+            "sha256": "497231128b00b6e636cd713b6caa0c63ab1e1b4672ab112b64d33ded7b27126f",
+            "shape": [
+              1,
+              3,
+              1024,
+              1024
+            ]
+          },
+          "latents": {
+            "dtype": "torch.bfloat16",
+            "finite": true,
+            "maximum": 3.546875,
+            "minimum": -3.875,
+            "retained_array": false,
+            "sha256": "eeee8c90598dd41ad72a98498abf6cbaa922943ead2ee0c3d2785e1a9fdbdb3f",
+            "shape": [
+              1,
+              16,
+              128,
+              128
+            ]
+          }
+        },
+        "round_sp2_full": {
+          "decoded": {
+            "dtype": "torch.bfloat16",
+            "finite": true,
+            "maximum": 1.1640625,
+            "minimum": -1.2109375,
+            "retained_array": false,
+            "sha256": "497231128b00b6e636cd713b6caa0c63ab1e1b4672ab112b64d33ded7b27126f",
+            "shape": [
+              1,
+              3,
+              1024,
+              1024
+            ]
+          },
+          "latents": {
+            "dtype": "torch.bfloat16",
+            "finite": true,
+            "maximum": 3.546875,
+            "minimum": -3.875,
+            "retained_array": false,
+            "sha256": "eeee8c90598dd41ad72a98498abf6cbaa922943ead2ee0c3d2785e1a9fdbdb3f",
+            "shape": [
+              1,
+              16,
+              128,
+              128
+            ]
+          }
+        }
+      },
+      "provenance": {
+        "group_ownership": "official TetriServe",
+        "model_integrity": {
+          "model_integrity": "manifest_verified",
+          "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+          "model_verified_bytes": 16274913511,
+          "model_verified_files": 28,
+          "model_verified_revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80"
+        },
+        "new_groups_created_by_bridge": 0,
+        "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a"
+      },
+      "rank": 1,
+      "stage": "cleanup",
+      "status": "completed",
+      "trace": {
+        "bytes": 331022,
+        "complete": true,
+        "file": "rank-1.trace.json",
+        "performance_measurements": false,
+        "sha256": "2551a7d5bb87760726d2d2e7312af0cd1b8af0ca8bc0b301f25753e1a9dbb13d"
+      },
+      "transformer_calls": {
+        "normal_sp2": 28,
+        "round_sp2_chunked": 28,
+        "round_sp2_full": 28
+      }
+    }
+  ],
+  "reference_inference_executed": false,
+  "retained_new_arrays": false,
+  "schema": "ditserve.tetriserve-sp2-diagnostic.v1",
+  "serving_executed": false,
+  "status": "diagnostic_completed",
+  "tolerance": {
+    "atol": 1e-05,
+    "rtol": 1e-05
+  },
+  "trace_hashing_may_synchronize_cuda": true,
+  "trace_observer_sha256": "07138a4d0bc716d76a2a840dd3c343f144171881fda9deb771072012579d01b2",
+  "trace_reference_sha256": "a91c5bb3541702314baff6b98ccb4dfe4d2cd072e4670d23838eb936d4db958a",
+  "trajectories": [
+    "normal_sp2",
+    "round_sp2_full",
+    "round_sp2_chunked"
+  ]
+}

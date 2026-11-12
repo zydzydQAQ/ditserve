@@ -1,0 +1,142 @@
+{
+  "schema": "ditserve.paper-results.subsection.v1",
+  "section": "3.2",
+  "title": "Characterization II: Step vs. Block Timelines and Modality-Asymmetric Preemption",
+  "paper_source": "ditserve-writing/body/03-motivation.tex",
+  "figures": [
+    "figure/03-motivation/fig4_preemption_granularity_gap.pdf"
+  ],
+  "provenance_jobs": [
+    "d20261104-mot-alg-2gpu-r1",
+    "20261103-formal-b97479e",
+    "20261104-motivation-local/gpu_timeline/summary.json"
+  ],
+  "tight_t2i_slack_budget_ms": 429.7,
+  "decode_idle_share_of_queued_gpu_idle_pct": [
+    79.0,
+    89.4
+  ],
+  "first_fit_pair_splitting_video_sar_drop_pp": -24.7,
+  "tight_budget_rescue": {
+    "edf_cfg2_wait_ms": 1706.32,
+    "edf_cfg2_e2e_ms": 3434.9,
+    "edf_cfg2_sar_pct": 0.0,
+    "block_cfg2_stop_ms": 63.75,
+    "block_cfg2_wait_ms": 56.6,
+    "block_cfg2_e2e_ms": 1806.11,
+    "block_cfg2_sar_pct": 100.0,
+    "wait_reduction_x": 26.77,
+    "e2e_speedup_x": 1.902,
+    "total_sha256_verified_videos": "624/624"
+  },
+  "execution_quanta": [
+    {
+      "modality": "Video (Wan2.1/2.2)",
+      "granularity": "Full Denoising Step (30 blocks on CFG2)",
+      "duration_ms_min": 1544.55,
+      "duration_ms_max": 8154.03,
+      "ratio_vs_tight_t2i_slack_429p7ms": "3.6x - 19.0x (> B)",
+      "stop_sync_overhead_pct": "0.0%",
+      "pci_swap_bytes": 0,
+      "suitability": "Fails tight T2I SLO (1,706.3 ms HoL wait, 0% SAR)"
+    },
+    {
+      "modality": "Video (Wan2.1/2.2)",
+      "granularity": "Single Transformer Block (1 block safe-point)",
+      "duration_ms_min": 45.0,
+      "duration_ms_max": 94.0,
+      "ratio_vs_tight_t2i_slack_429p7ms": "0.10x - 0.22x (<< B)",
+      "stop_sync_overhead_pct": "< 2.0% (0.60-1.62 ms)",
+      "pci_swap_bytes": 0,
+      "suitability": "Optimal safe-point (63.75 ms stop, 100% SAR, 100% SHA256 parity)"
+    },
+    {
+      "modality": "Image (SD3.5-Medium)",
+      "granularity": "Full Denoising Step (24 blocks on 1 GPU)",
+      "duration_ms_min": 59.2,
+      "duration_ms_max": 221.4,
+      "ratio_vs_tight_t2i_slack_429p7ms": "0.14x - 0.52x (< B)",
+      "stop_sync_overhead_pct": "0.0%",
+      "pci_swap_bytes": 0,
+      "suitability": "Optimal quantum for non-preemptive CB + cu_seqlens packing"
+    },
+    {
+      "modality": "Image (SD3.5-Medium)",
+      "granularity": "Single MM-DiT JointBlock (1 block)",
+      "duration_ms_min": 2.5,
+      "duration_ms_max": 9.1,
+      "ratio_vs_tight_t2i_slack_429p7ms": "0.006x - 0.021x",
+      "stop_sync_overhead_pct": "24.0% - 65.0% stall",
+      "pci_swap_bytes": 0,
+      "suitability": "Counterproductive (sync breaks pipelining, dual-stream mutation, breaks packing)"
+    }
+  ],
+  "verification_stages": [
+    {
+      "stage": "P0 Dev Block Parity",
+      "workload": "wan21-dev (33x480x832, 120 pairs)",
+      "stop_p50_ms": 51.26,
+      "stop_p95_ms": 56.84,
+      "no_preempt_overhead_pct": 0.0,
+      "image_wait_ms": 51.3,
+      "image_e2e_ms": 1770.2,
+      "image_sar_pct": 100.0,
+      "sha256_parity": "120/120 (100%)"
+    },
+    {
+      "stage": "P0 Dev Block Parity",
+      "workload": "wan22-dev (49x512x896, 120 pairs)",
+      "stop_p50_ms": 43.68,
+      "stop_p95_ms": 49.97,
+      "no_preempt_overhead_pct": 0.0,
+      "image_wait_ms": 43.7,
+      "image_e2e_ms": 1762.6,
+      "image_sar_pct": 100.0,
+      "sha256_parity": "120/120 (100%)"
+    },
+    {
+      "stage": "P1iso Formal 50-Step ABBA",
+      "workload": "wan21/wan22 480p & 720p (192 videos, 48 quads)",
+      "stop_p50_ms": 0.0,
+      "stop_p95_ms": 0.0,
+      "no_preempt_overhead_pct": 0.24,
+      "image_wait_ms": 0.0,
+      "image_e2e_ms": 0.0,
+      "image_sar_pct": 100.0,
+      "sha256_parity": "192/192 (100%)"
+    },
+    {
+      "stage": "P1-Partial Loose SLO (kappa=2.5x)",
+      "workload": "560 mixed reqs (140 video pairs, slack 2.63s > step)",
+      "stop_p50_ms": 0.0,
+      "stop_p95_ms": 0.0,
+      "no_preempt_overhead_pct": 0.9,
+      "image_wait_ms": 0.92,
+      "image_e2e_ms": 1720.0,
+      "image_sar_pct": 100.0,
+      "sha256_parity": "140/140 (100%)"
+    },
+    {
+      "stage": "Formal Tight-SLO Baseline (edf-cfg2)",
+      "workload": "wan21-480p (81f) + sd35-512 (kappa=1.25x, B=429.7ms)",
+      "stop_p50_ms": 1706.32,
+      "stop_p95_ms": 1706.32,
+      "no_preempt_overhead_pct": 0.0,
+      "image_wait_ms": 1706.32,
+      "image_e2e_ms": 3434.9,
+      "image_sar_pct": 0.0,
+      "sha256_parity": "Baseline"
+    },
+    {
+      "stage": "Formal Tight-SLO Rescue (block-cfg2)",
+      "workload": "wan21-480p (81f) + sd35-512 (kappa=1.25x, B=429.7ms)",
+      "stop_p50_ms": 63.75,
+      "stop_p95_ms": 63.75,
+      "no_preempt_overhead_pct": 0.0,
+      "image_wait_ms": 56.6,
+      "image_e2e_ms": 1806.11,
+      "image_sar_pct": 100.0,
+      "sha256_parity": "100% (max_abs_diff=0.0)"
+    }
+  ]
+}

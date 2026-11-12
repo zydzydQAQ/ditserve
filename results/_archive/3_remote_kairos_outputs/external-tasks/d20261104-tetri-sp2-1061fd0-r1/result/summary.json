@@ -1,0 +1,101 @@
+{
+  "allows": [],
+  "binding": {
+    "chunk_ends": [
+      4,
+      6,
+      8,
+      10,
+      12,
+      14,
+      16,
+      18,
+      20,
+      22,
+      24,
+      26,
+      28
+    ],
+    "config": {
+      "attention": "math",
+      "cost_profile_sha256": "49ba7834c34a7f2d6d602fe7ce4679e391e67e4fbdef1de14cc1132fa2f58fb4",
+      "derived_manifest": "/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-630ea30-r2/result/derived/PORT_MANIFEST.json",
+      "derived_manifest_sha256": "5ab5b86ee32a96039a50bcaed54bf10ce1cdc5415cac473bc4504375ce8485fb",
+      "diagnostic_only": true,
+      "guidance_scale": 4.5,
+      "max_sequence_length": 256,
+      "model": "stabilityai/stable-diffusion-3.5-medium",
+      "model_manifest": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/sd35.manifest.json",
+      "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+      "model_path": "/shared/data/DITSERVE/models/sd3.5-medium",
+      "resolutions": [
+        [
+          512,
+          512
+        ],
+        [
+          1024,
+          1024
+        ]
+      ],
+      "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+      "schema": "ditserve.tetriserve-sd35-port.v1",
+      "server_launch_allowed": true,
+      "shared_python_root": "/shared/code/DITSERVE/builds/51740c0/share/ditserve/python",
+      "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a"
+    },
+    "config_path": "/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-630ea30-r2/result/service-port-config.json",
+    "config_sha256": "6d3060dd9ceda5809447cb9d5e176546a0330749809807fc1bc4613e99d840af",
+    "derived": {
+      "manifest_sha256": "5ab5b86ee32a96039a50bcaed54bf10ce1cdc5415cac473bc4504375ce8485fb",
+      "root": "/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-630ea30-r2/result/derived"
+    },
+    "plan_sha256": "300db58b53936e474598043dcfb0bbe44cfcf1157928f408d7729e61a3855cde",
+    "prior_numerics_sha256": "b95a8e296736978db27234cceb72233dccd378d46f1d39483d282020252b02ba",
+    "prior_summary_sha256": "2c8a3983634f7403b07f71876b9ee1700968447bb1a6caa2ce11d94952ecdcab",
+    "reference": "/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-630ea30-r2/result/numerics/reference/request-101.safetensors",
+    "reference_sha256": "d1bae19bf24c68d76f640ae3ef987508776321f3da92d01b97958b614bf28cd2",
+    "request": {
+      "guidance_scale": 4.5,
+      "height": 1024,
+      "max_sequence_length": 256,
+      "negative_prompt": "blurry, low quality",
+      "prompt": "A white rabbit in a field of blue flowers.",
+      "seed": 102,
+      "steps": 28,
+      "width": 1024
+    },
+    "service_raw": "/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-630ea30-r2/result/numerics/raw/request-101.safetensors",
+    "service_raw_sha256": "d7fe78f22a21e5732774c45abd19327e83b4bbb087954b14c80365a2d7bb5f31",
+    "sources": {
+      "derived_manifest_sha256": "5ab5b86ee32a96039a50bcaed54bf10ce1cdc5415cac473bc4504375ce8485fb",
+      "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+      "numerics_adapter_sha256": "924b557ffa7066317bd81bb8e950d6125ae4f485dd15589e425652e3398b6958",
+      "protocol_sha256": "86aae608c7f86d194e77a5e2e9645b192b921d8137174cbcdb2825ed7d94b392",
+      "service_adapter_sha256": "a6694e570c22cc485c7b61513018594e2cf492984ef89e1860d898aed29ee773",
+      "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a",
+      "source_manifest_sha256": "2d0d9f9efaf4b3749063458d56c74b0ef79ef72de22096b39889e798e792d027"
+    }
+  },
+  "diagnostic_completed": false,
+  "migration_executed": false,
+  "numerical_check_passed": false,
+  "performance_measurements": false,
+  "qualification_eligible": false,
+  "ranks": [],
+  "reference_inference_executed": false,
+  "retained_new_arrays": false,
+  "schema": "ditserve.tetriserve-sp2-diagnostic.v1",
+  "serving_executed": false,
+  "status": "failed",
+  "tolerance": {
+    "atol": 1e-05,
+    "rtol": 1e-05
+  },
+  "trajectories": [
+    "normal_sp2",
+    "round_sp2_full",
+    "round_sp2_chunked"
+  ],
+  "worker_error": "TimeoutError('SP2 diagnostic timeout')"
+}

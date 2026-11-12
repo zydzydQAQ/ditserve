@@ -1,0 +1,143 @@
+{
+  "schema": "ditserve.paper-results.index.v1",
+  "generated_date": "2026-11-11",
+  "latest_build_commit": "8c50c7a",
+  "scalability_build_commit": "ae4ba3d",
+  "container_image": "192.168.1.114:30500/jjjkairos/ditserve:external-serving-vllm-cu126-sm80-20261104-r3",
+  "container_digest": "sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+  "calibration_bundle_id": "d20261106-formal-v2-wan22-b1-21a1ca3-r1",
+  "subsections": [
+    {
+      "section": "3.1",
+      "directory": "3.1_Characterization_I_Modality-Asymmetric_SP_and_CFG_Scaling_on_PCIe",
+      "latex_subsection": "Characterization I: Modality-Asymmetric SP and CFG Scaling on PCIe",
+      "latex_file": "body/03-motivation.tex",
+      "figures_and_tables": "Fig. 3 (fig3a_sp_scaling), Fig. 4 (fig3b_cfg_scaling)"
+    },
+    {
+      "section": "3.2",
+      "directory": "3.2_Characterization_II_Step_vs_Block_Timelines_and_Modality-Asymmetric_Preemption",
+      "latex_subsection": "Characterization II: Step vs. Block Timelines and Modality-Asymmetric Preemption",
+      "latex_file": "body/03-motivation.tex",
+      "figures_and_tables": "Fig. 5 (fig4_preemption_granularity_gap)"
+    },
+    {
+      "section": "3.3",
+      "directory": "3.3_Characterization_III_Cross-Modal_HBM_Wall_Prompt_Padding_and_Batch_Waste",
+      "latex_subsection": "Characterization III: Cross-Modal HBM Wall, Prompt Padding, and Batch Waste",
+      "latex_file": "body/03-motivation.tex",
+      "figures_and_tables": "Table 2 (tab:mot_memory)"
+    },
+    {
+      "section": "5.1",
+      "directory": "5.1_Experimental_Setup",
+      "latex_subsection": "Experimental Setup",
+      "latex_file": "body/05-evaluation.tex",
+      "figures_and_tables": "Table 1 (tab:bg_models), 42-Workload Matrix, Calibration Bundle"
+    },
+    {
+      "section": "5.2",
+      "directory": "5.2_Modality_Mix_Scale",
+      "latex_subsection": "Modality Mix Scale",
+      "latex_file": "body/05-evaluation.tex",
+      "figures_and_tables": "Fig. 7 (fig_eval_mix_scale), Fig. 8 (fig_eval_anchor_cdf)"
+    },
+    {
+      "section": "5.3",
+      "directory": "5.3_Rate_Scale",
+      "latex_subsection": "Rate Scale",
+      "latex_file": "body/05-evaluation.tex",
+      "figures_and_tables": "Fig. 9 (fig_eval_rate_scale), Fig. 10 (fig_eval_rate_p95)"
+    },
+    {
+      "section": "5.4",
+      "directory": "5.4_SLO_Scale",
+      "latex_subsection": "SLO Scale",
+      "latex_file": "body/05-evaluation.tex",
+      "figures_and_tables": "Fig. 11 (fig_eval_slo_scale)"
+    },
+    {
+      "section": "5.5",
+      "directory": "5.5_Scalability",
+      "latex_subsection": "Scalability",
+      "latex_file": "body/05-evaluation.tex",
+      "figures_and_tables": "Fig. 12 (fig_eval_gpu_scale)"
+    },
+    {
+      "section": "5.6",
+      "directory": "5.6_Ablation_Study",
+      "latex_subsection": "Ablation Study",
+      "latex_file": "body/05-evaluation.tex",
+      "figures_and_tables": "Fig. 13 (fig_eval_ablation), L1 Cost Model & Parity Gates"
+    },
+    {
+      "section": "5.7",
+      "directory": "5.7_Hardware_and_Runtime_Subsystem_Microbenchmarks",
+      "latex_subsection": "Hardware and Runtime Subsystem Microbenchmarks",
+      "latex_file": "body/05-evaluation.tex",
+      "figures_and_tables": "Table 3 (tab:eval_microbench)"
+    }
+  ],
+  "headline_results": {
+    "5.2_Modality_Mix_Scale": {
+      "poisson_mean_sar_pct": 91.4,
+      "gamma_cv2_mean_sar_pct": 89.8,
+      "anchor_v0p5_sar_pct": {
+        "poisson": 96.0,
+        "gamma_cv2": 94.0
+      },
+      "anchor_norm_p95": {
+        "poisson": 0.95,
+        "gamma_cv2": 1.16
+      }
+    },
+    "5.3_Rate_Scale": {
+      "poisson_mean_sar_pct": 87.25,
+      "gamma_cv2_mean_sar_pct": 87.25,
+      "sd35_image_p95_range_s": {
+        "poisson": [
+          14.77,
+          15.03
+        ],
+        "gamma_cv2": [
+          14.78,
+          16.23
+        ]
+      }
+    },
+    "5.4_SLO_Scale": {
+      "poisson_mean_sar_pct": 89.6,
+      "gamma_cv2_mean_sar_pct": 86.4,
+      "strict_kappa_1p0x_sar_pct": {
+        "poisson": 66.0,
+        "gamma_cv2": 56.0
+      }
+    },
+    "5.5_Scalability": {
+      "pooled_374req_sar_pct": {
+        "poisson": 93.85,
+        "gamma_cv2": 93.58
+      },
+      "16gpu_goodput_scaling_vs_2gpu_x": {
+        "poisson": 8.08,
+        "gamma_cv2": 8.84
+      }
+    },
+    "5.6_Ablation_Study": {
+      "staircase_poisson_sar_pct": [
+        74.0,
+        87.0,
+        92.0,
+        94.0
+      ],
+      "staircase_gamma_cv2_sar_pct": [
+        64.0,
+        78.0,
+        93.0,
+        94.0
+      ],
+      "l1_cost_model_regret_pct": 0.0,
+      "tier1_sha256_parity": "624/624"
+    }
+  }
+}

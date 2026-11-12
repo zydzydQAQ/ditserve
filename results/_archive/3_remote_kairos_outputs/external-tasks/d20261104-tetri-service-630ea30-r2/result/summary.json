@@ -1,0 +1,816 @@
+{
+  "allows": [],
+  "calibration_cells": [
+    {
+      "bs": 1,
+      "height": 512,
+      "sp": 1,
+      "steps": 28,
+      "width": 512
+    },
+    {
+      "bs": 1,
+      "height": 512,
+      "sp": 2,
+      "steps": 28,
+      "width": 512
+    },
+    {
+      "bs": 2,
+      "height": 512,
+      "sp": 1,
+      "steps": 28,
+      "width": 512
+    },
+    {
+      "bs": 2,
+      "height": 512,
+      "sp": 2,
+      "steps": 28,
+      "width": 512
+    },
+    {
+      "bs": 1,
+      "height": 1024,
+      "sp": 1,
+      "steps": 28,
+      "width": 1024
+    },
+    {
+      "bs": 1,
+      "height": 1024,
+      "sp": 2,
+      "steps": 28,
+      "width": 1024
+    },
+    {
+      "bs": 2,
+      "height": 1024,
+      "sp": 1,
+      "steps": 28,
+      "width": 1024
+    },
+    {
+      "bs": 2,
+      "height": 1024,
+      "sp": 2,
+      "steps": 28,
+      "width": 1024
+    }
+  ],
+  "calibration_timing_scope": "One measured repeat per cell; denoising includes VAE decode; diagnostic costs only",
+  "cost_calibration_sha256": {
+    "rank-0.jsonl": "772001014b894950ecedf173a9207dbede8221db4f4b633130369a9538bfbd30",
+    "rank-1.jsonl": "24748c16db5cd7584ae93b91a36a1ed5d33f0d03d52bbd1f115b06de0a6b7f35"
+  },
+  "cost_profile_sha256": "49ba7834c34a7f2d6d602fe7ce4679e391e67e4fbdef1de14cc1132fa2f58fb4",
+  "counts": {
+    "continuation_rounds": 14,
+    "native_rounds": 16,
+    "observed_rank_groups": [
+      [
+        0
+      ],
+      [
+        0,
+        1
+      ],
+      [
+        1
+      ]
+    ],
+    "rank_executions": 25,
+    "requests_completed": 2,
+    "transformer_steps_per_request": [
+      28,
+      28
+    ]
+  },
+  "cross_rank_migration_required": false,
+  "derived_manifest_sha256": "5ab5b86ee32a96039a50bcaed54bf10ce1cdc5415cac473bc4504375ce8485fb",
+  "dispatches": [
+    {
+      "batch_size": 1,
+      "end": 4,
+      "height": 1024,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A white rabbit in a field of blue flowers."
+        ],
+        "seed": 102
+      },
+      "ranks": [
+        0
+      ],
+      "request_ids": [
+        1
+      ],
+      "start": 0,
+      "sub_request_ids": [
+        -2
+      ],
+      "width": 1024
+    },
+    {
+      "batch_size": 1,
+      "end": 10,
+      "height": 512,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A red fox standing beside a mountain lake."
+        ],
+        "seed": 101
+      },
+      "ranks": [
+        1
+      ],
+      "request_ids": [
+        0
+      ],
+      "start": 0,
+      "sub_request_ids": [
+        -1
+      ],
+      "width": 512
+    },
+    {
+      "batch_size": 1,
+      "end": 20,
+      "height": 512,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A red fox standing beside a mountain lake."
+        ],
+        "seed": 101
+      },
+      "ranks": [
+        1
+      ],
+      "request_ids": [
+        0
+      ],
+      "start": 10,
+      "sub_request_ids": [
+        -1
+      ],
+      "width": 512
+    },
+    {
+      "batch_size": 1,
+      "end": 6,
+      "height": 1024,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A white rabbit in a field of blue flowers."
+        ],
+        "seed": 102
+      },
+      "ranks": [
+        0
+      ],
+      "request_ids": [
+        1
+      ],
+      "start": 4,
+      "sub_request_ids": [
+        -2
+      ],
+      "width": 1024
+    },
+    {
+      "batch_size": 1,
+      "end": 28,
+      "height": 512,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A red fox standing beside a mountain lake."
+        ],
+        "seed": 101
+      },
+      "ranks": [
+        1
+      ],
+      "request_ids": [
+        0
+      ],
+      "start": 20,
+      "sub_request_ids": [
+        -1
+      ],
+      "width": 512
+    },
+    {
+      "batch_size": 1,
+      "end": 8,
+      "height": 1024,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A white rabbit in a field of blue flowers."
+        ],
+        "seed": 102
+      },
+      "ranks": [
+        0
+      ],
+      "request_ids": [
+        1
+      ],
+      "start": 6,
+      "sub_request_ids": [
+        -2
+      ],
+      "width": 1024
+    },
+    {
+      "batch_size": 1,
+      "end": 10,
+      "height": 1024,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A white rabbit in a field of blue flowers."
+        ],
+        "seed": 102
+      },
+      "ranks": [
+        0
+      ],
+      "request_ids": [
+        1
+      ],
+      "start": 8,
+      "sub_request_ids": [
+        -2
+      ],
+      "width": 1024
+    },
+    {
+      "batch_size": 1,
+      "end": 12,
+      "height": 1024,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A white rabbit in a field of blue flowers."
+        ],
+        "seed": 102
+      },
+      "ranks": [
+        0,
+        1
+      ],
+      "request_ids": [
+        1
+      ],
+      "start": 10,
+      "sub_request_ids": [
+        -2
+      ],
+      "width": 1024
+    },
+    {
+      "batch_size": 1,
+      "end": 14,
+      "height": 1024,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A white rabbit in a field of blue flowers."
+        ],
+        "seed": 102
+      },
+      "ranks": [
+        0,
+        1
+      ],
+      "request_ids": [
+        1
+      ],
+      "start": 12,
+      "sub_request_ids": [
+        -2
+      ],
+      "width": 1024
+    },
+    {
+      "batch_size": 1,
+      "end": 16,
+      "height": 1024,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A white rabbit in a field of blue flowers."
+        ],
+        "seed": 102
+      },
+      "ranks": [
+        0,
+        1
+      ],
+      "request_ids": [
+        1
+      ],
+      "start": 14,
+      "sub_request_ids": [
+        -2
+      ],
+      "width": 1024
+    },
+    {
+      "batch_size": 1,
+      "end": 18,
+      "height": 1024,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A white rabbit in a field of blue flowers."
+        ],
+        "seed": 102
+      },
+      "ranks": [
+        0,
+        1
+      ],
+      "request_ids": [
+        1
+      ],
+      "start": 16,
+      "sub_request_ids": [
+        -2
+      ],
+      "width": 1024
+    },
+    {
+      "batch_size": 1,
+      "end": 20,
+      "height": 1024,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A white rabbit in a field of blue flowers."
+        ],
+        "seed": 102
+      },
+      "ranks": [
+        0,
+        1
+      ],
+      "request_ids": [
+        1
+      ],
+      "start": 18,
+      "sub_request_ids": [
+        -2
+      ],
+      "width": 1024
+    },
+    {
+      "batch_size": 1,
+      "end": 22,
+      "height": 1024,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A white rabbit in a field of blue flowers."
+        ],
+        "seed": 102
+      },
+      "ranks": [
+        0,
+        1
+      ],
+      "request_ids": [
+        1
+      ],
+      "start": 20,
+      "sub_request_ids": [
+        -2
+      ],
+      "width": 1024
+    },
+    {
+      "batch_size": 1,
+      "end": 24,
+      "height": 1024,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A white rabbit in a field of blue flowers."
+        ],
+        "seed": 102
+      },
+      "ranks": [
+        0,
+        1
+      ],
+      "request_ids": [
+        1
+      ],
+      "start": 22,
+      "sub_request_ids": [
+        -2
+      ],
+      "width": 1024
+    },
+    {
+      "batch_size": 1,
+      "end": 26,
+      "height": 1024,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A white rabbit in a field of blue flowers."
+        ],
+        "seed": 102
+      },
+      "ranks": [
+        0,
+        1
+      ],
+      "request_ids": [
+        1
+      ],
+      "start": 24,
+      "sub_request_ids": [
+        -2
+      ],
+      "width": 1024
+    },
+    {
+      "batch_size": 1,
+      "end": 28,
+      "height": 1024,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A white rabbit in a field of blue flowers."
+        ],
+        "seed": 102
+      },
+      "ranks": [
+        0,
+        1
+      ],
+      "request_ids": [
+        1
+      ],
+      "start": 26,
+      "sub_request_ids": [
+        -2
+      ],
+      "width": 1024
+    }
+  ],
+  "full_formal_baseline": false,
+  "http_zmq_executed": true,
+  "independent_reference": {
+    "result": {
+      "allows": [],
+      "captured_requests": 2,
+      "comparisons": [
+        {
+          "comparisons": {
+            "decoded": {
+              "atol": 1e-05,
+              "bitwise_equal": true,
+              "cosine_similarity": 1.0000000000000002,
+              "elements": 786432,
+              "exactly_equal": true,
+              "max_abs_error": 0.0,
+              "passed": true,
+              "raw_dtype": "torch.bfloat16",
+              "relative_l2_error": 0.0,
+              "rmse": 0.0,
+              "rtol": 1e-05
+            },
+            "latents": {
+              "atol": 1e-05,
+              "bitwise_equal": true,
+              "cosine_similarity": 1.0,
+              "elements": 65536,
+              "exactly_equal": true,
+              "max_abs_error": 0.0,
+              "passed": true,
+              "raw_dtype": "torch.bfloat16",
+              "relative_l2_error": 0.0,
+              "rmse": 0.0,
+              "rtol": 1e-05
+            }
+          },
+          "generator_device": "cpu",
+          "normal_pipeline_output_type": "latent",
+          "numerical_passed": true,
+          "reference_file": {
+            "bytes": 1704344,
+            "file": "request-100.safetensors",
+            "sha256": "1aa181cd49e5f08f44c843ad073cf4b6bde96029457eb3affdfe854aa9bc9d52",
+            "tensors": {
+              "decoded": {
+                "bytes": 1572864,
+                "dtype": "BF16",
+                "shape": [
+                  1,
+                  3,
+                  512,
+                  512
+                ],
+                "tensor_sha256": "4fd9f450b4417607449c9e1a04587c875e6b1fb557e24c07a1c8a469650387bf"
+              },
+              "latents": {
+                "bytes": 131072,
+                "dtype": "BF16",
+                "shape": [
+                  1,
+                  16,
+                  64,
+                  64
+                ],
+                "tensor_sha256": "923b345414bf0bd84a7e4a19170b8ecfaaa69e8da165be27e453631e8cb09e49"
+              }
+            }
+          },
+          "reference_transformer_calls": 28,
+          "request_id": 100,
+          "request_sha256": "7234818bfd7268383601980048f841a51c2126e134f213b4d9f374027fcc46e8",
+          "service_file_sha256": "2130e5a34d2009fc1b8ea170f6f9a3ad52f75e00eb9f632f5fb1936425798099"
+        },
+        {
+          "comparisons": {
+            "decoded": {
+              "atol": 1e-05,
+              "bitwise_equal": false,
+              "cosine_similarity": 0.9672121202263801,
+              "elements": 3145728,
+              "exactly_equal": false,
+              "max_abs_error": 1.8203125,
+              "passed": false,
+              "raw_dtype": "torch.bfloat16",
+              "relative_l2_error": 0.25683551968493307,
+              "rmse": 0.14330546983436857,
+              "rtol": 1e-05
+            },
+            "latents": {
+              "atol": 1e-05,
+              "bitwise_equal": false,
+              "cosine_similarity": 0.9802755396615674,
+              "elements": 262144,
+              "exactly_equal": false,
+              "max_abs_error": 2.89453125,
+              "passed": false,
+              "raw_dtype": "torch.bfloat16",
+              "relative_l2_error": 0.19916691989771232,
+              "rmse": 0.218982954744226,
+              "rtol": 1e-05
+            }
+          },
+          "generator_device": "cpu",
+          "normal_pipeline_output_type": "latent",
+          "numerical_passed": false,
+          "reference_file": {
+            "bytes": 6816152,
+            "file": "request-101.safetensors",
+            "sha256": "d1bae19bf24c68d76f640ae3ef987508776321f3da92d01b97958b614bf28cd2",
+            "tensors": {
+              "decoded": {
+                "bytes": 6291456,
+                "dtype": "BF16",
+                "shape": [
+                  1,
+                  3,
+                  1024,
+                  1024
+                ],
+                "tensor_sha256": "0163c93f68d87ce4e71a0a9fb9911742a4e19ce790bf6c300e6613135eb8775c"
+              },
+              "latents": {
+                "bytes": 524288,
+                "dtype": "BF16",
+                "shape": [
+                  1,
+                  16,
+                  128,
+                  128
+                ],
+                "tensor_sha256": "8a783940a3946d9adeef57353bda24a57fc957b813d199873d51c9dbc3135b49"
+              }
+            }
+          },
+          "reference_transformer_calls": 28,
+          "request_id": 101,
+          "request_sha256": "322f6325298a57bda08d8cfbfe3fd487b5d27b6d0e4ffedfad73e210ed435a07",
+          "service_file_sha256": "d7fe78f22a21e5732774c45abd19327e83b4bbb087954b14c80365a2d7bb5f31"
+        }
+      ],
+      "numerical_check_passed": false,
+      "plan_sha256": "300db58b53936e474598043dcfb0bbe44cfcf1157928f408d7729e61a3855cde",
+      "qualification_eligible": false,
+      "raw_artifacts_protected": true,
+      "schema": "ditserve.tetriserve-service-raw-comparison.v1",
+      "scope": "Raw numerical diagnostic; not a paper quality qualification",
+      "service_summary_sha256": "15f63c80a757ea5b13f43faf973abc8fcbe65a42ab9571db200dcb9d8f379155",
+      "status": "numerical_failed",
+      "tolerance": {
+        "atol": 1e-05,
+        "rtol": 1e-05
+      }
+    },
+    "returncode": 1,
+    "service_completion_sha256": "15f63c80a757ea5b13f43faf973abc8fcbe65a42ab9571db200dcb9d8f379155",
+    "stderr_tail": "\nLoading pipeline components...:   0%|          | 0/9 [00:00<?, ?it/s]\nLoading pipeline components...:  11%|\u2588         | 1/9 [00:00<00:01,  6.25it/s]\nLoading pipeline components...:  33%|\u2588\u2588\u2588\u258e      | 3/9 [00:06<00:13,  2.28s/it]`torch_dtype` is deprecated! Use `dtype` instead!\n\nLoading pipeline components...:  44%|\u2588\u2588\u2588\u2588\u258d     | 4/9 [00:06<00:08,  1.63s/it]You set `add_prefix_space`. The tokenizer needs to be converted from the slow tokenizers\n\nLoading pipeline components...:  56%|\u2588\u2588\u2588\u2588\u2588\u258c    | 5/9 [00:06<00:04,  1.18s/it]\nLoading pipeline components...:  78%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258a  | 7/9 [00:08<00:02,  1.12s/it]\n\nLoading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]\u001b[A\n\nLoading checkpoint shards:  50%|\u2588\u2588\u2588\u2588\u2588     | 1/2 [00:06<00:06,  6.63s/it]\u001b[A\n\nLoading checkpoint shards: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 2/2 [00:12<00:00,  6.14s/it]\u001b[A\nLoading checkpoint shards: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 2/2 [00:12<00:00,  6.21s/it]\n\nLoading pipeline components...: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 9/9 [00:21<00:00,  3.22s/it]\nLoading pipeline components...: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 9/9 [00:21<00:00,  2.39s/it]\n\n  0%|          | 0/28 [00:00<?, ?it/s]\n  4%|\u258e         | 1/28 [00:00<00:06,  4.03it/s]\n 11%|\u2588         | 3/28 [00:00<00:02,  8.98it/s]\n 18%|\u2588\u258a        | 5/28 [00:00<00:01, 11.82it/s]\n 25%|\u2588\u2588\u258c       | 7/28 [00:00<00:01, 13.44it/s]\n 32%|\u2588\u2588\u2588\u258f      | 9/28 [00:00<00:01, 14.59it/s]\n 39%|\u2588\u2588\u2588\u2589      | 11/28 [00:00<00:01, 15.33it/s]\n 46%|\u2588\u2588\u2588\u2588\u258b     | 13/28 [00:00<00:00, 15.82it/s]\n 54%|\u2588\u2588\u2588\u2588\u2588\u258e    | 15/28 [00:01<00:00, 16.05it/s]\n 61%|\u2588\u2588\u2588\u2588\u2588\u2588    | 17/28 [00:01<00:00, 16.03it/s]\n 68%|\u2588\u2588\u2588\u2588\u2588\u2588\u258a   | 19/28 [00:01<00:00, 16.22it/s]\n 75%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258c  | 21/28 [00:01<00:00, 16.42it/s]\n 82%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258f | 23/28 [00:01<00:00, 16.51it/s]\n 89%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2589 | 25/28 [00:01<00:00, 16.63it/s]\n 96%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258b| 27/28 [00:01<00:00, 16.73it/s]\n100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 28/28 [00:01<00:00, 14.99it/s]\n\n  0%|          | 0/28 [00:00<?, ?it/s]\n  4%|\u258e         | 1/28 [00:00<00:06,  4.49it/s]\n  7%|\u258b         | 2/28 [00:00<00:04,  5.87it/s]\n 11%|\u2588         | 3/28 [00:00<00:04,  5.13it/s]\n 14%|\u2588\u258d        | 4/28 [00:00<00:04,  4.84it/s]\n 18%|\u2588\u258a        | 5/28 [00:01<00:04,  4.67it/s]\n 21%|\u2588\u2588\u258f       | 6/28 [00:01<00:04,  4.60it/s]\n 25%|\u2588\u2588\u258c       | 7/28 [00:01<00:04,  4.54it/s]\n 29%|\u2588\u2588\u258a       | 8/28 [00:01<00:04,  4.52it/s]\n 32%|\u2588\u2588\u2588\u258f      | 9/28 [00:01<00:04,  4.49it/s]\n 36%|\u2588\u2588\u2588\u258c      | 10/28 [00:02<00:04,  4.48it/s]\n 39%|\u2588\u2588\u2588\u2589      | 11/28 [00:02<00:03,  4.47it/s]\n 43%|\u2588\u2588\u2588\u2588\u258e     | 12/28 [00:02<00:03,  4.46it/s]\n 46%|\u2588\u2588\u2588\u2588\u258b     | 13/28 [00:02<00:03,  4.45it/s]\n 50%|\u2588\u2588\u2588\u2588\u2588     | 14/28 [00:03<00:03,  4.44it/s]\n 54%|\u2588\u2588\u2588\u2588\u2588\u258e    | 15/28 [00:03<00:02,  4.44it/s]\n 57%|\u2588\u2588\u2588\u2588\u2588\u258b    | 16/28 [00:03<00:02,  4.44it/s]\n 61%|\u2588\u2588\u2588\u2588\u2588\u2588    | 17/28 [00:03<00:02,  4.44it/s]\n 64%|\u2588\u2588\u2588\u2588\u2588\u2588\u258d   | 18/28 [00:03<00:02,  4.44it/s]\n 68%|\u2588\u2588\u2588\u2588\u2588\u2588\u258a   | 19/28 [00:04<00:02,  4.43it/s]\n 71%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258f  | 20/28 [00:04<00:01,  4.44it/s]\n 75%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258c  | 21/28 [00:04<00:01,  4.43it/s]\n 79%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258a  | 22/28 [00:04<00:01,  4.43it/s]\n 82%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258f | 23/28 [00:05<00:01,  4.43it/s]\n 86%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258c | 24/28 [00:05<00:00,  4.43it/s]\n 89%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2589 | 25/28 [00:05<00:00,  4.43it/s]\n 93%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258e| 26/28 [00:05<00:00,  4.43it/s]\n 96%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258b| 27/28 [00:05<00:00,  4.43it/s]\n100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 28/28 [00:06<00:00,  4.42it/s]\n100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 28/28 [00:06<00:00,  4.50it/s]\n",
+    "stdout_tail": "Set TORCH_CUDA_ARCH_LIST to 8.0\nINFO 11-04 01:03:38 [config.py:207] Pipeline patch number not set, using default value 1\nINFO 11-04 01:03:38 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)\nDEBUG 11-04 01:03:38 [compat.py:39] xfuser has no installed metadata; not checking diffusers version\nWARNING 11-04 01:03:38 [logger.py:126] Using SDPA_MATH as attention backend.\nINFO 11-04 01:03:38 [base_pipeline.py:494] Scheduler found, trying to parallel scheduler...\n{\"allows\": [], \"captured_requests\": 2, \"comparisons\": [{\"comparisons\": {\"decoded\": {\"atol\": 1e-05, \"bitwise_equal\": true, \"cosine_similarity\": 1.0000000000000002, \"elements\": 786432, \"exactly_equal\": true, \"max_abs_error\": 0.0, \"passed\": true, \"raw_dtype\": \"torch.bfloat16\", \"relative_l2_error\": 0.0, \"rmse\": 0.0, \"rtol\": 1e-05}, \"latents\": {\"atol\": 1e-05, \"bitwise_equal\": true, \"cosine_similarity\": 1.0, \"elements\": 65536, \"exactly_equal\": true, \"max_abs_error\": 0.0, \"passed\": true, \"raw_dtype\": \"torch.bfloat16\", \"relative_l2_error\": 0.0, \"rmse\": 0.0, \"rtol\": 1e-05}}, \"generator_device\": \"cpu\", \"normal_pipeline_output_type\": \"latent\", \"numerical_passed\": true, \"reference_file\": {\"bytes\": 1704344, \"file\": \"request-100.safetensors\", \"sha256\": \"1aa181cd49e5f08f44c843ad073cf4b6bde96029457eb3affdfe854aa9bc9d52\", \"tensors\": {\"decoded\": {\"bytes\": 1572864, \"dtype\": \"BF16\", \"shape\": [1, 3, 512, 512], \"tensor_sha256\": \"4fd9f450b4417607449c9e1a04587c875e6b1fb557e24c07a1c8a469650387bf\"}, \"latents\": {\"bytes\": 131072, \"dtype\": \"BF16\", \"shape\": [1, 16, 64, 64], \"tensor_sha256\": \"923b345414bf0bd84a7e4a19170b8ecfaaa69e8da165be27e453631e8cb09e49\"}}}, \"reference_transformer_calls\": 28, \"request_id\": 100, \"request_sha256\": \"7234818bfd7268383601980048f841a51c2126e134f213b4d9f374027fcc46e8\", \"service_file_sha256\": \"2130e5a34d2009fc1b8ea170f6f9a3ad52f75e00eb9f632f5fb1936425798099\"}, {\"comparisons\": {\"decoded\": {\"atol\": 1e-05, \"bitwise_equal\": false, \"cosine_similarity\": 0.9672121202263801, \"elements\": 3145728, \"exactly_equal\": false, \"max_abs_error\": 1.8203125, \"passed\": false, \"raw_dtype\": \"torch.bfloat16\", \"relative_l2_error\": 0.25683551968493307, \"rmse\": 0.14330546983436857, \"rtol\": 1e-05}, \"latents\": {\"atol\": 1e-05, \"bitwise_equal\": false, \"cosine_similarity\": 0.9802755396615674, \"elements\": 262144, \"exactly_equal\": false, \"max_abs_error\": 2.89453125, \"passed\": false, \"raw_dtype\": \"torch.bfloat16\", \"relative_l2_error\": 0.19916691989771232, \"rmse\": 0.218982954744226, \"rtol\": 1e-05}}, \"generator_device\": \"cpu\", \"normal_pipeline_output_type\": \"latent\", \"numerical_passed\": false, \"reference_file\": {\"bytes\": 6816152, \"file\": \"request-101.safetensors\", \"sha256\": \"d1bae19bf24c68d76f640ae3ef987508776321f3da92d01b97958b614bf28cd2\", \"tensors\": {\"decoded\": {\"bytes\": 6291456, \"dtype\": \"BF16\", \"shape\": [1, 3, 1024, 1024], \"tensor_sha256\": \"0163c93f68d87ce4e71a0a9fb9911742a4e19ce790bf6c300e6613135eb8775c\"}, \"latents\": {\"bytes\": 524288, \"dtype\": \"BF16\", \"shape\": [1, 16, 128, 128], \"tensor_sha256\": \"8a783940a3946d9adeef57353bda24a57fc957b813d199873d51c9dbc3135b49\"}}}, \"reference_transformer_calls\": 28, \"request_id\": 101, \"request_sha256\": \"322f6325298a57bda08d8cfbfe3fd487b5d27b6d0e4ffedfad73e210ed435a07\", \"service_file_sha256\": \"d7fe78f22a21e5732774c45abd19327e83b4bbb087954b14c80365a2d7bb5f31\"}], \"numerical_check_passed\": false, \"plan_sha256\": \"300db58b53936e474598043dcfb0bbe44cfcf1157928f408d7729e61a3855cde\", \"qualification_eligible\": false, \"raw_artifacts_protected\": true, \"schema\": \"ditserve.tetriserve-service-raw-comparison.v1\", \"scope\": \"Raw numerical diagnostic; not a paper quality qualification\", \"service_summary_sha256\": \"15f63c80a757ea5b13f43faf973abc8fcbe65a42ab9571db200dcb9d8f379155\", \"status\": \"numerical_failed\", \"tolerance\": {\"atol\": 1e-05, \"rtol\": 1e-05}}\n",
+    "summary": "/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-630ea30-r2/result/numerics/summary.json",
+    "summary_sha256": "b95a8e296736978db27234cceb72233dccd378d46f1d39483d282020252b02ba"
+  },
+  "ipc_scope": "Original relative ZMQ IPC endpoints in a private ephemeral container directory",
+  "limitations": [
+    "Two independent HTTP requests, one image per request; native cross-request batching is not implemented upstream",
+    "BS2 is exercised only by calibration, not the HTTP workload",
+    "Native allocation is unrestricted within SP1/SP2; cross-rank migration is observed, not forced",
+    "Raw numerical tolerance is a diagnostic criterion, not a paper quality qualification",
+    "Capture adds CPU transfer synchronization; these service timings are instrumented"
+  ],
+  "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+  "model_weights_verified": true,
+  "native_service_sources": {
+    "tetriserve/distributed/distributed.py": "1be13b5c707fec3af4d7396c9ddd2afd7482a04582291962b9cb5b84a68ac20e",
+    "tetriserve/distributed/globals.py": "2e8d29eab6c8324ec7330cd926c2f3d51c33f159a96831698cb0e4d2e628adaa",
+    "tetriserve/engine/proc_launcher.py": "f5cef76c392abf9f718ca9ea06beeefe2ae081bf43c3525717025b05ba09dbb7",
+    "tetriserve/engine/runtime.py": "e28718f2c849ed5632e71b5be4e587d545030afc73180887575614be77fa3005",
+    "tetriserve/light_ray/latent_future.py": "a737d9b0c22b004a70934ebf2b5c42ce12e8ee2ae75cd39fd815ba4c18157e2c",
+    "tetriserve/light_ray/latent_manager.py": "aaee87afc5da210684093632d06967a99a776d3f91ac2e44ff0ef9bcf0d2be98",
+    "tetriserve/zmq_utils/comm.py": "85cf6c6b8282d50df2387ec6e1da458ad5f88b1a368c87014523d0fd7401a176"
+  },
+  "numerical_check_passed": false,
+  "numerics_adapter_sha256": "924b557ffa7066317bd81bb8e950d6125ae4f485dd15589e425652e3398b6958",
+  "numerics_plan": "/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-630ea30-r2/result/numerics/numerics-plan.json",
+  "numerics_plan_sha256": "300db58b53936e474598043dcfb0bbe44cfcf1157928f408d7729e61a3855cde",
+  "performance_measurements": false,
+  "protocol_sha256": "86aae608c7f86d194e77a5e2e9645b192b921d8137174cbcdb2825ed7d94b392",
+  "qualification_eligible": false,
+  "raw_artifacts_protected": true,
+  "requests": [
+    {
+      "request": {
+        "guidance_scale": 4.5,
+        "height": 512,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "prompt": "A red fox standing beside a mountain lake.",
+        "seed": 101,
+        "steps": 28,
+        "width": 512
+      },
+      "request_id": 100,
+      "shape_id": "sd35-512"
+    },
+    {
+      "request": {
+        "guidance_scale": 4.5,
+        "height": 1024,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "prompt": "A white rabbit in a field of blue flowers.",
+        "seed": 102,
+        "steps": 28,
+        "width": 1024
+      },
+      "request_id": 101,
+      "shape_id": "sd35-1024"
+    }
+  ],
+  "responses": [
+    {
+      "elapsed_seconds": 2.82323807105422,
+      "http_status": 200,
+      "image_count": 1,
+      "mode": "RGB",
+      "native_request_id": 0,
+      "pixels_sha256": "fb6bfa1a32307433922a307a492b26b2386ea604943068e92917949d6d3dce1b",
+      "request_id": 100,
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "elapsed_seconds": 6.182290496304631,
+      "http_status": 200,
+      "image_count": 1,
+      "mode": "RGB",
+      "native_request_id": 1,
+      "pixels_sha256": "5c4dd138ba39560ce2d97bd59ea79305e4a05e1deb686c7821a61f041ef3cbcd",
+      "request_id": 101,
+      "size": [
+        1024,
+        1024
+      ]
+    }
+  ],
+  "schema": "ditserve.tetriserve-native-service-check.v1",
+  "scope": "Original TetriServe HTTP/runtime/worker service with shared SD3.5 model; two-request diagnostic",
+  "service_adapter_sha256": "a6694e570c22cc485c7b61513018594e2cf492984ef89e1860d898aed29ee773",
+  "service_batching_covered": false,
+  "service_events_sha256": {
+    "rank-0.jsonl": "cf2a3ff26ae42d0002030b5488aa57fd29777c37b603124f5ff8d7d69b0ec411",
+    "rank-1.jsonl": "88591d0b534238c081e7da6517859c1fbde60cd6d6248d3ffa9d6d890c83b592"
+  },
+  "serving_executed": true,
+  "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a",
+  "source_manifest_sha256": "2d0d9f9efaf4b3749063458d56c74b0ef79ef72de22096b39889e798e792d027",
+  "source_verification": {
+    "archive_sha256": "a97749491c2bd6fddfe867e7a76a164bb015f3e7b439de289d99c2ca6c11b771",
+    "commit": "414ec2956c09466ccd7842fda9851511462bd42a",
+    "verified_files": 312
+  },
+  "status": "numerical_failed",
+  "worker_exitcodes": [
+    0,
+    0
+  ]
+}

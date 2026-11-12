@@ -1,0 +1,272 @@
+{
+  "schema": "ditserve.formal-protocol.v1",
+  "id": "formal-mixed-v1",
+  "scope": "Project serving protocol using public prompt datasets; not an official production trace or an official VBench score",
+  "dataset_split": {
+    "method": "sha256-normalized-prompt-bucket-v1",
+    "salt": "ditserve-formal-20261102",
+    "buckets": {
+      "development": [
+        0,
+        20
+      ],
+      "calibration": [
+        20,
+        40
+      ],
+      "test": [
+        40,
+        100
+      ]
+    }
+  },
+  "datasets": {
+    "image": {
+      "kind": "diffusiondb",
+      "repository": "https://huggingface.co/datasets/poloclub/diffusiondb",
+      "revision": "fb620fbe49fa4420e0734bd9c0df11f51176b61f",
+      "sha256": "eecd341187bc91c07f5994ad0660d40228ea025616fd57a509bef8323677c68f"
+    },
+    "video": {
+      "kind": "vidprom",
+      "repository": "https://huggingface.co/datasets/WenhaoWang/VidProM",
+      "revision": "0c0900e6a037b058b1903bc1de9bcb6037d9fc24",
+      "sha256": "7668b87803b67638fa899b69f3a2a298ea13daffe508ce625e21937bff958b6e"
+    }
+  },
+  "seeds": {
+    "development": [
+      201,
+      202,
+      203
+    ],
+    "calibration": [
+      101
+    ],
+    "test": [
+      301,
+      302,
+      303
+    ]
+  },
+  "requests_per_cell": {
+    "development": 40,
+    "test": 200
+  },
+  "video_fractions": [
+    0.2,
+    0.5
+  ],
+  "patterns": [
+    {
+      "name": "poisson"
+    },
+    {
+      "name": "gamma",
+      "cv": 2.0
+    },
+    {
+      "name": "bursty",
+      "bursts": 2,
+      "burst_active_fraction": 0.25
+    }
+  ],
+  "loads": [
+    0.6,
+    0.9,
+    1.2
+  ],
+  "slo": {
+    "video_scale": 1.5,
+    "image_scale": 2.5,
+    "target_attainment_per_modality": 0.95,
+    "basis": "per-shape measured SP1 end-to-end service, frozen across all policies"
+  },
+  "batch_limit": 1,
+  "shape_distribution": "uniform within modality, integer remainder assigned in shape_ids order",
+  "shapes": {
+    "wan21-dev": {
+      "model": "wan21",
+      "kind": "video",
+      "scope": "development",
+      "height": 480,
+      "width": 832,
+      "frames": 33,
+      "steps": 20,
+      "guidance_scale": 5.0
+    },
+    "wan22-dev": {
+      "model": "wan22",
+      "kind": "video",
+      "scope": "development",
+      "height": 512,
+      "width": 896,
+      "frames": 49,
+      "steps": 20,
+      "guidance_scale": 5.0
+    },
+    "sd35-dev": {
+      "model": "sd35",
+      "kind": "image",
+      "scope": "development",
+      "height": 512,
+      "width": 512,
+      "frames": 1,
+      "steps": 28,
+      "guidance_scale": 4.5
+    },
+    "wan21-480p": {
+      "model": "wan21",
+      "kind": "video",
+      "scope": "formal",
+      "role": "recommended-resolution",
+      "height": 480,
+      "width": 832,
+      "frames": 81,
+      "steps": 50,
+      "guidance_scale": 5.0
+    },
+    "wan21-720p": {
+      "model": "wan21",
+      "kind": "video",
+      "scope": "formal",
+      "role": "higher-resolution-stress-requires-qualification",
+      "height": 720,
+      "width": 1280,
+      "frames": 81,
+      "steps": 50,
+      "guidance_scale": 5.0
+    },
+    "wan22-small": {
+      "model": "wan22",
+      "kind": "video",
+      "scope": "formal",
+      "role": "lower-resolution-heterogeneity-requires-qualification",
+      "height": 512,
+      "width": 896,
+      "frames": 121,
+      "steps": 50,
+      "guidance_scale": 5.0
+    },
+    "wan22-720p": {
+      "model": "wan22",
+      "kind": "video",
+      "scope": "formal",
+      "role": "official-example-resolution",
+      "height": 704,
+      "width": 1280,
+      "frames": 121,
+      "steps": 50,
+      "guidance_scale": 5.0
+    },
+    "sd35-512": {
+      "model": "sd35",
+      "kind": "image",
+      "scope": "formal",
+      "height": 512,
+      "width": 512,
+      "frames": 1,
+      "steps": 28,
+      "guidance_scale": 4.5
+    },
+    "sd35-1024": {
+      "model": "sd35",
+      "kind": "image",
+      "scope": "formal",
+      "height": 1024,
+      "width": 1024,
+      "frames": 1,
+      "steps": 28,
+      "guidance_scale": 4.5
+    }
+  },
+  "p0_required_cases": [
+    {
+      "model": "wan21",
+      "shape_id": "wan21-dev"
+    },
+    {
+      "model": "wan22",
+      "shape_id": "wan22-dev"
+    }
+  ],
+  "formal_required_cases": [
+    {
+      "model": "wan21",
+      "shape_id": "wan21-480p"
+    },
+    {
+      "model": "wan21",
+      "shape_id": "wan21-720p"
+    },
+    {
+      "model": "wan22",
+      "shape_id": "wan22-small"
+    },
+    {
+      "model": "wan22",
+      "shape_id": "wan22-720p"
+    },
+    {
+      "model": "sd35",
+      "shape_id": "sd35-512"
+    },
+    {
+      "model": "sd35",
+      "shape_id": "sd35-1024"
+    }
+  ],
+  "quality": {
+    "serving_prompts_are_not_vbench": true,
+    "paired_prompts_per_model_minimum": 32,
+    "paired_seeds": [
+      301,
+      302,
+      303
+    ],
+    "vbench_repository": "https://github.com/Vchitect/VBench",
+    "vbench_revision": "1039fe66d7aa2f4b214003ca2d35f5011c48bfee",
+    "official_protocol": "complete pinned dimension/prompt manifest; 5 seeds, temporal flickering 25; no replacement with VidProM"
+  },
+  "sources": [
+    "https://huggingface.co/Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+    "https://huggingface.co/Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+    "https://huggingface.co/stabilityai/stable-diffusion-3.5-medium",
+    "https://huggingface.co/datasets/poloclub/diffusiondb",
+    "https://huggingface.co/datasets/WenhaoWang/VidProM",
+    "https://github.com/Vchitect/VBench"
+  ],
+  "prior_exposure": {
+    "manifest_file": "known-exploration-prompts-v1.json",
+    "manifest_sha256": "19edbc0cde6a27bf9e6203e8e0525e37298139e64c0450efa618fb69d8daa7cf",
+    "also_exclude_existing_pool_roles": [
+      "dev",
+      "development"
+    ],
+    "scope": "Excludes all known local exploration and all source-pool dev prompts; unknown prior exposure is not ruled out"
+  },
+  "p0_diagnostics": {
+    "scope": "Development execution-correctness stress only; not formal benchmark performance or scheduler utility evidence",
+    "contention": {
+      "count": 40,
+      "video_fraction": 0.5,
+      "pattern": "bursty",
+      "load": 1.2,
+      "image_slo_scale": 1.1,
+      "video_slo_scale": 1.5,
+      "lazy_preemption": false,
+      "require_observed_stops": true
+    },
+    "no_preemption": {
+      "count": 40,
+      "video_fraction": 1.0,
+      "pattern": "poisson",
+      "load": 0.1,
+      "image_slo_scale": 2.5,
+      "video_slo_scale": 1.5,
+      "lazy_preemption": true,
+      "require_observed_stops": false
+    },
+    "acceptance": "native_exact requires actual positive stop evidence for contention and exactly zero for no_preemption; no automatic retry, threshold tuning, or qualification from intended pressure"
+  }
+}

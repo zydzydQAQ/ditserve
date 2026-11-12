@@ -1,0 +1,10 @@
+{
+ "commit": "815ea75d4c85da8cc84923a55cca1595b18b0df1",
+ "subject": "Align 8-GPU Wan2.2-49f & Wan2.1-33f suites and return frames in Rank-0 async VAE collect",
+ "built_utc": "2026-11-01T06:22:48+00:00",
+ "builder_image": "local-cmake-install",
+ "tested_runtime_image": "192.168.1.114:30500/jjjkairos/ditserve:xdit-dev-016e1ca-slim",
+ "core_sha256": "a1d4b06ef99bab69424edb66568e9ca856dc5307192776e3c54060b7fbd4af55",
+ "files": 258,
+ "bytes": 4312892
+}

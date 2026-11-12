@@ -1,0 +1,10 @@
+{
+ "commit": "fa3621c62cce345962e31abe77597e9d66bcfc4d",
+ "subject": "Match approximation budgets and measure preemption stops",
+ "built_utc": "2026-11-01T12:27:33+00:00",
+ "builder_image": "local-cmake-install",
+ "tested_runtime_image": "192.168.1.114:30500/jjjkairos/ditserve:xdit-dev-016e1ca-slim",
+ "core_sha256": "5c460b1554690c22b4d22948d07a6184df67eb273dafde1e996740153520af3a",
+ "files": 245,
+ "bytes": 3839238
+}

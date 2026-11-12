@@ -1,0 +1,141 @@
+{
+  "schema": "ditserve.native-metrics.v1",
+  "experiment": "kairos-wan21-native-serving-s201-l1p0",
+  "run_id": "d20261103-quality-wan21-4f0e5ff-s201-smoke-mixed-fission-curvature",
+  "status": "completed",
+  "run_metrics": {
+    "communication_p50_ms": null,
+    "communication_p99_ms": null,
+    "completed": 4,
+    "control_ms": 0.0,
+    "deadline_attainment": 1.0,
+    "denominator": "all frozen requests, including failed and blocked",
+    "failed": 0,
+    "incomplete": 0,
+    "latency_p50_ms": 21319.58173454464,
+    "latency_p95_ms": 47233.61007163472,
+    "model_ms": 45925.507014617324,
+    "observation_count": 1,
+    "observation_ms": 59557.004801929,
+    "ontime": 4,
+    "qualification_status": "unverified",
+    "qualification_verified_requests": 0,
+    "qualified_goodput_rps": null,
+    "qualified_ontime": 0,
+    "requests": 4
+  },
+  "used_gpu_seconds": 5875.15986109525,
+  "cells": [
+    {
+      "phase": "cluster",
+      "attempt": 1,
+      "cell": 0,
+      "policy": "approx-cfg2sp3",
+      "order": "forward",
+      "status": "completed",
+      "elapsed_ms": 59557.004801929,
+      "by_kind": {
+        "video": {
+          "requests": 2,
+          "completed": 2,
+          "ontime": 2,
+          "deadline_attainment": 1.0,
+          "goodput_rps": 0.03358127237344249,
+          "latency_ms": {
+            "count": 2,
+            "p50": 42600.141925212665,
+            "p95": 48557.4581134696,
+            "p99": 49086.99733020355,
+            "max": 49219.38213438704
+          }
+        },
+        "image": {
+          "requests": 2,
+          "completed": 2,
+          "ontime": 2,
+          "deadline_attainment": 1.0,
+          "goodput_rps": 0.03358127237344249,
+          "latency_ms": {
+            "count": 2,
+            "p50": 6640.304143382159,
+            "p95": 6656.46599208411,
+            "p99": 6657.9026008576175,
+            "max": 6658.261753050994
+          }
+        }
+      },
+      "allocated_gpu_seconds": 357.342028811574,
+      "gpu_seconds_per_completed_request": 89.3355072028935,
+      "gpu_seconds_per_ontime_request": 89.3355072028935,
+      "image_batch": null,
+      "doorbell": {
+        "continuous_quanta": 40,
+        "deadline_skip_events": 0,
+        "enabled": true,
+        "rings": 0
+      },
+      "observed_transfers": 6,
+      "approximation": {
+        "video_count": 2,
+        "folded_quanta": 10,
+        "fission_quanta": 10,
+        "folded_steps": 10,
+        "full_cfg_steps": 30,
+        "released_gpu_ms_capacity": 13844.49476748705,
+        "image_overlap_on_released_gpu_ms": 0,
+        "image_requests_on_released_gpus": 0,
+        "image_requests_missing_placement": 0,
+        "overlap_attribution_complete": true,
+        "unattributed_folded_quanta": 0,
+        "reuse_qualified": false,
+        "curvature_gate_ms": {
+          "count": 2,
+          "p50": 719.4758672267199,
+          "p95": 1042.4797277897596,
+          "p99": 1071.1911820620298,
+          "max": 1078.3690456300974
+        },
+        "cfg_state_bytes": {
+          "count": 2,
+          "p50": 7188480.0,
+          "p95": 7188480.0,
+          "p99": 7188480.0,
+          "max": 7188480
+        },
+        "accounting_scope": "per-GPU union of inferred contraction windows and image start-to-finish intervals; placement/overlap proxy only, without release ACK, utilization or causal reuse qualification"
+      },
+      "block_quantum_elapsed_ms": {
+        "count": 34,
+        "p50": 656.8757975474,
+        "p95": 683.0963452346623,
+        "p99": 705.7058037258685,
+        "max": 716.644236817956
+      },
+      "advance_sample_count": 34,
+      "preemption_response_ms": {
+        "count": 0,
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "max": null
+      },
+      "preempting_request_count": 0,
+      "preemption_stop_ms": {
+        "count": 0,
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "max": null
+      },
+      "failures": []
+    }
+  ],
+  "notes": {
+    "quantiles": "linear interpolation at (n-1)*p, matching the native controller",
+    "goodput_rps": "completed and on-time requests divided by the finite cell wall time; not quality-qualified or sustained capacity",
+    "allocated_gpu_seconds": "sum over native cell elapsed time times registered GPUs; budget.used_gpu_seconds additionally includes process startup and cleanup",
+    "block_quantum_elapsed_ms": "steady quantum wall time, not a direct preemption-wait CDF",
+    "preemption_response_ms": "arrival-to-first-start response of requests marked block_preempt; includes scheduling and queueing, not only the boundary stop",
+    "preemption_stop_ms": "doorbell ring to a video worker-confirmed block-boundary stop on the preempted request; not the preempting request queueing delay"
+  }
+}

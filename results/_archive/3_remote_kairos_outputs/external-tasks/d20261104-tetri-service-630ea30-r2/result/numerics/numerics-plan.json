@@ -1,0 +1,51 @@
+{
+  "expected_requests": 2,
+  "max_raw_bytes": 67108864,
+  "qualification_eligible": false,
+  "raw_retention": "Protected through independent comparison/review; no automatic deletion",
+  "reference": "Independent normal shared SP1 pipeline, full 28 steps",
+  "requests": [
+    {
+      "request": {
+        "guidance_scale": 4.5,
+        "height": 512,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "prompt": "A red fox standing beside a mountain lake.",
+        "seed": 101,
+        "steps": 28,
+        "width": 512
+      },
+      "request_id": 100,
+      "shape_id": "sd35-512"
+    },
+    {
+      "request": {
+        "guidance_scale": 4.5,
+        "height": 1024,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "prompt": "A white rabbit in a field of blue flowers.",
+        "seed": 102,
+        "steps": 28,
+        "width": 1024
+      },
+      "request_id": 101,
+      "shape_id": "sd35-1024"
+    }
+  ],
+  "schema": "ditserve.tetriserve-service-numerics-plan.v1",
+  "sources": {
+    "derived_manifest_sha256": "5ab5b86ee32a96039a50bcaed54bf10ce1cdc5415cac473bc4504375ce8485fb",
+    "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+    "numerics_adapter_sha256": "924b557ffa7066317bd81bb8e950d6125ae4f485dd15589e425652e3398b6958",
+    "protocol_sha256": "86aae608c7f86d194e77a5e2e9645b192b921d8137174cbcdb2825ed7d94b392",
+    "service_adapter_sha256": "a6694e570c22cc485c7b61513018594e2cf492984ef89e1860d898aed29ee773",
+    "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a",
+    "source_manifest_sha256": "2d0d9f9efaf4b3749063458d56c74b0ef79ef72de22096b39889e798e792d027"
+  },
+  "tolerance": {
+    "atol": 1e-05,
+    "rtol": 1e-05
+  }
+}

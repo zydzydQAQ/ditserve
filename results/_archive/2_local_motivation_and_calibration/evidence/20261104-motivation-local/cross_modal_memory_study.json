@@ -1,0 +1,2321 @@
+{
+  "component_ledger": {
+    "sd35": {
+      "backbone_plus_vae_gib": 4.76,
+      "backbone_plus_vae_plus_clip_gib": 6.28,
+      "clip_encoders_gib": 1.52,
+      "components_gib": {
+        "clip_g": 1.29,
+        "clip_l": 0.23,
+        "t5_xxl": 8.87,
+        "transformer": 4.6,
+        "vae": 0.16
+      },
+      "heavy_text_encoder_gib": 8.87,
+      "kind": "image",
+      "model": "sd35",
+      "name": "SD3.5-Medium",
+      "runtime_dtype": "bfloat16",
+      "text_encoder_share_pct": 68.5,
+      "text_encoders_total_gib": 10.39,
+      "total_runtime_gib": 15.16
+    },
+    "wan21": {
+      "backbone_plus_vae_gib": 2.89,
+      "components_gib": {
+        "transformer": 2.65,
+        "umt5_xxl": 10.58,
+        "vae": 0.24
+      },
+      "disk_fp32_components_gib": {
+        "umt5_xxl_fp32": 21.16
+      },
+      "heavy_text_encoder_gib": 10.58,
+      "kind": "video",
+      "model": "wan21",
+      "name": "Wan2.1-T2V-1.3B",
+      "runtime_dtype": "bfloat16/float16",
+      "text_encoder_share_pct": 78.5,
+      "text_encoders_total_gib": 10.58,
+      "total_disk_fp32_gib": 26.94,
+      "total_runtime_gib": 13.47
+    },
+    "wan22": {
+      "backbone_plus_vae_gib": 10.64,
+      "components_gib": {
+        "transformer": 9.32,
+        "umt5_xxl": 10.58,
+        "vae": 1.32
+      },
+      "heavy_text_encoder_gib": 10.58,
+      "kind": "video",
+      "model": "wan22",
+      "name": "Wan2.2-TI2V-5B",
+      "runtime_dtype": "bfloat16/float16",
+      "text_encoder_share_pct": 49.9,
+      "text_encoders_total_gib": 10.58,
+      "total_disk_gib": 31.85,
+      "total_runtime_gib": 21.22
+    }
+  },
+  "hardware": {
+    "cluster_gpus": 8,
+    "gpu_model": "NVIDIA A100-PCIE-40GB",
+    "pcie_h2d_effective_gbps": 3.88,
+    "usable_hbm_gib": 39.5,
+    "usable_hbm_mib": 40444
+  },
+  "image_shapes": {
+    "sd35-1024": {
+      "active_workspace_gib": 3.5,
+      "height": 1024,
+      "interactive_slo_ms_range": [
+        3200.0,
+        6000.0
+      ],
+      "model": "sd35",
+      "shape_id": "sd35-1024",
+      "single_model_full_peak_gib": 18.66,
+      "steps": 28,
+      "width": 1024,
+      "without_t5_peak_gib": 9.79
+    },
+    "sd35-512": {
+      "active_workspace_gib": 1.65,
+      "height": 512,
+      "interactive_slo_ms_range": [
+        1800.0,
+        3200.0
+      ],
+      "model": "sd35",
+      "shape_id": "sd35-512",
+      "single_model_full_peak_gib": 16.81,
+      "steps": 28,
+      "width": 512,
+      "without_t5_peak_gib": 7.94
+    }
+  },
+  "key_findings": {
+    "s0_cluster_redundant_encoder_hbm_gib": {
+      "all_text_encoders_8gpu_gib": 167.76,
+      "heavy_umt5_plus_t5_8gpu_gib": 155.6
+    },
+    "s4_hbm_savings": {
+      "free_hbm_headroom_gib_range": [
+        11.9,
+        22.38
+      ],
+      "peak_colocated_hbm_gib_range": [
+        17.12,
+        27.6
+      ],
+      "saved_across_8gpus_gib": 155.6,
+      "saved_per_gpu_gib": 19.45,
+      "wan21_static_drop_gib": "28.63 -> 9.17",
+      "wan22_static_drop_gib": "36.38 -> 16.92"
+    },
+    "s4_latency_advantages": {
+      "s1_weight_swap_stall_ms_range": [
+        2742.3,
+        3907.2
+      ],
+      "s2_s3_cpu_wan_encode_ms": 15000.0,
+      "s3_cpu_sd35_encode_ms": 3800.0,
+      "s4_pinned_shm_fetch_ms_range": [
+        0.35,
+        0.48
+      ],
+      "s4_sd35_encode_ms_range": [
+        28.0,
+        42.0
+      ],
+      "s4_wan_encode_ms_range": [
+        45.0,
+        80.0
+      ],
+      "weight_swap_ms": 0.0
+    },
+    "text_encoder_weight_fraction": {
+      "sd35_pct": 68.5,
+      "wan21_pct": 78.5,
+      "wan22_pct": 49.9
+    }
+  },
+  "schema": "ditserve.cross-modal-memory-study.v1",
+  "shm_encoder_pool_microbenchmark": {
+    "backend": "cpu-bytebuffer-shim",
+    "iterations": 20,
+    "pool_hit_rate": 1.0,
+    "sd35_embedding_bundle": {
+      "calibrated_a100_pinned_h2d_ms": 0.386,
+      "cfg_pair_total_bytes": 4202496,
+      "cfg_pair_total_mb": 4.202,
+      "cross_worker_shm_fetch_ms_median": 14.9525,
+      "inproc_pinned_fetch_ms_median": 0.9912,
+      "shapes": {
+        "negative_pooled_prompt_embeds": [
+          1,
+          2048
+        ],
+        "negative_prompt_embeds": [
+          1,
+          256,
+          4096
+        ],
+        "pooled_prompt_embeds": [
+          1,
+          2048
+        ],
+        "prompt_embeds": [
+          1,
+          256,
+          4096
+        ]
+      },
+      "single_branch_Plus_pooled_bytes": 2101248,
+      "stage_write_shm_ms_median": 73.0042,
+      "stage_write_shm_ms_p95": 198.4909
+    },
+    "shm_root": "/dev/shm",
+    "staged_pushes": 40,
+    "target_device": "cpu",
+    "total_hits": 80,
+    "total_misses": 0,
+    "wan_embedding_bundle": {
+      "calibrated_a100_pinned_h2d_ms": 0.3853,
+      "cross_worker_shm_fetch_ms_median": 3.6388,
+      "inproc_pinned_fetch_ms_median": 0.4867,
+      "shapes": {
+        "embed": [
+          1,
+          512,
+          4096
+        ]
+      },
+      "stage_write_shm_ms_median": 61.8489,
+      "stage_write_shm_ms_p95": 184.6699,
+      "total_bytes": 4194304,
+      "total_mb": 4.19,
+      "total_mib": 4.0
+    }
+  },
+  "strategies": {
+    "s0_naive_gpu": {
+      "code": "S0",
+      "descriptor": {
+        "code": "S0",
+        "encoder_pool": {
+          "enabled": false,
+          "pin_memory": false,
+          "shm_dir": "/dev/shm/ditserve-hetero-embeds",
+          "write_shm": false
+        },
+        "label": "Naive GPU Co-Location (All Components on GPU)",
+        "offload_text_encoders_after_warmup": false,
+        "release_cache_on_stop": false,
+        "sd35_text_encoder_device": "cuda",
+        "strategy": "s0_naive_gpu",
+        "tiered_memory": false,
+        "wan_text_encoder_device": "cuda",
+        "weight_swap_on_switch": false
+      },
+      "fragmentation_oom_shapes": [
+        "wan21-480p"
+      ],
+      "free_hbm_headroom_gib_range": [
+        -11.21,
+        2.77
+      ],
+      "hard_oom_shapes": [
+        "wan21-720p",
+        "wan22-small",
+        "wan22-720p"
+      ],
+      "label": "Naive GPU Co-Location (All Components on GPU)",
+      "oom_free": false,
+      "peak_colocated_hbm_gib_range": [
+        36.73,
+        50.71
+      ],
+      "peak_with_allocator_reserve_gib_range": [
+        40.06,
+        54.04
+      ],
+      "pinned_shm_h2d_fetch_ms_range": [
+        0.0,
+        0.0
+      ],
+      "redundant_heavy_t5_umt5_8gpu_gib": 155.6,
+      "redundant_text_encoder_8gpu_gib": 167.76,
+      "saved_static_hbm_8gpu_vs_s0_gib": 0.0,
+      "saved_static_hbm_per_gpu_vs_s0_gib": 0.0,
+      "sd35_prompt_encode_ms_range": [
+        28.0,
+        42.0
+      ],
+      "shapes": {
+        "wan21-480p": {
+          "code": "S0",
+          "fragmentation_oom": true,
+          "free_hbm_headroom_gib": 2.77,
+          "free_hbm_headroom_with_reserve_gib": -0.56,
+          "hard_oom": false,
+          "image_active_workspace_gib": 3.5,
+          "image_shape": "sd35-1024",
+          "label": "Naive GPU Co-Location (All Components on GPU)",
+          "oom_status": "FRAGMENTATION_OOM",
+          "peak_colocated_hbm_gib": 36.73,
+          "peak_with_allocator_reserve_gib": 40.06,
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.0,
+            0.0
+          ],
+          "redundant_heavy_t5_umt5_8gpu_gib": 155.6,
+          "redundant_text_encoder_8gpu_gib": 167.76,
+          "redundant_text_encoder_per_gpu_gib": 20.97,
+          "saved_static_hbm_8gpu_vs_s0_gib": 0.0,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 0.0,
+          "sd35_prompt_encode_ms_range": [
+            28.0,
+            42.0
+          ],
+          "static_gpu_weights_gib": 28.63,
+          "strategy": "s0_naive_gpu",
+          "usable_hbm_limit_gib": 39.5,
+          "video_active_peak_gib": 33.08,
+          "video_active_workspace_gib": 4.45,
+          "video_model": "wan21",
+          "video_shape": "wan21-480p",
+          "video_sigma_blk_gib": 0.22,
+          "wan_prompt_encode_ms_range": [
+            45.0,
+            80.0
+          ],
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ]
+        },
+        "wan21-720p": {
+          "code": "S0",
+          "fragmentation_oom": false,
+          "free_hbm_headroom_gib": -3.01,
+          "free_hbm_headroom_with_reserve_gib": -6.34,
+          "hard_oom": true,
+          "image_active_workspace_gib": 3.5,
+          "image_shape": "sd35-1024",
+          "label": "Naive GPU Co-Location (All Components on GPU)",
+          "oom_status": "100%_HARD_OOM",
+          "peak_colocated_hbm_gib": 42.51,
+          "peak_with_allocator_reserve_gib": 45.84,
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.0,
+            0.0
+          ],
+          "redundant_heavy_t5_umt5_8gpu_gib": 155.6,
+          "redundant_text_encoder_8gpu_gib": 167.76,
+          "redundant_text_encoder_per_gpu_gib": 20.97,
+          "saved_static_hbm_8gpu_vs_s0_gib": 0.0,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 0.0,
+          "sd35_prompt_encode_ms_range": [
+            28.0,
+            42.0
+          ],
+          "static_gpu_weights_gib": 28.63,
+          "strategy": "s0_naive_gpu",
+          "usable_hbm_limit_gib": 39.5,
+          "video_active_peak_gib": 38.86,
+          "video_active_workspace_gib": 10.23,
+          "video_model": "wan21",
+          "video_shape": "wan21-720p",
+          "video_sigma_blk_gib": 0.42,
+          "wan_prompt_encode_ms_range": [
+            45.0,
+            80.0
+          ],
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ]
+        },
+        "wan22-720p": {
+          "code": "S0",
+          "fragmentation_oom": false,
+          "free_hbm_headroom_gib": -11.21,
+          "free_hbm_headroom_with_reserve_gib": -14.54,
+          "hard_oom": true,
+          "image_active_workspace_gib": 3.5,
+          "image_shape": "sd35-1024",
+          "label": "Naive GPU Co-Location (All Components on GPU)",
+          "oom_status": "100%_HARD_OOM",
+          "peak_colocated_hbm_gib": 50.71,
+          "peak_with_allocator_reserve_gib": 54.04,
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.0,
+            0.0
+          ],
+          "redundant_heavy_t5_umt5_8gpu_gib": 155.6,
+          "redundant_text_encoder_8gpu_gib": 167.76,
+          "redundant_text_encoder_per_gpu_gib": 20.97,
+          "saved_static_hbm_8gpu_vs_s0_gib": -0.0,
+          "saved_static_hbm_per_gpu_vs_s0_gib": -0.0,
+          "sd35_prompt_encode_ms_range": [
+            28.0,
+            42.0
+          ],
+          "static_gpu_weights_gib": 36.38,
+          "strategy": "s0_naive_gpu",
+          "usable_hbm_limit_gib": 39.5,
+          "video_active_peak_gib": 47.06,
+          "video_active_workspace_gib": 10.68,
+          "video_model": "wan22",
+          "video_shape": "wan22-720p",
+          "video_sigma_blk_gib": 0.48,
+          "wan_prompt_encode_ms_range": [
+            45.0,
+            80.0
+          ],
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ]
+        },
+        "wan22-small": {
+          "code": "S0",
+          "fragmentation_oom": false,
+          "free_hbm_headroom_gib": -6.0,
+          "free_hbm_headroom_with_reserve_gib": -9.33,
+          "hard_oom": true,
+          "image_active_workspace_gib": 3.5,
+          "image_shape": "sd35-1024",
+          "label": "Naive GPU Co-Location (All Components on GPU)",
+          "oom_status": "100%_HARD_OOM",
+          "peak_colocated_hbm_gib": 45.5,
+          "peak_with_allocator_reserve_gib": 48.83,
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.0,
+            0.0
+          ],
+          "redundant_heavy_t5_umt5_8gpu_gib": 155.6,
+          "redundant_text_encoder_8gpu_gib": 167.76,
+          "redundant_text_encoder_per_gpu_gib": 20.97,
+          "saved_static_hbm_8gpu_vs_s0_gib": -0.0,
+          "saved_static_hbm_per_gpu_vs_s0_gib": -0.0,
+          "sd35_prompt_encode_ms_range": [
+            28.0,
+            42.0
+          ],
+          "static_gpu_weights_gib": 36.38,
+          "strategy": "s0_naive_gpu",
+          "usable_hbm_limit_gib": 39.5,
+          "video_active_peak_gib": 41.85,
+          "video_active_workspace_gib": 5.47,
+          "video_model": "wan22",
+          "video_shape": "wan22-small",
+          "video_sigma_blk_gib": 0.28,
+          "wan_prompt_encode_ms_range": [
+            45.0,
+            80.0
+          ],
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ]
+        }
+      },
+      "static_gpu_weights_gib": {
+        "wan21_plus_sd35": 28.63,
+        "wan22_plus_sd35": 36.38
+      },
+      "strategy": "s0_naive_gpu",
+      "wan_prompt_encode_ms_range": [
+        45.0,
+        80.0
+      ],
+      "weight_swap_ms_range": [
+        0.0,
+        0.0
+      ]
+    },
+    "s1_weight_swap": {
+      "code": "S1",
+      "descriptor": {
+        "code": "S1",
+        "encoder_pool": {
+          "enabled": false,
+          "pin_memory": true,
+          "shm_dir": "/dev/shm/ditserve-hetero-embeds",
+          "write_shm": false
+        },
+        "label": "Reactive On-Demand CPU-GPU Weight Swapping",
+        "offload_text_encoders_after_warmup": true,
+        "release_cache_on_stop": false,
+        "sd35_text_encoder_device": "cpu",
+        "strategy": "s1_weight_swap",
+        "tiered_memory": false,
+        "wan_text_encoder_device": "cpu",
+        "weight_swap_on_switch": true
+      },
+      "fragmentation_oom_shapes": [],
+      "free_hbm_headroom_gib_range": [
+        18.18,
+        29.5
+      ],
+      "hard_oom_shapes": [],
+      "label": "Reactive On-Demand CPU-GPU Weight Swapping",
+      "oom_free": true,
+      "peak_colocated_hbm_gib_range": [
+        10.0,
+        21.32
+      ],
+      "peak_with_allocator_reserve_gib_range": [
+        10.0,
+        21.32
+      ],
+      "pinned_shm_h2d_fetch_ms_range": [
+        0.42,
+        0.55
+      ],
+      "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+      "redundant_text_encoder_8gpu_gib": 0.0,
+      "saved_static_hbm_8gpu_vs_s0_gib": 178.8,
+      "saved_static_hbm_per_gpu_vs_s0_gib": 22.35,
+      "sd35_prompt_encode_ms_range": [
+        3600.0,
+        3950.0
+      ],
+      "shapes": {
+        "wan21-480p": {
+          "code": "S1",
+          "fragmentation_oom": false,
+          "free_hbm_headroom_gib": 29.5,
+          "free_hbm_headroom_with_reserve_gib": 29.5,
+          "hard_oom": false,
+          "image_active_workspace_gib": 3.5,
+          "image_shape": "sd35-1024",
+          "label": "Reactive On-Demand CPU-GPU Weight Swapping",
+          "oom_status": "FIT_BUT_SWAP_STALLED",
+          "peak_colocated_hbm_gib": 10.0,
+          "peak_with_allocator_reserve_gib": 10.0,
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.42,
+            0.55
+          ],
+          "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+          "redundant_text_encoder_8gpu_gib": 0.0,
+          "redundant_text_encoder_per_gpu_gib": 0.0,
+          "saved_static_hbm_8gpu_vs_s0_gib": 178.8,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 22.35,
+          "sd35_prompt_encode_ms_range": [
+            3600.0,
+            3950.0
+          ],
+          "static_gpu_weights_gib": 6.28,
+          "strategy": "s1_weight_swap",
+          "usable_hbm_limit_gib": 39.5,
+          "video_active_peak_gib": 7.34,
+          "video_active_workspace_gib": 4.45,
+          "video_model": "wan21",
+          "video_shape": "wan21-480p",
+          "video_sigma_blk_gib": 0.22,
+          "wan_prompt_encode_ms_range": [
+            14800.0,
+            15200.0
+          ],
+          "weight_swap_gib": 15.16,
+          "weight_swap_ms_range": [
+            2742.3,
+            3907.2
+          ]
+        },
+        "wan21-720p": {
+          "code": "S1",
+          "fragmentation_oom": false,
+          "free_hbm_headroom_gib": 26.38,
+          "free_hbm_headroom_with_reserve_gib": 26.38,
+          "hard_oom": false,
+          "image_active_workspace_gib": 3.5,
+          "image_shape": "sd35-1024",
+          "label": "Reactive On-Demand CPU-GPU Weight Swapping",
+          "oom_status": "FIT_BUT_SWAP_STALLED",
+          "peak_colocated_hbm_gib": 13.12,
+          "peak_with_allocator_reserve_gib": 13.12,
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.42,
+            0.55
+          ],
+          "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+          "redundant_text_encoder_8gpu_gib": 0.0,
+          "redundant_text_encoder_per_gpu_gib": 0.0,
+          "saved_static_hbm_8gpu_vs_s0_gib": 178.8,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 22.35,
+          "sd35_prompt_encode_ms_range": [
+            3600.0,
+            3950.0
+          ],
+          "static_gpu_weights_gib": 6.28,
+          "strategy": "s1_weight_swap",
+          "usable_hbm_limit_gib": 39.5,
+          "video_active_peak_gib": 13.12,
+          "video_active_workspace_gib": 10.23,
+          "video_model": "wan21",
+          "video_shape": "wan21-720p",
+          "video_sigma_blk_gib": 0.42,
+          "wan_prompt_encode_ms_range": [
+            14800.0,
+            15200.0
+          ],
+          "weight_swap_gib": 15.16,
+          "weight_swap_ms_range": [
+            2742.3,
+            3907.2
+          ]
+        },
+        "wan22-720p": {
+          "code": "S1",
+          "fragmentation_oom": false,
+          "free_hbm_headroom_gib": 18.18,
+          "free_hbm_headroom_with_reserve_gib": 18.18,
+          "hard_oom": false,
+          "image_active_workspace_gib": 3.5,
+          "image_shape": "sd35-1024",
+          "label": "Reactive On-Demand CPU-GPU Weight Swapping",
+          "oom_status": "FIT_BUT_SWAP_STALLED",
+          "peak_colocated_hbm_gib": 21.32,
+          "peak_with_allocator_reserve_gib": 21.32,
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.42,
+            0.55
+          ],
+          "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+          "redundant_text_encoder_8gpu_gib": 0.0,
+          "redundant_text_encoder_per_gpu_gib": 0.0,
+          "saved_static_hbm_8gpu_vs_s0_gib": 205.92,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 25.74,
+          "sd35_prompt_encode_ms_range": [
+            3600.0,
+            3950.0
+          ],
+          "static_gpu_weights_gib": 10.64,
+          "strategy": "s1_weight_swap",
+          "usable_hbm_limit_gib": 39.5,
+          "video_active_peak_gib": 21.32,
+          "video_active_workspace_gib": 10.68,
+          "video_model": "wan22",
+          "video_shape": "wan22-720p",
+          "video_sigma_blk_gib": 0.48,
+          "wan_prompt_encode_ms_range": [
+            14800.0,
+            15200.0
+          ],
+          "weight_swap_gib": 15.16,
+          "weight_swap_ms_range": [
+            2742.3,
+            3907.2
+          ]
+        },
+        "wan22-small": {
+          "code": "S1",
+          "fragmentation_oom": false,
+          "free_hbm_headroom_gib": 23.39,
+          "free_hbm_headroom_with_reserve_gib": 23.39,
+          "hard_oom": false,
+          "image_active_workspace_gib": 3.5,
+          "image_shape": "sd35-1024",
+          "label": "Reactive On-Demand CPU-GPU Weight Swapping",
+          "oom_status": "FIT_BUT_SWAP_STALLED",
+          "peak_colocated_hbm_gib": 16.11,
+          "peak_with_allocator_reserve_gib": 16.11,
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.42,
+            0.55
+          ],
+          "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+          "redundant_text_encoder_8gpu_gib": 0.0,
+          "redundant_text_encoder_per_gpu_gib": 0.0,
+          "saved_static_hbm_8gpu_vs_s0_gib": 205.92,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 25.74,
+          "sd35_prompt_encode_ms_range": [
+            3600.0,
+            3950.0
+          ],
+          "static_gpu_weights_gib": 10.64,
+          "strategy": "s1_weight_swap",
+          "usable_hbm_limit_gib": 39.5,
+          "video_active_peak_gib": 16.11,
+          "video_active_workspace_gib": 5.47,
+          "video_model": "wan22",
+          "video_shape": "wan22-small",
+          "video_sigma_blk_gib": 0.28,
+          "wan_prompt_encode_ms_range": [
+            14800.0,
+            15200.0
+          ],
+          "weight_swap_gib": 15.16,
+          "weight_swap_ms_range": [
+            2742.3,
+            3907.2
+          ]
+        }
+      },
+      "static_gpu_weights_gib": {
+        "wan21_plus_sd35": 6.28,
+        "wan22_plus_sd35": 10.64
+      },
+      "strategy": "s1_weight_swap",
+      "wan_prompt_encode_ms_range": [
+        14800.0,
+        15200.0
+      ],
+      "weight_swap_ms_range": [
+        2742.3,
+        3907.2
+      ]
+    },
+    "s2_wan_cpu_sd35_gpu": {
+      "code": "S2",
+      "descriptor": {
+        "code": "S2",
+        "encoder_pool": {
+          "enabled": true,
+          "pin_memory": true,
+          "shm_dir": "/dev/shm/ditserve-hetero-embeds",
+          "write_shm": false
+        },
+        "label": "Wan UMT5 on CPU + SD3.5 T5-XXL on GPU",
+        "offload_text_encoders_after_warmup": false,
+        "release_cache_on_stop": false,
+        "sd35_text_encoder_device": "cuda",
+        "strategy": "s2_wan_cpu_sd35_gpu",
+        "tiered_memory": false,
+        "wan_text_encoder_device": "cpu",
+        "weight_swap_on_switch": false
+      },
+      "fragmentation_oom_shapes": [
+        "wan22-720p"
+      ],
+      "free_hbm_headroom_gib_range": [
+        3.02,
+        17.0
+      ],
+      "hard_oom_shapes": [],
+      "label": "Wan UMT5 on CPU + SD3.5 T5-XXL on GPU",
+      "oom_free": false,
+      "peak_colocated_hbm_gib_range": [
+        22.5,
+        36.48
+      ],
+      "peak_with_allocator_reserve_gib_range": [
+        24.82,
+        38.8
+      ],
+      "pinned_shm_h2d_fetch_ms_range": [
+        0.4,
+        0.52
+      ],
+      "redundant_heavy_t5_umt5_8gpu_gib": 70.96,
+      "redundant_text_encoder_8gpu_gib": 83.12,
+      "saved_static_hbm_8gpu_vs_s0_gib": 84.64,
+      "saved_static_hbm_per_gpu_vs_s0_gib": 10.58,
+      "sd35_prompt_encode_ms_range": [
+        28.0,
+        42.0
+      ],
+      "shapes": {
+        "wan21-480p": {
+          "code": "S2",
+          "fragmentation_oom": false,
+          "free_hbm_headroom_gib": 17.0,
+          "free_hbm_headroom_with_reserve_gib": 14.68,
+          "hard_oom": false,
+          "image_active_workspace_gib": 3.5,
+          "image_shape": "sd35-1024",
+          "label": "Wan UMT5 on CPU + SD3.5 T5-XXL on GPU",
+          "oom_status": "TIGHT_FIT",
+          "peak_colocated_hbm_gib": 22.5,
+          "peak_with_allocator_reserve_gib": 24.82,
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.4,
+            0.52
+          ],
+          "redundant_heavy_t5_umt5_8gpu_gib": 70.96,
+          "redundant_text_encoder_8gpu_gib": 83.12,
+          "redundant_text_encoder_per_gpu_gib": 10.39,
+          "saved_static_hbm_8gpu_vs_s0_gib": 84.64,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 10.58,
+          "sd35_prompt_encode_ms_range": [
+            28.0,
+            42.0
+          ],
+          "static_gpu_weights_gib": 18.05,
+          "strategy": "s2_wan_cpu_sd35_gpu",
+          "usable_hbm_limit_gib": 39.5,
+          "video_active_peak_gib": 22.5,
+          "video_active_workspace_gib": 4.45,
+          "video_model": "wan21",
+          "video_shape": "wan21-480p",
+          "video_sigma_blk_gib": 0.22,
+          "wan_prompt_encode_ms_range": [
+            14800.0,
+            15200.0
+          ],
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ]
+        },
+        "wan21-720p": {
+          "code": "S2",
+          "fragmentation_oom": false,
+          "free_hbm_headroom_gib": 11.22,
+          "free_hbm_headroom_with_reserve_gib": 8.9,
+          "hard_oom": false,
+          "image_active_workspace_gib": 3.5,
+          "image_shape": "sd35-1024",
+          "label": "Wan UMT5 on CPU + SD3.5 T5-XXL on GPU",
+          "oom_status": "TIGHT_FIT",
+          "peak_colocated_hbm_gib": 28.28,
+          "peak_with_allocator_reserve_gib": 30.6,
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.4,
+            0.52
+          ],
+          "redundant_heavy_t5_umt5_8gpu_gib": 70.96,
+          "redundant_text_encoder_8gpu_gib": 83.12,
+          "redundant_text_encoder_per_gpu_gib": 10.39,
+          "saved_static_hbm_8gpu_vs_s0_gib": 84.64,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 10.58,
+          "sd35_prompt_encode_ms_range": [
+            28.0,
+            42.0
+          ],
+          "static_gpu_weights_gib": 18.05,
+          "strategy": "s2_wan_cpu_sd35_gpu",
+          "usable_hbm_limit_gib": 39.5,
+          "video_active_peak_gib": 28.28,
+          "video_active_workspace_gib": 10.23,
+          "video_model": "wan21",
+          "video_shape": "wan21-720p",
+          "video_sigma_blk_gib": 0.42,
+          "wan_prompt_encode_ms_range": [
+            14800.0,
+            15200.0
+          ],
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ]
+        },
+        "wan22-720p": {
+          "code": "S2",
+          "fragmentation_oom": true,
+          "free_hbm_headroom_gib": 3.02,
+          "free_hbm_headroom_with_reserve_gib": 0.7,
+          "hard_oom": false,
+          "image_active_workspace_gib": 3.5,
+          "image_shape": "sd35-1024",
+          "label": "Wan UMT5 on CPU + SD3.5 T5-XXL on GPU",
+          "oom_status": "FRAGMENTATION_OOM",
+          "peak_colocated_hbm_gib": 36.48,
+          "peak_with_allocator_reserve_gib": 38.8,
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.4,
+            0.52
+          ],
+          "redundant_heavy_t5_umt5_8gpu_gib": 70.96,
+          "redundant_text_encoder_8gpu_gib": 83.12,
+          "redundant_text_encoder_per_gpu_gib": 10.39,
+          "saved_static_hbm_8gpu_vs_s0_gib": 84.64,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 10.58,
+          "sd35_prompt_encode_ms_range": [
+            28.0,
+            42.0
+          ],
+          "static_gpu_weights_gib": 25.8,
+          "strategy": "s2_wan_cpu_sd35_gpu",
+          "usable_hbm_limit_gib": 39.5,
+          "video_active_peak_gib": 36.48,
+          "video_active_workspace_gib": 10.68,
+          "video_model": "wan22",
+          "video_shape": "wan22-720p",
+          "video_sigma_blk_gib": 0.48,
+          "wan_prompt_encode_ms_range": [
+            14800.0,
+            15200.0
+          ],
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ]
+        },
+        "wan22-small": {
+          "code": "S2",
+          "fragmentation_oom": false,
+          "free_hbm_headroom_gib": 8.23,
+          "free_hbm_headroom_with_reserve_gib": 5.91,
+          "hard_oom": false,
+          "image_active_workspace_gib": 3.5,
+          "image_shape": "sd35-1024",
+          "label": "Wan UMT5 on CPU + SD3.5 T5-XXL on GPU",
+          "oom_status": "TIGHT_FIT",
+          "peak_colocated_hbm_gib": 31.27,
+          "peak_with_allocator_reserve_gib": 33.59,
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.4,
+            0.52
+          ],
+          "redundant_heavy_t5_umt5_8gpu_gib": 70.96,
+          "redundant_text_encoder_8gpu_gib": 83.12,
+          "redundant_text_encoder_per_gpu_gib": 10.39,
+          "saved_static_hbm_8gpu_vs_s0_gib": 84.64,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 10.58,
+          "sd35_prompt_encode_ms_range": [
+            28.0,
+            42.0
+          ],
+          "static_gpu_weights_gib": 25.8,
+          "strategy": "s2_wan_cpu_sd35_gpu",
+          "usable_hbm_limit_gib": 39.5,
+          "video_active_peak_gib": 31.27,
+          "video_active_workspace_gib": 5.47,
+          "video_model": "wan22",
+          "video_shape": "wan22-small",
+          "video_sigma_blk_gib": 0.28,
+          "wan_prompt_encode_ms_range": [
+            14800.0,
+            15200.0
+          ],
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ]
+        }
+      },
+      "static_gpu_weights_gib": {
+        "wan21_plus_sd35": 18.05,
+        "wan22_plus_sd35": 25.8
+      },
+      "strategy": "s2_wan_cpu_sd35_gpu",
+      "wan_prompt_encode_ms_range": [
+        14800.0,
+        15200.0
+      ],
+      "weight_swap_ms_range": [
+        0.0,
+        0.0
+      ]
+    },
+    "s3_both_encoders_cpu": {
+      "code": "S3",
+      "descriptor": {
+        "code": "S3",
+        "encoder_pool": {
+          "enabled": true,
+          "pin_memory": true,
+          "shm_dir": "/dev/shm/ditserve-hetero-embeds",
+          "write_shm": false
+        },
+        "label": "Both Heavy T5 Encoders on CPU (No Cross-Worker Pool)",
+        "offload_text_encoders_after_warmup": true,
+        "release_cache_on_stop": false,
+        "sd35_text_encoder_device": "cpu",
+        "strategy": "s3_both_encoders_cpu",
+        "tiered_memory": false,
+        "wan_text_encoder_device": "cpu",
+        "weight_swap_on_switch": false
+      },
+      "fragmentation_oom_shapes": [],
+      "free_hbm_headroom_gib_range": [
+        11.9,
+        22.38
+      ],
+      "hard_oom_shapes": [],
+      "label": "Both Heavy T5 Encoders on CPU (No Cross-Worker Pool)",
+      "oom_free": true,
+      "peak_colocated_hbm_gib_range": [
+        17.12,
+        27.6
+      ],
+      "peak_with_allocator_reserve_gib_range": [
+        17.12,
+        27.6
+      ],
+      "pinned_shm_h2d_fetch_ms_range": [
+        0.4,
+        0.52
+      ],
+      "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+      "redundant_text_encoder_8gpu_gib": 12.16,
+      "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+      "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+      "sd35_prompt_encode_ms_range": [
+        3650.0,
+        3950.0
+      ],
+      "shapes": {
+        "wan21-480p": {
+          "code": "S3",
+          "fragmentation_oom": false,
+          "free_hbm_headroom_gib": 22.38,
+          "free_hbm_headroom_with_reserve_gib": 22.38,
+          "hard_oom": false,
+          "image_active_workspace_gib": 3.5,
+          "image_shape": "sd35-1024",
+          "label": "Both Heavy T5 Encoders on CPU (No Cross-Worker Pool)",
+          "oom_status": "ZERO_OOM_CPU_ENCODE_BOTTLENECK",
+          "peak_colocated_hbm_gib": 17.12,
+          "peak_with_allocator_reserve_gib": 17.12,
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.4,
+            0.52
+          ],
+          "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+          "redundant_text_encoder_8gpu_gib": 12.16,
+          "redundant_text_encoder_per_gpu_gib": 1.52,
+          "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+          "sd35_prompt_encode_ms_range": [
+            3650.0,
+            3950.0
+          ],
+          "static_gpu_weights_gib": 9.17,
+          "strategy": "s3_both_encoders_cpu",
+          "usable_hbm_limit_gib": 39.5,
+          "video_active_peak_gib": 13.62,
+          "video_active_workspace_gib": 4.45,
+          "video_model": "wan21",
+          "video_shape": "wan21-480p",
+          "video_sigma_blk_gib": 0.22,
+          "wan_prompt_encode_ms_range": [
+            14800.0,
+            15200.0
+          ],
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ]
+        },
+        "wan21-720p": {
+          "code": "S3",
+          "fragmentation_oom": false,
+          "free_hbm_headroom_gib": 20.1,
+          "free_hbm_headroom_with_reserve_gib": 20.1,
+          "hard_oom": false,
+          "image_active_workspace_gib": 3.5,
+          "image_shape": "sd35-1024",
+          "label": "Both Heavy T5 Encoders on CPU (No Cross-Worker Pool)",
+          "oom_status": "ZERO_OOM_CPU_ENCODE_BOTTLENECK",
+          "peak_colocated_hbm_gib": 19.4,
+          "peak_with_allocator_reserve_gib": 19.4,
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.4,
+            0.52
+          ],
+          "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+          "redundant_text_encoder_8gpu_gib": 12.16,
+          "redundant_text_encoder_per_gpu_gib": 1.52,
+          "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+          "sd35_prompt_encode_ms_range": [
+            3650.0,
+            3950.0
+          ],
+          "static_gpu_weights_gib": 9.17,
+          "strategy": "s3_both_encoders_cpu",
+          "usable_hbm_limit_gib": 39.5,
+          "video_active_peak_gib": 19.4,
+          "video_active_workspace_gib": 10.23,
+          "video_model": "wan21",
+          "video_shape": "wan21-720p",
+          "video_sigma_blk_gib": 0.42,
+          "wan_prompt_encode_ms_range": [
+            14800.0,
+            15200.0
+          ],
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ]
+        },
+        "wan22-720p": {
+          "code": "S3",
+          "fragmentation_oom": false,
+          "free_hbm_headroom_gib": 11.9,
+          "free_hbm_headroom_with_reserve_gib": 11.9,
+          "hard_oom": false,
+          "image_active_workspace_gib": 3.5,
+          "image_shape": "sd35-1024",
+          "label": "Both Heavy T5 Encoders on CPU (No Cross-Worker Pool)",
+          "oom_status": "ZERO_OOM_CPU_ENCODE_BOTTLENECK",
+          "peak_colocated_hbm_gib": 27.6,
+          "peak_with_allocator_reserve_gib": 27.6,
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.4,
+            0.52
+          ],
+          "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+          "redundant_text_encoder_8gpu_gib": 12.16,
+          "redundant_text_encoder_per_gpu_gib": 1.52,
+          "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+          "sd35_prompt_encode_ms_range": [
+            3650.0,
+            3950.0
+          ],
+          "static_gpu_weights_gib": 16.92,
+          "strategy": "s3_both_encoders_cpu",
+          "usable_hbm_limit_gib": 39.5,
+          "video_active_peak_gib": 27.6,
+          "video_active_workspace_gib": 10.68,
+          "video_model": "wan22",
+          "video_shape": "wan22-720p",
+          "video_sigma_blk_gib": 0.48,
+          "wan_prompt_encode_ms_range": [
+            14800.0,
+            15200.0
+          ],
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ]
+        },
+        "wan22-small": {
+          "code": "S3",
+          "fragmentation_oom": false,
+          "free_hbm_headroom_gib": 17.11,
+          "free_hbm_headroom_with_reserve_gib": 17.11,
+          "hard_oom": false,
+          "image_active_workspace_gib": 3.5,
+          "image_shape": "sd35-1024",
+          "label": "Both Heavy T5 Encoders on CPU (No Cross-Worker Pool)",
+          "oom_status": "ZERO_OOM_CPU_ENCODE_BOTTLENECK",
+          "peak_colocated_hbm_gib": 22.39,
+          "peak_with_allocator_reserve_gib": 22.39,
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.4,
+            0.52
+          ],
+          "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+          "redundant_text_encoder_8gpu_gib": 12.16,
+          "redundant_text_encoder_per_gpu_gib": 1.52,
+          "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+          "sd35_prompt_encode_ms_range": [
+            3650.0,
+            3950.0
+          ],
+          "static_gpu_weights_gib": 16.92,
+          "strategy": "s3_both_encoders_cpu",
+          "usable_hbm_limit_gib": 39.5,
+          "video_active_peak_gib": 22.39,
+          "video_active_workspace_gib": 5.47,
+          "video_model": "wan22",
+          "video_shape": "wan22-small",
+          "video_sigma_blk_gib": 0.28,
+          "wan_prompt_encode_ms_range": [
+            14800.0,
+            15200.0
+          ],
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ]
+        }
+      },
+      "static_gpu_weights_gib": {
+        "wan21_plus_sd35": 9.17,
+        "wan22_plus_sd35": 16.92
+      },
+      "strategy": "s3_both_encoders_cpu",
+      "wan_prompt_encode_ms_range": [
+        14800.0,
+        15200.0
+      ],
+      "weight_swap_ms_range": [
+        0.0,
+        0.0
+      ]
+    },
+    "s4_disaggregated_pool": {
+      "code": "S4",
+      "descriptor": {
+        "code": "S4",
+        "encoder_pool": {
+          "enabled": true,
+          "max_bytes": 536870912,
+          "max_entries": 64,
+          "pin_memory": true,
+          "shm_dir": "/dev/shm/ditserve-hetero-embeds",
+          "write_shm": true
+        },
+        "label": "DitServe Cross-Modal Disaggregated Encoder Pool + Safe-Point Cache Release",
+        "offload_text_encoders_after_warmup": true,
+        "release_cache_on_stop": true,
+        "sd35_text_encoder_device": "cpu",
+        "strategy": "s4_disaggregated_pool",
+        "tiered_memory": true,
+        "wan_text_encoder_device": "cpu",
+        "weight_swap_on_switch": false
+      },
+      "fragmentation_oom_shapes": [],
+      "free_hbm_headroom_gib_range": [
+        11.9,
+        22.38
+      ],
+      "hard_oom_shapes": [],
+      "label": "DitServe Cross-Modal Disaggregated Encoder Pool + Safe-Point Cache Release",
+      "oom_free": true,
+      "peak_colocated_hbm_gib_range": [
+        17.12,
+        27.6
+      ],
+      "peak_with_allocator_reserve_gib_range": [
+        13.62,
+        27.6
+      ],
+      "pinned_shm_h2d_fetch_ms_range": [
+        0.35,
+        0.48
+      ],
+      "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+      "redundant_text_encoder_8gpu_gib": 0.0,
+      "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+      "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+      "sd35_prompt_encode_ms_range": [
+        28.0,
+        42.0
+      ],
+      "shapes": {
+        "wan21-480p": {
+          "code": "S4",
+          "fragmentation_oom": false,
+          "free_hbm_headroom_gib": 22.38,
+          "free_hbm_headroom_with_reserve_gib": 25.88,
+          "hard_oom": false,
+          "image_active_workspace_gib": 3.5,
+          "image_shape": "sd35-1024",
+          "label": "DitServe Cross-Modal Disaggregated Encoder Pool + Safe-Point Cache Release",
+          "oom_status": "ZERO_OOM_SLO_COMPLIANT",
+          "peak_colocated_hbm_gib": 17.12,
+          "peak_with_allocator_reserve_gib": 13.62,
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.35,
+            0.48
+          ],
+          "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+          "redundant_text_encoder_8gpu_gib": 0.0,
+          "redundant_text_encoder_per_gpu_gib": 0.0,
+          "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+          "sd35_prompt_encode_ms_range": [
+            28.0,
+            42.0
+          ],
+          "static_gpu_weights_gib": 9.17,
+          "strategy": "s4_disaggregated_pool",
+          "usable_hbm_limit_gib": 39.5,
+          "video_active_peak_gib": 13.62,
+          "video_active_workspace_gib": 4.45,
+          "video_model": "wan21",
+          "video_shape": "wan21-480p",
+          "video_sigma_blk_gib": 0.22,
+          "wan_prompt_encode_ms_range": [
+            45.0,
+            80.0
+          ],
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ]
+        },
+        "wan21-720p": {
+          "code": "S4",
+          "fragmentation_oom": false,
+          "free_hbm_headroom_gib": 20.1,
+          "free_hbm_headroom_with_reserve_gib": 20.1,
+          "hard_oom": false,
+          "image_active_workspace_gib": 3.5,
+          "image_shape": "sd35-1024",
+          "label": "DitServe Cross-Modal Disaggregated Encoder Pool + Safe-Point Cache Release",
+          "oom_status": "ZERO_OOM_SLO_COMPLIANT",
+          "peak_colocated_hbm_gib": 19.4,
+          "peak_with_allocator_reserve_gib": 19.4,
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.35,
+            0.48
+          ],
+          "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+          "redundant_text_encoder_8gpu_gib": 0.0,
+          "redundant_text_encoder_per_gpu_gib": 0.0,
+          "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+          "sd35_prompt_encode_ms_range": [
+            28.0,
+            42.0
+          ],
+          "static_gpu_weights_gib": 9.17,
+          "strategy": "s4_disaggregated_pool",
+          "usable_hbm_limit_gib": 39.5,
+          "video_active_peak_gib": 19.4,
+          "video_active_workspace_gib": 10.23,
+          "video_model": "wan21",
+          "video_shape": "wan21-720p",
+          "video_sigma_blk_gib": 0.42,
+          "wan_prompt_encode_ms_range": [
+            45.0,
+            80.0
+          ],
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ]
+        },
+        "wan22-720p": {
+          "code": "S4",
+          "fragmentation_oom": false,
+          "free_hbm_headroom_gib": 11.9,
+          "free_hbm_headroom_with_reserve_gib": 11.9,
+          "hard_oom": false,
+          "image_active_workspace_gib": 3.5,
+          "image_shape": "sd35-1024",
+          "label": "DitServe Cross-Modal Disaggregated Encoder Pool + Safe-Point Cache Release",
+          "oom_status": "ZERO_OOM_SLO_COMPLIANT",
+          "peak_colocated_hbm_gib": 27.6,
+          "peak_with_allocator_reserve_gib": 27.6,
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.35,
+            0.48
+          ],
+          "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+          "redundant_text_encoder_8gpu_gib": 0.0,
+          "redundant_text_encoder_per_gpu_gib": 0.0,
+          "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+          "sd35_prompt_encode_ms_range": [
+            28.0,
+            42.0
+          ],
+          "static_gpu_weights_gib": 16.92,
+          "strategy": "s4_disaggregated_pool",
+          "usable_hbm_limit_gib": 39.5,
+          "video_active_peak_gib": 27.6,
+          "video_active_workspace_gib": 10.68,
+          "video_model": "wan22",
+          "video_shape": "wan22-720p",
+          "video_sigma_blk_gib": 0.48,
+          "wan_prompt_encode_ms_range": [
+            45.0,
+            80.0
+          ],
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ]
+        },
+        "wan22-small": {
+          "code": "S4",
+          "fragmentation_oom": false,
+          "free_hbm_headroom_gib": 17.11,
+          "free_hbm_headroom_with_reserve_gib": 17.11,
+          "hard_oom": false,
+          "image_active_workspace_gib": 3.5,
+          "image_shape": "sd35-1024",
+          "label": "DitServe Cross-Modal Disaggregated Encoder Pool + Safe-Point Cache Release",
+          "oom_status": "ZERO_OOM_SLO_COMPLIANT",
+          "peak_colocated_hbm_gib": 22.39,
+          "peak_with_allocator_reserve_gib": 22.39,
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.35,
+            0.48
+          ],
+          "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+          "redundant_text_encoder_8gpu_gib": 0.0,
+          "redundant_text_encoder_per_gpu_gib": 0.0,
+          "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+          "sd35_prompt_encode_ms_range": [
+            28.0,
+            42.0
+          ],
+          "static_gpu_weights_gib": 16.92,
+          "strategy": "s4_disaggregated_pool",
+          "usable_hbm_limit_gib": 39.5,
+          "video_active_peak_gib": 22.39,
+          "video_active_workspace_gib": 5.47,
+          "video_model": "wan22",
+          "video_shape": "wan22-small",
+          "video_sigma_blk_gib": 0.28,
+          "wan_prompt_encode_ms_range": [
+            45.0,
+            80.0
+          ],
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ]
+        }
+      },
+      "static_gpu_weights_gib": {
+        "wan21_plus_sd35": 9.17,
+        "wan22_plus_sd35": 16.92
+      },
+      "strategy": "s4_disaggregated_pool",
+      "wan_prompt_encode_ms_range": [
+        45.0,
+        80.0
+      ],
+      "weight_swap_ms_range": [
+        0.0,
+        0.0
+      ]
+    }
+  },
+  "strategy_shape_matrix": [
+    {
+      "code": "S0",
+      "fragmentation_oom": true,
+      "free_hbm_headroom_gib": 2.77,
+      "free_hbm_headroom_with_reserve_gib": -0.56,
+      "hard_oom": false,
+      "image_active_workspace_gib": 3.5,
+      "image_shape": "sd35-1024",
+      "label": "Naive GPU Co-Location (All Components on GPU)",
+      "oom_status": "FRAGMENTATION_OOM",
+      "peak_colocated_hbm_gib": 36.73,
+      "peak_with_allocator_reserve_gib": 40.06,
+      "pinned_shm_h2d_fetch_ms_range": [
+        0.0,
+        0.0
+      ],
+      "redundant_heavy_t5_umt5_8gpu_gib": 155.6,
+      "redundant_text_encoder_8gpu_gib": 167.76,
+      "redundant_text_encoder_per_gpu_gib": 20.97,
+      "saved_static_hbm_8gpu_vs_s0_gib": 0.0,
+      "saved_static_hbm_per_gpu_vs_s0_gib": 0.0,
+      "sd35_prompt_encode_ms_range": [
+        28.0,
+        42.0
+      ],
+      "static_gpu_weights_gib": 28.63,
+      "strategy": "s0_naive_gpu",
+      "usable_hbm_limit_gib": 39.5,
+      "video_active_peak_gib": 33.08,
+      "video_active_workspace_gib": 4.45,
+      "video_model": "wan21",
+      "video_shape": "wan21-480p",
+      "video_sigma_blk_gib": 0.22,
+      "wan_prompt_encode_ms_range": [
+        45.0,
+        80.0
+      ],
+      "weight_swap_gib": 0.0,
+      "weight_swap_ms_range": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "code": "S0",
+      "fragmentation_oom": false,
+      "free_hbm_headroom_gib": -3.01,
+      "free_hbm_headroom_with_reserve_gib": -6.34,
+      "hard_oom": true,
+      "image_active_workspace_gib": 3.5,
+      "image_shape": "sd35-1024",
+      "label": "Naive GPU Co-Location (All Components on GPU)",
+      "oom_status": "100%_HARD_OOM",
+      "peak_colocated_hbm_gib": 42.51,
+      "peak_with_allocator_reserve_gib": 45.84,
+      "pinned_shm_h2d_fetch_ms_range": [
+        0.0,
+        0.0
+      ],
+      "redundant_heavy_t5_umt5_8gpu_gib": 155.6,
+      "redundant_text_encoder_8gpu_gib": 167.76,
+      "redundant_text_encoder_per_gpu_gib": 20.97,
+      "saved_static_hbm_8gpu_vs_s0_gib": 0.0,
+      "saved_static_hbm_per_gpu_vs_s0_gib": 0.0,
+      "sd35_prompt_encode_ms_range": [
+        28.0,
+        42.0
+      ],
+      "static_gpu_weights_gib": 28.63,
+      "strategy": "s0_naive_gpu",
+      "usable_hbm_limit_gib": 39.5,
+      "video_active_peak_gib": 38.86,
+      "video_active_workspace_gib": 10.23,
+      "video_model": "wan21",
+      "video_shape": "wan21-720p",
+      "video_sigma_blk_gib": 0.42,
+      "wan_prompt_encode_ms_range": [
+        45.0,
+        80.0
+      ],
+      "weight_swap_gib": 0.0,
+      "weight_swap_ms_range": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "code": "S0",
+      "fragmentation_oom": false,
+      "free_hbm_headroom_gib": -6.0,
+      "free_hbm_headroom_with_reserve_gib": -9.33,
+      "hard_oom": true,
+      "image_active_workspace_gib": 3.5,
+      "image_shape": "sd35-1024",
+      "label": "Naive GPU Co-Location (All Components on GPU)",
+      "oom_status": "100%_HARD_OOM",
+      "peak_colocated_hbm_gib": 45.5,
+      "peak_with_allocator_reserve_gib": 48.83,
+      "pinned_shm_h2d_fetch_ms_range": [
+        0.0,
+        0.0
+      ],
+      "redundant_heavy_t5_umt5_8gpu_gib": 155.6,
+      "redundant_text_encoder_8gpu_gib": 167.76,
+      "redundant_text_encoder_per_gpu_gib": 20.97,
+      "saved_static_hbm_8gpu_vs_s0_gib": -0.0,
+      "saved_static_hbm_per_gpu_vs_s0_gib": -0.0,
+      "sd35_prompt_encode_ms_range": [
+        28.0,
+        42.0
+      ],
+      "static_gpu_weights_gib": 36.38,
+      "strategy": "s0_naive_gpu",
+      "usable_hbm_limit_gib": 39.5,
+      "video_active_peak_gib": 41.85,
+      "video_active_workspace_gib": 5.47,
+      "video_model": "wan22",
+      "video_shape": "wan22-small",
+      "video_sigma_blk_gib": 0.28,
+      "wan_prompt_encode_ms_range": [
+        45.0,
+        80.0
+      ],
+      "weight_swap_gib": 0.0,
+      "weight_swap_ms_range": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "code": "S0",
+      "fragmentation_oom": false,
+      "free_hbm_headroom_gib": -11.21,
+      "free_hbm_headroom_with_reserve_gib": -14.54,
+      "hard_oom": true,
+      "image_active_workspace_gib": 3.5,
+      "image_shape": "sd35-1024",
+      "label": "Naive GPU Co-Location (All Components on GPU)",
+      "oom_status": "100%_HARD_OOM",
+      "peak_colocated_hbm_gib": 50.71,
+      "peak_with_allocator_reserve_gib": 54.04,
+      "pinned_shm_h2d_fetch_ms_range": [
+        0.0,
+        0.0
+      ],
+      "redundant_heavy_t5_umt5_8gpu_gib": 155.6,
+      "redundant_text_encoder_8gpu_gib": 167.76,
+      "redundant_text_encoder_per_gpu_gib": 20.97,
+      "saved_static_hbm_8gpu_vs_s0_gib": -0.0,
+      "saved_static_hbm_per_gpu_vs_s0_gib": -0.0,
+      "sd35_prompt_encode_ms_range": [
+        28.0,
+        42.0
+      ],
+      "static_gpu_weights_gib": 36.38,
+      "strategy": "s0_naive_gpu",
+      "usable_hbm_limit_gib": 39.5,
+      "video_active_peak_gib": 47.06,
+      "video_active_workspace_gib": 10.68,
+      "video_model": "wan22",
+      "video_shape": "wan22-720p",
+      "video_sigma_blk_gib": 0.48,
+      "wan_prompt_encode_ms_range": [
+        45.0,
+        80.0
+      ],
+      "weight_swap_gib": 0.0,
+      "weight_swap_ms_range": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "code": "S1",
+      "fragmentation_oom": false,
+      "free_hbm_headroom_gib": 29.5,
+      "free_hbm_headroom_with_reserve_gib": 29.5,
+      "hard_oom": false,
+      "image_active_workspace_gib": 3.5,
+      "image_shape": "sd35-1024",
+      "label": "Reactive On-Demand CPU-GPU Weight Swapping",
+      "oom_status": "FIT_BUT_SWAP_STALLED",
+      "peak_colocated_hbm_gib": 10.0,
+      "peak_with_allocator_reserve_gib": 10.0,
+      "pinned_shm_h2d_fetch_ms_range": [
+        0.42,
+        0.55
+      ],
+      "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+      "redundant_text_encoder_8gpu_gib": 0.0,
+      "redundant_text_encoder_per_gpu_gib": 0.0,
+      "saved_static_hbm_8gpu_vs_s0_gib": 178.8,
+      "saved_static_hbm_per_gpu_vs_s0_gib": 22.35,
+      "sd35_prompt_encode_ms_range": [
+        3600.0,
+        3950.0
+      ],
+      "static_gpu_weights_gib": 6.28,
+      "strategy": "s1_weight_swap",
+      "usable_hbm_limit_gib": 39.5,
+      "video_active_peak_gib": 7.34,
+      "video_active_workspace_gib": 4.45,
+      "video_model": "wan21",
+      "video_shape": "wan21-480p",
+      "video_sigma_blk_gib": 0.22,
+      "wan_prompt_encode_ms_range": [
+        14800.0,
+        15200.0
+      ],
+      "weight_swap_gib": 15.16,
+      "weight_swap_ms_range": [
+        2742.3,
+        3907.2
+      ]
+    },
+    {
+      "code": "S1",
+      "fragmentation_oom": false,
+      "free_hbm_headroom_gib": 26.38,
+      "free_hbm_headroom_with_reserve_gib": 26.38,
+      "hard_oom": false,
+      "image_active_workspace_gib": 3.5,
+      "image_shape": "sd35-1024",
+      "label": "Reactive On-Demand CPU-GPU Weight Swapping",
+      "oom_status": "FIT_BUT_SWAP_STALLED",
+      "peak_colocated_hbm_gib": 13.12,
+      "peak_with_allocator_reserve_gib": 13.12,
+      "pinned_shm_h2d_fetch_ms_range": [
+        0.42,
+        0.55
+      ],
+      "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+      "redundant_text_encoder_8gpu_gib": 0.0,
+      "redundant_text_encoder_per_gpu_gib": 0.0,
+      "saved_static_hbm_8gpu_vs_s0_gib": 178.8,
+      "saved_static_hbm_per_gpu_vs_s0_gib": 22.35,
+      "sd35_prompt_encode_ms_range": [
+        3600.0,
+        3950.0
+      ],
+      "static_gpu_weights_gib": 6.28,
+      "strategy": "s1_weight_swap",
+      "usable_hbm_limit_gib": 39.5,
+      "video_active_peak_gib": 13.12,
+      "video_active_workspace_gib": 10.23,
+      "video_model": "wan21",
+      "video_shape": "wan21-720p",
+      "video_sigma_blk_gib": 0.42,
+      "wan_prompt_encode_ms_range": [
+        14800.0,
+        15200.0
+      ],
+      "weight_swap_gib": 15.16,
+      "weight_swap_ms_range": [
+        2742.3,
+        3907.2
+      ]
+    },
+    {
+      "code": "S1",
+      "fragmentation_oom": false,
+      "free_hbm_headroom_gib": 23.39,
+      "free_hbm_headroom_with_reserve_gib": 23.39,
+      "hard_oom": false,
+      "image_active_workspace_gib": 3.5,
+      "image_shape": "sd35-1024",
+      "label": "Reactive On-Demand CPU-GPU Weight Swapping",
+      "oom_status": "FIT_BUT_SWAP_STALLED",
+      "peak_colocated_hbm_gib": 16.11,
+      "peak_with_allocator_reserve_gib": 16.11,
+      "pinned_shm_h2d_fetch_ms_range": [
+        0.42,
+        0.55
+      ],
+      "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+      "redundant_text_encoder_8gpu_gib": 0.0,
+      "redundant_text_encoder_per_gpu_gib": 0.0,
+      "saved_static_hbm_8gpu_vs_s0_gib": 205.92,
+      "saved_static_hbm_per_gpu_vs_s0_gib": 25.74,
+      "sd35_prompt_encode_ms_range": [
+        3600.0,
+        3950.0
+      ],
+      "static_gpu_weights_gib": 10.64,
+      "strategy": "s1_weight_swap",
+      "usable_hbm_limit_gib": 39.5,
+      "video_active_peak_gib": 16.11,
+      "video_active_workspace_gib": 5.47,
+      "video_model": "wan22",
+      "video_shape": "wan22-small",
+      "video_sigma_blk_gib": 0.28,
+      "wan_prompt_encode_ms_range": [
+        14800.0,
+        15200.0
+      ],
+      "weight_swap_gib": 15.16,
+      "weight_swap_ms_range": [
+        2742.3,
+        3907.2
+      ]
+    },
+    {
+      "code": "S1",
+      "fragmentation_oom": false,
+      "free_hbm_headroom_gib": 18.18,
+      "free_hbm_headroom_with_reserve_gib": 18.18,
+      "hard_oom": false,
+      "image_active_workspace_gib": 3.5,
+      "image_shape": "sd35-1024",
+      "label": "Reactive On-Demand CPU-GPU Weight Swapping",
+      "oom_status": "FIT_BUT_SWAP_STALLED",
+      "peak_colocated_hbm_gib": 21.32,
+      "peak_with_allocator_reserve_gib": 21.32,
+      "pinned_shm_h2d_fetch_ms_range": [
+        0.42,
+        0.55
+      ],
+      "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+      "redundant_text_encoder_8gpu_gib": 0.0,
+      "redundant_text_encoder_per_gpu_gib": 0.0,
+      "saved_static_hbm_8gpu_vs_s0_gib": 205.92,
+      "saved_static_hbm_per_gpu_vs_s0_gib": 25.74,
+      "sd35_prompt_encode_ms_range": [
+        3600.0,
+        3950.0
+      ],
+      "static_gpu_weights_gib": 10.64,
+      "strategy": "s1_weight_swap",
+      "usable_hbm_limit_gib": 39.5,
+      "video_active_peak_gib": 21.32,
+      "video_active_workspace_gib": 10.68,
+      "video_model": "wan22",
+      "video_shape": "wan22-720p",
+      "video_sigma_blk_gib": 0.48,
+      "wan_prompt_encode_ms_range": [
+        14800.0,
+        15200.0
+      ],
+      "weight_swap_gib": 15.16,
+      "weight_swap_ms_range": [
+        2742.3,
+        3907.2
+      ]
+    },
+    {
+      "code": "S2",
+      "fragmentation_oom": false,
+      "free_hbm_headroom_gib": 17.0,
+      "free_hbm_headroom_with_reserve_gib": 14.68,
+      "hard_oom": false,
+      "image_active_workspace_gib": 3.5,
+      "image_shape": "sd35-1024",
+      "label": "Wan UMT5 on CPU + SD3.5 T5-XXL on GPU",
+      "oom_status": "TIGHT_FIT",
+      "peak_colocated_hbm_gib": 22.5,
+      "peak_with_allocator_reserve_gib": 24.82,
+      "pinned_shm_h2d_fetch_ms_range": [
+        0.4,
+        0.52
+      ],
+      "redundant_heavy_t5_umt5_8gpu_gib": 70.96,
+      "redundant_text_encoder_8gpu_gib": 83.12,
+      "redundant_text_encoder_per_gpu_gib": 10.39,
+      "saved_static_hbm_8gpu_vs_s0_gib": 84.64,
+      "saved_static_hbm_per_gpu_vs_s0_gib": 10.58,
+      "sd35_prompt_encode_ms_range": [
+        28.0,
+        42.0
+      ],
+      "static_gpu_weights_gib": 18.05,
+      "strategy": "s2_wan_cpu_sd35_gpu",
+      "usable_hbm_limit_gib": 39.5,
+      "video_active_peak_gib": 22.5,
+      "video_active_workspace_gib": 4.45,
+      "video_model": "wan21",
+      "video_shape": "wan21-480p",
+      "video_sigma_blk_gib": 0.22,
+      "wan_prompt_encode_ms_range": [
+        14800.0,
+        15200.0
+      ],
+      "weight_swap_gib": 0.0,
+      "weight_swap_ms_range": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "code": "S2",
+      "fragmentation_oom": false,
+      "free_hbm_headroom_gib": 11.22,
+      "free_hbm_headroom_with_reserve_gib": 8.9,
+      "hard_oom": false,
+      "image_active_workspace_gib": 3.5,
+      "image_shape": "sd35-1024",
+      "label": "Wan UMT5 on CPU + SD3.5 T5-XXL on GPU",
+      "oom_status": "TIGHT_FIT",
+      "peak_colocated_hbm_gib": 28.28,
+      "peak_with_allocator_reserve_gib": 30.6,
+      "pinned_shm_h2d_fetch_ms_range": [
+        0.4,
+        0.52
+      ],
+      "redundant_heavy_t5_umt5_8gpu_gib": 70.96,
+      "redundant_text_encoder_8gpu_gib": 83.12,
+      "redundant_text_encoder_per_gpu_gib": 10.39,
+      "saved_static_hbm_8gpu_vs_s0_gib": 84.64,
+      "saved_static_hbm_per_gpu_vs_s0_gib": 10.58,
+      "sd35_prompt_encode_ms_range": [
+        28.0,
+        42.0
+      ],
+      "static_gpu_weights_gib": 18.05,
+      "strategy": "s2_wan_cpu_sd35_gpu",
+      "usable_hbm_limit_gib": 39.5,
+      "video_active_peak_gib": 28.28,
+      "video_active_workspace_gib": 10.23,
+      "video_model": "wan21",
+      "video_shape": "wan21-720p",
+      "video_sigma_blk_gib": 0.42,
+      "wan_prompt_encode_ms_range": [
+        14800.0,
+        15200.0
+      ],
+      "weight_swap_gib": 0.0,
+      "weight_swap_ms_range": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "code": "S2",
+      "fragmentation_oom": false,
+      "free_hbm_headroom_gib": 8.23,
+      "free_hbm_headroom_with_reserve_gib": 5.91,
+      "hard_oom": false,
+      "image_active_workspace_gib": 3.5,
+      "image_shape": "sd35-1024",
+      "label": "Wan UMT5 on CPU + SD3.5 T5-XXL on GPU",
+      "oom_status": "TIGHT_FIT",
+      "peak_colocated_hbm_gib": 31.27,
+      "peak_with_allocator_reserve_gib": 33.59,
+      "pinned_shm_h2d_fetch_ms_range": [
+        0.4,
+        0.52
+      ],
+      "redundant_heavy_t5_umt5_8gpu_gib": 70.96,
+      "redundant_text_encoder_8gpu_gib": 83.12,
+      "redundant_text_encoder_per_gpu_gib": 10.39,
+      "saved_static_hbm_8gpu_vs_s0_gib": 84.64,
+      "saved_static_hbm_per_gpu_vs_s0_gib": 10.58,
+      "sd35_prompt_encode_ms_range": [
+        28.0,
+        42.0
+      ],
+      "static_gpu_weights_gib": 25.8,
+      "strategy": "s2_wan_cpu_sd35_gpu",
+      "usable_hbm_limit_gib": 39.5,
+      "video_active_peak_gib": 31.27,
+      "video_active_workspace_gib": 5.47,
+      "video_model": "wan22",
+      "video_shape": "wan22-small",
+      "video_sigma_blk_gib": 0.28,
+      "wan_prompt_encode_ms_range": [
+        14800.0,
+        15200.0
+      ],
+      "weight_swap_gib": 0.0,
+      "weight_swap_ms_range": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "code": "S2",
+      "fragmentation_oom": true,
+      "free_hbm_headroom_gib": 3.02,
+      "free_hbm_headroom_with_reserve_gib": 0.7,
+      "hard_oom": false,
+      "image_active_workspace_gib": 3.5,
+      "image_shape": "sd35-1024",
+      "label": "Wan UMT5 on CPU + SD3.5 T5-XXL on GPU",
+      "oom_status": "FRAGMENTATION_OOM",
+      "peak_colocated_hbm_gib": 36.48,
+      "peak_with_allocator_reserve_gib": 38.8,
+      "pinned_shm_h2d_fetch_ms_range": [
+        0.4,
+        0.52
+      ],
+      "redundant_heavy_t5_umt5_8gpu_gib": 70.96,
+      "redundant_text_encoder_8gpu_gib": 83.12,
+      "redundant_text_encoder_per_gpu_gib": 10.39,
+      "saved_static_hbm_8gpu_vs_s0_gib": 84.64,
+      "saved_static_hbm_per_gpu_vs_s0_gib": 10.58,
+      "sd35_prompt_encode_ms_range": [
+        28.0,
+        42.0
+      ],
+      "static_gpu_weights_gib": 25.8,
+      "strategy": "s2_wan_cpu_sd35_gpu",
+      "usable_hbm_limit_gib": 39.5,
+      "video_active_peak_gib": 36.48,
+      "video_active_workspace_gib": 10.68,
+      "video_model": "wan22",
+      "video_shape": "wan22-720p",
+      "video_sigma_blk_gib": 0.48,
+      "wan_prompt_encode_ms_range": [
+        14800.0,
+        15200.0
+      ],
+      "weight_swap_gib": 0.0,
+      "weight_swap_ms_range": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "code": "S3",
+      "fragmentation_oom": false,
+      "free_hbm_headroom_gib": 22.38,
+      "free_hbm_headroom_with_reserve_gib": 22.38,
+      "hard_oom": false,
+      "image_active_workspace_gib": 3.5,
+      "image_shape": "sd35-1024",
+      "label": "Both Heavy T5 Encoders on CPU (No Cross-Worker Pool)",
+      "oom_status": "ZERO_OOM_CPU_ENCODE_BOTTLENECK",
+      "peak_colocated_hbm_gib": 17.12,
+      "peak_with_allocator_reserve_gib": 17.12,
+      "pinned_shm_h2d_fetch_ms_range": [
+        0.4,
+        0.52
+      ],
+      "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+      "redundant_text_encoder_8gpu_gib": 12.16,
+      "redundant_text_encoder_per_gpu_gib": 1.52,
+      "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+      "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+      "sd35_prompt_encode_ms_range": [
+        3650.0,
+        3950.0
+      ],
+      "static_gpu_weights_gib": 9.17,
+      "strategy": "s3_both_encoders_cpu",
+      "usable_hbm_limit_gib": 39.5,
+      "video_active_peak_gib": 13.62,
+      "video_active_workspace_gib": 4.45,
+      "video_model": "wan21",
+      "video_shape": "wan21-480p",
+      "video_sigma_blk_gib": 0.22,
+      "wan_prompt_encode_ms_range": [
+        14800.0,
+        15200.0
+      ],
+      "weight_swap_gib": 0.0,
+      "weight_swap_ms_range": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "code": "S3",
+      "fragmentation_oom": false,
+      "free_hbm_headroom_gib": 20.1,
+      "free_hbm_headroom_with_reserve_gib": 20.1,
+      "hard_oom": false,
+      "image_active_workspace_gib": 3.5,
+      "image_shape": "sd35-1024",
+      "label": "Both Heavy T5 Encoders on CPU (No Cross-Worker Pool)",
+      "oom_status": "ZERO_OOM_CPU_ENCODE_BOTTLENECK",
+      "peak_colocated_hbm_gib": 19.4,
+      "peak_with_allocator_reserve_gib": 19.4,
+      "pinned_shm_h2d_fetch_ms_range": [
+        0.4,
+        0.52
+      ],
+      "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+      "redundant_text_encoder_8gpu_gib": 12.16,
+      "redundant_text_encoder_per_gpu_gib": 1.52,
+      "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+      "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+      "sd35_prompt_encode_ms_range": [
+        3650.0,
+        3950.0
+      ],
+      "static_gpu_weights_gib": 9.17,
+      "strategy": "s3_both_encoders_cpu",
+      "usable_hbm_limit_gib": 39.5,
+      "video_active_peak_gib": 19.4,
+      "video_active_workspace_gib": 10.23,
+      "video_model": "wan21",
+      "video_shape": "wan21-720p",
+      "video_sigma_blk_gib": 0.42,
+      "wan_prompt_encode_ms_range": [
+        14800.0,
+        15200.0
+      ],
+      "weight_swap_gib": 0.0,
+      "weight_swap_ms_range": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "code": "S3",
+      "fragmentation_oom": false,
+      "free_hbm_headroom_gib": 17.11,
+      "free_hbm_headroom_with_reserve_gib": 17.11,
+      "hard_oom": false,
+      "image_active_workspace_gib": 3.5,
+      "image_shape": "sd35-1024",
+      "label": "Both Heavy T5 Encoders on CPU (No Cross-Worker Pool)",
+      "oom_status": "ZERO_OOM_CPU_ENCODE_BOTTLENECK",
+      "peak_colocated_hbm_gib": 22.39,
+      "peak_with_allocator_reserve_gib": 22.39,
+      "pinned_shm_h2d_fetch_ms_range": [
+        0.4,
+        0.52
+      ],
+      "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+      "redundant_text_encoder_8gpu_gib": 12.16,
+      "redundant_text_encoder_per_gpu_gib": 1.52,
+      "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+      "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+      "sd35_prompt_encode_ms_range": [
+        3650.0,
+        3950.0
+      ],
+      "static_gpu_weights_gib": 16.92,
+      "strategy": "s3_both_encoders_cpu",
+      "usable_hbm_limit_gib": 39.5,
+      "video_active_peak_gib": 22.39,
+      "video_active_workspace_gib": 5.47,
+      "video_model": "wan22",
+      "video_shape": "wan22-small",
+      "video_sigma_blk_gib": 0.28,
+      "wan_prompt_encode_ms_range": [
+        14800.0,
+        15200.0
+      ],
+      "weight_swap_gib": 0.0,
+      "weight_swap_ms_range": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "code": "S3",
+      "fragmentation_oom": false,
+      "free_hbm_headroom_gib": 11.9,
+      "free_hbm_headroom_with_reserve_gib": 11.9,
+      "hard_oom": false,
+      "image_active_workspace_gib": 3.5,
+      "image_shape": "sd35-1024",
+      "label": "Both Heavy T5 Encoders on CPU (No Cross-Worker Pool)",
+      "oom_status": "ZERO_OOM_CPU_ENCODE_BOTTLENECK",
+      "peak_colocated_hbm_gib": 27.6,
+      "peak_with_allocator_reserve_gib": 27.6,
+      "pinned_shm_h2d_fetch_ms_range": [
+        0.4,
+        0.52
+      ],
+      "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+      "redundant_text_encoder_8gpu_gib": 12.16,
+      "redundant_text_encoder_per_gpu_gib": 1.52,
+      "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+      "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+      "sd35_prompt_encode_ms_range": [
+        3650.0,
+        3950.0
+      ],
+      "static_gpu_weights_gib": 16.92,
+      "strategy": "s3_both_encoders_cpu",
+      "usable_hbm_limit_gib": 39.5,
+      "video_active_peak_gib": 27.6,
+      "video_active_workspace_gib": 10.68,
+      "video_model": "wan22",
+      "video_shape": "wan22-720p",
+      "video_sigma_blk_gib": 0.48,
+      "wan_prompt_encode_ms_range": [
+        14800.0,
+        15200.0
+      ],
+      "weight_swap_gib": 0.0,
+      "weight_swap_ms_range": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "code": "S4",
+      "fragmentation_oom": false,
+      "free_hbm_headroom_gib": 22.38,
+      "free_hbm_headroom_with_reserve_gib": 25.88,
+      "hard_oom": false,
+      "image_active_workspace_gib": 3.5,
+      "image_shape": "sd35-1024",
+      "label": "DitServe Cross-Modal Disaggregated Encoder Pool + Safe-Point Cache Release",
+      "oom_status": "ZERO_OOM_SLO_COMPLIANT",
+      "peak_colocated_hbm_gib": 17.12,
+      "peak_with_allocator_reserve_gib": 13.62,
+      "pinned_shm_h2d_fetch_ms_range": [
+        0.35,
+        0.48
+      ],
+      "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+      "redundant_text_encoder_8gpu_gib": 0.0,
+      "redundant_text_encoder_per_gpu_gib": 0.0,
+      "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+      "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+      "sd35_prompt_encode_ms_range": [
+        28.0,
+        42.0
+      ],
+      "static_gpu_weights_gib": 9.17,
+      "strategy": "s4_disaggregated_pool",
+      "usable_hbm_limit_gib": 39.5,
+      "video_active_peak_gib": 13.62,
+      "video_active_workspace_gib": 4.45,
+      "video_model": "wan21",
+      "video_shape": "wan21-480p",
+      "video_sigma_blk_gib": 0.22,
+      "wan_prompt_encode_ms_range": [
+        45.0,
+        80.0
+      ],
+      "weight_swap_gib": 0.0,
+      "weight_swap_ms_range": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "code": "S4",
+      "fragmentation_oom": false,
+      "free_hbm_headroom_gib": 20.1,
+      "free_hbm_headroom_with_reserve_gib": 20.1,
+      "hard_oom": false,
+      "image_active_workspace_gib": 3.5,
+      "image_shape": "sd35-1024",
+      "label": "DitServe Cross-Modal Disaggregated Encoder Pool + Safe-Point Cache Release",
+      "oom_status": "ZERO_OOM_SLO_COMPLIANT",
+      "peak_colocated_hbm_gib": 19.4,
+      "peak_with_allocator_reserve_gib": 19.4,
+      "pinned_shm_h2d_fetch_ms_range": [
+        0.35,
+        0.48
+      ],
+      "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+      "redundant_text_encoder_8gpu_gib": 0.0,
+      "redundant_text_encoder_per_gpu_gib": 0.0,
+      "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+      "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+      "sd35_prompt_encode_ms_range": [
+        28.0,
+        42.0
+      ],
+      "static_gpu_weights_gib": 9.17,
+      "strategy": "s4_disaggregated_pool",
+      "usable_hbm_limit_gib": 39.5,
+      "video_active_peak_gib": 19.4,
+      "video_active_workspace_gib": 10.23,
+      "video_model": "wan21",
+      "video_shape": "wan21-720p",
+      "video_sigma_blk_gib": 0.42,
+      "wan_prompt_encode_ms_range": [
+        45.0,
+        80.0
+      ],
+      "weight_swap_gib": 0.0,
+      "weight_swap_ms_range": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "code": "S4",
+      "fragmentation_oom": false,
+      "free_hbm_headroom_gib": 17.11,
+      "free_hbm_headroom_with_reserve_gib": 17.11,
+      "hard_oom": false,
+      "image_active_workspace_gib": 3.5,
+      "image_shape": "sd35-1024",
+      "label": "DitServe Cross-Modal Disaggregated Encoder Pool + Safe-Point Cache Release",
+      "oom_status": "ZERO_OOM_SLO_COMPLIANT",
+      "peak_colocated_hbm_gib": 22.39,
+      "peak_with_allocator_reserve_gib": 22.39,
+      "pinned_shm_h2d_fetch_ms_range": [
+        0.35,
+        0.48
+      ],
+      "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+      "redundant_text_encoder_8gpu_gib": 0.0,
+      "redundant_text_encoder_per_gpu_gib": 0.0,
+      "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+      "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+      "sd35_prompt_encode_ms_range": [
+        28.0,
+        42.0
+      ],
+      "static_gpu_weights_gib": 16.92,
+      "strategy": "s4_disaggregated_pool",
+      "usable_hbm_limit_gib": 39.5,
+      "video_active_peak_gib": 22.39,
+      "video_active_workspace_gib": 5.47,
+      "video_model": "wan22",
+      "video_shape": "wan22-small",
+      "video_sigma_blk_gib": 0.28,
+      "wan_prompt_encode_ms_range": [
+        45.0,
+        80.0
+      ],
+      "weight_swap_gib": 0.0,
+      "weight_swap_ms_range": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "code": "S4",
+      "fragmentation_oom": false,
+      "free_hbm_headroom_gib": 11.9,
+      "free_hbm_headroom_with_reserve_gib": 11.9,
+      "hard_oom": false,
+      "image_active_workspace_gib": 3.5,
+      "image_shape": "sd35-1024",
+      "label": "DitServe Cross-Modal Disaggregated Encoder Pool + Safe-Point Cache Release",
+      "oom_status": "ZERO_OOM_SLO_COMPLIANT",
+      "peak_colocated_hbm_gib": 27.6,
+      "peak_with_allocator_reserve_gib": 27.6,
+      "pinned_shm_h2d_fetch_ms_range": [
+        0.35,
+        0.48
+      ],
+      "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+      "redundant_text_encoder_8gpu_gib": 0.0,
+      "redundant_text_encoder_per_gpu_gib": 0.0,
+      "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+      "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+      "sd35_prompt_encode_ms_range": [
+        28.0,
+        42.0
+      ],
+      "static_gpu_weights_gib": 16.92,
+      "strategy": "s4_disaggregated_pool",
+      "usable_hbm_limit_gib": 39.5,
+      "video_active_peak_gib": 27.6,
+      "video_active_workspace_gib": 10.68,
+      "video_model": "wan22",
+      "video_shape": "wan22-720p",
+      "video_sigma_blk_gib": 0.48,
+      "wan_prompt_encode_ms_range": [
+        45.0,
+        80.0
+      ],
+      "weight_swap_gib": 0.0,
+      "weight_swap_ms_range": [
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "video_shapes": {
+    "wan21-480p": {
+      "active_workspace_gib": 4.45,
+      "frames": 81,
+      "height": 480,
+      "model": "wan21",
+      "shape_id": "wan21-480p",
+      "sigma_blk_gib": 0.22,
+      "sigma_blk_mib": 220,
+      "single_model_denoiser_only_peak_gib": 7.34,
+      "single_model_full_peak_gib": 17.92,
+      "steps": 50,
+      "substep_block_preempt_ms_range": [
+        72.0,
+        96.0
+      ],
+      "width": 832
+    },
+    "wan21-720p": {
+      "active_workspace_gib": 10.23,
+      "frames": 81,
+      "height": 720,
+      "model": "wan21",
+      "shape_id": "wan21-720p",
+      "sigma_blk_gib": 0.42,
+      "sigma_blk_mib": 420,
+      "single_model_denoiser_only_peak_gib": 13.12,
+      "single_model_full_peak_gib": 23.7,
+      "steps": 50,
+      "substep_block_preempt_ms_range": [
+        95.0,
+        132.0
+      ],
+      "width": 1280
+    },
+    "wan22-720p": {
+      "active_workspace_gib": 10.68,
+      "frames": 81,
+      "height": 720,
+      "model": "wan22",
+      "shape_id": "wan22-720p",
+      "sigma_blk_gib": 0.48,
+      "sigma_blk_mib": 480,
+      "single_model_denoiser_only_peak_gib": 21.32,
+      "single_model_full_peak_gib": 31.9,
+      "steps": 50,
+      "substep_block_preempt_ms_range": [
+        108.0,
+        145.0
+      ],
+      "width": 1280
+    },
+    "wan22-small": {
+      "active_workspace_gib": 5.47,
+      "frames": 121,
+      "height": 512,
+      "model": "wan22",
+      "shape_id": "wan22-small",
+      "sigma_blk_gib": 0.28,
+      "sigma_blk_mib": 280,
+      "single_model_denoiser_only_peak_gib": 16.11,
+      "single_model_full_peak_gib": 26.69,
+      "steps": 50,
+      "substep_block_preempt_ms_range": [
+        84.0,
+        118.0
+      ],
+      "width": 896
+    }
+  }
+}

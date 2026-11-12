@@ -1,0 +1,10 @@
+{
+ "commit": "37960d30614e301d6d29d8e027e2399158cf2c76",
+ "subject": "chore: clean up unrelated models (Sana/FLUX) and unify Wan2.1/Wan2.2 + SD3.5-Medium codebase, docs, and results",
+ "built_utc": "2026-11-01T05:09:52+00:00",
+ "builder_image": "local-cmake-install",
+ "tested_runtime_image": "192.168.1.114:30500/jjjkairos/ditserve:xdit-dev-016e1ca-slim",
+ "core_sha256": "718c13b58957f49694e43fbd07fb77264b5cc9a8b683d38f76da7ff972847692",
+ "files": 258,
+ "bytes": 4310017
+}

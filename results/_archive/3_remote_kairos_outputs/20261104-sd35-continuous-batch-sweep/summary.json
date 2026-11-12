@@ -1,0 +1,1330 @@
+{
+  "benchmark": "20261104-sd35-continuous-batch-sweep",
+  "timestamp_utc": "2026-11-04T08:23:07Z",
+  "hardware": {
+    "gpu_name": "NVIDIA A100-PCIE-40GB",
+    "gpu_count": 1,
+    "total_vram_mb": 40442.38,
+    "torch_version": "2.10.0+cu126",
+    "cuda_version": "12.6"
+  },
+  "model_config": {
+    "model": "SD3.5-Medium",
+    "model_path": "/shared/data/DITSERVE/models/sd3.5-medium",
+    "dtype": "bfloat16",
+    "attention": "flash",
+    "steps": 28,
+    "guidance_scale": 4.5,
+    "max_sequence_length": 256,
+    "continuous_batch": true,
+    "bubble_free": true,
+    "sequence_packing": true
+  },
+  "s4_encoder_pool": {
+    "distinct_prompts_staged": 8,
+    "shm_dir": "/dev/shm/ditserve-sd35-cb-sweep-embeds",
+    "load_ms": 21040.7,
+    "memory_with_t5_resident_mb": {
+      "allocated_mb": 15559.63,
+      "reserved_mb": 15822.0,
+      "peak_allocated_mb": 15559.63,
+      "peak_reserved_mb": 15822.0
+    },
+    "memory_after_t5_offload_mb": {
+      "allocated_mb": 6484.37,
+      "reserved_mb": 6760.0,
+      "peak_allocated_mb": 15634.88,
+      "peak_reserved_mb": 15904.0
+    },
+    "t5_offload_hbm_saved_mb": 9075.26,
+    "offload_receipt": {
+      "offloaded": true,
+      "memory_before": {
+        "allocated_mb": 15568.75,
+        "reserved_mb": 15904.0
+      },
+      "memory_after": {
+        "allocated_mb": 6484.37,
+        "reserved_mb": 15904.0
+      }
+    },
+    "pool_stats": {
+      "pool": {
+        "entries": 8,
+        "bytes": 43712512,
+        "max_entries": 64,
+        "max_bytes": 536870912,
+        "hits": 224,
+        "misses": 0,
+        "staged_pushes": 8
+      },
+      "encoders_offloaded": true
+    },
+    "stage_records": [
+      {
+        "idx": 0,
+        "key": "8517e96c87bc7002c708158423f1bc04d272a917f22a3f312d42b091e921ac9a",
+        "staged": true,
+        "cached": false,
+        "stage_ms": 27.947964146733284,
+        "bytes": 5464064
+      },
+      {
+        "idx": 1,
+        "key": "73300e63bfe6512f6fd3ef442fb3f9a4bedade8d75cd26dd6ab9542e93a7acc1",
+        "staged": true,
+        "cached": false,
+        "stage_ms": 23.905379697680473,
+        "bytes": 5464064
+      },
+      {
+        "idx": 2,
+        "key": "fb64059be6eb00d1783ab29bf38d20bfcbc4383f3a101fcd22cb0037ba25a8b8",
+        "staged": true,
+        "cached": false,
+        "stage_ms": 10.608216747641563,
+        "bytes": 5464064
+      },
+      {
+        "idx": 3,
+        "key": "6e6273be328edabc6e77a5620f8cc0c0d00a73b355fc67807d0fb51c8407ff85",
+        "staged": true,
+        "cached": false,
+        "stage_ms": 12.198561802506447,
+        "bytes": 5464064
+      },
+      {
+        "idx": 4,
+        "key": "05fbe87185cee1900d10f54501b916e381e4048d68a18afd5f335f4614067084",
+        "staged": true,
+        "cached": false,
+        "stage_ms": 10.555906221270561,
+        "bytes": 5464064
+      },
+      {
+        "idx": 5,
+        "key": "e03cdb06efb51ba20a4ea1db3f3620444f58b67050da445b526aafe5e78c77f5",
+        "staged": true,
+        "cached": false,
+        "stage_ms": 10.332943871617317,
+        "bytes": 5464064
+      },
+      {
+        "idx": 6,
+        "key": "0a58096d0d64da5a6f2b95bf968af2872eac3fbc3e28a3d3bee51bfce8ff1432",
+        "staged": true,
+        "cached": false,
+        "stage_ms": 10.731486603617668,
+        "bytes": 5464064
+      },
+      {
+        "idx": 7,
+        "key": "94c795e6846adfb24fc25c0eb2d0745b5dbebd45d78a57dc3b3dd6b8878c8f5f",
+        "staged": true,
+        "cached": false,
+        "stage_ms": 10.757440701127052,
+        "bytes": 5464064
+      }
+    ]
+  },
+  "homogeneous_512x512": {
+    "fixed_batch_1": {
+      "mode": "fixed_batch_1_atomic",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "steps": 28,
+      "num_trials": 2,
+      "trials_total_ms": [
+        1712.942,
+        1724.292
+      ],
+      "total_ms": 1718.617,
+      "mean_total_ms": 1718.617,
+      "model_ms": 1723.386,
+      "approx_step_ms": 61.379,
+      "per_image_ms": 1718.617,
+      "throughput_img_per_s": 0.5819,
+      "speedup_vs_fixed_b1": 1.0,
+      "output_shape": [
+        1,
+        512,
+        512,
+        3
+      ],
+      "peak_allocated_mb": 7114.67,
+      "peak_reserved_mb": 7930.0
+    },
+    "continuous_batch": {
+      "B=1": {
+        "mode": "continuous_batch_advance_batch",
+        "batch_size": 1,
+        "height": 512,
+        "width": 512,
+        "steps": 28,
+        "batch_step_ms_median": 60.212,
+        "batch_step_ms_mean": 61.044,
+        "batch_step0_init_ms": 72.636,
+        "batch_step_ms_p95": 63.271,
+        "per_image_step_ms_median": 60.212,
+        "denoising_28steps_ms": 1709.238,
+        "vae_decode_total_ms": 43.629,
+        "vae_decode_per_image_ms": 43.629,
+        "total_ms": 1764.206,
+        "model_ms": 1764.206,
+        "per_image_ms": 1764.206,
+        "throughput_img_per_s": 0.5668,
+        "speedup_vs_fixed_b1": 0.9741,
+        "output_shape": [
+          1,
+          512,
+          512,
+          3
+        ],
+        "peak_allocated_mb": 7108.96,
+        "peak_reserved_mb": 8024.0
+      },
+      "B=2": {
+        "mode": "continuous_batch_advance_batch",
+        "batch_size": 2,
+        "height": 512,
+        "width": 512,
+        "steps": 28,
+        "batch_step_ms_median": 110.657,
+        "batch_step_ms_mean": 111.384,
+        "batch_step0_init_ms": 131.308,
+        "batch_step_ms_p95": 111.064,
+        "per_image_step_ms_median": 55.328,
+        "denoising_28steps_ms": 3118.751,
+        "vae_decode_total_ms": 87.107,
+        "vae_decode_per_image_ms": 43.553,
+        "total_ms": 3218.046,
+        "model_ms": 3218.046,
+        "per_image_ms": 1609.023,
+        "throughput_img_per_s": 0.6215,
+        "speedup_vs_fixed_b1": 1.068,
+        "output_shape": [
+          1,
+          512,
+          512,
+          3
+        ],
+        "peak_allocated_mb": 7114.29,
+        "peak_reserved_mb": 8188.0
+      },
+      "B=3": {
+        "mode": "continuous_batch_advance_batch",
+        "batch_size": 3,
+        "height": 512,
+        "width": 512,
+        "steps": 28,
+        "batch_step_ms_median": 160.698,
+        "batch_step_ms_mean": 161.498,
+        "batch_step0_init_ms": 184.06,
+        "batch_step_ms_p95": 161.967,
+        "per_image_step_ms_median": 53.566,
+        "denoising_28steps_ms": 4521.954,
+        "vae_decode_total_ms": 130.164,
+        "vae_decode_per_image_ms": 43.388,
+        "total_ms": 4664.762,
+        "model_ms": 4664.762,
+        "per_image_ms": 1554.921,
+        "throughput_img_per_s": 0.6431,
+        "speedup_vs_fixed_b1": 1.1052,
+        "output_shape": [
+          1,
+          512,
+          512,
+          3
+        ],
+        "peak_allocated_mb": 7119.63,
+        "peak_reserved_mb": 8372.0
+      },
+      "B=4": {
+        "mode": "continuous_batch_advance_batch",
+        "batch_size": 4,
+        "height": 512,
+        "width": 512,
+        "steps": 28,
+        "batch_step_ms_median": 214.744,
+        "batch_step_ms_mean": 215.72,
+        "batch_step0_init_ms": 243.944,
+        "batch_step_ms_p95": 215.892,
+        "per_image_step_ms_median": 53.686,
+        "denoising_28steps_ms": 6040.168,
+        "vae_decode_total_ms": 173.278,
+        "vae_decode_per_image_ms": 43.32,
+        "total_ms": 6227.153,
+        "model_ms": 6227.153,
+        "per_image_ms": 1556.788,
+        "throughput_img_per_s": 0.6423,
+        "speedup_vs_fixed_b1": 1.1039,
+        "output_shape": [
+          1,
+          512,
+          512,
+          3
+        ],
+        "peak_allocated_mb": 7124.97,
+        "peak_reserved_mb": 8612.0
+      },
+      "B=6": {
+        "mode": "continuous_batch_advance_batch",
+        "batch_size": 6,
+        "height": 512,
+        "width": 512,
+        "steps": 28,
+        "batch_step_ms_median": 312.71,
+        "batch_step_ms_mean": 314.061,
+        "batch_step0_init_ms": 346.949,
+        "batch_step_ms_p95": 314.183,
+        "per_image_step_ms_median": 52.118,
+        "denoising_28steps_ms": 8793.711,
+        "vae_decode_total_ms": 255.041,
+        "vae_decode_per_image_ms": 42.507,
+        "total_ms": 9063.462,
+        "model_ms": 9063.462,
+        "per_image_ms": 1510.577,
+        "throughput_img_per_s": 0.662,
+        "speedup_vs_fixed_b1": 1.1377,
+        "output_shape": [
+          1,
+          512,
+          512,
+          3
+        ],
+        "peak_allocated_mb": 7135.64,
+        "peak_reserved_mb": 8828.0
+      },
+      "B=8": {
+        "mode": "continuous_batch_advance_batch",
+        "batch_size": 8,
+        "height": 512,
+        "width": 512,
+        "steps": 28,
+        "batch_step_ms_median": 417.938,
+        "batch_step_ms_mean": 419.274,
+        "batch_step0_init_ms": 460.251,
+        "batch_step_ms_p95": 420.746,
+        "per_image_step_ms_median": 52.242,
+        "denoising_28steps_ms": 11739.679,
+        "vae_decode_total_ms": 339.593,
+        "vae_decode_per_image_ms": 42.449,
+        "total_ms": 12094.49,
+        "model_ms": 12094.49,
+        "per_image_ms": 1511.811,
+        "throughput_img_per_s": 0.6615,
+        "speedup_vs_fixed_b1": 1.1367,
+        "output_shape": [
+          1,
+          512,
+          512,
+          3
+        ],
+        "peak_allocated_mb": 7342.52,
+        "peak_reserved_mb": 9350.0
+      }
+    },
+    "step_scaling_ratios_vs_b1": {
+      "B=1": 1.0,
+      "B=2": 1.8378,
+      "B=3": 2.6689,
+      "B=4": 3.5665,
+      "B=6": 5.1935,
+      "B=8": 6.9411
+    }
+  },
+  "homogeneous_1024x1024": {
+    "fixed_batch_1": {
+      "mode": "fixed_batch_1_atomic",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "steps": 28,
+      "num_trials": 2,
+      "trials_total_ms": [
+        6555.653,
+        6566.977
+      ],
+      "total_ms": 6561.315,
+      "mean_total_ms": 6561.315,
+      "model_ms": 6564.613,
+      "approx_step_ms": 234.333,
+      "per_image_ms": 6561.315,
+      "throughput_img_per_s": 0.1524,
+      "speedup_vs_fixed_b1": 1.0,
+      "output_shape": [
+        1,
+        1024,
+        1024,
+        3
+      ],
+      "peak_allocated_mb": 8940.92,
+      "peak_reserved_mb": 11360.0
+    },
+    "continuous_batch": {
+      "B=1": {
+        "mode": "continuous_batch_advance_batch",
+        "batch_size": 1,
+        "height": 1024,
+        "width": 1024,
+        "steps": 28,
+        "batch_step_ms_median": 228.035,
+        "batch_step_ms_mean": 228.669,
+        "batch_step0_init_ms": 246.051,
+        "batch_step_ms_p95": 229.173,
+        "per_image_step_ms_median": 228.035,
+        "denoising_28steps_ms": 6402.745,
+        "vae_decode_total_ms": 173.36,
+        "vae_decode_per_image_ms": 173.36,
+        "total_ms": 6589.265,
+        "model_ms": 6589.265,
+        "per_image_ms": 6589.265,
+        "throughput_img_per_s": 0.1518,
+        "speedup_vs_fixed_b1": 0.9958,
+        "output_shape": [
+          1,
+          1024,
+          1024,
+          3
+        ],
+        "peak_allocated_mb": 8933.71,
+        "peak_reserved_mb": 11642.0
+      },
+      "B=2": {
+        "mode": "continuous_batch_advance_batch",
+        "batch_size": 2,
+        "height": 1024,
+        "width": 1024,
+        "steps": 28,
+        "batch_step_ms_median": 442.268,
+        "batch_step_ms_mean": 442.866,
+        "batch_step0_init_ms": 466.352,
+        "batch_step_ms_p95": 443.624,
+        "per_image_step_ms_median": 221.134,
+        "denoising_28steps_ms": 12400.258,
+        "vae_decode_total_ms": 342.733,
+        "vae_decode_per_image_ms": 171.367,
+        "total_ms": 12757.514,
+        "model_ms": 12757.514,
+        "per_image_ms": 6378.757,
+        "throughput_img_per_s": 0.1568,
+        "speedup_vs_fixed_b1": 1.0287,
+        "output_shape": [
+          1,
+          1024,
+          1024,
+          3
+        ],
+        "peak_allocated_mb": 8939.42,
+        "peak_reserved_mb": 12258.0
+      },
+      "B=3": {
+        "mode": "continuous_batch_advance_batch",
+        "batch_size": 3,
+        "height": 1024,
+        "width": 1024,
+        "steps": 28,
+        "batch_step_ms_median": 646.22,
+        "batch_step_ms_mean": 647.009,
+        "batch_step0_init_ms": 675.753,
+        "batch_step_ms_p95": 647.379,
+        "per_image_step_ms_median": 215.407,
+        "denoising_28steps_ms": 18116.261,
+        "vae_decode_total_ms": 517.034,
+        "vae_decode_per_image_ms": 172.345,
+        "total_ms": 18648.806,
+        "model_ms": 18648.806,
+        "per_image_ms": 6216.269,
+        "throughput_img_per_s": 0.1609,
+        "speedup_vs_fixed_b1": 1.0556,
+        "output_shape": [
+          1,
+          1024,
+          1024,
+          3
+        ],
+        "peak_allocated_mb": 8945.13,
+        "peak_reserved_mb": 12866.0
+      },
+      "B=4": {
+        "mode": "continuous_batch_advance_batch",
+        "batch_size": 4,
+        "height": 1024,
+        "width": 1024,
+        "steps": 28,
+        "batch_step_ms_median": 863.74,
+        "batch_step_ms_mean": 865.103,
+        "batch_step0_init_ms": 906.685,
+        "batch_step_ms_p95": 865.268,
+        "per_image_step_ms_median": 215.935,
+        "denoising_28steps_ms": 24222.891,
+        "vae_decode_total_ms": 685.539,
+        "vae_decode_per_image_ms": 171.385,
+        "total_ms": 24924.056,
+        "model_ms": 24924.056,
+        "per_image_ms": 6231.014,
+        "throughput_img_per_s": 0.1605,
+        "speedup_vs_fixed_b1": 1.0531,
+        "output_shape": [
+          1,
+          1024,
+          1024,
+          3
+        ],
+        "peak_allocated_mb": 8950.84,
+        "peak_reserved_mb": 13370.0
+      },
+      "B=6": {
+        "mode": "continuous_batch_advance_batch",
+        "batch_size": 6,
+        "height": 1024,
+        "width": 1024,
+        "steps": 28,
+        "batch_step_ms_median": 1285.15,
+        "batch_step_ms_mean": 1287.122,
+        "batch_step0_init_ms": 1344.08,
+        "batch_step_ms_p95": 1286.964,
+        "per_image_step_ms_median": 214.192,
+        "denoising_28steps_ms": 36039.41,
+        "vae_decode_total_ms": 1029.155,
+        "vae_decode_per_image_ms": 171.526,
+        "total_ms": 37086.447,
+        "model_ms": 37086.447,
+        "per_image_ms": 6181.074,
+        "throughput_img_per_s": 0.1618,
+        "speedup_vs_fixed_b1": 1.0616,
+        "output_shape": [
+          1,
+          1024,
+          1024,
+          3
+        ],
+        "peak_allocated_mb": 8962.27,
+        "peak_reserved_mb": 14514.0
+      },
+      "B=8": {
+        "mode": "continuous_batch_advance_batch",
+        "batch_size": 8,
+        "height": 1024,
+        "width": 1024,
+        "steps": 28,
+        "batch_step_ms_median": 1713.485,
+        "batch_step_ms_mean": 1716.117,
+        "batch_step0_init_ms": 1792.076,
+        "batch_step_ms_p95": 1715.416,
+        "per_image_step_ms_median": 214.186,
+        "denoising_28steps_ms": 48051.271,
+        "vae_decode_total_ms": 1367.159,
+        "vae_decode_per_image_ms": 170.895,
+        "total_ms": 49435.534,
+        "model_ms": 49435.534,
+        "per_image_ms": 6179.442,
+        "throughput_img_per_s": 0.1618,
+        "speedup_vs_fixed_b1": 1.0619,
+        "output_shape": [
+          1,
+          1024,
+          1024,
+          3
+        ],
+        "peak_allocated_mb": 9370.77,
+        "peak_reserved_mb": 15672.0
+      }
+    },
+    "step_scaling_ratios_vs_b1": {
+      "B=1": 1.0,
+      "B=2": 1.9395,
+      "B=3": 2.8339,
+      "B=4": 3.7878,
+      "B=6": 5.6358,
+      "B=8": 7.5141
+    }
+  },
+  "heterogeneous_mixed_512_1024": {
+    "B=2": {
+      "batch_size": 2,
+      "mix": "1x(512x512) + 1x(1024x1024)",
+      "heights": [
+        512,
+        1024
+      ],
+      "widths": [
+        512,
+        1024
+      ],
+      "steps": 28,
+      "packing_stats": {
+        "batch_size": 2,
+        "heterogeneous_resolutions": true,
+        "resolutions": [
+          [
+            512,
+            512
+          ],
+          [
+            1024,
+            1024
+          ]
+        ],
+        "image_token_counts": [
+          1024,
+          4096
+        ],
+        "cu_seqlens": [
+          0,
+          1024,
+          5120
+        ],
+        "max_seqlen": 4096,
+        "packed_image_tokens": 5120,
+        "padded_image_tokens": 8192,
+        "padding_saved_tokens": 3072,
+        "padding_waste_ratio": 0.375,
+        "packing_efficiency": 0.625
+      },
+      "cu_seqlens_img": [
+        0,
+        1024,
+        2048,
+        6144,
+        10240
+      ],
+      "cu_seqlens_txt": [
+        0,
+        333,
+        666,
+        999,
+        1332
+      ],
+      "packed": {
+        "batch_step_ms_median": 264.435,
+        "batch_step_ms_mean": 265.606,
+        "denoising_28steps_ms": 7436.958,
+        "vae_decode_total_ms": 224.129,
+        "total_ms": 7676.02,
+        "per_image_ms": 3838.01,
+        "throughput_img_per_s": 0.2606,
+        "peak_allocated_mb": 8933.71,
+        "peak_reserved_mb": 12724.0,
+        "output_shapes": [
+          [
+            1,
+            512,
+            512,
+            3
+          ],
+          [
+            1,
+            1024,
+            1024,
+            3
+          ]
+        ]
+      },
+      "padded_1024": {
+        "batch_step_ms_median": 444.884,
+        "batch_step_ms_mean": 445.801,
+        "denoising_28steps_ms": 12482.425,
+        "vae_decode_total_ms": 354.625,
+        "total_ms": 12851.914,
+        "per_image_ms": 6425.957,
+        "throughput_img_per_s": 0.1556,
+        "peak_allocated_mb": 8939.42,
+        "peak_reserved_mb": 12258.0
+      },
+      "serial_fixed_b1_reference_ms": 8279.932,
+      "packing_step_speedup_vs_padded": 1.6824,
+      "packing_denoise_speedup_vs_padded": 1.6784,
+      "packing_total_speedup_vs_padded": 1.6743,
+      "packing_total_speedup_vs_serial_b1": 1.0787,
+      "hbm_saved_mb_vs_padded": 5.71
+    },
+    "B=4": {
+      "batch_size": 4,
+      "mix": "2x(512x512) + 2x(1024x1024)",
+      "heights": [
+        512,
+        512,
+        1024,
+        1024
+      ],
+      "widths": [
+        512,
+        512,
+        1024,
+        1024
+      ],
+      "steps": 28,
+      "packing_stats": {
+        "batch_size": 4,
+        "heterogeneous_resolutions": true,
+        "resolutions": [
+          [
+            512,
+            512
+          ],
+          [
+            512,
+            512
+          ],
+          [
+            1024,
+            1024
+          ],
+          [
+            1024,
+            1024
+          ]
+        ],
+        "image_token_counts": [
+          1024,
+          1024,
+          4096,
+          4096
+        ],
+        "cu_seqlens": [
+          0,
+          1024,
+          2048,
+          6144,
+          10240
+        ],
+        "max_seqlen": 4096,
+        "packed_image_tokens": 10240,
+        "padded_image_tokens": 16384,
+        "padding_saved_tokens": 6144,
+        "padding_waste_ratio": 0.375,
+        "packing_efficiency": 0.625
+      },
+      "cu_seqlens_img": [
+        0,
+        1024,
+        2048,
+        3072,
+        4096,
+        8192,
+        12288,
+        16384,
+        20480
+      ],
+      "cu_seqlens_txt": [
+        0,
+        333,
+        666,
+        999,
+        1332,
+        1665,
+        1998,
+        2331,
+        2664
+      ],
+      "packed": {
+        "batch_step_ms_median": 507.963,
+        "batch_step_ms_mean": 509.642,
+        "denoising_28steps_ms": 14269.983,
+        "vae_decode_total_ms": 435.986,
+        "total_ms": 14723.599,
+        "per_image_ms": 3680.9,
+        "throughput_img_per_s": 0.2717,
+        "peak_allocated_mb": 8939.42,
+        "peak_reserved_mb": 13984.0,
+        "output_shapes": [
+          [
+            1,
+            512,
+            512,
+            3
+          ],
+          [
+            1,
+            512,
+            512,
+            3
+          ],
+          [
+            1,
+            1024,
+            1024,
+            3
+          ],
+          [
+            1,
+            1024,
+            1024,
+            3
+          ]
+        ]
+      },
+      "padded_1024": {
+        "batch_step_ms_median": 867.989,
+        "batch_step_ms_mean": 869.297,
+        "denoising_28steps_ms": 24340.308,
+        "vae_decode_total_ms": 689.238,
+        "total_ms": 25046.177,
+        "per_image_ms": 6261.544,
+        "throughput_img_per_s": 0.1597,
+        "peak_allocated_mb": 8950.84,
+        "peak_reserved_mb": 13370.0
+      },
+      "serial_fixed_b1_reference_ms": 16559.864,
+      "packing_step_speedup_vs_padded": 1.7088,
+      "packing_denoise_speedup_vs_padded": 1.7057,
+      "packing_total_speedup_vs_padded": 1.7011,
+      "packing_total_speedup_vs_serial_b1": 1.1247,
+      "hbm_saved_mb_vs_padded": 11.42
+    },
+    "B=6": {
+      "batch_size": 6,
+      "mix": "3x(512x512) + 3x(1024x1024)",
+      "heights": [
+        512,
+        512,
+        512,
+        1024,
+        1024,
+        1024
+      ],
+      "widths": [
+        512,
+        512,
+        512,
+        1024,
+        1024,
+        1024
+      ],
+      "steps": 28,
+      "packing_stats": {
+        "batch_size": 6,
+        "heterogeneous_resolutions": true,
+        "resolutions": [
+          [
+            512,
+            512
+          ],
+          [
+            512,
+            512
+          ],
+          [
+            512,
+            512
+          ],
+          [
+            1024,
+            1024
+          ],
+          [
+            1024,
+            1024
+          ],
+          [
+            1024,
+            1024
+          ]
+        ],
+        "image_token_counts": [
+          1024,
+          1024,
+          1024,
+          4096,
+          4096,
+          4096
+        ],
+        "cu_seqlens": [
+          0,
+          1024,
+          2048,
+          3072,
+          7168,
+          11264,
+          15360
+        ],
+        "max_seqlen": 4096,
+        "packed_image_tokens": 15360,
+        "padded_image_tokens": 24576,
+        "padding_saved_tokens": 9216,
+        "padding_waste_ratio": 0.375,
+        "packing_efficiency": 0.625
+      },
+      "cu_seqlens_img": [
+        0,
+        1024,
+        2048,
+        3072,
+        4096,
+        5120,
+        6144,
+        10240,
+        14336,
+        18432,
+        22528,
+        26624,
+        30720
+      ],
+      "cu_seqlens_txt": [
+        0,
+        333,
+        666,
+        999,
+        1332,
+        1665,
+        1998,
+        2331,
+        2664,
+        2997,
+        3330,
+        3663,
+        3996
+      ],
+      "packed": {
+        "batch_step_ms_median": 755.213,
+        "batch_step_ms_mean": 757.274,
+        "denoising_28steps_ms": 21203.686,
+        "vae_decode_total_ms": 648.29,
+        "total_ms": 21870.927,
+        "per_image_ms": 3645.155,
+        "throughput_img_per_s": 0.2743,
+        "peak_allocated_mb": 9266.99,
+        "peak_reserved_mb": 15360.0,
+        "output_shapes": [
+          [
+            1,
+            512,
+            512,
+            3
+          ],
+          [
+            1,
+            512,
+            512,
+            3
+          ],
+          [
+            1,
+            512,
+            512,
+            3
+          ],
+          [
+            1,
+            1024,
+            1024,
+            3
+          ],
+          [
+            1,
+            1024,
+            1024,
+            3
+          ],
+          [
+            1,
+            1024,
+            1024,
+            3
+          ]
+        ]
+      },
+      "padded_1024": {
+        "batch_step_ms_median": 1291.34,
+        "batch_step_ms_mean": 1293.36,
+        "denoising_28steps_ms": 36214.081,
+        "vae_decode_total_ms": 1032.586,
+        "total_ms": 37263.428,
+        "per_image_ms": 6210.571,
+        "throughput_img_per_s": 0.161,
+        "peak_allocated_mb": 8962.27,
+        "peak_reserved_mb": 14514.0
+      },
+      "serial_fixed_b1_reference_ms": 24839.796,
+      "packing_step_speedup_vs_padded": 1.7099,
+      "packing_denoise_speedup_vs_padded": 1.7079,
+      "packing_total_speedup_vs_padded": 1.7038,
+      "packing_total_speedup_vs_serial_b1": 1.1357,
+      "hbm_saved_mb_vs_padded": -304.72
+    },
+    "B=8": {
+      "batch_size": 8,
+      "mix": "4x(512x512) + 4x(1024x1024)",
+      "heights": [
+        512,
+        512,
+        512,
+        512,
+        1024,
+        1024,
+        1024,
+        1024
+      ],
+      "widths": [
+        512,
+        512,
+        512,
+        512,
+        1024,
+        1024,
+        1024,
+        1024
+      ],
+      "steps": 28,
+      "packing_stats": {
+        "batch_size": 8,
+        "heterogeneous_resolutions": true,
+        "resolutions": [
+          [
+            512,
+            512
+          ],
+          [
+            512,
+            512
+          ],
+          [
+            512,
+            512
+          ],
+          [
+            512,
+            512
+          ],
+          [
+            1024,
+            1024
+          ],
+          [
+            1024,
+            1024
+          ],
+          [
+            1024,
+            1024
+          ],
+          [
+            1024,
+            1024
+          ]
+        ],
+        "image_token_counts": [
+          1024,
+          1024,
+          1024,
+          1024,
+          4096,
+          4096,
+          4096,
+          4096
+        ],
+        "cu_seqlens": [
+          0,
+          1024,
+          2048,
+          3072,
+          4096,
+          8192,
+          12288,
+          16384,
+          20480
+        ],
+        "max_seqlen": 4096,
+        "packed_image_tokens": 20480,
+        "padded_image_tokens": 32768,
+        "padding_saved_tokens": 12288,
+        "padding_waste_ratio": 0.375,
+        "packing_efficiency": 0.625
+      },
+      "cu_seqlens_img": [
+        0,
+        1024,
+        2048,
+        3072,
+        4096,
+        5120,
+        6144,
+        7168,
+        8192,
+        12288,
+        16384,
+        20480,
+        24576,
+        28672,
+        32768,
+        36864,
+        40960
+      ],
+      "cu_seqlens_txt": [
+        0,
+        333,
+        666,
+        999,
+        1332,
+        1665,
+        1998,
+        2331,
+        2664,
+        2997,
+        3330,
+        3663,
+        3996,
+        4329,
+        4662,
+        4995,
+        5328
+      ],
+      "packed": {
+        "batch_step_ms_median": 1003.315,
+        "batch_step_ms_mean": 1005.911,
+        "denoising_28steps_ms": 28165.496,
+        "vae_decode_total_ms": 857.691,
+        "total_ms": 29041.255,
+        "per_image_ms": 3630.157,
+        "throughput_img_per_s": 0.2755,
+        "peak_allocated_mb": 10191.1,
+        "peak_reserved_mb": 16828.0,
+        "output_shapes": [
+          [
+            1,
+            512,
+            512,
+            3
+          ],
+          [
+            1,
+            512,
+            512,
+            3
+          ],
+          [
+            1,
+            512,
+            512,
+            3
+          ],
+          [
+            1,
+            512,
+            512,
+            3
+          ],
+          [
+            1,
+            1024,
+            1024,
+            3
+          ],
+          [
+            1,
+            1024,
+            1024,
+            3
+          ],
+          [
+            1,
+            1024,
+            1024,
+            3
+          ],
+          [
+            1,
+            1024,
+            1024,
+            3
+          ]
+        ]
+      },
+      "padded_1024": {
+        "batch_step_ms_median": 1719.87,
+        "batch_step_ms_mean": 1723.297,
+        "denoising_28steps_ms": 48252.314,
+        "vae_decode_total_ms": 1370.598,
+        "total_ms": 49640.665,
+        "per_image_ms": 6205.083,
+        "throughput_img_per_s": 0.1612,
+        "peak_allocated_mb": 9370.77,
+        "peak_reserved_mb": 15672.0
+      },
+      "serial_fixed_b1_reference_ms": 33119.728,
+      "packing_step_speedup_vs_padded": 1.7142,
+      "packing_denoise_speedup_vs_padded": 1.7132,
+      "packing_total_speedup_vs_padded": 1.7093,
+      "packing_total_speedup_vs_serial_b1": 1.1404,
+      "hbm_saved_mb_vs_padded": -820.33
+    }
+  },
+  "staggered_continuous_arrival_stream": {
+    "512x512": {
+      "resolution": "512x512",
+      "steps": 28,
+      "num_requests": 16,
+      "arrival_waves_steps": [
+        0,
+        7,
+        14,
+        21
+      ],
+      "fixed_batch_1_fcfs": {
+        "policy": "fixed_batch_1_fcfs",
+        "max_batch_size": 1,
+        "num_requests": 16,
+        "wall_clock_ms": 27943.466,
+        "throughput_img_per_s": 0.5726,
+        "speedup_vs_fcfs_b1": 1.0,
+        "latency_mean_ms": 13847.849,
+        "latency_p50_ms": 13585.582,
+        "latency_p95_ms": 25368.927,
+        "service_mean_ms": 1746.46,
+        "late_joins": 0,
+        "early_exits": 0,
+        "mixed_timestep_steps": 0,
+        "total_scheduler_steps": 448,
+        "peak_allocated_mb": 7114.67
+      },
+      "continuous_batch": {
+        "max_b_2": {
+          "policy": "continuous_batch_max_b_2",
+          "max_batch_size": 2,
+          "num_requests": 16,
+          "wall_clock_ms": 26327.426,
+          "throughput_img_per_s": 0.6077,
+          "speedup_vs_fcfs_b1": 1.0614,
+          "latency_mean_ms": 13765.612,
+          "latency_p50_ms": 13526.119,
+          "latency_p95_ms": 24703.907,
+          "service_mean_ms": 3233.128,
+          "late_joins": 15,
+          "early_exits": 15,
+          "mixed_timestep_steps": 217,
+          "total_scheduler_steps": 231,
+          "mean_active_batch_size": 1.939,
+          "max_active_batch_size": 2,
+          "peak_allocated_mb": 7114.29
+        },
+        "max_b_4": {
+          "policy": "continuous_batch_max_b_4",
+          "max_batch_size": 4,
+          "num_requests": 16,
+          "wall_clock_ms": 25369.102,
+          "throughput_img_per_s": 0.6307,
+          "speedup_vs_fcfs_b1": 1.1015,
+          "latency_mean_ms": 14700.661,
+          "latency_p50_ms": 14319.189,
+          "latency_p95_ms": 23932.753,
+          "service_mean_ms": 6096.536,
+          "late_joins": 15,
+          "early_exits": 15,
+          "mixed_timestep_steps": 112,
+          "total_scheduler_steps": 122,
+          "mean_active_batch_size": 3.672,
+          "max_active_batch_size": 4,
+          "peak_allocated_mb": 7124.97
+        },
+        "max_b_8": {
+          "policy": "continuous_batch_max_b_8",
+          "max_batch_size": 8,
+          "num_requests": 16,
+          "wall_clock_ms": 24659.348,
+          "throughput_img_per_s": 0.6488,
+          "speedup_vs_fcfs_b1": 1.1332,
+          "latency_mean_ms": 17000.817,
+          "latency_p50_ms": 15907.751,
+          "latency_p95_ms": 23361.255,
+          "service_mean_ms": 11487.069,
+          "late_joins": 15,
+          "early_exits": 14,
+          "mixed_timestep_steps": 59,
+          "total_scheduler_steps": 67,
+          "mean_active_batch_size": 6.687,
+          "max_active_batch_size": 8,
+          "peak_allocated_mb": 7342.14
+        }
+      }
+    },
+    "1024x1024": {
+      "resolution": "1024x1024",
+      "steps": 28,
+      "num_requests": 16,
+      "arrival_waves_steps": [
+        0,
+        7,
+        14,
+        21
+      ],
+      "fixed_batch_1_fcfs": {
+        "policy": "fixed_batch_1_fcfs",
+        "max_batch_size": 1,
+        "num_requests": 16,
+        "wall_clock_ms": 106480.793,
+        "throughput_img_per_s": 0.1503,
+        "speedup_vs_fcfs_b1": 1.0,
+        "latency_mean_ms": 52771.116,
+        "latency_p50_ms": 51765.369,
+        "latency_p95_ms": 96696.144,
+        "service_mean_ms": 6655.038,
+        "late_joins": 0,
+        "early_exits": 0,
+        "mixed_timestep_steps": 0,
+        "total_scheduler_steps": 448,
+        "peak_allocated_mb": 8940.92
+      },
+      "continuous_batch": {
+        "max_b_2": {
+          "policy": "continuous_batch_max_b_2",
+          "max_batch_size": 2,
+          "num_requests": 16,
+          "wall_clock_ms": 103696.03,
+          "throughput_img_per_s": 0.1543,
+          "speedup_vs_fcfs_b1": 1.0269,
+          "latency_mean_ms": 54344.961,
+          "latency_p50_ms": 53434.237,
+          "latency_p95_ms": 97556.661,
+          "service_mean_ms": 12746.618,
+          "late_joins": 15,
+          "early_exits": 15,
+          "mixed_timestep_steps": 217,
+          "total_scheduler_steps": 231,
+          "mean_active_batch_size": 1.939,
+          "max_active_batch_size": 2,
+          "peak_allocated_mb": 8939.42
+        },
+        "max_b_4": {
+          "policy": "continuous_batch_max_b_4",
+          "max_batch_size": 4,
+          "num_requests": 16,
+          "wall_clock_ms": 101223.265,
+          "throughput_img_per_s": 0.1581,
+          "speedup_vs_fcfs_b1": 1.0519,
+          "latency_mean_ms": 58821.073,
+          "latency_p50_ms": 57355.927,
+          "latency_p95_ms": 95778.408,
+          "service_mean_ms": 24358.232,
+          "late_joins": 15,
+          "early_exits": 15,
+          "mixed_timestep_steps": 112,
+          "total_scheduler_steps": 122,
+          "mean_active_batch_size": 3.672,
+          "max_active_batch_size": 4,
+          "peak_allocated_mb": 8950.84
+        },
+        "max_b_8": {
+          "policy": "continuous_batch_max_b_8",
+          "max_batch_size": 8,
+          "num_requests": 16,
+          "wall_clock_ms": 100344.337,
+          "throughput_img_per_s": 0.1595,
+          "speedup_vs_fcfs_b1": 1.0612,
+          "latency_mean_ms": 69434.192,
+          "latency_p50_ms": 65089.856,
+          "latency_p95_ms": 95427.486,
+          "service_mean_ms": 46861.218,
+          "late_joins": 15,
+          "early_exits": 14,
+          "mixed_timestep_steps": 59,
+          "total_scheduler_steps": 67,
+          "mean_active_batch_size": 6.687,
+          "max_active_batch_size": 8,
+          "peak_allocated_mb": 9370.39
+        }
+      }
+    }
+  }
+}

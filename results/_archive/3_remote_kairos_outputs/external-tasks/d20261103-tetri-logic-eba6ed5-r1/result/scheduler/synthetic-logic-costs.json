@@ -1,0 +1,46 @@
+[
+  {
+    "avg_denoising_time": 0.28,
+    "avg_text_encoding_time": 0.01,
+    "bs": 1,
+    "height": 512,
+    "mlp_world_size": 1,
+    "ring_degree": 1,
+    "steps": 28,
+    "ulysses_degree": 1,
+    "width": 512
+  },
+  {
+    "avg_denoising_time": 0.168,
+    "avg_text_encoding_time": 0.01,
+    "bs": 1,
+    "height": 512,
+    "mlp_world_size": 1,
+    "ring_degree": 1,
+    "steps": 28,
+    "ulysses_degree": 2,
+    "width": 512
+  },
+  {
+    "avg_denoising_time": 0.84,
+    "avg_text_encoding_time": 0.01,
+    "bs": 2,
+    "height": 512,
+    "mlp_world_size": 1,
+    "ring_degree": 1,
+    "steps": 28,
+    "ulysses_degree": 1,
+    "width": 512
+  },
+  {
+    "avg_denoising_time": 0.56,
+    "avg_text_encoding_time": 0.01,
+    "bs": 2,
+    "height": 512,
+    "mlp_world_size": 1,
+    "ring_degree": 1,
+    "steps": 28,
+    "ulysses_degree": 2,
+    "width": 512
+  }
+]

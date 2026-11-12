@@ -1,0 +1,1242 @@
+{
+  "schema": "ditserve.study.v1",
+  "experiment": "kairos-wan21-native-serving-s205-l0p1",
+  "workers": {
+    "wan0": {
+      "backend": "wan",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-6967ee01-0c82-8215-9256-9fde2e18f5d0",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan",
+        "device": "cuda:0",
+        "attention": "flash",
+        "vae_dtype": "bfloat16",
+        "options": {
+          "execution": "block"
+        }
+      }
+    },
+    "image0": {
+      "backend": "sd35",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-6967ee01-0c82-8215-9256-9fde2e18f5d0",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/sd3.5-medium",
+        "device": "cuda:0",
+        "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+        "dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "attention": "flash",
+        "options": {
+          "profile": false,
+          "cache": false
+        }
+      }
+    },
+    "wan1": {
+      "backend": "wan",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-abe707e2-3284-aa3e-c3c9-ec0f14ee61c3",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan",
+        "device": "cuda:0",
+        "attention": "flash",
+        "vae_dtype": "bfloat16",
+        "options": {
+          "execution": "block"
+        }
+      }
+    },
+    "image1": {
+      "backend": "sd35",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-abe707e2-3284-aa3e-c3c9-ec0f14ee61c3",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/sd3.5-medium",
+        "device": "cuda:0",
+        "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+        "dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "attention": "flash",
+        "options": {
+          "profile": false,
+          "cache": false
+        }
+      }
+    },
+    "wan2": {
+      "backend": "wan",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-304d76bc-0629-fdc9-7cfe-929ff331b7f0",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan",
+        "device": "cuda:0",
+        "attention": "flash",
+        "vae_dtype": "bfloat16",
+        "options": {
+          "execution": "block"
+        }
+      }
+    },
+    "image2": {
+      "backend": "sd35",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-304d76bc-0629-fdc9-7cfe-929ff331b7f0",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/sd3.5-medium",
+        "device": "cuda:0",
+        "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+        "dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "attention": "flash",
+        "options": {
+          "profile": false,
+          "cache": false
+        }
+      }
+    },
+    "wan3": {
+      "backend": "wan",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-2bae337e-03ae-f01e-47bf-59b25b815ab8",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan",
+        "device": "cuda:0",
+        "attention": "flash",
+        "vae_dtype": "bfloat16",
+        "options": {
+          "execution": "block"
+        }
+      }
+    },
+    "image3": {
+      "backend": "sd35",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-2bae337e-03ae-f01e-47bf-59b25b815ab8",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/sd3.5-medium",
+        "device": "cuda:0",
+        "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+        "dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "attention": "flash",
+        "options": {
+          "profile": false,
+          "cache": false
+        }
+      }
+    }
+  },
+  "budget": {
+    "limit_gpu_seconds": 57600,
+    "watchdog_seconds": 14400,
+    "repair_reserve_gpu_seconds": 0,
+    "carry": "none"
+  },
+  "phases": [
+    {
+      "id": "cluster",
+      "kind": "cluster",
+      "policy": "edf-cfg2",
+      "profile": {
+        "provenance": "mixed",
+        "sp_efficiency": 1.0,
+        "sp_overlap": 0.0,
+        "resize_ms": 48.63694465408722,
+        "quantum_overhead_ms": 1.1221574635751415,
+        "block_overhead_ms": 0.0,
+        "classes": {
+          "wan21-preflight": {
+            "kind": "video",
+            "steps": 20,
+            "blocks_per_step": 60,
+            "prepare_ms": 0.0,
+            "encode_ms": 14987.989520964524,
+            "step_compute_ms": 1166.5947251021862,
+            "comm_mb_per_step": 10351.4112,
+            "collectives_per_step": 240,
+            "cfg_exchange_mb": 1.79712,
+            "finish_ms": 1867.672039506336,
+            "decode_chunks": 9,
+            "forms": {
+              "sp1": {
+                "placements": {
+                  "0-0": {
+                    "step_ms": 1166.5947251021862
+                  }
+                }
+              },
+              "cfg2": {
+                "placements": {
+                  "0-1": {
+                    "step_ms": 587.0375446975231
+                  }
+                }
+              },
+              "sp2": {
+                "placements": {
+                  "0-1": {
+                    "step_ms": 1200.3739085048437
+                  }
+                }
+              },
+              "cfg2sp2": {
+                "placements": {
+                  "0-3": {
+                    "step_ms": 611.0595930367708
+                  }
+                }
+              },
+              "sp3": {
+                "placements": {
+                  "0-2": {
+                    "step_ms": 893.6253804713488
+                  }
+                }
+              },
+              "sp4": {
+                "placements": {
+                  "0-3": {
+                    "step_ms": 750.3336519002914
+                  }
+                }
+              }
+            }
+          },
+          "sd35-preflight": {
+            "kind": "image",
+            "service_ms": 6561.003047972918
+          }
+        },
+        "links": {
+          "2": {
+            "gbps": 5.2,
+            "latency_ms": 0.5
+          },
+          "3": {
+            "gbps": 5.571428571428571,
+            "latency_ms": 0.5
+          },
+          "4": {
+            "gbps": 5.777777777777778,
+            "latency_ms": 0.5
+          },
+          "6": {
+            "gbps": 6.0,
+            "latency_ms": 0.5
+          },
+          "8": {
+            "gbps": 6.117647058823529,
+            "latency_ms": 0.5
+          }
+        },
+        "source": {
+          "experiment": "kairos-wan21-native-calibration",
+          "run_id": "d20261102-no-preempt-wan21-c1c9293-s205-r1-calibration",
+          "gpu_uuids": [
+            "GPU-6967ee01-0c82-8215-9256-9fde2e18f5d0",
+            "GPU-abe707e2-3284-aa3e-c3c9-ec0f14ee61c3",
+            "GPU-304d76bc-0629-fdc9-7cfe-929ff331b7f0",
+            "GPU-2bae337e-03ae-f01e-47bf-59b25b815ab8"
+          ],
+          "run_sha256": "a0d3198c67f7b2220f8581548c34ac6ccdaedc30054d43a41196cbe25ded22dd",
+          "model": "Wan2.1-T2V-1.3B",
+          "shape": {
+            "cache": false,
+            "frames": 33,
+            "guidance_scale": 5.0,
+            "height": 480,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "request_id": "video-calibration",
+            "seed": 201,
+            "steps": 20,
+            "threshold": 0.0,
+            "width": 832
+          },
+          "architecture": {
+            "tokens": 14040,
+            "dim": 1536,
+            "layers": 30,
+            "comm_mb_per_step": 10351.4112,
+            "collectives_per_step": 240,
+            "cfg_exchange_mb": 1.79712
+          },
+          "timing_scopes": {
+            "static_sp1": "median_steady_advance",
+            "static_cfg2": "median_steady_advance",
+            "static_sp2": "median_steady_advance",
+            "static_cfg2sp2": "median_steady_advance",
+            "static_sp3": "median_steady_advance",
+            "static_sp4": "median_steady_advance"
+          },
+          "steady_samples": {
+            "static_sp1": 19,
+            "static_cfg2": 19,
+            "static_sp2": 19,
+            "static_cfg2sp2": 19,
+            "static_sp3": 19,
+            "static_sp4": 19
+          },
+          "bandwidth_saturation_gbps": 6.5,
+          "bandwidth_gamma": 0.5,
+          "fit_policies": [
+            "static_cfg2",
+            "static_cfg2sp2",
+            "static_sp1",
+            "static_sp2",
+            "static_sp4"
+          ],
+          "fit_mean_relative_error_pct": 0.5005905172136285,
+          "held_out_mean_relative_error_pct": 3.1463215470912984,
+          "held_out_max_relative_error_pct": 3.1463215470912984,
+          "predictions": [
+            {
+              "policy": "static_sp1",
+              "form": [
+                1,
+                1
+              ],
+              "measured_step_ms": 1166.5947251021862,
+              "predicted_step_ms": 1166.5947251021862,
+              "relative_error_pct": 0.0,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2",
+              "form": [
+                2,
+                1
+              ],
+              "measured_step_ms": 587.0375446975231,
+              "predicted_step_ms": 584.1429625510931,
+              "relative_error_pct": 0.49308296761861925,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_sp2",
+              "form": [
+                1,
+                2
+              ],
+              "measured_step_ms": 1200.3739085048437,
+              "predicted_step_ms": 1200.961362551093,
+              "relative_error_pct": 0.04893925485110679,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2sp2",
+              "form": [
+                2,
+                2
+              ],
+              "measured_step_ms": 611.0595930367708,
+              "predicted_step_ms": 601.3262812755465,
+              "relative_error_pct": 1.592858024346339,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_sp3",
+              "form": [
+                1,
+                3
+              ],
+              "measured_step_ms": 893.6253804713488,
+              "predicted_step_ms": 921.7417083673954,
+              "relative_error_pct": 3.1463215470912984,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_sp4",
+              "form": [
+                1,
+                4
+              ],
+              "measured_step_ms": 750.3336519002914,
+              "predicted_step_ms": 747.5718812755465,
+              "relative_error_pct": 0.36807233925207716,
+              "partition": "fit"
+            }
+          ],
+          "execution_cost_mode": "placement_bound_form_table_with_analytical_fallback",
+          "unbound_measurements": 0,
+          "image_batch_samples": {
+            "1": 6
+          },
+          "validation_scope": "held-out forms on calibration hardware and shape; not held-out request, placement or workload validation",
+          "method": "single constrained saturation model fitted once; no per-form bandwidth or overlap overrides"
+        }
+      },
+      "occupancy_backend": "nvml",
+      "occupancy_thread": true,
+      "video_worker_options": {
+        "negative_prompt_cache_entries": 2,
+        "negative_prompt_cache_bytes": 67108864
+      },
+      "gpus": [
+        {
+          "video": "wan0",
+          "image": "image0"
+        },
+        {
+          "video": "wan1",
+          "image": "image1"
+        },
+        {
+          "video": "wan2",
+          "image": "image2"
+        },
+        {
+          "video": "wan3",
+          "image": "image3"
+        }
+      ],
+      "text_prefetch": 1,
+      "output_mode": "check",
+      "warmup": [
+        {
+          "worker": "wan0",
+          "spec": {
+            "cache": false,
+            "frames": 33,
+            "guidance_scale": 5.0,
+            "height": 480,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "warmup",
+            "request_id": "video-calibration",
+            "seed": 7,
+            "steps": 1,
+            "threshold": 0.0,
+            "width": 832
+          },
+          "quantum": "step"
+        },
+        {
+          "worker": "image0",
+          "spec": {
+            "height": 1024,
+            "width": 1024,
+            "steps": 1,
+            "frames": 1,
+            "batch_size": 1,
+            "guidance_scale": 4.5,
+            "negative_prompt": "blurry, low quality",
+            "max_sequence_length": 256,
+            "prompt": "warmup",
+            "seed": 7
+          }
+        },
+        {
+          "worker": "wan1",
+          "spec": {
+            "cache": false,
+            "frames": 33,
+            "guidance_scale": 5.0,
+            "height": 480,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "warmup",
+            "request_id": "video-calibration",
+            "seed": 7,
+            "steps": 1,
+            "threshold": 0.0,
+            "width": 832
+          },
+          "quantum": "step"
+        },
+        {
+          "worker": "image1",
+          "spec": {
+            "height": 1024,
+            "width": 1024,
+            "steps": 1,
+            "frames": 1,
+            "batch_size": 1,
+            "guidance_scale": 4.5,
+            "negative_prompt": "blurry, low quality",
+            "max_sequence_length": 256,
+            "prompt": "warmup",
+            "seed": 7
+          }
+        },
+        {
+          "worker": "wan2",
+          "spec": {
+            "cache": false,
+            "frames": 33,
+            "guidance_scale": 5.0,
+            "height": 480,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "warmup",
+            "request_id": "video-calibration",
+            "seed": 7,
+            "steps": 1,
+            "threshold": 0.0,
+            "width": 832
+          },
+          "quantum": "step"
+        },
+        {
+          "worker": "image2",
+          "spec": {
+            "height": 1024,
+            "width": 1024,
+            "steps": 1,
+            "frames": 1,
+            "batch_size": 1,
+            "guidance_scale": 4.5,
+            "negative_prompt": "blurry, low quality",
+            "max_sequence_length": 256,
+            "prompt": "warmup",
+            "seed": 7
+          }
+        },
+        {
+          "worker": "wan3",
+          "spec": {
+            "cache": false,
+            "frames": 33,
+            "guidance_scale": 5.0,
+            "height": 480,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "warmup",
+            "request_id": "video-calibration",
+            "seed": 7,
+            "steps": 1,
+            "threshold": 0.0,
+            "width": 832
+          },
+          "quantum": "step"
+        },
+        {
+          "worker": "image3",
+          "spec": {
+            "height": 1024,
+            "width": 1024,
+            "steps": 1,
+            "frames": 1,
+            "batch_size": 1,
+            "guidance_scale": 4.5,
+            "negative_prompt": "blurry, low quality",
+            "max_sequence_length": 256,
+            "prompt": "warmup",
+            "seed": 7
+          }
+        }
+      ],
+      "options": {
+        "sp_transport": "export",
+        "forms": [
+          "cfg2"
+        ],
+        "quantum_blocks": 4,
+        "async_rank0_decode": false,
+        "image_batch": 1,
+        "tiered_memory": false,
+        "doorbell": true,
+        "partition_image_gpus": 2,
+        "collective_backend": "nccl"
+      },
+      "matrix": {
+        "/policy": [
+          "edf-cfg2",
+          "block-cfg2"
+        ],
+        "/workload": [
+          [
+            {
+              "request_id": "w0-v0000",
+              "arrival_ms": 109520.22421570364,
+              "service_ms": 40187.55606251458,
+              "slo_ms": 60281.334093771875,
+              "slo_source": "class.slo_scale",
+              "effective_slo_scale": 1.5,
+              "deadline_ms": 169801.5583094755,
+              "kind": "video",
+              "class": "wan21-preflight",
+              "spec": {
+                "cache": false,
+                "frames": 33,
+                "guidance_scale": 5.0,
+                "height": 480,
+                "max_continuous": 1,
+                "negative_prompt": "",
+                "prompt": "an angel flying in space there is black hole there is a number of plant there angel wearing spider man mask  ",
+                "request_id": "w0-v0000",
+                "seed": 1919417030,
+                "steps": 20,
+                "threshold": 0.0,
+                "width": 832
+              },
+              "dataset": "vidprom",
+              "dataset_sample_id": "vidprom-3d67a19f-a700-57b3-8dbb-28c28702fd55",
+              "output_mode": "digest",
+              "trace_seed": 205,
+              "tier": "standard"
+            },
+            {
+              "request_id": "w0-v0001",
+              "arrival_ms": 112386.58723989321,
+              "service_ms": 40187.55606251458,
+              "slo_ms": 60281.334093771875,
+              "slo_source": "class.slo_scale",
+              "effective_slo_scale": 1.5,
+              "deadline_ms": 172667.9213336651,
+              "kind": "video",
+              "class": "wan21-preflight",
+              "spec": {
+                "cache": false,
+                "frames": 33,
+                "guidance_scale": 5.0,
+                "height": 480,
+                "max_continuous": 1,
+                "negative_prompt": "",
+                "prompt": "miniature city plant growing , blue background, raw photo  ",
+                "request_id": "w0-v0001",
+                "seed": 1605133761,
+                "steps": 20,
+                "threshold": 0.0,
+                "width": 832
+              },
+              "dataset": "vidprom",
+              "dataset_sample_id": "vidprom-799e58d7-6100-5675-b4e7-3060defe6761",
+              "output_mode": "digest",
+              "trace_seed": 205,
+              "tier": "standard"
+            },
+            {
+              "request_id": "w0-v0002",
+              "arrival_ms": 120046.76793603534,
+              "service_ms": 40187.55606251458,
+              "slo_ms": 60281.334093771875,
+              "slo_source": "class.slo_scale",
+              "effective_slo_scale": 1.5,
+              "deadline_ms": 180328.10202980723,
+              "kind": "video",
+              "class": "wan21-preflight",
+              "spec": {
+                "cache": false,
+                "frames": 33,
+                "guidance_scale": 5.0,
+                "height": 480,
+                "max_continuous": 1,
+                "negative_prompt": "",
+                "prompt": "A pink dot dispersed like fog,  ",
+                "request_id": "w0-v0002",
+                "seed": 1233453009,
+                "steps": 20,
+                "threshold": 0.0,
+                "width": 832
+              },
+              "dataset": "vidprom",
+              "dataset_sample_id": "vidprom-8351150c-70a5-52a4-b893-d289743d4bad",
+              "output_mode": "digest",
+              "trace_seed": 205,
+              "tier": "standard"
+            },
+            {
+              "request_id": "w0-v0003",
+              "arrival_ms": 231803.66006073772,
+              "service_ms": 40187.55606251458,
+              "slo_ms": 60281.334093771875,
+              "slo_source": "class.slo_scale",
+              "effective_slo_scale": 1.5,
+              "deadline_ms": 292084.9941545096,
+              "kind": "video",
+              "class": "wan21-preflight",
+              "spec": {
+                "cache": false,
+                "frames": 33,
+                "guidance_scale": 5.0,
+                "height": 480,
+                "max_continuous": 1,
+                "negative_prompt": "",
+                "prompt": "a person wearing headphones and using a laptop, computer graphics by Lawrence Harris, cgsociety, retrofuturism, anime aesthetic, aesthetic, y2k aesthetic  ",
+                "request_id": "w0-v0003",
+                "seed": 2554171795,
+                "steps": 20,
+                "threshold": 0.0,
+                "width": 832
+              },
+              "dataset": "vidprom",
+              "dataset_sample_id": "vidprom-789e12ca-7f84-568c-b01c-73756fa27b55",
+              "output_mode": "digest",
+              "trace_seed": 205,
+              "tier": "standard"
+            },
+            {
+              "request_id": "w0-v0004",
+              "arrival_ms": 351871.97141655936,
+              "service_ms": 40187.55606251458,
+              "slo_ms": 60281.334093771875,
+              "slo_source": "class.slo_scale",
+              "effective_slo_scale": 1.5,
+              "deadline_ms": 412153.30551033124,
+              "kind": "video",
+              "class": "wan21-preflight",
+              "spec": {
+                "cache": false,
+                "frames": 33,
+                "guidance_scale": 5.0,
+                "height": 480,
+                "max_continuous": 1,
+                "negative_prompt": "",
+                "prompt": "Futuristic Alien Civilization\nMovie Style: Dark Sci-Fi Horror made by h.r. giger \nApply the parameters to each prompt:\ngs 20\nneg \u201cbright colors\u201d\nhide: \u201ccomedy\u201d\nar 16:9  ",
+                "request_id": "w0-v0004",
+                "seed": 2777252036,
+                "steps": 20,
+                "threshold": 0.0,
+                "width": 832
+              },
+              "dataset": "vidprom",
+              "dataset_sample_id": "vidprom-3a9ab505-9ee3-54c6-92ce-355eb253acac",
+              "output_mode": "digest",
+              "trace_seed": 205,
+              "tier": "standard"
+            },
+            {
+              "request_id": "w0-v0005",
+              "arrival_ms": 356464.475406651,
+              "service_ms": 40187.55606251458,
+              "slo_ms": 60281.334093771875,
+              "slo_source": "class.slo_scale",
+              "effective_slo_scale": 1.5,
+              "deadline_ms": 416745.80950042285,
+              "kind": "video",
+              "class": "wan21-preflight",
+              "spec": {
+                "cache": false,
+                "frames": 33,
+                "guidance_scale": 5.0,
+                "height": 480,
+                "max_continuous": 1,
+                "negative_prompt": "",
+                "prompt": "Steve Jobs wearing a white collared dress shirt, and white earphones with original iPod from 2001.  ",
+                "request_id": "w0-v0005",
+                "seed": 266738017,
+                "steps": 20,
+                "threshold": 0.0,
+                "width": 832
+              },
+              "dataset": "vidprom",
+              "dataset_sample_id": "vidprom-f3ec7043-d1fd-5909-bf6e-d7e951ba2c05",
+              "output_mode": "digest",
+              "trace_seed": 205,
+              "tier": "standard"
+            },
+            {
+              "request_id": "w0-v0006",
+              "arrival_ms": 386078.3662087357,
+              "service_ms": 40187.55606251458,
+              "slo_ms": 60281.334093771875,
+              "slo_source": "class.slo_scale",
+              "effective_slo_scale": 1.5,
+              "deadline_ms": 446359.70030250755,
+              "kind": "video",
+              "class": "wan21-preflight",
+              "spec": {
+                "cache": false,
+                "frames": 33,
+                "guidance_scale": 5.0,
+                "height": 480,
+                "max_continuous": 1,
+                "negative_prompt": "",
+                "prompt": "Lionel Messi ,Hanging shot  ",
+                "request_id": "w0-v0006",
+                "seed": 3900182125,
+                "steps": 20,
+                "threshold": 0.0,
+                "width": 832
+              },
+              "dataset": "vidprom",
+              "dataset_sample_id": "vidprom-7acbe6d7-d3ab-5514-aa63-108ac588211c",
+              "output_mode": "digest",
+              "trace_seed": 205,
+              "tier": "standard"
+            },
+            {
+              "request_id": "w0-v0007",
+              "arrival_ms": 480993.70961215015,
+              "service_ms": 40187.55606251458,
+              "slo_ms": 60281.334093771875,
+              "slo_source": "class.slo_scale",
+              "effective_slo_scale": 1.5,
+              "deadline_ms": 541275.0437059221,
+              "kind": "video",
+              "class": "wan21-preflight",
+              "spec": {
+                "cache": false,
+                "frames": 33,
+                "guidance_scale": 5.0,
+                "height": 480,
+                "max_continuous": 1,
+                "negative_prompt": "",
+                "prompt": "A lion in the jungle with problems and tears but when sunshine  Message: Leon de Juda (Font: MODERN)  ",
+                "request_id": "w0-v0007",
+                "seed": 3911912179,
+                "steps": 20,
+                "threshold": 0.0,
+                "width": 832
+              },
+              "dataset": "vidprom",
+              "dataset_sample_id": "vidprom-419c76ca-fd40-5ea0-b80c-2fa89bccaeef",
+              "output_mode": "digest",
+              "trace_seed": 205,
+              "tier": "standard"
+            }
+          ]
+        ],
+        "/trace_provenance": [
+          {
+            "path": "generated:diffusiondb+vidprom",
+            "sha256": "e1931a98349c92cd5796e09abeef8db9076d5fc492bf73beaa2cf8beb64b82dc",
+            "manifest": {
+              "schema": "ditserve.benchmark.mixed-workload.v1",
+              "seed": 205,
+              "slots": 4,
+              "patterns": [
+                "poisson"
+              ],
+              "counts": {
+                "video": 8
+              },
+              "class_counts": {
+                "wan21-preflight": 8
+              },
+              "total_duration_ms": 503991.33083100116,
+              "rate_rps": 0.01587328890520652,
+              "gpu_ms": {
+                "image": 0,
+                "video": 201596.5323324005
+              },
+              "gpu_time_fraction": {
+                "image": 0.0,
+                "video": 1.0
+              },
+              "normalized_gpu_work": 0.10000000000000002,
+              "quality_requests": {
+                "image": 0,
+                "video": 0
+              },
+              "sources": {
+                "image": {
+                  "kind": "diffusiondb",
+                  "source": {
+                    "repository": "https://huggingface.co/datasets/poloclub/diffusiondb",
+                    "metadata_path": "metadata.parquet",
+                    "revision": "fb620fbe49fa4420e0734bd9c0df11f51176b61f",
+                    "downloaded_metadata_only": true,
+                    "license_notice": "CC0 1.0; see the official DiffusionDB dataset card",
+                    "integrity": {
+                      "expected_bytes": 194548652,
+                      "expected_hash": "eecd341187bc91c07f5994ad0660d40228ea025616fd57a509bef8323677c68f",
+                      "url": "https://huggingface.co/datasets/poloclub/diffusiondb/resolve/fb620fbe49fa4420e0734bd9c0df11f51176b61f/metadata.parquet",
+                      "status": "verified"
+                    },
+                    "sha256": "eecd341187bc91c07f5994ad0660d40228ea025616fd57a509bef8323677c68f",
+                    "bytes": 194548652
+                  },
+                  "selection": {
+                    "seed": 20261024,
+                    "rows_seen": 2000000,
+                    "rows_after_filters": 1975890,
+                    "unique_prompts": 1509413,
+                    "samples_retained": 4096,
+                    "method": "lowest_sha256_priority",
+                    "filters": [
+                      "nonempty prompt",
+                      "prompt_nsfw present and < 0.5",
+                      "deduplicate by exact prompt"
+                    ],
+                    "sample_count_limit": 4096,
+                    "dev_distinct_prompts": 32,
+                    "prompt_transform": "none; original text preserved"
+                  }
+                },
+                "video": {
+                  "kind": "vidprom",
+                  "source": {
+                    "requested_revision": "main",
+                    "revision": "0c0900e6a037b058b1903bc1de9bcb6037d9fc24",
+                    "url": "https://huggingface.co/datasets/WenhaoWang/VidProM/resolve/0c0900e6a037b058b1903bc1de9bcb6037d9fc24/VidProM_unique.csv",
+                    "downloaded_metadata_only": true,
+                    "integrity": {
+                      "metadata_url": "https://huggingface.co/api/datasets/WenhaoWang/VidProM/tree/0c0900e6a037b058b1903bc1de9bcb6037d9fc24?recursive=false",
+                      "expected_bytes": 382734674,
+                      "hash_algorithm": "sha256",
+                      "expected_hash": "7668b87803b67638fa899b69f3a2a298ea13daffe508ce625e21937bff958b6e",
+                      "status": "verified"
+                    },
+                    "repository": "https://huggingface.co/datasets/WenhaoWang/VidProM",
+                    "metadata_path": "VidProM_unique.csv",
+                    "default_ref": "main",
+                    "license_notice": "See the WenhaoWang/VidProM dataset card and original data terms.",
+                    "sha256": "7668b87803b67638fa899b69f3a2a298ea13daffe508ce625e21937bff958b6e",
+                    "bytes": 382734674
+                  },
+                  "selection": {
+                    "seed": 20261024,
+                    "rows_seen": 1672243,
+                    "rows_skipped": 31835,
+                    "samples_retained": 4096,
+                    "method": "lowest_sha256_priority",
+                    "sample_count_limit": 4096,
+                    "dev_distinct_prompts": 32,
+                    "prompt_transform": "none; original whitespace preserved; whitespace-only prompts rejected"
+                  }
+                }
+              },
+              "windows": [
+                {
+                  "index": 0,
+                  "pattern": "poisson",
+                  "start_ms": 0.0,
+                  "duration_ms": 503991.33083100116,
+                  "parameters": {
+                    "count": 8,
+                    "video_fraction": 1.0,
+                    "pattern": "poisson",
+                    "load": 0.1
+                  },
+                  "cv": null,
+                  "bursts": 1,
+                  "burst_active_fraction": 1.0,
+                  "slo_scale": null,
+                  "fast_slo_scale": 1.2,
+                  "fast_video_fraction": 0.0,
+                  "slo_by_class": {
+                    "wan21-preflight": {
+                      "standard": {
+                        "slo_ms": 60281.334093771875,
+                        "source": "class.slo_scale",
+                        "effective_slo_scale": 1.5
+                      },
+                      "fast": {
+                        "slo_ms": 48225.06727501749,
+                        "source": "default.fast_slo_scale",
+                        "effective_slo_scale": 1.2
+                      }
+                    },
+                    "sd35-preflight": {
+                      "standard": {
+                        "slo_ms": 16402.507619932294,
+                        "source": "class.slo_scale",
+                        "effective_slo_scale": 2.5
+                      }
+                    }
+                  },
+                  "load": 0.1,
+                  "count": 8,
+                  "video_fraction": 1.0,
+                  "counts": {
+                    "video": 8
+                  },
+                  "class_counts": {
+                    "wan21-preflight": 8
+                  },
+                  "active_windows": [
+                    {
+                      "start_ms": 0.0,
+                      "duration_ms": 503991.33083100116
+                    }
+                  ],
+                  "rate_rps": 0.01587328890520652,
+                  "gpu_ms": {
+                    "image": 0.0,
+                    "video": 201596.53233240047
+                  }
+                }
+              ],
+              "slo_precedence": {
+                "absolute": "class.slo_ms wins for every tier, including fast video",
+                "standard_video": "window.slo_scale > class.slo_scale > default 2.5",
+                "fast_video": "window.fast_slo_scale > default 1.2",
+                "image": "class.slo_scale > default 2.5; window scales do not apply"
+              },
+              "workload_sha256": "e1931a98349c92cd5796e09abeef8db9076d5fc492bf73beaa2cf8beb64b82dc"
+            }
+          }
+        ]
+      },
+      "artifact_dependencies": []
+    }
+  ],
+  "benchmark": {
+    "native_serving": true,
+    "performance_qualified": false,
+    "quality_qualified": false,
+    "exact_mode": true,
+    "models": [
+      "Wan2.1-T2V-1.3B",
+      "SD3.5-Medium"
+    ],
+    "gpus": 4,
+    "seed": 205,
+    "load": 0.1,
+    "pattern": "poisson",
+    "cv": null,
+    "video_fraction": 1.0,
+    "count": 8,
+    "video_slo_scale": 1.5,
+    "image_slo_scale": 2.5,
+    "output_mode": "digest",
+    "profile_placement": {
+      "required": true,
+      "matches": true,
+      "gpu_uuids": [
+        "GPU-6967ee01-0c82-8215-9256-9fde2e18f5d0",
+        "GPU-abe707e2-3284-aa3e-c3c9-ec0f14ee61c3",
+        "GPU-304d76bc-0629-fdc9-7cfe-929ff331b7f0",
+        "GPU-2bae337e-03ae-f01e-47bf-59b25b815ab8"
+      ]
+    },
+    "trace": {
+      "path": "generated:diffusiondb+vidprom",
+      "sha256": "e1931a98349c92cd5796e09abeef8db9076d5fc492bf73beaa2cf8beb64b82dc",
+      "manifest": {
+        "schema": "ditserve.benchmark.mixed-workload.v1",
+        "seed": 205,
+        "slots": 4,
+        "patterns": [
+          "poisson"
+        ],
+        "counts": {
+          "video": 8
+        },
+        "class_counts": {
+          "wan21-preflight": 8
+        },
+        "total_duration_ms": 503991.33083100116,
+        "rate_rps": 0.01587328890520652,
+        "gpu_ms": {
+          "image": 0,
+          "video": 201596.5323324005
+        },
+        "gpu_time_fraction": {
+          "image": 0.0,
+          "video": 1.0
+        },
+        "normalized_gpu_work": 0.10000000000000002,
+        "quality_requests": {
+          "image": 0,
+          "video": 0
+        },
+        "sources": {
+          "image": {
+            "kind": "diffusiondb",
+            "source": {
+              "repository": "https://huggingface.co/datasets/poloclub/diffusiondb",
+              "metadata_path": "metadata.parquet",
+              "revision": "fb620fbe49fa4420e0734bd9c0df11f51176b61f",
+              "downloaded_metadata_only": true,
+              "license_notice": "CC0 1.0; see the official DiffusionDB dataset card",
+              "integrity": {
+                "expected_bytes": 194548652,
+                "expected_hash": "eecd341187bc91c07f5994ad0660d40228ea025616fd57a509bef8323677c68f",
+                "url": "https://huggingface.co/datasets/poloclub/diffusiondb/resolve/fb620fbe49fa4420e0734bd9c0df11f51176b61f/metadata.parquet",
+                "status": "verified"
+              },
+              "sha256": "eecd341187bc91c07f5994ad0660d40228ea025616fd57a509bef8323677c68f",
+              "bytes": 194548652
+            },
+            "selection": {
+              "seed": 20261024,
+              "rows_seen": 2000000,
+              "rows_after_filters": 1975890,
+              "unique_prompts": 1509413,
+              "samples_retained": 4096,
+              "method": "lowest_sha256_priority",
+              "filters": [
+                "nonempty prompt",
+                "prompt_nsfw present and < 0.5",
+                "deduplicate by exact prompt"
+              ],
+              "sample_count_limit": 4096,
+              "dev_distinct_prompts": 32,
+              "prompt_transform": "none; original text preserved"
+            }
+          },
+          "video": {
+            "kind": "vidprom",
+            "source": {
+              "requested_revision": "main",
+              "revision": "0c0900e6a037b058b1903bc1de9bcb6037d9fc24",
+              "url": "https://huggingface.co/datasets/WenhaoWang/VidProM/resolve/0c0900e6a037b058b1903bc1de9bcb6037d9fc24/VidProM_unique.csv",
+              "downloaded_metadata_only": true,
+              "integrity": {
+                "metadata_url": "https://huggingface.co/api/datasets/WenhaoWang/VidProM/tree/0c0900e6a037b058b1903bc1de9bcb6037d9fc24?recursive=false",
+                "expected_bytes": 382734674,
+                "hash_algorithm": "sha256",
+                "expected_hash": "7668b87803b67638fa899b69f3a2a298ea13daffe508ce625e21937bff958b6e",
+                "status": "verified"
+              },
+              "repository": "https://huggingface.co/datasets/WenhaoWang/VidProM",
+              "metadata_path": "VidProM_unique.csv",
+              "default_ref": "main",
+              "license_notice": "See the WenhaoWang/VidProM dataset card and original data terms.",
+              "sha256": "7668b87803b67638fa899b69f3a2a298ea13daffe508ce625e21937bff958b6e",
+              "bytes": 382734674
+            },
+            "selection": {
+              "seed": 20261024,
+              "rows_seen": 1672243,
+              "rows_skipped": 31835,
+              "samples_retained": 4096,
+              "method": "lowest_sha256_priority",
+              "sample_count_limit": 4096,
+              "dev_distinct_prompts": 32,
+              "prompt_transform": "none; original whitespace preserved; whitespace-only prompts rejected"
+            }
+          }
+        },
+        "windows": [
+          {
+            "index": 0,
+            "pattern": "poisson",
+            "start_ms": 0.0,
+            "duration_ms": 503991.33083100116,
+            "parameters": {
+              "count": 8,
+              "video_fraction": 1.0,
+              "pattern": "poisson",
+              "load": 0.1
+            },
+            "cv": null,
+            "bursts": 1,
+            "burst_active_fraction": 1.0,
+            "slo_scale": null,
+            "fast_slo_scale": 1.2,
+            "fast_video_fraction": 0.0,
+            "slo_by_class": {
+              "wan21-preflight": {
+                "standard": {
+                  "slo_ms": 60281.334093771875,
+                  "source": "class.slo_scale",
+                  "effective_slo_scale": 1.5
+                },
+                "fast": {
+                  "slo_ms": 48225.06727501749,
+                  "source": "default.fast_slo_scale",
+                  "effective_slo_scale": 1.2
+                }
+              },
+              "sd35-preflight": {
+                "standard": {
+                  "slo_ms": 16402.507619932294,
+                  "source": "class.slo_scale",
+                  "effective_slo_scale": 2.5
+                }
+              }
+            },
+            "load": 0.1,
+            "count": 8,
+            "video_fraction": 1.0,
+            "counts": {
+              "video": 8
+            },
+            "class_counts": {
+              "wan21-preflight": 8
+            },
+            "active_windows": [
+              {
+                "start_ms": 0.0,
+                "duration_ms": 503991.33083100116
+              }
+            ],
+            "rate_rps": 0.01587328890520652,
+            "gpu_ms": {
+              "image": 0.0,
+              "video": 201596.53233240047
+            }
+          }
+        ],
+        "slo_precedence": {
+          "absolute": "class.slo_ms wins for every tier, including fast video",
+          "standard_video": "window.slo_scale > class.slo_scale > default 2.5",
+          "fast_video": "window.fast_slo_scale > default 1.2",
+          "image": "class.slo_scale > default 2.5; window scales do not apply"
+        },
+        "workload_sha256": "e1931a98349c92cd5796e09abeef8db9076d5fc492bf73beaa2cf8beb64b82dc"
+      }
+    },
+    "policies": [
+      "edf-cfg2",
+      "block-cfg2"
+    ],
+    "requested_policies": [
+      "edf-cfg2",
+      "block-cfg2"
+    ],
+    "policy_order": {
+      "mode": "random",
+      "seed": 205
+    },
+    "image_batch": {
+      "max_requests": 1,
+      "scope": "same atomic request batching limit for every policy; each request generates one image"
+    },
+    "policy_display": {
+      "edf-cfg2": "EDF-CFG2",
+      "block-cfg2": "Block-cfg2"
+    },
+    "collective_backend": "nccl",
+    "partition_image_gpus": {
+      "value": 2,
+      "rule": "expected image share of GPU time, even video remainder"
+    },
+    "quality_arm": null,
+    "preemption_diagnostic": "no_preemption"
+  }
+}

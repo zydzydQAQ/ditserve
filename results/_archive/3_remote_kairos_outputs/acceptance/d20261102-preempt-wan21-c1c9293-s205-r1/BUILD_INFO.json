@@ -1,0 +1,16 @@
+{
+ "commit": "c1c9293ba74945a4dab07d28940b38644331d2ec",
+ "subject": "Reduce multi-rank doorbell tail latency and support shm transfer dir",
+ "built_utc": "2026-11-02T13:31:12+00:00",
+ "builder_image": "local-cmake-install",
+ "runtime_image": "192.168.1.114:30500/jjjkairos/ditserve:xdit-dev-016e1ca-slim",
+ "core_sha256": "5389c396b3409cac3d36e4ad6cbdbca5731b1b20320ffc950ad2dac38a74dd97",
+ "runtime_smoke": "pending_cluster",
+ "local_checks": [
+  "cmake",
+  "ctest",
+  "installed_doctor"
+ ],
+ "files": 272,
+ "bytes": 4282892
+}

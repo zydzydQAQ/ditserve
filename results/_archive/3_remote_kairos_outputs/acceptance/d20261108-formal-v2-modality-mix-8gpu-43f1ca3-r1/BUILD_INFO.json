@@ -1,0 +1,17 @@
+{
+ "commit": "43f1ca3df011b42c32aee60cb1a513256afb0134",
+ "subject": "Allow 5-point video fraction sweep in formal-v2 serving",
+ "built_utc": "2026-11-08T05:13:09+00:00",
+ "builder_image": "cluster-cmake-install",
+ "runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "tested_runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "core_sha256": "696242021386b61d27c761023b8eed48fb3ee510759ec5aa982ccbaad9cb8e68",
+ "runtime_smoke": "passed_cluster",
+ "local_checks": [
+  "cmake",
+  "ctest",
+  "installed_doctor"
+ ],
+ "files": 266,
+ "bytes": 5372926
+}

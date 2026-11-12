@@ -1,0 +1,8 @@
+{
+  "at_utc": "2026-11-02T23:36:46.703158+00:00",
+  "pid": 2200172,
+  "entry": "/mnt/e/000_code/zyd-2026/.local/ditserve-kairos-rewrite-runtime/orchestration/20261103-a1a52a8/consume_isolated_p1_handoff.py",
+  "action": "SIGTERM exact local P1 pre-submission consumer only",
+  "reason": "Frozen a1 calibration source reviewer incorrectly binds historical cal0 ledger session to current cal1 config; source correction required before P1 launch",
+  "running_gpu_jobs_stopped": false
+}

@@ -1,0 +1,16 @@
+{
+ "commit": "4f0e5ff62fe11969e13db8b9008ad5dcda9f28f6",
+ "subject": "Fix interval dominance pruning, continuous-doorbell quanta, fission continuation, pre-advance doorbell stop, and online CFG drift",
+ "built_utc": "2026-11-03T07:03:36+00:00",
+ "builder_image": "local-cmake-install",
+ "runtime_image": "192.168.1.114:30500/jjjkairos/ditserve:xdit-dev-016e1ca-slim",
+ "core_sha256": "cbd9237077b13dba3c60d13e619b2b205fa24142933a69275283dab073cb67ef",
+ "runtime_smoke": "pending_cluster",
+ "local_checks": [
+  "cmake",
+  "ctest",
+  "installed_doctor"
+ ],
+ "files": 299,
+ "bytes": 5013443
+}

@@ -1,0 +1,16 @@
+add_library(ditserve_benchmark src/cluster_sim.cpp)
+target_include_directories(ditserve_benchmark PUBLIC include)
+target_link_libraries(ditserve_benchmark PUBLIC ditserve_core)
+target_compile_options(ditserve_benchmark PRIVATE -Wall -Wextra -Wpedantic -ffp-contract=off)
+
+if(BUILD_TESTING)
+    add_executable(simulation-tests tests/test_cluster.cpp)
+    target_link_libraries(simulation-tests PRIVATE ditserve_benchmark)
+    add_test(NAME simulation-contracts COMMAND simulation-tests)
+endif()
+
+if(BUILD_TESTING)
+    add_executable(controller-decisions-tests tests/test_20261103_controller_decisions.cpp)
+    target_link_libraries(controller-decisions-tests PRIVATE ditserve_core)
+    add_test(NAME controller-decisions-contracts COMMAND controller-decisions-tests)
+endif()

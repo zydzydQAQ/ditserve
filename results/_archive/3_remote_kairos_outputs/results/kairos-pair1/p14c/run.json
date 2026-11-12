@@ -1,0 +1,5024 @@
+{
+  "artifacts": [],
+  "budget": {
+    "active": null,
+    "allocation_id": "b0a25b7ac711cef849f0614d4bd380ad",
+    "limits": {
+      "carry": "none",
+      "phase_gpu_seconds": {},
+      "phase_order": [
+        "exact",
+        "timing"
+      ],
+      "repair_reserve_gpu_seconds": 0.0,
+      "total_gpu_seconds": 3600.0
+    },
+    "phase_cursor": 1,
+    "phase_usage": {
+      "exact": 135.91049727797508,
+      "timing": 415.75710130669177
+    },
+    "schema_version": "ditserve.budget.v1",
+    "sessions": [
+      {
+        "cleanup_verified": true,
+        "deadline_monotonic": 7343833.033539047,
+        "devices": 1,
+        "elapsed_seconds": 135.91049727797508,
+        "ended_at": 1792569412.8643832,
+        "ended_monotonic": 7340368.944036325,
+        "gpu_seconds": 135.91049727797508,
+        "identity": {
+          "attempt": 1,
+          "config_sha256": "0307b493618303b9f0b095d491449ddaaf3cfbfb79163ca29047e97cb6869932",
+          "gpu_uuids": [
+            "GPU-83566cdb-86ec-7bb4-c2c2-736c074f2fca"
+          ],
+          "run_id": "p14c-20261020t0330z",
+          "source_sha256": "a4b8c4ea75551eafaa63232341da72735f9c4f948de91e03b7ec070cab699507"
+        },
+        "phase": "exact",
+        "repair": false,
+        "session_id": "f1e5887a69e488e92e44f3ccfb44e627",
+        "started_at": 1792569276.9538841,
+        "started_monotonic": 7340233.033539047,
+        "status": "completed",
+        "supervisor_pid": 81
+      },
+      {
+        "cleanup_verified": true,
+        "deadline_monotonic": 7343969.278837158,
+        "devices": 1,
+        "elapsed_seconds": 415.75710130669177,
+        "ended_at": 1792569828.9562724,
+        "ended_monotonic": 7340785.035938465,
+        "gpu_seconds": 415.75710130669177,
+        "identity": {
+          "attempt": 1,
+          "config_sha256": "0307b493618303b9f0b095d491449ddaaf3cfbfb79163ca29047e97cb6869932",
+          "gpu_uuids": [
+            "GPU-83566cdb-86ec-7bb4-c2c2-736c074f2fca"
+          ],
+          "run_id": "p14c-20261020t0330z",
+          "source_sha256": "a4b8c4ea75551eafaa63232341da72735f9c4f948de91e03b7ec070cab699507"
+        },
+        "phase": "timing",
+        "repair": false,
+        "session_id": "b7bfaa17422ce96d9be75549b5f83c0c",
+        "started_at": 1792569413.1991813,
+        "started_monotonic": 7340369.278837158,
+        "status": "completed",
+        "supervisor_pid": 81
+      }
+    ],
+    "used_gpu_seconds": 551.6675985846668,
+    "used_regular_gpu_seconds": 551.6675985846668,
+    "used_repair_gpu_seconds": 0.0
+  },
+  "budget_ledger": "/tmp/ditserve-ledgers/kairos-pair1gpu-5b.json",
+  "config": {
+    "budget": {
+      "carry": "none",
+      "limit_gpu_seconds": 3600,
+      "repair_reserve_gpu_seconds": 0,
+      "watchdog_seconds": 3600
+    },
+    "experiment": "kairos-pair1gpu-5b",
+    "note": "Two wan2.2-ti2v-5b requests on one GPU in block-level lockstep (pair_state_id) versus one after the other: exactness by output digest at 512x896x17 (8 steps), timing at ['704x1280x121', '512x896x81'] (4 steps each).",
+    "phases": [
+      {
+        "actions": [
+          {
+            "op": "prepare",
+            "spec": {
+              "cache": false,
+              "frames": 17,
+              "guidance_scale": 5.0,
+              "height": 512,
+              "max_continuous": 1,
+              "negative_prompt": "",
+              "prompt": "A red ceramic kettle on a wooden table.",
+              "seed": 7,
+              "steps": 8,
+              "threshold": 0.0,
+              "width": 896
+            },
+            "state_id": "x-seq-a"
+          },
+          {
+            "op": "prepare",
+            "spec": {
+              "cache": false,
+              "frames": 17,
+              "guidance_scale": 5.0,
+              "height": 512,
+              "max_continuous": 1,
+              "negative_prompt": "",
+              "prompt": "A red ceramic kettle on a wooden table.",
+              "seed": 11,
+              "steps": 8,
+              "threshold": 0.0,
+              "width": 896
+            },
+            "state_id": "x-seq-b"
+          },
+          {
+            "label": "x-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "x-seq-a"
+          },
+          {
+            "label": "x-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "x-seq-a"
+          },
+          {
+            "label": "x-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "x-seq-a"
+          },
+          {
+            "label": "x-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "x-seq-a"
+          },
+          {
+            "label": "x-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "x-seq-a"
+          },
+          {
+            "label": "x-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "x-seq-a"
+          },
+          {
+            "label": "x-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "x-seq-a"
+          },
+          {
+            "label": "x-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "x-seq-a"
+          },
+          {
+            "label": "x-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "x-seq-b"
+          },
+          {
+            "label": "x-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "x-seq-b"
+          },
+          {
+            "label": "x-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "x-seq-b"
+          },
+          {
+            "label": "x-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "x-seq-b"
+          },
+          {
+            "label": "x-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "x-seq-b"
+          },
+          {
+            "label": "x-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "x-seq-b"
+          },
+          {
+            "label": "x-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "x-seq-b"
+          },
+          {
+            "label": "x-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "x-seq-b"
+          },
+          {
+            "label": "finish-seq-a",
+            "op": "finish",
+            "output_mode": "digest",
+            "state_id": "x-seq-a"
+          },
+          {
+            "label": "finish-seq-b",
+            "op": "finish",
+            "output_mode": "digest",
+            "state_id": "x-seq-b"
+          },
+          {
+            "op": "release",
+            "state_id": "x-seq-a"
+          },
+          {
+            "op": "release",
+            "state_id": "x-seq-b"
+          },
+          {
+            "op": "prepare",
+            "spec": {
+              "cache": false,
+              "frames": 17,
+              "guidance_scale": 5.0,
+              "height": 512,
+              "max_continuous": 1,
+              "negative_prompt": "",
+              "prompt": "A red ceramic kettle on a wooden table.",
+              "seed": 7,
+              "steps": 8,
+              "threshold": 0.0,
+              "width": 896
+            },
+            "state_id": "x-pair-a"
+          },
+          {
+            "op": "prepare",
+            "spec": {
+              "cache": false,
+              "frames": 17,
+              "guidance_scale": 5.0,
+              "height": 512,
+              "max_continuous": 1,
+              "negative_prompt": "",
+              "prompt": "A red ceramic kettle on a wooden table.",
+              "seed": 11,
+              "steps": 8,
+              "threshold": 0.0,
+              "width": 896
+            },
+            "state_id": "x-pair-b"
+          },
+          {
+            "label": "x-pair",
+            "op": "advance",
+            "pair_state_id": "x-pair-b",
+            "quantum": "step",
+            "state_id": "x-pair-a"
+          },
+          {
+            "label": "x-pair",
+            "op": "advance",
+            "pair_state_id": "x-pair-b",
+            "quantum": "step",
+            "state_id": "x-pair-a"
+          },
+          {
+            "label": "x-pair",
+            "op": "advance",
+            "pair_state_id": "x-pair-b",
+            "quantum": "step",
+            "state_id": "x-pair-a"
+          },
+          {
+            "label": "x-pair",
+            "op": "advance",
+            "pair_state_id": "x-pair-b",
+            "quantum": "step",
+            "state_id": "x-pair-a"
+          },
+          {
+            "label": "x-pair",
+            "op": "advance",
+            "pair_state_id": "x-pair-b",
+            "quantum": "step",
+            "state_id": "x-pair-a"
+          },
+          {
+            "label": "x-pair",
+            "op": "advance",
+            "pair_state_id": "x-pair-b",
+            "quantum": "step",
+            "state_id": "x-pair-a"
+          },
+          {
+            "label": "x-pair",
+            "op": "advance",
+            "pair_state_id": "x-pair-b",
+            "quantum": "step",
+            "state_id": "x-pair-a"
+          },
+          {
+            "label": "x-pair",
+            "op": "advance",
+            "pair_state_id": "x-pair-b",
+            "quantum": "step",
+            "state_id": "x-pair-a"
+          },
+          {
+            "label": "finish-pair-a",
+            "op": "finish",
+            "output_mode": "digest",
+            "state_id": "x-pair-a"
+          },
+          {
+            "label": "finish-pair-b",
+            "op": "finish",
+            "output_mode": "digest",
+            "state_id": "x-pair-b"
+          },
+          {
+            "op": "release",
+            "state_id": "x-pair-a"
+          },
+          {
+            "op": "release",
+            "state_id": "x-pair-b"
+          }
+        ],
+        "artifact_dependencies": [],
+        "id": "exact",
+        "kind": "profile",
+        "worker": "wan",
+        "workers": [
+          "wan"
+        ]
+      },
+      {
+        "actions": [
+          {
+            "op": "prepare",
+            "spec": {
+              "cache": false,
+              "frames": 121,
+              "guidance_scale": 5.0,
+              "height": 704,
+              "max_continuous": 1,
+              "negative_prompt": "",
+              "prompt": "A red ceramic kettle on a wooden table.",
+              "seed": 7,
+              "steps": 4,
+              "threshold": 0.0,
+              "width": 1280
+            },
+            "state_id": "t704x1280x121-seq-a"
+          },
+          {
+            "op": "prepare",
+            "spec": {
+              "cache": false,
+              "frames": 121,
+              "guidance_scale": 5.0,
+              "height": 704,
+              "max_continuous": 1,
+              "negative_prompt": "",
+              "prompt": "A red ceramic kettle on a wooden table.",
+              "seed": 11,
+              "steps": 4,
+              "threshold": 0.0,
+              "width": 1280
+            },
+            "state_id": "t704x1280x121-seq-b"
+          },
+          {
+            "label": "t-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "t704x1280x121-seq-a"
+          },
+          {
+            "label": "t-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "t704x1280x121-seq-a"
+          },
+          {
+            "label": "t-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "t704x1280x121-seq-a"
+          },
+          {
+            "label": "t-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "t704x1280x121-seq-a"
+          },
+          {
+            "label": "t-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "t704x1280x121-seq-b"
+          },
+          {
+            "label": "t-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "t704x1280x121-seq-b"
+          },
+          {
+            "label": "t-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "t704x1280x121-seq-b"
+          },
+          {
+            "label": "t-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "t704x1280x121-seq-b"
+          },
+          {
+            "label": "finish-seq-a",
+            "op": "finish",
+            "output_mode": "check",
+            "state_id": "t704x1280x121-seq-a"
+          },
+          {
+            "label": "finish-seq-b",
+            "op": "finish",
+            "output_mode": "check",
+            "state_id": "t704x1280x121-seq-b"
+          },
+          {
+            "op": "release",
+            "state_id": "t704x1280x121-seq-a"
+          },
+          {
+            "op": "release",
+            "state_id": "t704x1280x121-seq-b"
+          },
+          {
+            "op": "prepare",
+            "spec": {
+              "cache": false,
+              "frames": 121,
+              "guidance_scale": 5.0,
+              "height": 704,
+              "max_continuous": 1,
+              "negative_prompt": "",
+              "prompt": "A red ceramic kettle on a wooden table.",
+              "seed": 7,
+              "steps": 4,
+              "threshold": 0.0,
+              "width": 1280
+            },
+            "state_id": "t704x1280x121-pair-a"
+          },
+          {
+            "op": "prepare",
+            "spec": {
+              "cache": false,
+              "frames": 121,
+              "guidance_scale": 5.0,
+              "height": 704,
+              "max_continuous": 1,
+              "negative_prompt": "",
+              "prompt": "A red ceramic kettle on a wooden table.",
+              "seed": 11,
+              "steps": 4,
+              "threshold": 0.0,
+              "width": 1280
+            },
+            "state_id": "t704x1280x121-pair-b"
+          },
+          {
+            "label": "t-pair",
+            "op": "advance",
+            "pair_state_id": "t704x1280x121-pair-b",
+            "quantum": "step",
+            "state_id": "t704x1280x121-pair-a"
+          },
+          {
+            "label": "t-pair",
+            "op": "advance",
+            "pair_state_id": "t704x1280x121-pair-b",
+            "quantum": "step",
+            "state_id": "t704x1280x121-pair-a"
+          },
+          {
+            "label": "t-pair",
+            "op": "advance",
+            "pair_state_id": "t704x1280x121-pair-b",
+            "quantum": "step",
+            "state_id": "t704x1280x121-pair-a"
+          },
+          {
+            "label": "t-pair",
+            "op": "advance",
+            "pair_state_id": "t704x1280x121-pair-b",
+            "quantum": "step",
+            "state_id": "t704x1280x121-pair-a"
+          },
+          {
+            "label": "finish-pair-a",
+            "op": "finish",
+            "output_mode": "check",
+            "state_id": "t704x1280x121-pair-a"
+          },
+          {
+            "label": "finish-pair-b",
+            "op": "finish",
+            "output_mode": "check",
+            "state_id": "t704x1280x121-pair-b"
+          },
+          {
+            "op": "release",
+            "state_id": "t704x1280x121-pair-a"
+          },
+          {
+            "op": "release",
+            "state_id": "t704x1280x121-pair-b"
+          },
+          {
+            "op": "prepare",
+            "spec": {
+              "cache": false,
+              "frames": 81,
+              "guidance_scale": 5.0,
+              "height": 512,
+              "max_continuous": 1,
+              "negative_prompt": "",
+              "prompt": "A red ceramic kettle on a wooden table.",
+              "seed": 7,
+              "steps": 4,
+              "threshold": 0.0,
+              "width": 896
+            },
+            "state_id": "t512x896x81-seq-a"
+          },
+          {
+            "op": "prepare",
+            "spec": {
+              "cache": false,
+              "frames": 81,
+              "guidance_scale": 5.0,
+              "height": 512,
+              "max_continuous": 1,
+              "negative_prompt": "",
+              "prompt": "A red ceramic kettle on a wooden table.",
+              "seed": 11,
+              "steps": 4,
+              "threshold": 0.0,
+              "width": 896
+            },
+            "state_id": "t512x896x81-seq-b"
+          },
+          {
+            "label": "t-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "t512x896x81-seq-a"
+          },
+          {
+            "label": "t-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "t512x896x81-seq-a"
+          },
+          {
+            "label": "t-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "t512x896x81-seq-a"
+          },
+          {
+            "label": "t-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "t512x896x81-seq-a"
+          },
+          {
+            "label": "t-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "t512x896x81-seq-b"
+          },
+          {
+            "label": "t-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "t512x896x81-seq-b"
+          },
+          {
+            "label": "t-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "t512x896x81-seq-b"
+          },
+          {
+            "label": "t-seq",
+            "op": "advance",
+            "quantum": "step",
+            "state_id": "t512x896x81-seq-b"
+          },
+          {
+            "label": "finish-seq-a",
+            "op": "finish",
+            "output_mode": "check",
+            "state_id": "t512x896x81-seq-a"
+          },
+          {
+            "label": "finish-seq-b",
+            "op": "finish",
+            "output_mode": "check",
+            "state_id": "t512x896x81-seq-b"
+          },
+          {
+            "op": "release",
+            "state_id": "t512x896x81-seq-a"
+          },
+          {
+            "op": "release",
+            "state_id": "t512x896x81-seq-b"
+          },
+          {
+            "op": "prepare",
+            "spec": {
+              "cache": false,
+              "frames": 81,
+              "guidance_scale": 5.0,
+              "height": 512,
+              "max_continuous": 1,
+              "negative_prompt": "",
+              "prompt": "A red ceramic kettle on a wooden table.",
+              "seed": 7,
+              "steps": 4,
+              "threshold": 0.0,
+              "width": 896
+            },
+            "state_id": "t512x896x81-pair-a"
+          },
+          {
+            "op": "prepare",
+            "spec": {
+              "cache": false,
+              "frames": 81,
+              "guidance_scale": 5.0,
+              "height": 512,
+              "max_continuous": 1,
+              "negative_prompt": "",
+              "prompt": "A red ceramic kettle on a wooden table.",
+              "seed": 11,
+              "steps": 4,
+              "threshold": 0.0,
+              "width": 896
+            },
+            "state_id": "t512x896x81-pair-b"
+          },
+          {
+            "label": "t-pair",
+            "op": "advance",
+            "pair_state_id": "t512x896x81-pair-b",
+            "quantum": "step",
+            "state_id": "t512x896x81-pair-a"
+          },
+          {
+            "label": "t-pair",
+            "op": "advance",
+            "pair_state_id": "t512x896x81-pair-b",
+            "quantum": "step",
+            "state_id": "t512x896x81-pair-a"
+          },
+          {
+            "label": "t-pair",
+            "op": "advance",
+            "pair_state_id": "t512x896x81-pair-b",
+            "quantum": "step",
+            "state_id": "t512x896x81-pair-a"
+          },
+          {
+            "label": "t-pair",
+            "op": "advance",
+            "pair_state_id": "t512x896x81-pair-b",
+            "quantum": "step",
+            "state_id": "t512x896x81-pair-a"
+          },
+          {
+            "label": "finish-pair-a",
+            "op": "finish",
+            "output_mode": "check",
+            "state_id": "t512x896x81-pair-a"
+          },
+          {
+            "label": "finish-pair-b",
+            "op": "finish",
+            "output_mode": "check",
+            "state_id": "t512x896x81-pair-b"
+          },
+          {
+            "op": "release",
+            "state_id": "t512x896x81-pair-a"
+          },
+          {
+            "op": "release",
+            "state_id": "t512x896x81-pair-b"
+          }
+        ],
+        "artifact_dependencies": [],
+        "id": "timing",
+        "kind": "profile",
+        "requires": [
+          "exact"
+        ],
+        "worker": "wan",
+        "workers": [
+          "wan"
+        ]
+      }
+    ],
+    "schema": "ditserve.study.v1",
+    "workers": {
+      "wan": {
+        "backend": "wan",
+        "config": {
+          "attention": "flash",
+          "device": "cuda:0",
+          "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b",
+          "options": {
+            "execution": "block"
+          },
+          "vae_dtype": "bfloat16"
+        },
+        "environment": {
+          "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+        },
+        "gpu_uuid": "GPU-83566cdb-86ec-7bb4-c2c2-736c074f2fca",
+        "python": "python3"
+      }
+    }
+  },
+  "config_sha256": "0307b493618303b9f0b095d491449ddaaf3cfbfb79163ca29047e97cb6869932",
+  "experiment": "kairos-pair1gpu-5b",
+  "failures": [],
+  "measurement_scope": "supervised GPU experiment",
+  "metrics": {
+    "communication_p50_ms": null,
+    "communication_p99_ms": null,
+    "completed": 0,
+    "control_ms": 0.0,
+    "deadline_attainment": null,
+    "denominator": "all frozen requests, including failed and blocked",
+    "failed": 0,
+    "incomplete": 0,
+    "latency_p50_ms": null,
+    "latency_p95_ms": null,
+    "model_ms": 0.0,
+    "observation_count": 0,
+    "observation_ms": 0.0,
+    "ontime": 0,
+    "qualification_status": "unverified",
+    "qualification_verified_requests": 0,
+    "qualified_goodput_rps": null,
+    "qualified_ontime": 0,
+    "requests": 0
+  },
+  "phases": [
+    {
+      "attempt": 1,
+      "cells": [
+        {
+          "cell": 0,
+          "metrics": {
+            "operations": 36,
+            "ranks": 1
+          },
+          "operations": [
+            {
+              "action": {
+                "op": "prepare",
+                "spec": {
+                  "cache": false,
+                  "frames": 17,
+                  "guidance_scale": 5.0,
+                  "height": 512,
+                  "max_continuous": 1,
+                  "negative_prompt": "",
+                  "prompt": "A red ceramic kettle on a wooden table.",
+                  "seed": 7,
+                  "steps": 8,
+                  "threshold": 0.0,
+                  "width": 896
+                },
+                "state_id": "x-seq-a"
+              },
+              "ranks": [
+                {
+                  "cpu_prompt_encode_ms": 16487.133252434433,
+                  "gpu_prepare_ms": 47.42452409118414,
+                  "load_ms": 49553.83689329028,
+                  "model_ms": 16534.557776525617,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 0,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-seq-a",
+                  "worker_operation_ms": 16550.927756354213,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "op": "prepare",
+                "spec": {
+                  "cache": false,
+                  "frames": 17,
+                  "guidance_scale": 5.0,
+                  "height": 512,
+                  "max_continuous": 1,
+                  "negative_prompt": "",
+                  "prompt": "A red ceramic kettle on a wooden table.",
+                  "seed": 11,
+                  "steps": 8,
+                  "threshold": 0.0,
+                  "width": 896
+                },
+                "state_id": "x-seq-b"
+              },
+              "ranks": [
+                {
+                  "cpu_prompt_encode_ms": 16693.423240445554,
+                  "gpu_prepare_ms": 13.00228200852871,
+                  "load_ms": 0.0,
+                  "model_ms": 16706.425522454083,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 0,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-seq-b",
+                  "worker_operation_ms": 16709.991614334285,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "x-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "x-seq-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 882.563816383481,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 0
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 882.563816383481,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 1,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-seq-a",
+                  "worker_operation_ms": 883.4698814898729,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "x-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "x-seq-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 398.59041199088097,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 1
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 398.59041199088097,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 2,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-seq-a",
+                  "worker_operation_ms": 399.35844764113426,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "x-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "x-seq-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 432.4968857690692,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 2
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 432.4968857690692,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 3,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-seq-a",
+                  "worker_operation_ms": 433.1873971968889,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "x-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "x-seq-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 395.7560956478119,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 3
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 395.7560956478119,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 4,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-seq-a",
+                  "worker_operation_ms": 396.3172035291791,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "x-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "x-seq-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 399.9632680788636,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 4
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 399.9632680788636,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 5,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-seq-a",
+                  "worker_operation_ms": 400.69488529115915,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "x-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "x-seq-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 401.08404494822025,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 5
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 401.08404494822025,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 6,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-seq-a",
+                  "worker_operation_ms": 401.66542399674654,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "x-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "x-seq-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 400.4611875861883,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 6
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 400.4611875861883,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 7,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-seq-a",
+                  "worker_operation_ms": 401.1865369975567,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "x-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "x-seq-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 397.05848321318626,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 7
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 397.05848321318626,
+                  "progress": {
+                    "done": true,
+                    "next_action": "finish",
+                    "step": 8,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-seq-a",
+                  "worker_operation_ms": 397.7296547964215,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "x-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "x-seq-b"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 398.780201561749,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 0
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 398.780201561749,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 1,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-seq-b",
+                  "worker_operation_ms": 399.3233796209097,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "x-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "x-seq-b"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 402.3619666695595,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 1
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 402.3619666695595,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 2,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-seq-b",
+                  "worker_operation_ms": 403.08050718158484,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "x-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "x-seq-b"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 399.49142187833786,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 2
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 399.49142187833786,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 3,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-seq-b",
+                  "worker_operation_ms": 400.2043418586254,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "x-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "x-seq-b"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 400.70296358317137,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 3
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 400.70296358317137,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 4,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-seq-b",
+                  "worker_operation_ms": 401.35753247886896,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "x-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "x-seq-b"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 397.2401451319456,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 4
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 397.2401451319456,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 5,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-seq-b",
+                  "worker_operation_ms": 397.9808008298278,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "x-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "x-seq-b"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 398.718842305243,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 5
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 398.718842305243,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 6,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-seq-b",
+                  "worker_operation_ms": 399.2185899987817,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "x-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "x-seq-b"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 405.63242323696613,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 6
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 405.63242323696613,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 7,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-seq-b",
+                  "worker_operation_ms": 406.3182305544615,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "x-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "x-seq-b"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 399.1915872320533,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 7
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 399.1915872320533,
+                  "progress": {
+                    "done": true,
+                    "next_action": "finish",
+                    "step": 8,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-seq-b",
+                  "worker_operation_ms": 399.7616432607174,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "finish-seq-a",
+                "op": "finish",
+                "output_mode": "digest",
+                "state_id": "x-seq-a"
+              },
+              "ranks": [
+                {
+                  "backend": "wan",
+                  "generation": {
+                    "approximate": false,
+                    "attention": "flash",
+                    "cache": false,
+                    "cache_enabled": false,
+                    "cache_threshold": 0.0,
+                    "dtype": "float16",
+                    "fps": 16,
+                    "frames": 17,
+                    "guidance_scale": 5.0,
+                    "height": 512,
+                    "max_continuous": 1,
+                    "model": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+                    "model_integrity": "local_snapshot_not_rehashed",
+                    "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b",
+                    "negative_prompt": "",
+                    "prompt": "A red ceramic kettle on a wooden table.",
+                    "request_id": "x-seq-a",
+                    "revision": "0fad780a534b6463e45facd96134c9f345acfa5b",
+                    "seed": 7,
+                    "steps": 8,
+                    "text_encoder_device": "cpu",
+                    "text_encoder_dtype": "float32",
+                    "threshold": 0.0,
+                    "vae_dtype": "bfloat16",
+                    "width": 896
+                  },
+                  "load_ms": 0.0,
+                  "measured": true,
+                  "model_ms": 1887.094627134502,
+                  "output": {
+                    "array_hash_ms": 317.1119475737214,
+                    "array_sha256": "85afe404e27a557408b779799c376a0e56695fa1d0f6d67532953406c2e6dc3a",
+                    "dtype": "float32",
+                    "finite": true,
+                    "output_mode": "digest",
+                    "persistence_ms": 329.8813197761774,
+                    "shape": [
+                      1,
+                      17,
+                      512,
+                      896,
+                      3
+                    ]
+                  },
+                  "path_history": [
+                    {
+                      "path": "compute",
+                      "step_index": 0
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 1
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 2
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 3
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 4
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 5
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 6
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 7
+                    }
+                  ],
+                  "progress": {
+                    "done": true,
+                    "next_action": "finish",
+                    "step": 8,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-seq-a",
+                  "worker_operation_ms": 2259.928334504366,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "finish-seq-b",
+                "op": "finish",
+                "output_mode": "digest",
+                "state_id": "x-seq-b"
+              },
+              "ranks": [
+                {
+                  "backend": "wan",
+                  "generation": {
+                    "approximate": false,
+                    "attention": "flash",
+                    "cache": false,
+                    "cache_enabled": false,
+                    "cache_threshold": 0.0,
+                    "dtype": "float16",
+                    "fps": 16,
+                    "frames": 17,
+                    "guidance_scale": 5.0,
+                    "height": 512,
+                    "max_continuous": 1,
+                    "model": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+                    "model_integrity": "local_snapshot_not_rehashed",
+                    "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b",
+                    "negative_prompt": "",
+                    "prompt": "A red ceramic kettle on a wooden table.",
+                    "request_id": "x-seq-b",
+                    "revision": "0fad780a534b6463e45facd96134c9f345acfa5b",
+                    "seed": 11,
+                    "steps": 8,
+                    "text_encoder_device": "cpu",
+                    "text_encoder_dtype": "float32",
+                    "threshold": 0.0,
+                    "vae_dtype": "bfloat16",
+                    "width": 896
+                  },
+                  "load_ms": 0.0,
+                  "measured": true,
+                  "model_ms": 1287.4523792415857,
+                  "output": {
+                    "array_hash_ms": 318.08970123529434,
+                    "array_sha256": "dd8883c7f01923c3637527ee555c4b1fefdfda897e175d72a3f7d751517ba8fd",
+                    "dtype": "float32",
+                    "finite": true,
+                    "output_mode": "digest",
+                    "persistence_ms": 330.81495575606823,
+                    "shape": [
+                      1,
+                      17,
+                      512,
+                      896,
+                      3
+                    ]
+                  },
+                  "path_history": [
+                    {
+                      "path": "compute",
+                      "step_index": 0
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 1
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 2
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 3
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 4
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 5
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 6
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 7
+                    }
+                  ],
+                  "progress": {
+                    "done": true,
+                    "next_action": "finish",
+                    "step": 8,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-seq-b",
+                  "worker_operation_ms": 1660.176913253963,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "op": "release",
+                "state_id": "x-seq-a"
+              },
+              "ranks": [
+                {
+                  "load_ms": 0.0,
+                  "released": "x-seq-a",
+                  "worker_operation_ms": 0.39362814277410507,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "op": "release",
+                "state_id": "x-seq-b"
+              },
+              "ranks": [
+                {
+                  "load_ms": 0.0,
+                  "released": "x-seq-b",
+                  "worker_operation_ms": 0.17861369997262955,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "op": "prepare",
+                "spec": {
+                  "cache": false,
+                  "frames": 17,
+                  "guidance_scale": 5.0,
+                  "height": 512,
+                  "max_continuous": 1,
+                  "negative_prompt": "",
+                  "prompt": "A red ceramic kettle on a wooden table.",
+                  "seed": 7,
+                  "steps": 8,
+                  "threshold": 0.0,
+                  "width": 896
+                },
+                "state_id": "x-pair-a"
+              },
+              "ranks": [
+                {
+                  "cpu_prompt_encode_ms": 15649.582484737039,
+                  "gpu_prepare_ms": 7.371005602180958,
+                  "load_ms": 0.0,
+                  "model_ms": 15656.95349033922,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 0,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-pair-a",
+                  "worker_operation_ms": 15659.545504488051,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "op": "prepare",
+                "spec": {
+                  "cache": false,
+                  "frames": 17,
+                  "guidance_scale": 5.0,
+                  "height": 512,
+                  "max_continuous": 1,
+                  "negative_prompt": "",
+                  "prompt": "A red ceramic kettle on a wooden table.",
+                  "seed": 11,
+                  "steps": 8,
+                  "threshold": 0.0,
+                  "width": 896
+                },
+                "state_id": "x-pair-b"
+              },
+              "ranks": [
+                {
+                  "cpu_prompt_encode_ms": 13311.347035691142,
+                  "gpu_prepare_ms": 7.278046570718288,
+                  "load_ms": 0.0,
+                  "model_ms": 13318.62508226186,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 0,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-pair-b",
+                  "worker_operation_ms": 13321.39022089541,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "x-pair",
+                "op": "advance",
+                "pair_state_id": "x-pair-b",
+                "quantum": "step",
+                "state_id": "x-pair-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 868.9366905018687,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 0
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 868.9366905018687,
+                  "pair_events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 868.9366905018687,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 0
+                    }
+                  ],
+                  "pair_progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 1,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "pair_state_id": "x-pair-b",
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 1,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-pair-a",
+                  "worker_operation_ms": 869.8827596381307,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "x-pair",
+                "op": "advance",
+                "pair_state_id": "x-pair-b",
+                "quantum": "step",
+                "state_id": "x-pair-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 821.6799702495337,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 1
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 821.6799702495337,
+                  "pair_events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 821.6799702495337,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 1
+                    }
+                  ],
+                  "pair_progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 2,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "pair_state_id": "x-pair-b",
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 2,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-pair-a",
+                  "worker_operation_ms": 822.376448661089,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "x-pair",
+                "op": "advance",
+                "pair_state_id": "x-pair-b",
+                "quantum": "step",
+                "state_id": "x-pair-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 819.0456004813313,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 2
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 819.0456004813313,
+                  "pair_events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 819.0456004813313,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 2
+                    }
+                  ],
+                  "pair_progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 3,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "pair_state_id": "x-pair-b",
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 3,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-pair-a",
+                  "worker_operation_ms": 820.2293897047639,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "x-pair",
+                "op": "advance",
+                "pair_state_id": "x-pair-b",
+                "quantum": "step",
+                "state_id": "x-pair-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 819.1784741356969,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 3
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 819.1784741356969,
+                  "pair_events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 819.1784741356969,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 3
+                    }
+                  ],
+                  "pair_progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 4,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "pair_state_id": "x-pair-b",
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 4,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-pair-a",
+                  "worker_operation_ms": 820.1644364744425,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "x-pair",
+                "op": "advance",
+                "pair_state_id": "x-pair-b",
+                "quantum": "step",
+                "state_id": "x-pair-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 822.5695658475161,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 4
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 822.5695658475161,
+                  "pair_events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 822.5695658475161,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 4
+                    }
+                  ],
+                  "pair_progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 5,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "pair_state_id": "x-pair-b",
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 5,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-pair-a",
+                  "worker_operation_ms": 823.4929610043764,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "x-pair",
+                "op": "advance",
+                "pair_state_id": "x-pair-b",
+                "quantum": "step",
+                "state_id": "x-pair-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 821.2682725861669,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 5
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 821.2682725861669,
+                  "pair_events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 821.2682725861669,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 5
+                    }
+                  ],
+                  "pair_progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 6,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "pair_state_id": "x-pair-b",
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 6,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-pair-a",
+                  "worker_operation_ms": 822.1086487174034,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "x-pair",
+                "op": "advance",
+                "pair_state_id": "x-pair-b",
+                "quantum": "step",
+                "state_id": "x-pair-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 825.47377794981,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 6
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 825.47377794981,
+                  "pair_events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 825.47377794981,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 6
+                    }
+                  ],
+                  "pair_progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 7,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "pair_state_id": "x-pair-b",
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 7,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-pair-a",
+                  "worker_operation_ms": 826.2998927384615,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "x-pair",
+                "op": "advance",
+                "pair_state_id": "x-pair-b",
+                "quantum": "step",
+                "state_id": "x-pair-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 811.843253672123,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 7
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 811.843253672123,
+                  "pair_events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 811.843253672123,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 7
+                    }
+                  ],
+                  "pair_progress": {
+                    "done": true,
+                    "next_action": "finish",
+                    "step": 8,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "pair_state_id": "x-pair-b",
+                  "progress": {
+                    "done": true,
+                    "next_action": "finish",
+                    "step": 8,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-pair-a",
+                  "worker_operation_ms": 812.8433953970671,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "finish-pair-a",
+                "op": "finish",
+                "output_mode": "digest",
+                "state_id": "x-pair-a"
+              },
+              "ranks": [
+                {
+                  "backend": "wan",
+                  "generation": {
+                    "approximate": false,
+                    "attention": "flash",
+                    "cache": false,
+                    "cache_enabled": false,
+                    "cache_threshold": 0.0,
+                    "dtype": "float16",
+                    "fps": 16,
+                    "frames": 17,
+                    "guidance_scale": 5.0,
+                    "height": 512,
+                    "max_continuous": 1,
+                    "model": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+                    "model_integrity": "local_snapshot_not_rehashed",
+                    "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b",
+                    "negative_prompt": "",
+                    "prompt": "A red ceramic kettle on a wooden table.",
+                    "request_id": "x-pair-a",
+                    "revision": "0fad780a534b6463e45facd96134c9f345acfa5b",
+                    "seed": 7,
+                    "steps": 8,
+                    "text_encoder_device": "cpu",
+                    "text_encoder_dtype": "float32",
+                    "threshold": 0.0,
+                    "vae_dtype": "bfloat16",
+                    "width": 896
+                  },
+                  "load_ms": 0.0,
+                  "measured": true,
+                  "model_ms": 1258.1067252904177,
+                  "output": {
+                    "array_hash_ms": 319.58928890526295,
+                    "array_sha256": "85afe404e27a557408b779799c376a0e56695fa1d0f6d67532953406c2e6dc3a",
+                    "dtype": "float32",
+                    "finite": true,
+                    "output_mode": "digest",
+                    "persistence_ms": 334.81002505868673,
+                    "shape": [
+                      1,
+                      17,
+                      512,
+                      896,
+                      3
+                    ]
+                  },
+                  "path_history": [
+                    {
+                      "path": "compute",
+                      "step_index": 0
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 1
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 2
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 3
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 4
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 5
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 6
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 7
+                    }
+                  ],
+                  "progress": {
+                    "done": true,
+                    "next_action": "finish",
+                    "step": 8,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-pair-a",
+                  "worker_operation_ms": 1638.8233210891485,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "finish-pair-b",
+                "op": "finish",
+                "output_mode": "digest",
+                "state_id": "x-pair-b"
+              },
+              "ranks": [
+                {
+                  "backend": "wan",
+                  "generation": {
+                    "approximate": false,
+                    "attention": "flash",
+                    "cache": false,
+                    "cache_enabled": false,
+                    "cache_threshold": 0.0,
+                    "dtype": "float16",
+                    "fps": 16,
+                    "frames": 17,
+                    "guidance_scale": 5.0,
+                    "height": 512,
+                    "max_continuous": 1,
+                    "model": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+                    "model_integrity": "local_snapshot_not_rehashed",
+                    "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b",
+                    "negative_prompt": "",
+                    "prompt": "A red ceramic kettle on a wooden table.",
+                    "request_id": "x-pair-b",
+                    "revision": "0fad780a534b6463e45facd96134c9f345acfa5b",
+                    "seed": 11,
+                    "steps": 8,
+                    "text_encoder_device": "cpu",
+                    "text_encoder_dtype": "float32",
+                    "threshold": 0.0,
+                    "vae_dtype": "bfloat16",
+                    "width": 896
+                  },
+                  "load_ms": 0.0,
+                  "measured": true,
+                  "model_ms": 1282.3007851839066,
+                  "output": {
+                    "array_hash_ms": 311.66256964206696,
+                    "array_sha256": "dd8883c7f01923c3637527ee555c4b1fefdfda897e175d72a3f7d751517ba8fd",
+                    "dtype": "float32",
+                    "finite": true,
+                    "output_mode": "digest",
+                    "persistence_ms": 335.1979460567236,
+                    "shape": [
+                      1,
+                      17,
+                      512,
+                      896,
+                      3
+                    ]
+                  },
+                  "path_history": [
+                    {
+                      "path": "compute",
+                      "step_index": 0
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 1
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 2
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 3
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 4
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 5
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 6
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 7
+                    }
+                  ],
+                  "progress": {
+                    "done": true,
+                    "next_action": "finish",
+                    "step": 8,
+                    "steps": 8,
+                    "transfer_ready": true
+                  },
+                  "state_id": "x-pair-b",
+                  "worker_operation_ms": 1669.2322390154004,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "op": "release",
+                "state_id": "x-pair-a"
+              },
+              "ranks": [
+                {
+                  "load_ms": 0.0,
+                  "released": "x-pair-a",
+                  "worker_operation_ms": 0.35906676203012466,
+                  "worker_pid": 88
+                }
+              ]
+            },
+            {
+              "action": {
+                "op": "release",
+                "state_id": "x-pair-b"
+              },
+              "ranks": [
+                {
+                  "load_ms": 0.0,
+                  "released": "x-pair-b",
+                  "worker_operation_ms": 0.19644014537334442,
+                  "worker_pid": 88
+                }
+              ]
+            }
+          ],
+          "order": "forward",
+          "requests": [],
+          "status": "completed"
+        }
+      ],
+      "charge": {
+        "cleanup_verified": true,
+        "deadline_monotonic": 7343833.033539047,
+        "devices": 1,
+        "elapsed_seconds": 135.91049727797508,
+        "ended_at": 1792569412.8643832,
+        "ended_monotonic": 7340368.944036325,
+        "gpu_seconds": 135.91049727797508,
+        "identity": {
+          "attempt": 1,
+          "config_sha256": "0307b493618303b9f0b095d491449ddaaf3cfbfb79163ca29047e97cb6869932",
+          "gpu_uuids": [
+            "GPU-83566cdb-86ec-7bb4-c2c2-736c074f2fca"
+          ],
+          "run_id": "p14c-20261020t0330z",
+          "source_sha256": "a4b8c4ea75551eafaa63232341da72735f9c4f948de91e03b7ec070cab699507"
+        },
+        "phase": "exact",
+        "repair": false,
+        "session_id": "f1e5887a69e488e92e44f3ccfb44e627",
+        "started_at": 1792569276.9538841,
+        "started_monotonic": 7340233.033539047,
+        "status": "completed",
+        "supervisor_pid": 81
+      },
+      "final_occupancy": {
+        "cuda_initialized": false,
+        "devices": [
+          {
+            "name": "NVIDIA A100-PCIE-40GB",
+            "uuid": "GPU-83566cdb-86ec-7bb4-c2c2-736c074f2fca"
+          }
+        ],
+        "foreign": [],
+        "owned": [],
+        "status": "exclusive_observed"
+      },
+      "id": "exact",
+      "qualification": {
+        "checks": [],
+        "qualified": false,
+        "scope": "configured_gates_only",
+        "scopes": {
+          "numeric": {
+            "checks": 0,
+            "passed": 0,
+            "status": "unverified",
+            "verified": 0
+          },
+          "performance": {
+            "checks": 0,
+            "passed": 0,
+            "status": "unverified",
+            "verified": 0
+          },
+          "semantic": {
+            "checks": 0,
+            "passed": 0,
+            "status": "unverified",
+            "verified": 0
+          }
+        },
+        "status": "unverified"
+      },
+      "session_id": "f1e5887a69e488e92e44f3ccfb44e627",
+      "status": "completed"
+    },
+    {
+      "attempt": 1,
+      "cells": [
+        {
+          "cell": 0,
+          "metrics": {
+            "operations": 48,
+            "ranks": 1
+          },
+          "operations": [
+            {
+              "action": {
+                "op": "prepare",
+                "spec": {
+                  "cache": false,
+                  "frames": 121,
+                  "guidance_scale": 5.0,
+                  "height": 704,
+                  "max_continuous": 1,
+                  "negative_prompt": "",
+                  "prompt": "A red ceramic kettle on a wooden table.",
+                  "seed": 7,
+                  "steps": 4,
+                  "threshold": 0.0,
+                  "width": 1280
+                },
+                "state_id": "t704x1280x121-seq-a"
+              },
+              "ranks": [
+                {
+                  "cpu_prompt_encode_ms": 14497.18079995364,
+                  "gpu_prepare_ms": 60.335712507367134,
+                  "load_ms": 20914.40710891038,
+                  "model_ms": 14557.516512461007,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 0,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t704x1280x121-seq-a",
+                  "worker_operation_ms": 14570.841932669282,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "op": "prepare",
+                "spec": {
+                  "cache": false,
+                  "frames": 121,
+                  "guidance_scale": 5.0,
+                  "height": 704,
+                  "max_continuous": 1,
+                  "negative_prompt": "",
+                  "prompt": "A red ceramic kettle on a wooden table.",
+                  "seed": 11,
+                  "steps": 4,
+                  "threshold": 0.0,
+                  "width": 1280
+                },
+                "state_id": "t704x1280x121-seq-b"
+              },
+              "ranks": [
+                {
+                  "cpu_prompt_encode_ms": 15984.748805873096,
+                  "gpu_prepare_ms": 38.23931608349085,
+                  "load_ms": 0.0,
+                  "model_ms": 16022.988121956587,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 0,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t704x1280x121-seq-b",
+                  "worker_operation_ms": 16025.818912312388,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "t-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "t704x1280x121-seq-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 8428.59725188464,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 0
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 8428.59725188464,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 1,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t704x1280x121-seq-a",
+                  "worker_operation_ms": 8429.207905195653,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "t-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "t704x1280x121-seq-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 8062.236495316029,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 1
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 8062.236495316029,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 2,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t704x1280x121-seq-a",
+                  "worker_operation_ms": 8062.950551509857,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "t-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "t704x1280x121-seq-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 8102.459489367902,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 2
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 8102.459489367902,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 3,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t704x1280x121-seq-a",
+                  "worker_operation_ms": 8103.106854483485,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "t-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "t704x1280x121-seq-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 8092.695960775018,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 3
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 8092.695960775018,
+                  "progress": {
+                    "done": true,
+                    "next_action": "finish",
+                    "step": 4,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t704x1280x121-seq-a",
+                  "worker_operation_ms": 8093.49310118705,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "t-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "t704x1280x121-seq-b"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 8136.194191873074,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 0
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 8136.194191873074,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 1,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t704x1280x121-seq-b",
+                  "worker_operation_ms": 8137.460233643651,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "t-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "t704x1280x121-seq-b"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 8138.743771240115,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 1
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 8138.743771240115,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 2,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t704x1280x121-seq-b",
+                  "worker_operation_ms": 8139.639311470091,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "t-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "t704x1280x121-seq-b"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 8142.628416419029,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 2
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 8142.628416419029,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 3,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t704x1280x121-seq-b",
+                  "worker_operation_ms": 8143.579866737127,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "t-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "t704x1280x121-seq-b"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 8144.321457482874,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 3
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 8144.321457482874,
+                  "progress": {
+                    "done": true,
+                    "next_action": "finish",
+                    "step": 4,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t704x1280x121-seq-b",
+                  "worker_operation_ms": 8145.175632089376,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "finish-seq-a",
+                "op": "finish",
+                "output_mode": "check",
+                "state_id": "t704x1280x121-seq-a"
+              },
+              "ranks": [
+                {
+                  "backend": "wan",
+                  "generation": {
+                    "approximate": false,
+                    "attention": "flash",
+                    "cache": false,
+                    "cache_enabled": false,
+                    "cache_threshold": 0.0,
+                    "dtype": "float16",
+                    "fps": 16,
+                    "frames": 121,
+                    "guidance_scale": 5.0,
+                    "height": 704,
+                    "max_continuous": 1,
+                    "model": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+                    "model_integrity": "local_snapshot_not_rehashed",
+                    "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b",
+                    "negative_prompt": "",
+                    "prompt": "A red ceramic kettle on a wooden table.",
+                    "request_id": "t704x1280x121-seq-a",
+                    "revision": "0fad780a534b6463e45facd96134c9f345acfa5b",
+                    "seed": 7,
+                    "steps": 4,
+                    "text_encoder_device": "cpu",
+                    "text_encoder_dtype": "float32",
+                    "threshold": 0.0,
+                    "vae_dtype": "bfloat16",
+                    "width": 1280
+                  },
+                  "load_ms": 0.0,
+                  "measured": true,
+                  "model_ms": 17710.442359559238,
+                  "output": {
+                    "dtype": "float32",
+                    "finite": true,
+                    "output_mode": "check",
+                    "persistence_ms": 170.02438940107822,
+                    "shape": [
+                      1,
+                      121,
+                      704,
+                      1280,
+                      3
+                    ]
+                  },
+                  "path_history": [
+                    {
+                      "path": "compute",
+                      "step_index": 0
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 1
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 2
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 3
+                    }
+                  ],
+                  "progress": {
+                    "done": true,
+                    "next_action": "finish",
+                    "step": 4,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t704x1280x121-seq-a",
+                  "worker_operation_ms": 18179.172655567527,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "finish-seq-b",
+                "op": "finish",
+                "output_mode": "check",
+                "state_id": "t704x1280x121-seq-b"
+              },
+              "ranks": [
+                {
+                  "backend": "wan",
+                  "generation": {
+                    "approximate": false,
+                    "attention": "flash",
+                    "cache": false,
+                    "cache_enabled": false,
+                    "cache_threshold": 0.0,
+                    "dtype": "float16",
+                    "fps": 16,
+                    "frames": 121,
+                    "guidance_scale": 5.0,
+                    "height": 704,
+                    "max_continuous": 1,
+                    "model": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+                    "model_integrity": "local_snapshot_not_rehashed",
+                    "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b",
+                    "negative_prompt": "",
+                    "prompt": "A red ceramic kettle on a wooden table.",
+                    "request_id": "t704x1280x121-seq-b",
+                    "revision": "0fad780a534b6463e45facd96134c9f345acfa5b",
+                    "seed": 11,
+                    "steps": 4,
+                    "text_encoder_device": "cpu",
+                    "text_encoder_dtype": "float32",
+                    "threshold": 0.0,
+                    "vae_dtype": "bfloat16",
+                    "width": 1280
+                  },
+                  "load_ms": 0.0,
+                  "measured": true,
+                  "model_ms": 17172.582034021616,
+                  "output": {
+                    "dtype": "float32",
+                    "finite": true,
+                    "output_mode": "check",
+                    "persistence_ms": 172.65166621655226,
+                    "shape": [
+                      1,
+                      121,
+                      704,
+                      1280,
+                      3
+                    ]
+                  },
+                  "path_history": [
+                    {
+                      "path": "compute",
+                      "step_index": 0
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 1
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 2
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 3
+                    }
+                  ],
+                  "progress": {
+                    "done": true,
+                    "next_action": "finish",
+                    "step": 4,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t704x1280x121-seq-b",
+                  "worker_operation_ms": 17588.620546273887,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "op": "release",
+                "state_id": "t704x1280x121-seq-a"
+              },
+              "ranks": [
+                {
+                  "load_ms": 0.0,
+                  "released": "t704x1280x121-seq-a",
+                  "worker_operation_ms": 0.41400548070669174,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "op": "release",
+                "state_id": "t704x1280x121-seq-b"
+              },
+              "ranks": [
+                {
+                  "load_ms": 0.0,
+                  "released": "t704x1280x121-seq-b",
+                  "worker_operation_ms": 0.24303141981363297,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "op": "prepare",
+                "spec": {
+                  "cache": false,
+                  "frames": 121,
+                  "guidance_scale": 5.0,
+                  "height": 704,
+                  "max_continuous": 1,
+                  "negative_prompt": "",
+                  "prompt": "A red ceramic kettle on a wooden table.",
+                  "seed": 7,
+                  "steps": 4,
+                  "threshold": 0.0,
+                  "width": 1280
+                },
+                "state_id": "t704x1280x121-pair-a"
+              },
+              "ranks": [
+                {
+                  "cpu_prompt_encode_ms": 16855.41621502489,
+                  "gpu_prepare_ms": 49.03759993612766,
+                  "load_ms": 0.0,
+                  "model_ms": 16904.453814961016,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 0,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t704x1280x121-pair-a",
+                  "worker_operation_ms": 16907.00002387166,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "op": "prepare",
+                "spec": {
+                  "cache": false,
+                  "frames": 121,
+                  "guidance_scale": 5.0,
+                  "height": 704,
+                  "max_continuous": 1,
+                  "negative_prompt": "",
+                  "prompt": "A red ceramic kettle on a wooden table.",
+                  "seed": 11,
+                  "steps": 4,
+                  "threshold": 0.0,
+                  "width": 1280
+                },
+                "state_id": "t704x1280x121-pair-b"
+              },
+              "ranks": [
+                {
+                  "cpu_prompt_encode_ms": 15309.531776234508,
+                  "gpu_prepare_ms": 41.06607288122177,
+                  "load_ms": 0.0,
+                  "model_ms": 15350.59784911573,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 0,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t704x1280x121-pair-b",
+                  "worker_operation_ms": 15353.164865635335,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "t-pair",
+                "op": "advance",
+                "pair_state_id": "t704x1280x121-pair-b",
+                "quantum": "step",
+                "state_id": "t704x1280x121-pair-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 16738.764004781842,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 0
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 16738.764004781842,
+                  "pair_events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 16738.764004781842,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 0
+                    }
+                  ],
+                  "pair_progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 1,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "pair_state_id": "t704x1280x121-pair-b",
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 1,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t704x1280x121-pair-a",
+                  "worker_operation_ms": 16739.944227971137,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "t-pair",
+                "op": "advance",
+                "pair_state_id": "t704x1280x121-pair-b",
+                "quantum": "step",
+                "state_id": "t704x1280x121-pair-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 16747.434224002063,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 1
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 16747.434224002063,
+                  "pair_events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 16747.434224002063,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 1
+                    }
+                  ],
+                  "pair_progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 2,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "pair_state_id": "t704x1280x121-pair-b",
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 2,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t704x1280x121-pair-a",
+                  "worker_operation_ms": 16748.28693922609,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "t-pair",
+                "op": "advance",
+                "pair_state_id": "t704x1280x121-pair-b",
+                "quantum": "step",
+                "state_id": "t704x1280x121-pair-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 16801.478245295584,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 2
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 16801.478245295584,
+                  "pair_events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 16801.478245295584,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 2
+                    }
+                  ],
+                  "pair_progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 3,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "pair_state_id": "t704x1280x121-pair-b",
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 3,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t704x1280x121-pair-a",
+                  "worker_operation_ms": 16802.753151394427,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "t-pair",
+                "op": "advance",
+                "pair_state_id": "t704x1280x121-pair-b",
+                "quantum": "step",
+                "state_id": "t704x1280x121-pair-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 16825.04705246538,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 3
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 16825.04705246538,
+                  "pair_events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 16825.04705246538,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 3
+                    }
+                  ],
+                  "pair_progress": {
+                    "done": true,
+                    "next_action": "finish",
+                    "step": 4,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "pair_state_id": "t704x1280x121-pair-b",
+                  "progress": {
+                    "done": true,
+                    "next_action": "finish",
+                    "step": 4,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t704x1280x121-pair-a",
+                  "worker_operation_ms": 16826.216956600547,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "finish-pair-a",
+                "op": "finish",
+                "output_mode": "check",
+                "state_id": "t704x1280x121-pair-a"
+              },
+              "ranks": [
+                {
+                  "backend": "wan",
+                  "generation": {
+                    "approximate": false,
+                    "attention": "flash",
+                    "cache": false,
+                    "cache_enabled": false,
+                    "cache_threshold": 0.0,
+                    "dtype": "float16",
+                    "fps": 16,
+                    "frames": 121,
+                    "guidance_scale": 5.0,
+                    "height": 704,
+                    "max_continuous": 1,
+                    "model": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+                    "model_integrity": "local_snapshot_not_rehashed",
+                    "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b",
+                    "negative_prompt": "",
+                    "prompt": "A red ceramic kettle on a wooden table.",
+                    "request_id": "t704x1280x121-pair-a",
+                    "revision": "0fad780a534b6463e45facd96134c9f345acfa5b",
+                    "seed": 7,
+                    "steps": 4,
+                    "text_encoder_device": "cpu",
+                    "text_encoder_dtype": "float32",
+                    "threshold": 0.0,
+                    "vae_dtype": "bfloat16",
+                    "width": 1280
+                  },
+                  "load_ms": 0.0,
+                  "measured": true,
+                  "model_ms": 17205.430041067302,
+                  "output": {
+                    "dtype": "float32",
+                    "finite": true,
+                    "output_mode": "check",
+                    "persistence_ms": 164.9644747376442,
+                    "shape": [
+                      1,
+                      121,
+                      704,
+                      1280,
+                      3
+                    ]
+                  },
+                  "path_history": [
+                    {
+                      "path": "compute",
+                      "step_index": 0
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 1
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 2
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 3
+                    }
+                  ],
+                  "progress": {
+                    "done": true,
+                    "next_action": "finish",
+                    "step": 4,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t704x1280x121-pair-a",
+                  "worker_operation_ms": 17636.466722004116,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "finish-pair-b",
+                "op": "finish",
+                "output_mode": "check",
+                "state_id": "t704x1280x121-pair-b"
+              },
+              "ranks": [
+                {
+                  "backend": "wan",
+                  "generation": {
+                    "approximate": false,
+                    "attention": "flash",
+                    "cache": false,
+                    "cache_enabled": false,
+                    "cache_threshold": 0.0,
+                    "dtype": "float16",
+                    "fps": 16,
+                    "frames": 121,
+                    "guidance_scale": 5.0,
+                    "height": 704,
+                    "max_continuous": 1,
+                    "model": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+                    "model_integrity": "local_snapshot_not_rehashed",
+                    "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b",
+                    "negative_prompt": "",
+                    "prompt": "A red ceramic kettle on a wooden table.",
+                    "request_id": "t704x1280x121-pair-b",
+                    "revision": "0fad780a534b6463e45facd96134c9f345acfa5b",
+                    "seed": 11,
+                    "steps": 4,
+                    "text_encoder_device": "cpu",
+                    "text_encoder_dtype": "float32",
+                    "threshold": 0.0,
+                    "vae_dtype": "bfloat16",
+                    "width": 1280
+                  },
+                  "load_ms": 0.0,
+                  "measured": true,
+                  "model_ms": 17296.91224358976,
+                  "output": {
+                    "dtype": "float32",
+                    "finite": true,
+                    "output_mode": "check",
+                    "persistence_ms": 167.34225116670132,
+                    "shape": [
+                      1,
+                      121,
+                      704,
+                      1280,
+                      3
+                    ]
+                  },
+                  "path_history": [
+                    {
+                      "path": "compute",
+                      "step_index": 0
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 1
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 2
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 3
+                    }
+                  ],
+                  "progress": {
+                    "done": true,
+                    "next_action": "finish",
+                    "step": 4,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t704x1280x121-pair-b",
+                  "worker_operation_ms": 17701.681099832058,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "op": "release",
+                "state_id": "t704x1280x121-pair-a"
+              },
+              "ranks": [
+                {
+                  "load_ms": 0.0,
+                  "released": "t704x1280x121-pair-a",
+                  "worker_operation_ms": 0.46349596232175827,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "op": "release",
+                "state_id": "t704x1280x121-pair-b"
+              },
+              "ranks": [
+                {
+                  "load_ms": 0.0,
+                  "released": "t704x1280x121-pair-b",
+                  "worker_operation_ms": 0.24145469069480896,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "op": "prepare",
+                "spec": {
+                  "cache": false,
+                  "frames": 81,
+                  "guidance_scale": 5.0,
+                  "height": 512,
+                  "max_continuous": 1,
+                  "negative_prompt": "",
+                  "prompt": "A red ceramic kettle on a wooden table.",
+                  "seed": 7,
+                  "steps": 4,
+                  "threshold": 0.0,
+                  "width": 896
+                },
+                "state_id": "t512x896x81-seq-a"
+              },
+              "ranks": [
+                {
+                  "cpu_prompt_encode_ms": 18159.960003569722,
+                  "gpu_prepare_ms": 15.157629735767841,
+                  "load_ms": 0.0,
+                  "model_ms": 18175.11763330549,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 0,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t512x896x81-seq-a",
+                  "worker_operation_ms": 18177.96691786498,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "op": "prepare",
+                "spec": {
+                  "cache": false,
+                  "frames": 81,
+                  "guidance_scale": 5.0,
+                  "height": 512,
+                  "max_continuous": 1,
+                  "negative_prompt": "",
+                  "prompt": "A red ceramic kettle on a wooden table.",
+                  "seed": 11,
+                  "steps": 4,
+                  "threshold": 0.0,
+                  "width": 896
+                },
+                "state_id": "t512x896x81-seq-b"
+              },
+              "ranks": [
+                {
+                  "cpu_prompt_encode_ms": 15814.53810352832,
+                  "gpu_prepare_ms": 17.492186278104782,
+                  "load_ms": 0.0,
+                  "model_ms": 15832.030289806426,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 0,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t512x896x81-seq-b",
+                  "worker_operation_ms": 15835.58103442192,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "t-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "t512x896x81-seq-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 1976.6846215352416,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 0
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 1976.6846215352416,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 1,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t512x896x81-seq-a",
+                  "worker_operation_ms": 1977.64156665653,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "t-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "t512x896x81-seq-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 1935.874029994011,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 1
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 1935.874029994011,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 2,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t512x896x81-seq-a",
+                  "worker_operation_ms": 1936.5503238514066,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "t-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "t512x896x81-seq-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 1937.817158177495,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 2
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 1937.817158177495,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 3,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t512x896x81-seq-a",
+                  "worker_operation_ms": 1938.5398915037513,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "t-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "t512x896x81-seq-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 1941.1692656576633,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 3
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 1941.1692656576633,
+                  "progress": {
+                    "done": true,
+                    "next_action": "finish",
+                    "step": 4,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t512x896x81-seq-a",
+                  "worker_operation_ms": 1941.9970093294978,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "t-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "t512x896x81-seq-b"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 1944.4782342761755,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 0
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 1944.4782342761755,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 1,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t512x896x81-seq-b",
+                  "worker_operation_ms": 1945.2519807964563,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "t-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "t512x896x81-seq-b"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 1943.8221100717783,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 1
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 1943.8221100717783,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 2,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t512x896x81-seq-b",
+                  "worker_operation_ms": 1944.4328909739852,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "t-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "t512x896x81-seq-b"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 1950.0157069414854,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 2
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 1950.0157069414854,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 3,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t512x896x81-seq-b",
+                  "worker_operation_ms": 1951.1134661734104,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "t-seq",
+                "op": "advance",
+                "quantum": "step",
+                "state_id": "t512x896x81-seq-b"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 1945.8530759438872,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 3
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 1945.8530759438872,
+                  "progress": {
+                    "done": true,
+                    "next_action": "finish",
+                    "step": 4,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t512x896x81-seq-b",
+                  "worker_operation_ms": 1947.5992918014526,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "finish-seq-a",
+                "op": "finish",
+                "output_mode": "check",
+                "state_id": "t512x896x81-seq-a"
+              },
+              "ranks": [
+                {
+                  "backend": "wan",
+                  "generation": {
+                    "approximate": false,
+                    "attention": "flash",
+                    "cache": false,
+                    "cache_enabled": false,
+                    "cache_threshold": 0.0,
+                    "dtype": "float16",
+                    "fps": 16,
+                    "frames": 81,
+                    "guidance_scale": 5.0,
+                    "height": 512,
+                    "max_continuous": 1,
+                    "model": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+                    "model_integrity": "local_snapshot_not_rehashed",
+                    "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b",
+                    "negative_prompt": "",
+                    "prompt": "A red ceramic kettle on a wooden table.",
+                    "request_id": "t512x896x81-seq-a",
+                    "revision": "0fad780a534b6463e45facd96134c9f345acfa5b",
+                    "seed": 7,
+                    "steps": 4,
+                    "text_encoder_device": "cpu",
+                    "text_encoder_dtype": "float32",
+                    "threshold": 0.0,
+                    "vae_dtype": "bfloat16",
+                    "width": 896
+                  },
+                  "load_ms": 0.0,
+                  "measured": true,
+                  "model_ms": 6298.256045207381,
+                  "output": {
+                    "dtype": "float32",
+                    "finite": true,
+                    "output_mode": "check",
+                    "persistence_ms": 94.13013700395823,
+                    "shape": [
+                      1,
+                      81,
+                      512,
+                      896,
+                      3
+                    ]
+                  },
+                  "path_history": [
+                    {
+                      "path": "compute",
+                      "step_index": 0
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 1
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 2
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 3
+                    }
+                  ],
+                  "progress": {
+                    "done": true,
+                    "next_action": "finish",
+                    "step": 4,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t512x896x81-seq-a",
+                  "worker_operation_ms": 6511.956064961851,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "finish-seq-b",
+                "op": "finish",
+                "output_mode": "check",
+                "state_id": "t512x896x81-seq-b"
+              },
+              "ranks": [
+                {
+                  "backend": "wan",
+                  "generation": {
+                    "approximate": false,
+                    "attention": "flash",
+                    "cache": false,
+                    "cache_enabled": false,
+                    "cache_threshold": 0.0,
+                    "dtype": "float16",
+                    "fps": 16,
+                    "frames": 81,
+                    "guidance_scale": 5.0,
+                    "height": 512,
+                    "max_continuous": 1,
+                    "model": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+                    "model_integrity": "local_snapshot_not_rehashed",
+                    "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b",
+                    "negative_prompt": "",
+                    "prompt": "A red ceramic kettle on a wooden table.",
+                    "request_id": "t512x896x81-seq-b",
+                    "revision": "0fad780a534b6463e45facd96134c9f345acfa5b",
+                    "seed": 11,
+                    "steps": 4,
+                    "text_encoder_device": "cpu",
+                    "text_encoder_dtype": "float32",
+                    "threshold": 0.0,
+                    "vae_dtype": "bfloat16",
+                    "width": 896
+                  },
+                  "load_ms": 0.0,
+                  "measured": true,
+                  "model_ms": 6085.820267908275,
+                  "output": {
+                    "dtype": "float32",
+                    "finite": true,
+                    "output_mode": "check",
+                    "persistence_ms": 62.71539069712162,
+                    "shape": [
+                      1,
+                      81,
+                      512,
+                      896,
+                      3
+                    ]
+                  },
+                  "path_history": [
+                    {
+                      "path": "compute",
+                      "step_index": 0
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 1
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 2
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 3
+                    }
+                  ],
+                  "progress": {
+                    "done": true,
+                    "next_action": "finish",
+                    "step": 4,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t512x896x81-seq-b",
+                  "worker_operation_ms": 6244.557620957494,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "op": "release",
+                "state_id": "t512x896x81-seq-a"
+              },
+              "ranks": [
+                {
+                  "load_ms": 0.0,
+                  "released": "t512x896x81-seq-a",
+                  "worker_operation_ms": 0.516403466463089,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "op": "release",
+                "state_id": "t512x896x81-seq-b"
+              },
+              "ranks": [
+                {
+                  "load_ms": 0.0,
+                  "released": "t512x896x81-seq-b",
+                  "worker_operation_ms": 0.22394303232431412,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "op": "prepare",
+                "spec": {
+                  "cache": false,
+                  "frames": 81,
+                  "guidance_scale": 5.0,
+                  "height": 512,
+                  "max_continuous": 1,
+                  "negative_prompt": "",
+                  "prompt": "A red ceramic kettle on a wooden table.",
+                  "seed": 7,
+                  "steps": 4,
+                  "threshold": 0.0,
+                  "width": 896
+                },
+                "state_id": "t512x896x81-pair-a"
+              },
+              "ranks": [
+                {
+                  "cpu_prompt_encode_ms": 18516.270324587822,
+                  "gpu_prepare_ms": 16.508344560861588,
+                  "load_ms": 0.0,
+                  "model_ms": 18532.778669148684,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 0,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t512x896x81-pair-a",
+                  "worker_operation_ms": 18535.876097157598,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "op": "prepare",
+                "spec": {
+                  "cache": false,
+                  "frames": 81,
+                  "guidance_scale": 5.0,
+                  "height": 512,
+                  "max_continuous": 1,
+                  "negative_prompt": "",
+                  "prompt": "A red ceramic kettle on a wooden table.",
+                  "seed": 11,
+                  "steps": 4,
+                  "threshold": 0.0,
+                  "width": 896
+                },
+                "state_id": "t512x896x81-pair-b"
+              },
+              "ranks": [
+                {
+                  "cpu_prompt_encode_ms": 14543.024078942835,
+                  "gpu_prepare_ms": 14.484058134257793,
+                  "load_ms": 0.0,
+                  "model_ms": 14557.508137077093,
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 0,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t512x896x81-pair-b",
+                  "worker_operation_ms": 14560.084391385317,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "t-pair",
+                "op": "advance",
+                "pair_state_id": "t512x896x81-pair-b",
+                "quantum": "step",
+                "state_id": "t512x896x81-pair-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 4056.283390149474,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 0
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 4056.283390149474,
+                  "pair_events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 4056.283390149474,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 0
+                    }
+                  ],
+                  "pair_progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 1,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "pair_state_id": "t512x896x81-pair-b",
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 1,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t512x896x81-pair-a",
+                  "worker_operation_ms": 4057.4657740071416,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "t-pair",
+                "op": "advance",
+                "pair_state_id": "t512x896x81-pair-b",
+                "quantum": "step",
+                "state_id": "t512x896x81-pair-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 4006.3114603981376,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 1
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 4006.3114603981376,
+                  "pair_events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 4006.3114603981376,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 1
+                    }
+                  ],
+                  "pair_progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 2,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "pair_state_id": "t512x896x81-pair-b",
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 2,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t512x896x81-pair-a",
+                  "worker_operation_ms": 4007.31180049479,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "t-pair",
+                "op": "advance",
+                "pair_state_id": "t512x896x81-pair-b",
+                "quantum": "step",
+                "state_id": "t512x896x81-pair-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 4020.831359550357,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 2
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 4020.831359550357,
+                  "pair_events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 4020.831359550357,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 2
+                    }
+                  ],
+                  "pair_progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 3,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "pair_state_id": "t512x896x81-pair-b",
+                  "progress": {
+                    "done": false,
+                    "next_action": "advance",
+                    "step": 3,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t512x896x81-pair-a",
+                  "worker_operation_ms": 4021.8070447444916,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "t-pair",
+                "op": "advance",
+                "pair_state_id": "t512x896x81-pair-b",
+                "quantum": "step",
+                "state_id": "t512x896x81-pair-a"
+              },
+              "ranks": [
+                {
+                  "events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 4021.21992316097,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 3
+                    }
+                  ],
+                  "load_ms": 0.0,
+                  "model_ms": 4021.21992316097,
+                  "pair_events": [
+                    {
+                      "block_cuda_ms": [],
+                      "blocks": 60,
+                      "branch": "cond",
+                      "extra_state_bytes": 0,
+                      "kind": "block_quantum",
+                      "ms": 4021.21992316097,
+                      "next_block": 0,
+                      "next_branch": "cond",
+                      "paired": true,
+                      "start_block": 0,
+                      "step_completed": true,
+                      "step_index": 3
+                    }
+                  ],
+                  "pair_progress": {
+                    "done": true,
+                    "next_action": "finish",
+                    "step": 4,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "pair_state_id": "t512x896x81-pair-b",
+                  "progress": {
+                    "done": true,
+                    "next_action": "finish",
+                    "step": 4,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t512x896x81-pair-a",
+                  "worker_operation_ms": 4022.180094383657,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "finish-pair-a",
+                "op": "finish",
+                "output_mode": "check",
+                "state_id": "t512x896x81-pair-a"
+              },
+              "ranks": [
+                {
+                  "backend": "wan",
+                  "generation": {
+                    "approximate": false,
+                    "attention": "flash",
+                    "cache": false,
+                    "cache_enabled": false,
+                    "cache_threshold": 0.0,
+                    "dtype": "float16",
+                    "fps": 16,
+                    "frames": 81,
+                    "guidance_scale": 5.0,
+                    "height": 512,
+                    "max_continuous": 1,
+                    "model": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+                    "model_integrity": "local_snapshot_not_rehashed",
+                    "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b",
+                    "negative_prompt": "",
+                    "prompt": "A red ceramic kettle on a wooden table.",
+                    "request_id": "t512x896x81-pair-a",
+                    "revision": "0fad780a534b6463e45facd96134c9f345acfa5b",
+                    "seed": 7,
+                    "steps": 4,
+                    "text_encoder_device": "cpu",
+                    "text_encoder_dtype": "float32",
+                    "threshold": 0.0,
+                    "vae_dtype": "bfloat16",
+                    "width": 896
+                  },
+                  "load_ms": 0.0,
+                  "measured": true,
+                  "model_ms": 6509.76413115859,
+                  "output": {
+                    "dtype": "float32",
+                    "finite": true,
+                    "output_mode": "check",
+                    "persistence_ms": 74.87245462834835,
+                    "shape": [
+                      1,
+                      81,
+                      512,
+                      896,
+                      3
+                    ]
+                  },
+                  "path_history": [
+                    {
+                      "path": "compute",
+                      "step_index": 0
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 1
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 2
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 3
+                    }
+                  ],
+                  "progress": {
+                    "done": true,
+                    "next_action": "finish",
+                    "step": 4,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t512x896x81-pair-a",
+                  "worker_operation_ms": 6742.984761483967,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "label": "finish-pair-b",
+                "op": "finish",
+                "output_mode": "check",
+                "state_id": "t512x896x81-pair-b"
+              },
+              "ranks": [
+                {
+                  "backend": "wan",
+                  "generation": {
+                    "approximate": false,
+                    "attention": "flash",
+                    "cache": false,
+                    "cache_enabled": false,
+                    "cache_threshold": 0.0,
+                    "dtype": "float16",
+                    "fps": 16,
+                    "frames": 81,
+                    "guidance_scale": 5.0,
+                    "height": 512,
+                    "max_continuous": 1,
+                    "model": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+                    "model_integrity": "local_snapshot_not_rehashed",
+                    "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b",
+                    "negative_prompt": "",
+                    "prompt": "A red ceramic kettle on a wooden table.",
+                    "request_id": "t512x896x81-pair-b",
+                    "revision": "0fad780a534b6463e45facd96134c9f345acfa5b",
+                    "seed": 11,
+                    "steps": 4,
+                    "text_encoder_device": "cpu",
+                    "text_encoder_dtype": "float32",
+                    "threshold": 0.0,
+                    "vae_dtype": "bfloat16",
+                    "width": 896
+                  },
+                  "load_ms": 0.0,
+                  "measured": true,
+                  "model_ms": 6020.109383389354,
+                  "output": {
+                    "dtype": "float32",
+                    "finite": true,
+                    "output_mode": "check",
+                    "persistence_ms": 86.75440028309822,
+                    "shape": [
+                      1,
+                      81,
+                      512,
+                      896,
+                      3
+                    ]
+                  },
+                  "path_history": [
+                    {
+                      "path": "compute",
+                      "step_index": 0
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 1
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 2
+                    },
+                    {
+                      "path": "compute",
+                      "step_index": 3
+                    }
+                  ],
+                  "progress": {
+                    "done": true,
+                    "next_action": "finish",
+                    "step": 4,
+                    "steps": 4,
+                    "transfer_ready": true
+                  },
+                  "state_id": "t512x896x81-pair-b",
+                  "worker_operation_ms": 6221.98744956404,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "op": "release",
+                "state_id": "t512x896x81-pair-a"
+              },
+              "ranks": [
+                {
+                  "load_ms": 0.0,
+                  "released": "t512x896x81-pair-a",
+                  "worker_operation_ms": 0.47674495726823807,
+                  "worker_pid": 501
+                }
+              ]
+            },
+            {
+              "action": {
+                "op": "release",
+                "state_id": "t512x896x81-pair-b"
+              },
+              "ranks": [
+                {
+                  "load_ms": 0.0,
+                  "released": "t512x896x81-pair-b",
+                  "worker_operation_ms": 0.2276841551065445,
+                  "worker_pid": 501
+                }
+              ]
+            }
+          ],
+          "order": "forward",
+          "requests": [],
+          "status": "completed"
+        }
+      ],
+      "charge": {
+        "cleanup_verified": true,
+        "deadline_monotonic": 7343969.278837158,
+        "devices": 1,
+        "elapsed_seconds": 415.75710130669177,
+        "ended_at": 1792569828.9562724,
+        "ended_monotonic": 7340785.035938465,
+        "gpu_seconds": 415.75710130669177,
+        "identity": {
+          "attempt": 1,
+          "config_sha256": "0307b493618303b9f0b095d491449ddaaf3cfbfb79163ca29047e97cb6869932",
+          "gpu_uuids": [
+            "GPU-83566cdb-86ec-7bb4-c2c2-736c074f2fca"
+          ],
+          "run_id": "p14c-20261020t0330z",
+          "source_sha256": "a4b8c4ea75551eafaa63232341da72735f9c4f948de91e03b7ec070cab699507"
+        },
+        "phase": "timing",
+        "repair": false,
+        "session_id": "b7bfaa17422ce96d9be75549b5f83c0c",
+        "started_at": 1792569413.1991813,
+        "started_monotonic": 7340369.278837158,
+        "status": "completed",
+        "supervisor_pid": 81
+      },
+      "final_occupancy": {
+        "cuda_initialized": false,
+        "devices": [
+          {
+            "name": "NVIDIA A100-PCIE-40GB",
+            "uuid": "GPU-83566cdb-86ec-7bb4-c2c2-736c074f2fca"
+          }
+        ],
+        "foreign": [],
+        "owned": [],
+        "status": "exclusive_observed"
+      },
+      "id": "timing",
+      "qualification": {
+        "checks": [],
+        "qualified": false,
+        "scope": "configured_gates_only",
+        "scopes": {
+          "numeric": {
+            "checks": 0,
+            "passed": 0,
+            "status": "unverified",
+            "verified": 0
+          },
+          "performance": {
+            "checks": 0,
+            "passed": 0,
+            "status": "unverified",
+            "verified": 0
+          },
+          "semantic": {
+            "checks": 0,
+            "passed": 0,
+            "status": "unverified",
+            "verified": 0
+          }
+        },
+        "status": "unverified"
+      },
+      "session_id": "b7bfaa17422ce96d9be75549b5f83c0c",
+      "status": "completed"
+    }
+  ],
+  "requests": [],
+  "retention": {
+    "pending_dependencies": []
+  },
+  "run_id": "p14c-20261020t0330z",
+  "schema": "ditserve.run.v1",
+  "source": {
+    "core_sha256": "813fcdaad8f5c9ecaf925050e27a4fb6a5cda343e356c49be05ee3277bda325c",
+    "files": {
+      "ditserve/__init__.py": "7b1e9e252325c69053b50ea2d812c734dededd96b661605f137f174ba69746ec",
+      "ditserve/__main__.py": "0fba629c0729221988ed9b14f81b6005ca44fa424a6b49e86ef689b9f84ca9f8",
+      "ditserve/evaluation/__init__.py": "a9969dadbab559173015c6c48f6ccb5a1ae747c2186a3fb35278da2939332593",
+      "ditserve/evaluation/artifacts.py": "5959af6c090b8dfc298e16a6f90aa0043e3ed2b361c18f3ea0e66d38d9449c8d",
+      "ditserve/evaluation/collectives.py": "b2d01cce5ff67363025a46ab5918376ecd390750219bb9d6b5bb75ff1ec50378",
+      "ditserve/evaluation/common.py": "44f4e4d4b6747f216410b720adea62021d0b051f444304de909d1c6bc979abbc",
+      "ditserve/evaluation/cost_profile.py": "536a39682c4ca1e913a56f45a0a18e9b3c3d7a16bde7fdd5fda1ce99bab1c955",
+      "ditserve/evaluation/cuda_profile.py": "9cf2160734ef98ee66c77bb5a4b84be55915b5985254a74940f8ecc7bee78f7d",
+      "ditserve/evaluation/datasets.py": "a9a84c4b7008bce5e56d8b30cec567377f2fbc5a2c84ae1753faf2f38dd41f15",
+      "ditserve/evaluation/nsys_metrics.py": "016a109c5353e76091fd5d63ae8bc03f317060aa32e7d804f3f67718804885e5",
+      "ditserve/evaluation/quality.py": "a5c42b1b5a7f370f5951e476eed9a4bfe8afd7a2c458a9a2de7f7ed37802ac3a",
+      "ditserve/evaluation/reference.py": "f1ecbde532ea80bb74cd1d902fc0a6d73626c6ffc8dc68b49ed043947f82dda8",
+      "ditserve/evaluation/vbench.py": "591e1ac1a4a0a0b2f6ba7370cf49744e29f9390a2f61450652e09ea913c1ed62",
+      "ditserve/evaluation/wan_profile/__init__.py": "f1019d29793ea524b1770eb736dc5d64cd3555a71e2a9958f916bcf4088e82a3",
+      "ditserve/evaluation/wan_profile/capture.py": "29eee1520e50ff9bd69a1ce0b98b1755493e44bbd7afc69d6a682fdea1f8e107",
+      "ditserve/evaluation/wan_profile/figure.py": "e2a307423379ea2bb7a7001f92138cce957938982e5cd360f5afaef93017fe1e",
+      "ditserve/evaluation/wan_profile/publish.py": "37c49c690a15209158369ef75184e4cd8a206a5c2fbb5e5615037dc37c9211dc",
+      "ditserve/models/__init__.py": "2721805fd7aa4e354635b71b8dc094e634dd9c896ae18589e4aaa96e92728d95",
+      "ditserve/models/base.py": "845537b448b89e51d1bc70d1915f47cd06b526db4a71194987b0489b559e92d8",
+      "ditserve/models/flux.py": "04edd1e3a15aca5b65b48e9dfbb3f28acdc5fca1aedd4dc85092b9e6ac15e551",
+      "ditserve/models/longlive.py": "0e99962dd50476f40e5e06d9b63f535724a2e41d4ee7987bb5dc789a9db2ed3c",
+      "ditserve/models/mock.py": "24284e7dbcb5e9cd4fc3cb2390f555318dbfc3d882cff9d10b44af6980d74bce",
+      "ditserve/models/pipeline.py": "5aade3fe9fcf58525944e164aa6c5888e3843e3c0fb98e1a7b9c2331a6bb1b3b",
+      "ditserve/models/profiling.py": "925fe405940756c425dcec5ce77f095fbf6d56faf03427e094890f4891cb426b",
+      "ditserve/models/sana/__init__.py": "7b8b6f70da500a133d3aec22dab2b59b44828a4e25e31e7cdefe3242989781a5",
+      "ditserve/models/sana/compile.py": "b79e31bc136fd935022c5b5ea877932ab97221aed22fe46647e70ec52ee4102c",
+      "ditserve/models/sana/graph.py": "25f6abb27ddd1820156ca02fafd87f8140c67511a9212da08c370db7a411b633",
+      "ditserve/models/sana/hardware.py": "dc524373c96d0492dc152779f341e2e34579cb2ec6ee87d749ae1891dfe514a6",
+      "ditserve/models/sana/runtime.py": "6f2e9ce80fe88d08ba8f81d79622eab86be7f68efa040cd04dff04f34f0d3bf0",
+      "ditserve/models/session/__init__.py": "7f6efcc27f758dd83b27daf937a02bd6957d5274ea9b03bc6d7c685ced749ea2",
+      "ditserve/models/session/backend.py": "da4489da306f9ff1532242e0189b84451b26f8af6fec86e1ad56388075bfc7fa",
+      "ditserve/models/session/runtime.py": "2f79e1d3cd43583c3ebd71c27e2004ce633c23a96531015fe7ae895f977466ee",
+      "ditserve/models/wan/__init__.py": "64b5c388d5742e42ac7a5fe475502a47081da692d8697d3d155aae613d837556",
+      "ditserve/models/wan/async_decode.py": "53f2d35c8f17d039ac9c4d29eeccda992887c7c5c6a01decb6e5a610ae7e4881",
+      "ditserve/models/wan/backend.py": "1c99f7cabfe0b9d4494e5068c45955251c9c6398d0db41b3d7ebe215f29952a4",
+      "ditserve/models/wan/block.py": "394accc61846186c5ce3570f0ed7c955ea96c0c699dd4a6ddf3da7522a3a15a7",
+      "ditserve/models/wan/migration.py": "c97f08f3d23ff361e259aefd59bc18e3bc83198c6801ea8dc9291adce58c63db",
+      "ditserve/models/wan/parallel.py": "fb600e08ca2e868d4787140b913a77abc8f81cf449d82849a4a111140731d44f",
+      "ditserve/models/wan/pipeline.py": "82de62ff2b745f0a3291dff09ec28033a15b4c49f8d00a66ec91cb6bb17e35cc",
+      "ditserve/models/wan/profile.py": "e61ea86d5df04d2d2f6193453713d3a3578d820f33d411b2237c2d6ca4ec595b",
+      "ditserve/models/wan/runtime.py": "72859ccafeb476999b7b721e139e0eb7392951aba1aee33eeb6ec068f049dbb8",
+      "ditserve/models/wan/sp.py": "521c114ac9d68922031b7c3ff7767ab00106a965fdc92abb68b3376dc7e1c1ee",
+      "ditserve/models/wan/state.py": "e0122a591cc4d7d154d9cdbf43623aafeb43aeb29a2ee9eedd7c2ade60671610",
+      "ditserve/models/wan/storage.py": "f4f1b82d23f837e898427f6fe9568cd82d7b4c7132b5103b0a090acfafa5c023",
+      "ditserve/results/__init__.py": "9cb2c24f98737e373363df8523e3c6be4f30bc381f0c412e5c07d46c564b32a9",
+      "ditserve/results/compact.py": "8fb47dca4955a6df92df35b4426f48636096334fb49929f6723ce8b30e6b56a6",
+      "ditserve/results/legacy.py": "8452c5f2229497c025182e7cac6106161816b4768c06df5923c084e0ed855206",
+      "ditserve/runtime/__init__.py": "060a53124248de40540d30b902be558160739cb30f0879c6813ba0c0f708bf94",
+      "ditserve/runtime/client.py": "639bd818037e487adac833114e9cf2ffc0c2ff51a1c87e87121be9b03166fb8a",
+      "ditserve/runtime/environment.py": "831d69001ef02477e7b7e8ca1ea000cc1efa51c36380276aeba7c52658e0af93",
+      "ditserve/runtime/worker.py": "2009766eb004a2c47bd7223f2b961fbb47a523ddb2244ac362d7c4e03f5e2c2e"
+    },
+    "native_files": {
+      "CMakeLists.txt": "0b646a85c2cfdc9d71b7876197e45a668e4c273b6745263130fbc20984681c55",
+      "benchmarks/CMakeLists.txt": "2eac48464d86146dff42b4d637004c2afe48186fcb7d8be4c302d84c29851b19",
+      "benchmarks/include/ditserve/benchmark/cluster_sim.hpp": "1f3cf26f17e94155190032bbd31bb6719e27eb3ae3358a148bd17b11945dcaa5",
+      "benchmarks/src/cluster_sim.cpp": "6a66c4c8afed2369def59ba46bb5f7e4c2db0782bbaa738c421288f4e002ef41",
+      "benchmarks/tests/test_cluster.cpp": "6c67c8a9cbb6d1bb7a06aa6a8013c2116733ca283b4f0c2a4681fe0f2cd4e000",
+      "cmd/main.cpp": "28584b990a8e2d4372c30b41b1431cd675ac60deb6bf43f93003c2fbc87995ed",
+      "include/ditserve/control/budget.hpp": "9675ea06fb2b87c9680d35d2f6138a4d99a4aab8ac5b2a216921c60ef39ad225",
+      "include/ditserve/control/cluster.hpp": "f6061867a6919e65c0a8fb7ade7cac8daaf26b3db578eb375d5013f0c518abb3",
+      "include/ditserve/control/dispatch.hpp": "f70c3395b56b8ff7dedc23d6d7d8fdc660f00f8cb2a625818e3e842434db6655",
+      "include/ditserve/control/study.hpp": "3d10ea817f2de6874bb45562c2ec3ebc99ce741b13c7c1c6353f5c30597804ca",
+      "include/ditserve/interface/command.hpp": "e62f2757c248511b115b37962768cf9894ace96c59f47d6222496c402bb91eeb",
+      "include/ditserve/runtime/process.hpp": "8af98ae7fd383d8c1ce4e010477bd198ba8eabda40576cf5a6a20305697014f4",
+      "include/ditserve/runtime/random.hpp": "45ece2074098eca2de3bf064bbbe223ed52b68b0fe3c79bb5999daa39e7181b8",
+      "include/ditserve/types.hpp": "62fec58b37b76c87677ea4707f2edacbf6982c56b6aee7cec83a4288211ecf4d",
+      "src/ditserve/control/budget.cpp": "a0ebe611274ad2d76436cd0a8a550e8039e571ae9d4f0c1d5bc2d2399cda6537",
+      "src/ditserve/control/cluster.cpp": "6aaa88580db208b0627e5d5ce77e58d65b6ec8dc3b7aae6d992dc7a26bb0719a",
+      "src/ditserve/control/dispatch.cpp": "3c9bdd18f9d48c708922831bd3e543de3ea232d25bf92236b07c1ced5b2e2f59",
+      "src/ditserve/control/study.cpp": "e2a3cc381e3c5b9347b61fa879830ac5f2a4f8f6e6ff6e85d3e6470bddd34d78",
+      "src/ditserve/interface/command.cpp": "cb12bafb206dfb87003c7abdbbe4e92d4b48f6f60b695ad6155e9dfbac21b244",
+      "src/ditserve/runtime/process.cpp": "b632695f39bc692e2474c258c33f6423dfbe32486e64258b837f4dd23c708105",
+      "src/ditserve/runtime/random.cpp": "433b1231ff7079c7fc134906bb0bab6836d04b19bca68ab9d4112cda34d843f7",
+      "src/ditserve/types.cpp": "bc6823bf526099d57f45fb4c6be88554bb04a1dd6e4b9bfa48f990d55c35a2a1"
+    }
+  },
+  "status": "completed"
+}

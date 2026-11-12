@@ -1,0 +1,150 @@
+{
+  "allows": [],
+  "captured_requests": 2,
+  "comparisons": [
+    {
+      "comparisons": {
+        "decoded": {
+          "atol": 1e-05,
+          "bitwise_equal": true,
+          "cosine_similarity": 1.0000000000000002,
+          "elements": 786432,
+          "exactly_equal": true,
+          "max_abs_error": 0.0,
+          "passed": true,
+          "raw_dtype": "torch.bfloat16",
+          "relative_l2_error": 0.0,
+          "rmse": 0.0,
+          "rtol": 1e-05
+        },
+        "latents": {
+          "atol": 1e-05,
+          "bitwise_equal": true,
+          "cosine_similarity": 1.0,
+          "elements": 65536,
+          "exactly_equal": true,
+          "max_abs_error": 0.0,
+          "passed": true,
+          "raw_dtype": "torch.bfloat16",
+          "relative_l2_error": 0.0,
+          "rmse": 0.0,
+          "rtol": 1e-05
+        }
+      },
+      "generator_device": "cpu",
+      "normal_pipeline_output_type": "latent",
+      "numerical_passed": true,
+      "reference_file": {
+        "bytes": 1704344,
+        "file": "request-100.safetensors",
+        "sha256": "1aa181cd49e5f08f44c843ad073cf4b6bde96029457eb3affdfe854aa9bc9d52",
+        "tensors": {
+          "decoded": {
+            "bytes": 1572864,
+            "dtype": "BF16",
+            "shape": [
+              1,
+              3,
+              512,
+              512
+            ],
+            "tensor_sha256": "4fd9f450b4417607449c9e1a04587c875e6b1fb557e24c07a1c8a469650387bf"
+          },
+          "latents": {
+            "bytes": 131072,
+            "dtype": "BF16",
+            "shape": [
+              1,
+              16,
+              64,
+              64
+            ],
+            "tensor_sha256": "923b345414bf0bd84a7e4a19170b8ecfaaa69e8da165be27e453631e8cb09e49"
+          }
+        }
+      },
+      "reference_transformer_calls": 28,
+      "request_id": 100,
+      "request_sha256": "7234818bfd7268383601980048f841a51c2126e134f213b4d9f374027fcc46e8",
+      "service_file_sha256": "2130e5a34d2009fc1b8ea170f6f9a3ad52f75e00eb9f632f5fb1936425798099"
+    },
+    {
+      "comparisons": {
+        "decoded": {
+          "atol": 1e-05,
+          "bitwise_equal": false,
+          "cosine_similarity": 0.9672121202263801,
+          "elements": 3145728,
+          "exactly_equal": false,
+          "max_abs_error": 1.8203125,
+          "passed": false,
+          "raw_dtype": "torch.bfloat16",
+          "relative_l2_error": 0.25683551968493307,
+          "rmse": 0.14330546983436857,
+          "rtol": 1e-05
+        },
+        "latents": {
+          "atol": 1e-05,
+          "bitwise_equal": false,
+          "cosine_similarity": 0.9802755396615674,
+          "elements": 262144,
+          "exactly_equal": false,
+          "max_abs_error": 2.89453125,
+          "passed": false,
+          "raw_dtype": "torch.bfloat16",
+          "relative_l2_error": 0.19916691989771232,
+          "rmse": 0.218982954744226,
+          "rtol": 1e-05
+        }
+      },
+      "generator_device": "cpu",
+      "normal_pipeline_output_type": "latent",
+      "numerical_passed": false,
+      "reference_file": {
+        "bytes": 6816152,
+        "file": "request-101.safetensors",
+        "sha256": "d1bae19bf24c68d76f640ae3ef987508776321f3da92d01b97958b614bf28cd2",
+        "tensors": {
+          "decoded": {
+            "bytes": 6291456,
+            "dtype": "BF16",
+            "shape": [
+              1,
+              3,
+              1024,
+              1024
+            ],
+            "tensor_sha256": "0163c93f68d87ce4e71a0a9fb9911742a4e19ce790bf6c300e6613135eb8775c"
+          },
+          "latents": {
+            "bytes": 524288,
+            "dtype": "BF16",
+            "shape": [
+              1,
+              16,
+              128,
+              128
+            ],
+            "tensor_sha256": "8a783940a3946d9adeef57353bda24a57fc957b813d199873d51c9dbc3135b49"
+          }
+        }
+      },
+      "reference_transformer_calls": 28,
+      "request_id": 101,
+      "request_sha256": "322f6325298a57bda08d8cfbfe3fd487b5d27b6d0e4ffedfad73e210ed435a07",
+      "service_file_sha256": "d7fe78f22a21e5732774c45abd19327e83b4bbb087954b14c80365a2d7bb5f31"
+    }
+  ],
+  "numerical_check_passed": false,
+  "plan_sha256": "300db58b53936e474598043dcfb0bbe44cfcf1157928f408d7729e61a3855cde",
+  "qualification_eligible": false,
+  "raw_artifacts_protected": true,
+  "schema": "ditserve.tetriserve-service-raw-comparison.v1",
+  "scope": "Raw numerical diagnostic; not a paper quality qualification",
+  "service_summary_sha256": "15f63c80a757ea5b13f43faf973abc8fcbe65a42ab9571db200dcb9d8f379155",
+  "status": "numerical_failed",
+  "tolerance": {
+    "atol": 1e-05,
+    "rtol": 1e-05
+  }
+}

@@ -1,0 +1,17 @@
+{
+ "commit": "7ee8bebd9717915152b5b706fc027e91aff34104",
+ "subject": "Configure xdit-sp1 baseline, Poisson/Gamma CV>=2 workload, and formal-mixed-v2 batch serving",
+ "built_utc": "2026-11-04T19:25:06+00:00",
+ "builder_image": "cluster-cmake-install",
+ "runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "tested_runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "core_sha256": "2b30658e975246f9c57c590fd216276e60d8ac7bb1a09dc2755c93d0da8216be",
+ "runtime_smoke": "passed_cluster",
+ "local_checks": [
+  "cmake",
+  "ctest",
+  "installed_doctor"
+ ],
+ "files": 337,
+ "bytes": 5964021
+}

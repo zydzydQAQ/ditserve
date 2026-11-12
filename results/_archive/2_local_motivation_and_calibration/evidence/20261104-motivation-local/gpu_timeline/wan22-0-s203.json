@@ -1,0 +1,1727 @@
+{
+ "schema": "ditserve.gpu-timeline.v1",
+ "run": "wan22-0-s203",
+ "run_id": "d20261103-formal-p1-wan22-0-stop-b97479e-r1-s203",
+ "experiment": "p1-wan22-0-contention-s203",
+ "status": "completed",
+ "cells": [
+  {
+   "run": "wan22-0-s203",
+   "run_id": "d20261103-formal-p1-wan22-0-stop-b97479e-r1-s203",
+   "phase": "cluster",
+   "attempt": 1,
+   "cell": 0,
+   "order": "forward",
+   "policy": "block-cfg2",
+   "status": "completed",
+   "window_ms": 3767587.544700131,
+   "gpus": 2,
+   "gpu_ms": 7535175.089400262,
+   "per_gpu": [
+    {
+     "gpu": 0,
+     "window_ms": 3767587.544700131,
+     "accounted_ms": 3767587.544700131,
+     "ms": {
+      "video_compute": 1571041.1363299936,
+      "image_compute": 31964.714134112,
+      "decode": 235186.71465665102,
+      "prepare": 417.0221108943224,
+      "transfer_export": 1314.415119588375,
+      "transfer_import": 1879.6183113008738,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 3466.911507770419,
+      "held_overhead": 753.6460068076849,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 363.21799546066904,
+      "idle_encode_wait": 95019.39372733765,
+      "idle_empty": 1826180.7548002142
+     },
+     "fraction": {
+      "video_compute": 0.41698862141636994,
+      "image_compute": 0.008484133083802338,
+      "decode": 0.062423689394421215,
+      "prepare": 0.00011068677394927368,
+      "transfer_export": 0.0003488744731193743,
+      "transfer_import": 0.0004988917414659507,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0009201940145086547,
+      "held_overhead": 0.00020003410613983992,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 9.640598689514412e-05,
+      "idle_encode_wait": 0.02522022185284096,
+      "idle_empty": 0.4847082471564873
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 3.018050413171295,
+      "dispatchable_video": 14.154469594359398,
+      "turnaround_same_request": 346.04547545313835
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 1571041.1363299936,
+      "image_compute": 31964.714134112,
+      "decode": 235186.71465665102,
+      "prepare": 417.0221108943224,
+      "transfer_export": 1314.415119588375,
+      "transfer_import": 1879.6183113008738,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 3466.911507770419,
+      "held_overhead": 753.644160926342,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 363.21799546066904,
+      "idle_encode_wait": 95019.39372733765,
+      "idle_empty": 1813170.4943690943
+     }
+    },
+    {
+     "gpu": 1,
+     "window_ms": 3767587.544700131,
+     "accounted_ms": 3767587.544700131,
+     "ms": {
+      "video_compute": 1570815.4820799828,
+      "image_compute": 5791.894916445017,
+      "decode": 0.0,
+      "prepare": 329.8958521336317,
+      "transfer_export": 1295.6789042800665,
+      "transfer_import": 1815.9448709338903,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 3862.10167221725,
+      "held_overhead": 734.3822121620178,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 225057.6403435837,
+      "idle_encode_wait": 106342.06998857268,
+      "idle_empty": 1851542.4538598198
+     },
+     "fraction": {
+      "video_compute": 0.4169287278512348,
+      "image_compute": 0.0015372953774073495,
+      "decode": 0.0,
+      "prepare": 8.756156246394235e-05,
+      "transfer_export": 0.00034390147246948495,
+      "transfer_import": 0.00048199142007685576,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0010250861131681126,
+      "held_overhead": 0.0001949210744140701,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.05973521190242083,
+      "idle_encode_wait": 0.028225507364298456,
+      "idle_empty": 0.4914397958620461
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 5.001521439728094,
+      "dispatchable_video": 12.831462547183037,
+      "turnaround_same_request": 24618.590470403433,
+      "gang_wait_partner_held_overhead": 10.182017460465431,
+      "gang_wait_partner_decode": 200411.0348717329
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 1570815.4820799828,
+      "image_compute": 5791.894916445017,
+      "decode": 0.0,
+      "prepare": 329.8958521336317,
+      "transfer_export": 1295.6789042800665,
+      "transfer_import": 1815.9448709338903,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 3862.10167221725,
+      "held_overhead": 734.3822121620178,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 225057.6403435837,
+      "idle_encode_wait": 106342.06998857268,
+      "idle_empty": 1838532.1915828185
+     }
+    }
+   ],
+   "overall_ms": {
+    "video_compute": 3141856.6184099764,
+    "image_compute": 37756.60905055702,
+    "decode": 235186.71465665102,
+    "prepare": 746.9179630279541,
+    "transfer_export": 2610.0940238684416,
+    "transfer_import": 3695.563182234764,
+    "other_stage": 0.0,
+    "unknown": 0.0,
+    "held_wait_peer": 7329.013179987669,
+    "held_overhead": 1488.0282189697027,
+    "held_midstep_owner": 0.0,
+    "idle_with_queue": 225420.85833904438,
+    "idle_encode_wait": 201361.46371591033,
+    "idle_empty": 3677723.208660034
+   },
+   "overall_fraction": {
+    "video_compute": 0.4169586746338024,
+    "image_compute": 0.005010714230604844,
+    "decode": 0.031211844697210608,
+    "prepare": 9.9124168206608e-05,
+    "transfer_export": 0.0003463879727944296,
+    "transfer_import": 0.0004904415807714033,
+    "other_stage": 0.0,
+    "unknown": 0.0,
+    "held_wait_peer": 0.0009726400638383837,
+    "held_overhead": 0.00019747759027695502,
+    "held_midstep_owner": 0.0,
+    "idle_with_queue": 0.029915808944657986,
+    "idle_encode_wait": 0.026722864608569707,
+    "idle_empty": 0.4880740215092667
+   },
+   "grouped_fraction": {
+    "work": 0.45411718728339023,
+    "held": 0.0011701176541153387,
+    "idle_with_queue": 0.029915808944657986,
+    "idle_encode_wait": 0.026722864608569707,
+    "idle_empty": 0.4880740215092667,
+    "unknown": 0.0
+   },
+   "idle_with_queue_causes_ms": {
+    "dispatchable_image_only": 8.01957185289939,
+    "dispatchable_video": 26.985932141542435,
+    "turnaround_same_request": 24964.63594585657,
+    "gang_wait_partner_held_overhead": 10.182017460465431,
+    "gang_wait_partner_decode": 200411.0348717329
+   },
+   "active_window": {
+    "start_ms": 12991.13510924,
+    "finish_ms": 3767568.4175323695,
+    "gpu_ms": 7509154.564846259,
+    "overall_ms": {
+     "video_compute": 3141856.6184099764,
+     "image_compute": 37756.60905055702,
+     "decode": 235186.71465665102,
+     "prepare": 746.9179630279541,
+     "transfer_export": 2610.0940238684416,
+     "transfer_import": 3695.563182234764,
+     "other_stage": 0.0,
+     "unknown": 0.0,
+     "held_wait_peer": 7329.013179987669,
+     "held_overhead": 1488.0263730883598,
+     "held_midstep_owner": 0.0,
+     "idle_with_queue": 225420.85833904438,
+     "idle_encode_wait": 201361.46371591033,
+     "idle_empty": 3651702.685951913
+    },
+    "grouped_fraction": {
+     "work": 0.45569078219611453,
+     "held": 0.0011741720691637605,
+     "idle_with_queue": 0.030019472417619576,
+     "idle_encode_wait": 0.026815463974942562,
+     "idle_empty": 0.48630010934215967,
+     "unknown": 0.0
+    },
+    "scope": "first arrival to last request finish; excludes leading/trailing empty replay time"
+   },
+   "top_idle_with_queue": [
+    {
+     "gpu": 1,
+     "start_ms": 794201.6660831869,
+     "finish_ms": 806059.1763053089,
+     "causes": {
+      "dispatchable_video": 0.3505535423755646,
+      "gang_wait_partner_held_overhead": 0.8621681481599808,
+      "gang_wait_partner_decode": 11856.297500431538
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0004",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0005",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0009",
+       "kind": "video",
+       "need_gpus": 2
+      }
+     ],
+     "waiting_count": 3,
+     "partner_state_at_start": {
+      "0": "idle"
+     },
+     "duration_ms": 11857.510222122073,
+     "previous_task": {
+      "request_id": "w0-v0009",
+      "transition": "continuation",
+      "quantum": 4,
+      "event_id": "cluster/1/0/417",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "next_task": {
+      "request_id": "w0-v0004",
+      "transition": "initial_distribution",
+      "quantum": 4,
+      "event_id": "cluster/1/0/419",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "clues": [
+      "partner GPU in single-GPU video finish (VAE decode + output digest) while a CFG2 gang waits",
+      "next task is a placement change (prepare/export/import)"
+     ]
+    },
+    {
+     "gpu": 1,
+     "start_ms": 3016865.3752170503,
+     "finish_ms": 3028693.131890148,
+     "causes": {
+      "dispatchable_video": 0.3779847174882889,
+      "gang_wait_partner_held_overhead": 0.4083476960659027,
+      "gang_wait_partner_decode": 11826.970340684056
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0011",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0012",
+       "kind": "video",
+       "need_gpus": 2
+      }
+     ],
+     "waiting_count": 2,
+     "partner_state_at_start": {
+      "0": "idle"
+     },
+     "duration_ms": 11827.75667309761,
+     "previous_task": {
+      "request_id": "w0-v0011",
+      "transition": "continuation",
+      "quantum": 4,
+      "event_id": "cluster/1/0/622",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "next_task": {
+      "request_id": "w0-v0012",
+      "transition": "initial_distribution",
+      "quantum": 4,
+      "event_id": "cluster/1/0/624",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "clues": [
+      "partner GPU in single-GPU video finish (VAE decode + output digest) while a CFG2 gang waits",
+      "next task is a placement change (prepare/export/import)"
+     ]
+    },
+    {
+     "gpu": 1,
+     "start_ms": 3387615.610362962,
+     "finish_ms": 3399440.975083038,
+     "causes": {
+      "dispatchable_video": 1.4478843659162521,
+      "gang_wait_partner_held_overhead": 0.9014587849378586,
+      "gang_wait_partner_decode": 11823.015376925468
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0015",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0016",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0017",
+       "kind": "video",
+       "need_gpus": 2
+      }
+     ],
+     "waiting_count": 3,
+     "partner_state_at_start": {
+      "0": "idle"
+     },
+     "duration_ms": 11825.364720076323,
+     "previous_task": {
+      "request_id": "w0-v0015",
+      "transition": "continuation",
+      "quantum": 4,
+      "event_id": "cluster/1/0/832",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "next_task": {
+      "request_id": "w0-v0016",
+      "transition": "initial_distribution",
+      "quantum": 4,
+      "event_id": "cluster/1/0/834",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "clues": [
+      "partner GPU in single-GPU video finish (VAE decode + output digest) while a CFG2 gang waits",
+      "next task is a placement change (prepare/export/import)"
+     ]
+    },
+    {
+     "gpu": 1,
+     "start_ms": 3200405.6641031057,
+     "finish_ms": 3212225.9304579347,
+     "causes": {
+      "dispatchable_video": 1.0922309011220932,
+      "gang_wait_partner_held_overhead": 0.35637058317661285,
+      "gang_wait_partner_decode": 11818.817753344774
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0013",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0014",
+       "kind": "video",
+       "need_gpus": 2
+      }
+     ],
+     "waiting_count": 2,
+     "partner_state_at_start": {
+      "0": "idle"
+     },
+     "duration_ms": 11820.266354829073,
+     "previous_task": {
+      "request_id": "w0-v0013",
+      "transition": "continuation",
+      "quantum": 4,
+      "event_id": "cluster/1/0/727",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "next_task": {
+      "request_id": "w0-v0014",
+      "transition": "initial_distribution",
+      "quantum": 4,
+      "event_id": "cluster/1/0/729",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "clues": [
+      "partner GPU in single-GPU video finish (VAE decode + output digest) while a CFG2 gang waits",
+      "next task is a placement change (prepare/export/import)"
+     ]
+    },
+    {
+     "gpu": 1,
+     "start_ms": 2926226.7985977232,
+     "finish_ms": 2938046.7199496925,
+     "causes": {
+      "dispatchable_video": 0.2623777836561203,
+      "gang_wait_partner_held_overhead": 0.47398917376995087,
+      "gang_wait_partner_decode": 11819.184985011816
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0010",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0011",
+       "kind": "video",
+       "need_gpus": 2
+      }
+     ],
+     "waiting_count": 2,
+     "partner_state_at_start": {
+      "0": "idle"
+     },
+     "duration_ms": 11819.921351969242,
+     "previous_task": {
+      "request_id": "w0-v0010",
+      "transition": "continuation",
+      "quantum": 4,
+      "event_id": "cluster/1/0/571",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "next_task": {
+      "request_id": "w0-v0011",
+      "transition": "initial_distribution",
+      "quantum": 4,
+      "event_id": "cluster/1/0/573",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "clues": [
+      "partner GPU in single-GPU video finish (VAE decode + output digest) while a CFG2 gang waits",
+      "next task is a placement change (prepare/export/import)"
+     ]
+    },
+    {
+     "gpu": 1,
+     "start_ms": 884943.5093570501,
+     "finish_ms": 896760.3666484356,
+     "causes": {
+      "dispatchable_video": 0.2693329006433487,
+      "gang_wait_partner_held_overhead": 0.7831938564777374,
+      "gang_wait_partner_decode": 11815.80476462841
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0004",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0005",
+       "kind": "video",
+       "need_gpus": 2
+      }
+     ],
+     "waiting_count": 2,
+     "partner_state_at_start": {
+      "0": "idle"
+     },
+     "duration_ms": 11816.857291385531,
+     "previous_task": {
+      "request_id": "w0-v0004",
+      "transition": "continuation",
+      "quantum": 4,
+      "event_id": "cluster/1/0/468",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "next_task": {
+      "request_id": "w0-v0005",
+      "transition": "initial_distribution",
+      "quantum": 4,
+      "event_id": "cluster/1/0/470",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "clues": [
+      "partner GPU in single-GPU video finish (VAE decode + output digest) while a CFG2 gang waits",
+      "next task is a placement change (prepare/export/import)"
+     ]
+    },
+    {
+     "gpu": 1,
+     "start_ms": 703176.9007407129,
+     "finish_ms": 714989.9552855641,
+     "causes": {
+      "dispatchable_video": 0.41505880653858185,
+      "gang_wait_partner_held_overhead": 0.6214883178472519,
+      "gang_wait_partner_decode": 11812.017997726798
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0004",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0005",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0008",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0009",
+       "kind": "video",
+       "need_gpus": 2
+      }
+     ],
+     "waiting_count": 4,
+     "partner_state_at_start": {
+      "0": "idle"
+     },
+     "duration_ms": 11813.054544851184,
+     "previous_task": {
+      "request_id": "w0-v0008",
+      "transition": "continuation",
+      "quantum": 4,
+      "event_id": "cluster/1/0/366",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "next_task": {
+      "request_id": "w0-v0009",
+      "transition": "initial_distribution",
+      "quantum": 4,
+      "event_id": "cluster/1/0/368",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "clues": [
+      "partner GPU in single-GPU video finish (VAE decode + output digest) while a CFG2 gang waits",
+      "next task is a placement change (prepare/export/import)"
+     ]
+    },
+    {
+     "gpu": 1,
+     "start_ms": 608536.0546875745,
+     "finish_ms": 620345.381969586,
+     "causes": {
+      "dispatchable_video": 0.535065308213234,
+      "gang_wait_partner_held_overhead": 0.5261525511741638,
+      "gang_wait_partner_decode": 11808.266064152122
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0004",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0005",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0007",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0008",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0009",
+       "kind": "video",
+       "need_gpus": 2
+      }
+     ],
+     "waiting_count": 5,
+     "partner_state_at_start": {
+      "0": "idle"
+     },
+     "duration_ms": 11809.327282011509,
+     "previous_task": {
+      "request_id": "w0-v0007",
+      "transition": "continuation",
+      "quantum": 4,
+      "event_id": "cluster/1/0/313",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "next_task": {
+      "request_id": "w0-v0008",
+      "transition": "initial_distribution",
+      "quantum": 4,
+      "event_id": "cluster/1/0/315",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "clues": [
+      "partner GPU in single-GPU video finish (VAE decode + output digest) while a CFG2 gang waits",
+      "next task is a placement change (prepare/export/import)"
+     ]
+    },
+    {
+     "gpu": 1,
+     "start_ms": 3295038.807168603,
+     "finish_ms": 3306837.26830408,
+     "causes": {
+      "dispatchable_video": 0.5794763565063477,
+      "gang_wait_partner_held_overhead": 0.37871673703193665,
+      "gang_wait_partner_decode": 11797.50294238329
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0014",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0015",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0016",
+       "kind": "video",
+       "need_gpus": 2
+      }
+     ],
+     "waiting_count": 3,
+     "partner_state_at_start": {
+      "0": "idle"
+     },
+     "duration_ms": 11798.461135476828,
+     "previous_task": {
+      "request_id": "w0-v0014",
+      "transition": "resident_resume",
+      "quantum": 4,
+      "event_id": "cluster/1/0/780",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "next_task": {
+      "request_id": "w0-v0015",
+      "transition": "initial_distribution",
+      "quantum": 4,
+      "event_id": "cluster/1/0/782",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "clues": [
+      "partner GPU in single-GPU video finish (VAE decode + output digest) while a CFG2 gang waits",
+      "next task is a placement change (prepare/export/import)"
+     ]
+    },
+    {
+     "gpu": 1,
+     "start_ms": 516020.54401673377,
+     "finish_ms": 527716.9779743999,
+     "causes": {
+      "dispatchable_video": 1.7350316047668457,
+      "gang_wait_partner_held_overhead": 0.8317548781633377,
+      "gang_wait_partner_decode": 11693.867171183228
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0004",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0005",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0006",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0007",
+       "kind": "video",
+       "need_gpus": 2
+      }
+     ],
+     "waiting_count": 4,
+     "partner_state_at_start": {
+      "0": "idle"
+     },
+     "duration_ms": 11696.433957666159,
+     "previous_task": {
+      "request_id": "w0-v0006",
+      "transition": "continuation",
+      "quantum": 4,
+      "event_id": "cluster/1/0/261",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "next_task": {
+      "request_id": "w0-v0007",
+      "transition": "initial_distribution",
+      "quantum": 4,
+      "event_id": "cluster/1/0/263",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "clues": [
+      "partner GPU in single-GPU video finish (VAE decode + output digest) while a CFG2 gang waits",
+      "next task is a placement change (prepare/export/import)"
+     ]
+    }
+   ],
+   "idle_with_queue_run_count": 2047,
+   "secondary": {
+    "advance_stage_rpc": {
+     "advance_elapsed_ms": 3141856.6184099764,
+     "advance_worker_model_ms": 3139674.657428637,
+     "advance_worker_operation_ms": 3141095.1757673174,
+     "advance_stages": 2000,
+     "worker_model_over_rpc_wall": 0.9993055186005135,
+     "scope": "per-rank sums; worker model_ms is a worker-timed section, not CUDA kernel time"
+    },
+    "decode_wall_ms": {
+     "count": 20,
+     "sum": 235186.71465665102,
+     "p50": 11810.14203093946,
+     "p95": 11857.152779586613,
+     "max": 11873.403083533049
+    },
+    "image_wall_ms": {
+     "count": 20,
+     "sum": 37756.60905055702,
+     "p50": 1871.3014563545585,
+     "p95": 1971.3284254074097,
+     "max": 1979.6839095652103
+    },
+    "same_group_turnaround_controller_ms": {
+     "count": 980,
+     "sum": 24618.590470403433,
+     "p50": 0.2576438710093498,
+     "p95": 0.8848411031067371,
+     "max": 1879.972841590643
+    },
+    "same_group_turnaround_worker_gap_ms": {
+     "count": 980,
+     "sum": 25115.159763023257,
+     "p50": 0.8336687460541725,
+     "p95": 1.463059801608324,
+     "max": 1880.326822400093
+    }
+   },
+   "diagnostics": {
+    "events": 1040,
+    "unplaceable_events": 0,
+    "non_completed_events": 0,
+    "unmapped_stage_workers": [],
+    "clipped_ms": 0.0,
+    "same_gpu_task_overlap_ms": 0.0,
+    "requests_without_events_but_started": 0,
+    "missing_need_requests": 0
+   },
+   "accounting_complete": true,
+   "requests": {
+    "total": 40,
+    "by_status": {
+     "completed": 40
+    },
+    "by_kind": {
+     "image": 20,
+     "video": 20
+    }
+   },
+   "doorbell": {
+    "continuous_quanta": 1000,
+    "deadline_skip_events": 19602,
+    "enabled": true,
+    "rings": 0
+   },
+   "l2_block_cuda": {
+    "status": "unknown",
+    "reason": "no block_cuda_ms recorded in this run (only emitted in observe mode and not persisted here)"
+   }
+  },
+  {
+   "run": "wan22-0-s203",
+   "run_id": "d20261103-formal-p1-wan22-0-stop-b97479e-r1-s203",
+   "phase": "cluster",
+   "attempt": 1,
+   "cell": 1,
+   "order": "forward",
+   "policy": "edf-cfg2",
+   "status": "completed",
+   "window_ms": 3759895.558062941,
+   "gpus": 2,
+   "gpu_ms": 7519791.116125882,
+   "per_gpu": [
+    {
+     "gpu": 0,
+     "window_ms": 3759895.558062941,
+     "accounted_ms": 3759895.558062941,
+     "ms": {
+      "video_compute": 1556928.419969976,
+      "image_compute": 30633.261935785413,
+      "decode": 236995.68823724985,
+      "prepare": 360.45750230550766,
+      "transfer_export": 1311.0865503549576,
+      "transfer_import": 1863.5284379124641,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 3990.8856619149446,
+      "held_overhead": 728.4141071140766,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 347.0792797911563,
+      "idle_encode_wait": 95908.43431667023,
+      "idle_empty": 1830828.3020638663
+     },
+     "fraction": {
+      "video_compute": 0.41408820961295245,
+      "image_compute": 0.008147370442270303,
+      "decode": 0.06303251900947685,
+      "prepare": 9.586901996054689e-05,
+      "transfer_export": 0.0003487029174369981,
+      "transfer_import": 0.0004956330326559748,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0010614352447521195,
+      "held_overhead": 0.00019373253747754314,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 9.231088322303503e-05,
+      "idle_encode_wait": 0.025508270864332536,
+      "idle_empty": 0.4869359464354616
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 2.317211549321655,
+      "dispatchable_video": 11.841533705592155,
+      "turnaround_same_request": 332.9205345362425
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 1556928.419969976,
+      "image_compute": 30633.261935785413,
+      "decode": 236995.68823724985,
+      "prepare": 360.45750230550766,
+      "transfer_export": 1311.0865503549576,
+      "transfer_import": 1863.5284379124641,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 3990.8856619149446,
+      "held_overhead": 728.4044083207846,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 347.0792797911563,
+      "idle_encode_wait": 95908.43431667023,
+      "idle_empty": 1817806.1741915094
+     }
+    },
+    {
+     "gpu": 1,
+     "window_ms": 3759895.558062941,
+     "accounted_ms": 3759895.558062941,
+     "ms": {
+      "video_compute": 1557065.5123423785,
+      "image_compute": 7599.997159093618,
+      "decode": 0.0,
+      "prepare": 408.0087188631296,
+      "transfer_export": 1398.624524474144,
+      "transfer_import": 1965.5654560774565,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 3616.667080670595,
+      "held_overhead": 712.6973830163479,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 221692.76737017144,
+      "idle_encode_wait": 108941.52463736542,
+      "idle_empty": 1856494.1933908302
+     },
+     "fraction": {
+      "video_compute": 0.41412467136309566,
+      "image_compute": 0.0020213319869472803,
+      "decode": 0.0,
+      "prepare": 0.00010851597140462366,
+      "transfer_export": 0.00037198494023985625,
+      "transfer_import": 0.0005227712913095106,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0009619062617084674,
+      "held_overhead": 0.00018955244155332925,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.058962480193036335,
+      "idle_encode_wait": 0.02897461457506308,
+      "idle_empty": 0.49376217097564185
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 4.8277335120073985,
+      "dispatchable_video": 12.199649587273598,
+      "turnaround_same_request": 23136.756783351302,
+      "gang_wait_partner_held_overhead": 9.055513888597488,
+      "gang_wait_partner_decode": 198529.92768983226
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 1557065.5123423785,
+      "image_compute": 7599.997159093618,
+      "decode": 0.0,
+      "prepare": 408.0087188631296,
+      "transfer_export": 1398.624524474144,
+      "transfer_import": 1965.5654560774565,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 3616.667080670595,
+      "held_overhead": 712.6973830163479,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 221692.76737017144,
+      "idle_encode_wait": 108941.52463736542,
+      "idle_empty": 1843472.05581968
+     }
+    }
+   ],
+   "overall_ms": {
+    "video_compute": 3113993.9323123544,
+    "image_compute": 38233.25909487903,
+    "decode": 236995.68823724985,
+    "prepare": 768.4662211686373,
+    "transfer_export": 2709.7110748291016,
+    "transfer_import": 3829.0938939899206,
+    "other_stage": 0.0,
+    "unknown": 0.0,
+    "held_wait_peer": 7607.55274258554,
+    "held_overhead": 1441.1114901304245,
+    "held_midstep_owner": 0.0,
+    "idle_with_queue": 222039.8466499626,
+    "idle_encode_wait": 204849.95895403565,
+    "idle_empty": 3687322.4954546965
+   },
+   "overall_fraction": {
+    "video_compute": 0.4141064404880241,
+    "image_compute": 0.0050843512146087925,
+    "decode": 0.03151625950473842,
+    "prepare": 0.00010219249568258528,
+    "transfer_export": 0.0003603439288384272,
+    "transfer_import": 0.0005092021619827427,
+    "other_stage": 0.0,
+    "unknown": 0.0,
+    "held_wait_peer": 0.0010116707532302933,
+    "held_overhead": 0.0001916424895154362,
+    "held_midstep_owner": 0.0,
+    "idle_with_queue": 0.029527395538129685,
+    "idle_encode_wait": 0.02724144271969781,
+    "idle_empty": 0.49034905870555173
+   },
+   "grouped_fraction": {
+    "work": 0.45167878979387505,
+    "held": 0.0012033132427457297,
+    "idle_with_queue": 0.029527395538129685,
+    "idle_encode_wait": 0.02724144271969781,
+    "idle_empty": 0.49034905870555173,
+    "unknown": 0.0
+   },
+   "idle_with_queue_causes_ms": {
+    "dispatchable_image_only": 7.144945061329054,
+    "dispatchable_video": 24.041183292865753,
+    "turnaround_same_request": 23469.677317887545,
+    "gang_wait_partner_held_overhead": 9.055513888597488,
+    "gang_wait_partner_decode": 198529.92768983226
+   },
+   "active_window": {
+    "start_ms": 12991.13510924,
+    "finish_ms": 3759864.5556010306,
+    "gpu_ms": 7493746.840983581,
+    "overall_ms": {
+     "video_compute": 3113993.9323123544,
+     "image_compute": 38233.25909487903,
+     "decode": 236995.68823724985,
+     "prepare": 768.4662211686373,
+     "transfer_export": 2709.7110748291016,
+     "transfer_import": 3829.0938939899206,
+     "other_stage": 0.0,
+     "unknown": 0.0,
+     "held_wait_peer": 7607.55274258554,
+     "held_overhead": 1441.1017913371325,
+     "held_midstep_owner": 0.0,
+     "idle_with_queue": 222039.8466499626,
+     "idle_encode_wait": 204849.95895403565,
+     "idle_empty": 3661278.2300111894
+    },
+    "grouped_fraction": {
+     "work": 0.45324858484126007,
+     "held": 0.001207494024809491,
+     "idle_with_queue": 0.02963001704776286,
+     "idle_encode_wait": 0.02733611947413323,
+     "idle_empty": 0.48857778461203444,
+     "unknown": 0.0
+    },
+    "scope": "first arrival to last request finish; excludes leading/trailing empty replay time"
+   },
+   "top_idle_with_queue": [
+    {
+     "gpu": 1,
+     "start_ms": 3568035.656031221,
+     "finish_ms": 3580027.1679908037,
+     "causes": {
+      "dispatchable_video": 0.32960623502731323,
+      "gang_wait_partner_held_overhead": 0.32131560146808624,
+      "gang_wait_partner_decode": 11990.861037746072
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0017",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0018",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0019",
+       "kind": "video",
+       "need_gpus": 2
+      }
+     ],
+     "waiting_count": 3,
+     "partner_state_at_start": {
+      "0": "idle"
+     },
+     "duration_ms": 11991.511959582567,
+     "previous_task": {
+      "request_id": "w0-v0018",
+      "transition": "continuation",
+      "quantum": "step",
+      "event_id": "cluster/1/1/937",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "next_task": {
+      "request_id": "w0-v0019",
+      "transition": "initial_distribution",
+      "quantum": "step",
+      "event_id": "cluster/1/1/939",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "clues": [
+      "partner GPU in single-GPU video finish (VAE decode + output digest) while a CFG2 gang waits",
+      "next task is a placement change (prepare/export/import)"
+     ]
+    },
+    {
+     "gpu": 1,
+     "start_ms": 3382050.1610971987,
+     "finish_ms": 3393969.200057909,
+     "causes": {
+      "dispatchable_video": 1.3336371630430222,
+      "gang_wait_partner_held_overhead": 0.26289187371730804,
+      "gang_wait_partner_decode": 11917.442431673408
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0015",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0016",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0017",
+       "kind": "video",
+       "need_gpus": 2
+      }
+     ],
+     "waiting_count": 3,
+     "partner_state_at_start": {
+      "0": "idle"
+     },
+     "duration_ms": 11919.038960710168,
+     "previous_task": {
+      "request_id": "w0-v0015",
+      "transition": "continuation",
+      "quantum": "step",
+      "event_id": "cluster/1/1/832",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "next_task": {
+      "request_id": "w0-v0016",
+      "transition": "initial_distribution",
+      "quantum": "step",
+      "event_id": "cluster/1/1/834",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "clues": [
+      "partner GPU in single-GPU video finish (VAE decode + output digest) while a CFG2 gang waits",
+      "next task is a placement change (prepare/export/import)"
+     ]
+    },
+    {
+     "gpu": 1,
+     "start_ms": 3477894.3825569004,
+     "finish_ms": 3489780.48909083,
+     "causes": {
+      "dispatchable_video": 0.44031068682670593,
+      "gang_wait_partner_held_overhead": 0.34091807901859283,
+      "gang_wait_partner_decode": 11885.32530516386
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0016",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0017",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0018",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0019",
+       "kind": "video",
+       "need_gpus": 2
+      }
+     ],
+     "waiting_count": 4,
+     "partner_state_at_start": {
+      "0": "idle"
+     },
+     "duration_ms": 11886.106533929706,
+     "previous_task": {
+      "request_id": "w0-v0016",
+      "transition": "continuation",
+      "quantum": "step",
+      "event_id": "cluster/1/1/886",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "next_task": {
+      "request_id": "w0-v0018",
+      "transition": "initial_distribution",
+      "quantum": "step",
+      "event_id": "cluster/1/1/888",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "clues": [
+      "partner GPU in single-GPU video finish (VAE decode + output digest) while a CFG2 gang waits",
+      "next task is a placement change (prepare/export/import)"
+     ]
+    },
+    {
+     "gpu": 1,
+     "start_ms": 514194.6799531579,
+     "finish_ms": 526054.3082449585,
+     "causes": {
+      "dispatchable_video": 1.0709799826145172,
+      "gang_wait_partner_held_overhead": 0.5148649215698242,
+      "gang_wait_partner_decode": 11858.042446896434
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0004",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0005",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0006",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0007",
+       "kind": "video",
+       "need_gpus": 2
+      }
+     ],
+     "waiting_count": 4,
+     "partner_state_at_start": {
+      "0": "idle"
+     },
+     "duration_ms": 11859.628291800618,
+     "previous_task": {
+      "request_id": "w0-v0006",
+      "transition": "continuation",
+      "quantum": "step",
+      "event_id": "cluster/1/1/261",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "next_task": {
+      "request_id": "w0-v0007",
+      "transition": "initial_distribution",
+      "quantum": "step",
+      "event_id": "cluster/1/1/263",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "clues": [
+      "partner GPU in single-GPU video finish (VAE decode + output digest) while a CFG2 gang waits",
+      "next task is a placement change (prepare/export/import)"
+     ]
+    },
+    {
+     "gpu": 1,
+     "start_ms": 700580.7957220823,
+     "finish_ms": 712439.0456359833,
+     "causes": {
+      "dispatchable_video": 0.45640021562576294,
+      "gang_wait_partner_held_overhead": 0.4069749265909195,
+      "gang_wait_partner_decode": 11857.386538758874
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0004",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0005",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0008",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0009",
+       "kind": "video",
+       "need_gpus": 2
+      }
+     ],
+     "waiting_count": 4,
+     "partner_state_at_start": {
+      "0": "idle"
+     },
+     "duration_ms": 11858.24991390109,
+     "previous_task": {
+      "request_id": "w0-v0008",
+      "transition": "continuation",
+      "quantum": "step",
+      "event_id": "cluster/1/1/366",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "next_task": {
+      "request_id": "w0-v0009",
+      "transition": "initial_distribution",
+      "quantum": "step",
+      "event_id": "cluster/1/1/368",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "clues": [
+      "partner GPU in single-GPU video finish (VAE decode + output digest) while a CFG2 gang waits",
+      "next task is a placement change (prepare/export/import)"
+     ]
+    },
+    {
+     "gpu": 1,
+     "start_ms": 422011.29007712007,
+     "finish_ms": 433840.03051929176,
+     "causes": {
+      "dispatchable_video": 0.467006117105484,
+      "gang_wait_partner_held_overhead": 0.30710920691490173,
+      "gang_wait_partner_decode": 11827.966326847672
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0003",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0004",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0005",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0006",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0007",
+       "kind": "video",
+       "need_gpus": 2
+      }
+     ],
+     "waiting_count": 5,
+     "partner_state_at_start": {
+      "0": "idle"
+     },
+     "duration_ms": 11828.740442171693,
+     "previous_task": {
+      "request_id": "w0-v0003",
+      "transition": "continuation",
+      "quantum": "step",
+      "event_id": "cluster/1/1/209",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "next_task": {
+      "request_id": "w0-v0006",
+      "transition": "initial_distribution",
+      "quantum": "step",
+      "event_id": "cluster/1/1/211",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "clues": [
+      "partner GPU in single-GPU video finish (VAE decode + output digest) while a CFG2 gang waits",
+      "next task is a placement change (prepare/export/import)"
+     ]
+    },
+    {
+     "gpu": 1,
+     "start_ms": 606431.6354133189,
+     "finish_ms": 618256.4543262124,
+     "causes": {
+      "dispatchable_video": 0.4825834184885025,
+      "gang_wait_partner_held_overhead": 0.6371084600687027,
+      "gang_wait_partner_decode": 11823.699221014977
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0004",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0005",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0007",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0008",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0009",
+       "kind": "video",
+       "need_gpus": 2
+      }
+     ],
+     "waiting_count": 5,
+     "partner_state_at_start": {
+      "0": "idle"
+     },
+     "duration_ms": 11824.818912893534,
+     "previous_task": {
+      "request_id": "w0-v0007",
+      "transition": "continuation",
+      "quantum": "step",
+      "event_id": "cluster/1/1/313",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "next_task": {
+      "request_id": "w0-v0008",
+      "transition": "initial_distribution",
+      "quantum": "step",
+      "event_id": "cluster/1/1/315",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "clues": [
+      "partner GPU in single-GPU video finish (VAE decode + output digest) while a CFG2 gang waits",
+      "next task is a placement change (prepare/export/import)"
+     ]
+    },
+    {
+     "gpu": 1,
+     "start_ms": 880977.0802408457,
+     "finish_ms": 892779.193745926,
+     "causes": {
+      "dispatchable_video": 0.2729985862970352,
+      "gang_wait_partner_held_overhead": 0.5698222666978836,
+      "gang_wait_partner_decode": 11801.270684227347
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0004",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0005",
+       "kind": "video",
+       "need_gpus": 2
+      }
+     ],
+     "waiting_count": 2,
+     "partner_state_at_start": {
+      "0": "idle"
+     },
+     "duration_ms": 11802.113505080342,
+     "previous_task": {
+      "request_id": "w0-v0004",
+      "transition": "continuation",
+      "quantum": "step",
+      "event_id": "cluster/1/1/468",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "next_task": {
+      "request_id": "w0-v0005",
+      "transition": "initial_distribution",
+      "quantum": "step",
+      "event_id": "cluster/1/1/470",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "clues": [
+      "partner GPU in single-GPU video finish (VAE decode + output digest) while a CFG2 gang waits",
+      "next task is a placement change (prepare/export/import)"
+     ]
+    },
+    {
+     "gpu": 1,
+     "start_ms": 2926061.907082796,
+     "finish_ms": 2937857.007788494,
+     "causes": {
+      "dispatchable_video": 0.28877146542072296,
+      "gang_wait_partner_held_overhead": 0.5991123616695404,
+      "gang_wait_partner_decode": 11794.212821871042
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0010",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0011",
+       "kind": "video",
+       "need_gpus": 2
+      }
+     ],
+     "waiting_count": 2,
+     "partner_state_at_start": {
+      "0": "idle"
+     },
+     "duration_ms": 11795.100705698133,
+     "previous_task": {
+      "request_id": "w0-v0010",
+      "transition": "continuation",
+      "quantum": "step",
+      "event_id": "cluster/1/1/571",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "next_task": {
+      "request_id": "w0-v0011",
+      "transition": "initial_distribution",
+      "quantum": "step",
+      "event_id": "cluster/1/1/573",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "clues": [
+      "partner GPU in single-GPU video finish (VAE decode + output digest) while a CFG2 gang waits",
+      "next task is a placement change (prepare/export/import)"
+     ]
+    },
+    {
+     "gpu": 1,
+     "start_ms": 790886.0454205424,
+     "finish_ms": 802680.4251223803,
+     "causes": {
+      "dispatchable_video": 0.33782608807086945,
+      "gang_wait_partner_held_overhead": 0.6094109266996384,
+      "gang_wait_partner_decode": 11793.432464823127
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0004",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0005",
+       "kind": "video",
+       "need_gpus": 2
+      },
+      {
+       "request_id": "w0-v0009",
+       "kind": "video",
+       "need_gpus": 2
+      }
+     ],
+     "waiting_count": 3,
+     "partner_state_at_start": {
+      "0": "idle"
+     },
+     "duration_ms": 11794.379701837897,
+     "previous_task": {
+      "request_id": "w0-v0009",
+      "transition": "continuation",
+      "quantum": "step",
+      "event_id": "cluster/1/1/417",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "next_task": {
+      "request_id": "w0-v0004",
+      "transition": "initial_distribution",
+      "quantum": "step",
+      "event_id": "cluster/1/1/419",
+      "group": [
+       0,
+       1
+      ]
+     },
+     "clues": [
+      "partner GPU in single-GPU video finish (VAE decode + output digest) while a CFG2 gang waits",
+      "next task is a placement change (prepare/export/import)"
+     ]
+    }
+   ],
+   "idle_with_queue_run_count": 2047,
+   "secondary": {
+    "advance_stage_rpc": {
+     "advance_elapsed_ms": 3113993.9323123544,
+     "advance_worker_model_ms": 3111792.131397873,
+     "advance_worker_operation_ms": 3113249.68974106,
+     "advance_stages": 2000,
+     "worker_model_over_rpc_wall": 0.9992929334602633,
+     "scope": "per-rank sums; worker model_ms is a worker-timed section, not CUDA kernel time"
+    },
+    "decode_wall_ms": {
+     "count": 20,
+     "sum": 236995.68823724985,
+     "p50": 11807.431407272816,
+     "p95": 12000.272824242711,
+     "max": 12179.096767678857
+    },
+    "image_wall_ms": {
+     "count": 20,
+     "sum": 38233.25909487903,
+     "p50": 1876.3045612722635,
+     "p95": 2016.5600756183267,
+     "max": 2115.926183760166
+    },
+    "same_group_turnaround_controller_ms": {
+     "count": 980,
+     "sum": 23136.756783351302,
+     "p50": 0.2543441951274872,
+     "p95": 0.8422632701694964,
+     "max": 2117.2438990324736
+    },
+    "same_group_turnaround_worker_gap_ms": {
+     "count": 980,
+     "sum": 23623.037924990058,
+     "p50": 0.7994109764695168,
+     "p95": 1.4210391789674752,
+     "max": 2117.5238005816936
+    }
+   },
+   "diagnostics": {
+    "events": 1040,
+    "unplaceable_events": 0,
+    "non_completed_events": 0,
+    "unmapped_stage_workers": [],
+    "clipped_ms": 0.0,
+    "same_gpu_task_overlap_ms": 0.0,
+    "requests_without_events_but_started": 0,
+    "missing_need_requests": 0
+   },
+   "accounting_complete": true,
+   "requests": {
+    "total": 40,
+    "by_status": {
+     "completed": 40
+    },
+    "by_kind": {
+     "image": 20,
+     "video": 20
+    }
+   },
+   "doorbell": {
+    "continuous_quanta": 0,
+    "deadline_skip_events": 17822,
+    "enabled": true,
+    "rings": 0
+   },
+   "l2_block_cuda": {
+    "status": "unknown",
+    "reason": "no block_cuda_ms recorded in this run (only emitted in observe mode and not persisted here)"
+   }
+  }
+ ],
+ "definitions": "Controller-level (L1) per-GPU timeline and bubble decomposition of native run records.\n\nEvery GPU's measurement window ``[0, cell.elapsed_ms]`` (the controller replay clock of one\n(phase, attempt, cell, order) observation) is split into mutually exclusive categories whose\ndurations sum exactly to the window.  Only controller-recorded timestamps are used:\n\n* task occupancy of a GPU: ``controller_timing[*]`` interval ``[selected_ms, observed_ms]`` on\n  ``group_after`` (the controller marks the GPU busy from launch until it observes completion);\n* own work inside that occupancy: ``stages`` whose ``worker`` is this GPU's video/image worker\n  (controller-observed RPC wall per rank); atomic image service and video ``finish`` (VAE decode\n  plus output digest) carry no stages, so their ``[async_begin_ms, all_done_ms]`` is used;\n* queue state: request arrival, video text-encode readiness (``encode_ready_ms``), request\n  occupancy and completion.\n\nCategories (priority order, first match wins for a GPU at an instant):\n\n1. ``video_compute`` | ``image_compute`` | ``decode`` | ``prepare`` | ``transfer_export`` |\n   ``transfer_import`` | ``other_stage`` — an own-rank stage / atomic body is in flight.\n2. ``unknown`` — the GPU is occupied but its work cannot be determined from the record\n   (aborted/failed controller events, stages on unmapped workers, requests that ran without a\n   controller_timing event).\n3. ``held_wait_peer`` — occupied by a task, no own stage, but another rank's stage of the same task\n   is running (e.g. the idle CFG partner waits for rank-0 prepare/export or another rank's import).\n4. ``held_overhead`` — occupied by a task with no stage running anywhere in it: launch, RPC\n   dispatch, rank skew and the controller noticing completion.\n5. ``held_midstep_owner`` — not occupied, but a request suspended inside a step (``block_after>0``)\n   owns this GPU's group until it resumes.\n6. ``idle_with_queue`` — not occupied and at least one arrived, text-ready request is waiting or\n   suspended (a scheduling bubble).  Sub-causes:\n   ``turnaround_same_request`` (the previous and next task on this GPU belong to the same request:\n   inter-quantum/step-boundary controller turnaround), ``dispatchable_video`` /\n   ``dispatchable_image_only`` (enough GPUs are free for some waiting request, yet none was\n   launched: controller latency or policy hold, e.g. image partitioning), and\n   ``gang_wait_partner_<label>`` (no waiting request fits the free GPUs; the partner GPU is busy\n   with ``<label>``, e.g. a single-GPU VAE decode blocking a CFG2 video gang).\n7. ``idle_encode_wait`` — not occupied, nothing ready, but some arrived video is still waiting for\n   its CPU text encoding to be observed ready.\n8. ``idle_empty`` — not occupied and no arrived unfinished request is waiting.\n\nThese are controller observations, not hardware utilization: an ``advance`` stage is RPC wall and\nincludes collectives, Python and launch overhead; ``decode`` includes CPU output hashing.  Kernel\ntime (``block_cuda_ms``) is reported only if a record actually contains it (L2 supplement);\notherwise it is ``unknown``.\n",
+ "source": {
+  "path": "/mnt/e/000_code/zyd-2026/.local/ditserve-kairos-rewrite-runtime/evidence/20261103-formal-b97479e/p1-partial-20261104/raw/wan22-0-s203/run.json",
+  "bytes": 15852677
+ }
+}

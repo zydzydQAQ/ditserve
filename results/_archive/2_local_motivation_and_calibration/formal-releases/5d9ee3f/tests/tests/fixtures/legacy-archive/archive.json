@@ -1,0 +1,10 @@
+{
+  "schema": "ditserve.archive.v1",
+  "steps": [
+    "series/step"
+  ],
+  "step_titles": {
+    "series/step": "Historic CPU fixture: failed request"
+  },
+  "notice": "本归档保留表格、报告和小型历史记录，不包含原始数组、latent 或完整 trace。合成结果不是真机性能，参考一致性不等于感知质量，未知质量不计入 SLO 成功。"
+}

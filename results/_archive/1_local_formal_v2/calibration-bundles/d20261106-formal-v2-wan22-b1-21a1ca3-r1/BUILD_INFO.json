@@ -1,0 +1,17 @@
+{
+ "commit": "21a1ca3377a4e1160cf1d0a7542acec5958342a1",
+ "subject": "Update simulation-tests check 58 for clean EDF video ordering and feasible image priority",
+ "built_utc": "2026-11-05T17:50:50+00:00",
+ "builder_image": "cluster-cmake-install",
+ "runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "tested_runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "core_sha256": "4b7daa7b3a0b309aa810b3d8d9dd7c815d76127a65aae3e366febe91da75ad63",
+ "runtime_smoke": "passed_cluster",
+ "local_checks": [
+  "cmake",
+  "ctest",
+  "installed_doctor"
+ ],
+ "files": 347,
+ "bytes": 6472541
+}

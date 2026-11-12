@@ -1,0 +1,263 @@
+{
+  "schema": "ditserve.native-metrics.v1",
+  "experiment": "kairos-wan21-native-serving-s301-l0p9",
+  "run_id": "d20261103-serve-wan21-4f0e5ff-s301-diag",
+  "status": "completed",
+  "run_metrics": {
+    "communication_p50_ms": null,
+    "communication_p99_ms": null,
+    "completed": 48,
+    "control_ms": 0.0,
+    "deadline_attainment": 1.0,
+    "denominator": "all frozen requests, including failed and blocked",
+    "failed": 0,
+    "incomplete": 0,
+    "latency_p50_ms": 19075.645199053102,
+    "latency_p95_ms": 55323.3909406525,
+    "model_ms": 494036.76165267825,
+    "observation_count": 3,
+    "observation_ms": 332091.64032526314,
+    "ontime": 48,
+    "qualification_status": "unverified",
+    "qualification_verified_requests": 0,
+    "qualified_goodput_rps": null,
+    "qualified_ontime": 0,
+    "requests": 48
+  },
+  "used_gpu_seconds": 2005.0598150864244,
+  "cells": [
+    {
+      "phase": "cluster",
+      "attempt": 1,
+      "cell": 0,
+      "policy": "ditserve",
+      "order": "forward",
+      "status": "completed",
+      "elapsed_ms": 116075.97719505429,
+      "by_kind": {
+        "video": {
+          "requests": 8,
+          "completed": 8,
+          "ontime": 8,
+          "deadline_attainment": 1.0,
+          "goodput_rps": 0.0689203760615927,
+          "latency_ms": {
+            "count": 8,
+            "p50": 44138.48482185253,
+            "p95": 55323.3909406525,
+            "p99": 56222.315443991494,
+            "max": 56447.04656982624
+          }
+        },
+        "image": {
+          "requests": 8,
+          "completed": 8,
+          "ontime": 8,
+          "deadline_attainment": 1.0,
+          "goodput_rps": 0.0689203760615927,
+          "latency_ms": {
+            "count": 8,
+            "p50": 6719.992334858616,
+            "p95": 6784.993422670453,
+            "p99": 6807.948355767996,
+            "max": 6813.687089042382
+          }
+        }
+      },
+      "allocated_gpu_seconds": 464.30390878021717,
+      "gpu_seconds_per_completed_request": 29.018994298763573,
+      "gpu_seconds_per_ontime_request": 29.018994298763573,
+      "image_batch": null,
+      "doorbell": {
+        "continuous_quanta": 161,
+        "deadline_skip_events": 36,
+        "enabled": true,
+        "rings": 4
+      },
+      "observed_transfers": 11,
+      "approximation": null,
+      "block_quantum_elapsed_ms": {
+        "count": 150,
+        "p50": 599.973046220839,
+        "p95": 613.9192096889019,
+        "p99": 656.8273920752104,
+        "max": 711.0968511551619
+      },
+      "advance_sample_count": 150,
+      "preemption_response_ms": {
+        "count": 0,
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "max": null
+      },
+      "preempting_request_count": 0,
+      "preemption_stop_ms": {
+        "count": 1,
+        "p50": 291.7580809444189,
+        "p95": 291.7580809444189,
+        "p99": 291.7580809444189,
+        "max": 291.7580809444189
+      },
+      "failures": []
+    },
+    {
+      "phase": "cluster",
+      "attempt": 1,
+      "cell": 1,
+      "policy": "edf-cfg2",
+      "order": "forward",
+      "status": "completed",
+      "elapsed_ms": 108113.08125965297,
+      "by_kind": {
+        "video": {
+          "requests": 8,
+          "completed": 8,
+          "ontime": 8,
+          "deadline_attainment": 1.0,
+          "goodput_rps": 0.07399659603435559,
+          "latency_ms": {
+            "count": 8,
+            "p50": 39117.0906718223,
+            "p95": 56740.39844307703,
+            "p99": 58294.60408651117,
+            "max": 58683.155497369706
+          }
+        },
+        "image": {
+          "requests": 8,
+          "completed": 8,
+          "ontime": 8,
+          "deadline_attainment": 1.0,
+          "goodput_rps": 0.07399659603435559,
+          "latency_ms": {
+            "count": 8,
+            "p50": 6753.69444471116,
+            "p95": 7212.884815084293,
+            "p99": 7369.740906604155,
+            "max": 7408.95492948412
+          }
+        }
+      },
+      "allocated_gpu_seconds": 432.4523250386119,
+      "gpu_seconds_per_completed_request": 27.028270314913243,
+      "gpu_seconds_per_ontime_request": 27.028270314913243,
+      "image_batch": null,
+      "doorbell": {
+        "continuous_quanta": 0,
+        "deadline_skip_events": 1046,
+        "enabled": true,
+        "rings": 0
+      },
+      "observed_transfers": 8,
+      "approximation": null,
+      "block_quantum_elapsed_ms": {
+        "count": 152,
+        "p50": 591.9695384800434,
+        "p95": 603.5565556958317,
+        "p99": 636.1105781421068,
+        "max": 665.4958110302687
+      },
+      "advance_sample_count": 152,
+      "preemption_response_ms": {
+        "count": 0,
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "max": null
+      },
+      "preempting_request_count": 0,
+      "preemption_stop_ms": {
+        "count": 0,
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "max": null
+      },
+      "failures": []
+    },
+    {
+      "phase": "cluster",
+      "attempt": 1,
+      "cell": 2,
+      "policy": "block-cfg2",
+      "order": "forward",
+      "status": "completed",
+      "elapsed_ms": 107902.58187055588,
+      "by_kind": {
+        "video": {
+          "requests": 8,
+          "completed": 8,
+          "ontime": 8,
+          "deadline_attainment": 1.0,
+          "goodput_rps": 0.0741409506734242,
+          "latency_ms": {
+            "count": 8,
+            "p50": 38936.36733343439,
+            "p95": 56332.63734435317,
+            "p99": 57933.47522842545,
+            "max": 58333.68469944352
+          }
+        },
+        "image": {
+          "requests": 8,
+          "completed": 8,
+          "ontime": 8,
+          "deadline_attainment": 1.0,
+          "goodput_rps": 0.0741409506734242,
+          "latency_ms": {
+            "count": 8,
+            "p50": 6732.958589320711,
+            "p95": 7161.063308129564,
+            "p99": 7292.834464073701,
+            "max": 7325.777253059736
+          }
+        }
+      },
+      "allocated_gpu_seconds": 431.6103274822235,
+      "gpu_seconds_per_completed_request": 26.97564546763897,
+      "gpu_seconds_per_ontime_request": 26.97564546763897,
+      "image_batch": null,
+      "doorbell": {
+        "continuous_quanta": 162,
+        "deadline_skip_events": 898,
+        "enabled": true,
+        "rings": 4
+      },
+      "observed_transfers": 8,
+      "approximation": null,
+      "block_quantum_elapsed_ms": {
+        "count": 154,
+        "p50": 601.6541421413422,
+        "p95": 613.7460675090551,
+        "p99": 662.2051380202174,
+        "max": 683.4775488823652
+      },
+      "advance_sample_count": 154,
+      "preemption_response_ms": {
+        "count": 0,
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "max": null
+      },
+      "preempting_request_count": 0,
+      "preemption_stop_ms": {
+        "count": 2,
+        "p50": 54.42949756979942,
+        "p95": 66.88798293471336,
+        "p99": 67.99540385603905,
+        "max": 68.27225908637047
+      },
+      "failures": []
+    }
+  ],
+  "notes": {
+    "quantiles": "linear interpolation at (n-1)*p, matching the native controller",
+    "goodput_rps": "completed and on-time requests divided by the finite cell wall time; not quality-qualified or sustained capacity",
+    "allocated_gpu_seconds": "sum over native cell elapsed time times registered GPUs; budget.used_gpu_seconds additionally includes process startup and cleanup",
+    "block_quantum_elapsed_ms": "steady quantum wall time, not a direct preemption-wait CDF",
+    "preemption_response_ms": "arrival-to-first-start response of requests marked block_preempt; includes scheduling and queueing, not only the boundary stop",
+    "preemption_stop_ms": "doorbell ring to a video worker-confirmed block-boundary stop on the preempted request; not the preempting request queueing delay"
+  }
+}

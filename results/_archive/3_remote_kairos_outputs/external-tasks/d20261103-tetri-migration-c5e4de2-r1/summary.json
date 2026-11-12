@@ -1,0 +1,386 @@
+{
+  "schema": "ditserve.external-task.v1",
+  "run_id": "d20261103-tetri-migration-c5e4de2-r1",
+  "binding": {
+    "commit": "c5e4de22b3cdda9b223116dab2e3749e28c6feab",
+    "manifest_sha256": "286e3d09ba710f07987ec590cbe13d8b422fb76a6957325ae4c6e0b36888eda1",
+    "job_spec_sha256": "42f7f255393dd8ae25c11a2de315a9ed159a83e3f9a76dff078535d0bded0ed6",
+    "build_info_sha256": "76a70cb4246b15b0e82c3749841b81cb79e8f0692da812c19831108d27e7e0a6",
+    "core_sha256": "e358e29d1a3ca238bbf2b7f981db71e951519715aedf46d58454738aabcbd42b",
+    "worker_sources_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a",
+    "gfc_sources_sha256": "e6c7f47a26d02a8091463bf9cb8ca58835c2b07c3c2cd4827d1b319c3bebf6e6",
+    "image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:2009ea26f63bcf0360ce7b4d71ed508c91c0702c97dd97e372cecfb672a818a1",
+    "image_identity_scope": "digest-pinned submitted spec, not independent pod imageID",
+    "probe_plan_sha256": "a2a6a07f9e94a61c08661a675ee8929bd5ef57afec43a65261ae4bcccd9deec5"
+  },
+  "allocation_gpus": 2,
+  "initial_storage": {
+    "used_gib": 769,
+    "percent": 76
+  },
+  "final_storage": {
+    "used_gib": 769,
+    "percent": 76
+  },
+  "task": "official-tetriserve-native-five-tensor-transport-and-shared-sd35-cross-rank-continuation",
+  "execution": {
+    "argv": [
+      "/opt/venv/bin/python",
+      "-B",
+      "/shared/data/DITSERVE/external-probes/tetri-migration-c5e4de2-r1/external_tetriserve_migration.py",
+      "run",
+      "--source-root",
+      "/shared/data/DITSERVE/external-systems/20261103-source-v1/TetriServe",
+      "--source-manifest",
+      "/shared/data/DITSERVE/external-systems/20261103-source-v1/TetriServe.source.json",
+      "--source-manifest-sha256",
+      "2d0d9f9efaf4b3749063458d56c74b0ef79ef72de22096b39889e798e792d027",
+      "--shared-python-root",
+      "/shared/code/DITSERVE/builds/51740c0/share/ditserve/python",
+      "--model-root",
+      "/shared/data/DITSERVE/models/sd3.5-medium",
+      "--model-manifest",
+      "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/sd35.manifest.json",
+      "--model-manifest-sha256",
+      "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+      "--protocol",
+      "/shared/data/DITSERVE/external-probes/tetri-migration-c5e4de2-r1/formal-mixed-v1.json",
+      "--protocol-sha256",
+      "86aae608c7f86d194e77a5e2e9645b192b921d8137174cbcdb2825ed7d94b392",
+      "--prompt",
+      "A dog walking in a park.",
+      "--seed",
+      "101",
+      "--output-dir",
+      "/shared/output/DITSERVE/external-tasks/d20261103-tetri-migration-c5e4de2-r1/result",
+      "--timeout-seconds",
+      "1800"
+    ],
+    "returncode": 0,
+    "timed_out": false,
+    "seconds": 94.37624031677842,
+    "stderr_tail": "[rank1]:[W1103 09:04:03.501961411 ProcessGroupNCCL.cpp:4068] Warning: An unbatched P2P op (send/recv) was called on this ProcessGroup with size 2.  In lazy initialization mode, this will result in a new 2-rank NCCL communicator to be created. (function operator())\n[rank0]:[W1103 09:04:03.502097357 ProcessGroupNCCL.cpp:4068] Warning: An unbatched P2P op (send/recv) was called on this ProcessGroup with size 2.  In lazy initialization mode, this will result in a new 2-rank NCCL communicator to be created. (function operator())\n[rank0]:[W1103 09:04:03.733812585 ProcessGroupNCCL.cpp:4068] Warning: An unbatched P2P op (send/recv) was called on this ProcessGroup with size 2.  In lazy initialization mode, this will result in a new 2-rank NCCL communicator to be created. (function operator())\n[rank1]:[W1103 09:04:03.733942393 ProcessGroupNCCL.cpp:4068] Warning: An unbatched P2P op (send/recv) was called on this ProcessGroup with size 2.  In lazy initialization mode, this will result in a new 2-rank NCCL communicator to be created. (function operator())\n\nLoading pipeline components...:   0%|          | 0/9 [00:00<?, ?it/s]`torch_dtype` is deprecated! Use `dtype` instead!\n\nLoading pipeline components...:   0%|          | 0/9 [00:00<?, ?it/s]`torch_dtype` is deprecated! Use `dtype` instead!\n\nLoading pipeline components...:  11%|█         | 1/9 [00:00<00:03,  2.54it/s]\nLoading pipeline components...:  22%|██▏       | 2/9 [00:01<00:06,  1.01it/s]\nLoading pipeline components...:  33%|███▎      | 3/9 [00:02<00:03,  1.55it/s]\n\nLoading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]\u001b[A\nLoading pipeline components...:  33%|███▎      | 3/9 [00:05<00:13,  2.17s/it]\nLoading pipeline components...:  44%|████▍     | 4/9 [00:07<00:10,  2.09s/it]\nLoading pipeline components...:  56%|█████▌    | 5/9 [00:08<00:05,  1.45s/it]You set `add_prefix_space`. The tokenizer needs to be converted from the slow tokenizers\n\n\nLoading checkpoint shards:  50%|█████     | 1/2 [00:06<00:06,  6.39s/it]\u001b[A\nLoading pipeline components...:  78%|███████▊  | 7/9 [00:08<00:01,  1.21it/s]\n\nLoading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]\u001b[A\n\nLoading checkpoint shards: 100%|██████████| 2/2 [00:12<00:00,  6.00s/it]\u001b[A\nLoading checkpoint shards: 100%|██████████| 2/2 [00:12<00:00,  6.05s/it]\n\nLoading pipeline components...:  44%|████▍     | 4/9 [00:14<00:24,  4.94s/it]\nLoading pipeline components...:  67%|██████▋   | 6/9 [00:14<00:07,  2.51s/it]You set `add_prefix_space`. The tokenizer needs to be converted from the slow tokenizers\n\nLoading pipeline components...:  78%|███████▊  | 7/9 [00:15<00:03,  1.91s/it]\n\nLoading checkpoint shards:  50%|█████     | 1/2 [00:06<00:06,  6.47s/it]\u001b[A\nLoading pipeline components...:  89%|████████▉ | 8/9 [00:15<00:01,  1.46s/it]\nLoading pipeline components...: 100%|██████████| 9/9 [00:20<00:00,  2.53s/it]\nLoading pipeline components...: 100%|██████████| 9/9 [00:20<00:00,  2.28s/it]\n\n\nLoading checkpoint shards: 100%|██████████| 2/2 [00:12<00:00,  6.17s/it]\u001b[A\nLoading checkpoint shards: 100%|██████████| 2/2 [00:12<00:00,  6.22s/it]\n\nLoading pipeline components...: 100%|██████████| 9/9 [00:20<00:00,  3.04s/it]\nLoading pipeline components...: 100%|██████████| 9/9 [00:20<00:00,  2.32s/it]\n\n  0%|          | 0/28 [00:00<?, ?it/s]\n  4%|▎         | 1/28 [00:00<00:05,  5.03it/s]\n 11%|█         | 3/28 [00:00<00:02, 10.18it/s]\n 18%|█▊        | 5/28 [00:00<00:01, 12.81it/s]\n 25%|██▌       | 7/28 [00:00<00:01, 14.29it/s]\n 32%|███▏      | 9/28 [00:00<00:01, 15.23it/s]\n 39%|███▉      | 11/28 [00:00<00:01, 15.80it/s]\n 46%|████▋     | 13/28 [00:00<00:00, 16.23it/s]\n 54%|█████▎    | 15/28 [00:01<00:00, 16.44it/s]\n 61%|██████    | 17/28 [00:01<00:00, 16.68it/s]\n 68%|██████▊   | 19/28 [00:01<00:00, 16.70it/s]\n 75%|███████▌  | 21/28 [00:01<00:00, 16.67it/s]\n 82%|████████▏ | 23/28 [00:01<00:00, 16.77it/s]\n 89%|████████▉ | 25/28 [00:01<00:00, 16.82it/s]\n 96%|█████████▋| 27/28 [00:01<00:00, 16.89it/s]\n100%|██████████| 28/28 [00:01<00:00, 15.57it/s]\n\n  0%|          | 0/2 [00:00<?, ?it/s]\n 50%|█████     | 1/2 [00:00<00:00,  6.37it/s]\n100%|██████████| 2/2 [00:00<00:00,  8.70it/s]\n\n  0%|          | 0/26 [00:00<?, ?it/s]\n  8%|▊         | 2/26 [00:00<00:01, 16.82it/s]\n 15%|█▌        | 4/26 [00:00<00:01, 17.10it/s]\n 23%|██▎       | 6/26 [00:00<00:01, 17.11it/s]\n 31%|███       | 8/26 [00:00<00:01, 17.14it/s]\n 38%|███▊      | 10/26 [00:00<00:00, 17.17it/s]\n 46%|████▌     | 12/26 [00:00<00:00, 17.04it/s]\n 54%|█████▍    | 14/26 [00:00<00:00, 17.15it/s]\n 62%|██████▏   | 16/26 [00:00<00:00, 17.01it/s]\n 69%|██████▉   | 18/26 [00:01<00:00, 16.83it/s]\n 77%|███████▋  | 20/26 [00:01<00:00, 16.77it/s]\n 85%|████████▍ | 22/26 [00:01<00:00, 16.77it/s]\n 92%|█████████▏| 24/26 [00:01<00:00, 16.81it/s]\n100%|██████████| 26/26 [00:01<00:00, 16.77it/s]\n100%|██████████| 26/26 [00:01<00:00, 16.91it/s]\n",
+    "stdout_tail": "WARNING 11-03 09:03:58 [envs.py:111] Flash Attention library \"flash_attn\" not found, using pytorch attention implementation\nWARNING 11-03 09:03:58 [envs.py:111] Flash Attention library \"flash_attn\" not found, using pytorch attention implementation\n[Gloo] Rank 0 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1\n[Gloo] Rank 1 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1\n[Gloo] Rank [Gloo] Rank 10 is connected to  is connected to 11 peer ranks.  peer ranks. Expected number of connected peer ranks is : Expected number of connected peer ranks is : 11\n\nINFO 11-03 09:04:03 [globals.py:143] Created 2 directed latent transfer process groups\nINFO 11-03 09:04:03 [globals.py:143] Created 2 directed latent transfer process groups\nINFO 11-03 09:04:03 [globals.py:167] [Rank 0] Warmed up 2 directed latent transfer NCCL communicators\nINFO 11-03 09:04:03 [globals.py:167] [Rank 1] Warmed up 2 directed latent transfer NCCL communicators\n[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0\n[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0\n[Gloo] Rank 0 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1\n[Gloo] Rank 1 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1\nINFO 11-03 09:04:03 [globals.py:229] Generated 3 general process subgroups (skipped 0, failed 0). Map size: 3\nINFO 11-03 09:04:03 [globals.py:229] Generated 3 general process subgroups (skipped 0, failed 0). Map size: 3\nINFO 11-03 09:04:03 [latent_manager.py:77] [Rank 0 Sender Thread] Starting loop, listening on its queue.\nINFO 11-03 09:04:03 [latent_manager.py:77] [Rank 1 Sender Thread] Starting loop, listening on its queue.\nINFO 11-03 09:04:03 [latent_manager.py:157] [Rank 1] Sender thread started.\nINFO 11-03 09:04:03 [latent_manager.py:157] [Rank 0] Sender thread started.\nINFO 11-03 09:04:03 [config.py:101] dp_degree: 1, dit_parallel_size: 1, use_cfg_parallel: False\nINFO 11-03 09:04:03 [config.py:128] Ulysses degree not set, using default value 1\nINFO 11-03 09:04:03 [config.py:101] dp_degree: 1, dit_parallel_size: 1, use_cfg_parallel: False\nINFO 11-03 09:04:03 [config.py:131] Ring degree not set, using default value 1\nINFO 11-03 09:04:03 [config.py:128] Ulysses degree not set, using default value 1\nINFO 11-03 09:04:03 [config.py:169] Pipeline patch number not set, using default value 1\nINFO 11-03 09:04:03 [config.py:131] Ring degree not set, using default value 1\nINFO 11-03 09:04:03 [config.py:169] Pipeline patch number not set, using default value 1\nINFO 11-03 09:05:08 [config.py:207] Pipeline patch number not set, using default value 1\nINFO 11-03 09:05:08 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)\nDEBUG 11-03 09:05:08 [compat.py:39] xfuser has no installed metadata; not checking diffusers version\nWARNING 11-03 09:05:08 [logger.py:126] Using SDPA_MATH as attention backend.\nINFO 11-03 09:05:08 [base_pipeline.py:494] Scheduler found, trying to parallel scheduler...\nINFO 11-03 09:05:09 [config.py:207] Pipeline patch number not set, using default value 1\nINFO 11-03 09:05:09 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)\nDEBUG 11-03 09:05:09 [compat.py:39] xfuser has no installed metadata; not checking diffusers version\nINFO 11-03 09:05:09 [base_pipeline.py:494] Scheduler found, trying to parallel scheduler...\nINFO 11-03 09:05:12 [latent_future.py:151] [Rank 1] Received tensors from 0\nINFO 11-03 09:05:14 [latent_manager.py:235] [Rank 1] Signaling sender thread to stop.\nINFO 11-03 09:05:14 [latent_manager.py:235] [Rank 0] Signaling sender thread to stop.\nINFO 11-03 09:05:14 [latent_manager.py:90] [Rank 1 Sender Thread] Received stop signal (None).\nINFO 11-03 09:05:14 [latent_manager.py:152] [Rank 1 Sender Thread] Exiting loop.\nINFO 11-03 09:05:14 [latent_manager.py:90] [Rank 0 Sender Thread] Received stop signal (None).\nINFO 11-03 09:05:14 [latent_manager.py:152] [Rank 0 Sender Thread] Exiting loop.\nINFO 11-03 09:05:14 [globals.py:246] Destroying 3 custom process groups.\nINFO 11-03 09:05:14 [globals.py:246] Destroying 3 custom process groups.\nINFO 11-03 09:05:14 [globals.py:254] Destroying 2 latent transfer process groups.\nINFO 11-03 09:05:14 [globals.py:254] Destroying 2 latent transfer process groups.\n{\"status\": \"numerical_passed\", \"summary\": \"/shared/output/DITSERVE/external-tasks/d20261103-tetri-migration-c5e4de2-r1/result/summary.json\", \"sha256\": \"41134da2e8d58e6b02101bc6d08cada7c512813c470c3c268ecd2e5c31f23a80\", \"qualification_eligible\": false}\n",
+    "json_output": false,
+    "child_summary_path": "/shared/output/DITSERVE/external-tasks/d20261103-tetri-migration-c5e4de2-r1/result/summary.json",
+    "child_summary_sha256": "41134da2e8d58e6b02101bc6d08cada7c512813c470c3c268ecd2e5c31f23a80",
+    "child_summary": {
+      "allows": [],
+      "cross_rank_sp1_verified": true,
+      "derived_manifest_sha256": "5ab5b86ee32a96039a50bcaed54bf10ce1cdc5415cac473bc4504375ce8485fb",
+      "http_zmq_executed": false,
+      "intervals": [
+        [
+          0,
+          2
+        ],
+        [
+          2,
+          28
+        ]
+      ],
+      "model_loaded": true,
+      "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+      "native_transport_attempted": true,
+      "native_transport_executed": true,
+      "native_transport_sources": {
+        "tetriserve/distributed/globals.py": "2e8d29eab6c8324ec7330cd926c2f3d51c33f159a96831698cb0e4d2e628adaa",
+        "tetriserve/light_ray/latent_future.py": "a737d9b0c22b004a70934ebf2b5c42ce12e8ee2ae75cd39fd815ba4c18157e2c",
+        "tetriserve/light_ray/latent_manager.py": "aaee87afc5da210684093632d06967a99a776d3f91ac2e44ff0ef9bcf0d2be98"
+      },
+      "numerical_check_passed": true,
+      "performance_measurements": false,
+      "port_config_sha256": "636f3a3de3793c127cbf7bce0e81123ec89172b28fcfd6a58d52ec8972b5846c",
+      "protocol_sha256": "86aae608c7f86d194e77a5e2e9645b192b921d8137174cbcdb2825ed7d94b392",
+      "qualification_eligible": false,
+      "ranks": [
+        {
+          "backend": {
+            "attention": "SDPA_MATH",
+            "name": "xdit",
+            "pipeline": "SD35XDitPipeline",
+            "revision": "16c34e7f070de65d9d2c67a6d74e0007dd8b426a",
+            "sp_ranks": [
+              1
+            ],
+            "transformer": "xFuserSD3Transformer2DWrapper"
+          },
+          "comparisons": {
+            "decoded": {
+              "atol": 1e-05,
+              "bitwise_equal": true,
+              "cosine_similarity": 1.0,
+              "elements": 786432,
+              "max_abs_error": 0.0,
+              "passed": true,
+              "relative_l2_error": 0.0,
+              "rmse": 0.0,
+              "rtol": 1e-05
+            },
+            "latent": {
+              "atol": 1e-05,
+              "bitwise_equal": true,
+              "cosine_similarity": 1.0000000000000002,
+              "elements": 65536,
+              "max_abs_error": 0.0,
+              "passed": true,
+              "relative_l2_error": 0.0,
+              "rmse": 0.0,
+              "rtol": 1e-05
+            }
+          },
+          "distributed_closed": true,
+          "executed_interval": [
+            2,
+            28
+          ],
+          "gpu": {
+            "device": 1,
+            "name": "NVIDIA A100-PCIE-40GB",
+            "uuid": "33520da5-f9ab-fa73-8bb2-3a67f40cd4b4"
+          },
+          "model_provenance": {
+            "group_ownership": "official TetriServe",
+            "model_integrity": {
+              "model_integrity": "manifest_verified",
+              "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+              "model_verified_bytes": 16274913511,
+              "model_verified_files": 28,
+              "model_verified_revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80"
+            },
+            "new_groups_created_by_bridge": 0,
+            "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a"
+          },
+          "numerical_check_passed": true,
+          "output": {
+            "reference_decoded": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 1.2421875,
+              "minimum": -1.390625,
+              "retained_array": false,
+              "sha256": "e7a01f60f9f5d2b851deedc7a0302f58822992df4ad37063a1fec7af72e96b11",
+              "shape": [
+                1,
+                3,
+                512,
+                512
+              ]
+            },
+            "reference_latent": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 2.828125,
+              "minimum": -3.8125,
+              "retained_array": false,
+              "sha256": "63671ac2bc2d70164f5231fbce0b72148300e3f401e72ec6142459a8746239c6",
+              "shape": [
+                1,
+                16,
+                64,
+                64
+              ]
+            },
+            "resumed_decoded": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 1.2421875,
+              "minimum": -1.390625,
+              "retained_array": false,
+              "sha256": "e7a01f60f9f5d2b851deedc7a0302f58822992df4ad37063a1fec7af72e96b11",
+              "shape": [
+                1,
+                3,
+                512,
+                512
+              ]
+            },
+            "resumed_latent": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 2.828125,
+              "minimum": -3.8125,
+              "retained_array": false,
+              "sha256": "63671ac2bc2d70164f5231fbce0b72148300e3f401e72ec6142459a8746239c6",
+              "shape": [
+                1,
+                16,
+                64,
+                64
+              ]
+            }
+          },
+          "peak_cuda_allocated_bytes": 16972217344,
+          "rank": 1,
+          "received_cursor": 2,
+          "reference_steps": 28,
+          "resumed_steps": 26,
+          "sender_thread_stopped": true,
+          "stage": "completed",
+          "status": "passed",
+          "wire_bytes_exact": true,
+          "wire_received": {
+            "latents": {
+              "bytes": 131072,
+              "dtype": "torch.bfloat16",
+              "sha256": "0d41ec3920e81571e1d0575f5644aff0447483045b7aa3b86bcfe7115053adfb",
+              "shape": [
+                1,
+                16,
+                64,
+                64
+              ]
+            },
+            "pooled_prompt_embeds": {
+              "bytes": 8192,
+              "dtype": "torch.bfloat16",
+              "sha256": "345ef4306a89ce30057977546d8baba0cd49360f20bad3e21abcdf19106fbabb",
+              "shape": [
+                2,
+                2048
+              ]
+            },
+            "prompt_embeds": {
+              "bytes": 5455872,
+              "dtype": "torch.bfloat16",
+              "sha256": "b1ea5e44eea1ff038dcb153fead675145a0ca00e9e0a785a6c6a331d256dc9bc",
+              "shape": [
+                2,
+                333,
+                4096
+              ]
+            },
+            "sigmas": {
+              "bytes": 116,
+              "dtype": "torch.float32",
+              "sha256": "aaca3c374d8d6dc6ab950254772528529c912d287a7c1b2f386e45aef59a0064",
+              "shape": [
+                29
+              ]
+            },
+            "timesteps": {
+              "bytes": 112,
+              "dtype": "torch.float32",
+              "sha256": "2e6915cb891b5e94ac2140fb7c1189fde6f1bc699c0c94a3148ab81af9424205",
+              "shape": [
+                28
+              ]
+            }
+          }
+        },
+        {
+          "backend": {
+            "attention": "SDPA_MATH",
+            "name": "xdit",
+            "pipeline": "SD35XDitPipeline",
+            "revision": "16c34e7f070de65d9d2c67a6d74e0007dd8b426a",
+            "sp_ranks": [
+              0
+            ],
+            "transformer": "xFuserSD3Transformer2DWrapper"
+          },
+          "distributed_closed": true,
+          "executed_interval": [
+            0,
+            2
+          ],
+          "gpu": {
+            "device": 0,
+            "name": "NVIDIA A100-PCIE-40GB",
+            "uuid": "bf6392ab-b12b-746c-58c7-1115d4730ab3"
+          },
+          "model_provenance": {
+            "group_ownership": "official TetriServe",
+            "model_integrity": {
+              "model_integrity": "manifest_verified",
+              "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+              "model_verified_bytes": 16274913511,
+              "model_verified_files": 28,
+              "model_verified_revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80"
+            },
+            "new_groups_created_by_bridge": 0,
+            "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a"
+          },
+          "peak_cuda_allocated_bytes": 16430946304,
+          "producer_synchronized_before_notification": true,
+          "rank": 0,
+          "sender_thread_stopped": true,
+          "source_payload_released": true,
+          "stage": "completed",
+          "status": "passed",
+          "wire_sent": {
+            "latents": {
+              "bytes": 131072,
+              "dtype": "torch.bfloat16",
+              "sha256": "0d41ec3920e81571e1d0575f5644aff0447483045b7aa3b86bcfe7115053adfb",
+              "shape": [
+                1,
+                16,
+                64,
+                64
+              ]
+            },
+            "pooled_prompt_embeds": {
+              "bytes": 8192,
+              "dtype": "torch.bfloat16",
+              "sha256": "345ef4306a89ce30057977546d8baba0cd49360f20bad3e21abcdf19106fbabb",
+              "shape": [
+                2,
+                2048
+              ]
+            },
+            "prompt_embeds": {
+              "bytes": 5455872,
+              "dtype": "torch.bfloat16",
+              "sha256": "b1ea5e44eea1ff038dcb153fead675145a0ca00e9e0a785a6c6a331d256dc9bc",
+              "shape": [
+                2,
+                333,
+                4096
+              ]
+            },
+            "sigmas": {
+              "bytes": 116,
+              "dtype": "torch.float32",
+              "sha256": "aaca3c374d8d6dc6ab950254772528529c912d287a7c1b2f386e45aef59a0064",
+              "shape": [
+                29
+              ]
+            },
+            "timesteps": {
+              "bytes": 112,
+              "dtype": "torch.float32",
+              "sha256": "2e6915cb891b5e94ac2140fb7c1189fde6f1bc699c0c94a3148ab81af9424205",
+              "shape": [
+                28
+              ]
+            }
+          }
+        }
+      ],
+      "reference_steps": 28,
+      "request": {
+        "guidance_scale": 4.5,
+        "height": 512,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "prompt": "A dog walking in a park.",
+        "seed": 101,
+        "steps": 28,
+        "width": 512
+      },
+      "scheduler_executed": false,
+      "schema": "ditserve.tetriserve-native-migration-check.v1",
+      "scope": "Original native five-tensor transport plus shared SP1 continuation on another GPU; not full TetriServe",
+      "serving_executed": false,
+      "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a",
+      "source_manifest_sha256": "2d0d9f9efaf4b3749063458d56c74b0ef79ef72de22096b39889e798e792d027",
+      "sp2_verified": false,
+      "stage": "completed",
+      "status": "numerical_passed"
+    }
+  },
+  "qualification_eligible": false,
+  "allows": [],
+  "scope": "Native implementation diagnostic; not full-system serving or quality qualification."
+}

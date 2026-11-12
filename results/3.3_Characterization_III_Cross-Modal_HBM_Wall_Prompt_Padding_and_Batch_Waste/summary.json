@@ -1,0 +1,159 @@
+{
+  "schema": "ditserve.paper-results.subsection.v1",
+  "section": "3.3",
+  "title": "Characterization III: Cross-Modal HBM Wall, Prompt Padding, and Batch Waste",
+  "paper_source": "ditserve-writing/body/03-motivation.tex",
+  "tables": [
+    "Table 2 (tab:mot_memory)"
+  ],
+  "provenance_jobs": [
+    "d20261104-mot-sys-2gpu-r1",
+    "20261104-motivation-local/cross_modal_memory_study.json",
+    "20261104-motivation-local/continuous_batch_study.json"
+  ],
+  "hbm_usable_per_gpu_gib": 39.5,
+  "encoder_hbm_saved_per_gpu_gib": 19.45,
+  "encoder_hbm_saved_8gpu_gib": 155.6,
+  "umt5_valid_token_truncation": {
+    "pad_compute_waste_512tok_pct": 95.9,
+    "cpu_bf16_speedup_x": [
+      5.87,
+      8.08
+    ],
+    "cached_cpu_speedup_x": 15.58,
+    "gpu_speedup_x": [
+      5.52,
+      6.75
+    ],
+    "h2d_dma_payload_reduction_x": 15.5,
+    "h2d_dma_ms": [
+      0.1,
+      0.4
+    ],
+    "max_abs_diff_lossless": 0.0
+  },
+  "stop_time_cache_release": {
+    "reclaimed_gib": [
+      0.58,
+      2.3
+    ],
+    "latency_ms": [
+      0.6,
+      1.62
+    ]
+  },
+  "sd35_continuous_batching": {
+    "pad_tokens_saved_pct": [
+      37.5,
+      50.0
+    ],
+    "step_speedup_x": [
+      1.682,
+      2.02
+    ],
+    "online_goodput_speedup_x": 2.2,
+    "stage_bubble_hidden_ms": 180.0
+  },
+  "memory_strategies": [
+    {
+      "strategy": "S0: Naive GPU Co-Location",
+      "static_weights_gib": "28.6 - 36.4",
+      "peak_hbm_gib": "40.1 - 54.0",
+      "weight_swap_ms": "0",
+      "encode_or_dma_ms": "28 - 80",
+      "status": "100% OOM (> 39.5 GiB usable)"
+    },
+    {
+      "strategy": "S1: Reactive Weight Swap",
+      "static_weights_gib": "13.5 - 21.2",
+      "peak_hbm_gib": "17.9 - 33.7",
+      "weight_swap_ms": "2,742 - 3,907",
+      "encode_or_dma_ms": "28 - 80",
+      "status": "0% Tight-SLO SAR (PCIe swap stall)"
+    },
+    {
+      "strategy": "S2/S3: Naive CPU Encoders (512-pad)",
+      "static_weights_gib": "9.2 - 25.8",
+      "peak_hbm_gib": "17.1 - 42.5",
+      "weight_swap_ms": "0",
+      "encode_or_dma_ms": "3,650 - 15,200",
+      "status": "Severe CPU encoding stall (95.9% pad waste)"
+    },
+    {
+      "strategy": "S4: DitServe Disaggregated Pool + UMT5 Crop",
+      "static_weights_gib": "9.2 - 16.9",
+      "peak_hbm_gib": "17.1 - 27.6",
+      "weight_swap_ms": "0",
+      "encode_or_dma_ms": "0.10 - 0.75",
+      "status": "0 OOM (-19.45 GiB/GPU, lossless)"
+    }
+  ],
+  "cu_seqlens_heterogeneous_batches": [
+    {
+      "batch_config": "B=2 (1x512^2 + 1x1024^2)",
+      "padded_tokens": 8192,
+      "packed_tokens": 5120,
+      "pad_saved_pct": 37.5,
+      "padded_step_ms": 444.88,
+      "packed_step_ms": 264.44,
+      "step_speedup_vs_padded": 1.682,
+      "speedup_vs_serial_b1": 1.079,
+      "max_abs_diff": 4.77e-07
+    },
+    {
+      "batch_config": "B=3 (2x512^2 + 1x1024^2)",
+      "padded_tokens": 12288,
+      "packed_tokens": 6144,
+      "pad_saved_pct": 50.0,
+      "padded_step_ms": 621.88,
+      "packed_step_ms": 311.0,
+      "step_speedup_vs_padded": 2.0,
+      "speedup_vs_serial_b1": 1.09,
+      "max_abs_diff": 4.77e-07
+    },
+    {
+      "batch_config": "B=3 (per-image E2E microbench)",
+      "padded_tokens": 12288,
+      "packed_tokens": 6144,
+      "pad_saved_pct": 50.0,
+      "padded_step_ms": 6013.85,
+      "packed_step_ms": 2977.67,
+      "step_speedup_vs_padded": 2.02,
+      "speedup_vs_serial_b1": 1.09,
+      "max_abs_diff": 4.77e-07
+    },
+    {
+      "batch_config": "B=4 (2x512^2 + 2x1024^2)",
+      "padded_tokens": 16384,
+      "packed_tokens": 10240,
+      "pad_saved_pct": 37.5,
+      "padded_step_ms": 867.99,
+      "packed_step_ms": 507.96,
+      "step_speedup_vs_padded": 1.709,
+      "speedup_vs_serial_b1": 1.125,
+      "max_abs_diff": 4.77e-07
+    },
+    {
+      "batch_config": "B=6 (3x512^2 + 3x1024^2)",
+      "padded_tokens": 24576,
+      "packed_tokens": 15360,
+      "pad_saved_pct": 37.5,
+      "padded_step_ms": 1291.34,
+      "packed_step_ms": 755.21,
+      "step_speedup_vs_padded": 1.71,
+      "speedup_vs_serial_b1": 1.136,
+      "max_abs_diff": 4.77e-07
+    },
+    {
+      "batch_config": "B=8 (4x512^2 + 4x1024^2)",
+      "padded_tokens": 32768,
+      "packed_tokens": 20480,
+      "pad_saved_pct": 37.5,
+      "padded_step_ms": 1719.87,
+      "packed_step_ms": 1003.32,
+      "step_speedup_vs_padded": 1.714,
+      "speedup_vs_serial_b1": 1.14,
+      "max_abs_diff": 4.77e-07
+    }
+  ]
+}

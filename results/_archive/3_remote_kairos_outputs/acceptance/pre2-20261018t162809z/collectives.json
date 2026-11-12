@@ -1,0 +1,94 @@
+{
+  "schema": "ditserve.collectives.v1",
+  "world_size": 2,
+  "backend": "nccl",
+  "torch": "2.10.0+cu126",
+  "nccl": "2.27.5",
+  "scope": "all_to_all_single fp16; per-rank send volume / median wall time",
+  "rows": [
+    {
+      "group": [
+        0,
+        1
+      ],
+      "degree": 2,
+      "mode": "concurrent",
+      "buffer_mb": 16,
+      "per_rank_send_mb": 8.0,
+      "iterations": 5,
+      "ms_median": 2.254555933177471,
+      "ms_max": 2.3935483768582344,
+      "per_rank_gbps": 3.465205668678802
+    },
+    {
+      "group": [
+        0,
+        1
+      ],
+      "degree": 2,
+      "mode": "concurrent",
+      "buffer_mb": 64,
+      "per_rank_send_mb": 32.0,
+      "iterations": 5,
+      "ms_median": 8.357594721019268,
+      "ms_max": 8.578743785619736,
+      "per_rank_gbps": 3.7391140684779267
+    },
+    {
+      "group": [
+        0,
+        1
+      ],
+      "degree": 2,
+      "mode": "concurrent",
+      "buffer_mb": 256,
+      "per_rank_send_mb": 128.0,
+      "iterations": 5,
+      "ms_median": 30.794374644756317,
+      "ms_max": 31.498348340392113,
+      "per_rank_gbps": 4.059182933311655
+    },
+    {
+      "group": [
+        0,
+        1
+      ],
+      "degree": 2,
+      "mode": "isolated",
+      "buffer_mb": 16,
+      "per_rank_send_mb": 8.0,
+      "iterations": 5,
+      "ms_median": 2.143222838640213,
+      "ms_max": 2.2018514573574066,
+      "per_rank_gbps": 3.645211248755034
+    },
+    {
+      "group": [
+        0,
+        1
+      ],
+      "degree": 2,
+      "mode": "isolated",
+      "buffer_mb": 64,
+      "per_rank_send_mb": 32.0,
+      "iterations": 5,
+      "ms_median": 7.98441655933857,
+      "ms_max": 8.449055254459381,
+      "per_rank_gbps": 3.9138739528124966
+    },
+    {
+      "group": [
+        0,
+        1
+      ],
+      "degree": 2,
+      "mode": "isolated",
+      "buffer_mb": 256,
+      "per_rank_send_mb": 128.0,
+      "iterations": 5,
+      "ms_median": 31.506423838436604,
+      "ms_max": 32.7048571780324,
+      "per_rank_gbps": 3.967444881748366
+    }
+  ]
+}

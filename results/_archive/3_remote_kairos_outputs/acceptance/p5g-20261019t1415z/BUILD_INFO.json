@@ -1,0 +1,10 @@
+{
+ "commit": "c27bbf713a5be45fd28ac7ec4ff2a3e38f25ecf8",
+ "subject": "Plan over parallel forms: CFG branches on separate halves, SP inside them",
+ "built_utc": "2026-10-19T13:42:07+00:00",
+ "builder_image": "sha256:524c56a3d528dd3ce1e6a54d432927bde23b27de95015c796c919ac8bdecf5ad",
+ "tested_runtime_image": "127.0.0.1:30500/jjjkairos/ditserve:8a100-224099f",
+ "core_sha256": "3a65a6017b3208281559cbb64346ae670cab25cabfa9c62c9e8cf87782f87ddc",
+ "files": 113,
+ "bytes": 3067123
+}

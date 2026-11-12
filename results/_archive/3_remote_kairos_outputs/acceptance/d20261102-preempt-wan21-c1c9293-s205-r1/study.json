@@ -1,0 +1,1486 @@
+{
+  "schema": "ditserve.study.v1",
+  "experiment": "kairos-wan21-native-serving-s205-l1p2",
+  "workers": {
+    "wan0": {
+      "backend": "wan",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-6967ee01-0c82-8215-9256-9fde2e18f5d0",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan",
+        "device": "cuda:0",
+        "attention": "flash",
+        "vae_dtype": "bfloat16",
+        "options": {
+          "execution": "block"
+        }
+      }
+    },
+    "image0": {
+      "backend": "sd35",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-6967ee01-0c82-8215-9256-9fde2e18f5d0",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/sd3.5-medium",
+        "device": "cuda:0",
+        "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+        "dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "attention": "flash",
+        "options": {
+          "profile": false,
+          "cache": false
+        }
+      }
+    },
+    "wan1": {
+      "backend": "wan",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-abe707e2-3284-aa3e-c3c9-ec0f14ee61c3",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan",
+        "device": "cuda:0",
+        "attention": "flash",
+        "vae_dtype": "bfloat16",
+        "options": {
+          "execution": "block"
+        }
+      }
+    },
+    "image1": {
+      "backend": "sd35",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-abe707e2-3284-aa3e-c3c9-ec0f14ee61c3",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/sd3.5-medium",
+        "device": "cuda:0",
+        "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+        "dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "attention": "flash",
+        "options": {
+          "profile": false,
+          "cache": false
+        }
+      }
+    },
+    "wan2": {
+      "backend": "wan",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-304d76bc-0629-fdc9-7cfe-929ff331b7f0",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan",
+        "device": "cuda:0",
+        "attention": "flash",
+        "vae_dtype": "bfloat16",
+        "options": {
+          "execution": "block"
+        }
+      }
+    },
+    "image2": {
+      "backend": "sd35",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-304d76bc-0629-fdc9-7cfe-929ff331b7f0",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/sd3.5-medium",
+        "device": "cuda:0",
+        "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+        "dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "attention": "flash",
+        "options": {
+          "profile": false,
+          "cache": false
+        }
+      }
+    },
+    "wan3": {
+      "backend": "wan",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-2bae337e-03ae-f01e-47bf-59b25b815ab8",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan",
+        "device": "cuda:0",
+        "attention": "flash",
+        "vae_dtype": "bfloat16",
+        "options": {
+          "execution": "block"
+        }
+      }
+    },
+    "image3": {
+      "backend": "sd35",
+      "python": "/opt/venv/bin/python",
+      "gpu_uuid": "GPU-2bae337e-03ae-f01e-47bf-59b25b815ab8",
+      "environment": {
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/sd3.5-medium",
+        "device": "cuda:0",
+        "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+        "dtype": "bfloat16",
+        "text_encoder_dtype": "bfloat16",
+        "attention": "flash",
+        "options": {
+          "profile": false,
+          "cache": false
+        }
+      }
+    }
+  },
+  "budget": {
+    "limit_gpu_seconds": 57600,
+    "watchdog_seconds": 14400,
+    "repair_reserve_gpu_seconds": 0,
+    "carry": "none"
+  },
+  "phases": [
+    {
+      "id": "cluster",
+      "kind": "cluster",
+      "policy": "edf-cfg2",
+      "profile": {
+        "provenance": "mixed",
+        "sp_efficiency": 1.0,
+        "sp_overlap": 0.0,
+        "resize_ms": 48.42136334627867,
+        "quantum_overhead_ms": 1.107064800402313,
+        "block_overhead_ms": 0.0,
+        "classes": {
+          "wan21-preflight": {
+            "kind": "video",
+            "steps": 20,
+            "blocks_per_step": 60,
+            "prepare_ms": 0.0,
+            "encode_ms": 15147.90988030533,
+            "step_compute_ms": 1166.7138263583183,
+            "comm_mb_per_step": 10351.4112,
+            "collectives_per_step": 240,
+            "cfg_exchange_mb": 1.79712,
+            "finish_ms": 1849.6959923456113,
+            "decode_chunks": 9,
+            "forms": {
+              "sp1": {
+                "placements": {
+                  "0-0": {
+                    "step_ms": 1166.7138263583183
+                  }
+                }
+              },
+              "cfg2": {
+                "placements": {
+                  "0-1": {
+                    "step_ms": 586.026145145297
+                  }
+                }
+              },
+              "sp2": {
+                "placements": {
+                  "0-1": {
+                    "step_ms": 1193.679815158248
+                  }
+                }
+              },
+              "cfg2sp2": {
+                "placements": {
+                  "0-3": {
+                    "step_ms": 611.3107707351446
+                  }
+                }
+              },
+              "sp3": {
+                "placements": {
+                  "0-2": {
+                    "step_ms": 891.6034363210201
+                  }
+                }
+              },
+              "sp4": {
+                "placements": {
+                  "0-3": {
+                    "step_ms": 747.4038619548082
+                  }
+                }
+              }
+            }
+          },
+          "sd35-preflight": {
+            "kind": "image",
+            "service_ms": 6542.732027359307
+          }
+        },
+        "links": {
+          "2": {
+            "gbps": 5.2,
+            "latency_ms": 0.5
+          },
+          "3": {
+            "gbps": 5.571428571428571,
+            "latency_ms": 0.5
+          },
+          "4": {
+            "gbps": 5.777777777777778,
+            "latency_ms": 0.5
+          },
+          "6": {
+            "gbps": 6.0,
+            "latency_ms": 0.5
+          },
+          "8": {
+            "gbps": 6.117647058823529,
+            "latency_ms": 0.5
+          }
+        },
+        "source": {
+          "experiment": "kairos-wan21-native-calibration",
+          "run_id": "d20261102-preempt-wan21-c1c9293-s205-r1-calibration",
+          "gpu_uuids": [
+            "GPU-6967ee01-0c82-8215-9256-9fde2e18f5d0",
+            "GPU-abe707e2-3284-aa3e-c3c9-ec0f14ee61c3",
+            "GPU-304d76bc-0629-fdc9-7cfe-929ff331b7f0",
+            "GPU-2bae337e-03ae-f01e-47bf-59b25b815ab8"
+          ],
+          "run_sha256": "57c12da88db657adc7b1401b7e87c4538ea46f9e20bf083ebd885652c0beaef7",
+          "model": "Wan2.1-T2V-1.3B",
+          "shape": {
+            "cache": false,
+            "frames": 33,
+            "guidance_scale": 5.0,
+            "height": 480,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "request_id": "video-calibration",
+            "seed": 201,
+            "steps": 20,
+            "threshold": 0.0,
+            "width": 832
+          },
+          "architecture": {
+            "tokens": 14040,
+            "dim": 1536,
+            "layers": 30,
+            "comm_mb_per_step": 10351.4112,
+            "collectives_per_step": 240,
+            "cfg_exchange_mb": 1.79712
+          },
+          "timing_scopes": {
+            "static_sp1": "median_steady_advance",
+            "static_cfg2": "median_steady_advance",
+            "static_sp2": "median_steady_advance",
+            "static_cfg2sp2": "median_steady_advance",
+            "static_sp3": "median_steady_advance",
+            "static_sp4": "median_steady_advance"
+          },
+          "steady_samples": {
+            "static_sp1": 19,
+            "static_cfg2": 19,
+            "static_sp2": 19,
+            "static_cfg2sp2": 19,
+            "static_sp3": 19,
+            "static_sp4": 19
+          },
+          "bandwidth_saturation_gbps": 6.5,
+          "bandwidth_gamma": 0.5,
+          "fit_policies": [
+            "static_cfg2",
+            "static_cfg2sp2",
+            "static_sp1",
+            "static_sp2",
+            "static_sp4"
+          ],
+          "fit_mean_relative_error_pct": 0.5162137552430384,
+          "held_out_mean_relative_error_pct": 3.384685526741338,
+          "held_out_max_relative_error_pct": 3.384685526741338,
+          "predictions": [
+            {
+              "policy": "static_sp1",
+              "form": [
+                1,
+                1
+              ],
+              "measured_step_ms": 1166.7138263583183,
+              "predicted_step_ms": 1166.7138263583183,
+              "relative_error_pct": 0.0,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2",
+              "form": [
+                2,
+                1
+              ],
+              "measured_step_ms": 586.026145145297,
+              "predicted_step_ms": 584.2025131791592,
+              "relative_error_pct": 0.3111861102520863,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_sp2",
+              "form": [
+                1,
+                2
+              ],
+              "measured_step_ms": 1193.679815158248,
+              "predicted_step_ms": 1201.0209131791592,
+              "relative_error_pct": 0.6149972486497967,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2sp2",
+              "form": [
+                2,
+                2
+              ],
+              "measured_step_ms": 611.3107707351446,
+              "predicted_step_ms": 601.3560565895796,
+              "relative_error_pct": 1.6284211929709334,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_sp3",
+              "form": [
+                1,
+                3
+              ],
+              "measured_step_ms": 891.6034363210201,
+              "predicted_step_ms": 921.7814087861061,
+              "relative_error_pct": 3.384685526741338,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_sp4",
+              "form": [
+                1,
+                4
+              ],
+              "measured_step_ms": 747.4038619548082,
+              "predicted_step_ms": 747.6016565895795,
+              "relative_error_pct": 0.026464224342375463,
+              "partition": "fit"
+            }
+          ],
+          "execution_cost_mode": "placement_bound_form_table_with_analytical_fallback",
+          "unbound_measurements": 0,
+          "image_batch_samples": {
+            "1": 6
+          },
+          "validation_scope": "held-out forms on calibration hardware and shape; not held-out request, placement or workload validation",
+          "method": "single constrained saturation model fitted once; no per-form bandwidth or overlap overrides"
+        }
+      },
+      "occupancy_backend": "nvml",
+      "occupancy_thread": true,
+      "video_worker_options": {
+        "negative_prompt_cache_entries": 2,
+        "negative_prompt_cache_bytes": 67108864
+      },
+      "gpus": [
+        {
+          "video": "wan0",
+          "image": "image0"
+        },
+        {
+          "video": "wan1",
+          "image": "image1"
+        },
+        {
+          "video": "wan2",
+          "image": "image2"
+        },
+        {
+          "video": "wan3",
+          "image": "image3"
+        }
+      ],
+      "text_prefetch": 1,
+      "output_mode": "check",
+      "warmup": [
+        {
+          "worker": "wan0",
+          "spec": {
+            "cache": false,
+            "frames": 33,
+            "guidance_scale": 5.0,
+            "height": 480,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "warmup",
+            "request_id": "video-calibration",
+            "seed": 7,
+            "steps": 1,
+            "threshold": 0.0,
+            "width": 832
+          },
+          "quantum": "step"
+        },
+        {
+          "worker": "image0",
+          "spec": {
+            "height": 1024,
+            "width": 1024,
+            "steps": 1,
+            "frames": 1,
+            "batch_size": 1,
+            "guidance_scale": 4.5,
+            "negative_prompt": "blurry, low quality",
+            "max_sequence_length": 256,
+            "prompt": "warmup",
+            "seed": 7
+          }
+        },
+        {
+          "worker": "wan1",
+          "spec": {
+            "cache": false,
+            "frames": 33,
+            "guidance_scale": 5.0,
+            "height": 480,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "warmup",
+            "request_id": "video-calibration",
+            "seed": 7,
+            "steps": 1,
+            "threshold": 0.0,
+            "width": 832
+          },
+          "quantum": "step"
+        },
+        {
+          "worker": "image1",
+          "spec": {
+            "height": 1024,
+            "width": 1024,
+            "steps": 1,
+            "frames": 1,
+            "batch_size": 1,
+            "guidance_scale": 4.5,
+            "negative_prompt": "blurry, low quality",
+            "max_sequence_length": 256,
+            "prompt": "warmup",
+            "seed": 7
+          }
+        },
+        {
+          "worker": "wan2",
+          "spec": {
+            "cache": false,
+            "frames": 33,
+            "guidance_scale": 5.0,
+            "height": 480,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "warmup",
+            "request_id": "video-calibration",
+            "seed": 7,
+            "steps": 1,
+            "threshold": 0.0,
+            "width": 832
+          },
+          "quantum": "step"
+        },
+        {
+          "worker": "image2",
+          "spec": {
+            "height": 1024,
+            "width": 1024,
+            "steps": 1,
+            "frames": 1,
+            "batch_size": 1,
+            "guidance_scale": 4.5,
+            "negative_prompt": "blurry, low quality",
+            "max_sequence_length": 256,
+            "prompt": "warmup",
+            "seed": 7
+          }
+        },
+        {
+          "worker": "wan3",
+          "spec": {
+            "cache": false,
+            "frames": 33,
+            "guidance_scale": 5.0,
+            "height": 480,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "warmup",
+            "request_id": "video-calibration",
+            "seed": 7,
+            "steps": 1,
+            "threshold": 0.0,
+            "width": 832
+          },
+          "quantum": "step"
+        },
+        {
+          "worker": "image3",
+          "spec": {
+            "height": 1024,
+            "width": 1024,
+            "steps": 1,
+            "frames": 1,
+            "batch_size": 1,
+            "guidance_scale": 4.5,
+            "negative_prompt": "blurry, low quality",
+            "max_sequence_length": 256,
+            "prompt": "warmup",
+            "seed": 7
+          }
+        }
+      ],
+      "options": {
+        "sp_transport": "export",
+        "forms": [
+          "cfg2"
+        ],
+        "quantum_blocks": 4,
+        "async_rank0_decode": false,
+        "image_batch": 1,
+        "tiered_memory": false,
+        "doorbell": true,
+        "partition_image_gpus": 2,
+        "collective_backend": "nccl"
+      },
+      "matrix": {
+        "/policy": [
+          "edf-cfg2",
+          "block-cfg2"
+        ],
+        "/workload": [
+          [
+            {
+              "request_id": "w0-i0000",
+              "arrival_ms": 3149.210416171963,
+              "service_ms": 6542.732027359307,
+              "slo_ms": 7197.005230095238,
+              "slo_source": "class.slo_scale",
+              "effective_slo_scale": 1.1,
+              "deadline_ms": 10346.215646267201,
+              "kind": "image",
+              "class": "sd35-preflight",
+              "spec": {
+                "height": 1024,
+                "width": 1024,
+                "steps": 28,
+                "frames": 1,
+                "batch_size": 1,
+                "guidance_scale": 4.5,
+                "negative_prompt": "blurry, low quality",
+                "max_sequence_length": 256,
+                "prompt": "jack black as a blackberry mixed with a blackberry, looks like a blackberry, 4 k, ultra realistic, purple background ",
+                "seed": 3895206366,
+                "request_id": "w0-i0000"
+              },
+              "dataset": "diffusiondb",
+              "dataset_sample_id": "diffusiondb-31d7f031-5647-4f4d-88e2-f83a2722cc7c.png",
+              "output_mode": "digest",
+              "trace_seed": 205
+            },
+            {
+              "request_id": "w0-i0001",
+              "arrival_ms": 5871.179837738322,
+              "service_ms": 6542.732027359307,
+              "slo_ms": 7197.005230095238,
+              "slo_source": "class.slo_scale",
+              "effective_slo_scale": 1.1,
+              "deadline_ms": 13068.185067833561,
+              "kind": "image",
+              "class": "sd35-preflight",
+              "spec": {
+                "height": 1024,
+                "width": 1024,
+                "steps": 28,
+                "frames": 1,
+                "batch_size": 1,
+                "guidance_scale": 4.5,
+                "negative_prompt": "blurry, low quality",
+                "max_sequence_length": 256,
+                "prompt": "beautiful hyperrealism three point perspective film still of keanu reeves as samurai blood scene in evil dead, extreme closeup portrait in style of frontiers in porcelain miniature street photography seinen manga fashion edition, miniature still life, eye contact, tilt shift style scene background, soft lighting, kodak portra 4 0 0, 8 k, macro, cinematic style by emmanuel lubezki ",
+                "seed": 1583761707,
+                "request_id": "w0-i0001"
+              },
+              "dataset": "diffusiondb",
+              "dataset_sample_id": "diffusiondb-c52b2473-e068-49f0-ac79-d5a8a135a0a7.png",
+              "output_mode": "digest",
+              "trace_seed": 205
+            },
+            {
+              "request_id": "w0-v0000",
+              "arrival_ms": 18458.879138937926,
+              "service_ms": 40331.88239981731,
+              "slo_ms": 60497.82359972596,
+              "slo_source": "class.slo_scale",
+              "effective_slo_scale": 1.5,
+              "deadline_ms": 78956.70273866388,
+              "kind": "video",
+              "class": "wan21-preflight",
+              "spec": {
+                "cache": false,
+                "frames": 33,
+                "guidance_scale": 5.0,
+                "height": 480,
+                "max_continuous": 1,
+                "negative_prompt": "",
+                "prompt": "an angel flying in space there is black hole there is a number of plant there angel wearing spider man mask  ",
+                "request_id": "w0-v0000",
+                "seed": 1919417030,
+                "steps": 20,
+                "threshold": 0.0,
+                "width": 832
+              },
+              "dataset": "vidprom",
+              "dataset_sample_id": "vidprom-3d67a19f-a700-57b3-8dbb-28c28702fd55",
+              "output_mode": "digest",
+              "trace_seed": 205,
+              "tier": "standard"
+            },
+            {
+              "request_id": "w0-v0001",
+              "arrival_ms": 18699.79766324356,
+              "service_ms": 40331.88239981731,
+              "slo_ms": 60497.82359972596,
+              "slo_source": "class.slo_scale",
+              "effective_slo_scale": 1.5,
+              "deadline_ms": 79197.62126296952,
+              "kind": "video",
+              "class": "wan21-preflight",
+              "spec": {
+                "cache": false,
+                "frames": 33,
+                "guidance_scale": 5.0,
+                "height": 480,
+                "max_continuous": 1,
+                "negative_prompt": "",
+                "prompt": "miniature city plant growing , blue background, raw photo  ",
+                "request_id": "w0-v0001",
+                "seed": 1605133761,
+                "steps": 20,
+                "threshold": 0.0,
+                "width": 832
+              },
+              "dataset": "vidprom",
+              "dataset_sample_id": "vidprom-799e58d7-6100-5675-b4e7-3060defe6761",
+              "output_mode": "digest",
+              "trace_seed": 205,
+              "tier": "standard"
+            },
+            {
+              "request_id": "w0-i0002",
+              "arrival_ms": 19670.56637285902,
+              "service_ms": 6542.732027359307,
+              "slo_ms": 7197.005230095238,
+              "slo_source": "class.slo_scale",
+              "effective_slo_scale": 1.1,
+              "deadline_ms": 26867.571602954256,
+              "kind": "image",
+              "class": "sd35-preflight",
+              "spec": {
+                "height": 1024,
+                "width": 1024,
+                "steps": 28,
+                "frames": 1,
+                "batch_size": 1,
+                "guidance_scale": 4.5,
+                "negative_prompt": "blurry, low quality",
+                "max_sequence_length": 256,
+                "prompt": "front!!! shot of a court jester!!! character, mesmerizing fractal hypercubes, grid, dark holography!!!, future, metallic galactic, crystalline edges, polygonal, elegant, highly detailed, centered, (((artstation, concept art, jagged, sharp focus, artgerm, Tomasz Alen Kopera, Peter Mohrbacher, donato giancola, Joseph Christian Leyendecker, WLOP, Boris Vallejo))), ((raytracing)), mugshot!!!!!, ugly!!!!!!, octane render, nvidia raytracing demo, octane render, nvidia raytracing demo, octane render, nvidia raytracing demo, 8K",
+                "seed": 2752792073,
+                "request_id": "w0-i0002"
+              },
+              "dataset": "diffusiondb",
+              "dataset_sample_id": "diffusiondb-d101a08b-65f4-429c-918e-86a8814ff25b.png",
+              "output_mode": "digest",
+              "trace_seed": 205
+            },
+            {
+              "request_id": "w0-v0002",
+              "arrival_ms": 20253.31506603281,
+              "service_ms": 40331.88239981731,
+              "slo_ms": 60497.82359972596,
+              "slo_source": "class.slo_scale",
+              "effective_slo_scale": 1.5,
+              "deadline_ms": 80751.13866575877,
+              "kind": "video",
+              "class": "wan21-preflight",
+              "spec": {
+                "cache": false,
+                "frames": 33,
+                "guidance_scale": 5.0,
+                "height": 480,
+                "max_continuous": 1,
+                "negative_prompt": "",
+                "prompt": "A pink dot dispersed like fog,  ",
+                "request_id": "w0-v0002",
+                "seed": 1233453009,
+                "steps": 20,
+                "threshold": 0.0,
+                "width": 832
+              },
+              "dataset": "vidprom",
+              "dataset_sample_id": "vidprom-8351150c-70a5-52a4-b893-d289743d4bad",
+              "output_mode": "digest",
+              "trace_seed": 205,
+              "tier": "standard"
+            },
+            {
+              "request_id": "w0-i0003",
+              "arrival_ms": 25028.67193952207,
+              "service_ms": 6542.732027359307,
+              "slo_ms": 7197.005230095238,
+              "slo_source": "class.slo_scale",
+              "effective_slo_scale": 1.1,
+              "deadline_ms": 32225.67716961731,
+              "kind": "image",
+              "class": "sd35-preflight",
+              "spec": {
+                "height": 1024,
+                "width": 1024,
+                "steps": 28,
+                "frames": 1,
+                "batch_size": 1,
+                "guidance_scale": 4.5,
+                "negative_prompt": "blurry, low quality",
+                "max_sequence_length": 256,
+                "prompt": "photo of generator mars station design device phosphorite creature, scorpion, robotics, advanced cybernetics, smart bionicle, organism, biomimmicry exoskeleton biomorph hydraulics trending on behance visualisation industrial design trending on artstation, unreal engine, 3 d exploration exoskeleton part, ray, exploded view, cybernetics, artstation hd, reimagined by industrial lightning, 3 d, design cryengine unreal engine grasshoppers parametric ",
+                "seed": 2032140319,
+                "request_id": "w0-i0003"
+              },
+              "dataset": "diffusiondb",
+              "dataset_sample_id": "diffusiondb-585cb79c-62f9-49dc-ab6a-d4774398cd73.png",
+              "output_mode": "digest",
+              "trace_seed": 205
+            },
+            {
+              "request_id": "w0-v0003",
+              "arrival_ms": 25232.48645402693,
+              "service_ms": 40331.88239981731,
+              "slo_ms": 60497.82359972596,
+              "slo_source": "class.slo_scale",
+              "effective_slo_scale": 1.5,
+              "deadline_ms": 85730.3100537529,
+              "kind": "video",
+              "class": "wan21-preflight",
+              "spec": {
+                "cache": false,
+                "frames": 33,
+                "guidance_scale": 5.0,
+                "height": 480,
+                "max_continuous": 1,
+                "negative_prompt": "",
+                "prompt": "a person wearing headphones and using a laptop, computer graphics by Lawrence Harris, cgsociety, retrofuturism, anime aesthetic, aesthetic, y2k aesthetic  ",
+                "request_id": "w0-v0003",
+                "seed": 2554171795,
+                "steps": 20,
+                "threshold": 0.0,
+                "width": 832
+              },
+              "dataset": "vidprom",
+              "dataset_sample_id": "vidprom-789e12ca-7f84-568c-b01c-73756fa27b55",
+              "output_mode": "digest",
+              "trace_seed": 205,
+              "tier": "standard"
+            },
+            {
+              "request_id": "w0-v0004",
+              "arrival_ms": 106390.34050830599,
+              "service_ms": 40331.88239981731,
+              "slo_ms": 60497.82359972596,
+              "slo_source": "class.slo_scale",
+              "effective_slo_scale": 1.5,
+              "deadline_ms": 166888.16410803195,
+              "kind": "video",
+              "class": "wan21-preflight",
+              "spec": {
+                "cache": false,
+                "frames": 33,
+                "guidance_scale": 5.0,
+                "height": 480,
+                "max_continuous": 1,
+                "negative_prompt": "",
+                "prompt": "Futuristic Alien Civilization\nMovie Style: Dark Sci-Fi Horror made by h.r. giger \nApply the parameters to each prompt:\ngs 20\nneg \u201cbright colors\u201d\nhide: \u201ccomedy\u201d\nar 16:9  ",
+                "request_id": "w0-v0004",
+                "seed": 2777252036,
+                "steps": 20,
+                "threshold": 0.0,
+                "width": 832
+              },
+              "dataset": "vidprom",
+              "dataset_sample_id": "vidprom-3a9ab505-9ee3-54c6-92ce-355eb253acac",
+              "output_mode": "digest",
+              "trace_seed": 205,
+              "tier": "standard"
+            },
+            {
+              "request_id": "w0-v0005",
+              "arrival_ms": 108540.97759441152,
+              "service_ms": 40331.88239981731,
+              "slo_ms": 60497.82359972596,
+              "slo_source": "class.slo_scale",
+              "effective_slo_scale": 1.5,
+              "deadline_ms": 169038.8011941375,
+              "kind": "video",
+              "class": "wan21-preflight",
+              "spec": {
+                "cache": false,
+                "frames": 33,
+                "guidance_scale": 5.0,
+                "height": 480,
+                "max_continuous": 1,
+                "negative_prompt": "",
+                "prompt": "Steve Jobs wearing a white collared dress shirt, and white earphones with original iPod from 2001.  ",
+                "request_id": "w0-v0005",
+                "seed": 266738017,
+                "steps": 20,
+                "threshold": 0.0,
+                "width": 832
+              },
+              "dataset": "vidprom",
+              "dataset_sample_id": "vidprom-f3ec7043-d1fd-5909-bf6e-d7e951ba2c05",
+              "output_mode": "digest",
+              "trace_seed": 205,
+              "tier": "standard"
+            },
+            {
+              "request_id": "w0-i0004",
+              "arrival_ms": 113728.39806525027,
+              "service_ms": 6542.732027359307,
+              "slo_ms": 7197.005230095238,
+              "slo_source": "class.slo_scale",
+              "effective_slo_scale": 1.1,
+              "deadline_ms": 120925.4032953455,
+              "kind": "image",
+              "class": "sd35-preflight",
+              "spec": {
+                "height": 1024,
+                "width": 1024,
+                "steps": 28,
+                "frames": 1,
+                "batch_size": 1,
+                "guidance_scale": 4.5,
+                "negative_prompt": "blurry, low quality",
+                "max_sequence_length": 256,
+                "prompt": "hyperrealistic anime portrait of Askuka Langley Soryu  EVA Unit 02, Neon Genesis Evangelion, Trending on ArtStation 8k Deviantart portrait Asuka",
+                "seed": 828981988,
+                "request_id": "w0-i0004"
+              },
+              "dataset": "diffusiondb",
+              "dataset_sample_id": "diffusiondb-31c62ebc-f99e-449b-8fb1-c5d9a30b0e67.png",
+              "output_mode": "digest",
+              "trace_seed": 205
+            },
+            {
+              "request_id": "w0-i0005",
+              "arrival_ms": 115040.76516039883,
+              "service_ms": 6542.732027359307,
+              "slo_ms": 7197.005230095238,
+              "slo_source": "class.slo_scale",
+              "effective_slo_scale": 1.1,
+              "deadline_ms": 122237.77039049407,
+              "kind": "image",
+              "class": "sd35-preflight",
+              "spec": {
+                "height": 1024,
+                "width": 1024,
+                "steps": 28,
+                "frames": 1,
+                "batch_size": 1,
+                "guidance_scale": 4.5,
+                "negative_prompt": "blurry, low quality",
+                "max_sequence_length": 256,
+                "prompt": "ko ko ko ko ko nut ( ko ko nut ), coconut, coconut, cartoon, cartoon, global lighting, digital art, artstation ",
+                "seed": 3218610022,
+                "request_id": "w0-i0005"
+              },
+              "dataset": "diffusiondb",
+              "dataset_sample_id": "diffusiondb-625f7f68-4bfa-4972-bcbf-a4449a8eaf2b.png",
+              "output_mode": "digest",
+              "trace_seed": 205
+            },
+            {
+              "request_id": "w0-i0006",
+              "arrival_ms": 121231.54675037798,
+              "service_ms": 6542.732027359307,
+              "slo_ms": 7197.005230095238,
+              "slo_source": "class.slo_scale",
+              "effective_slo_scale": 1.1,
+              "deadline_ms": 128428.55198047322,
+              "kind": "image",
+              "class": "sd35-preflight",
+              "spec": {
+                "height": 1024,
+                "width": 1024,
+                "steps": 28,
+                "frames": 1,
+                "batch_size": 1,
+                "guidance_scale": 4.5,
+                "negative_prompt": "blurry, low quality",
+                "max_sequence_length": 256,
+                "prompt": "pixel art sprite sheet of a purple gorilla",
+                "seed": 759762694,
+                "request_id": "w0-i0006"
+              },
+              "dataset": "diffusiondb",
+              "dataset_sample_id": "diffusiondb-2a1e103e-d209-4818-a168-5ef76574f12e.png",
+              "output_mode": "digest",
+              "trace_seed": 205
+            },
+            {
+              "request_id": "w0-i0007",
+              "arrival_ms": 121351.86743625597,
+              "service_ms": 6542.732027359307,
+              "slo_ms": 7197.005230095238,
+              "slo_source": "class.slo_scale",
+              "effective_slo_scale": 1.1,
+              "deadline_ms": 128548.8726663512,
+              "kind": "image",
+              "class": "sd35-preflight",
+              "spec": {
+                "height": 1024,
+                "width": 1024,
+                "steps": 28,
+                "frames": 1,
+                "batch_size": 1,
+                "guidance_scale": 4.5,
+                "negative_prompt": "blurry, low quality",
+                "max_sequence_length": 256,
+                "prompt": "symmetry!! 3 d close - up portrait of the human skull mixed with jellyfish phoenix bird giant orchid flower and giant gladiola. midsommar style, intricate, elegant, surrounded by smoke and water energy flow. translucent nautilus, highly detailed, by wlop, tooth wu, greg rutkowski, alena aenami ",
+                "seed": 3977379320,
+                "request_id": "w0-i0007"
+              },
+              "dataset": "diffusiondb",
+              "dataset_sample_id": "diffusiondb-4b9fcab2-1e66-4e56-8a39-22db5f7c4e62.png",
+              "output_mode": "digest",
+              "trace_seed": 205
+            },
+            {
+              "request_id": "w0-v0006",
+              "arrival_ms": 121872.66385105808,
+              "service_ms": 40331.88239981731,
+              "slo_ms": 60497.82359972596,
+              "slo_source": "class.slo_scale",
+              "effective_slo_scale": 1.5,
+              "deadline_ms": 182370.48745078404,
+              "kind": "video",
+              "class": "wan21-preflight",
+              "spec": {
+                "cache": false,
+                "frames": 33,
+                "guidance_scale": 5.0,
+                "height": 480,
+                "max_continuous": 1,
+                "negative_prompt": "",
+                "prompt": "Lionel Messi ,Hanging shot  ",
+                "request_id": "w0-v0006",
+                "seed": 3900182125,
+                "steps": 20,
+                "threshold": 0.0,
+                "width": 832
+              },
+              "dataset": "vidprom",
+              "dataset_sample_id": "vidprom-7acbe6d7-d3ab-5514-aa63-108ac588211c",
+              "output_mode": "digest",
+              "trace_seed": 205,
+              "tier": "standard"
+            },
+            {
+              "request_id": "w0-v0007",
+              "arrival_ms": 130535.04716432939,
+              "service_ms": 40331.88239981731,
+              "slo_ms": 60497.82359972596,
+              "slo_source": "class.slo_scale",
+              "effective_slo_scale": 1.5,
+              "deadline_ms": 191032.87076405535,
+              "kind": "video",
+              "class": "wan21-preflight",
+              "spec": {
+                "cache": false,
+                "frames": 33,
+                "guidance_scale": 5.0,
+                "height": 480,
+                "max_continuous": 1,
+                "negative_prompt": "",
+                "prompt": "A lion in the jungle with problems and tears but when sunshine  Message: Leon de Juda (Font: MODERN)  ",
+                "request_id": "w0-v0007",
+                "seed": 3911912179,
+                "steps": 20,
+                "threshold": 0.0,
+                "width": 832
+              },
+              "dataset": "vidprom",
+              "dataset_sample_id": "vidprom-419c76ca-fd40-5ea0-b80c-2fa89bccaeef",
+              "output_mode": "digest",
+              "trace_seed": 205,
+              "tier": "standard"
+            }
+          ]
+        ],
+        "/trace_provenance": [
+          {
+            "path": "generated:diffusiondb+vidprom",
+            "sha256": "d6faa000a10c867ccf335cbe7ad4d22b48999cb7bc0e9aaede00eb8de3cc2255",
+            "manifest": {
+              "schema": "ditserve.benchmark.mixed-workload.v1",
+              "seed": 205,
+              "slots": 4,
+              "patterns": [
+                "bursty"
+              ],
+              "counts": {
+                "image": 8,
+                "video": 8
+              },
+              "class_counts": {
+                "sd35-preflight": 8,
+                "wan21-preflight": 8
+              },
+              "total_duration_ms": 211511.36364580857,
+              "rate_rps": 0.07564605382996435,
+              "gpu_ms": {
+                "video": 201471.7801560958,
+                "image": 52341.856218874454
+              },
+              "gpu_time_fraction": {
+                "video": 0.7937783920263942,
+                "image": 0.2062216079736058
+              },
+              "normalized_gpu_work": 0.3,
+              "quality_requests": {
+                "video": 0,
+                "image": 0
+              },
+              "sources": {
+                "video": {
+                  "kind": "vidprom",
+                  "source": {
+                    "requested_revision": "main",
+                    "revision": "0c0900e6a037b058b1903bc1de9bcb6037d9fc24",
+                    "url": "https://huggingface.co/datasets/WenhaoWang/VidProM/resolve/0c0900e6a037b058b1903bc1de9bcb6037d9fc24/VidProM_unique.csv",
+                    "downloaded_metadata_only": true,
+                    "integrity": {
+                      "metadata_url": "https://huggingface.co/api/datasets/WenhaoWang/VidProM/tree/0c0900e6a037b058b1903bc1de9bcb6037d9fc24?recursive=false",
+                      "expected_bytes": 382734674,
+                      "hash_algorithm": "sha256",
+                      "expected_hash": "7668b87803b67638fa899b69f3a2a298ea13daffe508ce625e21937bff958b6e",
+                      "status": "verified"
+                    },
+                    "repository": "https://huggingface.co/datasets/WenhaoWang/VidProM",
+                    "metadata_path": "VidProM_unique.csv",
+                    "default_ref": "main",
+                    "license_notice": "See the WenhaoWang/VidProM dataset card and original data terms.",
+                    "sha256": "7668b87803b67638fa899b69f3a2a298ea13daffe508ce625e21937bff958b6e",
+                    "bytes": 382734674
+                  },
+                  "selection": {
+                    "seed": 20261024,
+                    "rows_seen": 1672243,
+                    "rows_skipped": 31835,
+                    "samples_retained": 4096,
+                    "method": "lowest_sha256_priority",
+                    "sample_count_limit": 4096,
+                    "dev_distinct_prompts": 32,
+                    "prompt_transform": "none; original whitespace preserved; whitespace-only prompts rejected"
+                  }
+                },
+                "image": {
+                  "kind": "diffusiondb",
+                  "source": {
+                    "repository": "https://huggingface.co/datasets/poloclub/diffusiondb",
+                    "metadata_path": "metadata.parquet",
+                    "revision": "fb620fbe49fa4420e0734bd9c0df11f51176b61f",
+                    "downloaded_metadata_only": true,
+                    "license_notice": "CC0 1.0; see the official DiffusionDB dataset card",
+                    "integrity": {
+                      "expected_bytes": 194548652,
+                      "expected_hash": "eecd341187bc91c07f5994ad0660d40228ea025616fd57a509bef8323677c68f",
+                      "url": "https://huggingface.co/datasets/poloclub/diffusiondb/resolve/fb620fbe49fa4420e0734bd9c0df11f51176b61f/metadata.parquet",
+                      "status": "verified"
+                    },
+                    "sha256": "eecd341187bc91c07f5994ad0660d40228ea025616fd57a509bef8323677c68f",
+                    "bytes": 194548652
+                  },
+                  "selection": {
+                    "seed": 20261024,
+                    "rows_seen": 2000000,
+                    "rows_after_filters": 1975890,
+                    "unique_prompts": 1509413,
+                    "samples_retained": 4096,
+                    "method": "lowest_sha256_priority",
+                    "filters": [
+                      "nonempty prompt",
+                      "prompt_nsfw present and < 0.5",
+                      "deduplicate by exact prompt"
+                    ],
+                    "sample_count_limit": 4096,
+                    "dev_distinct_prompts": 32,
+                    "prompt_transform": "none; original text preserved"
+                  }
+                }
+              },
+              "windows": [
+                {
+                  "index": 0,
+                  "pattern": "bursty",
+                  "start_ms": 0.0,
+                  "duration_ms": 211511.36364580857,
+                  "parameters": {
+                    "count": 16,
+                    "video_fraction": 0.5,
+                    "pattern": "bursty",
+                    "load": 1.2,
+                    "bursts": 2,
+                    "burst_active_fraction": 0.25
+                  },
+                  "cv": null,
+                  "bursts": 2,
+                  "burst_active_fraction": 0.25,
+                  "slo_scale": null,
+                  "fast_slo_scale": 1.2,
+                  "fast_video_fraction": 0.0,
+                  "slo_by_class": {
+                    "wan21-preflight": {
+                      "standard": {
+                        "slo_ms": 60497.82359972596,
+                        "source": "class.slo_scale",
+                        "effective_slo_scale": 1.5
+                      },
+                      "fast": {
+                        "slo_ms": 48398.25887978077,
+                        "source": "default.fast_slo_scale",
+                        "effective_slo_scale": 1.2
+                      }
+                    },
+                    "sd35-preflight": {
+                      "standard": {
+                        "slo_ms": 7197.005230095238,
+                        "source": "class.slo_scale",
+                        "effective_slo_scale": 1.1
+                      }
+                    }
+                  },
+                  "load": 1.2,
+                  "count": 16,
+                  "video_fraction": 0.5,
+                  "counts": {
+                    "image": 8,
+                    "video": 8
+                  },
+                  "class_counts": {
+                    "sd35-preflight": 8,
+                    "wan21-preflight": 8
+                  },
+                  "active_windows": [
+                    {
+                      "start_ms": 0.0,
+                      "duration_ms": 26438.92045572607
+                    },
+                    {
+                      "start_ms": 105755.68182290428,
+                      "duration_ms": 26438.92045572607
+                    }
+                  ],
+                  "rate_rps": 0.07564605382996435,
+                  "gpu_ms": {
+                    "image": 52341.856218874454,
+                    "video": 201471.78015609583
+                  }
+                }
+              ],
+              "slo_precedence": {
+                "absolute": "class.slo_ms wins for every tier, including fast video",
+                "standard_video": "window.slo_scale > class.slo_scale > default 2.5",
+                "fast_video": "window.fast_slo_scale > default 1.2",
+                "image": "class.slo_scale > default 2.5; window scales do not apply"
+              },
+              "workload_sha256": "d6faa000a10c867ccf335cbe7ad4d22b48999cb7bc0e9aaede00eb8de3cc2255"
+            }
+          }
+        ]
+      },
+      "artifact_dependencies": []
+    }
+  ],
+  "benchmark": {
+    "native_serving": true,
+    "performance_qualified": false,
+    "quality_qualified": false,
+    "exact_mode": true,
+    "models": [
+      "Wan2.1-T2V-1.3B",
+      "SD3.5-Medium"
+    ],
+    "gpus": 4,
+    "seed": 205,
+    "load": 1.2,
+    "pattern": "bursty",
+    "cv": null,
+    "video_fraction": 0.5,
+    "count": 16,
+    "video_slo_scale": 1.5,
+    "image_slo_scale": 1.1,
+    "output_mode": "digest",
+    "profile_placement": {
+      "required": true,
+      "matches": true,
+      "gpu_uuids": [
+        "GPU-6967ee01-0c82-8215-9256-9fde2e18f5d0",
+        "GPU-abe707e2-3284-aa3e-c3c9-ec0f14ee61c3",
+        "GPU-304d76bc-0629-fdc9-7cfe-929ff331b7f0",
+        "GPU-2bae337e-03ae-f01e-47bf-59b25b815ab8"
+      ]
+    },
+    "trace": {
+      "path": "generated:diffusiondb+vidprom",
+      "sha256": "d6faa000a10c867ccf335cbe7ad4d22b48999cb7bc0e9aaede00eb8de3cc2255",
+      "manifest": {
+        "schema": "ditserve.benchmark.mixed-workload.v1",
+        "seed": 205,
+        "slots": 4,
+        "patterns": [
+          "bursty"
+        ],
+        "counts": {
+          "image": 8,
+          "video": 8
+        },
+        "class_counts": {
+          "sd35-preflight": 8,
+          "wan21-preflight": 8
+        },
+        "total_duration_ms": 211511.36364580857,
+        "rate_rps": 0.07564605382996435,
+        "gpu_ms": {
+          "video": 201471.7801560958,
+          "image": 52341.856218874454
+        },
+        "gpu_time_fraction": {
+          "video": 0.7937783920263942,
+          "image": 0.2062216079736058
+        },
+        "normalized_gpu_work": 0.3,
+        "quality_requests": {
+          "video": 0,
+          "image": 0
+        },
+        "sources": {
+          "video": {
+            "kind": "vidprom",
+            "source": {
+              "requested_revision": "main",
+              "revision": "0c0900e6a037b058b1903bc1de9bcb6037d9fc24",
+              "url": "https://huggingface.co/datasets/WenhaoWang/VidProM/resolve/0c0900e6a037b058b1903bc1de9bcb6037d9fc24/VidProM_unique.csv",
+              "downloaded_metadata_only": true,
+              "integrity": {
+                "metadata_url": "https://huggingface.co/api/datasets/WenhaoWang/VidProM/tree/0c0900e6a037b058b1903bc1de9bcb6037d9fc24?recursive=false",
+                "expected_bytes": 382734674,
+                "hash_algorithm": "sha256",
+                "expected_hash": "7668b87803b67638fa899b69f3a2a298ea13daffe508ce625e21937bff958b6e",
+                "status": "verified"
+              },
+              "repository": "https://huggingface.co/datasets/WenhaoWang/VidProM",
+              "metadata_path": "VidProM_unique.csv",
+              "default_ref": "main",
+              "license_notice": "See the WenhaoWang/VidProM dataset card and original data terms.",
+              "sha256": "7668b87803b67638fa899b69f3a2a298ea13daffe508ce625e21937bff958b6e",
+              "bytes": 382734674
+            },
+            "selection": {
+              "seed": 20261024,
+              "rows_seen": 1672243,
+              "rows_skipped": 31835,
+              "samples_retained": 4096,
+              "method": "lowest_sha256_priority",
+              "sample_count_limit": 4096,
+              "dev_distinct_prompts": 32,
+              "prompt_transform": "none; original whitespace preserved; whitespace-only prompts rejected"
+            }
+          },
+          "image": {
+            "kind": "diffusiondb",
+            "source": {
+              "repository": "https://huggingface.co/datasets/poloclub/diffusiondb",
+              "metadata_path": "metadata.parquet",
+              "revision": "fb620fbe49fa4420e0734bd9c0df11f51176b61f",
+              "downloaded_metadata_only": true,
+              "license_notice": "CC0 1.0; see the official DiffusionDB dataset card",
+              "integrity": {
+                "expected_bytes": 194548652,
+                "expected_hash": "eecd341187bc91c07f5994ad0660d40228ea025616fd57a509bef8323677c68f",
+                "url": "https://huggingface.co/datasets/poloclub/diffusiondb/resolve/fb620fbe49fa4420e0734bd9c0df11f51176b61f/metadata.parquet",
+                "status": "verified"
+              },
+              "sha256": "eecd341187bc91c07f5994ad0660d40228ea025616fd57a509bef8323677c68f",
+              "bytes": 194548652
+            },
+            "selection": {
+              "seed": 20261024,
+              "rows_seen": 2000000,
+              "rows_after_filters": 1975890,
+              "unique_prompts": 1509413,
+              "samples_retained": 4096,
+              "method": "lowest_sha256_priority",
+              "filters": [
+                "nonempty prompt",
+                "prompt_nsfw present and < 0.5",
+                "deduplicate by exact prompt"
+              ],
+              "sample_count_limit": 4096,
+              "dev_distinct_prompts": 32,
+              "prompt_transform": "none; original text preserved"
+            }
+          }
+        },
+        "windows": [
+          {
+            "index": 0,
+            "pattern": "bursty",
+            "start_ms": 0.0,
+            "duration_ms": 211511.36364580857,
+            "parameters": {
+              "count": 16,
+              "video_fraction": 0.5,
+              "pattern": "bursty",
+              "load": 1.2,
+              "bursts": 2,
+              "burst_active_fraction": 0.25
+            },
+            "cv": null,
+            "bursts": 2,
+            "burst_active_fraction": 0.25,
+            "slo_scale": null,
+            "fast_slo_scale": 1.2,
+            "fast_video_fraction": 0.0,
+            "slo_by_class": {
+              "wan21-preflight": {
+                "standard": {
+                  "slo_ms": 60497.82359972596,
+                  "source": "class.slo_scale",
+                  "effective_slo_scale": 1.5
+                },
+                "fast": {
+                  "slo_ms": 48398.25887978077,
+                  "source": "default.fast_slo_scale",
+                  "effective_slo_scale": 1.2
+                }
+              },
+              "sd35-preflight": {
+                "standard": {
+                  "slo_ms": 7197.005230095238,
+                  "source": "class.slo_scale",
+                  "effective_slo_scale": 1.1
+                }
+              }
+            },
+            "load": 1.2,
+            "count": 16,
+            "video_fraction": 0.5,
+            "counts": {
+              "image": 8,
+              "video": 8
+            },
+            "class_counts": {
+              "sd35-preflight": 8,
+              "wan21-preflight": 8
+            },
+            "active_windows": [
+              {
+                "start_ms": 0.0,
+                "duration_ms": 26438.92045572607
+              },
+              {
+                "start_ms": 105755.68182290428,
+                "duration_ms": 26438.92045572607
+              }
+            ],
+            "rate_rps": 0.07564605382996435,
+            "gpu_ms": {
+              "image": 52341.856218874454,
+              "video": 201471.78015609583
+            }
+          }
+        ],
+        "slo_precedence": {
+          "absolute": "class.slo_ms wins for every tier, including fast video",
+          "standard_video": "window.slo_scale > class.slo_scale > default 2.5",
+          "fast_video": "window.fast_slo_scale > default 1.2",
+          "image": "class.slo_scale > default 2.5; window scales do not apply"
+        },
+        "workload_sha256": "d6faa000a10c867ccf335cbe7ad4d22b48999cb7bc0e9aaede00eb8de3cc2255"
+      }
+    },
+    "policies": [
+      "edf-cfg2",
+      "block-cfg2"
+    ],
+    "requested_policies": [
+      "edf-cfg2",
+      "block-cfg2"
+    ],
+    "policy_order": {
+      "mode": "random",
+      "seed": 205
+    },
+    "image_batch": {
+      "max_requests": 1,
+      "scope": "same atomic request batching limit for every policy; each request generates one image"
+    },
+    "policy_display": {
+      "edf-cfg2": "EDF-CFG2",
+      "block-cfg2": "Block-cfg2"
+    },
+    "collective_backend": "nccl",
+    "partition_image_gpus": {
+      "value": 2,
+      "rule": "expected image share of GPU time, even video remainder"
+    },
+    "quality_arm": null,
+    "preemption_diagnostic": "contention"
+  }
+}

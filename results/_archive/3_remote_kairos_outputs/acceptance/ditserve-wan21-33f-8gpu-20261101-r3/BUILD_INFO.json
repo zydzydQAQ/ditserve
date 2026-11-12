@@ -1,0 +1,10 @@
+{
+ "commit": "9ce3e41e07585aefb3167d80a430437c7e09ec71",
+ "subject": "Update Wan2.1 8-GPU v5 suite to 33-frame positive-scaling workload with live PSNR/SSIM",
+ "built_utc": "2026-11-01T07:08:10+00:00",
+ "builder_image": "local-cmake-install",
+ "tested_runtime_image": "192.168.1.114:30500/jjjkairos/ditserve:xdit-dev-016e1ca-slim",
+ "core_sha256": "0cdf688b3d0e8e52e7c03b015947d2ef32a5e4ccbe3bc31f64476abab58f018d",
+ "files": 258,
+ "bytes": 4320533
+}

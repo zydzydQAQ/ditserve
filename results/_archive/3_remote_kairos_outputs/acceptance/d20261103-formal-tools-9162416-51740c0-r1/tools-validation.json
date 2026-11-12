@@ -1,0 +1,154 @@
+{
+  "schema": "ditserve.tools-validation.v1",
+  "status": "passed",
+  "qualification_eligible": false,
+  "allows": [],
+  "scope": "benchmark/operator tools only; not CONTRACT, P0, P1 or model quality",
+  "identity": {
+    "core_commit": "51740c05944b063e39bc325b64241cd611a73b41",
+    "core_sha256": "e358e29d1a3ca238bbf2b7f981db71e951519715aedf46d58454738aabcbd42b",
+    "python_sources_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a",
+    "core_path": "/shared/code/DITSERVE/builds/51740c0/bin/ditserve",
+    "worker_package": "/shared/code/DITSERVE/builds/51740c0/share/ditserve/python",
+    "build_info_sha256": "76a70cb4246b15b0e82c3749841b81cb79e8f0692da812c19831108d27e7e0a6",
+    "operator_manifest_sha256": "1e4e3493b5be5b552c4de655194d82d174fae86ca7480c3f081e0be8345d72db",
+    "spec_sha256": "5f718e5ab5f3737a595fb62f5c4f18cb3ce00825d2ceeda5fe537a8b06bc8fa6",
+    "image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:2009ea26f63bcf0360ce7b4d71ed508c91c0702c97dd97e372cecfb672a818a1",
+    "image_identity_scope": "submitted digest-pinned spec; not pod imageID",
+    "benchmark_sources_sha256": "2920a2b20b8cc52fb620b084d6f23736074ba4c33d82f9b17c8d104984fec058",
+    "tested_benchmark_root": "/shared/data/DITSERVE/tests/9162416/benchmarks",
+    "actual_p1_benchmark_root": "/shared/data/DITSERVE/scripts/releases/9162416/benchmarks",
+    "test_revision": "9162416a2890a5b723666897083da66f326bddca",
+    "snapshot_files": 207
+  },
+  "cuda_probe": {
+    "torch": "2.10.0+cu126",
+    "cuda": "12.6",
+    "device": "NVIDIA A100-PCIE-40GB",
+    "device_count": 1,
+    "sum": 524800.0,
+    "matmul_value": 32,
+    "scope": "arithmetic only; no model qualification"
+  },
+  "cpu_tests": {
+    "tests": 60,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0,
+    "expected_failures": 0,
+    "unexpected_successes": 0,
+    "modules": [
+      "test_20261103_native_config_identity",
+      "test_20261103_p1_isolated_batch",
+      "test_20261103_p1_isolated_review",
+      "test_20261103_p1_isolated_operator",
+      "test_20261103_p1_isolated_shell"
+    ],
+    "imports": {
+      "native_metrics": {
+        "path": "/shared/data/DITSERVE/tests/9162416/benchmarks/native_metrics.py",
+        "sha256": "aa4f863c2800b1ad4f5267410cd246fb8ee5fd56472d54e161bd0898b1238ecd"
+      },
+      "native_exact": {
+        "path": "/shared/data/DITSERVE/tests/9162416/benchmarks/native_exact.py",
+        "sha256": "fa08052326d5bab7473d7b513cf0e1cfc40d699c725d727d3a693f8b6469bcc5"
+      },
+      "stage_gates": {
+        "path": "/shared/data/DITSERVE/tests/9162416/benchmarks/stage_gates.py",
+        "sha256": "91a08edf2d62a6fc7043d3e37372cb03a72f9aeeb55ae6bcbf1feb7f838413f0"
+      },
+      "native_config_identity": {
+        "path": "/shared/data/DITSERVE/tests/9162416/benchmarks/native_config_identity.py",
+        "sha256": "59298bbd63a3b9fecec23f9a8ebb420d585e66e95f492de2b0ca2d9bd68fb5fb"
+      },
+      "cluster_config": {
+        "path": "/shared/data/DITSERVE/tests/9162416/benchmarks/cluster_config.py",
+        "sha256": "d88f148b23a3e41abea8ead4e6196cd04327d4055f6225f635b7eadc37a42c5c"
+      },
+      "native_study": {
+        "path": "/shared/data/DITSERVE/tests/9162416/benchmarks/native_study.py",
+        "sha256": "f89b167218b0b51db2e570e932059d0139f11f7a1226384e81b32aaa677aeab8"
+      },
+      "native_serving": {
+        "path": "/shared/data/DITSERVE/tests/9162416/benchmarks/native_serving.py",
+        "sha256": "0e88ef532b4ac444cadf0c851ef566a2870dabe38c0b6c6d30131db1ad6e2d7d"
+      },
+      "fit_native_profile": {
+        "path": "/shared/data/DITSERVE/tests/9162416/benchmarks/fit_native_profile.py",
+        "sha256": "4fd4fb2620170e233e7b00f105f57d4c6be49d0c77187b130f02a39a14b8c3f3"
+      },
+      "formal_benchmark": {
+        "path": "/shared/data/DITSERVE/tests/9162416/benchmarks/formal_benchmark.py",
+        "sha256": "3477bc9f2de419c843be7751e1c3a85ae5016263cbda9e3e7294ce9f4ef96c96"
+      },
+      "p1_benchmark": {
+        "path": "/shared/data/DITSERVE/tests/9162416/benchmarks/p1_benchmark.py",
+        "sha256": "020eed1daa7b1b5edb3fa81298adcf8b6e7cafdd2916a213b002cec896fc560b"
+      },
+      "p1_isolated_batch": {
+        "path": "/shared/data/DITSERVE/tests/9162416/benchmarks/p1_isolated_batch.py",
+        "sha256": "c71962844949b96f70ddcbf722f4911587374893262aa40735f0659fd14355ec"
+      },
+      "p2_contrasts": {
+        "path": "/shared/data/DITSERVE/tests/9162416/benchmarks/p2_contrasts.py",
+        "sha256": "88545f40e83ede64099912a130ae7b9705ac90a11b929ec8996e8cf08e7a408a"
+      },
+      "p2_benefit": {
+        "path": "/shared/data/DITSERVE/tests/9162416/benchmarks/p2_benefit.py",
+        "sha256": "9d6d89c99af95ea31254fec07c808c5962c69f0feefbfa4819d76ecbd588f1a1"
+      },
+      "p1_costs": {
+        "path": "/shared/data/DITSERVE/tests/9162416/benchmarks/p1_costs.py",
+        "sha256": "6ce7a8395ff24f927b9fbcafc96f0e5302737cc81c6efb2ba10631957ecedb29"
+      },
+      "p1_qualification": {
+        "path": "/shared/data/DITSERVE/tests/9162416/benchmarks/p1_qualification.py",
+        "sha256": "30cf777ba88eba6b441bf4fd1f17fe0156b2379b3acbcc83f479e5f0e14e788f"
+      },
+      "p1_isolated_review": {
+        "path": "/shared/data/DITSERVE/tests/9162416/benchmarks/p1_isolated_review.py",
+        "sha256": "e13a4d70d669b3d240d8e9c8a1d745df2e3f2b06c323b718b81e03504d1525f5"
+      },
+      "p3_stream": {
+        "path": "/shared/data/DITSERVE/tests/9162416/benchmarks/p3_stream.py",
+        "sha256": "65f028c5c195695d3ac96642f2bfd6beb5b29d3aa0d46c77f572c3a4c5b422ec"
+      },
+      "p3_window_review": {
+        "path": "/shared/data/DITSERVE/tests/9162416/benchmarks/p3_window_review.py",
+        "sha256": "cc55790d96f4106ff57bb152e3e0885026bcd33474605948ad3441e2af3a821f"
+      },
+      "native_quality": {
+        "path": "/shared/data/DITSERVE/tests/9162416/benchmarks/native_quality.py",
+        "sha256": "ad9227ef66a239de345b0cee1ff73a72e7065e8d9e7ab8c551de31c2219ef232"
+      },
+      "paper_results": {
+        "path": "/shared/data/DITSERVE/tests/9162416/benchmarks/paper_results.py",
+        "sha256": "1db8b34741e35b20dc09383f9662e65214ae91817ad7931905e2c6278abdcae9"
+      },
+      "p1_isolated_job": {
+        "path": "/shared/data/DITSERVE/tests/9162416/benchmarks/p1_isolated_job.py",
+        "sha256": "48862cca61e9875819f0ad41b2eaa313b2cba706b2b6975f547878f7c21737eb"
+      }
+    },
+    "log_truncated_characters": 0
+  },
+  "actual_p1_imports": {
+    "helper_path": "/shared/data/DITSERVE/scripts/releases/9162416/tools/p1_isolated_job.py",
+    "benchmark_root": "/shared/data/DITSERVE/scripts/releases/9162416/benchmarks",
+    "imports": {
+      "cluster_config": "cluster_config.py",
+      "fit_native_profile": "fit_native_profile.py",
+      "formal_benchmark": "formal_benchmark.py",
+      "native_config_identity": "native_config_identity.py",
+      "native_exact": "native_exact.py",
+      "native_metrics": "native_metrics.py",
+      "native_serving": "native_serving.py",
+      "native_study": "native_study.py",
+      "p1_benchmark": "p1_benchmark.py",
+      "p1_isolated_batch": "p1_isolated_batch.py",
+      "stage_gates": "stage_gates.py"
+    }
+  },
+  "dependencies_closed": false,
+  "deletion_authorized": false
+}

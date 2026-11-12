@@ -1,0 +1,66 @@
+{
+  "name": "d20261103-formal-cal8-wan21-51740c0-r1",
+  "image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:2009ea26f63bcf0360ce7b4d71ed508c91c0702c97dd97e372cecfb672a818a1",
+  "command": "bash /shared/data/DITSERVE/scripts/releases/51740c0/scripts/kairos_formal_benchmark.sh",
+  "workers": 1,
+  "gpus_per_worker": 8,
+  "mount_shared": true,
+  "env": [
+    {
+      "name": "DITSERVE_BUILD",
+      "value": "51740c0"
+    },
+    {
+      "name": "DITSERVE_RUN_ID",
+      "value": "d20261103-formal-cal8-wan21-51740c0-r1"
+    },
+    {
+      "name": "DITSERVE_KAIROS_RUNTIME_ROOT",
+      "value": "/shared/data/DITSERVE/scripts/releases/51740c0"
+    },
+    {
+      "name": "DITSERVE_TEST_REVISION",
+      "value": "51740c05944b063e39bc325b64241cd611a73b41"
+    },
+    {
+      "name": "DITSERVE_FORMAL_PROTOCOL",
+      "value": "/shared/code/DITSERVE/builds/51740c0/share/ditserve/configs/benchmarks/formal-mixed-v1.json"
+    },
+    {
+      "name": "DITSERVE_PROTOCOL_SHA256",
+      "value": "6bcefd0a15088214dcde21c787007f52cfe79fbb262532a5d5c3682bcb0e801c"
+    },
+    {
+      "name": "DITSERVE_IMAGE_DIGEST",
+      "value": "sha256:2009ea26f63bcf0360ce7b4d71ed508c91c0702c97dd97e372cecfb672a818a1"
+    },
+    {
+      "name": "DITSERVE_EXECUTION_IMAGE",
+      "value": "192.168.1.114:30500/jjjkairos/ditserve@sha256:2009ea26f63bcf0360ce7b4d71ed508c91c0702c97dd97e372cecfb672a818a1"
+    },
+    {
+      "name": "DITSERVE_JOB_SPEC_PATH",
+      "value": "/shared/data/DITSERVE/job-specs/20261103-cal8-51740c0/d20261103-formal-cal8-wan21-51740c0-r1.json"
+    },
+    {
+      "name": "DITSERVE_BENCHMARK_MODE",
+      "value": "formal"
+    },
+    {
+      "name": "DITSERVE_FORMAL_ACTION",
+      "value": "calibration"
+    },
+    {
+      "name": "DITSERVE_STAGE_ACTION",
+      "value": "shape_calibration"
+    },
+    {
+      "name": "WAN_MODEL",
+      "value": "wan"
+    },
+    {
+      "name": "DITSERVE_MODEL_MANIFESTS",
+      "value": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/models.official-all.json"
+    }
+  ]
+}

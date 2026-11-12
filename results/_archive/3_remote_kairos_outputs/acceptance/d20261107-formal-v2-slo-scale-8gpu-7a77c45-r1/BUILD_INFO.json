@@ -1,0 +1,17 @@
+{
+ "commit": "7a77c45534b3d8bb1e802433b1b698f41909adb2",
+ "subject": "Allow 1.75x SLO scale in formal-v2 serving sweep",
+ "built_utc": "2026-11-07T14:30:58+00:00",
+ "builder_image": "cluster-cmake-install",
+ "runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "tested_runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "core_sha256": "52d2b4adf5c6a614c5d7b33e4bb43162582d239c908cf70c56d994be33b67830",
+ "runtime_smoke": "passed_cluster",
+ "local_checks": [
+  "cmake",
+  "ctest",
+  "installed_doctor"
+ ],
+ "files": 266,
+ "bytes": 5372663
+}

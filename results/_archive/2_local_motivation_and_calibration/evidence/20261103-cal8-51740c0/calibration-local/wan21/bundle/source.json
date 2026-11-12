@@ -1,0 +1,1080 @@
+{
+  "schema": "ditserve.shape-profiles.v1",
+  "model": "wan21",
+  "protocol_sha256": "6bcefd0a15088214dcde21c787007f52cfe79fbb262532a5d5c3682bcb0e801c",
+  "gpu_uuids": [
+    "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+    "GPU-7bb0920b-6181-9486-380c-042e9fe68433",
+    "GPU-56f9344d-f279-ae6b-d287-b9024e4eb7fe",
+    "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+    "GPU-5a956ef1-5f15-8a3b-7055-02da1d96da75",
+    "GPU-d3c1776a-33b0-8800-0ed7-431fc605ba83",
+    "GPU-837bc934-205d-1796-b72f-0141a8855565",
+    "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529"
+  ],
+  "classes": {
+    "wan21-480p": {
+      "spec": {
+        "height": 480,
+        "width": 832,
+        "frames": 81,
+        "steps": 50,
+        "guidance_scale": 5.0,
+        "cache": false,
+        "threshold": 0.0,
+        "max_continuous": 1,
+        "negative_prompt": ""
+      },
+      "cost": {
+        "kind": "video",
+        "steps": 50,
+        "blocks_per_step": 60,
+        "prepare_ms": 0.0,
+        "encode_ms": 15133.797546227774,
+        "step_compute_ms": 3964.619727805257,
+        "comm_mb_per_step": 24153.2928,
+        "collectives_per_step": 240,
+        "cfg_exchange_mb": 4.19328,
+        "finish_ms": 4570.661764178011,
+        "decode_chunks": 21,
+        "forms": {
+          "sp1": {
+            "placements": {
+              "0-0": {
+                "step_ms": 3964.619727805257
+              }
+            }
+          },
+          "cfg2": {
+            "placements": {
+              "0-1": {
+                "step_ms": 1998.121503740549
+              }
+            }
+          },
+          "sp2": {
+            "placements": {
+              "0-1": {
+                "step_ms": 3309.5934856683016
+              }
+            }
+          },
+          "cfg2sp2": {
+            "placements": {
+              "0-3": {
+                "step_ms": 2118.798963725567
+              }
+            }
+          },
+          "sp3": {
+            "placements": {
+              "0-2": {
+                "step_ms": 2856.644045561552
+              }
+            }
+          },
+          "cfg2sp3": {
+            "placements": {
+              "0-5": {
+                "step_ms": 1590.0909267365932
+              }
+            }
+          },
+          "sp4": {
+            "placements": {
+              "0-3": {
+                "step_ms": 2785.323429852724
+              }
+            }
+          },
+          "cfg2sp4": {
+            "placements": {
+              "0-7": {
+                "step_ms": 1411.4170260727406
+              }
+            }
+          },
+          "sp6": {
+            "placements": {
+              "0-5": {
+                "step_ms": 1959.8550572991371
+              }
+            }
+          }
+        },
+        "links": {
+          "2": {
+            "gbps": 3.75,
+            "latency_ms": 0.5
+          },
+          "3": {
+            "gbps": 3.75,
+            "latency_ms": 0.5
+          },
+          "4": {
+            "gbps": 3.75,
+            "latency_ms": 0.5
+          },
+          "6": {
+            "gbps": 3.75,
+            "latency_ms": 0.5
+          },
+          "8": {
+            "gbps": 3.75,
+            "latency_ms": 0.5
+          }
+        }
+      },
+      "source": {
+        "run_sha256": "b784d3cd0058ebab48edf859d58ea82b25d32b53e74771b5e03ebcbf0bdd2fc9",
+        "run_id": "d20261103-formal-cal8-wan21-51740c0-r1-cal0",
+        "core_sha256": "e358e29d1a3ca238bbf2b7f981db71e951519715aedf46d58454738aabcbd42b",
+        "gpu_uuids": [
+          "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+          "GPU-7bb0920b-6181-9486-380c-042e9fe68433",
+          "GPU-56f9344d-f279-ae6b-d287-b9024e4eb7fe",
+          "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+          "GPU-5a956ef1-5f15-8a3b-7055-02da1d96da75",
+          "GPU-d3c1776a-33b0-8800-0ed7-431fc605ba83",
+          "GPU-837bc934-205d-1796-b72f-0141a8855565",
+          "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529"
+        ],
+        "fit": {
+          "experiment": "kairos-wan21-native-calibration",
+          "run_id": "d20261103-formal-cal8-wan21-51740c0-r1-cal0",
+          "gpu_uuids": [
+            "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+            "GPU-7bb0920b-6181-9486-380c-042e9fe68433",
+            "GPU-56f9344d-f279-ae6b-d287-b9024e4eb7fe",
+            "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+            "GPU-5a956ef1-5f15-8a3b-7055-02da1d96da75",
+            "GPU-d3c1776a-33b0-8800-0ed7-431fc605ba83",
+            "GPU-837bc934-205d-1796-b72f-0141a8855565",
+            "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529"
+          ],
+          "run_sha256": "b784d3cd0058ebab48edf859d58ea82b25d32b53e74771b5e03ebcbf0bdd2fc9",
+          "model": "Wan2.1-T2V-1.3B",
+          "shape": {
+            "cache": false,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "height": 480,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "cinematic drama, steaming coffee mug on table in modern kitchen, sunbeams falling through window, -neg &quot;morphing, erratic fluctuation in motion, noisy, bad quality, distorted, stabilized, blurry&quot; -camera rotate ccw  ",
+            "request_id": "video-calibration",
+            "seed": 101,
+            "steps": 50,
+            "threshold": 0.0,
+            "width": 832
+          },
+          "architecture": {
+            "tokens": 32760,
+            "dim": 1536,
+            "layers": 30,
+            "comm_mb_per_step": 24153.2928,
+            "collectives_per_step": 240,
+            "cfg_exchange_mb": 4.19328
+          },
+          "timing_scopes": {
+            "static_sp1": "median_steady_advance",
+            "static_cfg2": "median_steady_advance",
+            "static_sp2": "median_steady_advance",
+            "static_cfg2sp2": "median_steady_advance",
+            "static_sp3": "median_steady_advance",
+            "static_cfg2sp3": "median_steady_advance",
+            "static_sp4": "median_steady_advance",
+            "static_cfg2sp4": "median_steady_advance",
+            "static_sp6": "median_steady_advance"
+          },
+          "steady_samples": {
+            "static_sp1": 49,
+            "static_cfg2": 49,
+            "static_sp2": 49,
+            "static_cfg2sp2": 49,
+            "static_sp3": 49,
+            "static_cfg2sp3": 49,
+            "static_sp4": 49,
+            "static_cfg2sp4": 49,
+            "static_sp6": 49
+          },
+          "bandwidth_saturation_gbps": 3.75,
+          "bandwidth_gamma": 0.0,
+          "fit_policies": [
+            "static_cfg2",
+            "static_cfg2sp2",
+            "static_sp1",
+            "static_sp2",
+            "static_sp4"
+          ],
+          "fit_mean_relative_error_pct": 8.389620835164498,
+          "held_out_mean_relative_error_pct": 10.596772284034827,
+          "held_out_max_relative_error_pct": 17.740258723801098,
+          "predictions": [
+            {
+              "policy": "static_sp1",
+              "form": [
+                1,
+                1
+              ],
+              "measured_step_ms": 3964.619727805257,
+              "predicted_step_ms": 3964.619727805257,
+              "relative_error_pct": 0.0,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2",
+              "form": [
+                2,
+                1
+              ],
+              "measured_step_ms": 1998.121503740549,
+              "predicted_step_ms": 1983.9280719026285,
+              "relative_error_pct": 0.7103387762631052,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_sp2",
+              "form": [
+                1,
+                2
+              ],
+              "measured_step_ms": 3309.5934856683016,
+              "predicted_step_ms": 3712.529383902628,
+              "relative_error_pct": 12.174785210908228,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2sp2",
+              "form": [
+                2,
+                2
+              ],
+              "measured_step_ms": 2118.798963725567,
+              "predicted_step_ms": 1857.8828999513141,
+              "relative_error_pct": 12.314337898083254,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_sp3",
+              "form": [
+                1,
+                3
+              ],
+              "measured_step_ms": 2856.644045561552,
+              "predicted_step_ms": 2872.846149268419,
+              "relative_error_pct": 0.5671726490404275,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_cfg2sp3",
+              "form": [
+                2,
+                3
+              ],
+              "measured_step_ms": 1590.0909267365932,
+              "predicted_step_ms": 1438.0412826342097,
+              "relative_error_pct": 9.562323861217239,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_sp4",
+              "form": [
+                1,
+                4
+              ],
+              "measured_step_ms": 2785.323429852724,
+              "predicted_step_ms": 2318.819571951314,
+              "relative_error_pct": 16.748642290567908,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2sp4",
+              "form": [
+                2,
+                4
+              ],
+              "measured_step_ms": 1411.4170260727406,
+              "predicted_step_ms": 1161.0279939756572,
+              "relative_error_pct": 17.740258723801098,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_sp6",
+              "form": [
+                1,
+                6
+              ],
+              "measured_step_ms": 1959.8550572991371,
+              "predicted_step_ms": 1675.3363546342093,
+              "relative_error_pct": 14.517333902080548,
+              "partition": "held_out"
+            }
+          ],
+          "execution_cost_mode": "placement_bound_form_table_with_analytical_fallback",
+          "unbound_measurements": 0,
+          "image_batch_samples": {
+            "1": 9
+          },
+          "validation_scope": "held-out forms on calibration hardware and shape; not held-out request, placement or workload validation",
+          "method": "single constrained saturation model fitted once; no per-form bandwidth or overlap overrides"
+        },
+        "resize_ms": 109.83004089858797,
+        "quantum_overhead_ms": 1.285974683320306
+      }
+    },
+    "sd35-512": {
+      "spec": {
+        "height": 512,
+        "width": 512,
+        "frames": 1,
+        "steps": 28,
+        "guidance_scale": 4.5,
+        "batch_size": 1,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality"
+      },
+      "cost": {
+        "kind": "image",
+        "service_ms": 1748.6785892397165
+      },
+      "source": {
+        "run_sha256": "b784d3cd0058ebab48edf859d58ea82b25d32b53e74771b5e03ebcbf0bdd2fc9",
+        "run_id": "d20261103-formal-cal8-wan21-51740c0-r1-cal0",
+        "core_sha256": "e358e29d1a3ca238bbf2b7f981db71e951519715aedf46d58454738aabcbd42b",
+        "gpu_uuids": [
+          "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+          "GPU-7bb0920b-6181-9486-380c-042e9fe68433",
+          "GPU-56f9344d-f279-ae6b-d287-b9024e4eb7fe",
+          "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+          "GPU-5a956ef1-5f15-8a3b-7055-02da1d96da75",
+          "GPU-d3c1776a-33b0-8800-0ed7-431fc605ba83",
+          "GPU-837bc934-205d-1796-b72f-0141a8855565",
+          "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529"
+        ],
+        "fit": {
+          "experiment": "kairos-wan21-native-calibration",
+          "run_id": "d20261103-formal-cal8-wan21-51740c0-r1-cal0",
+          "gpu_uuids": [
+            "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+            "GPU-7bb0920b-6181-9486-380c-042e9fe68433",
+            "GPU-56f9344d-f279-ae6b-d287-b9024e4eb7fe",
+            "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+            "GPU-5a956ef1-5f15-8a3b-7055-02da1d96da75",
+            "GPU-d3c1776a-33b0-8800-0ed7-431fc605ba83",
+            "GPU-837bc934-205d-1796-b72f-0141a8855565",
+            "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529"
+          ],
+          "run_sha256": "b784d3cd0058ebab48edf859d58ea82b25d32b53e74771b5e03ebcbf0bdd2fc9",
+          "model": "Wan2.1-T2V-1.3B",
+          "shape": {
+            "cache": false,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "height": 480,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "cinematic drama, steaming coffee mug on table in modern kitchen, sunbeams falling through window, -neg &quot;morphing, erratic fluctuation in motion, noisy, bad quality, distorted, stabilized, blurry&quot; -camera rotate ccw  ",
+            "request_id": "video-calibration",
+            "seed": 101,
+            "steps": 50,
+            "threshold": 0.0,
+            "width": 832
+          },
+          "architecture": {
+            "tokens": 32760,
+            "dim": 1536,
+            "layers": 30,
+            "comm_mb_per_step": 24153.2928,
+            "collectives_per_step": 240,
+            "cfg_exchange_mb": 4.19328
+          },
+          "timing_scopes": {
+            "static_sp1": "median_steady_advance",
+            "static_cfg2": "median_steady_advance",
+            "static_sp2": "median_steady_advance",
+            "static_cfg2sp2": "median_steady_advance",
+            "static_sp3": "median_steady_advance",
+            "static_cfg2sp3": "median_steady_advance",
+            "static_sp4": "median_steady_advance",
+            "static_cfg2sp4": "median_steady_advance",
+            "static_sp6": "median_steady_advance"
+          },
+          "steady_samples": {
+            "static_sp1": 49,
+            "static_cfg2": 49,
+            "static_sp2": 49,
+            "static_cfg2sp2": 49,
+            "static_sp3": 49,
+            "static_cfg2sp3": 49,
+            "static_sp4": 49,
+            "static_cfg2sp4": 49,
+            "static_sp6": 49
+          },
+          "bandwidth_saturation_gbps": 3.75,
+          "bandwidth_gamma": 0.0,
+          "fit_policies": [
+            "static_cfg2",
+            "static_cfg2sp2",
+            "static_sp1",
+            "static_sp2",
+            "static_sp4"
+          ],
+          "fit_mean_relative_error_pct": 8.389620835164498,
+          "held_out_mean_relative_error_pct": 10.596772284034827,
+          "held_out_max_relative_error_pct": 17.740258723801098,
+          "predictions": [
+            {
+              "policy": "static_sp1",
+              "form": [
+                1,
+                1
+              ],
+              "measured_step_ms": 3964.619727805257,
+              "predicted_step_ms": 3964.619727805257,
+              "relative_error_pct": 0.0,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2",
+              "form": [
+                2,
+                1
+              ],
+              "measured_step_ms": 1998.121503740549,
+              "predicted_step_ms": 1983.9280719026285,
+              "relative_error_pct": 0.7103387762631052,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_sp2",
+              "form": [
+                1,
+                2
+              ],
+              "measured_step_ms": 3309.5934856683016,
+              "predicted_step_ms": 3712.529383902628,
+              "relative_error_pct": 12.174785210908228,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2sp2",
+              "form": [
+                2,
+                2
+              ],
+              "measured_step_ms": 2118.798963725567,
+              "predicted_step_ms": 1857.8828999513141,
+              "relative_error_pct": 12.314337898083254,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_sp3",
+              "form": [
+                1,
+                3
+              ],
+              "measured_step_ms": 2856.644045561552,
+              "predicted_step_ms": 2872.846149268419,
+              "relative_error_pct": 0.5671726490404275,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_cfg2sp3",
+              "form": [
+                2,
+                3
+              ],
+              "measured_step_ms": 1590.0909267365932,
+              "predicted_step_ms": 1438.0412826342097,
+              "relative_error_pct": 9.562323861217239,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_sp4",
+              "form": [
+                1,
+                4
+              ],
+              "measured_step_ms": 2785.323429852724,
+              "predicted_step_ms": 2318.819571951314,
+              "relative_error_pct": 16.748642290567908,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2sp4",
+              "form": [
+                2,
+                4
+              ],
+              "measured_step_ms": 1411.4170260727406,
+              "predicted_step_ms": 1161.0279939756572,
+              "relative_error_pct": 17.740258723801098,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_sp6",
+              "form": [
+                1,
+                6
+              ],
+              "measured_step_ms": 1959.8550572991371,
+              "predicted_step_ms": 1675.3363546342093,
+              "relative_error_pct": 14.517333902080548,
+              "partition": "held_out"
+            }
+          ],
+          "execution_cost_mode": "placement_bound_form_table_with_analytical_fallback",
+          "unbound_measurements": 0,
+          "image_batch_samples": {
+            "1": 9
+          },
+          "validation_scope": "held-out forms on calibration hardware and shape; not held-out request, placement or workload validation",
+          "method": "single constrained saturation model fitted once; no per-form bandwidth or overlap overrides"
+        },
+        "resize_ms": 109.83004089858797,
+        "quantum_overhead_ms": 1.285974683320306
+      }
+    },
+    "wan21-720p": {
+      "spec": {
+        "height": 720,
+        "width": 1280,
+        "frames": 81,
+        "steps": 50,
+        "guidance_scale": 5.0,
+        "cache": false,
+        "threshold": 0.0,
+        "max_continuous": 1,
+        "negative_prompt": ""
+      },
+      "cost": {
+        "kind": "video",
+        "steps": 50,
+        "blocks_per_step": 60,
+        "prepare_ms": 0.0,
+        "encode_ms": 15107.86709210111,
+        "step_compute_ms": 16212.455529719591,
+        "comm_mb_per_step": 55738.368,
+        "collectives_per_step": 240,
+        "cfg_exchange_mb": 9.6768,
+        "finish_ms": 10832.56717191802,
+        "decode_chunks": 21,
+        "forms": {
+          "sp1": {
+            "placements": {
+              "0-0": {
+                "step_ms": 16212.455529719591
+              }
+            }
+          },
+          "cfg2": {
+            "placements": {
+              "0-1": {
+                "step_ms": 8154.033035039902
+              }
+            }
+          },
+          "sp2": {
+            "placements": {
+              "0-1": {
+                "step_ms": 11056.082587689161
+              }
+            }
+          },
+          "cfg2sp2": {
+            "placements": {
+              "0-3": {
+                "step_ms": 6476.512068882585
+              }
+            }
+          },
+          "sp3": {
+            "placements": {
+              "0-2": {
+                "step_ms": 8707.34504237771
+              }
+            }
+          },
+          "cfg2sp3": {
+            "placements": {
+              "0-5": {
+                "step_ms": 4632.111743092537
+              }
+            }
+          },
+          "sp4": {
+            "placements": {
+              "0-3": {
+                "step_ms": 7849.236231297255
+              }
+            }
+          },
+          "cfg2sp4": {
+            "placements": {
+              "0-7": {
+                "step_ms": 3982.817094773054
+              }
+            }
+          },
+          "sp6": {
+            "placements": {
+              "0-5": {
+                "step_ms": 5403.316862881184
+              }
+            }
+          }
+        },
+        "links": {
+          "2": {
+            "gbps": 3.75,
+            "latency_ms": 0.5
+          },
+          "3": {
+            "gbps": 3.75,
+            "latency_ms": 0.5
+          },
+          "4": {
+            "gbps": 3.75,
+            "latency_ms": 0.5
+          },
+          "6": {
+            "gbps": 3.75,
+            "latency_ms": 0.5
+          },
+          "8": {
+            "gbps": 3.75,
+            "latency_ms": 0.5
+          }
+        }
+      },
+      "source": {
+        "run_sha256": "01bd82b0fda99d156f0d82bfc80a63fae7c7ef0929773698d82fe284f933d772",
+        "run_id": "d20261103-formal-cal8-wan21-51740c0-r1-cal1",
+        "core_sha256": "e358e29d1a3ca238bbf2b7f981db71e951519715aedf46d58454738aabcbd42b",
+        "gpu_uuids": [
+          "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+          "GPU-7bb0920b-6181-9486-380c-042e9fe68433",
+          "GPU-56f9344d-f279-ae6b-d287-b9024e4eb7fe",
+          "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+          "GPU-5a956ef1-5f15-8a3b-7055-02da1d96da75",
+          "GPU-d3c1776a-33b0-8800-0ed7-431fc605ba83",
+          "GPU-837bc934-205d-1796-b72f-0141a8855565",
+          "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529"
+        ],
+        "fit": {
+          "experiment": "kairos-wan21-native-calibration",
+          "run_id": "d20261103-formal-cal8-wan21-51740c0-r1-cal1",
+          "gpu_uuids": [
+            "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+            "GPU-7bb0920b-6181-9486-380c-042e9fe68433",
+            "GPU-56f9344d-f279-ae6b-d287-b9024e4eb7fe",
+            "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+            "GPU-5a956ef1-5f15-8a3b-7055-02da1d96da75",
+            "GPU-d3c1776a-33b0-8800-0ed7-431fc605ba83",
+            "GPU-837bc934-205d-1796-b72f-0141a8855565",
+            "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529"
+          ],
+          "run_sha256": "01bd82b0fda99d156f0d82bfc80a63fae7c7ef0929773698d82fe284f933d772",
+          "model": "Wan2.1-T2V-1.3B",
+          "shape": {
+            "cache": false,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "height": 720,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "cinematic drama, steaming coffee mug on table in modern kitchen, sunbeams falling through window, -neg &quot;morphing, erratic fluctuation in motion, noisy, bad quality, distorted, stabilized, blurry&quot; -camera rotate ccw  ",
+            "request_id": "video-calibration",
+            "seed": 101,
+            "steps": 50,
+            "threshold": 0.0,
+            "width": 1280
+          },
+          "architecture": {
+            "tokens": 75600,
+            "dim": 1536,
+            "layers": 30,
+            "comm_mb_per_step": 55738.368,
+            "collectives_per_step": 240,
+            "cfg_exchange_mb": 9.6768
+          },
+          "timing_scopes": {
+            "static_sp1": "median_steady_advance",
+            "static_cfg2": "median_steady_advance",
+            "static_sp2": "median_steady_advance",
+            "static_cfg2sp2": "median_steady_advance",
+            "static_sp3": "median_steady_advance",
+            "static_cfg2sp3": "median_steady_advance",
+            "static_sp4": "median_steady_advance",
+            "static_cfg2sp4": "median_steady_advance",
+            "static_sp6": "median_steady_advance"
+          },
+          "steady_samples": {
+            "static_sp1": 49,
+            "static_cfg2": 49,
+            "static_sp2": 49,
+            "static_cfg2sp2": 49,
+            "static_sp3": 49,
+            "static_cfg2sp3": 49,
+            "static_sp4": 49,
+            "static_cfg2sp4": 49,
+            "static_sp6": 49
+          },
+          "bandwidth_saturation_gbps": 3.75,
+          "bandwidth_gamma": 0.0,
+          "fit_policies": [
+            "static_cfg2",
+            "static_cfg2sp2",
+            "static_sp1",
+            "static_sp2",
+            "static_sp4"
+          ],
+          "fit_mean_relative_error_pct": 5.529577715343422,
+          "held_out_mean_relative_error_pct": 7.034934718427106,
+          "held_out_max_relative_error_pct": 12.546909930007208,
+          "predictions": [
+            {
+              "policy": "static_sp1",
+              "form": [
+                1,
+                1
+              ],
+              "measured_step_ms": 16212.455529719591,
+              "predicted_step_ms": 16212.455529719591,
+              "relative_error_pct": 0.0,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2",
+              "form": [
+                2,
+                1
+              ],
+              "measured_step_ms": 8154.033035039902,
+              "predicted_step_ms": 8109.308244859795,
+              "relative_error_pct": 0.5484990064169845,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_sp2",
+              "form": [
+                1,
+                2
+              ],
+              "measured_step_ms": 11056.082587689161,
+              "predicted_step_ms": 11942.118964859796,
+              "relative_error_pct": 8.01401735328232,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2sp2",
+              "form": [
+                2,
+                2
+              ],
+              "measured_step_ms": 6476.512068882585,
+              "predicted_step_ms": 5974.139962429897,
+              "relative_error_pct": 7.756831163280194,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_sp3",
+              "form": [
+                1,
+                3
+              ],
+              "measured_step_ms": 8707.34504237771,
+              "predicted_step_ms": 8827.166243239863,
+              "relative_error_pct": 1.376093404809334,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_cfg2sp3",
+              "form": [
+                2,
+                3
+              ],
+              "measured_step_ms": 4632.111743092537,
+              "predicted_step_ms": 4416.663601619931,
+              "relative_error_pct": 4.651186185089015,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_sp4",
+              "form": [
+                1,
+                4
+              ],
+              "measured_step_ms": 7849.236231297255,
+              "predicted_step_ms": 6960.032282429898,
+              "relative_error_pct": 11.328541053737611,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2sp4",
+              "form": [
+                2,
+                4
+              ],
+              "measured_step_ms": 3982.817094773054,
+              "predicted_step_ms": 3483.096621214949,
+              "relative_error_pct": 12.546909930007208,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_sp6",
+              "form": [
+                1,
+                6
+              ],
+              "measured_step_ms": 5403.316862881184,
+              "predicted_step_ms": 4886.459921619931,
+              "relative_error_pct": 9.565549353802865,
+              "partition": "held_out"
+            }
+          ],
+          "execution_cost_mode": "placement_bound_form_table_with_analytical_fallback",
+          "unbound_measurements": 0,
+          "image_batch_samples": {
+            "1": 9
+          },
+          "validation_scope": "held-out forms on calibration hardware and shape; not held-out request, placement or workload validation",
+          "method": "single constrained saturation model fitted once; no per-form bandwidth or overlap overrides"
+        },
+        "resize_ms": 106.55706065396468,
+        "quantum_overhead_ms": 1.3851691689553445
+      }
+    },
+    "sd35-1024": {
+      "spec": {
+        "height": 1024,
+        "width": 1024,
+        "frames": 1,
+        "steps": 28,
+        "guidance_scale": 4.5,
+        "batch_size": 1,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality"
+      },
+      "cost": {
+        "kind": "image",
+        "service_ms": 6507.334683090448
+      },
+      "source": {
+        "run_sha256": "01bd82b0fda99d156f0d82bfc80a63fae7c7ef0929773698d82fe284f933d772",
+        "run_id": "d20261103-formal-cal8-wan21-51740c0-r1-cal1",
+        "core_sha256": "e358e29d1a3ca238bbf2b7f981db71e951519715aedf46d58454738aabcbd42b",
+        "gpu_uuids": [
+          "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+          "GPU-7bb0920b-6181-9486-380c-042e9fe68433",
+          "GPU-56f9344d-f279-ae6b-d287-b9024e4eb7fe",
+          "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+          "GPU-5a956ef1-5f15-8a3b-7055-02da1d96da75",
+          "GPU-d3c1776a-33b0-8800-0ed7-431fc605ba83",
+          "GPU-837bc934-205d-1796-b72f-0141a8855565",
+          "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529"
+        ],
+        "fit": {
+          "experiment": "kairos-wan21-native-calibration",
+          "run_id": "d20261103-formal-cal8-wan21-51740c0-r1-cal1",
+          "gpu_uuids": [
+            "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+            "GPU-7bb0920b-6181-9486-380c-042e9fe68433",
+            "GPU-56f9344d-f279-ae6b-d287-b9024e4eb7fe",
+            "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+            "GPU-5a956ef1-5f15-8a3b-7055-02da1d96da75",
+            "GPU-d3c1776a-33b0-8800-0ed7-431fc605ba83",
+            "GPU-837bc934-205d-1796-b72f-0141a8855565",
+            "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529"
+          ],
+          "run_sha256": "01bd82b0fda99d156f0d82bfc80a63fae7c7ef0929773698d82fe284f933d772",
+          "model": "Wan2.1-T2V-1.3B",
+          "shape": {
+            "cache": false,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "height": 720,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "cinematic drama, steaming coffee mug on table in modern kitchen, sunbeams falling through window, -neg &quot;morphing, erratic fluctuation in motion, noisy, bad quality, distorted, stabilized, blurry&quot; -camera rotate ccw  ",
+            "request_id": "video-calibration",
+            "seed": 101,
+            "steps": 50,
+            "threshold": 0.0,
+            "width": 1280
+          },
+          "architecture": {
+            "tokens": 75600,
+            "dim": 1536,
+            "layers": 30,
+            "comm_mb_per_step": 55738.368,
+            "collectives_per_step": 240,
+            "cfg_exchange_mb": 9.6768
+          },
+          "timing_scopes": {
+            "static_sp1": "median_steady_advance",
+            "static_cfg2": "median_steady_advance",
+            "static_sp2": "median_steady_advance",
+            "static_cfg2sp2": "median_steady_advance",
+            "static_sp3": "median_steady_advance",
+            "static_cfg2sp3": "median_steady_advance",
+            "static_sp4": "median_steady_advance",
+            "static_cfg2sp4": "median_steady_advance",
+            "static_sp6": "median_steady_advance"
+          },
+          "steady_samples": {
+            "static_sp1": 49,
+            "static_cfg2": 49,
+            "static_sp2": 49,
+            "static_cfg2sp2": 49,
+            "static_sp3": 49,
+            "static_cfg2sp3": 49,
+            "static_sp4": 49,
+            "static_cfg2sp4": 49,
+            "static_sp6": 49
+          },
+          "bandwidth_saturation_gbps": 3.75,
+          "bandwidth_gamma": 0.0,
+          "fit_policies": [
+            "static_cfg2",
+            "static_cfg2sp2",
+            "static_sp1",
+            "static_sp2",
+            "static_sp4"
+          ],
+          "fit_mean_relative_error_pct": 5.529577715343422,
+          "held_out_mean_relative_error_pct": 7.034934718427106,
+          "held_out_max_relative_error_pct": 12.546909930007208,
+          "predictions": [
+            {
+              "policy": "static_sp1",
+              "form": [
+                1,
+                1
+              ],
+              "measured_step_ms": 16212.455529719591,
+              "predicted_step_ms": 16212.455529719591,
+              "relative_error_pct": 0.0,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2",
+              "form": [
+                2,
+                1
+              ],
+              "measured_step_ms": 8154.033035039902,
+              "predicted_step_ms": 8109.308244859795,
+              "relative_error_pct": 0.5484990064169845,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_sp2",
+              "form": [
+                1,
+                2
+              ],
+              "measured_step_ms": 11056.082587689161,
+              "predicted_step_ms": 11942.118964859796,
+              "relative_error_pct": 8.01401735328232,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2sp2",
+              "form": [
+                2,
+                2
+              ],
+              "measured_step_ms": 6476.512068882585,
+              "predicted_step_ms": 5974.139962429897,
+              "relative_error_pct": 7.756831163280194,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_sp3",
+              "form": [
+                1,
+                3
+              ],
+              "measured_step_ms": 8707.34504237771,
+              "predicted_step_ms": 8827.166243239863,
+              "relative_error_pct": 1.376093404809334,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_cfg2sp3",
+              "form": [
+                2,
+                3
+              ],
+              "measured_step_ms": 4632.111743092537,
+              "predicted_step_ms": 4416.663601619931,
+              "relative_error_pct": 4.651186185089015,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_sp4",
+              "form": [
+                1,
+                4
+              ],
+              "measured_step_ms": 7849.236231297255,
+              "predicted_step_ms": 6960.032282429898,
+              "relative_error_pct": 11.328541053737611,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2sp4",
+              "form": [
+                2,
+                4
+              ],
+              "measured_step_ms": 3982.817094773054,
+              "predicted_step_ms": 3483.096621214949,
+              "relative_error_pct": 12.546909930007208,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_sp6",
+              "form": [
+                1,
+                6
+              ],
+              "measured_step_ms": 5403.316862881184,
+              "predicted_step_ms": 4886.459921619931,
+              "relative_error_pct": 9.565549353802865,
+              "partition": "held_out"
+            }
+          ],
+          "execution_cost_mode": "placement_bound_form_table_with_analytical_fallback",
+          "unbound_measurements": 0,
+          "image_batch_samples": {
+            "1": 9
+          },
+          "validation_scope": "held-out forms on calibration hardware and shape; not held-out request, placement or workload validation",
+          "method": "single constrained saturation model fitted once; no per-form bandwidth or overlap overrides"
+        },
+        "resize_ms": 106.55706065396468,
+        "quantum_overhead_ms": 1.3851691689553445
+      }
+    }
+  },
+  "model_manifests": {
+    "sd35": {
+      "path": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/sd35.manifest.json",
+      "sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424"
+    },
+    "wan21": {
+      "path": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/wan21.manifest.json",
+      "sha256": "3c0dbaa3dab1ac025a95dc4d0f3a835a83e044fc811fa7512387e094aeb006ca"
+    },
+    "wan22": {
+      "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b-official-b8fff731",
+      "path": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/wan22-official-b8fff731.manifest.json",
+      "sha256": "02ac66402d23a0ad25fa9fece1f6f57e2dc08783dda18ff4c9904fddf28d2c5f"
+    }
+  },
+  "qualification": "measured calibration only; numerical, quality and serving qualification pending",
+  "sha256": "ee29d88f1240b8772d1f628014366819dd6bd2b46ae900890e9459652f0ba70f"
+}

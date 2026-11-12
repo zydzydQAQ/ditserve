@@ -47,8 +47,7 @@ compile_commands.json
 /datasets
 /data
 
-# Experiment output and transient locks. Export selected reports separately.
-/results/
+# Experiment transient locks (paper results under /results/ are tracked).
 /.state/
 /logs/
 /tmp/

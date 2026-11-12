@@ -1,0 +1,230 @@
+{
+  "provenance": "mixed",
+  "sp_efficiency": 1.0,
+  "sp_overlap": 0.0,
+  "resize_ms": 48.42136334627867,
+  "quantum_overhead_ms": 1.107064800402313,
+  "block_overhead_ms": 0.0,
+  "classes": {
+    "wan21-preflight": {
+      "kind": "video",
+      "steps": 20,
+      "blocks_per_step": 60,
+      "prepare_ms": 0.0,
+      "encode_ms": 15147.90988030533,
+      "step_compute_ms": 1166.7138263583183,
+      "comm_mb_per_step": 10351.4112,
+      "collectives_per_step": 240,
+      "cfg_exchange_mb": 1.79712,
+      "finish_ms": 1849.6959923456113,
+      "decode_chunks": 9,
+      "forms": {
+        "sp1": {
+          "placements": {
+            "0-0": {
+              "step_ms": 1166.7138263583183
+            }
+          }
+        },
+        "cfg2": {
+          "placements": {
+            "0-1": {
+              "step_ms": 586.026145145297
+            }
+          }
+        },
+        "sp2": {
+          "placements": {
+            "0-1": {
+              "step_ms": 1193.679815158248
+            }
+          }
+        },
+        "cfg2sp2": {
+          "placements": {
+            "0-3": {
+              "step_ms": 611.3107707351446
+            }
+          }
+        },
+        "sp3": {
+          "placements": {
+            "0-2": {
+              "step_ms": 891.6034363210201
+            }
+          }
+        },
+        "sp4": {
+          "placements": {
+            "0-3": {
+              "step_ms": 747.4038619548082
+            }
+          }
+        }
+      }
+    },
+    "sd35-preflight": {
+      "kind": "image",
+      "service_ms": 6542.732027359307
+    }
+  },
+  "links": {
+    "2": {
+      "gbps": 5.2,
+      "latency_ms": 0.5
+    },
+    "3": {
+      "gbps": 5.571428571428571,
+      "latency_ms": 0.5
+    },
+    "4": {
+      "gbps": 5.777777777777778,
+      "latency_ms": 0.5
+    },
+    "6": {
+      "gbps": 6.0,
+      "latency_ms": 0.5
+    },
+    "8": {
+      "gbps": 6.117647058823529,
+      "latency_ms": 0.5
+    }
+  },
+  "source": {
+    "experiment": "kairos-wan21-native-calibration",
+    "run_id": "d20261102-preempt-wan21-c1c9293-s205-r1-calibration",
+    "gpu_uuids": [
+      "GPU-6967ee01-0c82-8215-9256-9fde2e18f5d0",
+      "GPU-abe707e2-3284-aa3e-c3c9-ec0f14ee61c3",
+      "GPU-304d76bc-0629-fdc9-7cfe-929ff331b7f0",
+      "GPU-2bae337e-03ae-f01e-47bf-59b25b815ab8"
+    ],
+    "run_sha256": "57c12da88db657adc7b1401b7e87c4538ea46f9e20bf083ebd885652c0beaef7",
+    "model": "Wan2.1-T2V-1.3B",
+    "shape": {
+      "cache": false,
+      "frames": 33,
+      "guidance_scale": 5.0,
+      "height": 480,
+      "max_continuous": 1,
+      "negative_prompt": "",
+      "prompt": "A red ceramic kettle on a wooden table.",
+      "request_id": "video-calibration",
+      "seed": 201,
+      "steps": 20,
+      "threshold": 0.0,
+      "width": 832
+    },
+    "architecture": {
+      "tokens": 14040,
+      "dim": 1536,
+      "layers": 30,
+      "comm_mb_per_step": 10351.4112,
+      "collectives_per_step": 240,
+      "cfg_exchange_mb": 1.79712
+    },
+    "timing_scopes": {
+      "static_sp1": "median_steady_advance",
+      "static_cfg2": "median_steady_advance",
+      "static_sp2": "median_steady_advance",
+      "static_cfg2sp2": "median_steady_advance",
+      "static_sp3": "median_steady_advance",
+      "static_sp4": "median_steady_advance"
+    },
+    "steady_samples": {
+      "static_sp1": 19,
+      "static_cfg2": 19,
+      "static_sp2": 19,
+      "static_cfg2sp2": 19,
+      "static_sp3": 19,
+      "static_sp4": 19
+    },
+    "bandwidth_saturation_gbps": 6.5,
+    "bandwidth_gamma": 0.5,
+    "fit_policies": [
+      "static_cfg2",
+      "static_cfg2sp2",
+      "static_sp1",
+      "static_sp2",
+      "static_sp4"
+    ],
+    "fit_mean_relative_error_pct": 0.5162137552430384,
+    "held_out_mean_relative_error_pct": 3.384685526741338,
+    "held_out_max_relative_error_pct": 3.384685526741338,
+    "predictions": [
+      {
+        "policy": "static_sp1",
+        "form": [
+          1,
+          1
+        ],
+        "measured_step_ms": 1166.7138263583183,
+        "predicted_step_ms": 1166.7138263583183,
+        "relative_error_pct": 0.0,
+        "partition": "fit"
+      },
+      {
+        "policy": "static_cfg2",
+        "form": [
+          2,
+          1
+        ],
+        "measured_step_ms": 586.026145145297,
+        "predicted_step_ms": 584.2025131791592,
+        "relative_error_pct": 0.3111861102520863,
+        "partition": "fit"
+      },
+      {
+        "policy": "static_sp2",
+        "form": [
+          1,
+          2
+        ],
+        "measured_step_ms": 1193.679815158248,
+        "predicted_step_ms": 1201.0209131791592,
+        "relative_error_pct": 0.6149972486497967,
+        "partition": "fit"
+      },
+      {
+        "policy": "static_cfg2sp2",
+        "form": [
+          2,
+          2
+        ],
+        "measured_step_ms": 611.3107707351446,
+        "predicted_step_ms": 601.3560565895796,
+        "relative_error_pct": 1.6284211929709334,
+        "partition": "fit"
+      },
+      {
+        "policy": "static_sp3",
+        "form": [
+          1,
+          3
+        ],
+        "measured_step_ms": 891.6034363210201,
+        "predicted_step_ms": 921.7814087861061,
+        "relative_error_pct": 3.384685526741338,
+        "partition": "held_out"
+      },
+      {
+        "policy": "static_sp4",
+        "form": [
+          1,
+          4
+        ],
+        "measured_step_ms": 747.4038619548082,
+        "predicted_step_ms": 747.6016565895795,
+        "relative_error_pct": 0.026464224342375463,
+        "partition": "fit"
+      }
+    ],
+    "execution_cost_mode": "placement_bound_form_table_with_analytical_fallback",
+    "unbound_measurements": 0,
+    "image_batch_samples": {
+      "1": 6
+    },
+    "validation_scope": "held-out forms on calibration hardware and shape; not held-out request, placement or workload validation",
+    "method": "single constrained saturation model fitted once; no per-form bandwidth or overlap overrides"
+  }
+}

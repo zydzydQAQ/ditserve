@@ -1,0 +1,15 @@
+{
+  "automatic_cleanup": false,
+  "cleanup_allowed": false,
+  "contract_sha256": "b11aa699d27e86e031a470811bdb0e4a41075dc4b42acfa01f0195ab4a93c2b2",
+  "dependency": "pending complete SP1/SP4 decoded numerical acceptance",
+  "expected_payload_bytes": 666107904,
+  "protected": true,
+  "protected_names": [
+    "decoded.float32.raw.partial",
+    "decoded.float32.raw",
+    "artifact.json"
+  ],
+  "run_id": "d20261104-xdit-wan22-raw-sp4-f199a82-r1",
+  "schema": "ditserve.numerical-dependency-protection.v1"
+}

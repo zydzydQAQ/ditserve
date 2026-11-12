@@ -1,0 +1,17 @@
+{
+ "commit": "1b54f3773a7f4fffe20dfcaf3b23171b613925b0",
+ "subject": "Enable policy-gated continuous batching with sequence packing and abl-no-cb",
+ "built_utc": "2026-11-08T11:05:20+00:00",
+ "builder_image": "cluster-cmake-install",
+ "runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "tested_runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "core_sha256": "a466cb9179f003c2252eaf0295e7d50780dbb3654c66b92690ac8c31f2d9429e",
+ "runtime_smoke": "passed_cluster",
+ "local_checks": [
+  "cmake",
+  "ctest",
+  "installed_doctor"
+ ],
+ "files": 266,
+ "bytes": 5425260
+}

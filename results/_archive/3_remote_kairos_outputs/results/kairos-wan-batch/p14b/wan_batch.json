@@ -1,0 +1,104 @@
+[
+ {
+  "shape": "512x896x17",
+  "batch": 1,
+  "runs": 3,
+  "step_ms": 880.0105353461372,
+  "step_per_request_ms": 880.0105353461372,
+  "pipeline_ms": 25171.533074229956,
+  "peak_gib": 15.74573802947998,
+  "phase_ms": {
+   "latent_init": 3,
+   "postprocess": 28,
+   "scheduler": 16,
+   "text_encode": 0,
+   "transformer": 8861,
+   "vae_decode": 1241
+  }
+ },
+ {
+  "shape": "512x896x17",
+  "batch": 2,
+  "runs": 3,
+  "step_ms": 1778.91064453125,
+  "step_per_request_ms": 889.455322265625,
+  "pipeline_ms": 49343.24507415295,
+  "peak_gib": 20.8500394821167,
+  "phase_ms": {
+   "latent_init": 5,
+   "postprocess": 65,
+   "scheduler": 18,
+   "text_encode": 0,
+   "transformer": 17837,
+   "vae_decode": 2354
+  }
+ },
+ {
+  "shape": "512x896x17",
+  "batch": 4,
+  "runs": 3,
+  "step_ms": 3584.6561821831597,
+  "step_per_request_ms": 896.1640455457899,
+  "pipeline_ms": 93998.06996248662,
+  "peak_gib": 31.058642387390137,
+  "phase_ms": {
+   "latent_init": 10,
+   "postprocess": 226,
+   "scheduler": 22,
+   "text_encode": 0,
+   "transformer": 35900,
+   "vae_decode": 4642
+  }
+ },
+ {
+  "shape": "512x896x33",
+  "batch": 1,
+  "runs": 3,
+  "step_ms": 2136.346096462674,
+  "step_per_request_ms": 2136.346096462674,
+  "pipeline_ms": 41197.7000599727,
+  "peak_gib": 15.79637336730957,
+  "phase_ms": {
+   "latent_init": 4,
+   "postprocess": 110,
+   "scheduler": 18,
+   "text_encode": 0,
+   "transformer": 21396,
+   "vae_decode": 2420
+  }
+ },
+ {
+  "shape": "512x896x33",
+  "batch": 2,
+  "runs": 3,
+  "step_ms": 4274.828260633681,
+  "step_per_request_ms": 2137.4141303168403,
+  "pipeline_ms": 76255.2425833419,
+  "peak_gib": 20.951303482055664,
+  "phase_ms": {
+   "latent_init": 9,
+   "postprocess": 189,
+   "scheduler": 20,
+   "text_encode": 0,
+   "transformer": 42791,
+   "vae_decode": 4549
+  }
+ },
+ {
+  "shape": "512x896x33",
+  "batch": 4,
+  "runs": 3,
+  "step_ms": 8658.330837673611,
+  "step_per_request_ms": 2164.582709418403,
+  "pipeline_ms": 149120.10777182877,
+  "peak_gib": 31.26116371154785,
+  "phase_ms": {
+   "latent_init": 18,
+   "postprocess": 547,
+   "scheduler": 21,
+   "text_encode": 0,
+   "transformer": 86516,
+   "vae_decode": 9038
+  }
+ }
+]

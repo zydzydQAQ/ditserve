@@ -1,0 +1,5620 @@
+{
+ "schema": "ditserve.gpu-timeline.v1",
+ "run": "native-serving-wan22-4d63638-s204-bursty-r1",
+ "run_id": "ditserve-serve-wan22-4d63638-s204-bursty-r1",
+ "experiment": "kairos-wan22-native-serving-s204-l1p2",
+ "status": "completed",
+ "cells": [
+  {
+   "run": "native-serving-wan22-4d63638-s204-bursty-r1",
+   "run_id": "ditserve-serve-wan22-4d63638-s204-bursty-r1",
+   "phase": "cluster",
+   "attempt": 1,
+   "cell": 0,
+   "order": "forward",
+   "policy": "step_elastic",
+   "status": "completed",
+   "window_ms": 206562.47667316347,
+   "gpus": 8,
+   "gpu_ms": 1652499.8133853078,
+   "per_gpu": [
+    {
+     "gpu": 0,
+     "window_ms": 206562.47667316347,
+     "accounted_ms": 206562.47667316347,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 16078.940638491447,
+      "idle_encode_wait": 78495.90808975048,
+      "idle_empty": 111987.62794492154
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.07784056861369158,
+      "idle_encode_wait": 0.3800104905498,
+      "idle_empty": 0.5421489408365083
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 4860.840325394209,
+      "dispatchable_video": 11218.100313097239
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 16078.940638491447,
+      "idle_encode_wait": 78495.90808975048,
+      "idle_empty": 111126.11439638023
+     }
+    },
+    {
+     "gpu": 1,
+     "window_ms": 206562.47667316347,
+     "accounted_ms": 206562.47667316347,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 16078.940638491447,
+      "idle_encode_wait": 78495.90808975048,
+      "idle_empty": 111987.62794492154
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.07784056861369158,
+      "idle_encode_wait": 0.3800104905498,
+      "idle_empty": 0.5421489408365083
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 4860.840325394209,
+      "dispatchable_video": 11218.100313097239
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 16078.940638491447,
+      "idle_encode_wait": 78495.90808975048,
+      "idle_empty": 111126.11439638023
+     }
+    },
+    {
+     "gpu": 2,
+     "window_ms": 206562.47667316347,
+     "accounted_ms": 206562.47667316347,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 16078.940638491447,
+      "idle_encode_wait": 78495.90808975048,
+      "idle_empty": 111987.62794492154
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.07784056861369158,
+      "idle_encode_wait": 0.3800104905498,
+      "idle_empty": 0.5421489408365083
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 4860.840325394209,
+      "dispatchable_video": 11218.100313097239
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 16078.940638491447,
+      "idle_encode_wait": 78495.90808975048,
+      "idle_empty": 111126.11439638023
+     }
+    },
+    {
+     "gpu": 3,
+     "window_ms": 206562.47667316347,
+     "accounted_ms": 206562.47667316347,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 16078.940638491447,
+      "idle_encode_wait": 78495.90808975048,
+      "idle_empty": 111987.62794492154
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.07784056861369158,
+      "idle_encode_wait": 0.3800104905498,
+      "idle_empty": 0.5421489408365083
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 4860.840325394209,
+      "dispatchable_video": 11218.100313097239
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 16078.940638491447,
+      "idle_encode_wait": 78495.90808975048,
+      "idle_empty": 111126.11439638023
+     }
+    },
+    {
+     "gpu": 4,
+     "window_ms": 206562.47667316347,
+     "accounted_ms": 206562.47667316347,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 16078.940638491447,
+      "idle_encode_wait": 78495.90808975048,
+      "idle_empty": 111987.62794492154
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.07784056861369158,
+      "idle_encode_wait": 0.3800104905498,
+      "idle_empty": 0.5421489408365083
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 4860.840325394209,
+      "dispatchable_video": 11218.100313097239
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 16078.940638491447,
+      "idle_encode_wait": 78495.90808975048,
+      "idle_empty": 111126.11439638023
+     }
+    },
+    {
+     "gpu": 5,
+     "window_ms": 206562.47667316347,
+     "accounted_ms": 206562.47667316347,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 16078.940638491447,
+      "idle_encode_wait": 78495.90808975048,
+      "idle_empty": 111987.62794492154
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.07784056861369158,
+      "idle_encode_wait": 0.3800104905498,
+      "idle_empty": 0.5421489408365083
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 4860.840325394209,
+      "dispatchable_video": 11218.100313097239
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 16078.940638491447,
+      "idle_encode_wait": 78495.90808975048,
+      "idle_empty": 111126.11439638023
+     }
+    },
+    {
+     "gpu": 6,
+     "window_ms": 206562.47667316347,
+     "accounted_ms": 206562.47667316347,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 16078.940638491447,
+      "idle_encode_wait": 78495.90808975048,
+      "idle_empty": 111987.62794492154
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.07784056861369158,
+      "idle_encode_wait": 0.3800104905498,
+      "idle_empty": 0.5421489408365083
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 4860.840325394209,
+      "dispatchable_video": 11218.100313097239
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 16078.940638491447,
+      "idle_encode_wait": 78495.90808975048,
+      "idle_empty": 111126.11439638023
+     }
+    },
+    {
+     "gpu": 7,
+     "window_ms": 206562.47667316347,
+     "accounted_ms": 206562.47667316347,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 16078.940638491447,
+      "idle_encode_wait": 78495.90808975048,
+      "idle_empty": 111987.62794492154
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.07784056861369158,
+      "idle_encode_wait": 0.3800104905498,
+      "idle_empty": 0.5421489408365083
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 4860.840325394209,
+      "dispatchable_video": 11218.100313097239
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 16078.940638491447,
+      "idle_encode_wait": 78495.90808975048,
+      "idle_empty": 111126.11439638023
+     }
+    }
+   ],
+   "overall_ms": {
+    "video_compute": 0.0,
+    "image_compute": 0.0,
+    "decode": 0.0,
+    "prepare": 0.0,
+    "transfer_export": 0.0,
+    "transfer_import": 0.0,
+    "other_stage": 0.0,
+    "unknown": 0.0,
+    "held_wait_peer": 0.0,
+    "held_overhead": 0.0,
+    "held_midstep_owner": 0.0,
+    "idle_with_queue": 128631.52510793158,
+    "idle_encode_wait": 627967.2647180038,
+    "idle_empty": 895901.0235593723
+   },
+   "overall_fraction": {
+    "video_compute": 0.0,
+    "image_compute": 0.0,
+    "decode": 0.0,
+    "prepare": 0.0,
+    "transfer_export": 0.0,
+    "transfer_import": 0.0,
+    "other_stage": 0.0,
+    "unknown": 0.0,
+    "held_wait_peer": 0.0,
+    "held_overhead": 0.0,
+    "held_midstep_owner": 0.0,
+    "idle_with_queue": 0.07784056861369158,
+    "idle_encode_wait": 0.3800104905498,
+    "idle_empty": 0.5421489408365083
+   },
+   "grouped_fraction": {
+    "work": 0.0,
+    "held": 0.0,
+    "idle_with_queue": 0.07784056861369158,
+    "idle_encode_wait": 0.3800104905498,
+    "idle_empty": 0.5421489408365083,
+    "unknown": 0.0
+   },
+   "idle_with_queue_causes_ms": {
+    "dispatchable_image_only": 38886.72260315367,
+    "dispatchable_video": 89744.80250477791
+   },
+   "active_window": {
+    "start_ms": 859.1821286934033,
+    "finish_ms": 206560.14525331557,
+    "gpu_ms": 1645607.7049969772,
+    "overall_ms": {
+     "video_compute": 0.0,
+     "image_compute": 0.0,
+     "decode": 0.0,
+     "prepare": 0.0,
+     "transfer_export": 0.0,
+     "transfer_import": 0.0,
+     "other_stage": 0.0,
+     "unknown": 0.0,
+     "held_wait_peer": 0.0,
+     "held_overhead": 0.0,
+     "held_midstep_owner": 0.0,
+     "idle_with_queue": 128631.52510793158,
+     "idle_encode_wait": 627967.2647180038,
+     "idle_empty": 889008.9151710419
+    },
+    "grouped_fraction": {
+     "work": 0.0,
+     "held": 0.0,
+     "idle_with_queue": 0.07816657926268512,
+     "idle_encode_wait": 0.38160204452807744,
+     "idle_empty": 0.5402313762092374,
+     "unknown": 0.0
+    },
+    "scope": "first arrival to last request finish; excludes leading/trailing empty replay time"
+   },
+   "top_idle_with_queue": [
+    {
+     "gpu": 0,
+     "start_ms": 37916.3048164919,
+     "finish_ms": 48163.59679680318,
+     "causes": {
+      "dispatchable_video": 10247.291980311275
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0008",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 10247.291980311275,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 1,
+     "start_ms": 37916.3048164919,
+     "finish_ms": 48163.59679680318,
+     "causes": {
+      "dispatchable_video": 10247.291980311275
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0008",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 10247.291980311275,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 2,
+     "start_ms": 37916.3048164919,
+     "finish_ms": 48163.59679680318,
+     "causes": {
+      "dispatchable_video": 10247.291980311275
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0008",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 10247.291980311275,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 3,
+     "start_ms": 37916.3048164919,
+     "finish_ms": 48163.59679680318,
+     "causes": {
+      "dispatchable_video": 10247.291980311275
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0008",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "2": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 10247.291980311275,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 4,
+     "start_ms": 37916.3048164919,
+     "finish_ms": 48163.59679680318,
+     "causes": {
+      "dispatchable_video": 10247.291980311275
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0008",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 10247.291980311275,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 5,
+     "start_ms": 37916.3048164919,
+     "finish_ms": 48163.59679680318,
+     "causes": {
+      "dispatchable_video": 10247.291980311275
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0008",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 10247.291980311275,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 6,
+     "start_ms": 37916.3048164919,
+     "finish_ms": 48163.59679680318,
+     "causes": {
+      "dispatchable_video": 10247.291980311275
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0008",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 10247.291980311275,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 7,
+     "start_ms": 37916.3048164919,
+     "finish_ms": 48163.59679680318,
+     "causes": {
+      "dispatchable_video": 10247.291980311275
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0008",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle"
+     },
+     "duration_ms": 10247.291980311275,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 0,
+     "start_ms": 21450.621895834196,
+     "finish_ms": 24524.55890737474,
+     "causes": {
+      "dispatchable_image_only": 3073.9370115405436
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-i0005",
+       "kind": "image",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 3073.9370115405436,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 1,
+     "start_ms": 21450.621895834196,
+     "finish_ms": 24524.55890737474,
+     "causes": {
+      "dispatchable_image_only": 3073.9370115405436
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-i0005",
+       "kind": "image",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 3073.9370115405436,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    }
+   ],
+   "idle_with_queue_run_count": 272,
+   "secondary": {
+    "advance_stage_rpc": {
+     "advance_elapsed_ms": 0.0,
+     "advance_worker_model_ms": 0.0,
+     "advance_worker_operation_ms": 0.0,
+     "advance_stages": 0,
+     "worker_model_over_rpc_wall": null,
+     "scope": "per-rank sums; worker model_ms is a worker-timed section, not CUDA kernel time"
+    },
+    "decode_wall_ms": {
+     "count": 0,
+     "sum": 0.0,
+     "p50": null,
+     "p95": null,
+     "max": null
+    },
+    "image_wall_ms": {
+     "count": 0,
+     "sum": 0.0,
+     "p50": null,
+     "p95": null,
+     "max": null
+    },
+    "same_group_turnaround_controller_ms": {
+     "count": 0,
+     "sum": 0.0,
+     "p50": null,
+     "p95": null,
+     "max": null
+    },
+    "same_group_turnaround_worker_gap_ms": {
+     "count": 0,
+     "sum": 0.0,
+     "p50": null,
+     "p95": null,
+     "max": null
+    }
+   },
+   "diagnostics": {
+    "events": 0,
+    "unplaceable_events": 0,
+    "non_completed_events": 0,
+    "unmapped_stage_workers": [],
+    "clipped_ms": 0.0,
+    "same_gpu_task_overlap_ms": 0.0,
+    "requests_without_events_but_started": 40,
+    "missing_need_requests": 0
+   },
+   "accounting_complete": true,
+   "requests": {
+    "total": 40,
+    "by_status": {
+     "completed": 40
+    },
+    "by_kind": {
+     "video": 20,
+     "image": 20
+    }
+   },
+   "doorbell": {
+    "continuous_quanta": 0,
+    "enabled": true,
+    "rings": 0
+   },
+   "l2_block_cuda": {
+    "status": "unknown",
+    "reason": "no block_cuda_ms recorded in this run (only emitted in observe mode and not persisted here)"
+   }
+  },
+  {
+   "run": "native-serving-wan22-4d63638-s204-bursty-r1",
+   "run_id": "ditserve-serve-wan22-4d63638-s204-bursty-r1",
+   "phase": "cluster",
+   "attempt": 1,
+   "cell": 1,
+   "order": "forward",
+   "policy": "round_elastic",
+   "status": "completed",
+   "window_ms": 220587.59359270334,
+   "gpus": 8,
+   "gpu_ms": 1764700.7487416267,
+   "per_gpu": [
+    {
+     "gpu": 0,
+     "window_ms": 220587.59359270334,
+     "accounted_ms": 220587.59359270334,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 9312.29650194103,
+      "idle_encode_wait": 79819.58444170989,
+      "idle_empty": 131455.71264905244
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.042215866950048926,
+      "idle_encode_wait": 0.36184983544038346,
+      "idle_empty": 0.5959342976095677
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 3393.4390550693315,
+      "dispatchable_video": 5918.857446871698
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 9312.29650194103,
+      "idle_encode_wait": 79819.58444170989,
+      "idle_empty": 130594.30986736153
+     }
+    },
+    {
+     "gpu": 1,
+     "window_ms": 220587.59359270334,
+     "accounted_ms": 220587.59359270334,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 9312.29650194103,
+      "idle_encode_wait": 79819.58444170989,
+      "idle_empty": 131455.71264905244
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.042215866950048926,
+      "idle_encode_wait": 0.36184983544038346,
+      "idle_empty": 0.5959342976095677
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 3393.4390550693315,
+      "dispatchable_video": 5918.857446871698
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 9312.29650194103,
+      "idle_encode_wait": 79819.58444170989,
+      "idle_empty": 130594.30986736153
+     }
+    },
+    {
+     "gpu": 2,
+     "window_ms": 220587.59359270334,
+     "accounted_ms": 220587.59359270334,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 9312.29650194103,
+      "idle_encode_wait": 79819.58444170989,
+      "idle_empty": 131455.71264905244
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.042215866950048926,
+      "idle_encode_wait": 0.36184983544038346,
+      "idle_empty": 0.5959342976095677
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 3393.4390550693315,
+      "dispatchable_video": 5918.857446871698
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 9312.29650194103,
+      "idle_encode_wait": 79819.58444170989,
+      "idle_empty": 130594.30986736153
+     }
+    },
+    {
+     "gpu": 3,
+     "window_ms": 220587.59359270334,
+     "accounted_ms": 220587.59359270334,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 9312.29650194103,
+      "idle_encode_wait": 79819.58444170989,
+      "idle_empty": 131455.71264905244
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.042215866950048926,
+      "idle_encode_wait": 0.36184983544038346,
+      "idle_empty": 0.5959342976095677
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 3393.4390550693315,
+      "dispatchable_video": 5918.857446871698
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 9312.29650194103,
+      "idle_encode_wait": 79819.58444170989,
+      "idle_empty": 130594.30986736153
+     }
+    },
+    {
+     "gpu": 4,
+     "window_ms": 220587.59359270334,
+     "accounted_ms": 220587.59359270334,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 9312.29650194103,
+      "idle_encode_wait": 79819.58444170989,
+      "idle_empty": 131455.71264905244
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.042215866950048926,
+      "idle_encode_wait": 0.36184983544038346,
+      "idle_empty": 0.5959342976095677
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 3393.4390550693315,
+      "dispatchable_video": 5918.857446871698
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 9312.29650194103,
+      "idle_encode_wait": 79819.58444170989,
+      "idle_empty": 130594.30986736153
+     }
+    },
+    {
+     "gpu": 5,
+     "window_ms": 220587.59359270334,
+     "accounted_ms": 220587.59359270334,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 9312.29650194103,
+      "idle_encode_wait": 79819.58444170989,
+      "idle_empty": 131455.71264905244
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.042215866950048926,
+      "idle_encode_wait": 0.36184983544038346,
+      "idle_empty": 0.5959342976095677
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 3393.4390550693315,
+      "dispatchable_video": 5918.857446871698
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 9312.29650194103,
+      "idle_encode_wait": 79819.58444170989,
+      "idle_empty": 130594.30986736153
+     }
+    },
+    {
+     "gpu": 6,
+     "window_ms": 220587.59359270334,
+     "accounted_ms": 220587.59359270334,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 9312.29650194103,
+      "idle_encode_wait": 79819.58444170989,
+      "idle_empty": 131455.71264905244
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.042215866950048926,
+      "idle_encode_wait": 0.36184983544038346,
+      "idle_empty": 0.5959342976095677
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 3393.4390550693315,
+      "dispatchable_video": 5918.857446871698
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 9312.29650194103,
+      "idle_encode_wait": 79819.58444170989,
+      "idle_empty": 130594.30986736153
+     }
+    },
+    {
+     "gpu": 7,
+     "window_ms": 220587.59359270334,
+     "accounted_ms": 220587.59359270334,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 9312.29650194103,
+      "idle_encode_wait": 79819.58444170989,
+      "idle_empty": 131455.71264905244
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.042215866950048926,
+      "idle_encode_wait": 0.36184983544038346,
+      "idle_empty": 0.5959342976095677
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 3393.4390550693315,
+      "dispatchable_video": 5918.857446871698
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 9312.29650194103,
+      "idle_encode_wait": 79819.58444170989,
+      "idle_empty": 130594.30986736153
+     }
+    }
+   ],
+   "overall_ms": {
+    "video_compute": 0.0,
+    "image_compute": 0.0,
+    "decode": 0.0,
+    "prepare": 0.0,
+    "transfer_export": 0.0,
+    "transfer_import": 0.0,
+    "other_stage": 0.0,
+    "unknown": 0.0,
+    "held_wait_peer": 0.0,
+    "held_overhead": 0.0,
+    "held_midstep_owner": 0.0,
+    "idle_with_queue": 74498.37201552824,
+    "idle_encode_wait": 638556.6755336791,
+    "idle_empty": 1051645.7011924195
+   },
+   "overall_fraction": {
+    "video_compute": 0.0,
+    "image_compute": 0.0,
+    "decode": 0.0,
+    "prepare": 0.0,
+    "transfer_export": 0.0,
+    "transfer_import": 0.0,
+    "other_stage": 0.0,
+    "unknown": 0.0,
+    "held_wait_peer": 0.0,
+    "held_overhead": 0.0,
+    "held_midstep_owner": 0.0,
+    "idle_with_queue": 0.042215866950048926,
+    "idle_encode_wait": 0.36184983544038346,
+    "idle_empty": 0.5959342976095677
+   },
+   "grouped_fraction": {
+    "work": 0.0,
+    "held": 0.0,
+    "idle_with_queue": 0.042215866950048926,
+    "idle_encode_wait": 0.36184983544038346,
+    "idle_empty": 0.5959342976095677,
+    "unknown": 0.0
+   },
+   "idle_with_queue_causes_ms": {
+    "dispatchable_image_only": 27147.512440554652,
+    "dispatchable_video": 47350.85957497358
+   },
+   "active_window": {
+    "start_ms": 859.1821286934033,
+    "finish_ms": 220585.37293970585,
+    "gpu_ms": 1757809.5264880995,
+    "overall_ms": {
+     "video_compute": 0.0,
+     "image_compute": 0.0,
+     "decode": 0.0,
+     "prepare": 0.0,
+     "transfer_export": 0.0,
+     "transfer_import": 0.0,
+     "other_stage": 0.0,
+     "unknown": 0.0,
+     "held_wait_peer": 0.0,
+     "held_overhead": 0.0,
+     "held_midstep_owner": 0.0,
+     "idle_with_queue": 74498.37201552824,
+     "idle_encode_wait": 638556.6755336791,
+     "idle_empty": 1044754.4789388923
+    },
+    "grouped_fraction": {
+     "work": 0.0,
+     "held": 0.0,
+     "idle_with_queue": 0.042381367772176874,
+     "idle_encode_wait": 0.3632684121410137,
+     "idle_empty": 0.5943502200868095,
+     "unknown": 0.0
+    },
+    "scope": "first arrival to last request finish; excludes leading/trailing empty replay time"
+   },
+   "top_idle_with_queue": [
+    {
+     "gpu": 0,
+     "start_ms": 178789.98976573348,
+     "finish_ms": 182526.97546221316,
+     "causes": {
+      "dispatchable_video": 3736.985696479678
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0019",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 3736.985696479678,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 1,
+     "start_ms": 178789.98976573348,
+     "finish_ms": 182526.97546221316,
+     "causes": {
+      "dispatchable_video": 3736.985696479678
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0019",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 3736.985696479678,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 2,
+     "start_ms": 178789.98976573348,
+     "finish_ms": 182526.97546221316,
+     "causes": {
+      "dispatchable_video": 3736.985696479678
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0019",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 3736.985696479678,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 3,
+     "start_ms": 178789.98976573348,
+     "finish_ms": 182526.97546221316,
+     "causes": {
+      "dispatchable_video": 3736.985696479678
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0019",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "2": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 3736.985696479678,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 4,
+     "start_ms": 178789.98976573348,
+     "finish_ms": 182526.97546221316,
+     "causes": {
+      "dispatchable_video": 3736.985696479678
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0019",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 3736.985696479678,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 5,
+     "start_ms": 178789.98976573348,
+     "finish_ms": 182526.97546221316,
+     "causes": {
+      "dispatchable_video": 3736.985696479678
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0019",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 3736.985696479678,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 6,
+     "start_ms": 178789.98976573348,
+     "finish_ms": 182526.97546221316,
+     "causes": {
+      "dispatchable_video": 3736.985696479678
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0019",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 3736.985696479678,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 7,
+     "start_ms": 178789.98976573348,
+     "finish_ms": 182526.97546221316,
+     "causes": {
+      "dispatchable_video": 3736.985696479678
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0019",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle"
+     },
+     "duration_ms": 3736.985696479678,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 0,
+     "start_ms": 22820.407783727114,
+     "finish_ms": 25780.93933686614,
+     "causes": {
+      "dispatchable_image_only": 2421.5219140770387,
+      "dispatchable_video": 539.0096390619874
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-i0007",
+       "kind": "image",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 2960.531553139026,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 1,
+     "start_ms": 22820.407783727114,
+     "finish_ms": 25780.93933686614,
+     "causes": {
+      "dispatchable_image_only": 2421.5219140770387,
+      "dispatchable_video": 539.0096390619874
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-i0007",
+       "kind": "image",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 2960.531553139026,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    }
+   ],
+   "idle_with_queue_run_count": 304,
+   "secondary": {
+    "advance_stage_rpc": {
+     "advance_elapsed_ms": 0.0,
+     "advance_worker_model_ms": 0.0,
+     "advance_worker_operation_ms": 0.0,
+     "advance_stages": 0,
+     "worker_model_over_rpc_wall": null,
+     "scope": "per-rank sums; worker model_ms is a worker-timed section, not CUDA kernel time"
+    },
+    "decode_wall_ms": {
+     "count": 0,
+     "sum": 0.0,
+     "p50": null,
+     "p95": null,
+     "max": null
+    },
+    "image_wall_ms": {
+     "count": 0,
+     "sum": 0.0,
+     "p50": null,
+     "p95": null,
+     "max": null
+    },
+    "same_group_turnaround_controller_ms": {
+     "count": 0,
+     "sum": 0.0,
+     "p50": null,
+     "p95": null,
+     "max": null
+    },
+    "same_group_turnaround_worker_gap_ms": {
+     "count": 0,
+     "sum": 0.0,
+     "p50": null,
+     "p95": null,
+     "max": null
+    }
+   },
+   "diagnostics": {
+    "events": 0,
+    "unplaceable_events": 0,
+    "non_completed_events": 0,
+    "unmapped_stage_workers": [],
+    "clipped_ms": 0.0,
+    "same_gpu_task_overlap_ms": 0.0,
+    "requests_without_events_but_started": 40,
+    "missing_need_requests": 0
+   },
+   "accounting_complete": true,
+   "requests": {
+    "total": 40,
+    "by_status": {
+     "completed": 40
+    },
+    "by_kind": {
+     "video": 20,
+     "image": 20
+    }
+   },
+   "doorbell": {
+    "continuous_quanta": 0,
+    "enabled": true,
+    "rings": 0
+   },
+   "l2_block_cuda": {
+    "status": "unknown",
+    "reason": "no block_cuda_ms recorded in this run (only emitted in observe mode and not persisted here)"
+   }
+  },
+  {
+   "run": "native-serving-wan22-4d63638-s204-bursty-r1",
+   "run_id": "ditserve-serve-wan22-4d63638-s204-bursty-r1",
+   "phase": "cluster",
+   "attempt": 1,
+   "cell": 2,
+   "order": "forward",
+   "policy": "block_elastic",
+   "status": "completed",
+   "window_ms": 203274.00658931583,
+   "gpus": 8,
+   "gpu_ms": 1626192.0527145267,
+   "per_gpu": [
+    {
+     "gpu": 0,
+     "window_ms": 203274.00658931583,
+     "accounted_ms": 203274.00658931583,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 17112.01919952685,
+      "idle_encode_wait": 75542.2946544025,
+      "idle_empty": 110619.69273538647
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.08418203333837503,
+      "idle_encode_wait": 0.3716279121069533,
+      "idle_empty": 0.5441900545546717
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 1110.739032386784,
+      "dispatchable_video": 16001.280167140067
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 17112.01919952685,
+      "idle_encode_wait": 75542.2946544025,
+      "idle_empty": 109757.80139584278
+     }
+    },
+    {
+     "gpu": 1,
+     "window_ms": 203274.00658931583,
+     "accounted_ms": 203274.00658931583,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 17112.01919952685,
+      "idle_encode_wait": 75542.2946544025,
+      "idle_empty": 110619.69273538647
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.08418203333837503,
+      "idle_encode_wait": 0.3716279121069533,
+      "idle_empty": 0.5441900545546717
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 1110.739032386784,
+      "dispatchable_video": 16001.280167140067
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 17112.01919952685,
+      "idle_encode_wait": 75542.2946544025,
+      "idle_empty": 109757.80139584278
+     }
+    },
+    {
+     "gpu": 2,
+     "window_ms": 203274.00658931583,
+     "accounted_ms": 203274.00658931583,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 17112.01919952685,
+      "idle_encode_wait": 75542.2946544025,
+      "idle_empty": 110619.69273538647
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.08418203333837503,
+      "idle_encode_wait": 0.3716279121069533,
+      "idle_empty": 0.5441900545546717
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 1110.739032386784,
+      "dispatchable_video": 16001.280167140067
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 17112.01919952685,
+      "idle_encode_wait": 75542.2946544025,
+      "idle_empty": 109757.80139584278
+     }
+    },
+    {
+     "gpu": 3,
+     "window_ms": 203274.00658931583,
+     "accounted_ms": 203274.00658931583,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 17112.01919952685,
+      "idle_encode_wait": 75542.2946544025,
+      "idle_empty": 110619.69273538647
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.08418203333837503,
+      "idle_encode_wait": 0.3716279121069533,
+      "idle_empty": 0.5441900545546717
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 1110.739032386784,
+      "dispatchable_video": 16001.280167140067
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 17112.01919952685,
+      "idle_encode_wait": 75542.2946544025,
+      "idle_empty": 109757.80139584278
+     }
+    },
+    {
+     "gpu": 4,
+     "window_ms": 203274.00658931583,
+     "accounted_ms": 203274.00658931583,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 17112.01919952685,
+      "idle_encode_wait": 75542.2946544025,
+      "idle_empty": 110619.69273538647
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.08418203333837503,
+      "idle_encode_wait": 0.3716279121069533,
+      "idle_empty": 0.5441900545546717
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 1110.739032386784,
+      "dispatchable_video": 16001.280167140067
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 17112.01919952685,
+      "idle_encode_wait": 75542.2946544025,
+      "idle_empty": 109757.80139584278
+     }
+    },
+    {
+     "gpu": 5,
+     "window_ms": 203274.00658931583,
+     "accounted_ms": 203274.00658931583,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 17112.01919952685,
+      "idle_encode_wait": 75542.2946544025,
+      "idle_empty": 110619.69273538647
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.08418203333837503,
+      "idle_encode_wait": 0.3716279121069533,
+      "idle_empty": 0.5441900545546717
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 1110.739032386784,
+      "dispatchable_video": 16001.280167140067
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 17112.01919952685,
+      "idle_encode_wait": 75542.2946544025,
+      "idle_empty": 109757.80139584278
+     }
+    },
+    {
+     "gpu": 6,
+     "window_ms": 203274.00658931583,
+     "accounted_ms": 203274.00658931583,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 17112.01919952685,
+      "idle_encode_wait": 75542.2946544025,
+      "idle_empty": 110619.69273538647
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.08418203333837503,
+      "idle_encode_wait": 0.3716279121069533,
+      "idle_empty": 0.5441900545546717
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 1110.739032386784,
+      "dispatchable_video": 16001.280167140067
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 17112.01919952685,
+      "idle_encode_wait": 75542.2946544025,
+      "idle_empty": 109757.80139584278
+     }
+    },
+    {
+     "gpu": 7,
+     "window_ms": 203274.00658931583,
+     "accounted_ms": 203274.00658931583,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 17112.01919952685,
+      "idle_encode_wait": 75542.2946544025,
+      "idle_empty": 110619.69273538647
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.08418203333837503,
+      "idle_encode_wait": 0.3716279121069533,
+      "idle_empty": 0.5441900545546717
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 1110.739032386784,
+      "dispatchable_video": 16001.280167140067
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 17112.01919952685,
+      "idle_encode_wait": 75542.2946544025,
+      "idle_empty": 109757.80139584278
+     }
+    }
+   ],
+   "overall_ms": {
+    "video_compute": 0.0,
+    "image_compute": 0.0,
+    "decode": 0.0,
+    "prepare": 0.0,
+    "transfer_export": 0.0,
+    "transfer_import": 0.0,
+    "other_stage": 0.0,
+    "unknown": 0.0,
+    "held_wait_peer": 0.0,
+    "held_overhead": 0.0,
+    "held_midstep_owner": 0.0,
+    "idle_with_queue": 136896.1535962148,
+    "idle_encode_wait": 604338.35723522,
+    "idle_empty": 884957.5418830918
+   },
+   "overall_fraction": {
+    "video_compute": 0.0,
+    "image_compute": 0.0,
+    "decode": 0.0,
+    "prepare": 0.0,
+    "transfer_export": 0.0,
+    "transfer_import": 0.0,
+    "other_stage": 0.0,
+    "unknown": 0.0,
+    "held_wait_peer": 0.0,
+    "held_overhead": 0.0,
+    "held_midstep_owner": 0.0,
+    "idle_with_queue": 0.08418203333837503,
+    "idle_encode_wait": 0.3716279121069533,
+    "idle_empty": 0.5441900545546717
+   },
+   "grouped_fraction": {
+    "work": 0.0,
+    "held": 0.0,
+    "idle_with_queue": 0.08418203333837503,
+    "idle_encode_wait": 0.3716279121069533,
+    "idle_empty": 0.5441900545546717,
+    "unknown": 0.0
+   },
+   "idle_with_queue_causes_ms": {
+    "dispatchable_image_only": 8885.912259094272,
+    "dispatchable_video": 128010.24133712053
+   },
+   "active_window": {
+    "start_ms": 859.1821286934033,
+    "finish_ms": 203271.29737846553,
+    "gpu_ms": 1619296.921998177,
+    "overall_ms": {
+     "video_compute": 0.0,
+     "image_compute": 0.0,
+     "decode": 0.0,
+     "prepare": 0.0,
+     "transfer_export": 0.0,
+     "transfer_import": 0.0,
+     "other_stage": 0.0,
+     "unknown": 0.0,
+     "held_wait_peer": 0.0,
+     "held_overhead": 0.0,
+     "held_midstep_owner": 0.0,
+     "idle_with_queue": 136896.1535962148,
+     "idle_encode_wait": 604338.35723522,
+     "idle_empty": 878062.4111667422
+    },
+    "grouped_fraction": {
+     "work": 0.0,
+     "held": 0.0,
+     "idle_with_queue": 0.08454048898412525,
+     "idle_encode_wait": 0.3732103414915899,
+     "idle_empty": 0.5422491695242849,
+     "unknown": 0.0
+    },
+    "scope": "first arrival to last request finish; excludes leading/trailing empty replay time"
+   },
+   "top_idle_with_queue": [
+    {
+     "gpu": 0,
+     "start_ms": 40796.23491689563,
+     "finish_ms": 49003.429469652474,
+     "causes": {
+      "dispatchable_video": 8207.194552756846
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0006",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 8207.194552756846,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 1,
+     "start_ms": 40796.23491689563,
+     "finish_ms": 49003.429469652474,
+     "causes": {
+      "dispatchable_video": 8207.194552756846
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0006",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 8207.194552756846,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 2,
+     "start_ms": 40796.23491689563,
+     "finish_ms": 49003.429469652474,
+     "causes": {
+      "dispatchable_video": 8207.194552756846
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0006",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 8207.194552756846,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 3,
+     "start_ms": 40796.23491689563,
+     "finish_ms": 49003.429469652474,
+     "causes": {
+      "dispatchable_video": 8207.194552756846
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0006",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "2": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 8207.194552756846,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 4,
+     "start_ms": 40796.23491689563,
+     "finish_ms": 49003.429469652474,
+     "causes": {
+      "dispatchable_video": 8207.194552756846
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0006",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 8207.194552756846,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 5,
+     "start_ms": 40796.23491689563,
+     "finish_ms": 49003.429469652474,
+     "causes": {
+      "dispatchable_video": 8207.194552756846
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0006",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 8207.194552756846,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 6,
+     "start_ms": 40796.23491689563,
+     "finish_ms": 49003.429469652474,
+     "causes": {
+      "dispatchable_video": 8207.194552756846
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0006",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 8207.194552756846,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 7,
+     "start_ms": 40796.23491689563,
+     "finish_ms": 49003.429469652474,
+     "causes": {
+      "dispatchable_video": 8207.194552756846
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0006",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle"
+     },
+     "duration_ms": 8207.194552756846,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 0,
+     "start_ms": 174408.76428689808,
+     "finish_ms": 181169.0870951861,
+     "causes": {
+      "dispatchable_video": 6760.322808288038
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0017",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 6760.322808288038,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 1,
+     "start_ms": 174408.76428689808,
+     "finish_ms": 181169.0870951861,
+     "causes": {
+      "dispatchable_video": 6760.322808288038
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0017",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 6760.322808288038,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    }
+   ],
+   "idle_with_queue_run_count": 272,
+   "secondary": {
+    "advance_stage_rpc": {
+     "advance_elapsed_ms": 0.0,
+     "advance_worker_model_ms": 0.0,
+     "advance_worker_operation_ms": 0.0,
+     "advance_stages": 0,
+     "worker_model_over_rpc_wall": null,
+     "scope": "per-rank sums; worker model_ms is a worker-timed section, not CUDA kernel time"
+    },
+    "decode_wall_ms": {
+     "count": 0,
+     "sum": 0.0,
+     "p50": null,
+     "p95": null,
+     "max": null
+    },
+    "image_wall_ms": {
+     "count": 0,
+     "sum": 0.0,
+     "p50": null,
+     "p95": null,
+     "max": null
+    },
+    "same_group_turnaround_controller_ms": {
+     "count": 0,
+     "sum": 0.0,
+     "p50": null,
+     "p95": null,
+     "max": null
+    },
+    "same_group_turnaround_worker_gap_ms": {
+     "count": 0,
+     "sum": 0.0,
+     "p50": null,
+     "p95": null,
+     "max": null
+    }
+   },
+   "diagnostics": {
+    "events": 0,
+    "unplaceable_events": 0,
+    "non_completed_events": 0,
+    "unmapped_stage_workers": [],
+    "clipped_ms": 0.0,
+    "same_gpu_task_overlap_ms": 0.0,
+    "requests_without_events_but_started": 40,
+    "missing_need_requests": 0
+   },
+   "accounting_complete": true,
+   "requests": {
+    "total": 40,
+    "by_status": {
+     "completed": 40
+    },
+    "by_kind": {
+     "video": 20,
+     "image": 20
+    }
+   },
+   "doorbell": {
+    "continuous_quanta": 419,
+    "enabled": true,
+    "rings": 49
+   },
+   "l2_block_cuda": {
+    "status": "unknown",
+    "reason": "no block_cuda_ms recorded in this run (only emitted in observe mode and not persisted here)"
+   }
+  },
+  {
+   "run": "native-serving-wan22-4d63638-s204-bursty-r1",
+   "run_id": "ditserve-serve-wan22-4d63638-s204-bursty-r1",
+   "phase": "cluster",
+   "attempt": 1,
+   "cell": 3,
+   "order": "forward",
+   "policy": "static_cfg2",
+   "status": "completed",
+   "window_ms": 220028.1686251983,
+   "gpus": 8,
+   "gpu_ms": 1760225.3490015864,
+   "per_gpu": [
+    {
+     "gpu": 0,
+     "window_ms": 220028.1686251983,
+     "accounted_ms": 220028.1686251983,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 42017.9424005294,
+      "idle_encode_wait": 55339.71893425583,
+      "idle_empty": 122670.50729041306
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.19096619611511584,
+      "idle_encode_wait": 0.2515119735806325,
+      "idle_empty": 0.5575218303042516
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 68.14195762516829,
+      "dispatchable_video": 41949.800442904234
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 42017.9424005294,
+      "idle_encode_wait": 55339.71893425583,
+      "idle_empty": 121808.91767144387
+     }
+    },
+    {
+     "gpu": 1,
+     "window_ms": 220028.1686251983,
+     "accounted_ms": 220028.1686251983,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 42017.9424005294,
+      "idle_encode_wait": 55339.71893425583,
+      "idle_empty": 122670.50729041306
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.19096619611511584,
+      "idle_encode_wait": 0.2515119735806325,
+      "idle_empty": 0.5575218303042516
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 68.14195762516829,
+      "dispatchable_video": 41949.800442904234
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 42017.9424005294,
+      "idle_encode_wait": 55339.71893425583,
+      "idle_empty": 121808.91767144387
+     }
+    },
+    {
+     "gpu": 2,
+     "window_ms": 220028.1686251983,
+     "accounted_ms": 220028.1686251983,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 42017.9424005294,
+      "idle_encode_wait": 55339.71893425583,
+      "idle_empty": 122670.50729041306
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.19096619611511584,
+      "idle_encode_wait": 0.2515119735806325,
+      "idle_empty": 0.5575218303042516
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 68.14195762516829,
+      "dispatchable_video": 41949.800442904234
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 42017.9424005294,
+      "idle_encode_wait": 55339.71893425583,
+      "idle_empty": 121808.91767144387
+     }
+    },
+    {
+     "gpu": 3,
+     "window_ms": 220028.1686251983,
+     "accounted_ms": 220028.1686251983,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 42017.9424005294,
+      "idle_encode_wait": 55339.71893425583,
+      "idle_empty": 122670.50729041306
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.19096619611511584,
+      "idle_encode_wait": 0.2515119735806325,
+      "idle_empty": 0.5575218303042516
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 68.14195762516829,
+      "dispatchable_video": 41949.800442904234
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 42017.9424005294,
+      "idle_encode_wait": 55339.71893425583,
+      "idle_empty": 121808.91767144387
+     }
+    },
+    {
+     "gpu": 4,
+     "window_ms": 220028.1686251983,
+     "accounted_ms": 220028.1686251983,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 42017.9424005294,
+      "idle_encode_wait": 55339.71893425583,
+      "idle_empty": 122670.50729041306
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.19096619611511584,
+      "idle_encode_wait": 0.2515119735806325,
+      "idle_empty": 0.5575218303042516
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 68.14195762516829,
+      "dispatchable_video": 41949.800442904234
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 42017.9424005294,
+      "idle_encode_wait": 55339.71893425583,
+      "idle_empty": 121808.91767144387
+     }
+    },
+    {
+     "gpu": 5,
+     "window_ms": 220028.1686251983,
+     "accounted_ms": 220028.1686251983,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 42017.9424005294,
+      "idle_encode_wait": 55339.71893425583,
+      "idle_empty": 122670.50729041306
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.19096619611511584,
+      "idle_encode_wait": 0.2515119735806325,
+      "idle_empty": 0.5575218303042516
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 68.14195762516829,
+      "dispatchable_video": 41949.800442904234
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 42017.9424005294,
+      "idle_encode_wait": 55339.71893425583,
+      "idle_empty": 121808.91767144387
+     }
+    },
+    {
+     "gpu": 6,
+     "window_ms": 220028.1686251983,
+     "accounted_ms": 220028.1686251983,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 42017.9424005294,
+      "idle_encode_wait": 55339.71893425583,
+      "idle_empty": 122670.50729041306
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.19096619611511584,
+      "idle_encode_wait": 0.2515119735806325,
+      "idle_empty": 0.5575218303042516
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 68.14195762516829,
+      "dispatchable_video": 41949.800442904234
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 42017.9424005294,
+      "idle_encode_wait": 55339.71893425583,
+      "idle_empty": 121808.91767144387
+     }
+    },
+    {
+     "gpu": 7,
+     "window_ms": 220028.1686251983,
+     "accounted_ms": 220028.1686251983,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 42017.9424005294,
+      "idle_encode_wait": 55339.71893425583,
+      "idle_empty": 122670.50729041306
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.19096619611511584,
+      "idle_encode_wait": 0.2515119735806325,
+      "idle_empty": 0.5575218303042516
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 68.14195762516829,
+      "dispatchable_video": 41949.800442904234
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 42017.9424005294,
+      "idle_encode_wait": 55339.71893425583,
+      "idle_empty": 121808.91767144387
+     }
+    }
+   ],
+   "overall_ms": {
+    "video_compute": 0.0,
+    "image_compute": 0.0,
+    "decode": 0.0,
+    "prepare": 0.0,
+    "transfer_export": 0.0,
+    "transfer_import": 0.0,
+    "other_stage": 0.0,
+    "unknown": 0.0,
+    "held_wait_peer": 0.0,
+    "held_overhead": 0.0,
+    "held_midstep_owner": 0.0,
+    "idle_with_queue": 336143.5392042352,
+    "idle_encode_wait": 442717.7514740466,
+    "idle_empty": 981364.0583233045
+   },
+   "overall_fraction": {
+    "video_compute": 0.0,
+    "image_compute": 0.0,
+    "decode": 0.0,
+    "prepare": 0.0,
+    "transfer_export": 0.0,
+    "transfer_import": 0.0,
+    "other_stage": 0.0,
+    "unknown": 0.0,
+    "held_wait_peer": 0.0,
+    "held_overhead": 0.0,
+    "held_midstep_owner": 0.0,
+    "idle_with_queue": 0.19096619611511584,
+    "idle_encode_wait": 0.2515119735806325,
+    "idle_empty": 0.5575218303042516
+   },
+   "grouped_fraction": {
+    "work": 0.0,
+    "held": 0.0,
+    "idle_with_queue": 0.19096619611511584,
+    "idle_encode_wait": 0.2515119735806325,
+    "idle_empty": 0.5575218303042516,
+    "unknown": 0.0
+   },
+   "idle_with_queue_causes_ms": {
+    "dispatchable_image_only": 545.1356610013463,
+    "dispatchable_video": 335598.4035432339
+   },
+   "active_window": {
+    "start_ms": 859.1821286934033,
+    "finish_ms": 220025.7611349225,
+    "gpu_ms": 1753332.6320498327,
+    "overall_ms": {
+     "video_compute": 0.0,
+     "image_compute": 0.0,
+     "decode": 0.0,
+     "prepare": 0.0,
+     "transfer_export": 0.0,
+     "transfer_import": 0.0,
+     "other_stage": 0.0,
+     "unknown": 0.0,
+     "held_wait_peer": 0.0,
+     "held_overhead": 0.0,
+     "held_midstep_owner": 0.0,
+     "idle_with_queue": 336143.5392042352,
+     "idle_encode_wait": 442717.7514740466,
+     "idle_empty": 974471.3413715509
+    },
+    "grouped_fraction": {
+     "work": 0.0,
+     "held": 0.0,
+     "idle_with_queue": 0.19171692413620772,
+     "idle_encode_wait": 0.2525007197045448,
+     "idle_empty": 0.5557823561592474,
+     "unknown": 0.0
+    },
+    "scope": "first arrival to last request finish; excludes leading/trailing empty replay time"
+   },
+   "top_idle_with_queue": [
+    {
+     "gpu": 0,
+     "start_ms": 30952.15143635869,
+     "finish_ms": 52090.843309648335,
+     "causes": {
+      "dispatchable_video": 21138.691873289645
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0005",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 21138.691873289645,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 1,
+     "start_ms": 30952.15143635869,
+     "finish_ms": 52090.843309648335,
+     "causes": {
+      "dispatchable_video": 21138.691873289645
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0005",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 21138.691873289645,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 2,
+     "start_ms": 30952.15143635869,
+     "finish_ms": 52090.843309648335,
+     "causes": {
+      "dispatchable_video": 21138.691873289645
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0005",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 21138.691873289645,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 3,
+     "start_ms": 30952.15143635869,
+     "finish_ms": 52090.843309648335,
+     "causes": {
+      "dispatchable_video": 21138.691873289645
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0005",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "2": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 21138.691873289645,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 4,
+     "start_ms": 30952.15143635869,
+     "finish_ms": 52090.843309648335,
+     "causes": {
+      "dispatchable_video": 21138.691873289645
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0005",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 21138.691873289645,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 5,
+     "start_ms": 30952.15143635869,
+     "finish_ms": 52090.843309648335,
+     "causes": {
+      "dispatchable_video": 21138.691873289645
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0005",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 21138.691873289645,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 6,
+     "start_ms": 30952.15143635869,
+     "finish_ms": 52090.843309648335,
+     "causes": {
+      "dispatchable_video": 21138.691873289645
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0005",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 21138.691873289645,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 7,
+     "start_ms": 30952.15143635869,
+     "finish_ms": 52090.843309648335,
+     "causes": {
+      "dispatchable_video": 21138.691873289645
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0005",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle"
+     },
+     "duration_ms": 21138.691873289645,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 0,
+     "start_ms": 161698.98225646466,
+     "finish_ms": 174205.0797343254,
+     "causes": {
+      "dispatchable_video": 12506.097477860749
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0013",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 12506.097477860749,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 1,
+     "start_ms": 161698.98225646466,
+     "finish_ms": 174205.0797343254,
+     "causes": {
+      "dispatchable_video": 12506.097477860749
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0013",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 12506.097477860749,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    }
+   ],
+   "idle_with_queue_run_count": 224,
+   "secondary": {
+    "advance_stage_rpc": {
+     "advance_elapsed_ms": 0.0,
+     "advance_worker_model_ms": 0.0,
+     "advance_worker_operation_ms": 0.0,
+     "advance_stages": 0,
+     "worker_model_over_rpc_wall": null,
+     "scope": "per-rank sums; worker model_ms is a worker-timed section, not CUDA kernel time"
+    },
+    "decode_wall_ms": {
+     "count": 0,
+     "sum": 0.0,
+     "p50": null,
+     "p95": null,
+     "max": null
+    },
+    "image_wall_ms": {
+     "count": 0,
+     "sum": 0.0,
+     "p50": null,
+     "p95": null,
+     "max": null
+    },
+    "same_group_turnaround_controller_ms": {
+     "count": 0,
+     "sum": 0.0,
+     "p50": null,
+     "p95": null,
+     "max": null
+    },
+    "same_group_turnaround_worker_gap_ms": {
+     "count": 0,
+     "sum": 0.0,
+     "p50": null,
+     "p95": null,
+     "max": null
+    }
+   },
+   "diagnostics": {
+    "events": 0,
+    "unplaceable_events": 0,
+    "non_completed_events": 0,
+    "unmapped_stage_workers": [],
+    "clipped_ms": 0.0,
+    "same_gpu_task_overlap_ms": 0.0,
+    "requests_without_events_but_started": 40,
+    "missing_need_requests": 0
+   },
+   "accounting_complete": true,
+   "requests": {
+    "total": 40,
+    "by_status": {
+     "completed": 40
+    },
+    "by_kind": {
+     "video": 20,
+     "image": 20
+    }
+   },
+   "doorbell": {
+    "continuous_quanta": 0,
+    "enabled": true,
+    "rings": 0
+   },
+   "l2_block_cuda": {
+    "status": "unknown",
+    "reason": "no block_cuda_ms recorded in this run (only emitted in observe mode and not persisted here)"
+   }
+  },
+  {
+   "run": "native-serving-wan22-4d63638-s204-bursty-r1",
+   "run_id": "ditserve-serve-wan22-4d63638-s204-bursty-r1",
+   "phase": "cluster",
+   "attempt": 1,
+   "cell": 4,
+   "order": "forward",
+   "policy": "static_cfg2sp3",
+   "status": "completed",
+   "window_ms": 370246.0638517514,
+   "gpus": 8,
+   "gpu_ms": 2961968.510814011,
+   "per_gpu": [
+    {
+     "gpu": 0,
+     "window_ms": 370246.0638517514,
+     "accounted_ms": 370246.06385175145,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 334243.53799398243,
+      "idle_encode_wait": 15016.15043461004,
+      "idle_empty": 20986.375423158945
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.9027605439387343,
+      "idle_encode_wait": 0.04055721829529724,
+      "idle_empty": 0.05668223776596855
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 5.534235268798511,
+      "dispatchable_video": 334238.0037587136
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 334243.53799398243,
+      "idle_encode_wait": 15016.15043461004,
+      "idle_empty": 20124.6183430776
+     }
+    },
+    {
+     "gpu": 1,
+     "window_ms": 370246.0638517514,
+     "accounted_ms": 370246.06385175145,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 334243.53799398243,
+      "idle_encode_wait": 15016.15043461004,
+      "idle_empty": 20986.375423158945
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.9027605439387343,
+      "idle_encode_wait": 0.04055721829529724,
+      "idle_empty": 0.05668223776596855
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 5.534235268798511,
+      "dispatchable_video": 334238.0037587136
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 334243.53799398243,
+      "idle_encode_wait": 15016.15043461004,
+      "idle_empty": 20124.6183430776
+     }
+    },
+    {
+     "gpu": 2,
+     "window_ms": 370246.0638517514,
+     "accounted_ms": 370246.06385175145,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 334243.53799398243,
+      "idle_encode_wait": 15016.15043461004,
+      "idle_empty": 20986.375423158945
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.9027605439387343,
+      "idle_encode_wait": 0.04055721829529724,
+      "idle_empty": 0.05668223776596855
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 5.534235268798511,
+      "dispatchable_video": 334238.0037587136
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 334243.53799398243,
+      "idle_encode_wait": 15016.15043461004,
+      "idle_empty": 20124.6183430776
+     }
+    },
+    {
+     "gpu": 3,
+     "window_ms": 370246.0638517514,
+     "accounted_ms": 370246.06385175145,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 334243.53799398243,
+      "idle_encode_wait": 15016.15043461004,
+      "idle_empty": 20986.375423158945
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.9027605439387343,
+      "idle_encode_wait": 0.04055721829529724,
+      "idle_empty": 0.05668223776596855
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 5.534235268798511,
+      "dispatchable_video": 334238.0037587136
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 334243.53799398243,
+      "idle_encode_wait": 15016.15043461004,
+      "idle_empty": 20124.6183430776
+     }
+    },
+    {
+     "gpu": 4,
+     "window_ms": 370246.0638517514,
+     "accounted_ms": 370246.06385175145,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 334243.53799398243,
+      "idle_encode_wait": 15016.15043461004,
+      "idle_empty": 20986.375423158945
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.9027605439387343,
+      "idle_encode_wait": 0.04055721829529724,
+      "idle_empty": 0.05668223776596855
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 5.534235268798511,
+      "dispatchable_video": 334238.0037587136
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 334243.53799398243,
+      "idle_encode_wait": 15016.15043461004,
+      "idle_empty": 20124.6183430776
+     }
+    },
+    {
+     "gpu": 5,
+     "window_ms": 370246.0638517514,
+     "accounted_ms": 370246.06385175145,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 334243.53799398243,
+      "idle_encode_wait": 15016.15043461004,
+      "idle_empty": 20986.375423158945
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.9027605439387343,
+      "idle_encode_wait": 0.04055721829529724,
+      "idle_empty": 0.05668223776596855
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 5.534235268798511,
+      "dispatchable_video": 334238.0037587136
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 334243.53799398243,
+      "idle_encode_wait": 15016.15043461004,
+      "idle_empty": 20124.6183430776
+     }
+    },
+    {
+     "gpu": 6,
+     "window_ms": 370246.0638517514,
+     "accounted_ms": 370246.06385175145,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 334243.53799398243,
+      "idle_encode_wait": 15016.15043461004,
+      "idle_empty": 20986.375423158945
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.9027605439387343,
+      "idle_encode_wait": 0.04055721829529724,
+      "idle_empty": 0.05668223776596855
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 5.534235268798511,
+      "dispatchable_video": 334238.0037587136
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 334243.53799398243,
+      "idle_encode_wait": 15016.15043461004,
+      "idle_empty": 20124.6183430776
+     }
+    },
+    {
+     "gpu": 7,
+     "window_ms": 370246.0638517514,
+     "accounted_ms": 370246.06385175145,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 334243.53799398243,
+      "idle_encode_wait": 15016.15043461004,
+      "idle_empty": 20986.375423158945
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.9027605439387343,
+      "idle_encode_wait": 0.04055721829529724,
+      "idle_empty": 0.05668223776596855
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 5.534235268798511,
+      "dispatchable_video": 334238.0037587136
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 334243.53799398243,
+      "idle_encode_wait": 15016.15043461004,
+      "idle_empty": 20124.6183430776
+     }
+    }
+   ],
+   "overall_ms": {
+    "video_compute": 0.0,
+    "image_compute": 0.0,
+    "decode": 0.0,
+    "prepare": 0.0,
+    "transfer_export": 0.0,
+    "transfer_import": 0.0,
+    "other_stage": 0.0,
+    "unknown": 0.0,
+    "held_wait_peer": 0.0,
+    "held_overhead": 0.0,
+    "held_midstep_owner": 0.0,
+    "idle_with_queue": 2673948.3039518595,
+    "idle_encode_wait": 120129.20347688031,
+    "idle_empty": 167891.00338527156
+   },
+   "overall_fraction": {
+    "video_compute": 0.0,
+    "image_compute": 0.0,
+    "decode": 0.0,
+    "prepare": 0.0,
+    "transfer_export": 0.0,
+    "transfer_import": 0.0,
+    "other_stage": 0.0,
+    "unknown": 0.0,
+    "held_wait_peer": 0.0,
+    "held_overhead": 0.0,
+    "held_midstep_owner": 0.0,
+    "idle_with_queue": 0.9027605439387343,
+    "idle_encode_wait": 0.04055721829529724,
+    "idle_empty": 0.05668223776596855
+   },
+   "grouped_fraction": {
+    "work": 0.0,
+    "held": 0.0,
+    "idle_with_queue": 0.9027605439387343,
+    "idle_encode_wait": 0.04055721829529724,
+    "idle_empty": 0.05668223776596855,
+    "unknown": 0.0
+   },
+   "idle_with_queue_causes_ms": {
+    "dispatchable_image_only": 44.27388215038809,
+    "dispatchable_video": 2673904.030069709
+   },
+   "active_window": {
+    "start_ms": 859.1821286934033,
+    "finish_ms": 370243.48890036345,
+    "gpu_ms": 2955074.4541733605,
+    "overall_ms": {
+     "video_compute": 0.0,
+     "image_compute": 0.0,
+     "decode": 0.0,
+     "prepare": 0.0,
+     "transfer_export": 0.0,
+     "transfer_import": 0.0,
+     "other_stage": 0.0,
+     "unknown": 0.0,
+     "held_wait_peer": 0.0,
+     "held_overhead": 0.0,
+     "held_midstep_owner": 0.0,
+     "idle_with_queue": 2673948.3039518595,
+     "idle_encode_wait": 120129.20347688031,
+     "idle_empty": 160996.9467446208
+    },
+    "grouped_fraction": {
+     "work": 0.0,
+     "held": 0.0,
+     "idle_with_queue": 0.9048666439437845,
+     "idle_encode_wait": 0.04065183647309649,
+     "idle_empty": 0.05448151958311906,
+     "unknown": 0.0
+    },
+    "scope": "first arrival to last request finish; excludes leading/trailing empty replay time"
+   },
+   "top_idle_with_queue": [
+    {
+     "gpu": 0,
+     "start_ms": 15880.866798572242,
+     "finish_ms": 350118.87055728585,
+     "causes": {
+      "dispatchable_video": 334238.0037587136
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0001",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 334238.0037587136,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 1,
+     "start_ms": 15880.866798572242,
+     "finish_ms": 350118.87055728585,
+     "causes": {
+      "dispatchable_video": 334238.0037587136
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0001",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 334238.0037587136,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 2,
+     "start_ms": 15880.866798572242,
+     "finish_ms": 350118.87055728585,
+     "causes": {
+      "dispatchable_video": 334238.0037587136
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0001",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 334238.0037587136,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 3,
+     "start_ms": 15880.866798572242,
+     "finish_ms": 350118.87055728585,
+     "causes": {
+      "dispatchable_video": 334238.0037587136
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0001",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "2": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 334238.0037587136,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 4,
+     "start_ms": 15880.866798572242,
+     "finish_ms": 350118.87055728585,
+     "causes": {
+      "dispatchable_video": 334238.0037587136
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0001",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 334238.0037587136,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 5,
+     "start_ms": 15880.866798572242,
+     "finish_ms": 350118.87055728585,
+     "causes": {
+      "dispatchable_video": 334238.0037587136
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0001",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 334238.0037587136,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 6,
+     "start_ms": 15880.866798572242,
+     "finish_ms": 350118.87055728585,
+     "causes": {
+      "dispatchable_video": 334238.0037587136
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0001",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 334238.0037587136,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 7,
+     "start_ms": 15880.866798572242,
+     "finish_ms": 350118.87055728585,
+     "causes": {
+      "dispatchable_video": 334238.0037587136
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0001",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle"
+     },
+     "duration_ms": 334238.0037587136,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 0,
+     "start_ms": 14744.876509768994,
+     "finish_ms": 14747.613281942904,
+     "causes": {
+      "dispatchable_image_only": 2.73677217391014
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-i0004",
+       "kind": "image",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 2.73677217391014,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 1,
+     "start_ms": 14744.876509768994,
+     "finish_ms": 14747.613281942904,
+     "causes": {
+      "dispatchable_image_only": 2.73677217391014
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-i0004",
+       "kind": "image",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 2.73677217391014,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    }
+   ],
+   "idle_with_queue_run_count": 48,
+   "secondary": {
+    "advance_stage_rpc": {
+     "advance_elapsed_ms": 0.0,
+     "advance_worker_model_ms": 0.0,
+     "advance_worker_operation_ms": 0.0,
+     "advance_stages": 0,
+     "worker_model_over_rpc_wall": null,
+     "scope": "per-rank sums; worker model_ms is a worker-timed section, not CUDA kernel time"
+    },
+    "decode_wall_ms": {
+     "count": 0,
+     "sum": 0.0,
+     "p50": null,
+     "p95": null,
+     "max": null
+    },
+    "image_wall_ms": {
+     "count": 0,
+     "sum": 0.0,
+     "p50": null,
+     "p95": null,
+     "max": null
+    },
+    "same_group_turnaround_controller_ms": {
+     "count": 0,
+     "sum": 0.0,
+     "p50": null,
+     "p95": null,
+     "max": null
+    },
+    "same_group_turnaround_worker_gap_ms": {
+     "count": 0,
+     "sum": 0.0,
+     "p50": null,
+     "p95": null,
+     "max": null
+    }
+   },
+   "diagnostics": {
+    "events": 0,
+    "unplaceable_events": 0,
+    "non_completed_events": 0,
+    "unmapped_stage_workers": [],
+    "clipped_ms": 0.0,
+    "same_gpu_task_overlap_ms": 0.0,
+    "requests_without_events_but_started": 40,
+    "missing_need_requests": 0
+   },
+   "accounting_complete": true,
+   "requests": {
+    "total": 40,
+    "by_status": {
+     "completed": 40
+    },
+    "by_kind": {
+     "video": 20,
+     "image": 20
+    }
+   },
+   "doorbell": {
+    "continuous_quanta": 0,
+    "enabled": true,
+    "rings": 0
+   },
+   "l2_block_cuda": {
+    "status": "unknown",
+    "reason": "no block_cuda_ms recorded in this run (only emitted in observe mode and not persisted here)"
+   }
+  },
+  {
+   "run": "native-serving-wan22-4d63638-s204-bursty-r1",
+   "run_id": "ditserve-serve-wan22-4d63638-s204-bursty-r1",
+   "phase": "cluster",
+   "attempt": 1,
+   "cell": 5,
+   "order": "forward",
+   "policy": "heterodit_exact",
+   "status": "completed",
+   "window_ms": 216252.79819592834,
+   "gpus": 8,
+   "gpu_ms": 1730022.3855674267,
+   "per_gpu": [
+    {
+     "gpu": 0,
+     "window_ms": 216252.79819592834,
+     "accounted_ms": 216252.79819592834,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 15803.705323250899,
+      "idle_encode_wait": 80052.27800294817,
+      "idle_empty": 120396.81486972926
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.07307977263227133,
+      "idle_encode_wait": 0.37017915453939965,
+      "idle_empty": 0.556741072828329
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 1587.770026871869,
+      "dispatchable_video": 14215.93529637903
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 15803.705323250899,
+      "idle_encode_wait": 80052.27800294817,
+      "idle_empty": 119535.09759344344
+     }
+    },
+    {
+     "gpu": 1,
+     "window_ms": 216252.79819592834,
+     "accounted_ms": 216252.79819592834,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 15803.705323250899,
+      "idle_encode_wait": 80052.27800294817,
+      "idle_empty": 120396.81486972926
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.07307977263227133,
+      "idle_encode_wait": 0.37017915453939965,
+      "idle_empty": 0.556741072828329
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 1587.770026871869,
+      "dispatchable_video": 14215.93529637903
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 15803.705323250899,
+      "idle_encode_wait": 80052.27800294817,
+      "idle_empty": 119535.09759344344
+     }
+    },
+    {
+     "gpu": 2,
+     "window_ms": 216252.79819592834,
+     "accounted_ms": 216252.79819592834,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 15803.705323250899,
+      "idle_encode_wait": 80052.27800294817,
+      "idle_empty": 120396.81486972926
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.07307977263227133,
+      "idle_encode_wait": 0.37017915453939965,
+      "idle_empty": 0.556741072828329
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 1587.770026871869,
+      "dispatchable_video": 14215.93529637903
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 15803.705323250899,
+      "idle_encode_wait": 80052.27800294817,
+      "idle_empty": 119535.09759344344
+     }
+    },
+    {
+     "gpu": 3,
+     "window_ms": 216252.79819592834,
+     "accounted_ms": 216252.79819592834,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 15803.705323250899,
+      "idle_encode_wait": 80052.27800294817,
+      "idle_empty": 120396.81486972926
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.07307977263227133,
+      "idle_encode_wait": 0.37017915453939965,
+      "idle_empty": 0.556741072828329
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 1587.770026871869,
+      "dispatchable_video": 14215.93529637903
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 15803.705323250899,
+      "idle_encode_wait": 80052.27800294817,
+      "idle_empty": 119535.09759344344
+     }
+    },
+    {
+     "gpu": 4,
+     "window_ms": 216252.79819592834,
+     "accounted_ms": 216252.79819592834,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 15803.705323250899,
+      "idle_encode_wait": 80052.27800294817,
+      "idle_empty": 120396.81486972926
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.07307977263227133,
+      "idle_encode_wait": 0.37017915453939965,
+      "idle_empty": 0.556741072828329
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 1587.770026871869,
+      "dispatchable_video": 14215.93529637903
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 15803.705323250899,
+      "idle_encode_wait": 80052.27800294817,
+      "idle_empty": 119535.09759344344
+     }
+    },
+    {
+     "gpu": 5,
+     "window_ms": 216252.79819592834,
+     "accounted_ms": 216252.79819592834,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 15803.705323250899,
+      "idle_encode_wait": 80052.27800294817,
+      "idle_empty": 120396.81486972926
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.07307977263227133,
+      "idle_encode_wait": 0.37017915453939965,
+      "idle_empty": 0.556741072828329
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 1587.770026871869,
+      "dispatchable_video": 14215.93529637903
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 15803.705323250899,
+      "idle_encode_wait": 80052.27800294817,
+      "idle_empty": 119535.09759344344
+     }
+    },
+    {
+     "gpu": 6,
+     "window_ms": 216252.79819592834,
+     "accounted_ms": 216252.79819592834,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 15803.705323250899,
+      "idle_encode_wait": 80052.27800294817,
+      "idle_empty": 120396.81486972926
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.07307977263227133,
+      "idle_encode_wait": 0.37017915453939965,
+      "idle_empty": 0.556741072828329
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 1587.770026871869,
+      "dispatchable_video": 14215.93529637903
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 15803.705323250899,
+      "idle_encode_wait": 80052.27800294817,
+      "idle_empty": 119535.09759344344
+     }
+    },
+    {
+     "gpu": 7,
+     "window_ms": 216252.79819592834,
+     "accounted_ms": 216252.79819592834,
+     "ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 15803.705323250899,
+      "idle_encode_wait": 80052.27800294817,
+      "idle_empty": 120396.81486972926
+     },
+     "fraction": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 0.07307977263227133,
+      "idle_encode_wait": 0.37017915453939965,
+      "idle_empty": 0.556741072828329
+     },
+     "idle_with_queue_causes_ms": {
+      "dispatchable_image_only": 1587.770026871869,
+      "dispatchable_video": 14215.93529637903
+     },
+     "unknown_causes_ms": {},
+     "active_window_ms": {
+      "video_compute": 0.0,
+      "image_compute": 0.0,
+      "decode": 0.0,
+      "prepare": 0.0,
+      "transfer_export": 0.0,
+      "transfer_import": 0.0,
+      "other_stage": 0.0,
+      "unknown": 0.0,
+      "held_wait_peer": 0.0,
+      "held_overhead": 0.0,
+      "held_midstep_owner": 0.0,
+      "idle_with_queue": 15803.705323250899,
+      "idle_encode_wait": 80052.27800294817,
+      "idle_empty": 119535.09759344344
+     }
+    }
+   ],
+   "overall_ms": {
+    "video_compute": 0.0,
+    "image_compute": 0.0,
+    "decode": 0.0,
+    "prepare": 0.0,
+    "transfer_export": 0.0,
+    "transfer_import": 0.0,
+    "other_stage": 0.0,
+    "unknown": 0.0,
+    "held_wait_peer": 0.0,
+    "held_overhead": 0.0,
+    "held_midstep_owner": 0.0,
+    "idle_with_queue": 126429.64258600719,
+    "idle_encode_wait": 640418.2240235853,
+    "idle_empty": 963174.5189578341
+   },
+   "overall_fraction": {
+    "video_compute": 0.0,
+    "image_compute": 0.0,
+    "decode": 0.0,
+    "prepare": 0.0,
+    "transfer_export": 0.0,
+    "transfer_import": 0.0,
+    "other_stage": 0.0,
+    "unknown": 0.0,
+    "held_wait_peer": 0.0,
+    "held_overhead": 0.0,
+    "held_midstep_owner": 0.0,
+    "idle_with_queue": 0.07307977263227133,
+    "idle_encode_wait": 0.37017915453939965,
+    "idle_empty": 0.556741072828329
+   },
+   "grouped_fraction": {
+    "work": 0.0,
+    "held": 0.0,
+    "idle_with_queue": 0.07307977263227133,
+    "idle_encode_wait": 0.37017915453939965,
+    "idle_empty": 0.556741072828329,
+    "unknown": 0.0
+   },
+   "idle_with_queue_causes_ms": {
+    "dispatchable_image_only": 12702.160214974952,
+    "dispatchable_video": 113727.48237103224
+   },
+   "active_window": {
+    "start_ms": 859.1821286934033,
+    "finish_ms": 216250.2630483359,
+    "gpu_ms": 1723128.64735714,
+    "overall_ms": {
+     "video_compute": 0.0,
+     "image_compute": 0.0,
+     "decode": 0.0,
+     "prepare": 0.0,
+     "transfer_export": 0.0,
+     "transfer_import": 0.0,
+     "other_stage": 0.0,
+     "unknown": 0.0,
+     "held_wait_peer": 0.0,
+     "held_overhead": 0.0,
+     "held_midstep_owner": 0.0,
+     "idle_with_queue": 126429.64258600719,
+     "idle_encode_wait": 640418.2240235853,
+     "idle_empty": 956280.7807475475
+    },
+    "grouped_fraction": {
+     "work": 0.0,
+     "held": 0.0,
+     "idle_with_queue": 0.07337214361790079,
+     "idle_encode_wait": 0.3716601340276195,
+     "idle_empty": 0.5549677223544798,
+     "unknown": 0.0
+    },
+    "scope": "first arrival to last request finish; excludes leading/trailing empty replay time"
+   },
+   "top_idle_with_queue": [
+    {
+     "gpu": 0,
+     "start_ms": 175109.41533837467,
+     "finish_ms": 182943.47475282848,
+     "causes": {
+      "dispatchable_video": 7834.0594144538045
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0017",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 7834.0594144538045,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 1,
+     "start_ms": 175109.41533837467,
+     "finish_ms": 182943.47475282848,
+     "causes": {
+      "dispatchable_video": 7834.0594144538045
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0017",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 7834.0594144538045,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 2,
+     "start_ms": 175109.41533837467,
+     "finish_ms": 182943.47475282848,
+     "causes": {
+      "dispatchable_video": 7834.0594144538045
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0017",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 7834.0594144538045,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 3,
+     "start_ms": 175109.41533837467,
+     "finish_ms": 182943.47475282848,
+     "causes": {
+      "dispatchable_video": 7834.0594144538045
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0017",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "2": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 7834.0594144538045,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 4,
+     "start_ms": 175109.41533837467,
+     "finish_ms": 182943.47475282848,
+     "causes": {
+      "dispatchable_video": 7834.0594144538045
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0017",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 7834.0594144538045,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 5,
+     "start_ms": 175109.41533837467,
+     "finish_ms": 182943.47475282848,
+     "causes": {
+      "dispatchable_video": 7834.0594144538045
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0017",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 7834.0594144538045,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 6,
+     "start_ms": 175109.41533837467,
+     "finish_ms": 182943.47475282848,
+     "causes": {
+      "dispatchable_video": 7834.0594144538045
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0017",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 7834.0594144538045,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 7,
+     "start_ms": 175109.41533837467,
+     "finish_ms": 182943.47475282848,
+     "causes": {
+      "dispatchable_video": 7834.0594144538045
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0017",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle"
+     },
+     "duration_ms": 7834.0594144538045,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 0,
+     "start_ms": 46052.90012340993,
+     "finish_ms": 50430.56615162641,
+     "causes": {
+      "dispatchable_video": 4377.666028216481
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0009",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "1": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 4377.666028216481,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    },
+    {
+     "gpu": 1,
+     "start_ms": 46052.90012340993,
+     "finish_ms": 50430.56615162641,
+     "causes": {
+      "dispatchable_video": 4377.666028216481
+     },
+     "waiting_requests": [
+      {
+       "request_id": "w0-v0009",
+       "kind": "video",
+       "need_gpus": 1
+      }
+     ],
+     "waiting_count": 1,
+     "partner_state_at_start": {
+      "0": "idle",
+      "2": "idle",
+      "3": "idle",
+      "4": "idle",
+      "5": "idle",
+      "6": "idle",
+      "7": "idle"
+     },
+     "duration_ms": 4377.666028216481,
+     "previous_task": null,
+     "next_task": null,
+     "clues": [
+      "enough free GPUs for a waiting request but no launch (controller latency or policy hold)"
+     ]
+    }
+   ],
+   "idle_with_queue_run_count": 288,
+   "secondary": {
+    "advance_stage_rpc": {
+     "advance_elapsed_ms": 0.0,
+     "advance_worker_model_ms": 0.0,
+     "advance_worker_operation_ms": 0.0,
+     "advance_stages": 0,
+     "worker_model_over_rpc_wall": null,
+     "scope": "per-rank sums; worker model_ms is a worker-timed section, not CUDA kernel time"
+    },
+    "decode_wall_ms": {
+     "count": 0,
+     "sum": 0.0,
+     "p50": null,
+     "p95": null,
+     "max": null
+    },
+    "image_wall_ms": {
+     "count": 0,
+     "sum": 0.0,
+     "p50": null,
+     "p95": null,
+     "max": null
+    },
+    "same_group_turnaround_controller_ms": {
+     "count": 0,
+     "sum": 0.0,
+     "p50": null,
+     "p95": null,
+     "max": null
+    },
+    "same_group_turnaround_worker_gap_ms": {
+     "count": 0,
+     "sum": 0.0,
+     "p50": null,
+     "p95": null,
+     "max": null
+    }
+   },
+   "diagnostics": {
+    "events": 0,
+    "unplaceable_events": 0,
+    "non_completed_events": 0,
+    "unmapped_stage_workers": [],
+    "clipped_ms": 0.0,
+    "same_gpu_task_overlap_ms": 0.0,
+    "requests_without_events_but_started": 40,
+    "missing_need_requests": 0
+   },
+   "accounting_complete": true,
+   "requests": {
+    "total": 40,
+    "by_status": {
+     "completed": 40
+    },
+    "by_kind": {
+     "video": 20,
+     "image": 20
+    }
+   },
+   "doorbell": {
+    "continuous_quanta": 415,
+    "enabled": true,
+    "rings": 43
+   },
+   "l2_block_cuda": {
+    "status": "unknown",
+    "reason": "no block_cuda_ms recorded in this run (only emitted in observe mode and not persisted here)"
+   }
+  }
+ ],
+ "definitions": "Controller-level (L1) per-GPU timeline and bubble decomposition of native run records.\n\nEvery GPU's measurement window ``[0, cell.elapsed_ms]`` (the controller replay clock of one\n(phase, attempt, cell, order) observation) is split into mutually exclusive categories whose\ndurations sum exactly to the window.  Only controller-recorded timestamps are used:\n\n* task occupancy of a GPU: ``controller_timing[*]`` interval ``[selected_ms, observed_ms]`` on\n  ``group_after`` (the controller marks the GPU busy from launch until it observes completion);\n* own work inside that occupancy: ``stages`` whose ``worker`` is this GPU's video/image worker\n  (controller-observed RPC wall per rank); atomic image service and video ``finish`` (VAE decode\n  plus output digest) carry no stages, so their ``[async_begin_ms, all_done_ms]`` is used;\n* queue state: request arrival, video text-encode readiness (``encode_ready_ms``), request\n  occupancy and completion.\n\nCategories (priority order, first match wins for a GPU at an instant):\n\n1. ``video_compute`` | ``image_compute`` | ``decode`` | ``prepare`` | ``transfer_export`` |\n   ``transfer_import`` | ``other_stage`` — an own-rank stage / atomic body is in flight.\n2. ``unknown`` — the GPU is occupied but its work cannot be determined from the record\n   (aborted/failed controller events, stages on unmapped workers, requests that ran without a\n   controller_timing event).\n3. ``held_wait_peer`` — occupied by a task, no own stage, but another rank's stage of the same task\n   is running (e.g. the idle CFG partner waits for rank-0 prepare/export or another rank's import).\n4. ``held_overhead`` — occupied by a task with no stage running anywhere in it: launch, RPC\n   dispatch, rank skew and the controller noticing completion.\n5. ``held_midstep_owner`` — not occupied, but a request suspended inside a step (``block_after>0``)\n   owns this GPU's group until it resumes.\n6. ``idle_with_queue`` — not occupied and at least one arrived, text-ready request is waiting or\n   suspended (a scheduling bubble).  Sub-causes:\n   ``turnaround_same_request`` (the previous and next task on this GPU belong to the same request:\n   inter-quantum/step-boundary controller turnaround), ``dispatchable_video`` /\n   ``dispatchable_image_only`` (enough GPUs are free for some waiting request, yet none was\n   launched: controller latency or policy hold, e.g. image partitioning), and\n   ``gang_wait_partner_<label>`` (no waiting request fits the free GPUs; the partner GPU is busy\n   with ``<label>``, e.g. a single-GPU VAE decode blocking a CFG2 video gang).\n7. ``idle_encode_wait`` — not occupied, nothing ready, but some arrived video is still waiting for\n   its CPU text encoding to be observed ready.\n8. ``idle_empty`` — not occupied and no arrived unfinished request is waiting.\n\nThese are controller observations, not hardware utilization: an ``advance`` stage is RPC wall and\nincludes collectives, Python and launch overhead; ``decode`` includes CPU output hashing.  Kernel\ntime (``block_cuda_ms``) is reported only if a record actually contains it (L2 supplement);\notherwise it is ``unknown``.\n",
+ "source": {
+  "path": "/mnt/e/000_code/zyd-2026/.local/ditserve-kairos-rewrite-runtime/evidence/native-serving-wan22-4d63638-s204-bursty-r1/work/run.json",
+  "bytes": 5262729
+ }
+}

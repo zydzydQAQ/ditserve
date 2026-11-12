@@ -1,0 +1,50 @@
+{
+  "automatic_cleanup": false,
+  "binding": {
+    "adapter": {
+      "external_wan_first_step.py": "25969edc40b315baabc726503cf59b9920fd0913d1ea34f0eca47abfbffb6b8b",
+      "external_xdit.py": "719ff99683a5a29341233254e622b9deb4bb7b374e9bba0ba749940adceddbbb",
+      "external_xdit_distributed.py": "e0c737925505e1b3e1668d2295d158e12a47e64f7800dbab0da38a45ac68b0cd",
+      "external_xdit_native.py": "b1a2fec877a063d0a750015c4bbbca6105cc32dd7eb904a340884dab0a99f839"
+    },
+    "model_identity": {
+      "binding_sha256": "3e612738984ae56ac369f48b5a207c94d31cd1071d6506c633692ed9ccce37be",
+      "flow_shift": 5.0,
+      "manifest_path": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/wan22-official-b8fff731.manifest.json",
+      "manifest_sha256": "02ac66402d23a0ad25fa9fece1f6f57e2dc08783dda18ff4c9904fddf28d2c5f",
+      "model_id": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+      "model_index_sha256": "6a72faeb564b0e894aea8fc4ef27241106eb739e8584e869b61589a65473add7",
+      "revision": "b8fff7315c768468a5333511427288870b2e9635",
+      "root": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b-official-b8fff731",
+      "verified_bytes": 34201436033,
+      "verified_files": 21
+    },
+    "protocol_sha256": "86aae608c7f86d194e77a5e2e9645b192b921d8137174cbcdb2825ed7d94b392",
+    "request": {
+      "changed_protocol_parameters": {},
+      "guidance_scale": 5.0,
+      "height": 512,
+      "mode": "formal",
+      "negative_prompt": "",
+      "num_frames": 121,
+      "num_inference_steps": 50,
+      "num_outputs": 1,
+      "prompt": "A dog walking in a park.",
+      "protocol_steps": 50,
+      "seed": 44,
+      "shape_id": "wan22-small",
+      "shape_scope": "formal",
+      "width": 896
+    },
+    "source": {
+      "archive_sha256": "c09e48fa4792290b299ab3cfc0afc9c11ce60ac24affee933b1a0ce146e52f5b",
+      "commit": "16c34e7f070de65d9d2c67a6d74e0007dd8b426a",
+      "manifest_sha256": "49595ace72ba61efd7c7ec9d28f11ed1c430a3848903031dcf9e0913925125e5"
+    }
+  },
+  "budget_bytes": 268435456,
+  "cleanup_allowed": false,
+  "dependency": "SP1-SP4 first-step numerical comparison",
+  "protected": true,
+  "schema": "ditserve.wan-first-step-protection.v1"
+}

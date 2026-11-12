@@ -1,0 +1,230 @@
+{
+  "provenance": "mixed",
+  "sp_efficiency": 1.0,
+  "sp_overlap": 0.0,
+  "resize_ms": 58.177404726545014,
+  "quantum_overhead_ms": 1.2356632070517855,
+  "block_overhead_ms": 0.0,
+  "classes": {
+    "wan21-preflight": {
+      "kind": "video",
+      "steps": 20,
+      "blocks_per_step": 60,
+      "prepare_ms": 0.0,
+      "encode_ms": 15627.897383024296,
+      "step_compute_ms": 1145.3392803668976,
+      "comm_mb_per_step": 10351.4112,
+      "collectives_per_step": 240,
+      "cfg_exchange_mb": 1.79712,
+      "finish_ms": 1852.2232429434855,
+      "decode_chunks": 9,
+      "forms": {
+        "sp1": {
+          "placements": {
+            "0-0": {
+              "step_ms": 1145.3392803668976
+            }
+          }
+        },
+        "cfg2": {
+          "placements": {
+            "0-1": {
+              "step_ms": 581.6082265228033
+            }
+          }
+        },
+        "sp2": {
+          "placements": {
+            "0-1": {
+              "step_ms": 1196.7696994543076
+            }
+          }
+        },
+        "cfg2sp2": {
+          "placements": {
+            "0-3": {
+              "step_ms": 609.9898423999548
+            }
+          }
+        },
+        "sp3": {
+          "placements": {
+            "0-2": {
+              "step_ms": 887.4982856214046
+            }
+          }
+        },
+        "sp4": {
+          "placements": {
+            "0-3": {
+              "step_ms": 753.5889632999897
+            }
+          }
+        }
+      }
+    },
+    "sd35-preflight": {
+      "kind": "image",
+      "service_ms": 6465.742887929082
+    }
+  },
+  "links": {
+    "2": {
+      "gbps": 4.444444444444445,
+      "latency_ms": 0.2
+    },
+    "3": {
+      "gbps": 4.615384615384615,
+      "latency_ms": 0.2
+    },
+    "4": {
+      "gbps": 4.705882352941177,
+      "latency_ms": 0.2
+    },
+    "6": {
+      "gbps": 4.8,
+      "latency_ms": 0.2
+    },
+    "8": {
+      "gbps": 4.848484848484849,
+      "latency_ms": 0.2
+    }
+  },
+  "source": {
+    "experiment": "kairos-wan21-native-calibration",
+    "run_id": "d20261103-serve-wan21-4f0e5ff-s301-diag-calibration",
+    "gpu_uuids": [
+      "GPU-bf5b40f5-b606-6ff3-8bb6-375c58fca67a",
+      "GPU-ef078ff8-6d9e-6509-ce65-53a9c4c2df85",
+      "GPU-29ad4cf3-1e6a-08a9-5bde-6d17726e9fa3",
+      "GPU-83566cdb-86ec-7bb4-c2c2-736c074f2fca"
+    ],
+    "run_sha256": "4a468b658fb29ef3e8d66ca16c7437e2bb0f0db24f4117c38dd5230ff4f0bb4c",
+    "model": "Wan2.1-T2V-1.3B",
+    "shape": {
+      "cache": false,
+      "frames": 33,
+      "guidance_scale": 5.0,
+      "height": 480,
+      "max_continuous": 1,
+      "negative_prompt": "",
+      "prompt": "A red ceramic kettle on a wooden table.",
+      "request_id": "video-calibration",
+      "seed": 201,
+      "steps": 20,
+      "threshold": 0.0,
+      "width": 832
+    },
+    "architecture": {
+      "tokens": 14040,
+      "dim": 1536,
+      "layers": 30,
+      "comm_mb_per_step": 10351.4112,
+      "collectives_per_step": 240,
+      "cfg_exchange_mb": 1.79712
+    },
+    "timing_scopes": {
+      "static_sp1": "median_steady_advance",
+      "static_cfg2": "median_steady_advance",
+      "static_sp2": "median_steady_advance",
+      "static_cfg2sp2": "median_steady_advance",
+      "static_sp3": "median_steady_advance",
+      "static_sp4": "median_steady_advance"
+    },
+    "steady_samples": {
+      "static_sp1": 19,
+      "static_cfg2": 19,
+      "static_sp2": 19,
+      "static_cfg2sp2": 19,
+      "static_sp3": 19,
+      "static_sp4": 19
+    },
+    "bandwidth_saturation_gbps": 5.0,
+    "bandwidth_gamma": 0.25,
+    "fit_policies": [
+      "static_cfg2",
+      "static_cfg2sp2",
+      "static_sp1",
+      "static_sp2",
+      "static_sp4"
+    ],
+    "fit_mean_relative_error_pct": 0.8301067065081662,
+    "held_out_mean_relative_error_pct": 4.583981192978815,
+    "held_out_max_relative_error_pct": 4.583981192978815,
+    "predictions": [
+      {
+        "policy": "static_sp1",
+        "form": [
+          1,
+          1
+        ],
+        "measured_step_ms": 1145.3392803668976,
+        "predicted_step_ms": 1145.3392803668976,
+        "relative_error_pct": 0.0,
+        "partition": "fit"
+      },
+      {
+        "policy": "static_cfg2",
+        "form": [
+          2,
+          1
+        ],
+        "measured_step_ms": 581.6082265228033,
+        "predicted_step_ms": 573.2739921834487,
+        "relative_error_pct": 1.4329636272824975,
+        "partition": "fit"
+      },
+      {
+        "policy": "static_sp2",
+        "form": [
+          1,
+          2
+        ],
+        "measured_step_ms": 1196.7696994543076,
+        "predicted_step_ms": 1202.936520183449,
+        "relative_error_pct": 0.5152888422854669,
+        "partition": "fit"
+      },
+      {
+        "policy": "static_cfg2sp2",
+        "form": [
+          2,
+          2
+        ],
+        "measured_step_ms": 609.9898423999548,
+        "predicted_step_ms": 602.0726120917244,
+        "relative_error_pct": 1.2979282207521188,
+        "partition": "fit"
+      },
+      {
+        "policy": "static_sp3",
+        "form": [
+          1,
+          3
+        ],
+        "measured_step_ms": 887.4982856214046,
+        "predicted_step_ms": 928.1810401222992,
+        "relative_error_pct": 4.583981192978815,
+        "partition": "held_out"
+      },
+      {
+        "policy": "static_sp4",
+        "form": [
+          1,
+          4
+        ],
+        "measured_step_ms": 753.5889632999897,
+        "predicted_step_ms": 746.7738600917244,
+        "relative_error_pct": 0.9043528422207481,
+        "partition": "fit"
+      }
+    ],
+    "execution_cost_mode": "placement_bound_form_table_with_analytical_fallback",
+    "unbound_measurements": 0,
+    "image_batch_samples": {
+      "1": 6
+    },
+    "validation_scope": "held-out forms on calibration hardware and shape; not held-out request, placement or workload validation",
+    "method": "single constrained saturation model fitted once; no per-form bandwidth or overlap overrides"
+  }
+}

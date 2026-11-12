@@ -1,0 +1,430 @@
+{"name": "d20261103-formal-cal8-wan22-51740c0-r1", "build": "51740c0", "build_info": "/shared/code/DITSERVE/builds/51740c0/BUILD_INFO.json"}
+{"name": "d20261103-formal-cal8-wan21-51740c0-r1", "build": "51740c0", "build_info": "/shared/code/DITSERVE/builds/51740c0/BUILD_INFO.json"}
+login ok, namespace: user-jjjkairos
+storage: 776G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 8, "account_free_gpus": 8, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 8}, {"name": "gpu04", "free_gpus": 4}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 32, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 8, "account_free_gpus": 8, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 8}, {"name": "gpu04", "free_gpus": 4}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 32, "unplaced_account_jobs": []}}
+storage: 776G, 76%
+submitted: d20261103-formal-cal8-wan22-51740c0-r1 8 GPUs
+{"d20261103-formal-cal8-wan22-51740c0-r1": "Running"}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 16, "account_free_gpus": 0, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 4}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 24, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 16, "account_free_gpus": 0, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 4}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 24, "unplaced_account_jobs": []}}
+storage: 776G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 16, "account_free_gpus": 0, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 4}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 24, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 16, "account_free_gpus": 0, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 4}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 24, "unplaced_account_jobs": []}}
+storage: 776G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 16, "account_free_gpus": 0, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 4}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 24, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 16, "account_free_gpus": 0, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 4}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 24, "unplaced_account_jobs": []}}
+storage: 776G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 16, "account_free_gpus": 0, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 4}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 24, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 16, "account_free_gpus": 0, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 4}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 24, "unplaced_account_jobs": []}}
+storage: 776G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 16, "account_free_gpus": 0, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 4}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 24, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 16, "account_free_gpus": 0, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 4}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 24, "unplaced_account_jobs": []}}
+storage: 776G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 16, "account_free_gpus": 0, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 4}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 24, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 16, "account_free_gpus": 0, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 4}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 24, "unplaced_account_jobs": []}}
+storage: 776G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 16, "account_free_gpus": 0, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 4}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 24, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 16, "account_free_gpus": 0, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 4}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 24, "unplaced_account_jobs": []}}
+storage: 776G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 16, "account_free_gpus": 0, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 4}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 24, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 16, "account_free_gpus": 0, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 4}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 24, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 16, "account_free_gpus": 0, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 4}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 24, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 16, "account_free_gpus": 0, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 4}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 24, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 16, "account_free_gpus": 0, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 4}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 24, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 16, "account_free_gpus": 0, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 4}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 24, "unplaced_account_jobs": []}}
+storage: 776G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 16, "account_free_gpus": 0, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 4}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 24, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 16, "account_free_gpus": 0, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 4}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 24, "unplaced_account_jobs": []}}
+storage: 776G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 16, "account_free_gpus": 0, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 4}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 24, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 16, "account_free_gpus": 0, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 4}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 24, "unplaced_account_jobs": []}}
+storage: 776G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 16, "account_free_gpus": 0, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 4}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 24, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 14, "account_free_gpus": 2, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 6}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 26, "unplaced_account_jobs": []}}
+storage: 776G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 15, "account_free_gpus": 1, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 5}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 25, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 14, "account_free_gpus": 2, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 6}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 26, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 14, "account_free_gpus": 2, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 6}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 26, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 14, "account_free_gpus": 2, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 6}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 26, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 14, "account_free_gpus": 2, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 6}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 26, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 14, "account_free_gpus": 2, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 6}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 26, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 14, "account_free_gpus": 2, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 6}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 26, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 14, "account_free_gpus": 2, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 6}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 26, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 14, "account_free_gpus": 2, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 6}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 26, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 14, "account_free_gpus": 2, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 6}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 26, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 14, "account_free_gpus": 2, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 6}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 26, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 14, "account_free_gpus": 2, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 6}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 26, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 14, "account_free_gpus": 2, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 6}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 26, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 14, "account_free_gpus": 2, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 6}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 26, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 12, "account_free_gpus": 4, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 0}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 28, "unplaced_account_jobs": []}}
+{"d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded"}
+{"capacity": {"namespace": "user-jjjkairos", "quota": 16, "reserved_gpus": 4, "account_free_gpus": 12, "nodes": [{"name": "gpu01", "free_gpus": 4}, {"name": "gpu02", "free_gpus": 8}, {"name": "gpu03", "free_gpus": 8}, {"name": "gpu04", "free_gpus": 8}, {"name": "gpu05", "free_gpus": 0}, {"name": "gpu06", "free_gpus": 0}, {"name": "gpu07", "free_gpus": 8}], "cluster_free_gpus": 36, "unplaced_account_jobs": []}}
+storage: 777G, 76%
+submitted: d20261103-formal-cal8-wan21-51740c0-r1 8 GPUs
+{"d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded", "d20261103-formal-cal8-wan21-51740c0-r1": "Running"}
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 777G, 76%
+storage: 778G, 76%
+storage: 778G, 76%
+storage: 778G, 76%
+storage: 779G, 77%
+storage: 780G, 77%
+storage: 780G, 77%
+storage: 781G, 77%
+storage: 782G, 77%
+storage: 782G, 77%
+storage: 782G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 783G, 77%
+storage: 784G, 77%
+storage: 784G, 77%
+{"d20261103-formal-cal8-wan22-51740c0-r1": "Succeeded", "d20261103-formal-cal8-wan21-51740c0-r1": "Succeeded"}
+all submitted jobs succeeded

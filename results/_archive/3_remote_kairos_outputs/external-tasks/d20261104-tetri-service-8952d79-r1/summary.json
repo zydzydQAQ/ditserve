@@ -1,0 +1,212 @@
+{
+  "schema": "ditserve.external-task.v1",
+  "run_id": "d20261104-tetri-service-8952d79-r1",
+  "binding": {
+    "commit": "8952d79566e17c1db5eb64896be35086c7d021f5",
+    "manifest_sha256": "5a12db452ad0b03bd649f7622f98d9e84c2347a1adc6372a3a502698a7195c5b",
+    "job_spec_sha256": "e222f2b419a2a3be2c7cb47b7647a8f6f7d98dc3aca987e9baf4c70426b6a328",
+    "build_info_sha256": "76a70cb4246b15b0e82c3749841b81cb79e8f0692da812c19831108d27e7e0a6",
+    "core_sha256": "e358e29d1a3ca238bbf2b7f981db71e951519715aedf46d58454738aabcbd42b",
+    "worker_sources_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a",
+    "gfc_sources_sha256": "e6c7f47a26d02a8091463bf9cb8ca58835c2b07c3c2cd4827d1b319c3bebf6e6",
+    "image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+    "image_identity_scope": "digest-pinned submitted spec, not independent pod imageID",
+    "probe_plan_sha256": "c245c136ed9e5d151aba65e25cc52bce78953076bde0fa0a7ae0db03576d2d20"
+  },
+  "allocation_gpus": 2,
+  "initial_storage": {
+    "used_gib": 779,
+    "percent": 77
+  },
+  "final_storage": {
+    "used_gib": 779,
+    "percent": 77
+  },
+  "task": "original-tetriserve-http-mixed-resolution-service-and-raw-numerics",
+  "execution": {
+    "argv": [
+      "/opt/venv/bin/python",
+      "-B",
+      "/shared/data/DITSERVE/external-probes/tetri-service-8952d79-r1/external_tetriserve_service.py",
+      "run",
+      "--source-root",
+      "/shared/data/DITSERVE/external-systems/20261103-source-v1/TetriServe",
+      "--source-manifest",
+      "/shared/data/DITSERVE/external-systems/20261103-source-v1/TetriServe.source.json",
+      "--source-manifest-sha256",
+      "2d0d9f9efaf4b3749063458d56c74b0ef79ef72de22096b39889e798e792d027",
+      "--shared-python-root",
+      "/shared/code/DITSERVE/builds/51740c0/share/ditserve/python",
+      "--model-root",
+      "/shared/data/DITSERVE/models/sd3.5-medium",
+      "--model-manifest",
+      "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/sd35.manifest.json",
+      "--model-manifest-sha256",
+      "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+      "--protocol",
+      "/shared/data/DITSERVE/external-probes/tetri-service-8952d79-r1/formal-mixed-v1.json",
+      "--protocol-sha256",
+      "86aae608c7f86d194e77a5e2e9645b192b921d8137174cbcdb2825ed7d94b392",
+      "--output-dir",
+      "/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-8952d79-r1/result",
+      "--prompt",
+      "A red fox standing beside a mountain lake.",
+      "--prompt",
+      "A white rabbit in a field of blue flowers.",
+      "--seed",
+      "101",
+      "--mixed-resolution",
+      "--timeout-seconds",
+      "3600",
+      "--reference-timeout-seconds",
+      "1800"
+    ],
+    "returncode": 1,
+    "timed_out": false,
+    "seconds": 245.26374237053096,
+    "stderr_tail": "st be nonnegative integers\nProcess Process-4:\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.10/multiprocessing/process.py\", line 314, in _bootstrap\n    self.run()\n  File \"/usr/local/lib/python3.10/multiprocessing/process.py\", line 108, in run\n    self._target(*self._args, **self._kwargs)\n  File \"/shared/data/DITSERVE/external-probes/tetri-service-8952d79-r1/external_tetriserve_service.py\", line 285, in observed_launch_worker\n    launch_worker(*args)\n  File \"/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-8952d79-r1/result/derived/tetriserve/engine/proc_launcher.py\", line 95, in launch_worker\n    runner.serve()\n  File \"/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-8952d79-r1/result/derived/tetriserve/engine/runner.py\", line 232, in serve\n    output = self.generate(reqs, latent_future_dict=latent_future_dict)\n  File \"/shared/data/DITSERVE/external-probes/tetri-service-8952d79-r1/external_tetriserve_service.py\", line 271, in generate\n    with capture.observe_round(pipeline,reqs) if capture is not None else nullcontext():\n  File \"/usr/local/lib/python3.10/contextlib.py\", line 135, in __enter__\n    return next(self.gen)\n  File \"/shared/data/DITSERVE/external-probes/tetri-service-8952d79-r1/external_tetriserve_service_numerics.py\", line 248, in observe_round\n    identity = scheduled_identity(reqs)\n  File \"/shared/data/DITSERVE/external-probes/tetri-service-8952d79-r1/external_tetriserve_service_numerics.py\", line 144, in scheduled_identity\n    raise ValueError('native request IDs must be nonnegative integers')\nValueError: native request IDs must be nonnegative integers\nINFO:     Shutting down\nINFO:     Finished server process [73]\nERROR:    Exception in ASGI application\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.10/asyncio/runners.py\", line 44, in run\n    return loop.run_until_complete(main)\n  File \"/usr/local/lib/python3.10/asyncio/base_events.py\", line 649, in run_until_complete\n    return future.result()\n  File \"/shared/data/DITSERVE/external-probes/tetri-service-8952d79-r1/external_tetriserve_service.py\", line 538, in guarded_execution\n    await guard\n  File \"/shared/data/DITSERVE/external-probes/tetri-service-8952d79-r1/external_tetriserve_service.py\", line 532, in monitor\n    raise RuntimeError('original worker failed: ' + repr(failed))\nRuntimeError: original worker failed: [(265, 1), (266, 1)]\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/opt/venv/lib/python3.10/site-packages/uvicorn/protocols/http/httptools_impl.py\", line 422, in run_asgi\n    result = await app(  # type: ignore[func-returns-value]\n  File \"/opt/venv/lib/python3.10/site-packages/uvicorn/middleware/proxy_headers.py\", line 63, in __call__\n    return await self.app(scope, receive, send)\n  File \"/opt/venv/lib/python3.10/site-packages/fastapi/applications.py\", line 1194, in __call__\n    await super().__call__(scope, receive, send)\n  File \"/opt/venv/lib/python3.10/site-packages/starlette/applications.py\", line 96, in __call__\n    await self.middleware_stack(scope, receive, send)\n  File \"/opt/venv/lib/python3.10/site-packages/starlette/middleware/errors.py\", line 164, in __call__\n    await self.app(scope, receive, _send)\n  File \"/opt/venv/lib/python3.10/site-packages/fastapi/telemetry/_asgi.py\", line 151, in __call__\n    await self.app(scope, receive, send)\n  File \"/opt/venv/lib/python3.10/site-packages/starlette/middleware/cors.py\", line 91, in __call__\n    await self.simple_response(scope, receive, send, request_headers=headers)\n  File \"/opt/venv/lib/python3.10/site-packages/starlette/middleware/cors.py\", line 149, in simple_response\n    await self.app(scope, receive, send)\n  File \"/opt/venv/lib/python3.10/site-packages/starlette/middleware/exceptions.py\", line 63, in __call__\n    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)\n  File \"/opt/venv/lib/python3.10/site-packages/starlette/_exception_handler.py\", line 42, in wrapped_app\n    await app(scope, receive, sender)\n  File \"/opt/venv/lib/python3.10/site-packages/fastapi/middleware/asyncexitstack.py\", line 18, in __call__\n    await self.app(scope, receive, send)\n  File \"/opt/venv/lib/python3.10/site-packages/starlette/routing.py\", line 676, in __call__\n    await self.middleware_stack(scope, receive, send)\n  File \"/opt/venv/lib/python3.10/site-packages/fastapi/routing.py\", line 2811, in app\n    await route.handle(scope, receive, send)\n  File \"/opt/venv/lib/python3.10/site-packages/fastapi/routing.py\", line 1330, in handle\n    await super().handle(scope, receive, send)\n  File \"/opt/venv/lib/python3.10/site-packages/starlette/routing.py\", line 282, in handle\n    await self.app(scope, receive, send)\n  File \"/opt/venv/lib/python3.10/site-packages/fastapi/routing.py\", line 166, in app\n    await wrap_app_handling_exceptions(app, request)(scope, receive, send)\n  File \"/opt/venv/lib/python3.10/site-packages/starlette/_exception_handler.py\", line 42, in wrapped_app\n    await app(scope, receive, sender)\n  File \"/opt/venv/lib/python3.10/site-packages/fastapi/routing.py\", line 152, in app\n    response = await f(request)\n  File \"/opt/venv/lib/python3.10/site-packages/fastapi/routing.py\", line 745, in app\n    raw_response = await run_endpoint_function(\n  File \"/opt/venv/lib/python3.10/site-packages/fastapi/routing.py\", line 372, in run_endpoint_function\n    return await dependant.call(**values)\n  File \"/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-8952d79-r1/result/derived/tetriserve/server/api_server.py\", line 77, in generate\n    output = await cserve_runtime.generate(config, rid, latency_threshold=request.latency_threshold)\n  File \"/shared/data/DITSERVE/external-probes/tetri-service-8952d79-r1/external_tetriserve_service.py\", line 440, in observe_generate\n    return await original_generate(config, request_id, **kw)\n  File \"/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-8952d79-r1/result/derived/tetriserve/engine/runtime.py\", line 546, in generate\n    await request_event.wait()\n  File \"/usr/local/lib/python3.10/asyncio/locks.py\", line 214, in wait\n    await fut\nasyncio.exceptions.CancelledError\nERROR:    Traceback (most recent call last):\n  File \"/usr/local/lib/python3.10/asyncio/runners.py\", line 44, in run\n    return loop.run_until_complete(main)\n  File \"/usr/local/lib/python3.10/asyncio/base_events.py\", line 649, in run_until_complete\n    return future.result()\n  File \"/shared/data/DITSERVE/external-probes/tetri-service-8952d79-r1/external_tetriserve_service.py\", line 538, in guarded_execution\n    await guard\n  File \"/shared/data/DITSERVE/external-probes/tetri-service-8952d79-r1/external_tetriserve_service.py\", line 532, in monitor\n    raise RuntimeError('original worker failed: ' + repr(failed))\nRuntimeError: original worker failed: [(265, 1), (266, 1)]\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/opt/venv/lib/python3.10/site-packages/starlette/routing.py\", line 661, in lifespan\n    await receive()\n  File \"/opt/venv/lib/python3.10/site-packages/fastapi/telemetry/_runtime.py\", line 214, in wrapped_receive\n    message = await receive()\n  File \"/opt/venv/lib/python3.10/site-packages/uvicorn/lifespan/on.py\", line 137, in receive\n    return await self.receive_queue.get()\n  File \"/usr/local/lib/python3.10/asyncio/queues.py\", line 159, in get\n    await getter\nasyncio.exceptions.CancelledError\n\nERROR:    Exception in ASGI application\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.10/asyncio/runners.py\", line 44, in run\n    return loop.run_until_complete(main)\n  File \"/usr/local/lib/python3.10/asyncio/base_events.py\", line 649, in run_until_complete\n    return future.result()\n  File \"/shared/data/DITSERVE/external-probes/tetri-service-8952d79-r1/external_tetriserve_service.py\", line 538, in guarded_execution\n    await guard\n  File \"/shared/data/DITSERVE/external-probes/tetri-service-8952d79-r1/external_tetriserve_service.py\", line 532, in monitor\n    raise RuntimeError('original worker failed: ' + repr(failed))\nRuntimeError: original worker failed: [(265, 1), (266, 1)]\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/opt/venv/lib/python3.10/site-packages/uvicorn/protocols/http/httptools_impl.py\", line 422, in run_asgi\n    result = await app(  # type: ignore[func-returns-value]\n  File \"/opt/venv/lib/python3.10/site-packages/uvicorn/middleware/proxy_headers.py\", line 63, in __call__\n    return await self.app(scope, receive, send)\n  File \"/opt/venv/lib/python3.10/site-packages/fastapi/applications.py\", line 1194, in __call__\n    await super().__call__(scope, receive, send)\n  File \"/opt/venv/lib/python3.10/site-packages/starlette/applications.py\", line 96, in __call__\n    await self.middleware_stack(scope, receive, send)\n  File \"/opt/venv/lib/python3.10/site-packages/starlette/middleware/errors.py\", line 164, in __call__\n    await self.app(scope, receive, _send)\n  File \"/opt/venv/lib/python3.10/site-packages/fastapi/telemetry/_asgi.py\", line 151, in __call__\n    await self.app(scope, receive, send)\n  File \"/opt/venv/lib/python3.10/site-packages/starlette/middleware/cors.py\", line 91, in __call__\n    await self.simple_response(scope, receive, send, request_headers=headers)\n  File \"/opt/venv/lib/python3.10/site-packages/starlette/middleware/cors.py\", line 149, in simple_response\n    await self.app(scope, receive, send)\n  File \"/opt/venv/lib/python3.10/site-packages/starlette/middleware/exceptions.py\", line 63, in __call__\n    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)\n  File \"/opt/venv/lib/python3.10/site-packages/starlette/_exception_handler.py\", line 42, in wrapped_app\n    await app(scope, receive, sender)\n  File \"/opt/venv/lib/python3.10/site-packages/fastapi/middleware/asyncexitstack.py\", line 18, in __call__\n    await self.app(scope, receive, send)\n  File \"/opt/venv/lib/python3.10/site-packages/starlette/routing.py\", line 676, in __call__\n    await self.middleware_stack(scope, receive, send)\n  File \"/opt/venv/lib/python3.10/site-packages/fastapi/routing.py\", line 2811, in app\n    await route.handle(scope, receive, send)\n  File \"/opt/venv/lib/python3.10/site-packages/fastapi/routing.py\", line 1330, in handle\n    await super().handle(scope, receive, send)\n  File \"/opt/venv/lib/python3.10/site-packages/starlette/routing.py\", line 282, in handle\n    await self.app(scope, receive, send)\n  File \"/opt/venv/lib/python3.10/site-packages/fastapi/routing.py\", line 166, in app\n    await wrap_app_handling_exceptions(app, request)(scope, receive, send)\n  File \"/opt/venv/lib/python3.10/site-packages/starlette/_exception_handler.py\", line 42, in wrapped_app\n    await app(scope, receive, sender)\n  File \"/opt/venv/lib/python3.10/site-packages/fastapi/routing.py\", line 152, in app\n    response = await f(request)\n  File \"/opt/venv/lib/python3.10/site-packages/fastapi/routing.py\", line 745, in app\n    raw_response = await run_endpoint_function(\n  File \"/opt/venv/lib/python3.10/site-packages/fastapi/routing.py\", line 372, in run_endpoint_function\n    return await dependant.call(**values)\n  File \"/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-8952d79-r1/result/derived/tetriserve/server/api_server.py\", line 77, in generate\n    output = await cserve_runtime.generate(config, rid, latency_threshold=request.latency_threshold)\n  File \"/shared/data/DITSERVE/external-probes/tetri-service-8952d79-r1/external_tetriserve_service.py\", line 440, in observe_generate\n    return await original_generate(config, request_id, **kw)\n  File \"/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-8952d79-r1/result/derived/tetriserve/engine/runtime.py\", line 546, in generate\n    await request_event.wait()\n  File \"/usr/local/lib/python3.10/asyncio/locks.py\", line 214, in wait\n    await fut\nasyncio.exceptions.CancelledError\n",
+    "stdout_tail": "-1]\nINFO 11-04 00:46:54 [runtime.py:173] Router send req ids: [0], sub_req_ids: [-1] to worker-1 at 2.94731068611145, steps: 2, is_last_steps: [False]\nINFO 11-04 00:46:54 [runner.py:182] Runner rank 1 received request [0], sub_req_ids: [-1], height: 1024, width: 1024, parallel_ranks: [1]\nINFO 11-04 00:46:54 [runner.py:563] [Rank 1] LATENT_TIMING req=0 step=10-12 sp=1: first_loop=0.000s barrier=0.000s second_loop=0.000s total=0.000s\nINFO 11-04 00:46:55 [runner.py:666] [Rank 1] GENERATE_TIMING req=0 step=10-12 sp=1 h=1024 w=1024 transfer=real: preprocess=0.001s empty_cache=0.000s inference=0.456s\nINFO 11-04 00:46:55 [runtime.py:182] Router received [-1] from worker-Worker-1 at 3.4485080242156982\nINFO 11-04 00:46:55 [runtime.py:300] RequestTracker: req_id: 0, sub_req_ids: [-1] {-1: True}, steps: 16, latency_threshold: 600.0\nINFO 11-04 00:46:55 [runtime.py:300] req_id: 1, sub_req_ids: [-2] {-2: True}, steps: 8, latency_threshold: 600.0\nINFO 11-04 00:46:55 [runtime.py:300] \nINFO 11-04 00:46:55 [runtime.py:217] schedule_idx: 8, running_requests: [-2]\nINFO 11-04 00:46:55 [dyn_step_scheduler.py:1510] _combo_search_with_algorithm_selection execution time: 0.0000 seconds\nINFO 11-04 00:46:55 [dyn_step_scheduler.py:1516] best_combo_list: [(0, [0], 2, 0.4675990989697831)]\nINFO 11-04 00:46:55 [runtime.py:240] running_requests add req_ids: [0], sub_req_ids: [-1]\nINFO 11-04 00:46:55 [runtime.py:173] Router send req ids: [0], sub_req_ids: [-1] to worker-1 at 3.4498350620269775, steps: 2, is_last_steps: [False]\nINFO 11-04 00:46:55 [runner.py:182] Runner rank 1 received request [0], sub_req_ids: [-1], height: 1024, width: 1024, parallel_ranks: [1]\nINFO 11-04 00:46:55 [runner.py:563] [Rank 1] LATENT_TIMING req=0 step=12-14 sp=1: first_loop=0.000s barrier=0.000s second_loop=0.000s total=0.000s\nINFO 11-04 00:46:55 [runner.py:666] [Rank 1] GENERATE_TIMING req=0 step=12-14 sp=1 h=1024 w=1024 transfer=real: preprocess=0.001s empty_cache=0.000s inference=0.455s\nINFO 11-04 00:46:55 [runtime.py:182] Router received [-1] from worker-Worker-1 at 3.923203706741333\nINFO 11-04 00:46:55 [runtime.py:300] RequestTracker: req_id: 0, sub_req_ids: [-1] {-1: True}, steps: 14, latency_threshold: 600.0\nINFO 11-04 00:46:55 [runtime.py:300] req_id: 1, sub_req_ids: [-2] {-2: True}, steps: 8, latency_threshold: 600.0\nINFO 11-04 00:46:55 [runtime.py:300] \nINFO 11-04 00:46:55 [runtime.py:217] schedule_idx: 9, running_requests: [-2]\nINFO 11-04 00:46:55 [dyn_step_scheduler.py:1510] _combo_search_with_algorithm_selection execution time: 0.0000 seconds\nINFO 11-04 00:46:55 [dyn_step_scheduler.py:1516] best_combo_list: [(0, [0], 2, 0.4675990989697831)]\nINFO 11-04 00:46:55 [runtime.py:240] running_requests add req_ids: [0], sub_req_ids: [-1]\nINFO 11-04 00:46:55 [runtime.py:173] Router send req ids: [0], sub_req_ids: [-1] to worker-1 at 3.924433946609497, steps: 2, is_last_steps: [False]\nINFO 11-04 00:46:55 [runner.py:182] Runner rank 1 received request [0], sub_req_ids: [-1], height: 1024, width: 1024, parallel_ranks: [1]\nINFO 11-04 00:46:55 [runner.py:563] [Rank 1] LATENT_TIMING req=0 step=14-16 sp=1: first_loop=0.000s barrier=0.000s second_loop=0.000s total=0.000s\nINFO 11-04 00:46:56 [runner.py:666] [Rank 1] GENERATE_TIMING req=0 step=14-16 sp=1 h=1024 w=1024 transfer=real: preprocess=0.001s empty_cache=0.000s inference=0.458s\nINFO 11-04 00:46:56 [runtime.py:182] Router received [-1] from worker-Worker-1 at 4.426440238952637\nINFO 11-04 00:46:56 [runtime.py:300] RequestTracker: req_id: 0, sub_req_ids: [-1] {-1: True}, steps: 12, latency_threshold: 600.0\nINFO 11-04 00:46:56 [runtime.py:300] req_id: 1, sub_req_ids: [-2] {-2: True}, steps: 8, latency_threshold: 600.0\nINFO 11-04 00:46:56 [runtime.py:300] \nINFO 11-04 00:46:56 [runtime.py:217] schedule_idx: 10, running_requests: [-2]\nINFO 11-04 00:46:56 [dyn_step_scheduler.py:1510] _combo_search_with_algorithm_selection execution time: 0.0000 seconds\nINFO 11-04 00:46:56 [dyn_step_scheduler.py:1516] best_combo_list: [(0, [0], 2, 0.4675990989697831)]\nINFO 11-04 00:46:56 [runtime.py:240] running_requests add req_ids: [0], sub_req_ids: [-1]\nINFO 11-04 00:46:56 [runtime.py:173] Router send req ids: [0], sub_req_ids: [-1] to worker-1 at 4.427572250366211, steps: 2, is_last_steps: [False]\nINFO 11-04 00:46:56 [runner.py:182] Runner rank 1 received request [0], sub_req_ids: [-1], height: 1024, width: 1024, parallel_ranks: [1]\nINFO 11-04 00:46:56 [runner.py:563] [Rank 1] LATENT_TIMING req=0 step=16-18 sp=1: first_loop=0.000s barrier=0.000s second_loop=0.000s total=0.000s\nINFO 11-04 00:46:56 [runner.py:666] [Rank 1] GENERATE_TIMING req=0 step=16-18 sp=1 h=1024 w=1024 transfer=real: preprocess=0.001s empty_cache=0.000s inference=0.457s\nINFO 11-04 00:46:56 [runtime.py:182] Router received [-1] from worker-Worker-1 at 4.902714014053345\nINFO 11-04 00:46:56 [runtime.py:300] RequestTracker: req_id: 0, sub_req_ids: [-1] {-1: True}, steps: 10, latency_threshold: 600.0\nINFO 11-04 00:46:56 [runtime.py:300] req_id: 1, sub_req_ids: [-2] {-2: True}, steps: 8, latency_threshold: 600.0\nINFO 11-04 00:46:56 [runtime.py:300] \nINFO 11-04 00:46:56 [runtime.py:217] schedule_idx: 11, running_requests: [-2]\nINFO 11-04 00:46:56 [dyn_step_scheduler.py:1510] _combo_search_with_algorithm_selection execution time: 0.0000 seconds\nINFO 11-04 00:46:56 [dyn_step_scheduler.py:1516] best_combo_list: [(0, [0], 2, 0.4675990989697831)]\nINFO 11-04 00:46:56 [runtime.py:240] running_requests add req_ids: [0], sub_req_ids: [-1]\nINFO 11-04 00:46:56 [runtime.py:173] Router send req ids: [0], sub_req_ids: [-1] to worker-1 at 4.903770208358765, steps: 2, is_last_steps: [False]\nINFO 11-04 00:46:56 [runner.py:182] Runner rank 1 received request [0], sub_req_ids: [-1], height: 1024, width: 1024, parallel_ranks: [1]\nINFO 11-04 00:46:56 [runner.py:563] [Rank 1] LATENT_TIMING req=0 step=18-20 sp=1: first_loop=0.000s barrier=0.000s second_loop=0.000s total=0.000s\nINFO 11-04 00:46:57 [runner.py:666] [Rank 1] GENERATE_TIMING req=0 step=18-20 sp=1 h=1024 w=1024 transfer=real: preprocess=0.001s empty_cache=0.000s inference=0.458s\nINFO 11-04 00:46:57 [runtime.py:182] Router received [-1] from worker-Worker-1 at 5.381898880004883\nINFO 11-04 00:46:57 [runtime.py:300] RequestTracker: req_id: 0, sub_req_ids: [-1] {-1: True}, steps: 8, latency_threshold: 600.0\nINFO 11-04 00:46:57 [runtime.py:300] req_id: 1, sub_req_ids: [-2] {-2: True}, steps: 8, latency_threshold: 600.0\nINFO 11-04 00:46:57 [runtime.py:300] \nINFO 11-04 00:46:57 [runtime.py:217] schedule_idx: 12, running_requests: [-2]\nINFO 11-04 00:46:57 [dyn_step_scheduler.py:1510] _combo_search_with_algorithm_selection execution time: 0.0000 seconds\nINFO 11-04 00:46:57 [dyn_step_scheduler.py:1516] best_combo_list: [(0, [0], 2, 0.4675990989697831)]\nINFO 11-04 00:46:57 [runtime.py:240] running_requests add req_ids: [0], sub_req_ids: [-1]\nINFO 11-04 00:46:57 [runtime.py:173] Router send req ids: [0], sub_req_ids: [-1] to worker-1 at 5.382934808731079, steps: 2, is_last_steps: [False]\nINFO 11-04 00:46:57 [runner.py:182] Runner rank 1 received request [0], sub_req_ids: [-1], height: 1024, width: 1024, parallel_ranks: [1]\nINFO 11-04 00:46:57 [runner.py:563] [Rank 1] LATENT_TIMING req=0 step=20-22 sp=1: first_loop=0.000s barrier=0.000s second_loop=0.000s total=0.000s\nINFO 11-04 00:46:57 [runner.py:666] [Rank 1] GENERATE_TIMING req=0 step=20-22 sp=1 h=1024 w=1024 transfer=real: preprocess=0.001s empty_cache=0.000s inference=0.458s\nINFO 11-04 00:46:57 [runtime.py:182] Router received [-1] from worker-Worker-1 at 5.859020948410034\nINFO 11-04 00:46:57 [runtime.py:300] RequestTracker: req_id: 0, sub_req_ids: [-1] {-1: True}, steps: 6, latency_threshold: 600.0\nINFO 11-04 00:46:57 [runtime.py:300] req_id: 1, sub_req_ids: [-2] {-2: True}, steps: 8, latency_threshold: 600.0\nINFO 11-04 00:46:57 [runtime.py:300] \nINFO 11-04 00:46:57 [runtime.py:217] schedule_idx: 13, running_requests: [-2]\nINFO 11-04 00:46:57 [dyn_step_scheduler.py:1510] _combo_search_with_algorithm_selection execution time: 0.0000 seconds\nINFO 11-04 00:46:57 [dyn_step_scheduler.py:1516] best_combo_list: [(0, [0], 2, 0.4675990989697831)]\nINFO 11-04 00:46:57 [runtime.py:240] running_requests add req_ids: [0], sub_req_ids: [-1]\nINFO 11-04 00:46:57 [runtime.py:173] Router send req ids: [0], sub_req_ids: [-1] to worker-1 at 5.85993218421936, steps: 2, is_last_steps: [False]\nINFO 11-04 00:46:57 [runner.py:182] Runner rank 1 received request [0], sub_req_ids: [-1], height: 1024, width: 1024, parallel_ranks: [1]\nINFO 11-04 00:46:57 [runner.py:563] [Rank 1] LATENT_TIMING req=0 step=22-24 sp=1: first_loop=0.000s barrier=0.000s second_loop=0.000s total=0.000s\nINFO 11-04 00:46:58 [runner.py:666] [Rank 1] GENERATE_TIMING req=0 step=22-24 sp=1 h=1024 w=1024 transfer=real: preprocess=0.001s empty_cache=0.000s inference=0.460s\nINFO 11-04 00:46:58 [runtime.py:182] Router received [-1] from worker-Worker-1 at 6.340055465698242\nINFO 11-04 00:46:58 [runtime.py:300] RequestTracker: req_id: 0, sub_req_ids: [-1] {-1: True}, steps: 4, latency_threshold: 600.0\nINFO 11-04 00:46:58 [runtime.py:300] req_id: 1, sub_req_ids: [-2] {-2: True}, steps: 8, latency_threshold: 600.0\nINFO 11-04 00:46:58 [runtime.py:300] \nINFO 11-04 00:46:58 [runtime.py:217] schedule_idx: 14, running_requests: [-2]\nINFO 11-04 00:46:58 [dyn_step_scheduler.py:1510] _combo_search_with_algorithm_selection execution time: 0.0000 seconds\nINFO 11-04 00:46:58 [dyn_step_scheduler.py:1516] best_combo_list: [(0, [0], 2, 0.4675990989697831)]\nINFO 11-04 00:46:58 [runtime.py:240] running_requests add req_ids: [0], sub_req_ids: [-1]\nINFO 11-04 00:46:58 [runtime.py:173] Router send req ids: [0], sub_req_ids: [-1] to worker-1 at 6.3410303592681885, steps: 2, is_last_steps: [False]\nINFO 11-04 00:46:58 [runner.py:182] Runner rank 1 received request [0], sub_req_ids: [-1], height: 1024, width: 1024, parallel_ranks: [1]\nINFO 11-04 00:46:58 [runner.py:563] [Rank 1] LATENT_TIMING req=0 step=24-26 sp=1: first_loop=0.000s barrier=0.000s second_loop=0.000s total=0.000s\nINFO 11-04 00:46:58 [runner.py:666] [Rank 1] GENERATE_TIMING req=0 step=24-26 sp=1 h=1024 w=1024 transfer=real: preprocess=0.001s empty_cache=0.000s inference=0.459s\nINFO 11-04 00:46:58 [runtime.py:182] Router received [-1] from worker-Worker-1 at 6.818469285964966\nINFO 11-04 00:46:58 [runtime.py:300] RequestTracker: req_id: 0, sub_req_ids: [-1] {-1: True}, steps: 2, latency_threshold: 600.0\nINFO 11-04 00:46:58 [runtime.py:300] req_id: 1, sub_req_ids: [-2] {-2: True}, steps: 8, latency_threshold: 600.0\nINFO 11-04 00:46:58 [runtime.py:300] \nINFO 11-04 00:46:58 [runtime.py:217] schedule_idx: 15, running_requests: [-2]\nINFO 11-04 00:46:58 [dyn_step_scheduler.py:1510] _combo_search_with_algorithm_selection execution time: 0.0000 seconds\nINFO 11-04 00:46:58 [dyn_step_scheduler.py:1516] best_combo_list: [(0, [0], 2, 0.4675990989697831)]\nINFO 11-04 00:46:58 [runtime.py:240] running_requests add req_ids: [0], sub_req_ids: [-1]\nINFO 11-04 00:46:58 [runtime.py:173] Router send req ids: [0], sub_req_ids: [-1] to worker-1 at 6.819341659545898, steps: 2, is_last_steps: [True]\nINFO 11-04 00:46:58 [runner.py:182] Runner rank 1 received request [0], sub_req_ids: [-1], height: 1024, width: 1024, parallel_ranks: [1]\nINFO 11-04 00:46:58 [latent_manager.py:235] [Rank 1] Signaling sender thread to stop.\nINFO 11-04 00:46:58 [latent_manager.py:90] [Rank 1 Sender Thread] Received stop signal (None).\nINFO 11-04 00:46:58 [latent_manager.py:152] [Rank 1 Sender Thread] Exiting loop.\nINFO 11-04 00:46:58 [runner.py:285] [Rank 1] FluidServeRunner serve loop finished. Signaled sender thread stop.\nINFO:     127.0.0.1:37132 - \"POST /v1/generate HTTP/1.1\" 500 Internal Server Error\nINFO:     127.0.0.1:37144 - \"POST /v1/generate HTTP/1.1\" 500 Internal Server Error\n{\"status\": \"failed\", \"summary\": \"/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-8952d79-r1/result/summary.json\", \"sha256\": \"9023d880a2aff669d0af9fadbd9ce57102129cb212d2dfa7958e1b842c950742\", \"qualification_eligible\": false}\n",
+    "json_output": false,
+    "child_summary_path": "/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-8952d79-r1/result/summary.json",
+    "child_summary_sha256": "9023d880a2aff669d0af9fadbd9ce57102129cb212d2dfa7958e1b842c950742",
+    "child_summary": {
+      "allows": [],
+      "calibration_cells": [
+        {
+          "bs": 1,
+          "height": 512,
+          "sp": 1,
+          "steps": 28,
+          "width": 512
+        },
+        {
+          "bs": 1,
+          "height": 512,
+          "sp": 2,
+          "steps": 28,
+          "width": 512
+        },
+        {
+          "bs": 2,
+          "height": 512,
+          "sp": 1,
+          "steps": 28,
+          "width": 512
+        },
+        {
+          "bs": 2,
+          "height": 512,
+          "sp": 2,
+          "steps": 28,
+          "width": 512
+        },
+        {
+          "bs": 1,
+          "height": 1024,
+          "sp": 1,
+          "steps": 28,
+          "width": 1024
+        },
+        {
+          "bs": 1,
+          "height": 1024,
+          "sp": 2,
+          "steps": 28,
+          "width": 1024
+        },
+        {
+          "bs": 2,
+          "height": 1024,
+          "sp": 1,
+          "steps": 28,
+          "width": 1024
+        },
+        {
+          "bs": 2,
+          "height": 1024,
+          "sp": 2,
+          "steps": 28,
+          "width": 1024
+        }
+      ],
+      "cross_rank_migration_required": false,
+      "derived_manifest_sha256": "5ab5b86ee32a96039a50bcaed54bf10ce1cdc5415cac473bc4504375ce8485fb",
+      "error": "RuntimeError('original worker failed: [(265, 1), (266, 1)]')",
+      "full_formal_baseline": false,
+      "http_zmq_executed": false,
+      "limitations": [
+        "Two independent HTTP requests, one image per request; native cross-request batching is not implemented upstream",
+        "BS2 is exercised only by calibration, not the HTTP workload",
+        "Native allocation is unrestricted within SP1/SP2; cross-rank migration is observed, not forced",
+        "Raw numerical tolerance is a diagnostic criterion, not a paper quality qualification",
+        "Capture adds CPU transfer synchronization; these service timings are instrumented"
+      ],
+      "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+      "model_weights_verified": false,
+      "native_service_sources": {
+        "tetriserve/distributed/distributed.py": "1be13b5c707fec3af4d7396c9ddd2afd7482a04582291962b9cb5b84a68ac20e",
+        "tetriserve/distributed/globals.py": "2e8d29eab6c8324ec7330cd926c2f3d51c33f159a96831698cb0e4d2e628adaa",
+        "tetriserve/engine/proc_launcher.py": "f5cef76c392abf9f718ca9ea06beeefe2ae081bf43c3525717025b05ba09dbb7",
+        "tetriserve/engine/runtime.py": "e28718f2c849ed5632e71b5be4e587d545030afc73180887575614be77fa3005",
+        "tetriserve/light_ray/latent_future.py": "a737d9b0c22b004a70934ebf2b5c42ce12e8ee2ae75cd39fd815ba4c18157e2c",
+        "tetriserve/light_ray/latent_manager.py": "aaee87afc5da210684093632d06967a99a776d3f91ac2e44ff0ef9bcf0d2be98",
+        "tetriserve/zmq_utils/comm.py": "85cf6c6b8282d50df2387ec6e1da458ad5f88b1a368c87014523d0fd7401a176"
+      },
+      "numerical_check_passed": false,
+      "numerics_adapter_sha256": "b2b00ed50e91d80fd0f0011be13cc868a1cc9f609a0c600130ef0ccf5485c07b",
+      "numerics_plan": "/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-8952d79-r1/result/numerics/numerics-plan.json",
+      "numerics_plan_sha256": "ccd612d42ef58386f769d6b823a7d7897a5e6a4f9147d109eec9bfc0803a0226",
+      "performance_measurements": false,
+      "protocol_sha256": "86aae608c7f86d194e77a5e2e9645b192b921d8137174cbcdb2825ed7d94b392",
+      "qualification_eligible": false,
+      "raw_artifacts_protected": true,
+      "requests": [
+        {
+          "request": {
+            "guidance_scale": 4.5,
+            "height": 512,
+            "max_sequence_length": 256,
+            "negative_prompt": "blurry, low quality",
+            "prompt": "A red fox standing beside a mountain lake.",
+            "seed": 101,
+            "steps": 28,
+            "width": 512
+          },
+          "request_id": 100,
+          "shape_id": "sd35-512"
+        },
+        {
+          "request": {
+            "guidance_scale": 4.5,
+            "height": 1024,
+            "max_sequence_length": 256,
+            "negative_prompt": "blurry, low quality",
+            "prompt": "A white rabbit in a field of blue flowers.",
+            "seed": 102,
+            "steps": 28,
+            "width": 1024
+          },
+          "request_id": 101,
+          "shape_id": "sd35-1024"
+        }
+      ],
+      "schema": "ditserve.tetriserve-native-service-check.v1",
+      "scope": "Original TetriServe HTTP/runtime/worker service with shared SD3.5 model; two-request diagnostic",
+      "service_adapter_sha256": "a6694e570c22cc485c7b61513018594e2cf492984ef89e1860d898aed29ee773",
+      "service_batching_covered": false,
+      "serving_executed": false,
+      "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a",
+      "source_manifest_sha256": "2d0d9f9efaf4b3749063458d56c74b0ef79ef72de22096b39889e798e792d027",
+      "source_verification": {
+        "archive_sha256": "a97749491c2bd6fddfe867e7a76a164bb015f3e7b439de289d99c2ca6c11b771",
+        "commit": "414ec2956c09466ccd7842fda9851511462bd42a",
+        "verified_files": 312
+      },
+      "status": "failed",
+      "traceback": "Traceback (most recent call last):\n  File \"/shared/data/DITSERVE/external-probes/tetri-service-8952d79-r1/external_tetriserve_service.py\", line 716, in main\n    result.update(asyncio.run(guarded_execution(args, requests, derived, config)))\n  File \"/usr/local/lib/python3.10/asyncio/runners.py\", line 44, in run\n    return loop.run_until_complete(main)\n  File \"/usr/local/lib/python3.10/asyncio/base_events.py\", line 649, in run_until_complete\n    return future.result()\n  File \"/shared/data/DITSERVE/external-probes/tetri-service-8952d79-r1/external_tetriserve_service.py\", line 538, in guarded_execution\n    await guard\n  File \"/shared/data/DITSERVE/external-probes/tetri-service-8952d79-r1/external_tetriserve_service.py\", line 532, in monitor\n    raise RuntimeError('original worker failed: ' + repr(failed))\nRuntimeError: original worker failed: [(265, 1), (266, 1)]\n"
+    }
+  },
+  "qualification_eligible": false,
+  "allows": [],
+  "scope": "Native implementation diagnostic; not full-system serving or quality qualification."
+}

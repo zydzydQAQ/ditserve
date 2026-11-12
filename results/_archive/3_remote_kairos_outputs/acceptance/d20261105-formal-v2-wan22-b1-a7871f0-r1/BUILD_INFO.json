@@ -1,0 +1,17 @@
+{
+ "commit": "a7871f0752dc20740df36c84859d50bcc8829da5",
+ "subject": "Fix baseline scheduler policies, profile fitting, encoder shm races, and quality gates",
+ "built_utc": "2026-11-05T08:00:57+00:00",
+ "builder_image": "cluster-cmake-install",
+ "runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "tested_runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "core_sha256": "d55901b3e5ae1cef7ad7e49fcbfdbce0f401763a781b5bee420a7cddbd29d115",
+ "runtime_smoke": "passed_cluster",
+ "local_checks": [
+  "cmake",
+  "ctest",
+  "installed_doctor"
+ ],
+ "files": 347,
+ "bytes": 6393398
+}

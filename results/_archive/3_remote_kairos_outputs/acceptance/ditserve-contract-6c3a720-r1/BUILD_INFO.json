@@ -1,0 +1,10 @@
+{
+ "commit": "6c3a7204352c3a9c17bb920d4f32f7b0205c6149",
+ "subject": "Bind native profiles to allocated GPUs",
+ "built_utc": "2026-11-01T12:51:38+00:00",
+ "builder_image": "local-cmake-install",
+ "tested_runtime_image": "192.168.1.114:30500/jjjkairos/ditserve:xdit-dev-016e1ca-slim",
+ "core_sha256": "50feb90f47ae041c1535106de724bc4f93dee9da31107600cac9f4df48a6b7ac",
+ "files": 246,
+ "bytes": 3849659
+}

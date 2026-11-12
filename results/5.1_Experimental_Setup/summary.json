@@ -1,0 +1,156 @@
+{
+  "schema": "ditserve.paper-results.subsection.v1",
+  "section": "5.1",
+  "title": "Experimental Setup",
+  "paper_source": "ditserve-writing/body/05-evaluation.tex",
+  "tables": [
+    "Table 1 (tab:bg_models)"
+  ],
+  "testbed": {
+    "gpu_model": "NVIDIA A100-PCIE-40GB (40 GiB HBM2, 39.50 GiB usable, 108 SMs/GPU)",
+    "topology": "8x A100-PCIE-40GB per node (dual-socket PCIe 4.0 Host Bridge PHB, no NVLink/NVSwitch; up to 2x8=16 GPUs in §5.5)",
+    "cluster": "jjjkairos Kairos GPU Cluster",
+    "container_image": "192.168.1.114:30500/jjjkairos/ditserve:external-serving-vllm-cu126-sm80-20261104-r3",
+    "container_digest": "sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+    "software_stack": {
+      "cuda": "12.6",
+      "driver": "570.133.20",
+      "pytorch": "2.10.0+cu126",
+      "diffusers": "0.36.0",
+      "transformers": "4.57.6",
+      "flash_attention": "FlashAttention-2",
+      "xdit_commit": "16c34e7f070de65d9d2c67a6d74e0007dd8b426a"
+    }
+  },
+  "code_commits": {
+    "latest_head_commit": "8c50c7a",
+    "scalability_commit": "ae4ba3d",
+    "baseline_reuse_commits": [
+      "1b54f37",
+      "5d9ee3f",
+      "7a77c45",
+      "43f1ca3"
+    ]
+  },
+  "calibration_bundle": {
+    "bundle_id": "d20261106-formal-v2-wan22-b1-21a1ca3-r1",
+    "protocol_sha256": "1531fe434654134d508d59fc88073a68585ef43a400a9113c0b300f0a08734de",
+    "bundle_sha256": "3d838143675930045036f31ef7b9441751cb0cd2c00c0cdd1bfce3105f23e569",
+    "gpu_count": 8,
+    "gpu_uuids": [
+      "GPU-afb5ebb2-a584-abce-e912-6cd50477f4bb",
+      "GPU-c2195fc4-0579-e149-dcd5-8f912dfb44c2",
+      "GPU-a331a424-15be-fa45-6b08-d951d2dce277",
+      "GPU-6c6892f8-1aa0-4c8f-d1ec-bc514adcbd42",
+      "GPU-9bd9082d-b7d4-f4de-cd0a-5788492a5247",
+      "GPU-bb1751f0-c0e1-a4e8-ae83-008e4246cced",
+      "GPU-979da027-ad90-4f70-6203-0e86fce22d4c",
+      "GPU-e6a7b9a6-b668-5e8d-5989-b9934c468d94"
+    ],
+    "classes": [
+      {
+        "class_id": "wan22-256p",
+        "kind": "video",
+        "height": 256,
+        "width": 448,
+        "frames": 81,
+        "steps": 50,
+        "guidance_scale": 5.0,
+        "prepare_ms": 0.0,
+        "encode_ms": 5078.93,
+        "step_or_service_ms": 417.4,
+        "finish_ms": 1730.35,
+        "measured_forms": "cfg2,cfg2sp2,cfg2sp3,cfg2sp4,sp1,sp2,sp3,sp4,sp6,sp8"
+      },
+      {
+        "class_id": "sd35-512",
+        "kind": "image",
+        "height": 512,
+        "width": 512,
+        "frames": 1,
+        "steps": 28,
+        "guidance_scale": 4.5,
+        "prepare_ms": 45.0,
+        "encode_ms": 0.0,
+        "step_or_service_ms": 1778.08,
+        "finish_ms": 135.01,
+        "measured_forms": "sp1_cb"
+      },
+      {
+        "class_id": "wan22-480p",
+        "kind": "video",
+        "height": 512,
+        "width": 896,
+        "frames": 81,
+        "steps": 50,
+        "guidance_scale": 5.0,
+        "prepare_ms": 0.0,
+        "encode_ms": 15.01,
+        "step_or_service_ms": 1881.1,
+        "finish_ms": 6517.11,
+        "measured_forms": "cfg2,cfg2sp2,cfg2sp3,cfg2sp4,sp1,sp2,sp3,sp4,sp6,sp8"
+      },
+      {
+        "class_id": "sd35-1024",
+        "kind": "image",
+        "height": 1024,
+        "width": 1024,
+        "frames": 1,
+        "steps": 28,
+        "guidance_scale": 4.5,
+        "prepare_ms": 45.0,
+        "encode_ms": 0.0,
+        "step_or_service_ms": 6525.52,
+        "finish_ms": 134.99,
+        "measured_forms": "sp1_cb"
+      },
+      {
+        "class_id": "wan22-720p",
+        "kind": "video",
+        "height": 704,
+        "width": 1280,
+        "frames": 81,
+        "steps": 50,
+        "guidance_scale": 5.0,
+        "prepare_ms": 0.0,
+        "encode_ms": 15.3,
+        "step_or_service_ms": 4611.02,
+        "finish_ms": 11992.36,
+        "measured_forms": "cfg2,cfg2sp2,cfg2sp3,cfg2sp4,sp1,sp2,sp3,sp4,sp6,sp8"
+      },
+      {
+        "class_id": "sd35-1440",
+        "kind": "image",
+        "height": 1440,
+        "width": 1440,
+        "frames": 1,
+        "steps": 28,
+        "guidance_scale": 4.5,
+        "prepare_ms": 45.0,
+        "encode_ms": 0.0,
+        "step_or_service_ms": 15058.31,
+        "finish_ms": 135.01,
+        "measured_forms": "sp1_cb"
+      }
+    ]
+  },
+  "baseline_tracks": {
+    "Track_1_Main": [
+      "xDiT",
+      "TetriServe",
+      "EDF-BestFit",
+      "SBP-ESP",
+      "DitServe"
+    ],
+    "Track_2_Scale_and_Ablation": [
+      "edf-cfg2",
+      "block-cfg2",
+      "abl-no-block",
+      "abl-first-fit",
+      "abl-no-prune",
+      "abl-no-cb",
+      "DitServe"
+    ]
+  },
+  "total_matrix_workloads": 42
+}

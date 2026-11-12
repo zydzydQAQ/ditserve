@@ -1,0 +1,10 @@
+{
+ "commit": "bac8ea88d6ac18c2071b1ac7179cab1a628456ad",
+ "subject": "Add CFG parallelism as a layout: each half of an aligned group runs one branch",
+ "built_utc": "2026-10-19T12:43:42+00:00",
+ "builder_image": "sha256:524c56a3d528dd3ce1e6a54d432927bde23b27de95015c796c919ac8bdecf5ad",
+ "tested_runtime_image": "127.0.0.1:30500/jjjkairos/ditserve:8a100-224099f",
+ "core_sha256": "87cfb16cbc6f732c8f538555bb042c23a8e17104c5b418fb5fc14059a6ad7abd",
+ "files": 113,
+ "bytes": 3031592
+}

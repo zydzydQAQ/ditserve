@@ -1,0 +1,16 @@
+{
+ "commit": "4789abd3eb5c5b622393a58a958a9ef66ec05b12",
+ "subject": "Allow completed native quality runs to await evaluation",
+ "built_utc": "2026-11-02T20:21:53+00:00",
+ "builder_image": "local-cmake-install",
+ "runtime_image": "192.168.1.114:30500/jjjkairos/ditserve:xdit-dev-016e1ca-slim",
+ "core_sha256": "a73ba5af9db4bcfc3fb0a2a746442b43ce2dbc287b3de0d9254e16c64bb05f40",
+ "runtime_smoke": "pending_cluster",
+ "local_checks": [
+  "cmake",
+  "ctest",
+  "installed_doctor"
+ ],
+ "files": 294,
+ "bytes": 4747317
+}

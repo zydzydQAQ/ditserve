@@ -1,0 +1,16 @@
+{
+ "commit": "697036bcc06f00ee57e8a1a7170b5b6cd6f42d67",
+ "subject": "Make Kairos contract fixtures location independent",
+ "built_utc": "2026-11-02T13:11:39+00:00",
+ "builder_image": "local-cmake-install",
+ "runtime_image": "192.168.1.114:30500/jjjkairos/ditserve:xdit-dev-016e1ca-slim",
+ "core_sha256": "b5ba2db53409347b1b73fa1c11e6f6f242818018133142073e4f70d3456a4ffc",
+ "runtime_smoke": "pending_cluster",
+ "local_checks": [
+  "cmake",
+  "ctest",
+  "installed_doctor"
+ ],
+ "files": 272,
+ "bytes": 4280677
+}

@@ -1,0 +1,110 @@
+{
+  "schema": "ditserve.runtime-smoke.v1",
+  "status": "passed",
+  "run_id": "d20261108-cb-smoke-1b54f37-r6",
+  "commit": "1b54f3773a7f4fffe20dfcaf3b23171b613925b0",
+  "core_sha256": "a466cb9179f003c2252eaf0295e7d50780dbb3654c66b92690ac8c31f2d9429e",
+  "gpu": "NVIDIA A100-PCIE-40GB",
+  "devices": 1,
+  "sum": 524800.0,
+  "matmul_value": 32,
+  "sd35_real_gpu_cb": {
+    "advance_batch_ms": 1202.831,
+    "packing": {
+      "batch_size": 2,
+      "heterogeneous_resolutions": true,
+      "resolutions": [
+        [
+          512,
+          512
+        ],
+        [
+          1024,
+          1024
+        ]
+      ],
+      "image_token_counts": [
+        1024,
+        4096
+      ],
+      "cu_seqlens": [
+        0,
+        1024,
+        5120
+      ],
+      "max_seqlen": 4096,
+      "packed_image_tokens": 5120,
+      "padded_image_tokens": 8192,
+      "padding_saved_tokens": 3072,
+      "padding_waste_ratio": 0.375,
+      "packing_efficiency": 0.625
+    },
+    "decode_512_ms": 114.345,
+    "decode_1024_ms": 178.074
+  },
+  "formal_v2_ablation_sim": {
+    "ditserve": {
+      "all_att": 0.96,
+      "img_att": 1.0,
+      "vid_att": 0.92,
+      "img_p95_ms": 15341.8,
+      "batches": 1400,
+      "batched_images": 1400,
+      "cb_requests": 50
+    },
+    "abl-no-cb": {
+      "all_att": 0.96,
+      "img_att": 1.0,
+      "vid_att": 0.92,
+      "img_p95_ms": 15187.5,
+      "batches": 0,
+      "batched_images": 0,
+      "cb_requests": 0
+    },
+    "edf-cfg2": {
+      "all_att": 0.78,
+      "img_att": 0.64,
+      "vid_att": 0.92,
+      "img_p95_ms": 32875.6,
+      "batches": 0,
+      "batched_images": 0,
+      "cb_requests": 0
+    },
+    "block-cfg2": {
+      "all_att": 0.88,
+      "img_att": 0.84,
+      "vid_att": 0.92,
+      "img_p95_ms": 20143.1,
+      "batches": 0,
+      "batched_images": 0,
+      "cb_requests": 0
+    },
+    "abl-no-block": {
+      "all_att": 0.87,
+      "img_att": 0.8,
+      "vid_att": 0.94,
+      "img_p95_ms": 23378.9,
+      "batches": 1381,
+      "batched_images": 1400,
+      "cb_requests": 50
+    },
+    "abl-first-fit": {
+      "all_att": 0.83,
+      "img_att": 0.72,
+      "vid_att": 0.94,
+      "img_p95_ms": 80751.7,
+      "batches": 1392,
+      "batched_images": 1400,
+      "cb_requests": 50
+    },
+    "abl-no-prune": {
+      "all_att": 0.86,
+      "img_att": 0.98,
+      "vid_att": 0.74,
+      "img_p95_ms": 15475.7,
+      "batches": 1390,
+      "batched_images": 1400,
+      "cb_requests": 50
+    }
+  }
+}

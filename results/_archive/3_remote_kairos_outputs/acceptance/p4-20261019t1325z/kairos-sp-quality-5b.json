@@ -1,0 +1,881 @@
+{
+  "schema": "ditserve.study.v1",
+  "experiment": "kairos-sp-quality-5b",
+  "note": "Ulysses SP2/SP4 output quality on wan2.2-ti2v-5b at 50 steps for ['512x896x81', '704x1280x121']: whole-step SP vs an unsharded SP1 worker, latent max_abs/rmse and per-frame LPIPS (alex) on the decoded video. Flash, cache off. Reference-relative only, not an absolute quality claim.",
+  "workers": {
+    "sp1-512x896x81": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-ef078ff8-6d9e-6509-ce65-53a9c4c2df85",
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "step"
+        }
+      }
+    },
+    "sp2-512x896x81-0": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-ef078ff8-6d9e-6509-ce65-53a9c4c2df85",
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "step"
+        }
+      }
+    },
+    "sp2-512x896x81-1": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-abe707e2-3284-aa3e-c3c9-ec0f14ee61c3",
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "step"
+        }
+      }
+    },
+    "sp4-512x896x81-0": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-ef078ff8-6d9e-6509-ce65-53a9c4c2df85",
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "step"
+        }
+      }
+    },
+    "sp4-512x896x81-1": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-abe707e2-3284-aa3e-c3c9-ec0f14ee61c3",
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "step"
+        }
+      }
+    },
+    "sp4-512x896x81-2": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-304d76bc-0629-fdc9-7cfe-929ff331b7f0",
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "step"
+        }
+      }
+    },
+    "sp4-512x896x81-3": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-83566cdb-86ec-7bb4-c2c2-736c074f2fca",
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "step"
+        }
+      }
+    },
+    "sp1-704x1280x121": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-ef078ff8-6d9e-6509-ce65-53a9c4c2df85",
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "step"
+        }
+      }
+    },
+    "sp2-704x1280x121-0": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-ef078ff8-6d9e-6509-ce65-53a9c4c2df85",
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "step"
+        }
+      }
+    },
+    "sp2-704x1280x121-1": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-abe707e2-3284-aa3e-c3c9-ec0f14ee61c3",
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "step"
+        }
+      }
+    },
+    "sp4-704x1280x121-0": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-ef078ff8-6d9e-6509-ce65-53a9c4c2df85",
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "step"
+        }
+      }
+    },
+    "sp4-704x1280x121-1": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-abe707e2-3284-aa3e-c3c9-ec0f14ee61c3",
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "step"
+        }
+      }
+    },
+    "sp4-704x1280x121-2": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-304d76bc-0629-fdc9-7cfe-929ff331b7f0",
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "step"
+        }
+      }
+    },
+    "sp4-704x1280x121-3": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-83566cdb-86ec-7bb4-c2c2-736c074f2fca",
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "step"
+        }
+      }
+    }
+  },
+  "budget": {
+    "limit_gpu_seconds": 14400,
+    "watchdog_seconds": 3600,
+    "repair_reserve_gpu_seconds": 0,
+    "carry": "none"
+  },
+  "phases": [
+    {
+      "id": "sp1-512x896x81",
+      "kind": "state",
+      "workers": [
+        "sp1-512x896x81"
+      ],
+      "artifact_dependencies": [],
+      "requires": [],
+      "actions": [
+        {
+          "op": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 50,
+            "height": 512,
+            "width": 896,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "sp1-512x896x81"
+          },
+          "state_id": "ref"
+        },
+        {
+          "op": "advance",
+          "state_id": "ref",
+          "steps": 50
+        },
+        {
+          "op": "finish",
+          "state_id": "ref",
+          "output_path": "ref.npy",
+          "save_latents": true
+        },
+        {
+          "op": "release",
+          "state_id": "ref"
+        }
+      ]
+    },
+    {
+      "id": "sp2-512x896x81",
+      "kind": "sp",
+      "requires": [
+        "sp1-512x896x81"
+      ],
+      "workers": [
+        "sp2-512x896x81-0",
+        "sp2-512x896x81-1"
+      ],
+      "artifact_dependencies": [],
+      "actions": [
+        {
+          "op": "distributed",
+          "action": "init",
+          "init_method": "tcp://127.0.0.1:29701",
+          "ranks": [
+            0,
+            1
+          ]
+        },
+        {
+          "op": "distributed",
+          "action": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 50,
+            "height": 512,
+            "width": 896,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "sp2-512x896x81"
+          },
+          "state_id": "sp"
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "sp",
+          "steps": 50
+        },
+        {
+          "op": "finish",
+          "state_id": "sp",
+          "output_path": "sp.npy",
+          "save_latents": true
+        },
+        {
+          "op": "evaluate",
+          "reference": "/shared/output/DITSERVE/.cache/results-work/kairos-sp-quality-5b/p4-20261019t1325z/attempts/sp1-512x896x81/attempt-1/cell-0/artifacts/0/ref.latent.npy",
+          "output": "sp.latent.npy",
+          "atol": 0,
+          "rtol": 0,
+          "lpips": false
+        },
+        {
+          "op": "evaluate",
+          "reference": "/shared/output/DITSERVE/.cache/results-work/kairos-sp-quality-5b/p4-20261019t1325z/attempts/sp1-512x896x81/attempt-1/cell-0/artifacts/0/ref.npy",
+          "output": "sp.npy",
+          "atol": 0,
+          "rtol": 0,
+          "lpips": true
+        },
+        {
+          "op": "release",
+          "state_id": "sp"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "/cells/0/operations/4/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/4/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/4/ranks/1/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/4/ranks/1/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/1/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/1/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        }
+      ]
+    },
+    {
+      "id": "sp4-512x896x81",
+      "kind": "sp",
+      "requires": [
+        "sp2-512x896x81"
+      ],
+      "workers": [
+        "sp4-512x896x81-0",
+        "sp4-512x896x81-1",
+        "sp4-512x896x81-2",
+        "sp4-512x896x81-3"
+      ],
+      "artifact_dependencies": [],
+      "actions": [
+        {
+          "op": "distributed",
+          "action": "init",
+          "init_method": "tcp://127.0.0.1:29702",
+          "ranks": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "op": "distributed",
+          "action": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 50,
+            "height": 512,
+            "width": 896,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "sp4-512x896x81"
+          },
+          "state_id": "sp"
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "sp",
+          "steps": 50
+        },
+        {
+          "op": "finish",
+          "state_id": "sp",
+          "output_path": "sp.npy",
+          "save_latents": true
+        },
+        {
+          "op": "evaluate",
+          "reference": "/shared/output/DITSERVE/.cache/results-work/kairos-sp-quality-5b/p4-20261019t1325z/attempts/sp1-512x896x81/attempt-1/cell-0/artifacts/0/ref.latent.npy",
+          "output": "sp.latent.npy",
+          "atol": 0,
+          "rtol": 0,
+          "lpips": false
+        },
+        {
+          "op": "evaluate",
+          "reference": "/shared/output/DITSERVE/.cache/results-work/kairos-sp-quality-5b/p4-20261019t1325z/attempts/sp1-512x896x81/attempt-1/cell-0/artifacts/0/ref.npy",
+          "output": "sp.npy",
+          "atol": 0,
+          "rtol": 0,
+          "lpips": true
+        },
+        {
+          "op": "release",
+          "state_id": "sp"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "/cells/0/operations/4/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/4/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/4/ranks/1/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/4/ranks/1/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/4/ranks/2/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/4/ranks/2/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/4/ranks/3/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/4/ranks/3/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/1/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/1/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/2/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/2/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/3/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/3/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        }
+      ]
+    },
+    {
+      "id": "sp1-704x1280x121",
+      "kind": "state",
+      "workers": [
+        "sp1-704x1280x121"
+      ],
+      "artifact_dependencies": [],
+      "requires": [
+        "sp4-512x896x81"
+      ],
+      "actions": [
+        {
+          "op": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 50,
+            "height": 704,
+            "width": 1280,
+            "frames": 121,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "sp1-704x1280x121"
+          },
+          "state_id": "ref"
+        },
+        {
+          "op": "advance",
+          "state_id": "ref",
+          "steps": 50
+        },
+        {
+          "op": "finish",
+          "state_id": "ref",
+          "output_path": "ref.npy",
+          "save_latents": true
+        },
+        {
+          "op": "release",
+          "state_id": "ref"
+        }
+      ]
+    },
+    {
+      "id": "sp2-704x1280x121",
+      "kind": "sp",
+      "requires": [
+        "sp1-704x1280x121"
+      ],
+      "workers": [
+        "sp2-704x1280x121-0",
+        "sp2-704x1280x121-1"
+      ],
+      "artifact_dependencies": [],
+      "actions": [
+        {
+          "op": "distributed",
+          "action": "init",
+          "init_method": "tcp://127.0.0.1:29703",
+          "ranks": [
+            0,
+            1
+          ]
+        },
+        {
+          "op": "distributed",
+          "action": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 50,
+            "height": 704,
+            "width": 1280,
+            "frames": 121,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "sp2-704x1280x121"
+          },
+          "state_id": "sp"
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "sp",
+          "steps": 50
+        },
+        {
+          "op": "finish",
+          "state_id": "sp",
+          "output_path": "sp.npy",
+          "save_latents": true
+        },
+        {
+          "op": "evaluate",
+          "reference": "/shared/output/DITSERVE/.cache/results-work/kairos-sp-quality-5b/p4-20261019t1325z/attempts/sp1-704x1280x121/attempt-1/cell-0/artifacts/0/ref.latent.npy",
+          "output": "sp.latent.npy",
+          "atol": 0,
+          "rtol": 0,
+          "lpips": false
+        },
+        {
+          "op": "evaluate",
+          "reference": "/shared/output/DITSERVE/.cache/results-work/kairos-sp-quality-5b/p4-20261019t1325z/attempts/sp1-704x1280x121/attempt-1/cell-0/artifacts/0/ref.npy",
+          "output": "sp.npy",
+          "atol": 0,
+          "rtol": 0,
+          "lpips": true
+        },
+        {
+          "op": "release",
+          "state_id": "sp"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "/cells/0/operations/4/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/4/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/4/ranks/1/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/4/ranks/1/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/1/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/1/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        }
+      ]
+    },
+    {
+      "id": "sp4-704x1280x121",
+      "kind": "sp",
+      "requires": [
+        "sp2-704x1280x121"
+      ],
+      "workers": [
+        "sp4-704x1280x121-0",
+        "sp4-704x1280x121-1",
+        "sp4-704x1280x121-2",
+        "sp4-704x1280x121-3"
+      ],
+      "artifact_dependencies": [],
+      "actions": [
+        {
+          "op": "distributed",
+          "action": "init",
+          "init_method": "tcp://127.0.0.1:29704",
+          "ranks": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "op": "distributed",
+          "action": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 50,
+            "height": 704,
+            "width": 1280,
+            "frames": 121,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "sp4-704x1280x121"
+          },
+          "state_id": "sp"
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "sp",
+          "steps": 50
+        },
+        {
+          "op": "finish",
+          "state_id": "sp",
+          "output_path": "sp.npy",
+          "save_latents": true
+        },
+        {
+          "op": "evaluate",
+          "reference": "/shared/output/DITSERVE/.cache/results-work/kairos-sp-quality-5b/p4-20261019t1325z/attempts/sp1-704x1280x121/attempt-1/cell-0/artifacts/0/ref.latent.npy",
+          "output": "sp.latent.npy",
+          "atol": 0,
+          "rtol": 0,
+          "lpips": false
+        },
+        {
+          "op": "evaluate",
+          "reference": "/shared/output/DITSERVE/.cache/results-work/kairos-sp-quality-5b/p4-20261019t1325z/attempts/sp1-704x1280x121/attempt-1/cell-0/artifacts/0/ref.npy",
+          "output": "sp.npy",
+          "atol": 0,
+          "rtol": 0,
+          "lpips": true
+        },
+        {
+          "op": "release",
+          "state_id": "sp"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "/cells/0/operations/4/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/4/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/4/ranks/1/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/4/ranks/1/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/4/ranks/2/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/4/ranks/2/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/4/ranks/3/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/4/ranks/3/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/1/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/1/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/2/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/2/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/3/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/3/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        }
+      ]
+    }
+  ]
+}

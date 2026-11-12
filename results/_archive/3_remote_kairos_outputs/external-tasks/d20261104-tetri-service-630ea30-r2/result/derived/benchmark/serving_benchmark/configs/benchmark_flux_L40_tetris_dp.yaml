@@ -1,0 +1,28 @@
+models: [flux]
+schedule_logics: [dyn_slo_schedule_global_dp]
+gpu_nums: [8]
+distributions: [gamma]
+rates: [0.05]
+cvs: [1.0]
+steps: [28]
+shape_dists: [evenly, long_seqlen_high]
+output_types: [latent]
+request_nums: [300]
+output_dir: results/benchmark_flux_L40_tetris_dp
+seed: 42
+save_interval: 1
+save_logs: true
+no_timestamp: true
+resume: true
+
+fake_engine: false
+enable_tracer: true
+enable_warmup: false
+
+use_cuda_graph: false
+use_torch_compile: false
+
+slo_configs: [custom_1_1.1x_slo_L40_flux]
+
+# Run:
+# uv run python -m benchmark.serving_benchmark.benchmark_serving --config benchmark/serving_benchmark/configs/benchmark_flux_L40_tetris_dp.yaml --output-dir ./tetriserve_benchmark/serving_benchmark/results/benchmark_flux_L40_tetris_dp

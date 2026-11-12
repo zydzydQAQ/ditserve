@@ -1,0 +1,17 @@
+{
+ "commit": "0ef480fad1dddd03cdfa74175086bf479123cda1",
+ "subject": "fix(runtime): route remote NVML occupancy through worker.occupancy and clean exported bundles",
+ "built_utc": "2026-11-10T07:35:51+00:00",
+ "builder_image": "cluster-cmake-install",
+ "runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "tested_runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "core_sha256": "7a1d3c199f260cc284461bd10975a2cfb679360e8f9175f23a1104c12d4e3321",
+ "runtime_smoke": "passed_cluster",
+ "local_checks": [
+  "cmake",
+  "ctest",
+  "installed_doctor"
+ ],
+ "files": 269,
+ "bytes": 5472184
+}

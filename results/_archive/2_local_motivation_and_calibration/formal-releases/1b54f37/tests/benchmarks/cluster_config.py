@@ -1,0 +1,864 @@
+#!/usr/bin/env python3
+"""Generate a functional native-cluster preflight on the allocated Kairos GPUs."""
+
+import argparse
+import copy
+import json
+import subprocess
+from pathlib import Path
+
+
+MODELS = {
+    "wan21": {
+        "name": "Wan2.1-T2V-1.3B",
+        "path": "/shared/data/DITSERVE/models/wan",
+        "class": "wan21-preflight",
+    },
+    "wan22": {
+        "name": "Wan2.2-TI2V-5B",
+        "path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b",
+        "class": "wan22-preflight",
+    },
+}
+SD35_PATH = "/shared/data/DITSERVE/models/sd3.5-medium"
+SD35_REVISION = "b940f670f0eda2d07fbb75229e779da1ad11eb80"
+
+MEMORY_STRATEGIES = (
+    "s0_naive_gpu",
+    "s1_weight_swap",
+    "s2_wan_cpu_sd35_gpu",
+    "s3_both_encoders_cpu",
+    "s4_disaggregated_pool",
+)
+# Worker memory strategies are explicit opt-in; SD3.5 continuous batching is
+# enabled by default (DEFAULT_CONTINUOUS_BATCH = 4, sequence_packing = True,
+# bubble_free = True). Passing continuous_batch = 0 keeps atomic SD3.5 execution.
+DEFAULT_MEMORY_STRATEGY = None
+CONTINUOUS_BATCH_SIZES = (1, 2, 3, 4, 6, 8)
+DEFAULT_CONTINUOUS_BATCH = 4
+
+_MEMORY_STRATEGY_DESCRIPTORS = {
+    "s0_naive_gpu": {
+        "strategy": "s0_naive_gpu",
+        "code": "S0",
+        "label": "Naive GPU Co-Location (All Components on GPU)",
+        "wan_text_encoder_device": "cuda",
+        "sd35_text_encoder_device": "cuda",
+        "offload_text_encoders_after_warmup": False,
+        "weight_swap_on_switch": False,
+        "release_cache_on_stop": False,
+        "tiered_memory": False,
+        "encoder_pool": {
+            "enabled": False,
+            "write_shm": False,
+            "pin_memory": False,
+            "shm_dir": "/dev/shm/ditserve-hetero-embeds",
+        },
+    },
+    "s1_weight_swap": {
+        "strategy": "s1_weight_swap",
+        "code": "S1",
+        "label": "Reactive On-Demand CPU-GPU Weight Swapping",
+        "wan_text_encoder_device": "cpu",
+        "sd35_text_encoder_device": "cpu",
+        "offload_text_encoders_after_warmup": True,
+        "weight_swap_on_switch": True,
+        "release_cache_on_stop": False,
+        "tiered_memory": False,
+        "encoder_pool": {
+            "enabled": False,
+            "write_shm": False,
+            "pin_memory": True,
+            "shm_dir": "/dev/shm/ditserve-hetero-embeds",
+        },
+    },
+    "s2_wan_cpu_sd35_gpu": {
+        "strategy": "s2_wan_cpu_sd35_gpu",
+        "code": "S2",
+        "label": "Wan UMT5 on CPU + SD3.5 T5-XXL on GPU",
+        "wan_text_encoder_device": "cpu",
+        "sd35_text_encoder_device": "cuda",
+        "offload_text_encoders_after_warmup": False,
+        "weight_swap_on_switch": False,
+        "release_cache_on_stop": False,
+        "tiered_memory": False,
+        "encoder_pool": {
+            "enabled": True,
+            "write_shm": False,
+            "pin_memory": True,
+            "shm_dir": "/dev/shm/ditserve-hetero-embeds",
+        },
+    },
+    "s3_both_encoders_cpu": {
+        "strategy": "s3_both_encoders_cpu",
+        "code": "S3",
+        "label": "Both Heavy T5 Encoders on CPU (No Cross-Worker Pool)",
+        "wan_text_encoder_device": "cpu",
+        "sd35_text_encoder_device": "cpu",
+        "offload_text_encoders_after_warmup": True,
+        "weight_swap_on_switch": False,
+        "release_cache_on_stop": False,
+        "tiered_memory": False,
+        "encoder_pool": {
+            "enabled": True,
+            "write_shm": False,
+            "pin_memory": True,
+            "shm_dir": "/dev/shm/ditserve-hetero-embeds",
+        },
+    },
+    "s4_disaggregated_pool": {
+        "strategy": "s4_disaggregated_pool",
+        "code": "S4",
+        "label": "DitServe Cross-Modal Disaggregated Encoder Pool + Safe-Point Cache Release",
+        "wan_text_encoder_device": "cpu",
+        "sd35_text_encoder_device": "cpu",
+        "offload_text_encoders_after_warmup": True,
+        "weight_swap_on_switch": False,
+        "release_cache_on_stop": True,
+        "tiered_memory": False,
+        "encoder_pool": {
+            "enabled": True,
+            "write_shm": True,
+            "pin_memory": True,
+            "shm_dir": "/dev/shm/ditserve-hetero-embeds",
+            "max_entries": 64,
+            "max_bytes": 512 * (1 << 20),
+        },
+    },
+}
+
+
+def memory_strategy_Descriptor(strategy: str) -> dict:
+    if strategy not in _MEMORY_STRATEGY_DESCRIPTORS:
+        raise ValueError("unknown memory_strategy: " + str(strategy))
+    base = dict(_MEMORY_STRATEGY_DESCRIPTORS[strategy])
+    base["encoder_pool"] = dict(base["encoder_pool"])
+    return base
+
+
+memory_strategy_descriptor = memory_strategy_Descriptor
+
+
+# Per-knob worker capabilities (workers/ditserve/models):
+# WanStepWorker loads UMT5 on the CPU; SD35Backend / AtomicPipelineBackend
+# support either GPU T5-XXL ("cuda") or split CPU T5-XXL + GPU CLIP-L/G ("cpu");
+# when T5-XXL starts on the CPU, offload_text_encoders_after_warmup is satisfied
+# from load without parking/restoring weights on GPU; no worker implements
+# reactive weight_swap_on_switch; export-mode cluster configs keep tiered_memory
+# False (C++ tiered state offload/prefetch applies only to pinned SP1).
+_DESCRIPTOR_METADATA_KEYS = frozenset({"strategy", "code", "label"})
+_WORKER_MEMORY_CAPABILITIES = {
+    "wan_text_encoder_device": frozenset({"cpu"}),
+    "sd35_text_encoder_device": frozenset({"cpu", "cuda"}),
+    "offload_text_encoders_after_warmup": frozenset({False, True}),
+    "weight_swap_on_switch": frozenset({False}),
+    "release_cache_on_stop": frozenset({False, True}),
+    "tiered_memory": frozenset({False}),
+}
+_ENCODER_POOL_CAPABILITIES = {
+    "enabled": frozenset({False, True}),
+    "write_shm": frozenset({False, True}),
+    "pin_memory": frozenset({False, True}),
+}
+_ENCODER_POOL_ALLOWED_KEYS = frozenset({
+    "enabled", "trimmed", "write_shm", "pin_memory", "shm_dir", "max_entries", "max_bytes",
+})
+
+
+def _unimplemented_memory_knobs(descriptor):
+    missing = []
+    allowed_top = _DESCRIPTOR_METADATA_KEYS | set(_WORKER_MEMORY_CAPABILITIES) | {"encoder_pool"}
+    for key in descriptor:
+        if key not in allowed_top:
+            missing.append(f"unknown descriptor knob {key}={descriptor[key]!r}")
+    for key, allowed in _WORKER_MEMORY_CAPABILITIES.items():
+        if key not in descriptor or descriptor[key] not in allowed:
+            missing.append(f"{key}={descriptor.get(key)!r}")
+    sd35_dev = descriptor.get("sd35_text_encoder_device")
+    offload = descriptor.get("offload_text_encoders_after_warmup")
+    if sd35_dev in ("cpu", "cuda") and isinstance(offload, bool):
+        if offload != (sd35_dev == "cpu"):
+            missing.append(
+                f"offload_text_encoders_after_warmup={offload!r} requires "
+                f"sd35_text_encoder_device={'cpu' if offload else 'cuda'!r}"
+            )
+    pool = descriptor.get("encoder_pool")
+    if not isinstance(pool, dict):
+        missing.append(f"encoder_pool={pool!r}")
+    else:
+        for pkey in pool:
+            if pkey not in _ENCODER_POOL_ALLOWED_KEYS:
+                missing.append(f"unknown encoder_pool knob encoder_pool.{pkey}={pool[pkey]!r}")
+        for pkey, allowed in _ENCODER_POOL_CAPABILITIES.items():
+            if pkey not in pool or pool[pkey] not in allowed:
+                missing.append(f"encoder_pool.{pkey}={pool.get(pkey)!r}")
+        if not pool.get("enabled", True) and pool.get("write_shm", False):
+            missing.append("encoder_pool.write_shm=True with encoder_pool.enabled=False")
+    return missing
+
+
+# Strategies whose every descriptor knob the workers implement; the others are
+# analytical only (benchmarks/cross_modal_memory_study.py).
+WORKER_MEMORY_STRATEGIES = tuple(
+    name for name in MEMORY_STRATEGIES
+    if not _unimplemented_memory_knobs(_MEMORY_STRATEGY_DESCRIPTORS[name])
+)
+
+
+def applied_memory_strategy(strategy):
+    """Return the worker options and config a memory strategy actually applies.
+
+    Raises ValueError for strategies relying on knobs no worker implements, so
+    a GPU config never carries a label its workers do not execute. The record
+    lists only applied worker options and worker config (never unapplied
+    tiered_memory or weight_swap_on_switch claims).
+    """
+    descriptor = memory_strategy_descriptor(strategy)
+    missing = _unimplemented_memory_knobs(descriptor)
+    if missing:
+        raise ValueError(
+            f"memory_strategy {strategy!r} is analytical only; the workers do not implement "
+            + "; ".join(missing)
+            + ". Use benchmarks/cross_modal_memory_study.py for S0-S4 analysis; "
+            + "worker configs accept only " + ", ".join(WORKER_MEMORY_STRATEGIES))
+    pool = dict(descriptor["encoder_pool"])
+    return {
+        "strategy": strategy,
+        "code": descriptor["code"],
+        "label": descriptor["label"],
+        "applied_worker_options": {
+            "wan": {"release_cache_on_stop": bool(descriptor["release_cache_on_stop"]), "encoder_pool": pool},
+            "image": {
+                "offload_text_encoders_after_warmup": bool(descriptor["offload_text_encoders_after_warmup"]),
+                "encoder_pool": dict(pool),
+            },
+        },
+        "applied_worker_config": {
+            "image": {
+                "text_encoder_device": str(descriptor["sd35_text_encoder_device"]),
+            },
+        },
+        "not_applied": [],
+    }
+
+
+def continuous_batch_settings(
+    continuous_batch=DEFAULT_CONTINUOUS_BATCH,
+    sequence_packing=None,
+    bubble_free=None,
+):
+    """Resolve an SD3.5 continuous-batch request; None defaults to DEFAULT_CONTINUOUS_BATCH (4).
+
+    sequence_packing/bubble_free are continuous-batch sub-options: None means
+    on with continuous batching and off without it; an explicit True without
+    continuous batching (continuous_batch=0) is rejected rather than reaching atomic workers.
+    """
+    value = DEFAULT_CONTINUOUS_BATCH if continuous_batch is None else continuous_batch
+    if not isinstance(value, int) or isinstance(value, bool) or not 0 <= value <= 8:
+        raise ValueError("continuous_batch must be an integer in [0, 8]")
+    if value == 0:
+        if sequence_packing or bubble_free:
+            raise ValueError("sequence_packing and bubble_free require continuous_batch > 0")
+        return 0, False, False
+    return (value, True if sequence_packing is None else bool(sequence_packing),
+            True if bubble_free is None else bool(bubble_free))
+
+
+def allocated_uuids():
+    output = subprocess.run(
+        ["nvidia-smi", "--query-gpu=uuid", "--format=csv,noheader"],
+        capture_output=True, text=True, check=True,
+    ).stdout
+    return [value.strip() for value in output.splitlines() if value.strip()]
+
+
+def default_sd35_batch_step_ms(
+    service_ms: float = 1000.0,
+    steps: int = 28,
+    resolution: int = 512,
+    *,
+    prepare_ms: float | None = None,
+    finish_ms: float | None = None,
+) -> dict[str, float]:
+    """Calibrated SD3.5-Medium MM-DiT 1-step forward scaling table on A100-PCIE-40GB (BF16 FlashAttention).
+
+    For <=768px (e.g. 512x512, 256 patch tokens per branch), B=1..8 scales sub-linearly because B=1 under-utilizes SMs.
+    For >768px (e.g. 1024x1024 / 1440x1440), B=1..8 still amortizes weight reads, kernel launch, and CFG overhead.
+    """
+    steps = max(1, int(steps))
+    svc = float(service_ms)
+    if prepare_ms is None:
+        prep_ms = min(45.0, round(svc * 0.05, 3)) if svc < 500.0 else 45.0
+    else:
+        prep_ms = float(prepare_ms)
+    if finish_ms is None:
+        fin_ms = (
+            min(135.0, max(10.0, round(svc * 0.05, 3)))
+            if svc < 500.0
+            else min(135.0, max(10.0, round(svc * 0.075, 3)))
+        )
+    else:
+        fin_ms = float(finish_ms)
+    b1_step_ms = max(0.5, (svc - prep_ms - fin_ms) / steps)
+    if int(resolution) <= 768:
+        # 512x512 sub-linear scaling ratios on A100-PCIE-40GB (d20261104-sd35-cb-sweep-r3)
+        ratios = {1: 1.00, 2: 1.838, 3: 2.669, 4: 3.567, 6: 5.194, 8: 6.941}
+    else:
+        # 1024x1024 sub-linear scaling ratios on A100-PCIE-40GB (d20261104-sd35-cb-sweep-r3)
+        ratios = {1: 1.00, 2: 1.940, 3: 2.834, 4: 3.788, 6: 5.636, 8: 7.514}
+    return {str(k): round(b1_step_ms * mult, 3) for k, mult in ratios.items()}
+
+
+CALIBRATED_PCIE_PROFILE = {
+    "provenance": "mixed",
+    "sp_efficiency": 1.0,
+    "sp_overlap": 0.0,
+    "resize_ms": 15.0,
+    "quantum_overhead_ms": 1.5,
+    "block_overhead_ms": 0.0,
+    "classes": {
+        "wan21-preflight": {
+            "kind": "video",
+            "steps": 20,
+            "blocks_per_step": 60,
+            "prepare_ms": 0.0,
+            "encode_ms": 420.0,
+            "step_compute_ms": 1147.0,
+            "comm_mb_per_step": 10351.0,
+            "collectives_per_step": 240,
+            "cfg_exchange_mb": 1.8,
+            "finish_ms": 1840.0,
+            "decode_chunks": 9,
+        },
+        "wan22-preflight": {
+            "kind": "video",
+            "steps": 20,
+            "blocks_per_step": 60,
+            "prepare_ms": 0.0,
+            "encode_ms": 480.0,
+            "step_compute_ms": 2150.0,
+            "comm_mb_per_step": 24153.2928,
+            "collectives_per_step": 240,
+            "cfg_exchange_mb": 4.19328,
+            "finish_ms": 2200.0,
+            "decode_chunks": 13,
+        },
+        "sd35-preflight": {
+            "kind": "image",
+            "service_ms": 6450.0,
+            "steps": 28,
+            "prepare_ms": 45.0,
+            "finish_ms": 135.0,
+            "batch_step_ms": default_sd35_batch_step_ms(6450.0, steps=28, resolution=1024),
+        },
+    },
+    "links": {
+        str(degree): {"gbps": 6.0 * degree / (degree + 1.0), "latency_ms": 0.1}
+        for degree in (2, 3, 4, 6, 8)
+    },
+    "source": {
+        "gpu_uuids": [f"GPU-00000000-0000-0000-0000-00000000000{i}" for i in range(8)],
+        "shape": {"frames": 49, "steps": 20, "height": 512, "width": 896, "guidance_scale": 5.0},
+    },
+}
+
+
+def expected_worker_options(
+    memory_strategy=DEFAULT_MEMORY_STRATEGY,
+    *,
+    continuous_batch=DEFAULT_CONTINUOUS_BATCH,
+    sequence_packing=None,
+    bubble_free=None,
+    cfg_fold=None,
+):
+    """Return expected Wan and SD3.5 worker option dictionaries for a configuration."""
+    cb, packing, bubble = continuous_batch_settings(continuous_batch, sequence_packing, bubble_free)
+    applied = None if memory_strategy is None else applied_memory_strategy(memory_strategy)
+    wan_options = {"execution": "block"}
+    if cfg_fold is not None:
+        wan_options["cfg_fold"] = copy.deepcopy(cfg_fold)
+    image_options = {"profile": False, "cache": False}
+    if cb > 0:
+        image_options.update(continuous_batch=True, sequence_packing=packing, bubble_free=bubble)
+    image_config = {}
+    if applied is not None:
+        wan_options.update(copy.deepcopy(applied["applied_worker_options"]["wan"]))
+        image_options.update(copy.deepcopy(applied["applied_worker_options"]["image"]))
+        image_config.update(copy.deepcopy(applied.get("applied_worker_config", {}).get("image", {})))
+    return {
+        "wan": wan_options,
+        "image": image_options,
+        "image_config": image_config,
+        "continuous_batch": cb,
+        "sequence_packing": packing,
+        "bubble_free": bubble,
+    }
+
+
+def make_workers(
+    model,
+    gpu_uuids,
+    *,
+    video_spec,
+    image_spec,
+    cfg_fold=None,
+    memory_strategy=DEFAULT_MEMORY_STRATEGY,
+    continuous_batch=DEFAULT_CONTINUOUS_BATCH,
+    sequence_packing=None,
+    bubble_free=None,
+):
+    """Build per-GPU Wan + SD3.5 workers.
+
+    With no memory_strategy and continuous_batch 0 the legacy options are
+    produced. sequence_packing/bubble_free are continuous-batch sub-options
+    (see continuous_batch_settings) and are emitted only when continuous_batch > 0.
+    """
+    if model not in MODELS:
+        raise ValueError("unknown model: " + model)
+    if len(gpu_uuids) not in (2, 4, 6, 8) or len(set(gpu_uuids)) != len(gpu_uuids):
+        raise ValueError("native studies require 2, 4, 6 or 8 distinct GPU UUIDs")
+    cb, packing, bubble = continuous_batch_settings(continuous_batch, sequence_packing, bubble_free)
+    applied = None if memory_strategy is None else applied_memory_strategy(memory_strategy)
+    selected = MODELS[model]
+    workers, slots, warmup = {}, [], []
+    for index, uuid in enumerate(gpu_uuids):
+        environment = {
+            "OMP_NUM_THREADS": "4",
+            "MKL_NUM_THREADS": "4",
+            "OPENBLAS_NUM_THREADS": "4",
+            "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True",
+        }
+        options = {"execution": "block"}
+        if cfg_fold is not None:
+            options["cfg_fold"] = cfg_fold
+        image_options = {"profile": False, "cache": False}
+        if cb > 0:
+            image_options.update(continuous_batch=True, sequence_packing=packing, bubble_free=bubble)
+        image_config = {
+            "model_path": SD35_PATH,
+            "device": "cuda:0",
+            "revision": SD35_REVISION,
+            "dtype": "bfloat16",
+            "text_encoder_dtype": "bfloat16",
+            "attention": "flash",
+            "options": image_options,
+        }
+        if applied is not None:
+            options.update(copy.deepcopy(applied["applied_worker_options"]["wan"]))
+            image_options.update(copy.deepcopy(applied["applied_worker_options"]["image"]))
+            image_config.update(copy.deepcopy(applied.get("applied_worker_config", {}).get("image", {})))
+        workers[f"wan{index}"] = {
+            "backend": "wan",
+            "python": "/opt/venv/bin/python",
+            "gpu_uuid": uuid,
+            "environment": environment,
+            "config": {
+                "model_path": selected["path"],
+                "device": "cuda:0",
+                "attention": "flash",
+                "vae_dtype": "bfloat16",
+                "text_encoder_dtype": "bfloat16",
+                "options": options,
+            },
+        }
+        workers[f"image{index}"] = {
+            "backend": "sd35",
+            "python": "/opt/venv/bin/python",
+            "gpu_uuid": uuid,
+            "environment": environment,
+            "config": image_config,
+        }
+        slots.append({"video": f"wan{index}", "image": f"image{index}"})
+        warmup.extend([
+            {"worker": f"wan{index}", "spec": dict(video_spec, prompt="warmup", seed=7), "quantum": "step"},
+            {"worker": f"image{index}", "spec": dict(image_spec, prompt="warmup", seed=7)},
+        ])
+    return selected, workers, slots, warmup
+
+
+def build_config(
+    model,
+    gpu_uuids,
+    *,
+    frames=17,
+    steps=4,
+    image_steps=4,
+    memory_strategy=DEFAULT_MEMORY_STRATEGY,
+    continuous_batch=DEFAULT_CONTINUOUS_BATCH,
+    sequence_packing=None,
+    bubble_free=None,
+):
+    if frames != 17 or steps != 4 or image_steps != 4:
+        raise ValueError("the functional preflight is fixed at Wan 17f/4 steps and SD3.5 4 steps")
+    if len(gpu_uuids) not in (2, 4, 6, 8) or len(set(gpu_uuids)) != len(gpu_uuids):
+        raise ValueError("preflight requires 2, 4, 6 or 8 distinct GPU UUIDs")
+    eff_cb, packing, bubble = continuous_batch_settings(continuous_batch, sequence_packing, bubble_free)
+    applied = None if memory_strategy is None else applied_memory_strategy(memory_strategy)
+    gpus = len(gpu_uuids)
+    form = {2: "cfg2", 4: "cfg2sp2", 6: "cfg2sp3", 8: "cfg2sp3"}[gpus]
+    video_spec = {
+        "steps": steps,
+        "height": 480,
+        "width": 832,
+        "frames": frames,
+        "guidance_scale": 5.0,
+        "cache": False,
+        "threshold": 0.0,
+        "max_continuous": 1,
+        "negative_prompt": "",
+        "prompt": "A red ceramic kettle on a wooden table.",
+        "seed": 201,
+    }
+    image_spec = {
+        "height": 512,
+        "width": 512,
+        "steps": image_steps,
+        "frames": 1,
+        "batch_size": 1,
+        "guidance_scale": 4.5,
+        "negative_prompt": "blurry, low quality",
+        "max_sequence_length": 256,
+        "prompt": "A lighthouse at dusk.",
+        "seed": 202,
+    }
+    cfg_fold = {
+        "folded_steps": [2],
+        "final_step_exact_anchor": True,
+        "force_exact_cond_on_fold": True,
+        "cfg_vel_alpha": 0.0,
+    }
+    selected, workers, slots, warmup = make_workers(
+        model,
+        gpu_uuids,
+        video_spec=video_spec,
+        image_spec=image_spec,
+        cfg_fold=cfg_fold,
+        memory_strategy=memory_strategy,
+        continuous_batch=eff_cb,
+        sequence_packing=packing,
+        bubble_free=bubble,
+    )
+    video_row = {
+        "request_id": "video-preflight",
+        "kind": "video",
+        "class": selected["class"],
+        "arrival_ms": 0,
+        "deadline_ms": 600000,
+        "service_ms": 60000,
+        "spec": video_spec,
+        "output_mode": "check",
+    }
+    image_rows = [
+        {
+            "request_id": f"image-preflight-{index}",
+            "kind": "image",
+            "class": "sd35-preflight",
+            "arrival_ms": 1000 * (index + 1),
+            "deadline_ms": 600000,
+            "service_ms": 5000,
+            "spec": dict(image_spec, seed=202 + index),
+            "output_mode": "check",
+        }
+        for index in range(2)
+    ]
+    phase_options = {
+        "sp_transport": "export",
+        "forms": [form],
+        "quantum_blocks": 4,
+        "async_rank0_decode": True,
+        "image_batch": 1,
+        "tiered_memory": False,
+    }
+    benchmark_meta = {
+        "functional_preflight": True,
+        "performance_qualified": False,
+        "quality_qualified": False,
+        "models": [selected["name"], "SD3.5-Medium"],
+        "hardware_source": "nvidia-smi in this job",
+        "profile_role": "synthetic scheduling placeholders only",
+    }
+    image_cost = {"kind": "image", "service_ms": 1000.0}
+    if eff_cb > 0:
+        phase_options.update(continuous_batch=eff_cb, sequence_packing=packing, bubble_free=bubble)
+        benchmark_meta["continuous_batch"] = {
+            "max_requests": eff_cb, "sequence_packing": packing, "bubble_free": bubble,
+        }
+        # Synthetic like the rest of this functional-preflight profile.
+        image_cost.update(
+            steps=image_steps,
+            prepare_ms=20.0,
+            finish_ms=80.0,
+            batch_step_ms=default_sd35_batch_step_ms(
+                1000.0, image_steps, resolution=512, prepare_ms=20.0, finish_ms=80.0
+            ),
+        )
+    if applied is not None:
+        benchmark_meta["memory_strategy"] = applied
+        if applied.get("applied_worker_config", {}).get("image", {}).get("text_encoder_device") == "cpu":
+            phase_options["image_text_prefetch"] = True
+    return {
+        "schema": "ditserve.study.v1",
+        "experiment": f"kairos-{model}-native-preflight",
+        "note": "Functional preflight only. Synthetic planning costs are not calibrated performance data.",
+        "workers": workers,
+        "budget": {
+            "limit_gpu_seconds": gpus * 7200,
+            "watchdog_seconds": 7200,
+            "repair_reserve_gpu_seconds": 0,
+            "carry": "none",
+        },
+        "phases": [{
+            "id": "cluster",
+            "kind": "cluster",
+            "policy": "heterodit_v5",
+            "profile": {
+                "provenance": "synthetic",
+                "sp_efficiency": 1.0,
+                "resize_ms": 100.0,
+                "quantum_overhead_ms": 0.0,
+                "block_overhead_ms": 0.0,
+                "classes": {
+                    selected["class"]: {
+                        "kind": "video",
+                        "blocks_per_step": 60,
+                        "prepare_ms": 100.0,
+                        "encode_ms": 1000.0,
+                        "step_compute_ms": 1000.0,
+                        "comm_mb_per_step": 1000.0,
+                        "collectives_per_step": 240,
+                        "cfg_exchange_mb": 4.0,
+                        "finish_ms": 1000.0,
+                        "steps": steps,
+                        "decode_chunks": (frames - 1) // 4 + 1,
+                    },
+                    "sd35-preflight": image_cost,
+                },
+                "links": {
+                    str(degree): {"gbps": 3.0, "latency_ms": 0.1}
+                    for degree in (2, 3, 4, 6, 8)
+                },
+            },
+            "occupancy_backend": "nvml",
+            "occupancy_thread": True,
+            "video_worker_options": {
+                "negative_prompt_cache_entries": 2,
+                "negative_prompt_cache_bytes": 67108864,
+            },
+            "gpus": slots,
+            "text_prefetch": 1,
+            "output_mode": "check",
+            "warmup": warmup,
+            "workload": [video_row, *image_rows],
+            "options": phase_options,
+            "artifact_dependencies": [],
+        }],
+        "benchmark": benchmark_meta,
+    }
+
+
+CALIBRATION_POLICIES = [
+    "static_sp1", "static_cfg2", "static_sp2", "static_cfg2sp2", "static_sp3",
+    "static_cfg2sp3", "static_sp4", "static_cfg2sp4", "static_sp6", "static_sp8",
+]
+FIT_POLICIES = ["static_sp1", "static_cfg2", "static_sp2", "static_cfg2sp2", "static_sp4"]
+HELD_OUT_POLICIES = [name for name in CALIBRATION_POLICIES if name not in FIT_POLICIES]
+
+
+def build_calibration_config(model, gpu_uuids, *, image_batch_calibration=1,
+                             video_spec_override=None, image_spec_override=None):
+    if not isinstance(image_batch_calibration, int) or not 1 <= image_batch_calibration <= 8:
+        raise ValueError("image_batch_calibration must be in [1, 8]")
+    if model == "wan21":
+        frames = 33
+    elif model == "wan22":
+        frames = 49
+    else:
+        raise ValueError("unknown model: " + model)
+    from native_serving import FORM_DEGREES
+    policies = [name for name in CALIBRATION_POLICIES
+                if (model != "wan21" or name != "static_sp8")
+                and FORM_DEGREES[name.removeprefix("static_")] <= len(gpu_uuids)]
+    held_out = [name for name in policies if name not in FIT_POLICIES]
+    steps, image_steps = 20, 28
+    video_spec = {
+        "steps": steps, "height": 480 if model == "wan21" else 512,
+        "width": 832 if model == "wan21" else 896, "frames": frames,
+        "guidance_scale": 5.0, "cache": False, "threshold": 0.0,
+        "max_continuous": 1, "negative_prompt": "",
+        "prompt": "A red ceramic kettle on a wooden table.", "seed": 201,
+    }
+    image_spec = {
+        "height": 1024, "width": 1024, "steps": image_steps, "frames": 1,
+        "batch_size": 1, "guidance_scale": 4.5, "negative_prompt": "blurry, low quality",
+        "max_sequence_length": 256, "prompt": "A lighthouse at dusk.", "seed": 202,
+    }
+    if video_spec_override is not None:
+        video_spec.update(copy.deepcopy(video_spec_override))
+    if image_spec_override is not None:
+        image_spec.update(copy.deepcopy(image_spec_override))
+    frames, steps, image_steps = video_spec["frames"], video_spec["steps"], image_spec["steps"]
+    selected, workers, slots, warmup = make_workers(
+        model, gpu_uuids, video_spec=video_spec, image_spec=image_spec,
+        memory_strategy=None, continuous_batch=0,
+    )
+    for item in warmup:
+        item["spec"]["steps"] = 1
+    gpus = len(gpu_uuids)
+    video_row = {
+        "request_id": "video-calibration", "kind": "video", "class": selected["class"],
+        "arrival_ms": 0, "deadline_ms": 3600000, "service_ms": 60000,
+        "spec": video_spec, "output_mode": "check",
+    }
+    image_row = {
+        "request_id": "image-calibration", "kind": "image", "class": "sd35-preflight",
+        "arrival_ms": 1000, "deadline_ms": 3600000, "service_ms": 10000,
+        "spec": image_spec, "output_mode": "check",
+    }
+    config = {
+        "schema": "ditserve.study.v1",
+        "experiment": f"kairos-{model}-native-calibration",
+        "note": "Native per-form calibration. Synthetic fields are scheduling placeholders, not measured results.",
+        "workers": workers,
+        "budget": {
+            "limit_gpu_seconds": (len(policies) + image_batch_calibration - 1) * gpus * 7200,
+            "watchdog_seconds": (len(policies) + image_batch_calibration - 1) * 7200,
+            "repair_reserve_gpu_seconds": 0, "carry": "none",
+        },
+        "phases": [{
+            "id": "cluster", "kind": "cluster", "policy": "static_sp1",
+            "profile": {
+                "provenance": "synthetic", "sp_efficiency": 1.0, "resize_ms": 100.0,
+                "quantum_overhead_ms": 0.0, "block_overhead_ms": 0.0,
+                "classes": {
+                    selected["class"]: {
+                        "kind": "video", "blocks_per_step": 60, "prepare_ms": 100.0,
+                        "encode_ms": 1000.0, "step_compute_ms": 1000.0, "comm_mb_per_step": 1000.0,
+                        "collectives_per_step": 240, "cfg_exchange_mb": 4.0, "finish_ms": 1000.0,
+                        "steps": steps, "decode_chunks": (frames - 1) // 4 + 1,
+                    },
+                    "sd35-preflight": {"kind": "image", "service_ms": 1000.0},
+                },
+                "links": {str(degree): {"gbps": 3.0, "latency_ms": 0.1} for degree in (2, 3, 4, 6, 8)},
+            },
+            "occupancy_backend": "nvml", "occupancy_thread": True,
+            "video_worker_options": {"negative_prompt_cache_entries": 2, "negative_prompt_cache_bytes": 67108864},
+            "gpus": slots, "text_prefetch": 1, "output_mode": "check",
+            "warmup": warmup, "workload": [video_row, image_row],
+            "options": {"sp_transport": "export", "async_rank0_decode": False, "image_batch": 1, "tiered_memory": False},
+            "matrix": {"/policy": policies}, "artifact_dependencies": [],
+        }],
+        "benchmark": {
+            "native_calibration": True, "performance_qualified": False, "quality_qualified": False,
+            "models": [selected["name"], "SD3.5-Medium"], "fit_policies": FIT_POLICIES,
+            "held_out_policies": held_out, "shape": {"frames": frames, "steps": steps, "image_steps": image_steps},
+        },
+    }
+    for size in range(2, image_batch_calibration + 1):
+        phase = copy.deepcopy(config["phases"][0])
+        phase["id"] = f"image-batch-{size}"
+        phase.pop("matrix")
+        phase["options"]["image_batch"] = size
+        phase["warmup"] = [item for item in phase["warmup"] if item["worker"].startswith("image")]
+        phase["workload"] = [dict(image_row, request_id=f"image-batch-{size}-{index}", arrival_ms=0,
+                                  spec=dict(image_spec, seed=202 + index)) for index in range(size)]
+        config["phases"].append(phase)
+    config["benchmark"]["image_batch_calibration"] = image_batch_calibration
+    return config
+
+
+def self_check():
+    """Run deterministic self-checks on cluster_config defaults, profiles, and memory strategies."""
+    assert DEFAULT_CONTINUOUS_BATCH == 4, f"expected DEFAULT_CONTINUOUS_BATCH == 4, got {DEFAULT_CONTINUOUS_BATCH}"
+    assert continuous_batch_settings() == (4, True, True)
+    assert continuous_batch_settings(0) == (0, False, False)
+
+    sd_cal = CALIBRATED_PCIE_PROFILE["classes"]["sd35-preflight"]
+    assert sd_cal["steps"] == 28
+    assert sd_cal["prepare_ms"] == 45.0
+    assert sd_cal["finish_ms"] == 135.0
+    assert set(sd_cal["batch_step_ms"].keys()) == {"1", "2", "3", "4", "6", "8"}
+    reconstructed = sd_cal["prepare_ms"] + sd_cal["steps"] * sd_cal["batch_step_ms"]["1"] + sd_cal["finish_ms"]
+    assert abs(reconstructed - sd_cal["service_ms"]) < 0.1
+
+    uuids = [f"GPU-00000000-0000-0000-0000-00000000000{i}" for i in range(4)]
+    for model in sorted(MODELS):
+        cfg = build_config(model, uuids)
+        phase = cfg["phases"][0]
+        assert phase["options"]["continuous_batch"] == DEFAULT_CONTINUOUS_BATCH
+        assert phase["options"]["sequence_packing"] is True
+        assert phase["options"]["bubble_free"] is True
+        expected = expected_worker_options(continuous_batch=DEFAULT_CONTINUOUS_BATCH)
+        assert cfg["workers"]["image0"]["config"]["options"] == expected["image"]
+        img_cls = phase["profile"]["classes"]["sd35-preflight"]
+        assert "batch_step_ms" in img_cls and "1" in img_cls["batch_step_ms"]
+
+    for strategy in WORKER_MEMORY_STRATEGIES:
+        applied = applied_memory_strategy(strategy)
+        assert applied["strategy"] == strategy
+    return {"status": "ok", "default_continuous_batch": DEFAULT_CONTINUOUS_BATCH}
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--self-check", action="store_true", help="run deterministic module self-checks and exit")
+    parser.add_argument("--model", choices=sorted(MODELS))
+    parser.add_argument("--gpu-uuids", help="comma-separated UUIDs; defaults to nvidia-smi in this job")
+    parser.add_argument(
+        "--continuous-batch",
+        type=int,
+        default=DEFAULT_CONTINUOUS_BATCH,
+        help="maximum continuous step-level image batch size in [0, 8]; default 4",
+    )
+    parser.add_argument(
+        "--sequence-packing",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="token sequence packing for SD3.5 continuous batches (default: on iff --continuous-batch > 0)",
+    )
+    parser.add_argument(
+        "--bubble-free",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="overlap T5 encode and VAE decode with continuous MM-DiT rounds (default: on iff --continuous-batch > 0)",
+    )
+    parser.add_argument(
+        "--memory-strategy",
+        choices=MEMORY_STRATEGIES,
+        help="opt-in worker memory strategy; only strategies the workers implement are accepted "
+             "(default: none, legacy worker options)",
+    )
+    parser.add_argument("--output", type=Path)
+    args = parser.parse_args()
+    if args.self_check:
+        result = self_check()
+        print(json.dumps(result))
+        return
+    if not args.model or args.output is None:
+        parser.error("--model and --output are required unless --self-check is passed")
+    uuids = args.gpu_uuids.split(",") if args.gpu_uuids else allocated_uuids()
+    try:
+        config = build_config(
+            args.model,
+            uuids,
+            memory_strategy=args.memory_strategy,
+            continuous_batch=args.continuous_batch,
+            sequence_packing=args.sequence_packing,
+            bubble_free=args.bubble_free,
+        )
+    except ValueError as error:
+        parser.error(str(error))
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    with args.output.open("x", encoding="utf-8") as stream:
+        json.dump(config, stream, indent=2)
+        stream.write("\n")
+    print(json.dumps({
+        "output": str(args.output),
+        "experiment": config["experiment"],
+        "gpus": len(uuids),
+        "workers": len(config["workers"]),
+        "performance_qualified": False,
+    }))
+
+
+if __name__ == "__main__":
+    main()

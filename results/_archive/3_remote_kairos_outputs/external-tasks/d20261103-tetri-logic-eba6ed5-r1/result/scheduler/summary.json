@@ -1,0 +1,173 @@
+{
+  "allows": [],
+  "cost_fixture_sha256": "fca7642f3e009b967543bc31dc0fd637a66ffe09f590db7a1559cc65e73ed8f1",
+  "costs_are_measurements": false,
+  "derived_manifest_sha256": "cd13a42c64fd035db50574a04a6314cf429898ba1c385d7217b8ca370c1277b4",
+  "native_scheduler_sha256": "c05a1c51707ecddb48c06748e784456d9081a3850c81f66577e1fea643573c47",
+  "native_tracker_sha256": "922b2f3247f51b48674be777e66b7231c987147400ffd2b07486707f3941cdd4",
+  "qualification_eligible": false,
+  "records": [
+    {
+      "batch": 1,
+      "batch_metadata_aligned": true,
+      "completed_steps": {
+        "1": 10
+      },
+      "cpp_optimizer_used": false,
+      "cursor_contiguous": false,
+      "first": [
+        {
+          "batch": 1,
+          "end": 10,
+          "final": [
+            false
+          ],
+          "origin_steps": [
+            28
+          ],
+          "prompts": [
+            "fox"
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "start": 0,
+          "steps": 10,
+          "sub_req_ids": [
+            1
+          ]
+        }
+      ],
+      "second": [
+        {
+          "batch": 1,
+          "end": 10,
+          "final": [
+            false
+          ],
+          "origin_steps": [
+            28
+          ],
+          "prompts": [
+            "fox"
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "start": 0,
+          "steps": 10,
+          "sub_req_ids": [
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "batch": 2,
+      "batch_metadata_aligned": false,
+      "completed_steps": {
+        "1": 10,
+        "2": 10
+      },
+      "cpp_optimizer_used": false,
+      "cursor_contiguous": false,
+      "first": [
+        {
+          "batch": 1,
+          "end": 10,
+          "final": [
+            false
+          ],
+          "origin_steps": [
+            28
+          ],
+          "prompts": [
+            "fox",
+            "hare"
+          ],
+          "ranks": [
+            0
+          ],
+          "start": 0,
+          "steps": 10,
+          "sub_req_ids": [
+            1
+          ]
+        },
+        {
+          "batch": 1,
+          "end": 10,
+          "final": [
+            false
+          ],
+          "origin_steps": [
+            28
+          ],
+          "prompts": [
+            "fox",
+            "hare"
+          ],
+          "ranks": [
+            1
+          ],
+          "start": 0,
+          "steps": 10,
+          "sub_req_ids": [
+            2
+          ]
+        }
+      ],
+      "second": [
+        {
+          "batch": 1,
+          "end": 10,
+          "final": [
+            false
+          ],
+          "origin_steps": [
+            28
+          ],
+          "prompts": [
+            "fox",
+            "hare"
+          ],
+          "ranks": [
+            0
+          ],
+          "start": 0,
+          "steps": 10,
+          "sub_req_ids": [
+            1
+          ]
+        },
+        {
+          "batch": 1,
+          "end": 10,
+          "final": [
+            false
+          ],
+          "origin_steps": [
+            28
+          ],
+          "prompts": [
+            "fox",
+            "hare"
+          ],
+          "ranks": [
+            1
+          ],
+          "start": 0,
+          "steps": 10,
+          "sub_req_ids": [
+            2
+          ]
+        }
+      ]
+    }
+  ],
+  "schema": "ditserve.tetriserve-native-scheduler-logic.v1",
+  "status": "native_logic_observed",
+  "upstream_commit": "414ec2956c09466ccd7842fda9851511462bd42a"
+}

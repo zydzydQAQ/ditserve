@@ -1,0 +1,658 @@
+{
+  "allows": [],
+  "calibration_cells": [
+    {
+      "bs": 1,
+      "height": 512,
+      "sp": 1,
+      "steps": 28,
+      "width": 512
+    },
+    {
+      "bs": 1,
+      "height": 512,
+      "sp": 2,
+      "steps": 28,
+      "width": 512
+    },
+    {
+      "bs": 2,
+      "height": 512,
+      "sp": 1,
+      "steps": 28,
+      "width": 512
+    },
+    {
+      "bs": 2,
+      "height": 512,
+      "sp": 2,
+      "steps": 28,
+      "width": 512
+    },
+    {
+      "bs": 1,
+      "height": 1024,
+      "sp": 1,
+      "steps": 28,
+      "width": 1024
+    },
+    {
+      "bs": 1,
+      "height": 1024,
+      "sp": 2,
+      "steps": 28,
+      "width": 1024
+    },
+    {
+      "bs": 2,
+      "height": 1024,
+      "sp": 1,
+      "steps": 28,
+      "width": 1024
+    },
+    {
+      "bs": 2,
+      "height": 1024,
+      "sp": 2,
+      "steps": 28,
+      "width": 1024
+    }
+  ],
+  "calibration_timing_scope": "One measured repeat per cell; denoising includes VAE decode; diagnostic costs only",
+  "cost_calibration_sha256": {
+    "rank-0.jsonl": "772001014b894950ecedf173a9207dbede8221db4f4b633130369a9538bfbd30",
+    "rank-1.jsonl": "24748c16db5cd7584ae93b91a36a1ed5d33f0d03d52bbd1f115b06de0a6b7f35"
+  },
+  "cost_profile_sha256": "49ba7834c34a7f2d6d602fe7ce4679e391e67e4fbdef1de14cc1132fa2f58fb4",
+  "counts": {
+    "continuation_rounds": 14,
+    "native_rounds": 16,
+    "observed_rank_groups": [
+      [
+        0
+      ],
+      [
+        0,
+        1
+      ],
+      [
+        1
+      ]
+    ],
+    "rank_executions": 25,
+    "requests_completed": 2,
+    "transformer_steps_per_request": [
+      28,
+      28
+    ]
+  },
+  "cross_rank_migration_required": false,
+  "derived_manifest_sha256": "5ab5b86ee32a96039a50bcaed54bf10ce1cdc5415cac473bc4504375ce8485fb",
+  "dispatches": [
+    {
+      "batch_size": 1,
+      "end": 4,
+      "height": 1024,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A white rabbit in a field of blue flowers."
+        ],
+        "seed": 102
+      },
+      "ranks": [
+        0
+      ],
+      "request_ids": [
+        1
+      ],
+      "start": 0,
+      "sub_request_ids": [
+        -2
+      ],
+      "width": 1024
+    },
+    {
+      "batch_size": 1,
+      "end": 10,
+      "height": 512,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A red fox standing beside a mountain lake."
+        ],
+        "seed": 101
+      },
+      "ranks": [
+        1
+      ],
+      "request_ids": [
+        0
+      ],
+      "start": 0,
+      "sub_request_ids": [
+        -1
+      ],
+      "width": 512
+    },
+    {
+      "batch_size": 1,
+      "end": 20,
+      "height": 512,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A red fox standing beside a mountain lake."
+        ],
+        "seed": 101
+      },
+      "ranks": [
+        1
+      ],
+      "request_ids": [
+        0
+      ],
+      "start": 10,
+      "sub_request_ids": [
+        -1
+      ],
+      "width": 512
+    },
+    {
+      "batch_size": 1,
+      "end": 6,
+      "height": 1024,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A white rabbit in a field of blue flowers."
+        ],
+        "seed": 102
+      },
+      "ranks": [
+        0
+      ],
+      "request_ids": [
+        1
+      ],
+      "start": 4,
+      "sub_request_ids": [
+        -2
+      ],
+      "width": 1024
+    },
+    {
+      "batch_size": 1,
+      "end": 28,
+      "height": 512,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A red fox standing beside a mountain lake."
+        ],
+        "seed": 101
+      },
+      "ranks": [
+        1
+      ],
+      "request_ids": [
+        0
+      ],
+      "start": 20,
+      "sub_request_ids": [
+        -1
+      ],
+      "width": 512
+    },
+    {
+      "batch_size": 1,
+      "end": 8,
+      "height": 1024,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A white rabbit in a field of blue flowers."
+        ],
+        "seed": 102
+      },
+      "ranks": [
+        0
+      ],
+      "request_ids": [
+        1
+      ],
+      "start": 6,
+      "sub_request_ids": [
+        -2
+      ],
+      "width": 1024
+    },
+    {
+      "batch_size": 1,
+      "end": 10,
+      "height": 1024,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A white rabbit in a field of blue flowers."
+        ],
+        "seed": 102
+      },
+      "ranks": [
+        0
+      ],
+      "request_ids": [
+        1
+      ],
+      "start": 8,
+      "sub_request_ids": [
+        -2
+      ],
+      "width": 1024
+    },
+    {
+      "batch_size": 1,
+      "end": 12,
+      "height": 1024,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A white rabbit in a field of blue flowers."
+        ],
+        "seed": 102
+      },
+      "ranks": [
+        0,
+        1
+      ],
+      "request_ids": [
+        1
+      ],
+      "start": 10,
+      "sub_request_ids": [
+        -2
+      ],
+      "width": 1024
+    },
+    {
+      "batch_size": 1,
+      "end": 14,
+      "height": 1024,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A white rabbit in a field of blue flowers."
+        ],
+        "seed": 102
+      },
+      "ranks": [
+        0,
+        1
+      ],
+      "request_ids": [
+        1
+      ],
+      "start": 12,
+      "sub_request_ids": [
+        -2
+      ],
+      "width": 1024
+    },
+    {
+      "batch_size": 1,
+      "end": 16,
+      "height": 1024,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A white rabbit in a field of blue flowers."
+        ],
+        "seed": 102
+      },
+      "ranks": [
+        0,
+        1
+      ],
+      "request_ids": [
+        1
+      ],
+      "start": 14,
+      "sub_request_ids": [
+        -2
+      ],
+      "width": 1024
+    },
+    {
+      "batch_size": 1,
+      "end": 18,
+      "height": 1024,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A white rabbit in a field of blue flowers."
+        ],
+        "seed": 102
+      },
+      "ranks": [
+        0,
+        1
+      ],
+      "request_ids": [
+        1
+      ],
+      "start": 16,
+      "sub_request_ids": [
+        -2
+      ],
+      "width": 1024
+    },
+    {
+      "batch_size": 1,
+      "end": 20,
+      "height": 1024,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A white rabbit in a field of blue flowers."
+        ],
+        "seed": 102
+      },
+      "ranks": [
+        0,
+        1
+      ],
+      "request_ids": [
+        1
+      ],
+      "start": 18,
+      "sub_request_ids": [
+        -2
+      ],
+      "width": 1024
+    },
+    {
+      "batch_size": 1,
+      "end": 22,
+      "height": 1024,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A white rabbit in a field of blue flowers."
+        ],
+        "seed": 102
+      },
+      "ranks": [
+        0,
+        1
+      ],
+      "request_ids": [
+        1
+      ],
+      "start": 20,
+      "sub_request_ids": [
+        -2
+      ],
+      "width": 1024
+    },
+    {
+      "batch_size": 1,
+      "end": 24,
+      "height": 1024,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A white rabbit in a field of blue flowers."
+        ],
+        "seed": 102
+      },
+      "ranks": [
+        0,
+        1
+      ],
+      "request_ids": [
+        1
+      ],
+      "start": 22,
+      "sub_request_ids": [
+        -2
+      ],
+      "width": 1024
+    },
+    {
+      "batch_size": 1,
+      "end": 26,
+      "height": 1024,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A white rabbit in a field of blue flowers."
+        ],
+        "seed": 102
+      },
+      "ranks": [
+        0,
+        1
+      ],
+      "request_ids": [
+        1
+      ],
+      "start": 24,
+      "sub_request_ids": [
+        -2
+      ],
+      "width": 1024
+    },
+    {
+      "batch_size": 1,
+      "end": 28,
+      "height": 1024,
+      "inputs": {
+        "guidance_scale": 4.5,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "origin_steps": [
+          28
+        ],
+        "prompt": [
+          "A white rabbit in a field of blue flowers."
+        ],
+        "seed": 102
+      },
+      "ranks": [
+        0,
+        1
+      ],
+      "request_ids": [
+        1
+      ],
+      "start": 26,
+      "sub_request_ids": [
+        -2
+      ],
+      "width": 1024
+    }
+  ],
+  "full_formal_baseline": false,
+  "http_zmq_executed": true,
+  "ipc_scope": "Original relative ZMQ IPC endpoints in a private ephemeral container directory",
+  "limitations": [
+    "Two independent HTTP requests, one image per request; native cross-request batching is not implemented upstream",
+    "BS2 is exercised only by calibration, not the HTTP workload",
+    "Native allocation is unrestricted within SP1/SP2; cross-rank migration is observed, not forced",
+    "Raw numerical tolerance is a diagnostic criterion, not a paper quality qualification",
+    "Capture adds CPU transfer synchronization; these service timings are instrumented"
+  ],
+  "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+  "model_weights_verified": true,
+  "native_service_sources": {
+    "tetriserve/distributed/distributed.py": "1be13b5c707fec3af4d7396c9ddd2afd7482a04582291962b9cb5b84a68ac20e",
+    "tetriserve/distributed/globals.py": "2e8d29eab6c8324ec7330cd926c2f3d51c33f159a96831698cb0e4d2e628adaa",
+    "tetriserve/engine/proc_launcher.py": "f5cef76c392abf9f718ca9ea06beeefe2ae081bf43c3525717025b05ba09dbb7",
+    "tetriserve/engine/runtime.py": "e28718f2c849ed5632e71b5be4e587d545030afc73180887575614be77fa3005",
+    "tetriserve/light_ray/latent_future.py": "a737d9b0c22b004a70934ebf2b5c42ce12e8ee2ae75cd39fd815ba4c18157e2c",
+    "tetriserve/light_ray/latent_manager.py": "aaee87afc5da210684093632d06967a99a776d3f91ac2e44ff0ef9bcf0d2be98",
+    "tetriserve/zmq_utils/comm.py": "85cf6c6b8282d50df2387ec6e1da458ad5f88b1a368c87014523d0fd7401a176"
+  },
+  "numerical_check_passed": false,
+  "numerics_adapter_sha256": "924b557ffa7066317bd81bb8e950d6125ae4f485dd15589e425652e3398b6958",
+  "numerics_plan": "/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-630ea30-r2/result/numerics/numerics-plan.json",
+  "numerics_plan_sha256": "300db58b53936e474598043dcfb0bbe44cfcf1157928f408d7729e61a3855cde",
+  "performance_measurements": false,
+  "protocol_sha256": "86aae608c7f86d194e77a5e2e9645b192b921d8137174cbcdb2825ed7d94b392",
+  "qualification_eligible": false,
+  "raw_artifacts_protected": true,
+  "requests": [
+    {
+      "request": {
+        "guidance_scale": 4.5,
+        "height": 512,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "prompt": "A red fox standing beside a mountain lake.",
+        "seed": 101,
+        "steps": 28,
+        "width": 512
+      },
+      "request_id": 100,
+      "shape_id": "sd35-512"
+    },
+    {
+      "request": {
+        "guidance_scale": 4.5,
+        "height": 1024,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality",
+        "prompt": "A white rabbit in a field of blue flowers.",
+        "seed": 102,
+        "steps": 28,
+        "width": 1024
+      },
+      "request_id": 101,
+      "shape_id": "sd35-1024"
+    }
+  ],
+  "responses": [
+    {
+      "elapsed_seconds": 2.82323807105422,
+      "http_status": 200,
+      "image_count": 1,
+      "mode": "RGB",
+      "native_request_id": 0,
+      "pixels_sha256": "fb6bfa1a32307433922a307a492b26b2386ea604943068e92917949d6d3dce1b",
+      "request_id": 100,
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "elapsed_seconds": 6.182290496304631,
+      "http_status": 200,
+      "image_count": 1,
+      "mode": "RGB",
+      "native_request_id": 1,
+      "pixels_sha256": "5c4dd138ba39560ce2d97bd59ea79305e4a05e1deb686c7821a61f041ef3cbcd",
+      "request_id": 101,
+      "size": [
+        1024,
+        1024
+      ]
+    }
+  ],
+  "schema": "ditserve.tetriserve-native-service-check.v1",
+  "scope": "Original TetriServe HTTP/runtime/worker service with shared SD3.5 model; two-request diagnostic",
+  "service_adapter_sha256": "a6694e570c22cc485c7b61513018594e2cf492984ef89e1860d898aed29ee773",
+  "service_batching_covered": false,
+  "service_events_sha256": {
+    "rank-0.jsonl": "cf2a3ff26ae42d0002030b5488aa57fd29777c37b603124f5ff8d7d69b0ec411",
+    "rank-1.jsonl": "88591d0b534238c081e7da6517859c1fbde60cd6d6248d3ffa9d6d890c83b592"
+  },
+  "serving_executed": true,
+  "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a",
+  "source_manifest_sha256": "2d0d9f9efaf4b3749063458d56c74b0ef79ef72de22096b39889e798e792d027",
+  "source_verification": {
+    "archive_sha256": "a97749491c2bd6fddfe867e7a76a164bb015f3e7b439de289d99c2ca6c11b771",
+    "commit": "414ec2956c09466ccd7842fda9851511462bd42a",
+    "verified_files": 312
+  },
+  "status": "service_passed",
+  "worker_exitcodes": [
+    0,
+    0
+  ]
+}

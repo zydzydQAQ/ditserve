@@ -1,0 +1,18 @@
+modality,model,shape,tokens_L,form,gpus,step_ms,e2e_s,step_speedup_vs_sp1,e2e_speedup_vs_sp1,comm_pct,pcie_mb_per_step,pareto_status
+Image,SD3.5-Medium,512x512,1024,SP1 (CFG=1 fused 2B),1,61.62,1.81,1.0,1.0,0.0,0.0,Retained (1-GPU SP1 + CB)
+Image,SD3.5-Medium,512x512,1024,CFG2 (split 1B/GPU),2,62.92,1.83,0.979,0.99,0.2,1.0,Pruned (-50.6% tp/GPU)
+Image,SD3.5-Medium,1024x1024,4096,SP1 (CFG=1 fused 2B),1,218.19,6.31,1.0,1.0,0.0,0.0,Retained (1-GPU SP1 + CB)
+Image,SD3.5-Medium,1024x1024,4096,CFG2 (split 1B/GPU),2,110.5,3.29,1.975,1.92,0.1,4.0,Pruned (-4.2% tp/GPU vs 2xSP1)
+Video,Wan2.2-TI2V-5B,121x512x896 (480p),13888,SP1,1,3069.18,163.0,1.0,1.0,0.0,0.0,Retained (1-GPU anchor)
+Video,Wan2.2-TI2V-5B,121x512x896 (480p),13888,CFG2,2,1544.55,86.8,1.987,1.88,0.65,5.33,Pareto Retained (beats SP4 & CFG2SP2)
+Video,Wan2.2-TI2V-5B,121x512x896 (480p),13888,CFG2SP2,4,1611.53,90.1,1.905,1.81,52.38,2565.17,Dominated by 2-GPU CFG2 (L < L*)
+Video,Wan2.2-TI2V-5B,121x512x896 (480p),13888,CFG2SP3,6,1308.37,75.0,2.346,2.17,60.9,2280.74,Pareto Retained
+Video,Wan2.2-TI2V-5B,121x512x896 (480p),13888,CFG2SP4,8,1172.15,68.1,2.618,2.39,67.27,1925.21,Pareto Retained
+Video,Wan2.2-TI2V-5B,121x704x1280 (720p),27280,SP1,1,7813.18,409.9,1.0,1.0,0.0,0.0,Retained (1-GPU anchor)
+Video,Wan2.2-TI2V-5B,121x704x1280 (720p),27280,CFG2,2,3902.14,214.4,2.002,1.91,0.08,10.48,Pareto Retained (beats 4-GPU SP4 253.9s)
+Video,Wan2.2-TI2V-5B,121x704x1280 (720p),27280,CFG2SP2,4,3470.52,192.8,2.251,2.13,43.72,5038.73,Pareto Retained
+Video,Wan2.2-TI2V-5B,121x704x1280 (720p),27280,CFG2SP3,6,2729.35,155.7,2.863,2.63,52.33,4480.03,Pareto Retained
+Video,Wan2.2-TI2V-5B,121x704x1280 (720p),27280,CFG2SP4,8,2402.92,139.4,3.252,2.94,59.36,3781.66,Pareto Retained
+Video,Wan2.1-T2V-1.3B,81x480x832 (480p),32760,CFG2,2,1998.12,106.8,1.984,1.89,0.79,4.19,Pareto Retained (beats 4-GPU CFG2SP2 2118.8ms)
+Video,Wan2.1-T2V-1.3B,81x720x1280 (720p),75600,CFG2,2,8154.03,418.5,1.988,1.95,0.59,9.68,Pareto Retained
+Video,Wan2.1-T2V-1.3B,81x720x1280 (720p),75600,CFG2SP4,8,3982.82,210.0,4.071,3.89,49.12,5235.15,Pareto Retained (L > L*)

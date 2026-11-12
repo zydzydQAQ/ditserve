@@ -1,0 +1,63 @@
+{
+  "active": null,
+  "allocation_id": "636d2e174751a4130f368647814bea77",
+  "limits": {
+    "carry": "none",
+    "phase_gpu_seconds": {},
+    "phase_order": [
+      "cluster"
+    ],
+    "repair_reserve_gpu_seconds": 0.0,
+    "total_gpu_seconds": 510688.0
+  },
+  "phase_cursor": 0,
+  "phase_usage": {
+    "cluster": 3834.6101125478745
+  },
+  "schema_version": "ditserve.budget.v1",
+  "sessions": [
+    {
+      "cleanup_verified": true,
+      "deadline_monotonic": 9101072.646031493,
+      "devices": 16,
+      "elapsed_seconds": 239.66313203424215,
+      "ended_at": 1794296419.6119623,
+      "ended_monotonic": 9069394.309163528,
+      "gpu_seconds": 3834.6101125478745,
+      "identity": {
+        "attempt": 1,
+        "config_sha256": "4f09a16506ca0b880edff9ea6375c4815a1b16df8f0eab2e6255275adec888b7",
+        "gpu_uuids": [
+          "GPU-75c7bcfe-5bb7-85aa-4c4f-bdb2a26ce457",
+          "GPU-21027a73-5a0e-3c56-e18d-9435e84f5ed2",
+          "GPU-a331a424-15be-fa45-6b08-d951d2dce277",
+          "GPU-6c6892f8-1aa0-4c8f-d1ec-bc514adcbd42",
+          "GPU-9bd9082d-b7d4-f4de-cd0a-5788492a5247",
+          "GPU-bb1751f0-c0e1-a4e8-ae83-008e4246cced",
+          "GPU-979da027-ad90-4f70-6203-0e86fce22d4c",
+          "GPU-e6a7b9a6-b668-5e8d-5989-b9934c468d94",
+          "GPU-421d1a6b-d4fd-6ee6-91e4-6e921a5d611e",
+          "GPU-11139bb2-fe31-dd76-a58e-f7ab3b467838",
+          "GPU-a963ae1b-b653-dfd2-806e-cd3fe4b81d14",
+          "GPU-bb5415ba-8ea2-6efe-6d83-0d38d581d539",
+          "GPU-f223a621-11dc-1da0-a602-cb86f1ee5be5",
+          "GPU-e87d5d8d-9da7-35f5-7085-22817feb00a7",
+          "GPU-afb5ebb2-a584-abce-e912-6cd50477f4bb",
+          "GPU-c2195fc4-0579-e149-dcd5-8f912dfb44c2"
+        ],
+        "run_id": "d20261110-formal-v2-scale-n0-8gpu-0ef480f-r1-p-gpu-16",
+        "source_sha256": "29a7a44b430bbd81898a16c94e1f09d48c6c9a218f0d83c1ca8901a78739dffd"
+      },
+      "phase": "cluster",
+      "repair": false,
+      "session_id": "d75dc661be286b7879f647ac229bd672",
+      "started_at": 1794296179.9488316,
+      "started_monotonic": 9069154.646031493,
+      "status": "failed",
+      "supervisor_pid": 174
+    }
+  ],
+  "used_gpu_seconds": 3834.6101125478745,
+  "used_regular_gpu_seconds": 3834.6101125478745,
+  "used_repair_gpu_seconds": 0.0
+}

@@ -1,0 +1,343 @@
+{
+  "schema": "ditserve.external-task.v1",
+  "run_id": "d20261103-tetri-logic-eba6ed5-r1",
+  "binding": {
+    "commit": "eba6ed5cb6f7a4d71459491dd182e460c9e8a775",
+    "manifest_sha256": "c51a24d8530e99397a2c94830bde779b559c5ba06b40741e291c4e07ed047272",
+    "job_spec_sha256": "e89145de7ffd5e9f8b42a2b6f980842a69ae748bc67458b3d78aaf2a8f7097f0",
+    "build_info_sha256": "76a70cb4246b15b0e82c3749841b81cb79e8f0692da812c19831108d27e7e0a6",
+    "core_sha256": "e358e29d1a3ca238bbf2b7f981db71e951519715aedf46d58454738aabcbd42b",
+    "worker_sources_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a",
+    "gfc_sources_sha256": "e6c7f47a26d02a8091463bf9cb8ca58835c2b07c3c2cd4827d1b319c3bebf6e6",
+    "image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:2009ea26f63bcf0360ce7b4d71ed508c91c0702c97dd97e372cecfb672a818a1",
+    "image_identity_scope": "digest-pinned submitted spec, not independent pod imageID",
+    "probe_plan_sha256": "e6930a7a9ac1d8e443d3329707b2b09a2759180c2d4ccaec793d55a834ee3164"
+  },
+  "allocation_gpus": 1,
+  "initial_storage": {
+    "used_gib": 769,
+    "percent": 76
+  },
+  "final_storage": {
+    "used_gib": 769,
+    "percent": 76
+  },
+  "task": "official-tetriserve-scheduler-and-real-gloo-bridge-logic",
+  "execution": {
+    "argv": [
+      "/opt/venv/bin/python",
+      "-B",
+      "/shared/data/DITSERVE/external-probes/tetri-logic-eba6ed5-r1/external_tetriserve_logic.py",
+      "--source-root",
+      "/shared/data/DITSERVE/external-systems/20261103-source-v1/TetriServe",
+      "--source-manifest",
+      "/shared/data/DITSERVE/external-systems/20261103-source-v1/TetriServe.source.json",
+      "--source-manifest-sha256",
+      "2d0d9f9efaf4b3749063458d56c74b0ef79ef72de22096b39889e798e792d027",
+      "--shared-python-root",
+      "/shared/code/DITSERVE/builds/51740c0/share/ditserve/python",
+      "--bridge-test-file",
+      "/shared/data/DITSERVE/external-probes/tetri-logic-eba6ed5-r1/test_20261103_external_tetriserve_bridge.py",
+      "--bridge-test-sha256",
+      "99c38df9c0ff0ec8eeabbeee180fbdf1929b77b5e1b5fa140b49cc3ecc8fcf7a",
+      "--output",
+      "/shared/output/DITSERVE/external-tasks/d20261103-tetri-logic-eba6ed5-r1/result",
+      "--timeout-seconds",
+      "180"
+    ],
+    "returncode": 1,
+    "timed_out": false,
+    "seconds": 35.09346731565893,
+    "stderr_tail": "",
+    "result": {
+      "logic_gate_passed": false,
+      "qualification_eligible": false,
+      "sha256": "f8c9c3954903d95f26486cc324ce8ba93d7de4e2df2c054d1d8e960c83050854",
+      "status": "logic_failed_or_uncovered",
+      "summary": "/shared/output/DITSERVE/external-tasks/d20261103-tetri-logic-eba6ed5-r1/result/summary.json"
+    },
+    "child_summary_path": "/shared/output/DITSERVE/external-tasks/d20261103-tetri-logic-eba6ed5-r1/result/summary.json",
+    "child_summary_sha256": "f8c9c3954903d95f26486cc324ce8ba93d7de4e2df2c054d1d8e960c83050854",
+    "child_summary": {
+      "allows": [],
+      "binding": {
+        "bridge_sha256": "7b9bbac7a6d009ab3099b226e6d9f1bdebefb78b0bc7831b8f51de940e926336",
+        "bridge_test_sha256": "99c38df9c0ff0ec8eeabbeee180fbdf1929b77b5e1b5fa140b49cc3ecc8fcf7a",
+        "derived_manifest_sha256": "cd13a42c64fd035db50574a04a6314cf429898ba1c385d7217b8ca370c1277b4",
+        "logic_sha256": "ccc7d84f679cc4171ebc5c1da985ba722752dcf7a9e61c7a1ac812966549123e",
+        "port_sha256": "4c7ede9597e0217295399f59764a3338d6263237647baba60dc33d5d435fec98",
+        "round_sha256": "11fd66b622f848d446aed543041ca8269c1b3d1fb3f7e4055028dda5dcaff377",
+        "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a",
+        "upstream_commit": "414ec2956c09466ccd7842fda9851511462bd42a",
+        "upstream_manifest_sha256": "2d0d9f9efaf4b3749063458d56c74b0ef79ef72de22096b39889e798e792d027"
+      },
+      "eligible_for_next_gpu_migration_check": false,
+      "gloo": {
+        "assessment": {
+          "covered": true,
+          "issues": [],
+          "passed": true
+        },
+        "execution": {
+          "argv": [
+            "/opt/venv/bin/python",
+            "-I",
+            "-B",
+            "-c",
+            "\nimport hashlib, importlib.util, io, json, os, signal, sys, unittest\npackage, shared, test_file, test_sha, timeout = sys.argv[1:]\nsys.path[:0] = [package, shared, os.path.dirname(test_file)]\nos.environ['DITSERVE_SHARED_PYTHON_ROOT'] = shared\nwith open(test_file, 'rb') as stream:\n    if hashlib.sha256(stream.read()).hexdigest() != test_sha:\n        raise ValueError('bridge test source changed before execution')\nspec = importlib.util.spec_from_file_location('test_20261103_external_tetriserve_bridge', test_file)\nmodule = importlib.util.module_from_spec(spec)\nsys.modules[spec.name] = module\nspec.loader.exec_module(module)\nsuite = unittest.defaultTestLoader.loadTestsFromModule(module)\ndef ids(node):\n    if isinstance(node, unittest.TestSuite):\n        return [name for child in node for name in ids(child)]\n    return [node.id()]\nselected = ids(suite)\ndef expired(*unused):\n    raise TimeoutError('real CPU Gloo diagnostic deadline exceeded')\nsignal.signal(signal.SIGALRM, expired)\nsignal.alarm(int(timeout))\nlog = io.StringIO()\nresult = unittest.TextTestRunner(stream=log, verbosity=2).run(suite)\nrecord = dict(schema='ditserve.tetriserve-bridge-tests.v1', selected=selected,\n    tests_run=result.testsRun, successful=result.wasSuccessful(),\n    skipped=[dict(test=test.id(), reason=why) for test, why in result.skipped],\n    failures=[dict(test=test.id(), traceback=why) for test, why in result.failures],\n    errors=[dict(test=test.id(), traceback=why) for test, why in result.errors],\n    log_tail=log.getvalue()[-16000:], qualification_eligible=False, allows=[])\nprint('DITSERVE_TEST_RESULT=' + json.dumps(record, sort_keys=True, allow_nan=False), flush=True)\nsys.exit(0 if result.wasSuccessful() and not result.skipped and result.testsRun == 5 else 1)\n",
+            "/shared/data/DITSERVE/external-probes/tetri-logic-eba6ed5-r1",
+            "/shared/code/DITSERVE/builds/51740c0/share/ditserve/python",
+            "/shared/data/DITSERVE/external-probes/tetri-logic-eba6ed5-r1/test_20261103_external_tetriserve_bridge.py",
+            "99c38df9c0ff0ec8eeabbeee180fbdf1929b77b5e1b5fa140b49cc3ecc8fcf7a",
+            "180"
+          ],
+          "returncode": 0,
+          "seconds": 16.721552485600114,
+          "stderr_tail": "",
+          "stdout_tail": "[Gloo] Rank 0 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1\n[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0\n[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0\n[Gloo] Rank 1 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1\n[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0\n[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0\n[Gloo] Rank 0 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1\n[Gloo] Rank 1 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1\n[Gloo] Rank 0 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1\n[Gloo] Rank 1 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1\nDITSERVE_TEST_RESULT={\"allows\": [], \"errors\": [], \"failures\": [], \"log_tail\": \"test_batch_identity_guidance_and_final_marker_fail_closed (test_20261103_external_tetriserve_bridge.TetriBridgeTests) ... ok\\ntest_native_future_cursor_must_match_new_absolute_round (test_20261103_external_tetriserve_bridge.TetriBridgeTests) ... ok\\ntest_real_cpu_tensors_reject_mixed_schedules_and_broken_cfg_pairs (test_20261103_external_tetriserve_bridge.TetriBridgeTests) ... ok\\ntest_real_gloo_sp1_sp2_rank_switch_without_new_groups (test_20261103_external_tetriserve_bridge.TetriBridgeTests) ... ok\\ntest_sorted_native_rank_contract_and_group_inventory (test_20261103_external_tetriserve_bridge.TetriBridgeTests) ... ok\\n\\n----------------------------------------------------------------------\\nRan 5 tests in 16.086s\\n\\nOK\\n\", \"qualification_eligible\": false, \"schema\": \"ditserve.tetriserve-bridge-tests.v1\", \"selected\": [\"test_20261103_external_tetriserve_bridge.TetriBridgeTests.test_batch_identity_guidance_and_final_marker_fail_closed\", \"test_20261103_external_tetriserve_bridge.TetriBridgeTests.test_native_future_cursor_must_match_new_absolute_round\", \"test_20261103_external_tetriserve_bridge.TetriBridgeTests.test_real_cpu_tensors_reject_mixed_schedules_and_broken_cfg_pairs\", \"test_20261103_external_tetriserve_bridge.TetriBridgeTests.test_real_gloo_sp1_sp2_rank_switch_without_new_groups\", \"test_20261103_external_tetriserve_bridge.TetriBridgeTests.test_sorted_native_rank_contract_and_group_inventory\"], \"skipped\": [], \"successful\": true, \"tests_run\": 5}\n",
+          "tests": {
+            "allows": [],
+            "errors": [],
+            "failures": [],
+            "log_tail": "test_batch_identity_guidance_and_final_marker_fail_closed (test_20261103_external_tetriserve_bridge.TetriBridgeTests) ... ok\ntest_native_future_cursor_must_match_new_absolute_round (test_20261103_external_tetriserve_bridge.TetriBridgeTests) ... ok\ntest_real_cpu_tensors_reject_mixed_schedules_and_broken_cfg_pairs (test_20261103_external_tetriserve_bridge.TetriBridgeTests) ... ok\ntest_real_gloo_sp1_sp2_rank_switch_without_new_groups (test_20261103_external_tetriserve_bridge.TetriBridgeTests) ... ok\ntest_sorted_native_rank_contract_and_group_inventory (test_20261103_external_tetriserve_bridge.TetriBridgeTests) ... ok\n\n----------------------------------------------------------------------\nRan 5 tests in 16.086s\n\nOK\n",
+            "qualification_eligible": false,
+            "schema": "ditserve.tetriserve-bridge-tests.v1",
+            "selected": [
+              "test_20261103_external_tetriserve_bridge.TetriBridgeTests.test_batch_identity_guidance_and_final_marker_fail_closed",
+              "test_20261103_external_tetriserve_bridge.TetriBridgeTests.test_native_future_cursor_must_match_new_absolute_round",
+              "test_20261103_external_tetriserve_bridge.TetriBridgeTests.test_real_cpu_tensors_reject_mixed_schedules_and_broken_cfg_pairs",
+              "test_20261103_external_tetriserve_bridge.TetriBridgeTests.test_real_gloo_sp1_sp2_rank_switch_without_new_groups",
+              "test_20261103_external_tetriserve_bridge.TetriBridgeTests.test_sorted_native_rank_contract_and_group_inventory"
+            ],
+            "skipped": [],
+            "successful": true,
+            "tests_run": 5
+          },
+          "timed_out": false
+        },
+        "status": "executed"
+      },
+      "gpu_migration_verified": false,
+      "logic_gate_passed": false,
+      "model_loaded": false,
+      "qualification_eligible": false,
+      "scheduler": {
+        "assessment": {
+          "covered": true,
+          "issues": [
+            "continuation absolute interval is invalid",
+            "native batch metadata is not aligned",
+            "native continuation repeats or skips completed steps",
+            "native cursor continuity failed"
+          ],
+          "passed": false
+        },
+        "evidence": {
+          "allows": [],
+          "cost_fixture_sha256": "fca7642f3e009b967543bc31dc0fd637a66ffe09f590db7a1559cc65e73ed8f1",
+          "costs_are_measurements": false,
+          "derived_manifest_sha256": "cd13a42c64fd035db50574a04a6314cf429898ba1c385d7217b8ca370c1277b4",
+          "native_scheduler_sha256": "c05a1c51707ecddb48c06748e784456d9081a3850c81f66577e1fea643573c47",
+          "native_tracker_sha256": "922b2f3247f51b48674be777e66b7231c987147400ffd2b07486707f3941cdd4",
+          "qualification_eligible": false,
+          "records": [
+            {
+              "batch": 1,
+              "batch_metadata_aligned": true,
+              "completed_steps": {
+                "1": 10
+              },
+              "cpp_optimizer_used": false,
+              "cursor_contiguous": false,
+              "first": [
+                {
+                  "batch": 1,
+                  "end": 10,
+                  "final": [
+                    false
+                  ],
+                  "origin_steps": [
+                    28
+                  ],
+                  "prompts": [
+                    "fox"
+                  ],
+                  "ranks": [
+                    0,
+                    1
+                  ],
+                  "start": 0,
+                  "steps": 10,
+                  "sub_req_ids": [
+                    1
+                  ]
+                }
+              ],
+              "second": [
+                {
+                  "batch": 1,
+                  "end": 10,
+                  "final": [
+                    false
+                  ],
+                  "origin_steps": [
+                    28
+                  ],
+                  "prompts": [
+                    "fox"
+                  ],
+                  "ranks": [
+                    0,
+                    1
+                  ],
+                  "start": 0,
+                  "steps": 10,
+                  "sub_req_ids": [
+                    1
+                  ]
+                }
+              ]
+            },
+            {
+              "batch": 2,
+              "batch_metadata_aligned": false,
+              "completed_steps": {
+                "1": 10,
+                "2": 10
+              },
+              "cpp_optimizer_used": false,
+              "cursor_contiguous": false,
+              "first": [
+                {
+                  "batch": 1,
+                  "end": 10,
+                  "final": [
+                    false
+                  ],
+                  "origin_steps": [
+                    28
+                  ],
+                  "prompts": [
+                    "fox",
+                    "hare"
+                  ],
+                  "ranks": [
+                    0
+                  ],
+                  "start": 0,
+                  "steps": 10,
+                  "sub_req_ids": [
+                    1
+                  ]
+                },
+                {
+                  "batch": 1,
+                  "end": 10,
+                  "final": [
+                    false
+                  ],
+                  "origin_steps": [
+                    28
+                  ],
+                  "prompts": [
+                    "fox",
+                    "hare"
+                  ],
+                  "ranks": [
+                    1
+                  ],
+                  "start": 0,
+                  "steps": 10,
+                  "sub_req_ids": [
+                    2
+                  ]
+                }
+              ],
+              "second": [
+                {
+                  "batch": 1,
+                  "end": 10,
+                  "final": [
+                    false
+                  ],
+                  "origin_steps": [
+                    28
+                  ],
+                  "prompts": [
+                    "fox",
+                    "hare"
+                  ],
+                  "ranks": [
+                    0
+                  ],
+                  "start": 0,
+                  "steps": 10,
+                  "sub_req_ids": [
+                    1
+                  ]
+                },
+                {
+                  "batch": 1,
+                  "end": 10,
+                  "final": [
+                    false
+                  ],
+                  "origin_steps": [
+                    28
+                  ],
+                  "prompts": [
+                    "fox",
+                    "hare"
+                  ],
+                  "ranks": [
+                    1
+                  ],
+                  "start": 0,
+                  "steps": 10,
+                  "sub_req_ids": [
+                    2
+                  ]
+                }
+              ]
+            }
+          ],
+          "schema": "ditserve.tetriserve-native-scheduler-logic.v1",
+          "status": "native_logic_observed",
+          "upstream_commit": "414ec2956c09466ccd7842fda9851511462bd42a"
+        },
+        "execution": {
+          "argv": [
+            "/opt/venv/bin/python",
+            "-I",
+            "-B",
+            "-c",
+            "\nimport runpy, signal, sys\npackage, shared, timeout, *args = sys.argv[1:]\nsys.path[:0] = [package, shared]\ndef expired(*unused):\n    raise TimeoutError('native scheduler diagnostic deadline exceeded')\nsignal.signal(signal.SIGALRM, expired)\nsignal.alarm(int(timeout))\nsys.argv = [package + '/external_tetriserve_port.py', *args]\nrunpy.run_path(sys.argv[0], run_name='__main__')\n",
+            "/shared/data/DITSERVE/external-probes/tetri-logic-eba6ed5-r1",
+            "/shared/code/DITSERVE/builds/51740c0/share/ditserve/python",
+            "180",
+            "scheduler-check",
+            "--derived-root",
+            "/shared/output/DITSERVE/external-tasks/d20261103-tetri-logic-eba6ed5-r1/result/derived",
+            "--derived-manifest-sha256",
+            "cd13a42c64fd035db50574a04a6314cf429898ba1c385d7217b8ca370c1277b4",
+            "--output",
+            "/shared/output/DITSERVE/external-tasks/d20261103-tetri-logic-eba6ed5-r1/result/scheduler"
+          ],
+          "returncode": 0,
+          "seconds": 13.526093382388353,
+          "stderr_tail": "",
+          "stdout_tail": "WARNING 11-03 08:17:31 [envs.py:111] Flash Attention library \"flash_attn\" not found, using pytorch attention implementation\nINFO 11-03 08:17:36 [dyn_step_scheduler.py:1507] _combo_search_with_algorithm_selection execution time: 0.0001 seconds\nINFO 11-03 08:17:36 [dyn_step_scheduler.py:1513] best_combo_list: [(0, [0], 20, 0.2)]\nINFO 11-03 08:17:36 [dyn_step_scheduler.py:1507] _combo_search_with_algorithm_selection execution time: 0.0001 seconds\nINFO 11-03 08:17:36 [dyn_step_scheduler.py:1513] best_combo_list: [(0, [0], 18, 0.18)]\nINFO 11-03 08:17:36 [dyn_step_scheduler.py:1507] _combo_search_with_algorithm_selection execution time: 0.0001 seconds\nINFO 11-03 08:17:36 [dyn_step_scheduler.py:1513] best_combo_list: [(0, [0], 20, 0.6)]\nINFO 11-03 08:17:36 [dyn_step_scheduler.py:1507] _combo_search_with_algorithm_selection execution time: 0.0000 seconds\nINFO 11-03 08:17:36 [dyn_step_scheduler.py:1513] best_combo_list: [(0, [0], 18, 0.54)]\n{\n  \"allows\": [],\n  \"cost_fixture_sha256\": \"fca7642f3e009b967543bc31dc0fd637a66ffe09f590db7a1559cc65e73ed8f1\",\n  \"costs_are_measurements\": false,\n  \"derived_manifest_sha256\": \"cd13a42c64fd035db50574a04a6314cf429898ba1c385d7217b8ca370c1277b4\",\n  \"native_scheduler_sha256\": \"c05a1c51707ecddb48c06748e784456d9081a3850c81f66577e1fea643573c47\",\n  \"native_tracker_sha256\": \"922b2f3247f51b48674be777e66b7231c987147400ffd2b07486707f3941cdd4\",\n  \"qualification_eligible\": false,\n  \"records\": [\n    {\n      \"batch\": 1,\n      \"batch_metadata_aligned\": true,\n      \"completed_steps\": {\n        \"1\": 10\n      },\n      \"cpp_optimizer_used\": false,\n      \"cursor_contiguous\": false,\n      \"first\": [\n        {\n          \"batch\": 1,\n          \"end\": 10,\n          \"final\": [\n            false\n          ],\n          \"origin_steps\": [\n            28\n          ],\n          \"prompts\": [\n            \"fox\"\n          ],\n          \"ranks\": [\n            0,\n            1\n          ],\n          \"start\": 0,\n          \"steps\": 10,\n          \"sub_req_ids\": [\n            1\n          ]\n        }\n      ],\n      \"second\": [\n        {\n          \"batch\": 1,\n          \"end\": 10,\n          \"final\": [\n            false\n          ],\n          \"origin_steps\": [\n            28\n          ],\n          \"prompts\": [\n            \"fox\"\n          ],\n          \"ranks\": [\n            0,\n            1\n          ],\n          \"start\": 0,\n          \"steps\": 10,\n          \"sub_req_ids\": [\n            1\n          ]\n        }\n      ]\n    },\n    {\n      \"batch\": 2,\n      \"batch_metadata_aligned\": false,\n      \"completed_steps\": {\n        \"1\": 10,\n        \"2\": 10\n      },\n      \"cpp_optimizer_used\": false,\n      \"cursor_contiguous\": false,\n      \"first\": [\n        {\n          \"batch\": 1,\n          \"end\": 10,\n          \"final\": [\n            false\n          ],\n          \"origin_steps\": [\n            28\n          ],\n          \"prompts\": [\n            \"fox\",\n            \"hare\"\n          ],\n          \"ranks\": [\n            0\n          ],\n          \"start\": 0,\n          \"steps\": 10,\n          \"sub_req_ids\": [\n            1\n          ]\n        },\n        {\n          \"batch\": 1,\n          \"end\": 10,\n          \"final\": [\n            false\n          ],\n          \"origin_steps\": [\n            28\n          ],\n          \"prompts\": [\n            \"fox\",\n            \"hare\"\n          ],\n          \"ranks\": [\n            1\n          ],\n          \"start\": 0,\n          \"steps\": 10,\n          \"sub_req_ids\": [\n            2\n          ]\n        }\n      ],\n      \"second\": [\n        {\n          \"batch\": 1,\n          \"end\": 10,\n          \"final\": [\n            false\n          ],\n          \"origin_steps\": [\n            28\n          ],\n          \"prompts\": [\n            \"fox\",\n            \"hare\"\n          ],\n          \"ranks\": [\n            0\n          ],\n          \"start\": 0,\n          \"steps\": 10,\n          \"sub_req_ids\": [\n            1\n          ]\n        },\n        {\n          \"batch\": 1,\n          \"end\": 10,\n          \"final\": [\n            false\n          ],\n          \"origin_steps\": [\n            28\n          ],\n          \"prompts\": [\n            \"fox\",\n            \"hare\"\n          ],\n          \"ranks\": [\n            1\n          ],\n          \"start\": 0,\n          \"steps\": 10,\n          \"sub_req_ids\": [\n            2\n          ]\n        }\n      ]\n    }\n  ],\n  \"schema\": \"ditserve.tetriserve-native-scheduler-logic.v1\",\n  \"status\": \"native_logic_observed\",\n  \"upstream_commit\": \"414ec2956c09466ccd7842fda9851511462bd42a\"\n}\n",
+          "timed_out": false
+        },
+        "status": "executed",
+        "summary_sha256": "12171724b17c686b3318287bbe19f3f2a0beb39f51e15229246a223c48600117"
+      },
+      "schema": "ditserve.tetriserve-logic-check.v1",
+      "serving_executed": false,
+      "status": "logic_failed_or_uncovered"
+    }
+  },
+  "qualification_eligible": false,
+  "allows": [],
+  "scope": "Native implementation diagnostic; not full-system serving or quality qualification."
+}

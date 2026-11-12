@@ -1,0 +1,261 @@
+{
+  "actual_dp": 1,
+  "actual_sp": 2,
+  "chunk_ends": [
+    4,
+    6,
+    8,
+    10,
+    12,
+    14,
+    16,
+    18,
+    20,
+    22,
+    24,
+    26,
+    28
+  ],
+  "distributed_closed": true,
+  "gpu_uuid": "c2195fc4-0579-e149-dcd5-8f912dfb44c2",
+  "groups": [
+    0,
+    1
+  ],
+  "initial_five_tensors": {
+    "latents": {
+      "dtype": "torch.bfloat16",
+      "finite": true,
+      "maximum": 3.328125,
+      "minimum": -3.328125,
+      "retained_array": false,
+      "sha256": "83904595e01e3d02f92f355a7d28b75831774669586a6fd343cc54d79055d0c9",
+      "shape": [
+        1,
+        16,
+        128,
+        128
+      ]
+    },
+    "pooled_prompt_embeds": {
+      "dtype": "torch.bfloat16",
+      "finite": true,
+      "maximum": 6.5625,
+      "minimum": -5.375,
+      "retained_array": false,
+      "sha256": "26d0b9830ba99dcc9988bae838061d1e57340d3f04b073cd4adf49f57da7a5f1",
+      "shape": [
+        2,
+        2048
+      ]
+    },
+    "prompt_embeds": {
+      "dtype": "torch.bfloat16",
+      "finite": true,
+      "maximum": 856.0,
+      "minimum": -808.0,
+      "retained_array": false,
+      "sha256": "c8cc92d97aab5fbb2f02d80b31d7d9793950f44ecd3a317d43a4098064abb53a",
+      "shape": [
+        2,
+        333,
+        4096
+      ]
+    },
+    "sigmas": {
+      "dtype": "torch.float32",
+      "finite": true,
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "retained_array": false,
+      "sha256": "4c213b991b25a4355f1f5afba6ac1942bb0e2167b19411a9f4766ef2a1acf2c9",
+      "shape": [
+        29
+      ]
+    },
+    "timesteps": {
+      "dtype": "torch.float32",
+      "finite": true,
+      "maximum": 1000.0,
+      "minimum": 8.928571701049805,
+      "retained_array": false,
+      "sha256": "ac5e0569db004651b24d8da459e117606324698b110ada9784492c9b2fffd98b",
+      "shape": [
+        28
+      ]
+    }
+  },
+  "normal_collection": {
+    "broadcast_backend": "nccl",
+    "broadcast_group_ranks": [
+      0,
+      1
+    ],
+    "collection_role": "owner",
+    "created_process_groups": 0,
+    "dtype": "torch.bfloat16",
+    "equality_scope": "Owner-returned normal latent replicated by post-inference broadcast; not independent rank agreement",
+    "independent_rank_agreement": false,
+    "native_output_owner_rank": 1,
+    "native_return": "pipeline_output",
+    "native_return_validations": [
+      {
+        "dtype": "torch.bfloat16",
+        "error": null,
+        "is_native_owner": false,
+        "native_return": "none",
+        "owner_rank": 1,
+        "rank": 0,
+        "shape": [
+          1,
+          16,
+          128,
+          128
+        ],
+        "valid": true
+      },
+      {
+        "dtype": "torch.bfloat16",
+        "error": null,
+        "is_native_owner": true,
+        "native_return": "pipeline_output",
+        "owner_rank": 1,
+        "rank": 1,
+        "shape": [
+          1,
+          16,
+          128,
+          128
+        ],
+        "valid": true
+      }
+    ],
+    "operation": "post_inference_broadcast",
+    "rank": 1,
+    "received_from_rank": 1,
+    "schema": "ditserve.tetriserve-normal-output-collection.v1",
+    "shape": [
+      1,
+      16,
+      128,
+      128
+    ],
+    "validation_backend": "gloo",
+    "validation_group_ranks": [
+      0,
+      1
+    ]
+  },
+  "outputs": {
+    "normal_sp2": {
+      "decoded": {
+        "dtype": "torch.bfloat16",
+        "finite": true,
+        "maximum": 1.1875,
+        "minimum": -1.203125,
+        "retained_array": false,
+        "sha256": "2716e5614cd09bffebe81af8120fcbce3727496cba6dcd9177e84c8e8bb16fac",
+        "shape": [
+          1,
+          3,
+          1024,
+          1024
+        ]
+      },
+      "latents": {
+        "dtype": "torch.bfloat16",
+        "finite": true,
+        "maximum": 3.53125,
+        "minimum": -3.875,
+        "retained_array": false,
+        "sha256": "c91ee9fc02602fead0d68aa7e6834a1be90cdce9294393fc93c64cfad5bcf621",
+        "shape": [
+          1,
+          16,
+          128,
+          128
+        ]
+      }
+    },
+    "round_sp2_chunked": {
+      "decoded": {
+        "dtype": "torch.bfloat16",
+        "finite": true,
+        "maximum": 1.1640625,
+        "minimum": -1.2109375,
+        "retained_array": false,
+        "sha256": "497231128b00b6e636cd713b6caa0c63ab1e1b4672ab112b64d33ded7b27126f",
+        "shape": [
+          1,
+          3,
+          1024,
+          1024
+        ]
+      },
+      "latents": {
+        "dtype": "torch.bfloat16",
+        "finite": true,
+        "maximum": 3.546875,
+        "minimum": -3.875,
+        "retained_array": false,
+        "sha256": "eeee8c90598dd41ad72a98498abf6cbaa922943ead2ee0c3d2785e1a9fdbdb3f",
+        "shape": [
+          1,
+          16,
+          128,
+          128
+        ]
+      }
+    },
+    "round_sp2_full": {
+      "decoded": {
+        "dtype": "torch.bfloat16",
+        "finite": true,
+        "maximum": 1.1640625,
+        "minimum": -1.2109375,
+        "retained_array": false,
+        "sha256": "497231128b00b6e636cd713b6caa0c63ab1e1b4672ab112b64d33ded7b27126f",
+        "shape": [
+          1,
+          3,
+          1024,
+          1024
+        ]
+      },
+      "latents": {
+        "dtype": "torch.bfloat16",
+        "finite": true,
+        "maximum": 3.546875,
+        "minimum": -3.875,
+        "retained_array": false,
+        "sha256": "eeee8c90598dd41ad72a98498abf6cbaa922943ead2ee0c3d2785e1a9fdbdb3f",
+        "shape": [
+          1,
+          16,
+          128,
+          128
+        ]
+      }
+    }
+  },
+  "provenance": {
+    "group_ownership": "official TetriServe",
+    "model_integrity": {
+      "model_integrity": "manifest_verified",
+      "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+      "model_verified_bytes": 16274913511,
+      "model_verified_files": 28,
+      "model_verified_revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80"
+    },
+    "new_groups_created_by_bridge": 0,
+    "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a"
+  },
+  "rank": 1,
+  "stage": "cleanup",
+  "status": "completed",
+  "transformer_calls": {
+    "normal_sp2": 28,
+    "round_sp2_chunked": 28,
+    "round_sp2_full": 28
+  }
+}

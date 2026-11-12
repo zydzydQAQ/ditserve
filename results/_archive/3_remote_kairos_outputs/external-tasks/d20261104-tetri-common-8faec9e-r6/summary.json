@@ -1,0 +1,1083 @@
+{
+  "schema": "ditserve.external-task.v1",
+  "run_id": "d20261104-tetri-common-8faec9e-r6",
+  "binding": {
+    "commit": "8faec9eb2fa03fe369153a9686d9462711b696c8",
+    "manifest_sha256": "2a60bff57530e5c219ed249987d620387d293ef0fbabdaba01004cfc7176353b",
+    "job_spec_sha256": "72324e4639260e5c2d44680db00c223c67a3f5bc433b6966a6228bf3243177c6",
+    "build_info_sha256": "76a70cb4246b15b0e82c3749841b81cb79e8f0692da812c19831108d27e7e0a6",
+    "core_sha256": "e358e29d1a3ca238bbf2b7f981db71e951519715aedf46d58454738aabcbd42b",
+    "worker_sources_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a",
+    "gfc_sources_sha256": "e6c7f47a26d02a8091463bf9cb8ca58835c2b07c3c2cd4827d1b319c3bebf6e6",
+    "image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+    "image_identity_scope": "digest-pinned submitted spec, not independent pod imageID",
+    "probe_plan_sha256": "1826b0f3335baf1aa28dd8c82f0376cefba669381dad6f18abe78d278964dff9"
+  },
+  "allocation_gpus": 2,
+  "initial_storage": {
+    "used_gib": 780,
+    "percent": 77
+  },
+  "final_storage": {
+    "used_gib": 780,
+    "percent": 77
+  },
+  "task": "fixed-sp2-common-raw-solver-full-and-chunk-equivalence",
+  "execution": {
+    "argv": [
+      "/opt/venv/bin/python",
+      "-B",
+      "/shared/data/DITSERVE/external-probes/tetri-common-8faec9e-r6/external_tetriserve_sp2_diagnostic.py",
+      "run",
+      "--prior-result",
+      "/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-630ea30-r2/result",
+      "--prior-summary-sha256",
+      "2c8a3983634f7403b07f71876b9ee1700968447bb1a6caa2ce11d94952ecdcab",
+      "--prior-numerics-sha256",
+      "b95a8e296736978db27234cceb72233dccd378d46f1d39483d282020252b02ba",
+      "--output-dir",
+      "/shared/output/DITSERVE/external-tasks/d20261104-tetri-common-8faec9e-r6/result",
+      "--timeout-seconds",
+      "1800",
+      "--normal-sp2-common-solver"
+    ],
+    "returncode": 0,
+    "timed_out": false,
+    "seconds": 105.13315965794027,
+    "stderr_tail": "torch_dtype` is deprecated! Use `dtype` instead!\n\nLoading pipeline components...:   0%|          | 0/9 [00:00<?, ?it/s]\nLoading pipeline components...:  33%|███▎      | 3/9 [00:02<00:05,  1.19it/s]\n\nLoading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]\u001b[A\nLoading pipeline components...:  11%|█         | 1/9 [00:06<00:51,  6.38s/it]\nLoading pipeline components...:  22%|██▏       | 2/9 [00:06<00:19,  2.72s/it]`torch_dtype` is deprecated! Use `dtype` instead!\n\n\nLoading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]\u001b[A\n\nLoading checkpoint shards:  50%|█████     | 1/2 [00:06<00:06,  6.62s/it]\u001b[A\n\nLoading checkpoint shards:  50%|█████     | 1/2 [00:06<00:06,  6.50s/it]\u001b[A\n\nLoading checkpoint shards: 100%|██████████| 2/2 [00:12<00:00,  6.22s/it]\u001b[A\nLoading checkpoint shards: 100%|██████████| 2/2 [00:12<00:00,  6.28s/it]\n\nLoading pipeline components...:  44%|████▍     | 4/9 [00:15<00:23,  4.64s/it]\nLoading pipeline components...:  56%|█████▌    | 5/9 [00:15<00:13,  3.30s/it]\nLoading pipeline components...:  67%|██████▋   | 6/9 [00:15<00:06,  2.33s/it]You set `add_prefix_space`. The tokenizer needs to be converted from the slow tokenizers\n\nLoading pipeline components...:  78%|███████▊  | 7/9 [00:15<00:03,  1.69s/it]\n\nLoading checkpoint shards: 100%|██████████| 2/2 [00:12<00:00,  6.16s/it]\u001b[A\nLoading checkpoint shards: 100%|██████████| 2/2 [00:12<00:00,  6.22s/it]\n\nLoading pipeline components...:  33%|███▎      | 3/9 [00:19<00:43,  7.18s/it]You set `add_prefix_space`. The tokenizer needs to be converted from the slow tokenizers\n\nLoading pipeline components...:  67%|██████▋   | 6/9 [00:19<00:07,  2.52s/it]\nLoading pipeline components...:  89%|████████▉ | 8/9 [00:19<00:01,  1.64s/it]\nLoading pipeline components...: 100%|██████████| 9/9 [00:21<00:00,  2.24s/it]\nLoading pipeline components...: 100%|██████████| 9/9 [00:21<00:00,  2.41s/it]\n\nLoading pipeline components...: 100%|██████████| 9/9 [00:21<00:00,  1.71s/it]\nLoading pipeline components...: 100%|██████████| 9/9 [00:21<00:00,  2.43s/it]\n\n  0%|          | 0/28 [00:00<?, ?it/s]\n  4%|▎         | 1/28 [00:00<00:08,  3.28it/s]\n  0%|          | 0/28 [00:00<?, ?it/s]\n  7%|▋         | 2/28 [00:00<00:05,  4.54it/s]\n 11%|█         | 3/28 [00:00<00:04,  5.87it/s]\n  4%|▎         | 1/28 [00:00<00:11,  2.32it/s]\n 14%|█▍        | 4/28 [00:00<00:05,  4.77it/s]\n  7%|▋         | 2/28 [00:00<00:06,  4.05it/s]\n 18%|█▊        | 5/28 [00:00<00:04,  5.69it/s]\n 11%|█         | 3/28 [00:00<00:07,  3.23it/s]\n 21%|██▏       | 6/28 [00:01<00:05,  3.98it/s]\n 14%|█▍        | 4/28 [00:01<00:05,  4.17it/s]\n 25%|██▌       | 7/28 [00:01<00:04,  4.30it/s]\n 18%|█▊        | 5/28 [00:01<00:05,  4.39it/s]\n 29%|██▊       | 8/28 [00:01<00:04,  4.93it/s]\n 21%|██▏       | 6/28 [00:01<00:04,  5.32it/s]\n 32%|███▏      | 9/28 [00:01<00:03,  5.76it/s]\n 25%|██▌       | 7/28 [00:01<00:03,  6.16it/s]\n 36%|███▌      | 10/28 [00:01<00:02,  6.36it/s]\n 29%|██▊       | 8/28 [00:01<00:03,  5.23it/s]\n 39%|███▉      | 11/28 [00:02<00:04,  4.19it/s]\n 32%|███▏      | 9/28 [00:02<00:04,  4.62it/s]\n 43%|████▎     | 12/28 [00:02<00:03,  5.00it/s]\n 36%|███▌      | 10/28 [00:02<00:04,  4.49it/s]\n 46%|████▋     | 13/28 [00:02<00:03,  4.89it/s]\n 39%|███▉      | 11/28 [00:02<00:03,  5.19it/s]\n 50%|█████     | 14/28 [00:02<00:02,  5.45it/s]\n 43%|████▎     | 12/28 [00:02<00:02,  5.47it/s]\n 54%|█████▎    | 15/28 [00:02<00:02,  5.77it/s]\n 46%|████▋     | 13/28 [00:02<00:02,  6.01it/s]\n 57%|█████▋    | 16/28 [00:03<00:01,  6.08it/s]\n 50%|█████     | 14/28 [00:02<00:02,  6.71it/s]\n 61%|██████    | 17/28 [00:03<00:01,  6.88it/s]\n 54%|█████▎    | 15/28 [00:02<00:01,  7.04it/s]\n 64%|██████▍   | 18/28 [00:03<00:01,  7.35it/s]\n 57%|█████▋    | 16/28 [00:03<00:01,  6.48it/s]\n 68%|██████▊   | 19/28 [00:03<00:01,  6.71it/s]\n 61%|██████    | 17/28 [00:03<00:01,  7.09it/s]\n 71%|███████▏  | 20/28 [00:03<00:01,  7.26it/s]\n 64%|██████▍   | 18/28 [00:03<00:01,  7.50it/s]\n 75%|███████▌  | 21/28 [00:03<00:00,  7.65it/s]\n 79%|███████▊  | 22/28 [00:03<00:00,  8.12it/s]\n 71%|███████▏  | 20/28 [00:03<00:00,  8.08it/s]\n 82%|████████▏ | 23/28 [00:03<00:00,  8.19it/s]\n 75%|███████▌  | 21/28 [00:03<00:00,  8.35it/s]\n 86%|████████▌ | 24/28 [00:04<00:00,  8.49it/s]\n 79%|███████▊  | 22/28 [00:03<00:00,  8.45it/s]\n 89%|████████▉ | 25/28 [00:04<00:00,  8.30it/s]\n 82%|████████▏ | 23/28 [00:03<00:00,  8.59it/s]\n 86%|████████▌ | 24/28 [00:03<00:00,  8.40it/s]\n 96%|█████████▋| 27/28 [00:04<00:00,  8.41it/s]\n 89%|████████▉ | 25/28 [00:04<00:00,  8.46it/s]\n100%|██████████| 28/28 [00:04<00:00,  8.63it/s]\n 93%|█████████▎| 26/28 [00:04<00:00,  8.82it/s]\n 96%|█████████▋| 27/28 [00:04<00:00,  8.87it/s]\n100%|██████████| 28/28 [00:04<00:00,  8.61it/s]\n100%|██████████| 28/28 [00:04<00:00,  6.22it/s]\n100%|██████████| 28/28 [00:04<00:00,  5.70it/s]\n\n\n  0%|          | 0/28 [00:00<?, ?it/s]\n  0%|          | 0/28 [00:00<?, ?it/s]\n  4%|▎         | 1/28 [00:00<00:03,  8.25it/s]\n  4%|▎         | 1/28 [00:00<00:03,  8.50it/s]\n  7%|▋         | 2/28 [00:00<00:03,  6.58it/s]\n  7%|▋         | 2/28 [00:00<00:06,  4.04it/s]\n 11%|█         | 3/28 [00:00<00:05,  4.77it/s]\n 11%|█         | 3/28 [00:00<00:04,  5.07it/s]\n 14%|█▍        | 4/28 [00:00<00:04,  5.84it/s]\n 14%|█▍        | 4/28 [00:00<00:03,  6.12it/s]\n 18%|█▊        | 5/28 [00:00<00:03,  6.71it/s]\n 18%|█▊        | 5/28 [00:00<00:03,  7.01it/s]\n 21%|██▏       | 6/28 [00:00<00:03,  7.29it/s]\n 21%|██▏       | 6/28 [00:00<00:02,  7.59it/s]\n 25%|██▌       | 7/28 [00:01<00:02,  7.61it/s]\n 25%|██▌       | 7/28 [00:01<00:03,  5.83it/s]\n 29%|██▊       | 8/28 [00:01<00:03,  6.08it/s]\n 32%|███▏      | 9/28 [00:01<00:03,  5.21it/s]\n 32%|███▏      | 9/28 [00:01<00:03,  5.86it/s]\n 36%|███▌      | 10/28 [00:01<00:02,  6.08it/s]\n 36%|███▌      | 10/28 [00:01<00:02,  6.37it/s]\n 39%|███▉      | 11/28 [00:01<00:02,  6.66it/s]\n 39%|███▉      | 11/28 [00:01<00:02,  7.03it/s]\n 43%|████▎     | 12/28 [00:01<00:02,  7.36it/s]\n 46%|████▋     | 13/28 [00:01<00:01,  7.75it/s]\n 46%|████▋     | 13/28 [00:01<00:01,  7.79it/s]\n 50%|█████     | 14/28 [00:02<00:01,  8.07it/s]\n 50%|█████     | 14/28 [00:02<00:01,  8.21it/s]\n 54%|█████▎    | 15/28 [00:02<00:01,  8.47it/s]\n 54%|█████▎    | 15/28 [00:02<00:01,  8.56it/s]\n 57%|█████▋    | 16/28 [00:02<00:01,  6.72it/s]\n 57%|█████▋    | 16/28 [00:02<00:01,  6.92it/s]\n 61%|██████    | 17/28 [00:02<00:01,  7.39it/s]\n 61%|██████    | 17/28 [00:02<00:01,  7.60it/s]\n 64%|██████▍   | 18/28 [00:02<00:01,  7.83it/s]\n 64%|██████▍   | 18/28 [00:02<00:01,  7.91it/s]\n 68%|██████▊   | 19/28 [00:02<00:01,  8.19it/s]\n 68%|██████▊   | 19/28 [00:02<00:01,  8.40it/s]\n 71%|███████▏  | 20/28 [00:02<00:00,  8.55it/s]\n 71%|███████▏  | 20/28 [00:02<00:00,  8.70it/s]\n 75%|███████▌  | 21/28 [00:02<00:00,  8.53it/s]\n 75%|███████▌  | 21/28 [00:02<00:00,  8.63it/s]\n 79%|███████▊  | 22/28 [00:03<00:00,  8.44it/s]\n 79%|███████▊  | 22/28 [00:03<00:00,  8.51it/s]\n 82%|████████▏ | 23/28 [00:03<00:00,  8.83it/s]\n 82%|████████▏ | 23/28 [00:03<00:00,  8.89it/s]\n 86%|████████▌ | 24/28 [00:03<00:00,  8.94it/s]\n 86%|████████▌ | 24/28 [00:03<00:00,  8.97it/s]\n 89%|████████▉ | 25/28 [00:03<00:00,  8.99it/s]\n 89%|████████▉ | 25/28 [00:03<00:00,  9.03it/s]\n 93%|█████████▎| 26/28 [00:03<00:00,  8.97it/s]\n 93%|█████████▎| 26/28 [00:03<00:00,  8.99it/s]\n 96%|█████████▋| 27/28 [00:03<00:00,  9.16it/s]\n 96%|█████████▋| 27/28 [00:03<00:00,  8.94it/s]\n100%|██████████| 28/28 [00:03<00:00,  9.08it/s]\n100%|██████████| 28/28 [00:03<00:00,  7.57it/s]\n\n100%|██████████| 28/28 [00:03<00:00,  9.03it/s]\n100%|██████████| 28/28 [00:03<00:00,  7.57it/s]\n\n  0%|          | 0/4 [00:00<?, ?it/s]\n  0%|          | 0/4 [00:00<?, ?it/s]\n 50%|█████     | 2/4 [00:00<00:00,  9.43it/s]\n 50%|█████     | 2/4 [00:00<00:00,  9.54it/s]\n 75%|███████▌  | 3/4 [00:00<00:00,  9.52it/s]\n 75%|███████▌  | 3/4 [00:00<00:00,  9.58it/s]\n100%|██████████| 4/4 [00:00<00:00,  9.68it/s]\n100%|██████████| 4/4 [00:00<00:00,  9.60it/s]\n\n100%|██████████| 4/4 [00:00<00:00,  9.66it/s]\n100%|██████████| 4/4 [00:00<00:00,  9.62it/s]\n\n  0%|          | 0/2 [00:00<?, ?it/s]\n  0%|          | 0/2 [00:00<?, ?it/s]\n 50%|█████     | 1/2 [00:00<00:00,  7.12it/s]\n 50%|█████     | 1/2 [00:00<00:00,  7.12it/s]\n100%|██████████| 2/2 [00:00<00:00,  7.00it/s]\n100%|██████████| 2/2 [00:00<00:00,  7.01it/s]\n\n100%|██████████| 2/2 [00:00<00:00,  6.16it/s]\n100%|██████████| 2/2 [00:00<00:00,  6.28it/s]\n\n  0%|          | 0/2 [00:00<?, ?it/s]\n  0%|          | 0/2 [00:00<?, ?it/s]\n 50%|█████     | 1/2 [00:00<00:00,  6.17it/s]\n 50%|█████     | 1/2 [00:00<00:00,  6.17it/s]\n100%|██████████| 2/2 [00:00<00:00,  6.79it/s]\n100%|██████████| 2/2 [00:00<00:00,  6.68it/s]\n\n100%|██████████| 2/2 [00:00<00:00,  6.80it/s]\n100%|██████████| 2/2 [00:00<00:00,  6.68it/s]\n\n  0%|          | 0/2 [00:00<?, ?it/s]\n  0%|          | 0/2 [00:00<?, ?it/s]\n 50%|█████     | 1/2 [00:00<00:00,  7.41it/s]\n 50%|█████     | 1/2 [00:00<00:00,  7.48it/s]\n100%|██████████| 2/2 [00:00<00:00,  8.03it/s]\n100%|██████████| 2/2 [00:00<00:00,  7.91it/s]\n\n100%|██████████| 2/2 [00:00<00:00,  6.99it/s]\n100%|██████████| 2/2 [00:00<00:00,  7.05it/s]\n\n  0%|          | 0/2 [00:00<?, ?it/s]\n  0%|          | 0/2 [00:00<?, ?it/s]\n 50%|█████     | 1/2 [00:00<00:00,  8.37it/s]\n 50%|█████     | 1/2 [00:00<00:00,  7.19it/s]\n100%|██████████| 2/2 [00:00<00:00,  8.99it/s]\n100%|██████████| 2/2 [00:00<00:00,  8.87it/s]\n\n100%|██████████| 2/2 [00:00<00:00,  8.62it/s]\n\n  0%|          | 0/2 [00:00<?, ?it/s]\n  0%|          | 0/2 [00:00<?, ?it/s]\n 50%|█████     | 1/2 [00:00<00:00,  9.79it/s]\n 50%|█████     | 1/2 [00:00<00:00,  6.89it/s]\n100%|██████████| 2/2 [00:00<00:00,  8.28it/s]\n100%|██████████| 2/2 [00:00<00:00,  8.46it/s]\n\n100%|██████████| 2/2 [00:00<00:00,  8.48it/s]\n\n  0%|          | 0/2 [00:00<?, ?it/s]\n  0%|          | 0/2 [00:00<?, ?it/s]\n 50%|█████     | 1/2 [00:00<00:00,  8.55it/s]\n100%|██████████| 2/2 [00:00<00:00,  9.62it/s]\n100%|██████████| 2/2 [00:00<00:00,  9.60it/s]\n\n100%|██████████| 2/2 [00:00<00:00,  8.63it/s]\n100%|██████████| 2/2 [00:00<00:00,  8.60it/s]\n\n  0%|          | 0/2 [00:00<?, ?it/s]\n  0%|          | 0/2 [00:00<?, ?it/s]\n 50%|█████     | 1/2 [00:00<00:00,  9.83it/s]\n100%|██████████| 2/2 [00:00<00:00, 10.00it/s]\n100%|██████████| 2/2 [00:00<00:00,  9.97it/s]\n\n100%|██████████| 2/2 [00:00<00:00,  9.64it/s]\n100%|██████████| 2/2 [00:00<00:00,  9.65it/s]\n\n  0%|          | 0/2 [00:00<?, ?it/s]\n  0%|          | 0/2 [00:00<?, ?it/s]\n 50%|█████     | 1/2 [00:00<00:00,  9.26it/s]\n 50%|█████     | 1/2 [00:00<00:00,  9.24it/s]\n100%|██████████| 2/2 [00:00<00:00,  9.28it/s]\n100%|██████████| 2/2 [00:00<00:00,  9.26it/s]\n\n100%|██████████| 2/2 [00:00<00:00,  9.26it/s]\n100%|██████████| 2/2 [00:00<00:00,  9.24it/s]\n\n  0%|          | 0/2 [00:00<?, ?it/s]\n  0%|          | 0/2 [00:00<?, ?it/s]\n 50%|█████     | 1/2 [00:00<00:00,  9.50it/s]\n 50%|█████     | 1/2 [00:00<00:00,  9.62it/s]\n100%|██████████| 2/2 [00:00<00:00,  8.52it/s]\n100%|██████████| 2/2 [00:00<00:00,  8.63it/s]\n\n100%|██████████| 2/2 [00:00<00:00,  8.01it/s]\n100%|██████████| 2/2 [00:00<00:00,  8.20it/s]\n\n  0%|          | 0/2 [00:00<?, ?it/s]\n  0%|          | 0/2 [00:00<?, ?it/s]\n 50%|█████     | 1/2 [00:00<00:00,  9.56it/s]\n 50%|█████     | 1/2 [00:00<00:00,  9.54it/s]\n100%|██████████| 2/2 [00:00<00:00,  7.80it/s]\n100%|██████████| 2/2 [00:00<00:00,  8.00it/s]\n\n100%|██████████| 2/2 [00:00<00:00,  7.79it/s]\n100%|██████████| 2/2 [00:00<00:00,  8.00it/s]\n\n  0%|          | 0/2 [00:00<?, ?it/s]\n  0%|          | 0/2 [00:00<?, ?it/s]\n 50%|█████     | 1/2 [00:00<00:00,  8.46it/s]\n 50%|█████     | 1/2 [00:00<00:00,  8.77it/s]\n100%|██████████| 2/2 [00:00<00:00,  8.71it/s]\n100%|██████████| 2/2 [00:00<00:00,  8.65it/s]\n\n100%|██████████| 2/2 [00:00<00:00,  8.24it/s]\n100%|██████████| 2/2 [00:00<00:00,  8.30it/s]\n\n  0%|          | 0/2 [00:00<?, ?it/s]\n  0%|          | 0/2 [00:00<?, ?it/s]\n 50%|█████     | 1/2 [00:00<00:00,  8.32it/s]\n 50%|█████     | 1/2 [00:00<00:00,  9.29it/s]\n100%|██████████| 2/2 [00:00<00:00,  9.24it/s]\n\n100%|██████████| 2/2 [00:00<00:00,  9.41it/s]\n100%|██████████| 2/2 [00:00<00:00,  9.37it/s]\n",
+    "stdout_tail": "WARNING 11-04 06:14:49 [envs.py:111] Flash Attention library \"flash_attn\" not found, using pytorch attention implementation\nWARNING 11-04 06:14:49 [envs.py:111] Flash Attention library \"flash_attn\" not found, using pytorch attention implementation\n[Gloo] Rank [Gloo] Rank 10 is connected to  is connected to 11 peer ranks.  peer ranks. Expected number of connected peer ranks is : Expected number of connected peer ranks is : 11\n\n[Gloo] Rank 0 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1\nINFO 11-04 06:14:55 [globals.py:143] Created 2 directed latent transfer process groups\n[Gloo] Rank 1 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1\nINFO 11-04 06:14:55 [globals.py:143] Created 2 directed latent transfer process groups\nINFO 11-04 06:14:56 [globals.py:167] [Rank 0] Warmed up 2 directed latent transfer NCCL communicators\nINFO 11-04 06:14:56 [globals.py:167] [Rank 1] Warmed up 2 directed latent transfer NCCL communicators\n[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0\n[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0\n[Gloo] Rank [Gloo] Rank 0 is connected to 11 is connected to  peer ranks. 1Expected number of connected peer ranks is :  peer ranks. 1Expected number of connected peer ranks is : \n1\nINFO 11-04 06:14:56 [globals.py:229] Generated 3 general process subgroups (skipped 0, failed 0). Map size: 3\nINFO 11-04 06:14:56 [globals.py:229] Generated 3 general process subgroups (skipped 0, failed 0). Map size: 3\nINFO 11-04 06:14:56 [config.py:101] dp_degree: 1, dit_parallel_size: 1, use_cfg_parallel: False\nINFO 11-04 06:14:56 [config.py:128] Ulysses degree not set, using default value 1\nINFO 11-04 06:14:56 [config.py:131] Ring degree not set, using default value 1\nINFO 11-04 06:14:56 [config.py:169] Pipeline patch number not set, using default value 1\nINFO 11-04 06:14:56 [config.py:101] dp_degree: 1, dit_parallel_size: 1, use_cfg_parallel: False\nINFO 11-04 06:14:56 [config.py:128] Ulysses degree not set, using default value 1\nINFO 11-04 06:14:56 [config.py:131] Ring degree not set, using default value 1\nINFO 11-04 06:14:56 [config.py:169] Pipeline patch number not set, using default value 1\nSet TORCH_CUDA_ARCH_LIST to 8.0\nSet TORCH_CUDA_ARCH_LIST to 8.0\nINFO 11-04 06:16:03 [config.py:207] Pipeline patch number not set, using default value 1\nINFO 11-04 06:16:03 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)\nDEBUG 11-04 06:16:03 [compat.py:39] xfuser has no installed metadata; not checking diffusers version\nWARNING 11-04 06:16:03 [logger.py:126] Using SDPA_MATH as attention backend.\nINFO 11-04 06:16:03 [base_pipeline.py:494] Scheduler found, trying to parallel scheduler...\nINFO 11-04 06:16:04 [config.py:207] Pipeline patch number not set, using default value 1\nINFO 11-04 06:16:04 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)\nDEBUG 11-04 06:16:04 [compat.py:39] xfuser has no installed metadata; not checking diffusers version\nINFO 11-04 06:16:04 [base_pipeline.py:494] Scheduler found, trying to parallel scheduler...\n{\"status\": \"diagnostic_completed\", \"diagnostic_completed\": true, \"numerical_check_passed\": false, \"qualification_eligible\": false}\n",
+    "json_output": false,
+    "child_summary_path": "/shared/output/DITSERVE/external-tasks/d20261104-tetri-common-8faec9e-r6/result/summary.json",
+    "child_summary_sha256": "a1f1d548c2877d1d0a450929877e838af6e379c18ca47f7aef19b2273c29bad6",
+    "child_summary": {
+      "allows": [],
+      "binding": {
+        "chunk_ends": [
+          4,
+          6,
+          8,
+          10,
+          12,
+          14,
+          16,
+          18,
+          20,
+          22,
+          24,
+          26,
+          28
+        ],
+        "config": {
+          "attention": "math",
+          "cost_profile_sha256": "49ba7834c34a7f2d6d602fe7ce4679e391e67e4fbdef1de14cc1132fa2f58fb4",
+          "derived_manifest": "/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-630ea30-r2/result/derived/PORT_MANIFEST.json",
+          "derived_manifest_sha256": "5ab5b86ee32a96039a50bcaed54bf10ce1cdc5415cac473bc4504375ce8485fb",
+          "diagnostic_only": true,
+          "guidance_scale": 4.5,
+          "max_sequence_length": 256,
+          "model": "stabilityai/stable-diffusion-3.5-medium",
+          "model_manifest": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/sd35.manifest.json",
+          "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+          "model_path": "/shared/data/DITSERVE/models/sd3.5-medium",
+          "resolutions": [
+            [
+              512,
+              512
+            ],
+            [
+              1024,
+              1024
+            ]
+          ],
+          "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+          "schema": "ditserve.tetriserve-sd35-port.v1",
+          "server_launch_allowed": true,
+          "shared_python_root": "/shared/code/DITSERVE/builds/51740c0/share/ditserve/python",
+          "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a"
+        },
+        "config_path": "/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-630ea30-r2/result/service-port-config.json",
+        "config_sha256": "6d3060dd9ceda5809447cb9d5e176546a0330749809807fc1bc4613e99d840af",
+        "derived": {
+          "manifest_sha256": "5ab5b86ee32a96039a50bcaed54bf10ce1cdc5415cac473bc4504375ce8485fb",
+          "root": "/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-630ea30-r2/result/derived"
+        },
+        "plan_sha256": "300db58b53936e474598043dcfb0bbe44cfcf1157928f408d7729e61a3855cde",
+        "prior_numerics_sha256": "b95a8e296736978db27234cceb72233dccd378d46f1d39483d282020252b02ba",
+        "prior_summary_sha256": "2c8a3983634f7403b07f71876b9ee1700968447bb1a6caa2ce11d94952ecdcab",
+        "reference": "/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-630ea30-r2/result/numerics/reference/request-101.safetensors",
+        "reference_sha256": "d1bae19bf24c68d76f640ae3ef987508776321f3da92d01b97958b614bf28cd2",
+        "request": {
+          "guidance_scale": 4.5,
+          "height": 1024,
+          "max_sequence_length": 256,
+          "negative_prompt": "blurry, low quality",
+          "prompt": "A white rabbit in a field of blue flowers.",
+          "seed": 102,
+          "steps": 28,
+          "width": 1024
+        },
+        "service_raw": "/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-630ea30-r2/result/numerics/raw/request-101.safetensors",
+        "service_raw_sha256": "d7fe78f22a21e5732774c45abd19327e83b4bbb087954b14c80365a2d7bb5f31",
+        "sources": {
+          "derived_manifest_sha256": "5ab5b86ee32a96039a50bcaed54bf10ce1cdc5415cac473bc4504375ce8485fb",
+          "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+          "numerics_adapter_sha256": "924b557ffa7066317bd81bb8e950d6125ae4f485dd15589e425652e3398b6958",
+          "protocol_sha256": "86aae608c7f86d194e77a5e2e9645b192b921d8137174cbcdb2825ed7d94b392",
+          "service_adapter_sha256": "a6694e570c22cc485c7b61513018594e2cf492984ef89e1860d898aed29ee773",
+          "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a",
+          "source_manifest_sha256": "2d0d9f9efaf4b3749063458d56c74b0ef79ef72de22096b39889e798e792d027"
+        }
+      },
+      "common_solver_adapter_sha256": "8ee67a018c5fa828e57dff5dc470bf163dd89410648e0ec3c92ff440fef7427a",
+      "common_solver_diagnostic_completed": true,
+      "common_solver_equivalence_passed": true,
+      "common_solver_recipe": "normal_sp2_uses_original_scheduler_module; round_paths_unchanged",
+      "common_solver_scope": "normal raw solver versus full/chunk round at fixed SP2; SP1 comparisons remain separate",
+      "diagnostic_completed": true,
+      "last_progress": [
+        {
+          "adapter_sha256": "adc5d717fcd1a36d1ec1d5e9e23244b40aa0eb48462fc1e7fc437a9703d3747a",
+          "call_count_scope": "Python forward entry/return; no new CUDA synchronization",
+          "cursor": 28,
+          "diagnostic_completed": false,
+          "error": null,
+          "failed_stage": null,
+          "monotonic_ns": 8543931622190841,
+          "observation_only": true,
+          "pid": 76,
+          "prior_summary_sha256": "2c8a3983634f7403b07f71876b9ee1700968447bb1a6caa2ce11d94952ecdcab",
+          "qualification_eligible": false,
+          "rank": 0,
+          "request_sha256": "322f6325298a57bda08d8cfbfe3fd487b5d27b6d0e4ffedfad73e210ed435a07",
+          "returned_calls": 28,
+          "schema": "ditserve.tetriserve-sp2-progress.v1",
+          "stage": "distributed_cleanup_return",
+          "started_calls": 28,
+          "trajectory": "round_sp2_chunked"
+        },
+        {
+          "adapter_sha256": "adc5d717fcd1a36d1ec1d5e9e23244b40aa0eb48462fc1e7fc437a9703d3747a",
+          "call_count_scope": "Python forward entry/return; no new CUDA synchronization",
+          "cursor": 28,
+          "diagnostic_completed": false,
+          "error": null,
+          "failed_stage": null,
+          "monotonic_ns": 8543931615725709,
+          "observation_only": true,
+          "pid": 77,
+          "prior_summary_sha256": "2c8a3983634f7403b07f71876b9ee1700968447bb1a6caa2ce11d94952ecdcab",
+          "qualification_eligible": false,
+          "rank": 1,
+          "request_sha256": "322f6325298a57bda08d8cfbfe3fd487b5d27b6d0e4ffedfad73e210ed435a07",
+          "returned_calls": 28,
+          "schema": "ditserve.tetriserve-sp2-progress.v1",
+          "stage": "distributed_cleanup_return",
+          "started_calls": 28,
+          "trajectory": "round_sp2_chunked"
+        }
+      ],
+      "migration_executed": false,
+      "native_normal_oracle_executed": false,
+      "native_normal_output_owner_rank": 1,
+      "normal_rank_equality_independent": false,
+      "normal_rank_equality_scope": "Owner-returned normal latent replicated by post-inference broadcast; not independent rank agreement",
+      "normal_sp2_solver": "common_raw_diffusers",
+      "numerical_check_passed": false,
+      "performance_measurements": false,
+      "qualification_eligible": false,
+      "ranks": [
+        {
+          "actual_dp": 1,
+          "actual_sp": 2,
+          "chunk_ends": [
+            4,
+            6,
+            8,
+            10,
+            12,
+            14,
+            16,
+            18,
+            20,
+            22,
+            24,
+            26,
+            28
+          ],
+          "common_solver": {
+            "complete": true,
+            "new_scheduler_constructed": false,
+            "pipeline_scheduler_identity_restored": true,
+            "qualification_eligible": false,
+            "raw_step_attribute_restored": true,
+            "recipe": "normal_sp2_uses_original_scheduler_module; round_paths_unchanged",
+            "returned_calls": 28,
+            "runtime": {
+              "cfg_degree": 1,
+              "dp_degree": 1,
+              "patch_mode": false,
+              "pp_degree": 1,
+              "sp_degree": 2
+            },
+            "scheduler_state_restored": false,
+            "schema": "ditserve.sd35-common-solver.v1",
+            "selected_existing_module": true,
+            "solver": {
+              "configuration": {
+                "_class_name": "FlowMatchEulerDiscreteScheduler",
+                "_diffusers_version": "0.29.0.dev0",
+                "_use_default_values": [
+                  "use_beta_sigmas",
+                  "use_karras_sigmas",
+                  "stochastic_sampling",
+                  "shift_terminal",
+                  "base_shift",
+                  "base_image_seq_len",
+                  "use_exponential_sigmas",
+                  "time_shift_type",
+                  "use_dynamic_shifting",
+                  "invert_sigmas",
+                  "max_image_seq_len",
+                  "max_shift"
+                ],
+                "base_image_seq_len": 256,
+                "base_shift": 0.5,
+                "invert_sigmas": false,
+                "max_image_seq_len": 4096,
+                "max_shift": 1.15,
+                "num_train_timesteps": 1000,
+                "shift": 3.0,
+                "shift_terminal": null,
+                "stochastic_sampling": false,
+                "time_shift_type": "exponential",
+                "use_beta_sigmas": false,
+                "use_dynamic_shifting": false,
+                "use_exponential_sigmas": false,
+                "use_karras_sigmas": false
+              },
+              "configuration_sha256": "e0031dd9933301e374d915e94d017e42844d33d214618663f6c0741835b0a014",
+              "previous_bound_step": {
+                "file": "/shared/code/DITSERVE/builds/51740c0/share/ditserve/python/xfuser/model_executor/schedulers/base_scheduler.py",
+                "file_sha256": "570aa9cc5806b6dfc01eb66228deed5c41ffb0465947e27cfd42534493a58897",
+                "qualified_name": "xfuser.model_executor.schedulers.scheduling_flow_match_euler_discrete.xFuserFlowMatchEulerDiscreteSchedulerWrapper.step"
+              },
+              "previous_type": "xfuser.model_executor.schedulers.scheduling_flow_match_euler_discrete.xFuserFlowMatchEulerDiscreteSchedulerWrapper",
+              "previous_unwrapped_step": {
+                "file": "/shared/code/DITSERVE/builds/51740c0/share/ditserve/python/xfuser/model_executor/schedulers/scheduling_flow_match_euler_discrete.py",
+                "file_sha256": "66d472c4b8acc99c7651bfd0f69e4b94d646adaffe14670a0e4988a6741ec424",
+                "qualified_name": "xfuser.model_executor.schedulers.scheduling_flow_match_euler_discrete.xFuserFlowMatchEulerDiscreteSchedulerWrapper.step"
+              },
+              "selected_step": {
+                "file": "/opt/venv/lib/python3.10/site-packages/diffusers/schedulers/scheduling_flow_match_euler_discrete.py",
+                "file_sha256": "c2f47ed75801a7bd11f43aa793671986b7d382461b8d6e9d60786ca77fa61bca",
+                "qualified_name": "diffusers.schedulers.scheduling_flow_match_euler_discrete.FlowMatchEulerDiscreteScheduler.step"
+              },
+              "selected_type": "diffusers.schedulers.scheduling_flow_match_euler_discrete.FlowMatchEulerDiscreteScheduler"
+            },
+            "started_calls": 28
+          },
+          "comparison_inputs": {
+            "service": {
+              "decoded": {
+                "dtype": "torch.bfloat16",
+                "finite": true,
+                "maximum": 1.203125,
+                "minimum": -1.171875,
+                "retained_array": false,
+                "sha256": "51a91d46c55da6ae4d547295e3cedfc9159896e1fd5ddbada80d94ce1a773073",
+                "shape": [
+                  1,
+                  3,
+                  1024,
+                  1024
+                ]
+              },
+              "latents": {
+                "dtype": "torch.bfloat16",
+                "finite": true,
+                "maximum": 3.40625,
+                "minimum": -3.875,
+                "retained_array": false,
+                "sha256": "51e54491234d5453efeed9caa05924764a0274ceb7107ce67a40db5b03660303",
+                "shape": [
+                  1,
+                  16,
+                  128,
+                  128
+                ]
+              }
+            },
+            "sp1_reference": {
+              "decoded": {
+                "dtype": "torch.bfloat16",
+                "finite": true,
+                "maximum": 1.2109375,
+                "minimum": -1.15625,
+                "retained_array": false,
+                "sha256": "6ecf1689f04545aab61f7158259cb52dc8a3b99afdfd2d50edf3e73e69f7be0b",
+                "shape": [
+                  1,
+                  3,
+                  1024,
+                  1024
+                ]
+              },
+              "latents": {
+                "dtype": "torch.bfloat16",
+                "finite": true,
+                "maximum": 3.53125,
+                "minimum": -3.8125,
+                "retained_array": false,
+                "sha256": "c94027e64e45eb3afc7e04e22b82eadd6a00f10a70d1d86434c34af5436dea46",
+                "shape": [
+                  1,
+                  16,
+                  128,
+                  128
+                ]
+              }
+            }
+          },
+          "comparisons": {
+            "normal_sp2_vs_round_sp2_full": {
+              "decoded": {
+                "atol": 1e-05,
+                "bitwise_equal": true,
+                "cosine_similarity": 1.0000000000000002,
+                "elements": 3145728,
+                "max_abs_error": 0.0,
+                "passed": true,
+                "relative_l2_error": 0.0,
+                "rmse": 0.0,
+                "rtol": 1e-05
+              },
+              "latents": {
+                "atol": 1e-05,
+                "bitwise_equal": true,
+                "cosine_similarity": 0.9999999999999998,
+                "elements": 262144,
+                "max_abs_error": 0.0,
+                "passed": true,
+                "relative_l2_error": 0.0,
+                "rmse": 0.0,
+                "rtol": 1e-05
+              }
+            },
+            "round_sp2_full_vs_round_sp2_chunked": {
+              "decoded": {
+                "atol": 1e-05,
+                "bitwise_equal": true,
+                "cosine_similarity": 1.0000000000000002,
+                "elements": 3145728,
+                "max_abs_error": 0.0,
+                "passed": true,
+                "relative_l2_error": 0.0,
+                "rmse": 0.0,
+                "rtol": 1e-05
+              },
+              "latents": {
+                "atol": 1e-05,
+                "bitwise_equal": true,
+                "cosine_similarity": 0.9999999999999998,
+                "elements": 262144,
+                "max_abs_error": 0.0,
+                "passed": true,
+                "relative_l2_error": 0.0,
+                "rmse": 0.0,
+                "rtol": 1e-05
+              }
+            },
+            "service_vs_round_sp2_chunked": {
+              "decoded": {
+                "atol": 1e-05,
+                "bitwise_equal": false,
+                "cosine_similarity": 0.542810733693445,
+                "elements": 3145728,
+                "max_abs_error": 2.09375,
+                "passed": false,
+                "relative_l2_error": 0.9394251614805451,
+                "rmse": 0.5270351441545238,
+                "rtol": 1e-05
+              },
+              "latents": {
+                "atol": 1e-05,
+                "bitwise_equal": false,
+                "cosine_similarity": 0.7798386560735836,
+                "elements": 262144,
+                "max_abs_error": 4.5,
+                "passed": false,
+                "relative_l2_error": 0.651211428119251,
+                "rmse": 0.7195297679353029,
+                "rtol": 1e-05
+              }
+            },
+            "sp1_reference_vs_normal_sp2": {
+              "decoded": {
+                "atol": 1e-05,
+                "bitwise_equal": false,
+                "cosine_similarity": 0.5437348380446084,
+                "elements": 3145728,
+                "max_abs_error": 2.0390625,
+                "passed": false,
+                "relative_l2_error": 0.9408481842051418,
+                "rmse": 0.5249612329545706,
+                "rtol": 1e-05
+              },
+              "latents": {
+                "atol": 1e-05,
+                "bitwise_equal": false,
+                "cosine_similarity": 0.7827785984285719,
+                "elements": 262144,
+                "max_abs_error": 4.5,
+                "passed": false,
+                "relative_l2_error": 0.6481715145357768,
+                "rmse": 0.7126610860226231,
+                "rtol": 1e-05
+              }
+            },
+            "sp1_reference_vs_round_sp2_chunked": {
+              "decoded": {
+                "atol": 1e-05,
+                "bitwise_equal": false,
+                "cosine_similarity": 0.5437348380446084,
+                "elements": 3145728,
+                "max_abs_error": 2.0390625,
+                "passed": false,
+                "relative_l2_error": 0.9408481842051418,
+                "rmse": 0.5249612329545706,
+                "rtol": 1e-05
+              },
+              "latents": {
+                "atol": 1e-05,
+                "bitwise_equal": false,
+                "cosine_similarity": 0.7827785984285719,
+                "elements": 262144,
+                "max_abs_error": 4.5,
+                "passed": false,
+                "relative_l2_error": 0.6481715145357768,
+                "rmse": 0.7126610860226231,
+                "rtol": 1e-05
+              }
+            },
+            "sp1_reference_vs_round_sp2_full": {
+              "decoded": {
+                "atol": 1e-05,
+                "bitwise_equal": false,
+                "cosine_similarity": 0.5437348380446084,
+                "elements": 3145728,
+                "max_abs_error": 2.0390625,
+                "passed": false,
+                "relative_l2_error": 0.9408481842051418,
+                "rmse": 0.5249612329545706,
+                "rtol": 1e-05
+              },
+              "latents": {
+                "atol": 1e-05,
+                "bitwise_equal": false,
+                "cosine_similarity": 0.7827785984285719,
+                "elements": 262144,
+                "max_abs_error": 4.5,
+                "passed": false,
+                "relative_l2_error": 0.6481715145357768,
+                "rmse": 0.7126610860226231,
+                "rtol": 1e-05
+              }
+            }
+          },
+          "distributed_closed": true,
+          "gpu_uuid": "56f9344d-f279-ae6b-d287-b9024e4eb7fe",
+          "groups": [
+            0,
+            1
+          ],
+          "initial_five_tensors": {
+            "latents": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.328125,
+              "minimum": -3.328125,
+              "retained_array": false,
+              "sha256": "83904595e01e3d02f92f355a7d28b75831774669586a6fd343cc54d79055d0c9",
+              "shape": [
+                1,
+                16,
+                128,
+                128
+              ]
+            },
+            "pooled_prompt_embeds": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 6.5625,
+              "minimum": -5.375,
+              "retained_array": false,
+              "sha256": "26d0b9830ba99dcc9988bae838061d1e57340d3f04b073cd4adf49f57da7a5f1",
+              "shape": [
+                2,
+                2048
+              ]
+            },
+            "prompt_embeds": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 856.0,
+              "minimum": -808.0,
+              "retained_array": false,
+              "sha256": "c8cc92d97aab5fbb2f02d80b31d7d9793950f44ecd3a317d43a4098064abb53a",
+              "shape": [
+                2,
+                333,
+                4096
+              ]
+            },
+            "sigmas": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "retained_array": false,
+              "sha256": "4c213b991b25a4355f1f5afba6ac1942bb0e2167b19411a9f4766ef2a1acf2c9",
+              "shape": [
+                29
+              ]
+            },
+            "timesteps": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 8.928571701049805,
+              "retained_array": false,
+              "sha256": "ac5e0569db004651b24d8da459e117606324698b110ada9784492c9b2fffd98b",
+              "shape": [
+                28
+              ]
+            }
+          },
+          "normal_collection": {
+            "broadcast_backend": "nccl",
+            "broadcast_group_ranks": [
+              0,
+              1
+            ],
+            "collection_role": "receiver",
+            "created_process_groups": 0,
+            "dtype": "torch.bfloat16",
+            "equality_scope": "Owner-returned normal latent replicated by post-inference broadcast; not independent rank agreement",
+            "independent_rank_agreement": false,
+            "native_output_owner_rank": 1,
+            "native_return": "none",
+            "native_return_validations": [
+              {
+                "dtype": "torch.bfloat16",
+                "error": null,
+                "is_native_owner": false,
+                "native_return": "none",
+                "owner_rank": 1,
+                "rank": 0,
+                "shape": [
+                  1,
+                  16,
+                  128,
+                  128
+                ],
+                "valid": true
+              },
+              {
+                "dtype": "torch.bfloat16",
+                "error": null,
+                "is_native_owner": true,
+                "native_return": "pipeline_output",
+                "owner_rank": 1,
+                "rank": 1,
+                "shape": [
+                  1,
+                  16,
+                  128,
+                  128
+                ],
+                "valid": true
+              }
+            ],
+            "operation": "post_inference_broadcast",
+            "rank": 0,
+            "received_from_rank": 1,
+            "schema": "ditserve.tetriserve-normal-output-collection.v1",
+            "shape": [
+              1,
+              16,
+              128,
+              128
+            ],
+            "validation_backend": "gloo",
+            "validation_group_ranks": [
+              0,
+              1
+            ]
+          },
+          "outputs": {
+            "normal_sp2": {
+              "decoded": {
+                "dtype": "torch.bfloat16",
+                "finite": true,
+                "maximum": 1.1640625,
+                "minimum": -1.2109375,
+                "retained_array": false,
+                "sha256": "497231128b00b6e636cd713b6caa0c63ab1e1b4672ab112b64d33ded7b27126f",
+                "shape": [
+                  1,
+                  3,
+                  1024,
+                  1024
+                ]
+              },
+              "latents": {
+                "dtype": "torch.bfloat16",
+                "finite": true,
+                "maximum": 3.546875,
+                "minimum": -3.875,
+                "retained_array": false,
+                "sha256": "eeee8c90598dd41ad72a98498abf6cbaa922943ead2ee0c3d2785e1a9fdbdb3f",
+                "shape": [
+                  1,
+                  16,
+                  128,
+                  128
+                ]
+              }
+            },
+            "round_sp2_chunked": {
+              "decoded": {
+                "dtype": "torch.bfloat16",
+                "finite": true,
+                "maximum": 1.1640625,
+                "minimum": -1.2109375,
+                "retained_array": false,
+                "sha256": "497231128b00b6e636cd713b6caa0c63ab1e1b4672ab112b64d33ded7b27126f",
+                "shape": [
+                  1,
+                  3,
+                  1024,
+                  1024
+                ]
+              },
+              "latents": {
+                "dtype": "torch.bfloat16",
+                "finite": true,
+                "maximum": 3.546875,
+                "minimum": -3.875,
+                "retained_array": false,
+                "sha256": "eeee8c90598dd41ad72a98498abf6cbaa922943ead2ee0c3d2785e1a9fdbdb3f",
+                "shape": [
+                  1,
+                  16,
+                  128,
+                  128
+                ]
+              }
+            },
+            "round_sp2_full": {
+              "decoded": {
+                "dtype": "torch.bfloat16",
+                "finite": true,
+                "maximum": 1.1640625,
+                "minimum": -1.2109375,
+                "retained_array": false,
+                "sha256": "497231128b00b6e636cd713b6caa0c63ab1e1b4672ab112b64d33ded7b27126f",
+                "shape": [
+                  1,
+                  3,
+                  1024,
+                  1024
+                ]
+              },
+              "latents": {
+                "dtype": "torch.bfloat16",
+                "finite": true,
+                "maximum": 3.546875,
+                "minimum": -3.875,
+                "retained_array": false,
+                "sha256": "eeee8c90598dd41ad72a98498abf6cbaa922943ead2ee0c3d2785e1a9fdbdb3f",
+                "shape": [
+                  1,
+                  16,
+                  128,
+                  128
+                ]
+              }
+            }
+          },
+          "provenance": {
+            "group_ownership": "official TetriServe",
+            "model_integrity": {
+              "model_integrity": "manifest_verified",
+              "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+              "model_verified_bytes": 16274913511,
+              "model_verified_files": 28,
+              "model_verified_revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80"
+            },
+            "new_groups_created_by_bridge": 0,
+            "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a"
+          },
+          "rank": 0,
+          "stage": "cleanup",
+          "status": "completed",
+          "transformer_calls": {
+            "normal_sp2": 28,
+            "round_sp2_chunked": 28,
+            "round_sp2_full": 28
+          }
+        },
+        {
+          "actual_dp": 1,
+          "actual_sp": 2,
+          "chunk_ends": [
+            4,
+            6,
+            8,
+            10,
+            12,
+            14,
+            16,
+            18,
+            20,
+            22,
+            24,
+            26,
+            28
+          ],
+          "common_solver": {
+            "complete": true,
+            "new_scheduler_constructed": false,
+            "pipeline_scheduler_identity_restored": true,
+            "qualification_eligible": false,
+            "raw_step_attribute_restored": true,
+            "recipe": "normal_sp2_uses_original_scheduler_module; round_paths_unchanged",
+            "returned_calls": 28,
+            "runtime": {
+              "cfg_degree": 1,
+              "dp_degree": 1,
+              "patch_mode": false,
+              "pp_degree": 1,
+              "sp_degree": 2
+            },
+            "scheduler_state_restored": false,
+            "schema": "ditserve.sd35-common-solver.v1",
+            "selected_existing_module": true,
+            "solver": {
+              "configuration": {
+                "_class_name": "FlowMatchEulerDiscreteScheduler",
+                "_diffusers_version": "0.29.0.dev0",
+                "_use_default_values": [
+                  "base_shift",
+                  "time_shift_type",
+                  "max_image_seq_len",
+                  "max_shift",
+                  "stochastic_sampling",
+                  "use_dynamic_shifting",
+                  "shift_terminal",
+                  "use_karras_sigmas",
+                  "invert_sigmas",
+                  "use_beta_sigmas",
+                  "base_image_seq_len",
+                  "use_exponential_sigmas"
+                ],
+                "base_image_seq_len": 256,
+                "base_shift": 0.5,
+                "invert_sigmas": false,
+                "max_image_seq_len": 4096,
+                "max_shift": 1.15,
+                "num_train_timesteps": 1000,
+                "shift": 3.0,
+                "shift_terminal": null,
+                "stochastic_sampling": false,
+                "time_shift_type": "exponential",
+                "use_beta_sigmas": false,
+                "use_dynamic_shifting": false,
+                "use_exponential_sigmas": false,
+                "use_karras_sigmas": false
+              },
+              "configuration_sha256": "6a3e8ef2991ab33b971023a58bfeb4bb206bc2f477b4e407d3a6658fba053da4",
+              "previous_bound_step": {
+                "file": "/shared/code/DITSERVE/builds/51740c0/share/ditserve/python/xfuser/model_executor/schedulers/base_scheduler.py",
+                "file_sha256": "570aa9cc5806b6dfc01eb66228deed5c41ffb0465947e27cfd42534493a58897",
+                "qualified_name": "xfuser.model_executor.schedulers.scheduling_flow_match_euler_discrete.xFuserFlowMatchEulerDiscreteSchedulerWrapper.step"
+              },
+              "previous_type": "xfuser.model_executor.schedulers.scheduling_flow_match_euler_discrete.xFuserFlowMatchEulerDiscreteSchedulerWrapper",
+              "previous_unwrapped_step": {
+                "file": "/shared/code/DITSERVE/builds/51740c0/share/ditserve/python/xfuser/model_executor/schedulers/scheduling_flow_match_euler_discrete.py",
+                "file_sha256": "66d472c4b8acc99c7651bfd0f69e4b94d646adaffe14670a0e4988a6741ec424",
+                "qualified_name": "xfuser.model_executor.schedulers.scheduling_flow_match_euler_discrete.xFuserFlowMatchEulerDiscreteSchedulerWrapper.step"
+              },
+              "selected_step": {
+                "file": "/opt/venv/lib/python3.10/site-packages/diffusers/schedulers/scheduling_flow_match_euler_discrete.py",
+                "file_sha256": "c2f47ed75801a7bd11f43aa793671986b7d382461b8d6e9d60786ca77fa61bca",
+                "qualified_name": "diffusers.schedulers.scheduling_flow_match_euler_discrete.FlowMatchEulerDiscreteScheduler.step"
+              },
+              "selected_type": "diffusers.schedulers.scheduling_flow_match_euler_discrete.FlowMatchEulerDiscreteScheduler"
+            },
+            "started_calls": 28
+          },
+          "distributed_closed": true,
+          "gpu_uuid": "01223588-2c22-bd16-60ba-2cb9a47e0951",
+          "groups": [
+            0,
+            1
+          ],
+          "initial_five_tensors": {
+            "latents": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.328125,
+              "minimum": -3.328125,
+              "retained_array": false,
+              "sha256": "83904595e01e3d02f92f355a7d28b75831774669586a6fd343cc54d79055d0c9",
+              "shape": [
+                1,
+                16,
+                128,
+                128
+              ]
+            },
+            "pooled_prompt_embeds": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 6.5625,
+              "minimum": -5.375,
+              "retained_array": false,
+              "sha256": "26d0b9830ba99dcc9988bae838061d1e57340d3f04b073cd4adf49f57da7a5f1",
+              "shape": [
+                2,
+                2048
+              ]
+            },
+            "prompt_embeds": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 856.0,
+              "minimum": -808.0,
+              "retained_array": false,
+              "sha256": "c8cc92d97aab5fbb2f02d80b31d7d9793950f44ecd3a317d43a4098064abb53a",
+              "shape": [
+                2,
+                333,
+                4096
+              ]
+            },
+            "sigmas": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "retained_array": false,
+              "sha256": "4c213b991b25a4355f1f5afba6ac1942bb0e2167b19411a9f4766ef2a1acf2c9",
+              "shape": [
+                29
+              ]
+            },
+            "timesteps": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 8.928571701049805,
+              "retained_array": false,
+              "sha256": "ac5e0569db004651b24d8da459e117606324698b110ada9784492c9b2fffd98b",
+              "shape": [
+                28
+              ]
+            }
+          },
+          "normal_collection": {
+            "broadcast_backend": "nccl",
+            "broadcast_group_ranks": [
+              0,
+              1
+            ],
+            "collection_role": "owner",
+            "created_process_groups": 0,
+            "dtype": "torch.bfloat16",
+            "equality_scope": "Owner-returned normal latent replicated by post-inference broadcast; not independent rank agreement",
+            "independent_rank_agreement": false,
+            "native_output_owner_rank": 1,
+            "native_return": "pipeline_output",
+            "native_return_validations": [
+              {
+                "dtype": "torch.bfloat16",
+                "error": null,
+                "is_native_owner": false,
+                "native_return": "none",
+                "owner_rank": 1,
+                "rank": 0,
+                "shape": [
+                  1,
+                  16,
+                  128,
+                  128
+                ],
+                "valid": true
+              },
+              {
+                "dtype": "torch.bfloat16",
+                "error": null,
+                "is_native_owner": true,
+                "native_return": "pipeline_output",
+                "owner_rank": 1,
+                "rank": 1,
+                "shape": [
+                  1,
+                  16,
+                  128,
+                  128
+                ],
+                "valid": true
+              }
+            ],
+            "operation": "post_inference_broadcast",
+            "rank": 1,
+            "received_from_rank": 1,
+            "schema": "ditserve.tetriserve-normal-output-collection.v1",
+            "shape": [
+              1,
+              16,
+              128,
+              128
+            ],
+            "validation_backend": "gloo",
+            "validation_group_ranks": [
+              0,
+              1
+            ]
+          },
+          "outputs": {
+            "normal_sp2": {
+              "decoded": {
+                "dtype": "torch.bfloat16",
+                "finite": true,
+                "maximum": 1.1640625,
+                "minimum": -1.2109375,
+                "retained_array": false,
+                "sha256": "497231128b00b6e636cd713b6caa0c63ab1e1b4672ab112b64d33ded7b27126f",
+                "shape": [
+                  1,
+                  3,
+                  1024,
+                  1024
+                ]
+              },
+              "latents": {
+                "dtype": "torch.bfloat16",
+                "finite": true,
+                "maximum": 3.546875,
+                "minimum": -3.875,
+                "retained_array": false,
+                "sha256": "eeee8c90598dd41ad72a98498abf6cbaa922943ead2ee0c3d2785e1a9fdbdb3f",
+                "shape": [
+                  1,
+                  16,
+                  128,
+                  128
+                ]
+              }
+            },
+            "round_sp2_chunked": {
+              "decoded": {
+                "dtype": "torch.bfloat16",
+                "finite": true,
+                "maximum": 1.1640625,
+                "minimum": -1.2109375,
+                "retained_array": false,
+                "sha256": "497231128b00b6e636cd713b6caa0c63ab1e1b4672ab112b64d33ded7b27126f",
+                "shape": [
+                  1,
+                  3,
+                  1024,
+                  1024
+                ]
+              },
+              "latents": {
+                "dtype": "torch.bfloat16",
+                "finite": true,
+                "maximum": 3.546875,
+                "minimum": -3.875,
+                "retained_array": false,
+                "sha256": "eeee8c90598dd41ad72a98498abf6cbaa922943ead2ee0c3d2785e1a9fdbdb3f",
+                "shape": [
+                  1,
+                  16,
+                  128,
+                  128
+                ]
+              }
+            },
+            "round_sp2_full": {
+              "decoded": {
+                "dtype": "torch.bfloat16",
+                "finite": true,
+                "maximum": 1.1640625,
+                "minimum": -1.2109375,
+                "retained_array": false,
+                "sha256": "497231128b00b6e636cd713b6caa0c63ab1e1b4672ab112b64d33ded7b27126f",
+                "shape": [
+                  1,
+                  3,
+                  1024,
+                  1024
+                ]
+              },
+              "latents": {
+                "dtype": "torch.bfloat16",
+                "finite": true,
+                "maximum": 3.546875,
+                "minimum": -3.875,
+                "retained_array": false,
+                "sha256": "eeee8c90598dd41ad72a98498abf6cbaa922943ead2ee0c3d2785e1a9fdbdb3f",
+                "shape": [
+                  1,
+                  16,
+                  128,
+                  128
+                ]
+              }
+            }
+          },
+          "provenance": {
+            "group_ownership": "official TetriServe",
+            "model_integrity": {
+              "model_integrity": "manifest_verified",
+              "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+              "model_verified_bytes": 16274913511,
+              "model_verified_files": 28,
+              "model_verified_revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80"
+            },
+            "new_groups_created_by_bridge": 0,
+            "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a"
+          },
+          "rank": 1,
+          "stage": "cleanup",
+          "status": "completed",
+          "transformer_calls": {
+            "normal_sp2": 28,
+            "round_sp2_chunked": 28,
+            "round_sp2_full": 28
+          }
+        }
+      ],
+      "reference_inference_executed": false,
+      "retained_new_arrays": false,
+      "schema": "ditserve.tetriserve-sp2-diagnostic.v1",
+      "serving_executed": false,
+      "status": "diagnostic_completed",
+      "tolerance": {
+        "atol": 1e-05,
+        "rtol": 1e-05
+      },
+      "trajectories": [
+        "normal_sp2",
+        "round_sp2_full",
+        "round_sp2_chunked"
+      ]
+    }
+  },
+  "qualification_eligible": false,
+  "allows": [],
+  "scope": "Native implementation diagnostic; not full-system serving or quality qualification."
+}

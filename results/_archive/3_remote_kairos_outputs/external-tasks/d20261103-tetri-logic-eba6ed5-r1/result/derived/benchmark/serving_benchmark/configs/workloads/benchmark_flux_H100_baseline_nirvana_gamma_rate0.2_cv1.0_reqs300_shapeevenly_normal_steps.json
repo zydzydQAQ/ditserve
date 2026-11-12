@@ -1,0 +1,4507 @@
+{
+  "model_name": "flux",
+  "requests": [
+    {
+      "req_idx": 0,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a cat wearing a fake mustache, rainbows, bright colors, psychedelic, fish eye lens, vector art, fantasy poster by helen huang and frank frazetta and salvador dali and norman rockwell, "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 2.3463404498842957
+    },
+    {
+      "req_idx": 1,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "symmetrical centered full body shot, maya ali as a elden ring mage, matte painting concept art, pastel colour palette, official fanart behance hd artstation by jesper ejsing, by rhads and makoto shinkai and lois van baarle and ilya kuvshinov and rossdraws "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 17.3969476044719
+    },
+    {
+      "req_idx": 2,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "oil painting portrait of anthropomorphic female green fox animal, dressed in black hoodie. fox animal, glowing eyes, oil painting, angry, "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 23.98067607219915
+    },
+    {
+      "req_idx": 3,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "john singer sargent maxfield parrish, greg manchess, mucha "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 28.545388841078914
+    },
+    {
+      "req_idx": 4,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a cyberpunk silkscreen pop art portrait "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 29.393513193390646
+    },
+    {
+      "req_idx": 5,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "poignant portrait of cristiano ronaldo, melancholy "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 30.241494652963674
+    },
+    {
+      "req_idx": 6,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "epic 3 d, wild cables spiraling, he made me sleep on the couch, plum and teal peanut butter melting into circuitboards and crystals, liquid, bubbles, crystals, houdini sidefx, perfect render, artstation trending, by jeremy mann, jamie hewlett and ilya kuvshinov "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 30.54068849600708
+    },
+    {
+      "req_idx": 7,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "retrofuturistic train, close up, quint buchholz, wlop, dan mumford, artgerm, liam brazier, peter mohrbacher, raw, featured on artstation, octane render, cinematic, rugged, intricate, 8 k "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 40.59684281840678
+    },
+    {
+      "req_idx": 8,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "iconic stills from david lynch's twin peaks, painting by edward hopper, oil on canvas painting, american realism, highly detailed. "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 45.1922535865431
+    },
+    {
+      "req_idx": 9,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "concept art of giant ogres, lovecraftian, divers helmet, lots of teeth, melting horror, round moon, rich clouds, fighting the horrors of the unknown, mirrors, very detailed, volumetric light, mist, grim, fine art, decaying, textured oil over canvas, epic fantasy art, very colorful, ornate, anato finnstark "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 51.34850389506605
+    },
+    {
+      "req_idx": 10,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "marine le pen still from midsommar "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 51.452500435061744
+    },
+    {
+      "req_idx": 11,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "bangladeshi princess, art by artgerm and greg rutkowski and magali villeneuve, highly detailed, digital painting, trending on artstation, concept art, sharp focus, illustration "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 68.9702878108533
+    },
+    {
+      "req_idx": 12,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a photo of a snow owl! and grizzly bear hybrid! "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 77.90243552762668
+    },
+    {
+      "req_idx": 13,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "! dream tattoo design art, neo traditional : 3 eye design, finley detailed, japanese traditional inspired, by jeff gogue by nekro borja, finely detailed, hyperdetailed "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 79.09587365387141
+    },
+    {
+      "req_idx": 14,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "nebula explosion, multicolor color scheme, volumetric lighting, by jesper ejsing and peter mohrbacher and marc simonetti and brom and joseph christian leyendecker and ashley wood and james gurney and jean leon gerome, coloreful, highdetailed, drawing, line, oilpainting "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 80.09926859761973
+    },
+    {
+      "req_idx": 15,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "consumed by fear, infected nightmare, digital art by dan mumford and peter mohrbacher and louis royo, highly detailed, trending on deviantarthq "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 81.11232571178101
+    },
+    {
+      "req_idx": 16,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "photo cartoon illustration comics manga painting of wizard kitchen : 6 fantasy, digital painting, unreal engine, 8 k, volumetric lighting, contrast "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 82.9260943590834
+    },
+    {
+      "req_idx": 17,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "futuristic city, brutalist buildings, street scene, oil painting, by greg rutkowski "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 86.64573351338767
+    },
+    {
+      "req_idx": 18,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "wide - angle close - up portrait of a beautiful woman, lens distortion, simon stalenhag, martine johanna, casey weldon, tim walker, harpers bazaar art, id magazine, vogue, cinematic lighting, rendered in octane, ektachrome "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 89.47341884728935
+    },
+    {
+      "req_idx": 19,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "expressive oil painting, of albert einstein playing didgeridoo at uluru, seductive look, smirk, smooth glowing skin, glistening body, love, adoration, sweat, tattoos, ornate headpiece made from leaves, glamour shot, by yoshitaka amano, by greg rutkowski, by jeremyg lipkinng, by artgerm, digital art, octane render,"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 91.19453381005906
+    },
+    {
+      "req_idx": 20,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "an enourmous battlefield between the forces of the dire versus the forces of the radiant from dota 2, visible are 1 0 heroes from the dota 2 universe, everyone is throwing spells or attacks, vicious fight, dynamic angles, low - angle shot, cumulonimbus clouds, detailed digital painting, "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 95.92638817955805
+    },
+    {
+      "req_idx": 21,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "street photography by saul leiter, in a new york muddy alley, award winning photo of an ultra detailed intricate dirty vintage ford car speeding very fast on mud, fast shutter speed, motion blur, tiny gaussian blur, highly detailed, highly intricate, depth of field, trending on top gear "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 96.67756082319474
+    },
+    {
+      "req_idx": 22,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "ancient golden [ skateboard ], egyptian, museum exhibition, showcase, detailed, overhead lighting, dimly lit room, 4 0 mm camera phone photo "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 98.40513838320675
+    },
+    {
+      "req_idx": 23,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "kodak portra 4 0 0, wetplate, muted colours, blueberry, action photography, 1 9 2 0 s, long shot, macro photo of a colourful tin toy robot running a heavily steaming steam engine on a trampled path near by beautiful flower meadow in the swizz alps, mountain panorama, motion blur, tiny gaussian blur, depth of field "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 100.68652447431099
+    },
+    {
+      "req_idx": 24,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "dream car in front of dream house "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 103.73119791360986
+    },
+    {
+      "req_idx": 25,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a portrait of a girl looking at her phone, digital art by samdoesarts "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 111.42087796876442
+    },
+    {
+      "req_idx": 26,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "potato shaped as a human face!!, in a pot, head with leaves!!! leaves on head, small flowers,!! herbology, on the table!!! in greenhouse!!!, in ray of light from the window!!, blender, render, sharp focus, matte painting, oil, by kinkade, by mucha, by artgerm "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 112.53455727940786
+    },
+    {
+      "req_idx": 27,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "skeleton astronaut, art by artgerm and greg rutkowski and magali villeneuve, portrait, highly detailed, digital painting, trending on artstation, concept art, sharp focus, illustration "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 116.1447030545735
+    },
+    {
+      "req_idx": 28,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "ancient japanese fantasy garden at night, close - up of a beautiful woman caring for peonies, beautiful face, natural pose, spotlight on the woman, pond, ethereal warm light, mist, fantasy world, coherent composition, detailed fantasy painting, yuumei, noriyoshi ohrai, ( ( rolf armstrong ) ) "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 120.6322266611223
+    },
+    {
+      "req_idx": 29,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "[ grimes ]! performing live on stage, instax, 3 d, good, refreshing, ineffable, large, bright, led, cinematic lighting, studio lighting, volumetric light, beautiful lighting, ray tracing reflections, screen space reflections "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 120.87004590990435
+    },
+    {
+      "req_idx": 30,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "anthropomorphic grey tabby cat and solid black cat sitting together looking at view of toronto city detailed painting 4 k "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 125.5467110131524
+    },
+    {
+      "req_idx": 31,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "matt o'dowd pbs space time "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 126.48151727303949
+    },
+    {
+      "req_idx": 32,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "cloth, red fabric coat, jodhpurs high white lether boots and belts, fashion retro, elegant long hair blondie young girl, fantasy traveler, geometrical low poly, dainty renaissance portrait by michael garmash, sargent, greg rutkowski, gaston bussiere, rhads, craig mullins "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 126.817836927436
+    },
+    {
+      "req_idx": 33,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "photoreal portrait of a futuristic intricate angry robot, intricate malfunctioning circuits, glittering light leaks, electromagnetic waves, blue glowing agressive led eyes, wearing a wwii combat flight mask and goggles, octane render, trending on artstation "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 141.68627589497066
+    },
+    {
+      "req_idx": 34,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "portrait photo of a beautiful female steampunk cyborg she pulls her latex skin off, artwork by james jean, hyperdetailed realistic oramge and green metallic, the eyes glow red, jean delville, art nouveau, gustav klimt, ornate copper patina gothic icon, james jean, ultrasharp hyperdetailed photorealistic octane render "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 158.53942760727654
+    },
+    {
+      "req_idx": 35,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "snow white, highly detailed, digital painting, concept art, smooth, sharp focus, artstation, artgerm and greg rutkowski and alphonse mucha and j. c. leyendecker and edmund blair leighton and katsuhiro otomo and geof darrow and phil hale and ashley wood and ilya repin and charlie bowater "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 166.8010854713409
+    },
+    {
+      "req_idx": 36,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "close - up of the evil woman. super 8 film, vhs, grainy "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 168.6175247711847
+    },
+    {
+      "req_idx": 37,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a beautiful and highly detailed digital painting of an alien temple pyramid in a lush valley on an alien planet, psychedelic patterns, intricate details, epic scale, 8 k, sharp focus, photorealism, artstation, cgsociety, by caspar friedrich, albert bierstadt, james gurney, alex grey, brian froud, "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 169.1314113461972
+    },
+    {
+      "req_idx": 38,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "realistic photograph. fantasy ranger. imposingly tall, broadshouldered, jacked muscular woman. hair has white stripe white streak in hair over left ear. half black half arab. dark skin. face like kendall jenner, dark complexion. modest practical soft brown leather clothing. fully dressed. massively jacked physique. in her 3 0's. ranger. female. clothed. "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 174.89516516169053
+    },
+    {
+      "req_idx": 39,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "vfx color film closeup, apex legends team irl, low - key lighting award winning photography arri alexa cinematography, hyper real photorealistic cinematic beautiful, atmospheric "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 177.79561937461753
+    },
+    {
+      "req_idx": 40,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a pizza with gummy bears on it, photograph, 8 k resolution, food photography, studio lighting "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 178.44638054438977
+    },
+    {
+      "req_idx": 41,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "3 d close - up swirly chocolate chip cookie moebius strip physics giant gladiola ceramic glass!! jellyfish, highly detailed. by wlop, tooth wu, greg rutkowski, alena aenami, beeple "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 181.8641166850605
+    },
+    {
+      "req_idx": 42,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "pink bonsai in a scottish landscape, contest winner, photorealistic, cinematic, terragen "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 182.03908529227792
+    },
+    {
+      "req_idx": 43,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "small town gameplay still frame, level design, nes, megadrive, contrast, deep focus, turnaround, highly detailed, dramatic lighting, digital painting, artstation, concept art, matte, sharp focus, greg rutkowski, moebius, illustration. "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 194.04119972924303
+    },
+    {
+      "req_idx": 44,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "justin sun being indoctrinated into the church of satan "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 195.53848861344648
+    },
+    {
+      "req_idx": 45,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a vibrant emotional animation key shot of cute australian shepherd, studio ghibli, pixar and disney animation, sharp, disney concept art watercolor illustration by shinji kimura and alphonse mucha and alena aenami, pastel color palette, bloom!!, dramatic lighting "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 200.96976760627138
+    },
+    {
+      "req_idx": 46,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "dark military aeronautical game theme : a full female body of mechanical beautiful girl robot fighter pilot is piloting while all her parts are connected by luminous intricate organic and colorful electric cables and wires and fibers to the jet cockpit with dials and lights and gauges and radar experiencing the quantum field cinematic highly detailed realistic beautiful cosmic neural network octane render unreal "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 202.83750051455948
+    },
+    {
+      "req_idx": 47,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "man, fireemblem, plaidshirt, bowlcut, roundglasses, art by artgerm and greg rutkowski and magali villeneuve, portrait, d & d, fantasy, highly detailed, digital painting, trending on artstation, concept art, sharp focus, illustration "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 206.50805499410563
+    },
+    {
+      "req_idx": 48,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "romanticism "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 210.46417398401462
+    },
+    {
+      "req_idx": 49,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "bismuth stellations by m. c. escher, endre rozsda, hilma af klint, andy warhol. vibrant, woodblock print, ink, geometric, 3 d, cherenkov radiation. "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 211.48611698155415
+    },
+    {
+      "req_idx": 50,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "mycotopic mojo sertralinw hybrid mecga slime sclera architecture "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 228.95015264523528
+    },
+    {
+      "req_idx": 51,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "cute miss mascot farfuret farfuret sneasel pokemon sticker art, cronobreaker, beeple game icon "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 236.41137953092598
+    },
+    {
+      "req_idx": 52,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a painting of a werewolf standing in a foggy dense forest by greg rutkowski, dark fantasy art, high detail, trending on artstation "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 250.4368516273839
+    },
+    {
+      "req_idx": 53,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "symmetry!! cancer!!!! a portrait of a beautiful girl with computer science readouts and graphics overlaid textures, canvas texture in the style of contemporary art complex, dramatic lighting, intricate, highly detailed, sharp focus, luminous "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 261.6976116150549
+    },
+    {
+      "req_idx": 54,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "tifa lockhart with robe with decollete and bra | | in a meadow!! summer, realistic shaded, pleasant face, fine details, medium shot, portrait, realistic shaded lighting poster by greg rutkowski, artgerm, kyoto animation and alphonse mucha "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 266.25288367697124
+    },
+    {
+      "req_idx": 55,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "dementor. draped in dark sheet. dark colors. menacing. haunting. frightening. in front of hogwarts. trending on artstation. award winning. artgem. greg rutkowski. beksinski. extremely detailed. 4 k. "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 279.00006057331825
+    },
+    {
+      "req_idx": 56,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "classic oil painting, an anthropomorphic bipedal rat that is dressed as a medieval librarian, as a dnd character, standing under the sea, cottagecore, highly detailed, digital illustration, concept art, smooth, sharp focus, art by brothers hildebrandt "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 279.46333786808384
+    },
+    {
+      "req_idx": 57,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "highly detailed beautiful photo of a ariana grande as a young female samurai, practising sword stances, symmetrical face, beautiful eyes, pink hair, realistic anime art style, 8 k, award winning photo, pastels colours, action photography, 1 / 1 2 5 shutter speed, sunrise lighting "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 280.5540113412402
+    },
+    {
+      "req_idx": 58,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "cinematic still image screenshot portrait of luke skywalker talking to maz kanata diplomatic, dramatic scene from force awakens crisp 4 k 7 0 mm imax, moody iconic scene, directed by jj abrams, beautiful backlit, planet "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 280.78542116967435
+    },
+    {
+      "req_idx": 59,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "how to communicate effectuality is the key solution, photorealistic by michael komarck, greg rutkowski, victo ngai, artgerm, willem claesz heda and j. dickenson "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 282.7530816036898
+    },
+    {
+      "req_idx": 60,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "zombie hitler my lisa frank "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 285.2137330626609
+    },
+    {
+      "req_idx": 61,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "empty medieval rome paris madrid, detailed, concept art by rhads, chien chung - wei, greg manchess, craig mullins, bernie fuchs, walter everett "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 286.796535278705
+    },
+    {
+      "req_idx": 62,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a painting of thanos by greg rutkowski, dark fantasy art, high detail, trending on artstation "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 295.61932460490965
+    },
+    {
+      "req_idx": 63,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "illustration of a character from touhou project in the style of norman rockwell, poster "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 297.825459602559
+    },
+    {
+      "req_idx": 64,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a female swimmer sprints freestyle. close up. vibrant colors. a tiger is crying in the background "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 299.47447380323024
+    },
+    {
+      "req_idx": 65,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a photo of a children's book titled get squashed, bug. an angry bearded man hits a computer keyboard with his fists "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 303.386509219269
+    },
+    {
+      "req_idx": 66,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "an airship engineer working in the boiler room, red hair, tank top, overalls, steampunk, film still, finely detailed features, baroque, digital painting, studio ghibli, tankobon, painted by krenz cushart and makoto shinkai and william - adolphe bouguereau and alphonse mucha "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 304.14599995837216
+    },
+    {
+      "req_idx": 67,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "insanely complex strong winnipeg "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 312.2484179372458
+    },
+    {
+      "req_idx": 68,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "washing machine by shusei nagaoka kaws, boris vallejo, airbrush on canvas, pastel colours, cell - shaded, 8 k "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 312.63579728130236
+    },
+    {
+      "req_idx": 69,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "dragon ball z goku with a hightop fade "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 334.306528979239
+    },
+    {
+      "req_idx": 70,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "whimsical weird fat caterpillar alchemists inside a visceral arterial alchemical lab within the left ventricle of a human heart, dramatic lighting fiery lighting, surreal fleischer cartoon characters, surreal painting by ronny khalil "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 341.70394786044653
+    },
+    {
+      "req_idx": 71,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "full body shot of a black woman sitting on an ornate balcony railing surrounded by ornate roman columns looking behind her a view looking down at a scifi fantasy magic city, digital painting, intricately detailed, highly detailed, artwork by greg rutkowski, folly, mania, extravagance, intoxication, delirium, frenzy, bewrayment "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 342.81164506297597
+    },
+    {
+      "req_idx": 72,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a large computer overgrown with exotic vegetation, a behemoth sized computer screen, large glowing computer screen in the style of francis bacon and edward hopper and james gilleard, zdzislaw beksinski, by greg rutkowski, exotic vegetation, tristan eaton, victo ngai, vibrant red background, "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 342.83933216485565
+    },
+    {
+      "req_idx": 73,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "an echinoderm floating in outer space, drawn by m. c. escher and damien hirst and james tissot. woodblock, monochrome, 3 d, geometric, lithograph, black background, hd "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 351.2888160522863
+    },
+    {
+      "req_idx": 74,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "creepy album art by chris bilheimer of a haunted house, surreal, 8 k "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 357.4242955892215
+    },
+    {
+      "req_idx": 75,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "ground landscape photograph of an armada of fighter jets flying over a destroyed smoking burning city, color, reflections, motion blur, atmospheric, award winning photo, bloom "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 363.9526101331615
+    },
+    {
+      "req_idx": 76,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a portrait of nekomimi wearing white dress an ultrafine detailed painting, detailed painting, detailed eyes!!, final fantasy octopath traveler lovecraft cosmc horror "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 371.32868276337905
+    },
+    {
+      "req_idx": 77,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "moais in minecraft game "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 371.71332909094804
+    },
+    {
+      "req_idx": 78,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "1 9 7 0 s closed country club interior, fluorescent box lights, wood grain decal walls, green linoleum floors, zillow listing photo, 2 0 0 8 "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 373.9327924530292
+    },
+    {
+      "req_idx": 79,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "fluffy poodle driving a cybertruck in las vegas, [ 4 k digital art ]!!, trending on cgsociety "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 374.54854297605146
+    },
+    {
+      "req_idx": 80,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "ultra realistic illustration, handsome morty smith. intricate, highly detailed, digital painting, artstation, concept art, smooth, sharp focus, illustration, art by artgerm and greg rutkowski and alphonse mucha and wlop "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 384.4911908343426
+    },
+    {
+      "req_idx": 81,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "scene from the 1 9 6 0 submarine spy thriller film the hunt for red october "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 389.3726967929045
+    },
+    {
+      "req_idx": 82,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "painting of a lush natural scene on an alien planet by kazimir malevich. beautiful landscape. weird vegetation. cliffs and water. "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 391.381790799161
+    },
+    {
+      "req_idx": 83,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "style sheets, portraits of stunningly beautiful eyes, \ud83e\udd65 "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 391.7101311281849
+    },
+    {
+      "req_idx": 84,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a portrait of a hockey goalie helmet with a japanese devil skull animal illustrated by miyazaki by karol bak, james jean, tom bagshaw, rococo, sharp focus, trending on artstation, cinematic lighting, hyper realism, octane render, 8 k, hyper detailed, vivid, ultra detailed, highly detailed "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 393.5725728802367
+    },
+    {
+      "req_idx": 85,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a large tree with doughnut flowers, bold natural colors, national geographic photography, masterpiece, 8 k, raw, unedited, symmetrical balance "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 395.53914394615737
+    },
+    {
+      "req_idx": 86,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "shrooms geog darrow greg rutkowski "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 402.07852286594607
+    },
+    {
+      "req_idx": 87,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a building formed by the intersection and combination of egg shaped spherical spaces of different sizes, on the calm lake, people's perspective, future, interior wood, marble, award winning, highly detailed 4 k art, dusk, unreal engine highly rendered, global illumination, radial light, internal environment by kazuyo sejima "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 407.15296966057616
+    },
+    {
+      "req_idx": 88,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "steampunk aztec owl pocketwatch, himalayan rocksalt lamp, intricate detail, volumetric lighting, epic composition, hyper detailed, ultra realistic, sharp focus, octane render, volumetric, ray tracing, sense of awe, swirling mist, blue moon "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 418.0642292225837
+    },
+    {
+      "req_idx": 89,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a highly detailed portrait painting of cris bartoloni "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 421.25955988946527
+    },
+    {
+      "req_idx": 90,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a highly - detailed painting by edward hopper of a modern!!! 2 0 1 0 s fashion photography portrait, white background. "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 421.89642185754275
+    },
+    {
+      "req_idx": 91,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "highly - detailed, 2 0 2 0 s hipster modern streetwear, full - length portrait painting. james tissot, vogue magazine, zinaida serebriakova, edward hopper, annie leibovitz. a modern!!!!! 2 0 1 0 s vogue fashion photography portrait, studio photography portrait, background, fully - clothed!!!. "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 428.14205357912573
+    },
+    {
+      "req_idx": 92,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "russian matrioska made with chrome, metallic sculpture, layed on a red velvet fabric, by hedi xandt and emil melmoth, macabre art, dark surrealism, epic and cinematic view, volummetric light, texturized, detailed, 8 k "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 435.29401734451005
+    },
+    {
+      "req_idx": 93,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "hybrid creature mix of cute fluffy panda and cute fluffy koala, hanging from tree branch, detailed painting 4 k "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 439.4134548189392
+    },
+    {
+      "req_idx": 94,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "giant pyramid castle above ringed planet, science - fiction, beautiful matte painting, frank frazetta, james gurney, unreal engine, artstation. "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 446.78290465254605
+    },
+    {
+      "req_idx": 95,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "coat jodhpurs couple hiking, extreme view angle, pinup, pulp art, deep focus, turnaround, pulp art, fantasy, intricate, elegant, highly detailed, digital painting, artstation, concept art, matte, sharp focus, illustration, hearthstone, art by rhads and artgerm and greg rutkowski and alphonse mucha. "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 450.18697831009746
+    },
+    {
+      "req_idx": 96,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "portrait of traveller girl jodhpurs hyperborea lemuria, brown black lether, decollete, d & d, fantasy, intricate, elegant, highly detailed, digital painting, artstation, concept art, matte, illustration, hearthstone, art by rhads by artgerm and greg rutkowski and greg manchess "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 453.8853725039838
+    },
+    {
+      "req_idx": 97,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "black red ink smoke draconic serpent portrait, explosion of flames, tony sart, noir, artstation, ismail inceoglu "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 456.6744434735259
+    },
+    {
+      "req_idx": 98,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "ethos of ego. mythos of id. by thomas eakins, hyperrealistic photorealism acrylic on canvas resembling a high - resolution photograph "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 456.80318234347646
+    },
+    {
+      "req_idx": 99,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "league of legends characters, xayah and kai'sa, hyperrealistic "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 457.3740195194358
+    },
+    {
+      "req_idx": 100,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "cute fluffy rhinocerous with long flowing colorful fur character concept detailed painting 4 k "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 457.53368792590106
+    },
+    {
+      "req_idx": 101,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "mel gibson retro minimalist portrait moebius starwatcher comic by jean giraud, 8 k "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 462.59233568053884
+    },
+    {
+      "req_idx": 102,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "young sophie marceau retro minimalist portrait! moebius starwatcher comic by jean giraud, portrait 8 k "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 464.4793192245143
+    },
+    {
+      "req_idx": 103,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "i think this just might be my favourite door ever. st saviour's, dartmouth "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 468.03150511018526
+    },
+    {
+      "req_idx": 104,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "lady gaga and judy garland in carpool karaoke, lady gaga, judy garland, red weapon 8 k s 3 5, cooke anamorphic / i lenses, highly detailed, cinematic lighting "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 479.93783275941513
+    },
+    {
+      "req_idx": 105,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "old black and white photo, 1 9 3 3, depicting blade runner and replicant, ultra realistic face, leica, historical record, dramatic lighting "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 481.3715268743316
+    },
+    {
+      "req_idx": 106,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "scottish landscape inside a glass jar, intricate detail, volumetric lighting, epic composition, hyper detailed, ultra realistic, sharp focus, octane render, volumetric, ray tracing,, sense of awe, swirling mist, 4 k "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 484.01293674874495
+    },
+    {
+      "req_idx": 107,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "film capture, kylie minogue as barbarella, exploring an alien planet. symmetrical face. symmetrical body. cinematic. trending on artstation. octane render. "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 491.05668248643786
+    },
+    {
+      "req_idx": 108,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "paperback book cover. 1 9 5 0 s. pure colors, melting clouds, accurately drawn details, a sunburst above a receding road with the light reflected in furrows and ruts, after rain. and no girls. "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 492.3557082710248
+    },
+    {
+      "req_idx": 109,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "steampunk owl inside a glass jar buried in sand, hourglass, himalayan rocksalt lamp, intricate detail, hyper detailed, ultra realistic, sharp focus, octane render, lantern, volumetric, ray tracing, artstation trending, moon, flowery, pocketwatch, cgsociety, sense of awe, mystical, moon, 4 k "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 492.7562296637757
+    },
+    {
+      "req_idx": 110,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "steampunk owl inside a glass jar buried in sand, hourglass, intricate detail, hyper detailed, ultra realistic, sharp focus, octane render, spiral, volumetric, ray tracing, artstation trending, blue moon, cgsociety, sense of awe, swirling mist, 4 k "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 494.466931183211
+    },
+    {
+      "req_idx": 111,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "zarya from overwatch as a dungeons and dragons fighter, by donato giancola, artstation, intricate, sharp focus, centered "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 495.3459729757113
+    },
+    {
+      "req_idx": 112,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "naturalism far sunshine man! oh, it's sunshine man!! "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 508.6207234051144
+    },
+    {
+      "req_idx": 113,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "numerous frog friends, digital art, cute, shoujo, trending on artstation, detailed, 4 k "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 516.8751588075372
+    },
+    {
+      "req_idx": 114,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "illustration of a blonde girl holding a happy green! frog, in a field of flowers, studio ghibli, mysterious, fantastical, disney, anime, digital art, cute, shoujo, trending on artstation, very detailed, realistic anime 4 k "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 521.8926297601399
+    },
+    {
+      "req_idx": 115,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "halls of space, a cosmic wave splits the voids of space and time ; by ben wanat ; by rafael grassetti, insane details, photography, unreal engine ; "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 532.150228412744
+    },
+    {
+      "req_idx": 116,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "wonder dream seraphim and cherubim dark futuristic technologically advanced faeries lady feather wing digital art painting fantasy bloom vibrant in style of yoji shinkawa and hyung - tae kim illustration character design concept colorful joy atmospheric lighting butterfly "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 540.2900731164468
+    },
+    {
+      "req_idx": 117,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "watercolour painting of a standing smiling thai budha, long tunic, barefoot, holding in the hands easter eggs, by wes anderson by leonid afremov by ivan bilibin, muted colors, fully framed subject "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 541.32255049824
+    },
+    {
+      "req_idx": 118,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "character portrait of a modest woman, tall, feminine, powerful, modestly clothed, voluminous, intricate, elegant, highly detailed, digital painting, artstation, smooth, symmetrical, sharp focus, illustration, art by gaston bussiere and alphone mucha "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 552.4766175244179
+    },
+    {
+      "req_idx": 119,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "clear portrait of a pale attractive women made of gold and moonstone, background hyper detailed, character concept, full body, dynamic pose, glowing lights intricate, elegant, highly detailed, digital painting, artstation, concept art, sharp focus, illustration, qwek dom "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 556.3521170342487
+    },
+    {
+      "req_idx": 120,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "red and blue poster with a dragon on it, vector art by cedric seaut ( keos masons ), artstation contest winner, process art, behance hd, matte background, rich color palette "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 564.5888584907666
+    },
+    {
+      "req_idx": 121,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "cute fluffy baby raccoon detailed painting 4 k "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 575.9100717371978
+    },
+    {
+      "req_idx": 122,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "katamari by sachin teng, organic painting, hard edges, masterpiece, asymmetrical, matte paint, energetic "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 577.8237253192893
+    },
+    {
+      "req_idx": 123,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "benevolent cyborg necromancer, scifi, futurism, helpful, kind, intelligent, alien room background, white, blue, gold, highly detailed, trending on artstation, soft light, sharp edges, illustration, technology, art by vitaly bulgarov and nivanh chanthara "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 578.4066861199086
+    },
+    {
+      "req_idx": 124,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "blender suzanne "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 579.7001198506056
+    },
+    {
+      "req_idx": 125,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "surreal glimpse into other universe, house by som architect, summer morning, very coherent and colorful high contrast, art by!!!! gediminas pranckevicius!!!!, geof darrow, floralpunk screen printing woodblock, dark shadows, hard lighting, stipple brush technique, "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 582.4854083143487
+    },
+    {
+      "req_idx": 126,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "close up portrait ugly man in black and girl in sport shorts, grotesque, doomed, acrylic paint, gouache on canvas, vibrant colors, grotesque, wrapped thermal background, art francis bacon "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 591.0045569475434
+    },
+    {
+      "req_idx": 127,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "face icon stylized minimalist mega man, loftis, cory behance hd by jesper ejsing, by rhads, makoto shinkai and lois van baarle, ilya kuvshinov, rossdraws global illumination "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 600.8612818069425
+    },
+    {
+      "req_idx": 128,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a giant cosmic tardigrade!!! descending on tokyo at sunset, unreal engine 8 k, illustration, comprehensive art, thorough details, intricate, artstation atmosphere, highly detailed, symmetrical, concept art, nc wyeth, artstation, craig mullins, william adolphe bouguereau, digital painting, james jean, joao ruas, takashi murakami, gregory crewdson cinematic lighting, 4 k "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 600.8961638528508
+    },
+    {
+      "req_idx": 129,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "starmaker "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 604.4705446495436
+    },
+    {
+      "req_idx": 130,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a fantasy style portrait painting a character if harrison ford and thanos had a son, purple skin, powerful chin, thanos style traits, painting, unreal 5, daz., rpg, portrait, extremely detailed, artgerm greg rutkowski _ greg "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 607.171911254137
+    },
+    {
+      "req_idx": 131,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "high quality 3 d rendering, dark hyperrealistic, zombie rubber duck with bones and flesh sticking out of it, in a dark graveyard. against the background of a dark mysterious sky, the predominance of blue - green tones, soft street light, low angle, uhd 8 k, sharp focus "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 608.4277479455161
+    },
+    {
+      "req_idx": 132,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a hyper - detailed 3 d render like a oil painting of dream - state astral - projection, surrealism!!!!! surreal concept art, lifelike, photorealistic, digital painting, aesthetic, smooth, sharp focus, artstation hd, by greg rutkowski, bruce pennington, valentina remenar and asher duran, "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 609.0661499032443
+    },
+    {
+      "req_idx": 133,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "steampunk vr headset inside a marble,, intricate detail, hyper detailed, ultra realistic, sharp focus, octane render,, volumetric, ray tracing, artstation trending, moon,, cgsociety, sense of awe, swirling mist, 4 k "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 611.1256928025565
+    },
+    {
+      "req_idx": 134,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "sunglasses wearing kratos rocking out on a stratocaster guitar, cinematic render, god of war 2 0 1 8, playstation studios official media, sunglasses, lightning, flames, red stripe tattoo "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 625.4412984160123
+    },
+    {
+      "req_idx": 135,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "saitama, anime, epic scene, octane redner, colors, holy, full body, galaxy, 8 k, illustration, atmosphere, unreal engine, video game, highly detailed, symmetrical, concept art, peter mohrbacher, charlie bowater, artstation, craig mullins, perfect composition, cinematic, digital painting, deviantart, hyperrealistic, octane render, cinematic lighting, 4 k "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 627.3932174304197
+    },
+    {
+      "req_idx": 136,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "robert stack wearing a trench coat unsolved mysteries solving the mystery of the missing jelly sandwich 2 0 0 1, ( sony a 7 r iv, symmetric balance, polarizing filter, photolab, lightroom, 4 k, dolby vision, photography awardm, voque, perfect face ) "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 631.0504814592205
+    },
+    {
+      "req_idx": 137,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "sandworm scene from the 1 9 3 4 science fiction film dune "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 637.1209163436247
+    },
+    {
+      "req_idx": 138,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "dark metalic shoulder armour lit by fire behind and a bright pink light source in front. cinematic lighting, realistic concept art. octane render "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 639.3807888384595
+    },
+    {
+      "req_idx": 139,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "oil portrait of thor, the thot of asgard, epic, cinematic, highly detailed "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 657.219779529918
+    },
+    {
+      "req_idx": 140,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "an island made of red caviar, in the center of this island there are several mountains made of white ice cream, the water around this island is made of coca - cola ( dark brown water ), the photo was taken from a boat, lemon slices float on the water, by thomas kinkade "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 673.629828852625
+    },
+    {
+      "req_idx": 141,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "fish with big lips ; pixar, octane render, ultra hd "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 675.080135327586
+    },
+    {
+      "req_idx": 142,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "psychology, "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 678.5184317199053
+    },
+    {
+      "req_idx": 143,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "tennis court, art by zdzis\u0142aw beksinski, surrealism, gothic, romanticism, symbolosm, baroque, expressionism, formalism "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 680.3080840203005
+    },
+    {
+      "req_idx": 144,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "chess board with politicians puttin as horse and trump as chess king and queen elizabeth as chess queen khomeini as chess bishop gandhi as chess soldier, che guevara as chess rook, mao, khomeini, high definition, trending on artstation, unreal engine, photorealistic, high resolution,, trending on deviantart, hdr, hyper detailed, insane details, intricate, elite, ornate, elegant, luxury, dramatic lighting "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 681.984332402206
+    },
+    {
+      "req_idx": 145,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "of a colorful deep sea cave with strange cute friendly happy creatures with huge eyes, mouth, long tongue and round teeth appearing from sandy coral, in the style of gehry and gaudi, macro lens, shallow depth of field, ultra detailed, digital painting, trending artstation, concept art, illustration, cinematic lighting, photorealism, epic, octane render "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 682.1722547910335
+    },
+    {
+      "req_idx": 146,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "female furry mini cute style, character adoptable, highly detailed, rendered, ray - tracing, cgi animated, 3 d demo reel avatar, style of maple story and zootopia, maple story cthulhu girl, dark cthulhu, dark skin, cool clothes, soft shade, soft lighting "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 686.8747151459465
+    },
+    {
+      "req_idx": 147,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "the all center, mystical, spiritual, epiphany, high detail, by dan mcpharlin "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 690.3673133100947
+    },
+    {
+      "req_idx": 148,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "creature bust, horror, art by dan harding, concept art, realistic "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 690.6315687469967
+    },
+    {
+      "req_idx": 149,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "the inside of a stone marble sculpture monument by arthur haas and bruce pennington and john schoenherr, architecture by zaha hadid, octane render, warm colour scheme, white, cinematic, scenery, high detail, high quality, close up angle, people walking "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 692.2646983520485
+    },
+    {
+      "req_idx": 150,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "ingrid bergman as wonder woman in a scene from the 1 9 4 8 film'wonder woman versus the robots '. film noir. action. beautiful. powerful. depth of field. publicity photograph. bokeh. "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 704.2090031074953
+    },
+    {
+      "req_idx": 151,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "queen elizabeth at milan fashion week on the walkway wearing a garbage bag "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 705.5783058682057
+    },
+    {
+      "req_idx": 152,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "epic mask helmet robot ninja portrait stylized as fornite style game design fanart by concept artist gervasio canda, behance hd by jesper ejsing, by rhads, makoto shinkai and lois van baarle, ilya kuvshinov, rossdraws global illumination radiating a glowing aura global illumination ray tracing hdr render in unreal engine 5 "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 706.3609601731331
+    },
+    {
+      "req_idx": 153,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "blender gloomy colossal ruined server room in datacenter robot figure automata headless drone robot knight welder posing pacing fixing soldering mono sharp focus, emitting diodes, smoke, artillery, sparks, racks, system unit, motherboard, by pascal blanche rutkowski artstation hyperrealism cinematic dramatic painting concept art of detailed character design matte painting, 4 k resolution blade runner "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 709.7223207205013
+    },
+    {
+      "req_idx": 154,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "portrait art of steve buscemi by ilya kuvshinov "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 730.9425056335776
+    },
+    {
+      "req_idx": 155,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "traveling the river styx, tristan eaton, victo ngai, artgerm, rhads, ross draws "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 732.3282297013762
+    },
+    {
+      "req_idx": 156,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "sandra oh retro minimalist portrait by moebius, crystalline, detailed illustration, sharp focus, crisp lines, jean giraud moebius comic illustration, 8 k "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 737.9040047528628
+    },
+    {
+      "req_idx": 157,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a cartoon skeleton in a cowboy hat yelling at donald trump. painting. trending. cinematic. epic. highly detailed. 8 k "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 745.0734428840601
+    },
+    {
+      "req_idx": 158,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "hacker aeon flux with flowing gown final fantasy profile picture by greg rutkowski, blade runner, cinematic, dynamic pose, intricate, futuristic, fantasy, elegant, by stanley artgerm lau, greg rutkowski, thomas kinkade, alphonse mucha, loish, norman rockwell, "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 746.4301087457392
+    },
+    {
+      "req_idx": 159,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a vibrant! sideview waist up portrait of homer simpsons by laurie greasley and rene magritte, etching by gustave dore, colorful flat surreal ethereal, intricate, sharp focus, illustration, highly detailed, digital painting, concept art, masterpiece "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 752.9438533882008
+    },
+    {
+      "req_idx": 160,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "frank dillane swordfighting with duncan mccloud, highly detailed, trending on artstation "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 755.2364673845223
+    },
+    {
+      "req_idx": 161,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a soviet propaganda poster. three goths loitering in the shade, talking beneath a cherry blossom outside a blockbuster store. "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 760.2389861231811
+    },
+    {
+      "req_idx": 162,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a portrait of a woman by theodore gericault. she has long straight dark brown hair, parted in the middle. she has large dark brown eyes, a small refined nose, and thin lips. she is wearing a t - shirt with the supreme brand logo lettering on it, a sleeveless white blouse, a pair of dark brown capris, and black loafers. "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 765.2581752588693
+    },
+    {
+      "req_idx": 163,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a woman sitting on the ground with her legs crossed, a portrait by camille souter, featured on tumblr, arabesque, elegant, sensual, enchanting "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 769.095101508631
+    },
+    {
+      "req_idx": 164,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "1 9 th century relics disinterred by the arch\u00e6ological expedition excavating on the site of the capital of the ancient british empire, the fabulous city of london "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 769.5682473026892
+    },
+    {
+      "req_idx": 165,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "claymation velma in the style of coralina "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 778.5864712739207
+    },
+    {
+      "req_idx": 166,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "headshot edwardian photograph of kelsey grammer wearing a schoolgirl outfit, 1 9 2 0 s, sinister, evil, realistic face, 1 9 1 0 s, grainy, victorian, soft blur "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 780.5205227422576
+    },
+    {
+      "req_idx": 167,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "bilberry diplomat, in the style of jason van hollander and stephen hickman and jim mcdermott, trending on artstation, mortal lighting rear view iridescent colors, retrowave, sabattier effect, german romanticism, pointillism "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 781.5526832752954
+    },
+    {
+      "req_idx": 168,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "alan sugar's hands. sculptures made of clay. eating leaves pastry pets on his shoulders going for a walk in the country. in the forest on the floor. the apprentice sitting on hands. eating burnt toast and drinking fresh clear water from a stream, painting in the style of salvador dali. "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 781.7608320742671
+    },
+    {
+      "req_idx": 169,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "closeup portrait of alice in wonderland, dramatic lighting, city background, night, moon, chiaroscuro, high detail, painted by greg rutkowski, painted by igor kieryluk, painted by bobby chiu, trending on artstation "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 786.22972409724
+    },
+    {
+      "req_idx": 170,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a full body shot of an imposing cyborg ( bull ) modeled after a bull with open eyes looking into the camera, android, cyborg, full body shot, intricate, 3 d, hyper realism, symmetrical, octane render, strong bokeh, fantasy, highly detailed, depth of field, digital art, artstation, concept art, cinematic lighting, trending "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 791.8889827685767
+    },
+    {
+      "req_idx": 171,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "portrait by sandra duchiewicz "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 791.9726175063691
+    },
+    {
+      "req_idx": 172,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "mediterranean phoenician city, over a chalk cliff, highly detailed, digital painting, artstation, concept art, sharp focus, illustration, art by artgerm and greg rutkowski and raphael lacoste and magali villeneuve "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 795.5607704291166
+    },
+    {
+      "req_idx": 173,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "mediterranean phoenician fishing village, over a chalk cliff, highly detailed, digital painting, artstation, concept art, sharp focus, illustration, art by artgerm and greg rutkowski and raphael lacoste and magali villeneuve "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 796.8448911643914
+    },
+    {
+      "req_idx": 174,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "holy roman emperor, sean harris, reddish beard, fantasy, portrait, highly detailed, headshot, digital painting, trending on artstation, concept art, sharp focus, illustration, art by artgerm and greg rutkowski and magali villeneuve "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 802.0255128721299
+    },
+    {
+      "req_idx": 175,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a surreal open air library full of clocks, a painting by jacek yerka "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 802.9835339848255
+    },
+    {
+      "req_idx": 176,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "k. k slider from animal crossing, playing guitar at a concert "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 808.8545966226641
+    },
+    {
+      "req_idx": 177,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "bob ross!!! riding! a dinosaur!!, giant afro!, model pose, ultra realistic, concept art, intricate details, highly detailed, photorealistic, octane render, 8 k, unreal engine. art by artgerm and greg rutkowski and alphonse mucha "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 811.2993901275696
+    },
+    {
+      "req_idx": 178,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "old greying handsom man with high collar fantasy, symmetrical beautiful, portrait, trending on artstation "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 825.1011092165911
+    },
+    {
+      "req_idx": 179,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "friendly regal vampiric woman portrait by james jean, manuel sanjulian, tom bagshaw "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 825.8408312837875
+    },
+    {
+      "req_idx": 180,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "\u201c brad pitt retro minimalist portrait, moebius starwatcher comic, by jean giraud, 8 k \u201d "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 827.9264934537633
+    },
+    {
+      "req_idx": 181,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "tex - mex "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 828.5287148789483
+    },
+    {
+      "req_idx": 182,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "scene from the 1 9 9 0 science fiction film muppet total recall "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 841.459666864702
+    },
+    {
+      "req_idx": 183,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "fireflies around, mute, neon light language, ( yudai chiba portrait ) by wlop, james jean, victo ngai, beautifully lit, muted colors, highly detailed, fantasy art by craig mullins, thomas kinkade, \u5343 \u8449 \u96c4 \u5927 "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 851.9513354005069
+    },
+    {
+      "req_idx": 184,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "close - up photo of a beautiful warrior princess in a battle scene, detailed eyes, shallow depth of field, photorealistic, cinematic lighting, warm colours, dusk "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 853.4429722508144
+    },
+    {
+      "req_idx": 185,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "vvs diamond watch, intricate design, rolex, cogs and gears, steampunk watch, bejeweled beautiful watch, richard mille, breitling watch "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 858.836785946034
+    },
+    {
+      "req_idx": 186,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "coin pusher game, concept art, white marble, gold ornament, transparent pastel crystals, waterfalls "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 867.33420630923
+    },
+    {
+      "req_idx": 187,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "an emo by diego rivera. her hair is dark brown and cut into a short, messy pixie cut. she has large entirely - black eyes. she is wearing a black tank top, a black leather jacket, a black knee - length skirt, a black choker, and black leather boots. "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 871.3848681126625
+    },
+    {
+      "req_idx": 188,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "ultra detailed, portrait of a female android, eyes closed, sci - fi, triadic color scheme, moody, calm, ( dia de los muertos ), asymmetrical, intricate concept art, art by artgerm and godmachine and michael welan andalphonse mucha and loish and wlop "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 875.1562651636323
+    },
+    {
+      "req_idx": 189,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "cthulhu towering the ruins of neo - tokyo, akira | anime, matte painting, dystopian megacity neo - tokyo akira, shaded perfect, fine details. realistic shaded lighting anime manga artwork by katsuhiro otomo, akira, artgerm, jeremy lipkin and michael garmash and rob rey "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 876.5406503908218
+    },
+    {
+      "req_idx": 190,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "scene from the 1 9 7 1 james bond film diamonds are forever "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 877.0292810931966
+    },
+    {
+      "req_idx": 191,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "person talking to an intelligent entity. grainy and rough. interesting colour scheme. beautiful artistic detailed digital art by vincent. ( 2 0 2 2 ) "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 888.4048972191692
+    },
+    {
+      "req_idx": 192,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "putin with a chainsaw and a corpse. in a concrete bunker. focus on putins face with blood splatters. canon eos r 3, f / 1. 4, iso 1 6 0 0, 1 / 8 0 s, 8 k, raw, grainy "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 899.9387693574114
+    },
+    {
+      "req_idx": 193,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a young and extremely beautiful grace kelly infected by night by tom bagshaw in the style of a modern gaston bussiere, art nouveau, art deco, surrealism. extremely lush detail. melancholic scene infected by night. perfect composition and lighting. profoundly surreal. high - contrast lush surrealistic photorealism. sultry and mischievous expression on her face. "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 904.9521189548258
+    },
+    {
+      "req_idx": 194,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "this homeless man looks like kanye west if he was poor asf, full beard, accidentally taking a selfie, front camera, camera flash is so bright in his face, viral, selfie, viral on twitter, viral on instagram, viral photo "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 907.0223515038824
+    },
+    {
+      "req_idx": 195,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "will smith reaching for the viewer menacingly, photography "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 909.1701895829407
+    },
+    {
+      "req_idx": 196,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "claymation miniature scene of albert einstein standing in front of miniature blackboard drawing himself with chalk, anatomically correct, hands retouched "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 915.6425167315763
+    },
+    {
+      "req_idx": 197,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "mystic amazon fighting a tiger, digital art"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 927.0130034771125
+    },
+    {
+      "req_idx": 198,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "Fighter, male, fantasy, dramatic, intricate, elegant, highly detailed, digital painting,  artstation, concept art, smooth, sharp focus, illustration, art by Viktor Berendeev, octane render"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 937.9186663240956
+    },
+    {
+      "req_idx": 199,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "annasophia robb as aphrodite, white cloth, long braided blond hair, intricate, highly detailed, digital painting, artstation, concept art, sharp focus, illustration, bouguereau, rutkowski, mucha"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 945.4864772837501
+    },
+    {
+      "req_idx": 200,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "Highly detailed full-body portrait of Ted Mosby, in GTA V, Stephen Bliss, unreal engine, fantasy art by Greg Rutkowski, Loish, Rhads, Makoto Shinkai and Lois van baarle, ilya kuvshinov, rossdraws global illumination, radiant light, detailed and intricate environment"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 950.6230307515887
+    },
+    {
+      "req_idx": 201,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "Selfie of a dog, first-person view, fisheye lens!!!!!!, photorealistic imagery, trending on artstation, 4k, 8k"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 951.0624893825691
+    },
+    {
+      "req_idx": 202,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "computer from a 1910s science fiction film"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 951.9439604559861
+    },
+    {
+      "req_idx": 203,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "siouxsie sioux roller derby girl sprinting Cross-Over, full length portait, fishnet tights, torn, ripped, logo design, Kris Kool, 1970s"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 963.3851129568736
+    },
+    {
+      "req_idx": 204,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "crystaline hamster goddess , vivid colors, dark shadows, contrast, concept art, sharp focus, digital art, Hyper-realistic, 4K, Unreal Engine, Highly Detailed, Dramatic Lighting, Beautiful, by Brom, bastien lecouffe-deharme"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 968.0475826917016
+    },
+    {
+      "req_idx": 205,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "an old room, with a bed in the corner, Haunted Places In Shelby Ohio: 20 Haunting Pictures Of Abandoned Asylums, Nice colour scheme, soft warm colour. Studio Gibli. Beautiful detailed watercolor by Lurid. (2022)"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 968.0937807197565
+    },
+    {
+      "req_idx": 206,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "highly detailed picture of a human robot coming to life for the very first time by Jim wooding. The image conveys fear and hope and depending dystopian world."
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 968.6287652269363
+    },
+    {
+      "req_idx": 207,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "\u201cLeonardo DiCaprio, beautiful, highly detailed portrait, photorealistic, ultra detailed, 3d, cartoon, Up\u201d"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 974.0745771633874
+    },
+    {
+      "req_idx": 208,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a typographic painting of words and letters, by Tristan Tzara, oil paint, Concrete poetry, dada, collage, abstract, words, Highly Detailed"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 974.0999493486464
+    },
+    {
+      "req_idx": 209,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a cute little robot sitting on a matchstick with a lit candle in the background"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 974.9765284291674
+    },
+    {
+      "req_idx": 210,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "highly detailed portrait of a hopeful pretty astronaut lady with a wavy blonde hair, by John Kenn Mortensen, 4k resolution, nier:automata inspired, bravely default inspired, vibrant but dreary but upflifting red, black and white color scheme!!! ((Space nebula background))"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 978.955017659862
+    },
+    {
+      "req_idx": 211,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "full-body rococo and cyberpunk delicate neon crystalline sculpture of (((muscular slender prince Zayn Malik))) as an iridescent humanoid deity wearing a thin see-through ((plastic hooded cloak)) sim roupa (holding a human skull), reclining con (las piernas abiertas), glowing pink face, crown of (((white lasers))), large diamonds, swirling black silk fabric. futuristic elements. oozing glowing liquid, full-length view. space robots. intricate artwork by caravaggio. Trending on artstation, octane render, cinematic lighting from the right, hyper realism, octane render, 8k, depth of field, 3D"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 984.8415940931361
+    },
+    {
+      "req_idx": 212,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "Three stone spires jutting above a dark, misty lake with snow-capped mountains in the background in the style of Ted Nasmith and Larry Elmore"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 990.1188015038124
+    },
+    {
+      "req_idx": 213,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "anthropomorphic rugged  turtle!!! oversized barbarian furry muscular armored upper body ,shell collar!!l,  \ud83d\udc45 \ud83d\udc45 , D&D, fantasy, intricate, elegant, highly detailed, digital painting, artstation, concept art, smooth, sharp focus, illustration, art by artgerm and beeple and  greg rutkowski and alphonse mucha"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 991.3885508403525
+    },
+    {
+      "req_idx": 214,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "Narrow cosy waterway in beautiful green futuristic sci-fi city in harmony with nature. Nice colour scheme, soft warm colour. Beautiful detailed painting by Lurid. (2022)"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 997.6156372848452
+    },
+    {
+      "req_idx": 215,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a fantasy character Drekavak at  Proto-Slavic mythology.  The soul of a dead unbaptized infant, has the ability to scream eerily.. Full body, detailed and realistic, 4k, top-artstation, inspired   blizzard games, octane render"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 998.9697560801093
+    },
+    {
+      "req_idx": 216,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "low quality drawing of a cardboard box with a checkerboard vapourwave neon background"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1000.9379306246997
+    },
+    {
+      "req_idx": 217,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        " island  by night  little wood bridge painting of Atlantis zeus statue and hill valley grec greeble temple of olympus glory tower  ivy plant grow flower multicolor rose, in marble incrusted of legends heartstone official fanart behance hd by Jesper Ejsing, by RHADS, Makoto Shinkai and Lois van baarle, ilya kuvshinov, rossdraws global illumination   "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1007.7997183830287
+    },
+    {
+      "req_idx": 218,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "highly detailed portrait of a hopeful pretty astronaut lady with a wavy blonde hair, by Franz Marc , 4k resolution, nier:automata inspired, bravely default inspired, vibrant but dreary but upflifting red, black and white color scheme!!! ((Space nebula background))"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1013.0435874545425
+    },
+    {
+      "req_idx": 219,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "medieval bestiary of repressed emotion monsters and creatures starting a fiery revolution in the psyche, in the style of Carlos Victor Ochagavia"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1022.5033678418595
+    },
+    {
+      "req_idx": 220,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "A goth painted by John William Waterhouse. She has large evil eyes with entirely-black sclerae!!!!!! Her hair is dark brown and cut into a short, messy pixie cut. She has a slightly rounded face, with a pointed chin, and a small nose. She is wearing a black leather jacket, a black knee-length skirt, a black choker, and black leather boots."
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1027.8624342827084
+    },
+    {
+      "req_idx": 221,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "futuristic energy gun full concept art schematic detailed intricate isometric glass metal neon 8k octane render"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1032.0626558106446
+    },
+    {
+      "req_idx": 222,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "Jair Bolsonaro portrait in Persona 5, Persona 5 style, anime"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1032.5544411178867
+    },
+    {
+      "req_idx": 223,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "Yoda as Chucky the killer doll from the movie Child's Play"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1034.8465226539217
+    },
+    {
+      "req_idx": 224,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "Betty White hanging out with Frankenstein's monster"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1036.3873233932159
+    },
+    {
+      "req_idx": 225,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "Chucky the killer doll for sale in a pawn shop"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1037.785824411528
+    },
+    {
+      "req_idx": 226,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "dwayne the rock johnson and Adam Sandler on Methamphetamine at Times Square, photograph by Alfred Eisenstaedt, 4K, dramatic lighting; high energy; Full mood; 4K 8K"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1055.8473714423426
+    },
+    {
+      "req_idx": 227,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "ruined ancient lichen covered monument surrounded by biomechanical creatures,solarpunk , ultra realistic, hyper detailed, 8k, octane render"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1058.3443089275427
+    },
+    {
+      "req_idx": 228,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "A beautiful stone statue of Shrek in front of the White House, photo by Steve McCurry, heroic pose, detailed, smooth, smiling, professional photographer"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1069.4745849837852
+    },
+    {
+      "req_idx": 229,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "Kodak Portra 400, 8K, soft light, volumetric lighting, highly detailed, britt marling style 3/4 ,portrait photo of teen Kasumi Arimura, the face emerges from Pamukkale, thermal waters flowing down white travertine terraces, inspired by Ophelia paint , a beautiful luxurious celestial suit and hair are intricate with highly detailed realistic beautiful flowers , Realistic, Refined, Highly Detailed, interstellar outdoor soft pastel lighting colors scheme, outdoor fine art photography, Hyper realistic, photo realistic"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1074.4612569124677
+    },
+    {
+      "req_idx": 230,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "white hair, red eyes, two small horn on the head, anime style, anime girl"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1082.3803831759096
+    },
+    {
+      "req_idx": 231,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "organic cyborg, diffuse lighting, fantasy, intricate, elegant, highly detailed, lifelike, photorealistic, digital painting, artstation, illustration, concept art, smooth, sharp focus, art by John Collier and Albert Aublet and Krenz Cushart and Artem Demura and Alphonse Mucha"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1085.8725597978535
+    },
+    {
+      "req_idx": 232,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "Fibrously vine-like Multiversal Portals in the center of what seems to be a lush, radiant jungle, while the sun shines marmalade colors in the background, illustrated by Greg Rutkowski and Gaston Bussiere, loquaciously elegant lighting, soft, blooming art style, bustling atmosphere and beautiful vibe, trending on artstation, 4k, 8k"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1090.1733393110615
+    },
+    {
+      "req_idx": 233,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "Super Mario as Luke Skywalker in Star Wars, movie still frame"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1093.56480647777
+    },
+    {
+      "req_idx": 234,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "isometric view of a factory floor, vats of radioactive slime, catwalks, industrial, glowing with silver light, painting by Franz Marc, by Jean-L\u00e9on G\u00e9r\u00f4me, by Winsor McCay, today's featured photograph, 16K"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1094.6508809543961
+    },
+    {
+      "req_idx": 235,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "jackson 5 in a jackson pollock painting"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1101.0596899697252
+    },
+    {
+      "req_idx": 236,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "\u0430 fantasy Proto-Slavic Troll creature inspired   blizzard games, full body, detailed and realistic, 4k, trending on artstation, octane render"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1102.7075768115565
+    },
+    {
+      "req_idx": 237,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "pepe discussing trading chart in a classroom"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1102.83065921696
+    },
+    {
+      "req_idx": 238,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "A gilded religious painting in the style of a byzantine icon of world of warcraft goblin as a green holy baby resting on a pile of gold, by William-Adolphe Bouguereau, neo-classicism, detailled, tempura on panel"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1108.0155031484362
+    },
+    {
+      "req_idx": 239,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "Scene from the 1969 superhero film Avengers: Infinity War,"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1108.9901709995604
+    },
+    {
+      "req_idx": 240,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "detailed image of elon musk by Ayami Kojima, Amano, Karol Bak, Greg Hildebrandt, and Mark Brooks, rich deep colors. Beksinski painting, part by Adrian Ghenie and Gerhard Richter. art by Takato Yamamoto. masterpiece . intricate artwork by Tooth Wu and wlop and beeple, greg rutkowski, very coherent symmetrical artwork, cinematic, hyper realism, high detail, octane render, unreal engine, 8k, Vibrant colors, Smooth gradients, High contrast, depth of field. by Katsuhiro Otomo, full body character drawing, inspired by Evangeleon, clean ink detailed line drawing, intricate detail, extremely detailed. painting by Arthur Rackham, Eugene de Blaas, Frederic Leighton"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1123.0955867359269
+    },
+    {
+      "req_idx": 241,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "I'll take you back, and I know it seems surprising when there's lipstick still on the glass"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1138.483398799867
+    },
+    {
+      "req_idx": 242,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "Mermaid on a Wave by Roger Dean, Album art, 1970s "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1150.8009482230361
+    },
+    {
+      "req_idx": 243,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "neon wolf logo , minimalist , vector illustration "
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1153.112385205523
+    },
+    {
+      "req_idx": 244,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "Walter white on the tube"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1153.1902717823828
+    },
+    {
+      "req_idx": 245,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a woman eating a vanilla ice cream cone and wearing a bikini, feeding a giraffe, a Studio Ghibli style scene, digital art, 4k"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1166.3678890690421
+    },
+    {
+      "req_idx": 246,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "Kumiho, artwork by Hsaio-Ron Cheng"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1169.1625804543073
+    },
+    {
+      "req_idx": 247,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "A thick mist in a dense ancient forest by Raoul Vitale and Greg Rutkowski"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1186.1667905349177
+    },
+    {
+      "req_idx": 248,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "A photograph portrait of Jerma985 with slicked back hair wearing 1950s menswear and glasses in the 1950s, taken in the early 1950s, grainy, taken on a 1950s Kodak Camera, realistic, hyperrealistic, very realistic, highly detailed, very detailed, extremely detailed, detailed, digital art, trending on artstation"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1202.7354679155687
+    },
+    {
+      "req_idx": 249,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "facial portrait of a young pretty woman in flowing dress, arrogant, mysterious, long fine hair, delicate, looking at camera!!!, slightly awkward smile!, realistic face, no hands visible, intricate, stylish, elegant, grimdark fantasy, vibrant, extremely detailed painting by Greg Rutkowski and Steve Henderson and Harumi Hironaka"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1212.3224030014658
+    },
+    {
+      "req_idx": 250,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "anime girl, hourglass slim figure, attractive features, seductive smile, highly detailed, details, digital painting, artstation, kyoani, concept art, sharp focus, illustration, art by Irakli Nadar"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1214.0662833423266
+    },
+    {
+      "req_idx": 251,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "beautiful woman in her late 20s wearing a summer dress, light blonde shoulder-length hair, standing near a waterfall, 4k digital art, digital painting, highly detailed and intricate"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1216.49774300282
+    },
+    {
+      "req_idx": 252,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "dramatic light, thunder clouds in the sky, stormy sea by frederick judd waugh, simple form, brutal shapes stormy sky, extremely strong wind, cumulonimbus, woman in dress figure standing on the stones, realism, view from above on seascape, matte painting, artstation, cinematic view, artwork by ed mell christopher blossom and frederick judd waugh and franklin carmichael and Russ Kramer and ivan aivazovsky and isaac levitan"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1226.0213762652104
+    },
+    {
+      "req_idx": 253,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a fruit basket on top of a kitchen table, neon lights"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1227.927107422364
+    },
+    {
+      "req_idx": 254,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "8K, grungy redhead 30-something bearded long haired swordsman holding a short curved sword in a ultradetailed pacific northwest redcedar forest, smooth, sharp focus, illustration. sharp focus, grungy matte painting detailed, intricate, cinematic lighting,"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1228.8557005038429
+    },
+    {
+      "req_idx": 255,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "Freddy Krueger from the movie a Nightmare on Elm Street"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1232.924385464144
+    },
+    {
+      "req_idx": 256,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "tornado made of dollar bills by John Brosio"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1246.6808528181793
+    },
+    {
+      "req_idx": 257,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "Lothl\u00f3rien with elven homes on trees, evening, detailed matte painting, cinematic, Alan Lee, Artstation"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1252.634980806969
+    },
+    {
+      "req_idx": 258,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "Dining room house, luxury, modern, artstation, hyper realistic, 8K, warm lighting, Victorian, wood, chandelier, grandfather clock, furniture, large windows to forest"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1256.8555424891472
+    },
+    {
+      "req_idx": 259,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "SWAT like police with Nike logo un the SHIELD"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1257.3666834758938
+    },
+    {
+      "req_idx": 260,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "missing pages from the bible"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1262.1393370534824
+    },
+    {
+      "req_idx": 261,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "Facepalm, Start Trek."
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1285.192185792714
+    },
+    {
+      "req_idx": 262,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a highly detailed portrait of black man smiling in the rain in a back tuxedo, wispy tendrils of smoke, intricate, digital painting, old english, raining, sepia, particles floating, whimsical background by marc simonetti, artwork by liam wong"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1285.9467887259254
+    },
+    {
+      "req_idx": 263,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "high resolution image  of cate blanchett with full body gang tattoos  , highly detailed, photorealistic, 4k"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1289.5992653508329
+    },
+    {
+      "req_idx": 264,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "link minifigure, Photorealism, cinematic lights, 35mm"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1300.092308540337
+    },
+    {
+      "req_idx": 265,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "link as warhammar minifigure, Photorealism, cinematic lights, 35mm"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1306.8424797821053
+    },
+    {
+      "req_idx": 266,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a landscape painting of a French manor, with a square and garden, in the style of anime"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1312.8128519086138
+    },
+    {
+      "req_idx": 267,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "Cute woman walking in Rome, detailed photography"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1318.8742896897363
+    },
+    {
+      "req_idx": 268,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "painter with recursive painting of himself"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1321.101751401311
+    },
+    {
+      "req_idx": 269,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "blue jay bird in the style of artist Barrett Biggers"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1322.8395618226466
+    },
+    {
+      "req_idx": 270,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "pretty female Taissa Farmiga vampire, Jamie McKelvie comic art, Peter Mohrbacher, sharp vampire teeth, sarcastic smile showing teeth, symmetrical eyes, realistic face, symmetrical face, brown leather jacket, jeans, long black hair, full body"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1331.126434358945
+    },
+    {
+      "req_idx": 271,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "the sleep of reason produces monsters, goya"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1339.4330753543802
+    },
+    {
+      "req_idx": 272,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a building in a stunning landscape by Jim Burns"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1349.5228255912198
+    },
+    {
+      "req_idx": 273,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "this world is not entirely real, but here we stand in it. Rough strokes. Interesting colour scheme. Detailed. Beautiful digital art by artist Lurid (2022)"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1361.745905400403
+    },
+    {
+      "req_idx": 274,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "handsome cute black dragon in snowy forest, dnd character, background focus, fantasy, magic, realistic textured skin, hawk feather, hawk wings, lizard legs, lizard pose, big eyes, clear clean, by lya kushinov, Avetetsuya Studios, Alexandra Fomina artstation, by Makoto Shinkai, digital 2D, matte painting"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1365.3263715850676
+    },
+    {
+      "req_idx": 275,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a robotic dog"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1368.8072934728236
+    },
+    {
+      "req_idx": 276,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "Dwayne Johnson suspense in space, medium shot, motionless"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1376.8120431343661
+    },
+    {
+      "req_idx": 277,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "scout spaceship with 100-ton hull used for exploration survey and courier duties, peter elson, chris foss"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1382.0606385088051
+    },
+    {
+      "req_idx": 278,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "abandoned space station, peter elson, tony roberts, jim burns, chris foss"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1388.1133917513628
+    },
+    {
+      "req_idx": 279,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "scout spaceship with 100-ton hull used for exploration survey and courier duties, angus mckie"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1396.0564891261338
+    },
+    {
+      "req_idx": 280,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "A strong man wearing a tutu and bunny ears."
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1407.0931065078676
+    },
+    {
+      "req_idx": 281,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "A goth portrait painted by Pierre-Auguste Renoir. Her hair is dark brown and cut into a short, messy pixie cut. She has a slightly rounded face, with a pointed chin, large entirely-black eyes, and a small nose. She is wearing a black tank top, a black leather jacket, a black knee-length skirt, a black choker, and black leather boots."
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1409.155518543556
+    },
+    {
+      "req_idx": 282,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "Father Christmas eating oranges Painted by Caravaggio"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1411.5102024871937
+    },
+    {
+      "req_idx": 283,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "An animal called Imag standing in a field of tall grass. It is very still, and blends in with the grass. It is waiting for prey to come close enough to catch. The sun is setting, and the sky is orange. Trending on artstation and deviantart."
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1412.0036826831306
+    },
+    {
+      "req_idx": 284,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "beautiful old female dark elf with white hair holding a scroll, storm background, digital painting, detailed, realism, perfect symmetry"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1416.3207528161777
+    },
+    {
+      "req_idx": 285,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "A masterpiece portrait of a Incredibly beautiful futuristic high fashion queer model girl with A large luxurious Victorian amber skull necklace. Rococo silk and lace dress. trending on artstation, digital art, by Stanley Artgerm Lau, WLOP, Rossdraws, James Jean, Andrei Riabovitchev, Marc Simonetti, Yoshitaka Amano"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1416.503773337232
+    },
+    {
+      "req_idx": 286,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "lithograph printed in 2100. It depicts a man in a art gallery viewing a print of a seascape. The man\\'s reflection is seen in the print, and the reflection shows the man walking down a staircase. The staircases in the print appear to be infinite, By M. C. Escher, colorized by Hayao Miyazaki"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1419.6368080781424
+    },
+    {
+      "req_idx": 287,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 512,
+      "width": 512,
+      "num_inference_steps": 50,
+      "prompt": [
+        "A muscular man by Keith Haring."
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1423.548281006578
+    },
+    {
+      "req_idx": 288,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "full body photo portrait of a gorgeous young woman, highly detailed, intricate, elegant, art by stefan kostic and \u7ffc\u6b21\u65b9CG, concept art, illustration, smooth and sharp focus, unreal engine"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1425.2364343081506
+    },
+    {
+      "req_idx": 289,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "portrait of a young rugged ranger, muscular, upper body, leather armor vest, D&D, fantasy, intricate, cinematic lighting, highly detailed, digital painting, artstation, concept art, smooth, sharp focus, illustration, art by Artgerm and Greg Rutkowski and Alphonse Mucha"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1429.7045969588814
+    },
+    {
+      "req_idx": 290,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a profile picture of a parrot with steampunk googles, by ROSS tran, 4k"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1429.8594722693888
+    },
+    {
+      "req_idx": 291,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "Boris Johnson holding a M4 carbine"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1430.0497897658026
+    },
+    {
+      "req_idx": 292,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "photo of Albert Einstein playing igo"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1438.6965466134934
+    },
+    {
+      "req_idx": 293,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 256,
+      "width": 256,
+      "num_inference_steps": 50,
+      "prompt": [
+        "\u201cderelict and laboratory \ud83e\uddea, lab equipment under neon light, broken lights, a body on the floor, shadows of zombies, muted tones, volumetric lighting, puddles, moss, branches, photorealism, high detail, golden ratio, cinematic, octane renderer, the last of us\u201d"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1440.9294717345322
+    },
+    {
+      "req_idx": 294,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a happy Conan the Barbarian drinking coffee, painting by Boris Vallejo"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1441.6089169410193
+    },
+    {
+      "req_idx": 295,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "the end of our universe and the start of the next universe, epic scale, view from my bedroom window, beautiful, terrifying"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1445.3021848824144
+    },
+    {
+      "req_idx": 296,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "a strange surreal dream, directed by terry gilliam, psychedelic"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1452.6504245846431
+    },
+    {
+      "req_idx": 297,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "Animal wearing tuxedonin times square, Tragic painting"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1453.8660146017926
+    },
+    {
+      "req_idx": 298,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 2048,
+      "width": 2048,
+      "num_inference_steps": 50,
+      "prompt": [
+        "futuristic, elaborate sneakers designed by Zaha Hadid. Synthetic fractal moss and white leather, high quality details"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1458.742112695075
+    },
+    {
+      "req_idx": 299,
+      "model_name": "flux",
+      "batch_size": 1,
+      "height": 1024,
+      "width": 1024,
+      "num_inference_steps": 50,
+      "prompt": [
+        "London during an air raid, artwork by John Atkinson Grimshaw"
+      ],
+      "output_type": "latent",
+      "slo": null,
+      "arrival_time": 1459.1881678400246
+    }
+  ],
+  "arrival_times": [
+    2.3463404498842957,
+    17.3969476044719,
+    23.98067607219915,
+    28.545388841078914,
+    29.393513193390646,
+    30.241494652963674,
+    30.54068849600708,
+    40.59684281840678,
+    45.1922535865431,
+    51.34850389506605,
+    51.452500435061744,
+    68.9702878108533,
+    77.90243552762668,
+    79.09587365387141,
+    80.09926859761973,
+    81.11232571178101,
+    82.9260943590834,
+    86.64573351338767,
+    89.47341884728935,
+    91.19453381005906,
+    95.92638817955805,
+    96.67756082319474,
+    98.40513838320675,
+    100.68652447431099,
+    103.73119791360986,
+    111.42087796876442,
+    112.53455727940786,
+    116.1447030545735,
+    120.6322266611223,
+    120.87004590990435,
+    125.5467110131524,
+    126.48151727303949,
+    126.817836927436,
+    141.68627589497066,
+    158.53942760727654,
+    166.8010854713409,
+    168.6175247711847,
+    169.1314113461972,
+    174.89516516169053,
+    177.79561937461753,
+    178.44638054438977,
+    181.8641166850605,
+    182.03908529227792,
+    194.04119972924303,
+    195.53848861344648,
+    200.96976760627138,
+    202.83750051455948,
+    206.50805499410563,
+    210.46417398401462,
+    211.48611698155415,
+    228.95015264523528,
+    236.41137953092598,
+    250.4368516273839,
+    261.6976116150549,
+    266.25288367697124,
+    279.00006057331825,
+    279.46333786808384,
+    280.5540113412402,
+    280.78542116967435,
+    282.7530816036898,
+    285.2137330626609,
+    286.796535278705,
+    295.61932460490965,
+    297.825459602559,
+    299.47447380323024,
+    303.386509219269,
+    304.14599995837216,
+    312.2484179372458,
+    312.63579728130236,
+    334.306528979239,
+    341.70394786044653,
+    342.81164506297597,
+    342.83933216485565,
+    351.2888160522863,
+    357.4242955892215,
+    363.9526101331615,
+    371.32868276337905,
+    371.71332909094804,
+    373.9327924530292,
+    374.54854297605146,
+    384.4911908343426,
+    389.3726967929045,
+    391.381790799161,
+    391.7101311281849,
+    393.5725728802367,
+    395.53914394615737,
+    402.07852286594607,
+    407.15296966057616,
+    418.0642292225837,
+    421.25955988946527,
+    421.89642185754275,
+    428.14205357912573,
+    435.29401734451005,
+    439.4134548189392,
+    446.78290465254605,
+    450.18697831009746,
+    453.8853725039838,
+    456.6744434735259,
+    456.80318234347646,
+    457.3740195194358,
+    457.53368792590106,
+    462.59233568053884,
+    464.4793192245143,
+    468.03150511018526,
+    479.93783275941513,
+    481.3715268743316,
+    484.01293674874495,
+    491.05668248643786,
+    492.3557082710248,
+    492.7562296637757,
+    494.466931183211,
+    495.3459729757113,
+    508.6207234051144,
+    516.8751588075372,
+    521.8926297601399,
+    532.150228412744,
+    540.2900731164468,
+    541.32255049824,
+    552.4766175244179,
+    556.3521170342487,
+    564.5888584907666,
+    575.9100717371978,
+    577.8237253192893,
+    578.4066861199086,
+    579.7001198506056,
+    582.4854083143487,
+    591.0045569475434,
+    600.8612818069425,
+    600.8961638528508,
+    604.4705446495436,
+    607.171911254137,
+    608.4277479455161,
+    609.0661499032443,
+    611.1256928025565,
+    625.4412984160123,
+    627.3932174304197,
+    631.0504814592205,
+    637.1209163436247,
+    639.3807888384595,
+    657.219779529918,
+    673.629828852625,
+    675.080135327586,
+    678.5184317199053,
+    680.3080840203005,
+    681.984332402206,
+    682.1722547910335,
+    686.8747151459465,
+    690.3673133100947,
+    690.6315687469967,
+    692.2646983520485,
+    704.2090031074953,
+    705.5783058682057,
+    706.3609601731331,
+    709.7223207205013,
+    730.9425056335776,
+    732.3282297013762,
+    737.9040047528628,
+    745.0734428840601,
+    746.4301087457392,
+    752.9438533882008,
+    755.2364673845223,
+    760.2389861231811,
+    765.2581752588693,
+    769.095101508631,
+    769.5682473026892,
+    778.5864712739207,
+    780.5205227422576,
+    781.5526832752954,
+    781.7608320742671,
+    786.22972409724,
+    791.8889827685767,
+    791.9726175063691,
+    795.5607704291166,
+    796.8448911643914,
+    802.0255128721299,
+    802.9835339848255,
+    808.8545966226641,
+    811.2993901275696,
+    825.1011092165911,
+    825.8408312837875,
+    827.9264934537633,
+    828.5287148789483,
+    841.459666864702,
+    851.9513354005069,
+    853.4429722508144,
+    858.836785946034,
+    867.33420630923,
+    871.3848681126625,
+    875.1562651636323,
+    876.5406503908218,
+    877.0292810931966,
+    888.4048972191692,
+    899.9387693574114,
+    904.9521189548258,
+    907.0223515038824,
+    909.1701895829407,
+    915.6425167315763,
+    927.0130034771125,
+    937.9186663240956,
+    945.4864772837501,
+    950.6230307515887,
+    951.0624893825691,
+    951.9439604559861,
+    963.3851129568736,
+    968.0475826917016,
+    968.0937807197565,
+    968.6287652269363,
+    974.0745771633874,
+    974.0999493486464,
+    974.9765284291674,
+    978.955017659862,
+    984.8415940931361,
+    990.1188015038124,
+    991.3885508403525,
+    997.6156372848452,
+    998.9697560801093,
+    1000.9379306246997,
+    1007.7997183830287,
+    1013.0435874545425,
+    1022.5033678418595,
+    1027.8624342827084,
+    1032.0626558106446,
+    1032.5544411178867,
+    1034.8465226539217,
+    1036.3873233932159,
+    1037.785824411528,
+    1055.8473714423426,
+    1058.3443089275427,
+    1069.4745849837852,
+    1074.4612569124677,
+    1082.3803831759096,
+    1085.8725597978535,
+    1090.1733393110615,
+    1093.56480647777,
+    1094.6508809543961,
+    1101.0596899697252,
+    1102.7075768115565,
+    1102.83065921696,
+    1108.0155031484362,
+    1108.9901709995604,
+    1123.0955867359269,
+    1138.483398799867,
+    1150.8009482230361,
+    1153.112385205523,
+    1153.1902717823828,
+    1166.3678890690421,
+    1169.1625804543073,
+    1186.1667905349177,
+    1202.7354679155687,
+    1212.3224030014658,
+    1214.0662833423266,
+    1216.49774300282,
+    1226.0213762652104,
+    1227.927107422364,
+    1228.8557005038429,
+    1232.924385464144,
+    1246.6808528181793,
+    1252.634980806969,
+    1256.8555424891472,
+    1257.3666834758938,
+    1262.1393370534824,
+    1285.192185792714,
+    1285.9467887259254,
+    1289.5992653508329,
+    1300.092308540337,
+    1306.8424797821053,
+    1312.8128519086138,
+    1318.8742896897363,
+    1321.101751401311,
+    1322.8395618226466,
+    1331.126434358945,
+    1339.4330753543802,
+    1349.5228255912198,
+    1361.745905400403,
+    1365.3263715850676,
+    1368.8072934728236,
+    1376.8120431343661,
+    1382.0606385088051,
+    1388.1133917513628,
+    1396.0564891261338,
+    1407.0931065078676,
+    1409.155518543556,
+    1411.5102024871937,
+    1412.0036826831306,
+    1416.3207528161777,
+    1416.503773337232,
+    1419.6368080781424,
+    1423.548281006578,
+    1425.2364343081506,
+    1429.7045969588814,
+    1429.8594722693888,
+    1430.0497897658026,
+    1438.6965466134934,
+    1440.9294717345322,
+    1441.6089169410193,
+    1445.3021848824144,
+    1452.6504245846431,
+    1453.8660146017926,
+    1458.742112695075,
+    1459.1881678400246
+  ]
+}

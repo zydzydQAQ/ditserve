@@ -1,0 +1,17 @@
+{
+ "commit": "93b03215ff482d3c3c827c7cfa2ec71d0fd050fb",
+ "subject": "Fix continuous_batch memory peak JSON initialization and support exact-UUID calibration bundle reuse",
+ "built_utc": "2026-11-05T03:02:26+00:00",
+ "builder_image": "cluster-cmake-install",
+ "runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "tested_runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "core_sha256": "822824ab9172d074b68488e59c8603b62cd84975aaa5f052d41c7e31b6de587a",
+ "runtime_smoke": "passed_cluster",
+ "local_checks": [
+  "cmake",
+  "ctest",
+  "installed_doctor"
+ ],
+ "files": 337,
+ "bytes": 5968532
+}

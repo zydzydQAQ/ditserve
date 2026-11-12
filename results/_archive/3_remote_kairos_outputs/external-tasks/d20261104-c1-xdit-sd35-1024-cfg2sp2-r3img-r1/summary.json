@@ -1,0 +1,73 @@
+{
+  "schema": "ditserve.external-task.v1",
+  "run_id": "d20261104-c1-xdit-sd35-1024-cfg2sp2-r3img-r1",
+  "binding": {
+    "commit": "4327969d6d12f1c7a796e0b8c9d4a6539cf5967e",
+    "manifest_sha256": "2707afe8e6f39a49a911f1e65c43804841926b1e8a6b8cb5a671689efebd165e",
+    "job_spec_sha256": "973235562c36e421bb3cfc644c96926ef282f3bdc4b6ac8ebadd08e10761791a",
+    "build_info_sha256": "76a70cb4246b15b0e82c3749841b81cb79e8f0692da812c19831108d27e7e0a6",
+    "core_sha256": "e358e29d1a3ca238bbf2b7f981db71e951519715aedf46d58454738aabcbd42b",
+    "worker_sources_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a",
+    "gfc_sources_sha256": "e6c7f47a26d02a8091463bf9cb8ca58835c2b07c3c2cd4827d1b319c3bebf6e6",
+    "image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+    "image_identity_scope": "digest-pinned submitted spec, not independent pod imageID",
+    "probe_plan_sha256": "d7ed59e0dbc71d461224d6e43fb671d2c4df0236f9cacb4656a324caad9f0adc"
+  },
+  "allocation_gpus": 4,
+  "initial_storage": {
+    "used_gib": 780,
+    "percent": 77
+  },
+  "final_storage": {
+    "used_gib": 780,
+    "percent": 77
+  },
+  "task": "challenge1-xdit-sd35-1024-cfg2-sp2-scaling",
+  "execution": {
+    "argv": [
+      "/opt/venv/bin/python",
+      "-B",
+      "-m",
+      "torch.distributed.run",
+      "--standalone",
+      "--nnodes=1",
+      "--nproc_per_node=4",
+      "/shared/data/DITSERVE/external-probes/c1-xdit-sd35-1024-cfg2sp2-r3img-r1/external_xdit_scaling.py",
+      "run",
+      "--world-size",
+      "4",
+      "--cfg-degree",
+      "2",
+      "--ulysses-degree",
+      "2",
+      "--model",
+      "sd35",
+      "--model-root",
+      "/shared/data/DITSERVE/models/sd3.5-medium",
+      "--shape",
+      "sd35-1024",
+      "--protocol",
+      "/shared/data/DITSERVE/external-probes/c1-xdit-sd35-1024-cfg2sp2-r3img-r1/formal-mixed-v1.json",
+      "--protocol-sha256",
+      "86aae608c7f86d194e77a5e2e9645b192b921d8137174cbcdb2825ed7d94b392",
+      "--prompt",
+      "A dog walking in a park.",
+      "--seed",
+      "42",
+      "--output-dir",
+      "/shared/output/DITSERVE/external-tasks/d20261104-c1-xdit-sd35-1024-cfg2sp2-r3img-r1/result",
+      "--timeout-seconds",
+      "3200"
+    ],
+    "returncode": 1,
+    "timed_out": false,
+    "seconds": 5.010863481089473,
+    "stderr_tail": "Traceback (most recent call last):\n  File \"/shared/data/DITSERVE/external-probes/c1-xdit-sd35-1024-cfg2sp2-r3img-r1/external_xdit_scaling.py\", line 579, in <module>\n    raise SystemExit(main())\n  File \"/shared/data/DITSERVE/external-probes/c1-xdit-sd35-1024-cfg2sp2-r3img-r1/external_xdit_scaling.py\", line 564, in main\n    return run_scaling(args)\n  File \"/shared/data/DITSERVE/external-probes/c1-xdit-sd35-1024-cfg2sp2-r3img-r1/external_xdit_scaling.py\", line 384, in run_scaling\n    \"parallel_form\": canonical_form_name(args.cfg_degree, args.ulysses_degree),\nNameError: name 'canonical_form_name' is not defined\nTraceback (most recent call last):\n  File \"/shared/data/DITSERVE/external-probes/c1-xdit-sd35-1024-cfg2sp2-r3img-r1/external_xdit_scaling.py\", line 579, in <module>\n    raise SystemExit(main())\n  File \"/shared/data/DITSERVE/external-probes/c1-xdit-sd35-1024-cfg2sp2-r3img-r1/external_xdit_scaling.py\", line 564, in main\n    return run_scaling(args)\n  File \"/shared/data/DITSERVE/external-probes/c1-xdit-sd35-1024-cfg2sp2-r3img-r1/external_xdit_scaling.py\", line 384, in run_scaling\n    \"parallel_form\": canonical_form_name(args.cfg_degree, args.ulysses_degree),\nNameError: name 'canonical_form_name' is not defined\nTraceback (most recent call last):\n  File \"/shared/data/DITSERVE/external-probes/c1-xdit-sd35-1024-cfg2sp2-r3img-r1/external_xdit_scaling.py\", line 579, in <module>\n    raise SystemExit(main())\n  File \"/shared/data/DITSERVE/external-probes/c1-xdit-sd35-1024-cfg2sp2-r3img-r1/external_xdit_scaling.py\", line 564, in main\n    return run_scaling(args)\n  File \"/shared/data/DITSERVE/external-probes/c1-xdit-sd35-1024-cfg2sp2-r3img-r1/external_xdit_scaling.py\", line 384, in run_scaling\n    \"parallel_form\": canonical_form_name(args.cfg_degree, args.ulysses_degree),\nNameError: name 'canonical_form_name' is not defined\nTraceback (most recent call last):\n  File \"/shared/data/DITSERVE/external-probes/c1-xdit-sd35-1024-cfg2sp2-r3img-r1/external_xdit_scaling.py\", line 579, in <module>\n    raise SystemExit(main())\n  File \"/shared/data/DITSERVE/external-probes/c1-xdit-sd35-1024-cfg2sp2-r3img-r1/external_xdit_scaling.py\", line 564, in main\n    return run_scaling(args)\n  File \"/shared/data/DITSERVE/external-probes/c1-xdit-sd35-1024-cfg2sp2-r3img-r1/external_xdit_scaling.py\", line 384, in run_scaling\n    \"parallel_form\": canonical_form_name(args.cfg_degree, args.ulysses_degree),\nNameError: name 'canonical_form_name' is not defined\nE1104 04:01:11.949000 87 torch/distributed/elastic/multiprocessing/api.py:984] failed (exitcode: 1) local_rank: 0 (pid: 92) of binary: /opt/venv/bin/python\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.10/runpy.py\", line 196, in _run_module_as_main\n    return _run_code(code, main_globals, None,\n  File \"/usr/local/lib/python3.10/runpy.py\", line 86, in _run_code\n    exec(code, run_globals)\n  File \"/opt/venv/lib/python3.10/site-packages/torch/distributed/run.py\", line 995, in <module>\n    main()\n  File \"/opt/venv/lib/python3.10/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py\", line 362, in wrapper\n    return f(*args, **kwargs)\n  File \"/opt/venv/lib/python3.10/site-packages/torch/distributed/run.py\", line 991, in main\n    run(args)\n  File \"/opt/venv/lib/python3.10/site-packages/torch/distributed/run.py\", line 982, in run\n    elastic_launch(\n  File \"/opt/venv/lib/python3.10/site-packages/torch/distributed/launcher/api.py\", line 170, in __call__\n    return launch_agent(self._config, self._entrypoint, list(args))\n  File \"/opt/venv/lib/python3.10/site-packages/torch/distributed/launcher/api.py\", line 317, in launch_agent\n    raise ChildFailedError(\ntorch.distributed.elastic.multiprocessing.errors.ChildFailedError: \n============================================================\n/shared/data/DITSERVE/external-probes/c1-xdit-sd35-1024-cfg2sp2-r3img-r1/external_xdit_scaling.py FAILED\n------------------------------------------------------------\nFailures:\n[1]:\n  time      : 2026-11-04_04:01:11\n  host      : d20261104-c1-xdit-sd35-1024-cfg2sp2-r3img-r1-master-0\n  rank      : 1 (local_rank: 1)\n  exitcode  : 1 (pid: 93)\n  error_file: <N/A>\n  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html\n[2]:\n  time      : 2026-11-04_04:01:11\n  host      : d20261104-c1-xdit-sd35-1024-cfg2sp2-r3img-r1-master-0\n  rank      : 2 (local_rank: 2)\n  exitcode  : 1 (pid: 94)\n  error_file: <N/A>\n  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html\n[3]:\n  time      : 2026-11-04_04:01:11\n  host      : d20261104-c1-xdit-sd35-1024-cfg2sp2-r3img-r1-master-0\n  rank      : 3 (local_rank: 3)\n  exitcode  : 1 (pid: 95)\n  error_file: <N/A>\n  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html\n------------------------------------------------------------\nRoot Cause (first observed failure):\n[0]:\n  time      : 2026-11-04_04:01:11\n  host      : d20261104-c1-xdit-sd35-1024-cfg2sp2-r3img-r1-master-0\n  rank      : 0 (local_rank: 0)\n  exitcode  : 1 (pid: 92)\n  error_file: <N/A>\n  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html\n============================================================\n",
+    "stdout_tail": "",
+    "json_output": false,
+    "child_summary_missing": true
+  },
+  "qualification_eligible": false,
+  "allows": [],
+  "scope": "Native implementation diagnostic; not full-system serving or quality qualification."
+}

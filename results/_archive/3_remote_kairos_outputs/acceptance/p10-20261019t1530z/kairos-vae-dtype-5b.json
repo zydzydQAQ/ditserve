@@ -1,0 +1,279 @@
+{
+  "schema": "ditserve.study.v1",
+  "experiment": "kairos-vae-dtype-5b",
+  "note": "Wan2.2-5B VAE precision: BF16 decode vs the FP32 recipe on 512x896x81 (20 steps; identical latents, video compared with PSNR and per-frame LPIPS) and the allocator peak of the 704x1280x121 decode (2 steps).",
+  "workers": {
+    "ref": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-29ad4cf3-1e6a-08a9-5bde-6d17726e9fa3",
+      "environment": {
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b",
+        "device": "cuda:0",
+        "attention": "flash",
+        "vae_dtype": "float32",
+        "options": {
+          "execution": "block"
+        }
+      }
+    },
+    "bf16": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-29ad4cf3-1e6a-08a9-5bde-6d17726e9fa3",
+      "environment": {
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      },
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b",
+        "device": "cuda:0",
+        "attention": "flash",
+        "vae_dtype": "bfloat16",
+        "options": {
+          "execution": "block"
+        }
+      }
+    }
+  },
+  "budget": {
+    "limit_gpu_seconds": 3600,
+    "watchdog_seconds": 3600,
+    "repair_reserve_gpu_seconds": 0,
+    "carry": "none"
+  },
+  "phases": [
+    {
+      "id": "ref",
+      "kind": "profile",
+      "worker": "ref",
+      "workers": [
+        "ref"
+      ],
+      "artifact_dependencies": [],
+      "actions": [
+        {
+          "op": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 20,
+            "height": 512,
+            "width": 896,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "ref-mid"
+          },
+          "state_id": "mid"
+        },
+        {
+          "op": "advance",
+          "state_id": "mid",
+          "steps": 20
+        },
+        {
+          "op": "finish",
+          "state_id": "mid",
+          "output_path": "mid.npy",
+          "save_latents": true
+        },
+        {
+          "op": "release",
+          "state_id": "mid"
+        },
+        {
+          "op": "memory",
+          "label": "ref_after_mid"
+        },
+        {
+          "op": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 2,
+            "height": 704,
+            "width": 1280,
+            "frames": 121,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "ref-long"
+          },
+          "state_id": "long"
+        },
+        {
+          "op": "advance",
+          "state_id": "long",
+          "steps": 2
+        },
+        {
+          "op": "memory",
+          "label": "ref_long_denoised"
+        },
+        {
+          "op": "finish",
+          "state_id": "long",
+          "output_path": "long.npy"
+        },
+        {
+          "op": "memory",
+          "label": "ref_long_decoded"
+        },
+        {
+          "op": "release",
+          "state_id": "long"
+        },
+        {
+          "op": "memory",
+          "label": "ref_long_released"
+        }
+      ]
+    },
+    {
+      "id": "bf16",
+      "kind": "profile",
+      "worker": "bf16",
+      "workers": [
+        "bf16"
+      ],
+      "requires": [
+        "ref"
+      ],
+      "artifact_dependencies": [],
+      "actions": [
+        {
+          "op": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 20,
+            "height": 512,
+            "width": 896,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "bf16-mid"
+          },
+          "state_id": "mid"
+        },
+        {
+          "op": "advance",
+          "state_id": "mid",
+          "steps": 20
+        },
+        {
+          "op": "finish",
+          "state_id": "mid",
+          "output_path": "mid.npy",
+          "save_latents": true
+        },
+        {
+          "op": "evaluate",
+          "reference": "/shared/output/DITSERVE/.cache/results-work/kairos-vae-dtype-5b/p10-20261019t1530z/attempts/ref/attempt-1/cell-0/artifacts/0/mid.latent.npy",
+          "output": "mid.latent.npy",
+          "atol": 0,
+          "rtol": 0
+        },
+        {
+          "op": "evaluate",
+          "reference": "/shared/output/DITSERVE/.cache/results-work/kairos-vae-dtype-5b/p10-20261019t1530z/attempts/ref/attempt-1/cell-0/artifacts/0/mid.npy",
+          "output": "mid.npy",
+          "atol": 0,
+          "rtol": 0,
+          "lpips": true
+        },
+        {
+          "op": "release",
+          "state_id": "mid"
+        },
+        {
+          "op": "memory",
+          "label": "bf16_after_mid"
+        },
+        {
+          "op": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 2,
+            "height": 704,
+            "width": 1280,
+            "frames": 121,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "bf16-long"
+          },
+          "state_id": "long"
+        },
+        {
+          "op": "advance",
+          "state_id": "long",
+          "steps": 2
+        },
+        {
+          "op": "memory",
+          "label": "bf16_long_denoised"
+        },
+        {
+          "op": "finish",
+          "state_id": "long",
+          "output_path": "long.npy"
+        },
+        {
+          "op": "memory",
+          "label": "bf16_long_decoded"
+        },
+        {
+          "op": "release",
+          "state_id": "long"
+        },
+        {
+          "op": "memory",
+          "label": "bf16_long_released"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "/cells/0/operations/3/ranks/0/exact",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/3/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/3/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/4/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/4/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        }
+      ]
+    }
+  ]
+}

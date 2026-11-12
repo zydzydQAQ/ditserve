@@ -1,0 +1,14 @@
+{
+  "at_utc": "2026-11-02T23:38:52.976121+00:00",
+  "pid": 2235802,
+  "entry": "/mnt/e/000_code/zyd-2026/.local/ditserve-kairos-rewrite-runtime/orchestration/20261103-cal8-51740c0/collect_completed_calibration8.py",
+  "sha256": "e904456a32bc22bc192de392a5152f96135d876071b5ccf2bb04e537bde5b9b0",
+  "expected_requests": 76,
+  "expected_cells": 38,
+  "independent_review_passed": true,
+  "real_four_gpu_regression": "both models, two shapes, exact bundles passed; validation-only, not eight-GPU evidence",
+  "mutation_rejections": 26,
+  "qualification_eligible": false,
+  "allows": [],
+  "dependencies_closed": false
+}

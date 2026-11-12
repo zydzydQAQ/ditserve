@@ -1,0 +1,125 @@
+{
+  "schema": "ditserve.paper-results.subsection.v1",
+  "section": "5.7",
+  "title": "Hardware and Runtime Subsystem Microbenchmarks",
+  "paper_source": "ditserve-writing/body/05-evaluation.tex",
+  "tables": [
+    "Table 3 (tab:eval_microbench)"
+  ],
+  "hardware": "2x / 8x NVIDIA A100-PCIE-40GB GPUs (108 SMs/GPU, PCIe 4.0 PHB)",
+  "microbenchmarks_table3": [
+    {
+      "id": 1,
+      "mechanism": "GreenPool SM Partitioning",
+      "table_label": "1. GreenPool SM",
+      "baseline": "235.93 ms SD3.5 jitter (P99-P50, shared SMs)",
+      "ditserve": "4.21 ms jitter (88:20 / 72:36 SM split of 108 SMs)",
+      "gain": "56.06x jitter cut (-89.2% P99)",
+      "quality_gate": "max_abs_diff = 0.0",
+      "source_job": "d20261104-mot-sys-2gpu-r1 (Part D)"
+    },
+    {
+      "id": 2,
+      "mechanism": "GFC Group-Free IPC Collectives",
+      "table_label": "2. GFC IPC Ring",
+      "baseline": "3.64 s (2-GPU) / 28.80 s (8-GPU 29 groups) ncclCommInitRank",
+      "ditserve": "2.0 - 2.5 us subgroup bitmask hot-switch",
+      "gain": "> 1.4e6x init speedup",
+      "quality_gate": "1,112/1,112 bitwise exact",
+      "source_job": "d20261104-gfc8-r3img-8ada0a3-r2"
+    },
+    {
+      "id": 3,
+      "mechanism": "Ragged cu_seqlens Token Packing",
+      "table_label": "3. Varlen Pack",
+      "baseline": "Static 2D padding across 512^2 / 768^2 / 1024^2 (37.5%-50% pad)",
+      "ditserve": "FlashAttention-2 cu_seqlens ragged packing (0% pad)",
+      "gain": "1.68x - 2.02x step (2.20x goodput)",
+      "quality_gate": "max_abs_diff = 4.77e-7",
+      "source_job": "20261104-sd35-continuous-batch-sweep"
+    },
+    {
+      "id": 4,
+      "mechanism": "Decode Shrink & Chunked 3D-VAE",
+      "table_label": "4. Decode Shrink",
+      "baseline": "6,912.0 ms monolithic Rank-0 3D-VAE stall",
+      "ditserve": "304.1 ms 1-latent-frame chunked preemptible decode + Rank-1 release",
+      "gain": "22.73x wait cut",
+      "quality_gate": "max_abs_diff = 0.0",
+      "source_job": "d20261104-mot-sys-2gpu-r1 (Part C)"
+    },
+    {
+      "id": 5,
+      "mechanism": "Lossless UMT5 Valid-Token Crop",
+      "table_label": "5. UMT5 Crop",
+      "baseline": "189 ms GPU / 5.1 s CPU (512-token padded UMT5)",
+      "ditserve": "28 ms GPU / 0.33 s cached CPU (valid L_a crop)",
+      "gain": "6.75x GPU / 15.58x CPU",
+      "quality_gate": "max_abs_diff = 0.0 (cos=1.0)",
+      "source_job": "d20261104-mot-sys-2gpu-r1 (Part A)"
+    },
+    {
+      "id": 6,
+      "mechanism": "S4 Disaggregated Encoder Pool",
+      "table_label": "6. S4 Enc. Pool",
+      "baseline": "40.1 - 54.0 GiB HBM peak (100% OOM on 40GB A100)",
+      "ditserve": "17.1 - 27.6 GiB HBM peak (/dev/shm + 0.1-0.8 ms async DMA)",
+      "gain": "-19.45 GiB/GPU (-155.6 GiB/8GPU)",
+      "quality_gate": "0 OOM, bitwise lossless",
+      "source_job": "cross_modal_memory_study + d20261104-mot-sys-2gpu-r1"
+    },
+    {
+      "id": 7,
+      "mechanism": "PinnedSlabPool & Certified Omit",
+      "table_label": "7. Pinned Slab",
+      "baseline": "209.07 ms offload P99 (cudaHostAlloc) / 213.37 ms TCP migrate",
+      "ditserve": "41.69 ms offload P99 (11.6 GB/s) / 29.20 ms certified_omit",
+      "gain": "5.01x P99 cut / 7.31x migrate",
+      "quality_gate": "max_abs_diff = 0.0",
+      "source_job": "d20261104-mot-sys-2gpu-r1 (Part B)"
+    },
+    {
+      "id": 8,
+      "mechanism": "DitServe-Approx Curvature CFG Fold + Fission",
+      "table_label": "8. Approx Mode",
+      "baseline": "22.71 s 1st-image E2E (No-Fission CFG2 video)",
+      "ditserve": "4.18 s 1st-image E2E (CFG2->SP1 fission, -55.2% to -71.5% GPU-ms)",
+      "gain": "2.27x - 5.44x 1st-image speedup",
+      "quality_gate": "24.39-27.01 dB PSNR, 0.96-0.97 SSIM",
+      "source_job": "d20261104-mot-alg-2gpu-r1 (Part A)"
+    }
+  ],
+  "orthogonal_extensions": {
+    "taylor_residual_compensator": {
+      "wan21_skip_7of20_speedup_x": 1.294,
+      "wan21_psnr_gain_vs_dbcache_db": 0.412,
+      "sd35_skip_8of28_speedup_x": 1.216
+    },
+    "int8_ring_kv_quantizer": {
+      "compression_ratio_x": 1.9692,
+      "p2p_raw_speedup_x": [
+        1.965,
+        1.971
+      ],
+      "e2e_comm_speedup_x": [
+        1.574,
+        1.596
+      ],
+      "attention_psnr_db": [
+        82.91,
+        84.36
+      ]
+    },
+    "controller_14state_gpu_timeline": {
+      "unknown_time_pct": 0.0,
+      "gang_held_overhead_pct": [
+        0.067,
+        0.122
+      ],
+      "dispatch_latency_pct": [
+        0.0001,
+        0.0006
+      ]
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+ "commit": "5d9ee3fae6e6cbc5107a91e823865d994eee8bc5",
+ "subject": "Run eight integer arrival-rate sweep points",
+ "built_utc": "2026-11-07T03:14:51+00:00",
+ "builder_image": "cluster-cmake-install",
+ "runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "tested_runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "core_sha256": "117e97f41761c64ee05d564c86a7db22170af7c86308a1a59041713659775087",
+ "runtime_smoke": "passed_cluster",
+ "local_checks": [
+  "cmake",
+  "ctest",
+  "installed_doctor"
+ ],
+ "files": 266,
+ "bytes": 5371862
+}

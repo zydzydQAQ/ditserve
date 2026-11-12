@@ -1,0 +1,27 @@
+models: [sd3]
+schedule_logics: [dyn_slo_schedule_global_dp]
+gpu_nums: [4]
+distributions: [gamma]
+rates: [0.15]
+cvs: [1.0]
+steps: [20]
+shape_dists: [long_seqlen_high]
+output_types: [latent]
+request_nums: [300]
+output_dir: results/benchmark_sd3_A40_tetris_dp
+seed: 42
+save_interval: 1
+save_logs: true  # Save console output to log file
+no_timestamp: true  # Use fixed filename without timestamp
+resume: True  # Set to true to resume from existing results
+
+fake_engine: false
+enable_tracer: true
+enable_warmup: false  # Disable warmup for baseline measurements
+
+# Runtime configuration
+use_cuda_graph: false  # Disable CUDA graph
+use_torch_compile: false  # Disable torch compile
+
+# SLO configuration - Custom SLO mapping example
+slo_configs: [custom_1_1.1x_slo_A40_sd3]

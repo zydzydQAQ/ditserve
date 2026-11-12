@@ -1,0 +1,4670 @@
+{
+  "adapter_sha256": "d0b1011e1baade275cd186cb0f4015ac691fc60b3ec944601363f63b62a8fb09",
+  "arrays_retained": false,
+  "binding": {
+    "chunk_ends": [
+      4,
+      6,
+      8,
+      10,
+      12,
+      14,
+      16,
+      18,
+      20,
+      22,
+      24,
+      26,
+      28
+    ],
+    "config": {
+      "attention": "math",
+      "cost_profile_sha256": "49ba7834c34a7f2d6d602fe7ce4679e391e67e4fbdef1de14cc1132fa2f58fb4",
+      "derived_manifest": "/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-630ea30-r2/result/derived/PORT_MANIFEST.json",
+      "derived_manifest_sha256": "5ab5b86ee32a96039a50bcaed54bf10ce1cdc5415cac473bc4504375ce8485fb",
+      "diagnostic_only": true,
+      "guidance_scale": 4.5,
+      "max_sequence_length": 256,
+      "model": "stabilityai/stable-diffusion-3.5-medium",
+      "model_manifest": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/sd35.manifest.json",
+      "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+      "model_path": "/shared/data/DITSERVE/models/sd3.5-medium",
+      "resolutions": [
+        [
+          512,
+          512
+        ],
+        [
+          1024,
+          1024
+        ]
+      ],
+      "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+      "schema": "ditserve.tetriserve-sd35-port.v1",
+      "server_launch_allowed": true,
+      "shared_python_root": "/shared/code/DITSERVE/builds/51740c0/share/ditserve/python",
+      "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a"
+    },
+    "config_path": "/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-630ea30-r2/result/service-port-config.json",
+    "config_sha256": "6d3060dd9ceda5809447cb9d5e176546a0330749809807fc1bc4613e99d840af",
+    "derived": {
+      "manifest_sha256": "5ab5b86ee32a96039a50bcaed54bf10ce1cdc5415cac473bc4504375ce8485fb",
+      "root": "/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-630ea30-r2/result/derived"
+    },
+    "plan_sha256": "300db58b53936e474598043dcfb0bbe44cfcf1157928f408d7729e61a3855cde",
+    "prior_numerics_sha256": "b95a8e296736978db27234cceb72233dccd378d46f1d39483d282020252b02ba",
+    "prior_summary_sha256": "2c8a3983634f7403b07f71876b9ee1700968447bb1a6caa2ce11d94952ecdcab",
+    "reference": "/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-630ea30-r2/result/numerics/reference/request-101.safetensors",
+    "reference_sha256": "d1bae19bf24c68d76f640ae3ef987508776321f3da92d01b97958b614bf28cd2",
+    "request": {
+      "guidance_scale": 4.5,
+      "height": 1024,
+      "max_sequence_length": 256,
+      "negative_prompt": "blurry, low quality",
+      "prompt": "A white rabbit in a field of blue flowers.",
+      "seed": 102,
+      "steps": 28,
+      "width": 1024
+    },
+    "service_raw": "/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-630ea30-r2/result/numerics/raw/request-101.safetensors",
+    "service_raw_sha256": "d7fe78f22a21e5732774c45abd19327e83b4bbb087954b14c80365a2d7bb5f31",
+    "sources": {
+      "derived_manifest_sha256": "5ab5b86ee32a96039a50bcaed54bf10ce1cdc5415cac473bc4504375ce8485fb",
+      "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+      "numerics_adapter_sha256": "924b557ffa7066317bd81bb8e950d6125ae4f485dd15589e425652e3398b6958",
+      "protocol_sha256": "86aae608c7f86d194e77a5e2e9645b192b921d8137174cbcdb2825ed7d94b392",
+      "service_adapter_sha256": "a6694e570c22cc485c7b61513018594e2cf492984ef89e1860d898aed29ee773",
+      "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a",
+      "source_manifest_sha256": "2d0d9f9efaf4b3749063458d56c74b0ef79ef72de22096b39889e798e792d027"
+    }
+  },
+  "candidate_diagnostic_completed": false,
+  "candidate_equivalence_passed": false,
+  "candidate_helper_sha256": "1a37493f1cd60d331630fc738c65ed352486f87fd27e76ecff282606595f4fb8",
+  "candidate_reference_sha256": "8cbf276c618e95bb0139b9e7e39e48d816930d1569055782cd5634333c7fc3d1",
+  "diagnostic_completed": false,
+  "executed_steps_per_route": 1,
+  "hashing_may_synchronize_cuda": true,
+  "last_progress": [
+    {
+      "adapter_sha256": "adc5d717fcd1a36d1ec1d5e9e23244b40aa0eb48462fc1e7fc437a9703d3747a",
+      "call_count_scope": "Python forward entry/return; no new CUDA synchronization",
+      "cursor": null,
+      "diagnostic_completed": false,
+      "error": "UnboundLocalError(\"local variable 'joint_strategy' referenced before assignment\")",
+      "failed_stage": "converted_sp2_enter",
+      "monotonic_ns": 8546548590286351,
+      "observation_only": true,
+      "pid": 76,
+      "prior_summary_sha256": "2c8a3983634f7403b07f71876b9ee1700968447bb1a6caa2ce11d94952ecdcab",
+      "qualification_eligible": false,
+      "rank": 0,
+      "request_sha256": "322f6325298a57bda08d8cfbfe3fd487b5d27b6d0e4ffedfad73e210ed435a07",
+      "returned_calls": 0,
+      "schema": "ditserve.tetriserve-sp2-progress.v1",
+      "stage": "worker_failed",
+      "started_calls": 0,
+      "trajectory": null
+    },
+    {
+      "adapter_sha256": "adc5d717fcd1a36d1ec1d5e9e23244b40aa0eb48462fc1e7fc437a9703d3747a",
+      "call_count_scope": "Python forward entry/return; no new CUDA synchronization",
+      "cursor": null,
+      "diagnostic_completed": false,
+      "error": "UnboundLocalError(\"local variable 'joint_strategy' referenced before assignment\")",
+      "failed_stage": "converted_sp2_enter",
+      "monotonic_ns": 8546548639127788,
+      "observation_only": true,
+      "pid": 77,
+      "prior_summary_sha256": "2c8a3983634f7403b07f71876b9ee1700968447bb1a6caa2ce11d94952ecdcab",
+      "qualification_eligible": false,
+      "rank": 1,
+      "request_sha256": "322f6325298a57bda08d8cfbfe3fd487b5d27b6d0e4ffedfad73e210ed435a07",
+      "returned_calls": 0,
+      "schema": "ditserve.tetriserve-sp2-progress.v1",
+      "stage": "worker_failed",
+      "started_calls": 0,
+      "trajectory": null
+    }
+  ],
+  "original_observer_reproduced": true,
+  "original_schedule_steps": 28,
+  "parallel_wrapper_candidate_enabled": true,
+  "performance_measurements": false,
+  "qualification_eligible": false,
+  "ranks": [
+    {
+      "distributed_closed": true,
+      "error": "UnboundLocalError(\"local variable 'joint_strategy' referenced before assignment\")",
+      "gpu_uuid": "837bc934-205d-1796-b72f-0141a8855565",
+      "initial_five_tensors": {
+        "latents": {
+          "dtype": "torch.bfloat16",
+          "finite": true,
+          "maximum": 3.328125,
+          "minimum": -3.328125,
+          "retained_array": false,
+          "sha256": "83904595e01e3d02f92f355a7d28b75831774669586a6fd343cc54d79055d0c9",
+          "shape": [
+            1,
+            16,
+            128,
+            128
+          ]
+        },
+        "pooled_prompt_embeds": {
+          "dtype": "torch.bfloat16",
+          "finite": true,
+          "maximum": 6.5625,
+          "minimum": -5.375,
+          "retained_array": false,
+          "sha256": "26d0b9830ba99dcc9988bae838061d1e57340d3f04b073cd4adf49f57da7a5f1",
+          "shape": [
+            2,
+            2048
+          ]
+        },
+        "prompt_embeds": {
+          "dtype": "torch.bfloat16",
+          "finite": true,
+          "maximum": 856.0,
+          "minimum": -808.0,
+          "retained_array": false,
+          "sha256": "c8cc92d97aab5fbb2f02d80b31d7d9793950f44ecd3a317d43a4098064abb53a",
+          "shape": [
+            2,
+            333,
+            4096
+          ]
+        },
+        "sigmas": {
+          "dtype": "torch.float32",
+          "finite": true,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "retained_array": false,
+          "sha256": "4c213b991b25a4355f1f5afba6ac1942bb0e2167b19411a9f4766ef2a1acf2c9",
+          "shape": [
+            29
+          ]
+        },
+        "timesteps": {
+          "dtype": "torch.float32",
+          "finite": true,
+          "maximum": 1000.0,
+          "minimum": 8.928571701049805,
+          "retained_array": false,
+          "sha256": "ac5e0569db004651b24d8da459e117606324698b110ada9784492c9b2fffd98b",
+          "shape": [
+            28
+          ]
+        }
+      },
+      "provenance": {
+        "group_ownership": "official TetriServe",
+        "model_integrity": {
+          "model_integrity": "manifest_verified",
+          "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+          "model_verified_bytes": 16274913511,
+          "model_verified_files": 28,
+          "model_verified_revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80"
+        },
+        "new_groups_created_by_bridge": 0,
+        "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a"
+      },
+      "qualification_eligible": false,
+      "rank": 0,
+      "routes": {
+        "sp1_native": {
+          "actual_inputs_match_initial": {
+            "encoder_hidden_states": true,
+            "hidden_states": true,
+            "pooled_projections": true,
+            "scheduler_sample": true,
+            "scheduler_timestep": true,
+            "sigmas": true,
+            "timestep": true,
+            "timesteps": true
+          },
+          "actual_row_ranges": [
+            [
+              0,
+              128
+            ]
+          ],
+          "arrays_retained": false,
+          "boundary_owner": "actual local computation before final pipeline output collection",
+          "counts": {
+            "async_": 0,
+            "naive": 1,
+            "solver_enter": 1,
+            "solver_return": 1,
+            "sync": 0,
+            "transformer_enter": 1,
+            "transformer_return": 1
+          },
+          "hooks_restored": true,
+          "intentional_native_stop": true,
+          "local_height": 128,
+          "logical_step": 0,
+          "metadata": {
+            "begin_index": null,
+            "runtime": {
+              "num_pipeline_patch": 1,
+              "parallel": {
+                "cfg_degree": 1,
+                "dp_degree": 1,
+                "pp_degree": 1,
+                "sp_degree": 1
+              },
+              "patch_mode": false,
+              "pipeline_patch_idx": 0,
+              "pp_patches_height": [
+                128
+              ],
+              "pp_patches_start_end_idx_global": [
+                [
+                  0,
+                  128
+                ]
+              ],
+              "pp_patches_start_idx_local": [
+                0,
+                128
+              ],
+              "pp_patches_token_num": [
+                4096
+              ],
+              "pp_patches_token_start_end_idx_global": [
+                [
+                  0,
+                  4096
+                ]
+              ],
+              "pp_patches_token_start_idx_local": [
+                0,
+                4096
+              ],
+              "split_latents_by_rows": false,
+              "split_text_embed_in_sp": false,
+              "text_embed_sp_pad": 0
+            },
+            "scheduler": {
+              "bound_step": {
+                "file": "/opt/venv/lib/python3.10/site-packages/diffusers/schedulers/scheduling_flow_match_euler_discrete.py",
+                "file_sha256": "c2f47ed75801a7bd11f43aa793671986b7d382461b8d6e9d60786ca77fa61bca",
+                "qualified_name": "diffusers.schedulers.scheduling_flow_match_euler_discrete.FlowMatchEulerDiscreteScheduler.step"
+              },
+              "class_source": {
+                "file": "/opt/venv/lib/python3.10/site-packages/diffusers/schedulers/scheduling_flow_match_euler_discrete.py",
+                "file_sha256": "c2f47ed75801a7bd11f43aa793671986b7d382461b8d6e9d60786ca77fa61bca",
+                "qualified_name": "diffusers.schedulers.scheduling_flow_match_euler_discrete.FlowMatchEulerDiscreteScheduler"
+              },
+              "config": {
+                "_class_name": "FlowMatchEulerDiscreteScheduler",
+                "_diffusers_version": "0.29.0.dev0",
+                "_use_default_values": [
+                  "time_shift_type",
+                  "use_karras_sigmas",
+                  "invert_sigmas",
+                  "shift_terminal",
+                  "use_exponential_sigmas",
+                  "use_dynamic_shifting",
+                  "stochastic_sampling",
+                  "base_shift",
+                  "max_shift",
+                  "max_image_seq_len",
+                  "base_image_seq_len",
+                  "use_beta_sigmas"
+                ],
+                "base_image_seq_len": 256,
+                "base_shift": 0.5,
+                "invert_sigmas": false,
+                "max_image_seq_len": 4096,
+                "max_shift": 1.15,
+                "num_train_timesteps": 1000,
+                "shift": 3.0,
+                "shift_terminal": null,
+                "stochastic_sampling": false,
+                "time_shift_type": "exponential",
+                "use_beta_sigmas": false,
+                "use_dynamic_shifting": false,
+                "use_exponential_sigmas": false,
+                "use_karras_sigmas": false
+              },
+              "type": "diffusers.schedulers.scheduling_flow_match_euler_discrete.FlowMatchEulerDiscreteScheduler",
+              "unwrapped_step": {
+                "file": "/opt/venv/lib/python3.10/site-packages/diffusers/schedulers/scheduling_flow_match_euler_discrete.py",
+                "file_sha256": "c2f47ed75801a7bd11f43aa793671986b7d382461b8d6e9d60786ca77fa61bca",
+                "qualified_name": "diffusers.schedulers.scheduling_flow_match_euler_discrete.FlowMatchEulerDiscreteScheduler.step"
+              }
+            },
+            "step_index": null
+          },
+          "original_schedule_steps": 28,
+          "processors": {
+            "HAS_LONG_CTX_ATTN": true,
+            "modules": [
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 0,
+                "name": "transformer_blocks.0.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 1,
+                "name": "transformer_blocks.0.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 2,
+                "name": "transformer_blocks.1.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 3,
+                "name": "transformer_blocks.1.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 4,
+                "name": "transformer_blocks.2.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 5,
+                "name": "transformer_blocks.2.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 6,
+                "name": "transformer_blocks.3.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 7,
+                "name": "transformer_blocks.3.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 8,
+                "name": "transformer_blocks.4.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 9,
+                "name": "transformer_blocks.4.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 10,
+                "name": "transformer_blocks.5.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 11,
+                "name": "transformer_blocks.5.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 12,
+                "name": "transformer_blocks.6.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 13,
+                "name": "transformer_blocks.6.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 14,
+                "name": "transformer_blocks.7.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 15,
+                "name": "transformer_blocks.7.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 16,
+                "name": "transformer_blocks.8.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 17,
+                "name": "transformer_blocks.8.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 18,
+                "name": "transformer_blocks.9.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 19,
+                "name": "transformer_blocks.9.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 20,
+                "name": "transformer_blocks.10.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 21,
+                "name": "transformer_blocks.10.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 22,
+                "name": "transformer_blocks.11.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 23,
+                "name": "transformer_blocks.11.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 24,
+                "name": "transformer_blocks.12.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 25,
+                "name": "transformer_blocks.12.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 26,
+                "name": "transformer_blocks.13.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 27,
+                "name": "transformer_blocks.14.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 28,
+                "name": "transformer_blocks.15.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 29,
+                "name": "transformer_blocks.16.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 30,
+                "name": "transformer_blocks.17.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 31,
+                "name": "transformer_blocks.18.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 32,
+                "name": "transformer_blocks.19.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 33,
+                "name": "transformer_blocks.20.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 34,
+                "name": "transformer_blocks.21.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 35,
+                "name": "transformer_blocks.22.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 36,
+                "name": "transformer_blocks.23.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              }
+            ]
+          },
+          "route": "sp1_native",
+          "tensors": {
+            "cfg_prediction": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 6.1875,
+              "minimum": -6.25,
+              "retained_array": false,
+              "sha256": "cad8d83d21c1da006ed497413961b7a3d019c18a9723cdc280afc7ba400d2228",
+              "shape": [
+                1,
+                16,
+                128,
+                128
+              ]
+            },
+            "encoder_hidden_states": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 856.0,
+              "minimum": -808.0,
+              "retained_array": false,
+              "sha256": "c8cc92d97aab5fbb2f02d80b31d7d9793950f44ecd3a317d43a4098064abb53a",
+              "shape": [
+                2,
+                333,
+                4096
+              ]
+            },
+            "hidden_states": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.328125,
+              "minimum": -3.328125,
+              "retained_array": false,
+              "sha256": "7bf83aec8d6ac132e62bab3859f5321d0c2b442eb79faaa08dae9a81a8189df1",
+              "shape": [
+                2,
+                16,
+                128,
+                128
+              ]
+            },
+            "pooled_projections": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 6.5625,
+              "minimum": -5.375,
+              "retained_array": false,
+              "sha256": "26d0b9830ba99dcc9988bae838061d1e57340d3f04b073cd4adf49f57da7a5f1",
+              "shape": [
+                2,
+                2048
+              ]
+            },
+            "scheduler_output": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.3125,
+              "minimum": -3.3125,
+              "retained_array": false,
+              "sha256": "04adcb59513f57fca3a5efa890fa6b17d0a8e976dc669212f9eddd2ab92045c3",
+              "shape": [
+                1,
+                16,
+                128,
+                128
+              ]
+            },
+            "scheduler_sample": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.328125,
+              "minimum": -3.328125,
+              "retained_array": false,
+              "sha256": "83904595e01e3d02f92f355a7d28b75831774669586a6fd343cc54d79055d0c9",
+              "shape": [
+                1,
+                16,
+                128,
+                128
+              ]
+            },
+            "scheduler_timestep": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 1000.0,
+              "retained_array": false,
+              "sha256": "907a13441e01da66409332d107abc1dbe98c125f60a3846c75eebdc3bc094d56",
+              "shape": []
+            },
+            "sigmas": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "retained_array": false,
+              "sha256": "4c213b991b25a4355f1f5afba6ac1942bb0e2167b19411a9f4766ef2a1acf2c9",
+              "shape": [
+                29
+              ]
+            },
+            "timestep": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 1000.0,
+              "retained_array": false,
+              "sha256": "66bab7780aa6e0f5656b8b7d4c32b91e7fb4efda68d8f05c698758ea624c9bbc",
+              "shape": [
+                2
+              ]
+            },
+            "timesteps": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 8.928571701049805,
+              "retained_array": false,
+              "sha256": "ac5e0569db004651b24d8da459e117606324698b110ada9784492c9b2fffd98b",
+              "shape": [
+                28
+              ]
+            },
+            "transformer_prediction": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 5.21875,
+              "minimum": -4.4375,
+              "retained_array": false,
+              "sha256": "d182dc33c6e0c93c9d7342b91b0180e1f14f28000195f956c77503e670330a8c",
+              "shape": [
+                2,
+                16,
+                128,
+                128
+              ]
+            }
+          }
+        },
+        "sp1_round": {
+          "actual_inputs_match_initial": {
+            "encoder_hidden_states": true,
+            "hidden_states": true,
+            "pooled_projections": true,
+            "scheduler_sample": true,
+            "scheduler_timestep": true,
+            "sigmas": true,
+            "timestep": true,
+            "timesteps": true
+          },
+          "actual_row_ranges": [
+            [
+              0,
+              128
+            ]
+          ],
+          "arrays_retained": false,
+          "boundary_owner": "actual local computation before final pipeline output collection",
+          "counts": {
+            "async_": 0,
+            "naive": 0,
+            "solver_enter": 1,
+            "solver_return": 1,
+            "sync": 1,
+            "transformer_enter": 1,
+            "transformer_return": 1
+          },
+          "hooks_restored": true,
+          "intentional_native_stop": false,
+          "local_height": 128,
+          "logical_step": 0,
+          "metadata": {
+            "begin_index": 0,
+            "runtime": {
+              "num_pipeline_patch": 1,
+              "parallel": {
+                "cfg_degree": 1,
+                "dp_degree": 1,
+                "pp_degree": 1,
+                "sp_degree": 1
+              },
+              "patch_mode": false,
+              "pipeline_patch_idx": 0,
+              "pp_patches_height": [
+                128
+              ],
+              "pp_patches_start_end_idx_global": [
+                [
+                  0,
+                  128
+                ]
+              ],
+              "pp_patches_start_idx_local": [
+                0,
+                128
+              ],
+              "pp_patches_token_num": [
+                4096
+              ],
+              "pp_patches_token_start_end_idx_global": [
+                [
+                  0,
+                  4096
+                ]
+              ],
+              "pp_patches_token_start_idx_local": [
+                0,
+                4096
+              ],
+              "split_latents_by_rows": true,
+              "split_text_embed_in_sp": true,
+              "text_embed_sp_pad": 0
+            },
+            "scheduler": {
+              "bound_step": {
+                "file": "/opt/venv/lib/python3.10/site-packages/diffusers/schedulers/scheduling_flow_match_euler_discrete.py",
+                "file_sha256": "c2f47ed75801a7bd11f43aa793671986b7d382461b8d6e9d60786ca77fa61bca",
+                "qualified_name": "diffusers.schedulers.scheduling_flow_match_euler_discrete.FlowMatchEulerDiscreteScheduler.step"
+              },
+              "class_source": {
+                "file": "/opt/venv/lib/python3.10/site-packages/diffusers/schedulers/scheduling_flow_match_euler_discrete.py",
+                "file_sha256": "c2f47ed75801a7bd11f43aa793671986b7d382461b8d6e9d60786ca77fa61bca",
+                "qualified_name": "diffusers.schedulers.scheduling_flow_match_euler_discrete.FlowMatchEulerDiscreteScheduler"
+              },
+              "config": {
+                "_class_name": "FlowMatchEulerDiscreteScheduler",
+                "_diffusers_version": "0.29.0.dev0",
+                "_use_default_values": [
+                  "time_shift_type",
+                  "use_karras_sigmas",
+                  "invert_sigmas",
+                  "shift_terminal",
+                  "use_exponential_sigmas",
+                  "use_dynamic_shifting",
+                  "stochastic_sampling",
+                  "base_shift",
+                  "max_shift",
+                  "max_image_seq_len",
+                  "base_image_seq_len",
+                  "use_beta_sigmas"
+                ],
+                "base_image_seq_len": 256,
+                "base_shift": 0.5,
+                "invert_sigmas": false,
+                "max_image_seq_len": 4096,
+                "max_shift": 1.15,
+                "num_train_timesteps": 1000,
+                "shift": 3.0,
+                "shift_terminal": null,
+                "stochastic_sampling": false,
+                "time_shift_type": "exponential",
+                "use_beta_sigmas": false,
+                "use_dynamic_shifting": false,
+                "use_exponential_sigmas": false,
+                "use_karras_sigmas": false
+              },
+              "type": "diffusers.schedulers.scheduling_flow_match_euler_discrete.FlowMatchEulerDiscreteScheduler",
+              "unwrapped_step": {
+                "file": "/opt/venv/lib/python3.10/site-packages/diffusers/schedulers/scheduling_flow_match_euler_discrete.py",
+                "file_sha256": "c2f47ed75801a7bd11f43aa793671986b7d382461b8d6e9d60786ca77fa61bca",
+                "qualified_name": "diffusers.schedulers.scheduling_flow_match_euler_discrete.FlowMatchEulerDiscreteScheduler.step"
+              }
+            },
+            "step_index": 0
+          },
+          "original_schedule_steps": 28,
+          "processors": {
+            "HAS_LONG_CTX_ATTN": true,
+            "modules": [
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 0,
+                "name": "transformer_blocks.0.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 1,
+                "name": "transformer_blocks.0.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 2,
+                "name": "transformer_blocks.1.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 3,
+                "name": "transformer_blocks.1.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 4,
+                "name": "transformer_blocks.2.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 5,
+                "name": "transformer_blocks.2.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 6,
+                "name": "transformer_blocks.3.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 7,
+                "name": "transformer_blocks.3.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 8,
+                "name": "transformer_blocks.4.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 9,
+                "name": "transformer_blocks.4.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 10,
+                "name": "transformer_blocks.5.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 11,
+                "name": "transformer_blocks.5.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 12,
+                "name": "transformer_blocks.6.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 13,
+                "name": "transformer_blocks.6.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 14,
+                "name": "transformer_blocks.7.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 15,
+                "name": "transformer_blocks.7.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 16,
+                "name": "transformer_blocks.8.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 17,
+                "name": "transformer_blocks.8.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 18,
+                "name": "transformer_blocks.9.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 19,
+                "name": "transformer_blocks.9.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 20,
+                "name": "transformer_blocks.10.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 21,
+                "name": "transformer_blocks.10.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 22,
+                "name": "transformer_blocks.11.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 23,
+                "name": "transformer_blocks.11.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 24,
+                "name": "transformer_blocks.12.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 25,
+                "name": "transformer_blocks.12.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 26,
+                "name": "transformer_blocks.13.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 27,
+                "name": "transformer_blocks.14.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 28,
+                "name": "transformer_blocks.15.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 29,
+                "name": "transformer_blocks.16.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 30,
+                "name": "transformer_blocks.17.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 31,
+                "name": "transformer_blocks.18.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 32,
+                "name": "transformer_blocks.19.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 33,
+                "name": "transformer_blocks.20.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 34,
+                "name": "transformer_blocks.21.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 35,
+                "name": "transformer_blocks.22.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 36,
+                "name": "transformer_blocks.23.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              }
+            ]
+          },
+          "route": "sp1_round",
+          "tensors": {
+            "cfg_prediction": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 6.1875,
+              "minimum": -6.25,
+              "retained_array": false,
+              "sha256": "cad8d83d21c1da006ed497413961b7a3d019c18a9723cdc280afc7ba400d2228",
+              "shape": [
+                1,
+                16,
+                128,
+                128
+              ]
+            },
+            "encoder_hidden_states": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 856.0,
+              "minimum": -808.0,
+              "retained_array": false,
+              "sha256": "c8cc92d97aab5fbb2f02d80b31d7d9793950f44ecd3a317d43a4098064abb53a",
+              "shape": [
+                2,
+                333,
+                4096
+              ]
+            },
+            "hidden_states": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.328125,
+              "minimum": -3.328125,
+              "retained_array": false,
+              "sha256": "7bf83aec8d6ac132e62bab3859f5321d0c2b442eb79faaa08dae9a81a8189df1",
+              "shape": [
+                2,
+                16,
+                128,
+                128
+              ]
+            },
+            "pooled_projections": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 6.5625,
+              "minimum": -5.375,
+              "retained_array": false,
+              "sha256": "26d0b9830ba99dcc9988bae838061d1e57340d3f04b073cd4adf49f57da7a5f1",
+              "shape": [
+                2,
+                2048
+              ]
+            },
+            "scheduler_output": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.3125,
+              "minimum": -3.3125,
+              "retained_array": false,
+              "sha256": "04adcb59513f57fca3a5efa890fa6b17d0a8e976dc669212f9eddd2ab92045c3",
+              "shape": [
+                1,
+                16,
+                128,
+                128
+              ]
+            },
+            "scheduler_sample": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.328125,
+              "minimum": -3.328125,
+              "retained_array": false,
+              "sha256": "83904595e01e3d02f92f355a7d28b75831774669586a6fd343cc54d79055d0c9",
+              "shape": [
+                1,
+                16,
+                128,
+                128
+              ]
+            },
+            "scheduler_timestep": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 1000.0,
+              "retained_array": false,
+              "sha256": "907a13441e01da66409332d107abc1dbe98c125f60a3846c75eebdc3bc094d56",
+              "shape": []
+            },
+            "sigmas": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1.0,
+              "minimum": 0.9873806238174438,
+              "retained_array": false,
+              "sha256": "3f8d9403fdead7e634a7421c18b256ec6cece3352864e9f513420f7a2899d993",
+              "shape": [
+                2
+              ]
+            },
+            "timestep": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 1000.0,
+              "retained_array": false,
+              "sha256": "66bab7780aa6e0f5656b8b7d4c32b91e7fb4efda68d8f05c698758ea624c9bbc",
+              "shape": [
+                2
+              ]
+            },
+            "timesteps": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 1000.0,
+              "retained_array": false,
+              "sha256": "effa21ae104ca5a33acdd762a3d5bcd0789cf076357d989ec98ccc0fe22164c3",
+              "shape": [
+                1
+              ]
+            },
+            "transformer_prediction": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 5.21875,
+              "minimum": -4.4375,
+              "retained_array": false,
+              "sha256": "d182dc33c6e0c93c9d7342b91b0180e1f14f28000195f956c77503e670330a8c",
+              "shape": [
+                2,
+                16,
+                128,
+                128
+              ]
+            }
+          }
+        },
+        "sp2_round": {
+          "actual_inputs_match_initial": {
+            "encoder_hidden_states": true,
+            "hidden_states": true,
+            "pooled_projections": true,
+            "scheduler_sample": true,
+            "scheduler_timestep": true,
+            "sigmas": true,
+            "timestep": true,
+            "timesteps": true
+          },
+          "actual_row_ranges": [
+            [
+              0,
+              64
+            ]
+          ],
+          "arrays_retained": false,
+          "boundary_owner": "actual local computation before final pipeline output collection",
+          "counts": {
+            "async_": 0,
+            "naive": 0,
+            "solver_enter": 1,
+            "solver_return": 1,
+            "sync": 1,
+            "transformer_enter": 1,
+            "transformer_return": 1
+          },
+          "hooks_restored": true,
+          "intentional_native_stop": false,
+          "local_height": 64,
+          "logical_step": 0,
+          "metadata": {
+            "begin_index": 0,
+            "runtime": {
+              "num_pipeline_patch": 1,
+              "parallel": {
+                "cfg_degree": 1,
+                "dp_degree": 1,
+                "pp_degree": 1,
+                "sp_degree": 2
+              },
+              "patch_mode": false,
+              "pipeline_patch_idx": 0,
+              "pp_patches_height": [
+                64
+              ],
+              "pp_patches_start_end_idx_global": [
+                [
+                  0,
+                  64
+                ]
+              ],
+              "pp_patches_start_idx_local": [
+                0,
+                64
+              ],
+              "pp_patches_token_num": [
+                2048
+              ],
+              "pp_patches_token_start_end_idx_global": [
+                [
+                  0,
+                  2048
+                ]
+              ],
+              "pp_patches_token_start_idx_local": [
+                0,
+                2048
+              ],
+              "split_latents_by_rows": true,
+              "split_text_embed_in_sp": false,
+              "text_embed_sp_pad": 0
+            },
+            "scheduler": {
+              "bound_step": {
+                "file": "/opt/venv/lib/python3.10/site-packages/diffusers/schedulers/scheduling_flow_match_euler_discrete.py",
+                "file_sha256": "c2f47ed75801a7bd11f43aa793671986b7d382461b8d6e9d60786ca77fa61bca",
+                "qualified_name": "diffusers.schedulers.scheduling_flow_match_euler_discrete.FlowMatchEulerDiscreteScheduler.step"
+              },
+              "class_source": {
+                "file": "/opt/venv/lib/python3.10/site-packages/diffusers/schedulers/scheduling_flow_match_euler_discrete.py",
+                "file_sha256": "c2f47ed75801a7bd11f43aa793671986b7d382461b8d6e9d60786ca77fa61bca",
+                "qualified_name": "diffusers.schedulers.scheduling_flow_match_euler_discrete.FlowMatchEulerDiscreteScheduler"
+              },
+              "config": {
+                "_class_name": "FlowMatchEulerDiscreteScheduler",
+                "_diffusers_version": "0.29.0.dev0",
+                "_use_default_values": [
+                  "time_shift_type",
+                  "use_karras_sigmas",
+                  "invert_sigmas",
+                  "shift_terminal",
+                  "use_exponential_sigmas",
+                  "use_dynamic_shifting",
+                  "stochastic_sampling",
+                  "base_shift",
+                  "max_shift",
+                  "max_image_seq_len",
+                  "base_image_seq_len",
+                  "use_beta_sigmas"
+                ],
+                "base_image_seq_len": 256,
+                "base_shift": 0.5,
+                "invert_sigmas": false,
+                "max_image_seq_len": 4096,
+                "max_shift": 1.15,
+                "num_train_timesteps": 1000,
+                "shift": 3.0,
+                "shift_terminal": null,
+                "stochastic_sampling": false,
+                "time_shift_type": "exponential",
+                "use_beta_sigmas": false,
+                "use_dynamic_shifting": false,
+                "use_exponential_sigmas": false,
+                "use_karras_sigmas": false
+              },
+              "type": "diffusers.schedulers.scheduling_flow_match_euler_discrete.FlowMatchEulerDiscreteScheduler",
+              "unwrapped_step": {
+                "file": "/opt/venv/lib/python3.10/site-packages/diffusers/schedulers/scheduling_flow_match_euler_discrete.py",
+                "file_sha256": "c2f47ed75801a7bd11f43aa793671986b7d382461b8d6e9d60786ca77fa61bca",
+                "qualified_name": "diffusers.schedulers.scheduling_flow_match_euler_discrete.FlowMatchEulerDiscreteScheduler.step"
+              }
+            },
+            "step_index": 0
+          },
+          "original_schedule_steps": 28,
+          "processors": {
+            "HAS_LONG_CTX_ATTN": true,
+            "modules": [
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 0,
+                "name": "transformer_blocks.0.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 1,
+                "name": "transformer_blocks.0.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 2,
+                "name": "transformer_blocks.1.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 3,
+                "name": "transformer_blocks.1.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 4,
+                "name": "transformer_blocks.2.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 5,
+                "name": "transformer_blocks.2.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 6,
+                "name": "transformer_blocks.3.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 7,
+                "name": "transformer_blocks.3.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 8,
+                "name": "transformer_blocks.4.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 9,
+                "name": "transformer_blocks.4.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 10,
+                "name": "transformer_blocks.5.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 11,
+                "name": "transformer_blocks.5.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 12,
+                "name": "transformer_blocks.6.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 13,
+                "name": "transformer_blocks.6.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 14,
+                "name": "transformer_blocks.7.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 15,
+                "name": "transformer_blocks.7.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 16,
+                "name": "transformer_blocks.8.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 17,
+                "name": "transformer_blocks.8.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 18,
+                "name": "transformer_blocks.9.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 19,
+                "name": "transformer_blocks.9.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 20,
+                "name": "transformer_blocks.10.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 21,
+                "name": "transformer_blocks.10.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 22,
+                "name": "transformer_blocks.11.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 23,
+                "name": "transformer_blocks.11.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 24,
+                "name": "transformer_blocks.12.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 25,
+                "name": "transformer_blocks.12.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 26,
+                "name": "transformer_blocks.13.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 27,
+                "name": "transformer_blocks.14.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 28,
+                "name": "transformer_blocks.15.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 29,
+                "name": "transformer_blocks.16.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 30,
+                "name": "transformer_blocks.17.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 31,
+                "name": "transformer_blocks.18.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 32,
+                "name": "transformer_blocks.19.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 33,
+                "name": "transformer_blocks.20.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 34,
+                "name": "transformer_blocks.21.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 35,
+                "name": "transformer_blocks.22.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 36,
+                "name": "transformer_blocks.23.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              }
+            ]
+          },
+          "route": "sp2_round",
+          "tensors": {
+            "cfg_prediction": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 6.6875,
+              "minimum": -5.625,
+              "retained_array": false,
+              "sha256": "2c185aeea6af2ed62717c5bc52d1825d7a9d8db6514b4a7b42b6d20441b7cec5",
+              "shape": [
+                1,
+                16,
+                64,
+                128
+              ]
+            },
+            "encoder_hidden_states": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 856.0,
+              "minimum": -808.0,
+              "retained_array": false,
+              "sha256": "c8cc92d97aab5fbb2f02d80b31d7d9793950f44ecd3a317d43a4098064abb53a",
+              "shape": [
+                2,
+                333,
+                4096
+              ]
+            },
+            "hidden_states": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.328125,
+              "minimum": -3.328125,
+              "retained_array": false,
+              "sha256": "0110357761f65caf40515ea1e4f21afe2dfdf473fde60d0a2088fd81293de03a",
+              "shape": [
+                2,
+                16,
+                64,
+                128
+              ]
+            },
+            "pooled_projections": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 6.5625,
+              "minimum": -5.375,
+              "retained_array": false,
+              "sha256": "26d0b9830ba99dcc9988bae838061d1e57340d3f04b073cd4adf49f57da7a5f1",
+              "shape": [
+                2,
+                2048
+              ]
+            },
+            "scheduler_output": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.3125,
+              "minimum": -3.3125,
+              "retained_array": false,
+              "sha256": "f23cf9551065984c0c84089f364a9460c6f5b8b5c479dc2cd289f91a26ed59be",
+              "shape": [
+                1,
+                16,
+                64,
+                128
+              ]
+            },
+            "scheduler_sample": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.328125,
+              "minimum": -3.328125,
+              "retained_array": false,
+              "sha256": "81a7be98f1954d3eb9111b1086c9268938778754885d771734093ba360c06a78",
+              "shape": [
+                1,
+                16,
+                64,
+                128
+              ]
+            },
+            "scheduler_timestep": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 1000.0,
+              "retained_array": false,
+              "sha256": "907a13441e01da66409332d107abc1dbe98c125f60a3846c75eebdc3bc094d56",
+              "shape": []
+            },
+            "sigmas": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1.0,
+              "minimum": 0.9873806238174438,
+              "retained_array": false,
+              "sha256": "3f8d9403fdead7e634a7421c18b256ec6cece3352864e9f513420f7a2899d993",
+              "shape": [
+                2
+              ]
+            },
+            "timestep": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 1000.0,
+              "retained_array": false,
+              "sha256": "66bab7780aa6e0f5656b8b7d4c32b91e7fb4efda68d8f05c698758ea624c9bbc",
+              "shape": [
+                2
+              ]
+            },
+            "timesteps": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 1000.0,
+              "retained_array": false,
+              "sha256": "effa21ae104ca5a33acdd762a3d5bcd0789cf076357d989ec98ccc0fe22164c3",
+              "shape": [
+                1
+              ]
+            },
+            "transformer_prediction": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 5.3125,
+              "minimum": -4.4375,
+              "retained_array": false,
+              "sha256": "6a2ce7020db4e9edcd34fafbea0a3e1856e05da85e7c10c3963ecd310a3a22a2",
+              "shape": [
+                2,
+                16,
+                64,
+                128
+              ]
+            }
+          }
+        }
+      },
+      "row_partition": [
+        {
+          "local_height": 64,
+          "ranges": [
+            [
+              0,
+              64
+            ]
+          ],
+          "rank": 0
+        },
+        {
+          "local_height": 64,
+          "ranges": [
+            [
+              64,
+              128
+            ]
+          ],
+          "rank": 1
+        }
+      ],
+      "sp1_native_vs_sp1_round": {
+        "boundaries": {
+          "cfg_prediction": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 6.1875,
+              "minimum": -6.25,
+              "retained_array": false,
+              "sha256": "cad8d83d21c1da006ed497413961b7a3d019c18a9723cdc280afc7ba400d2228",
+              "shape": [
+                1,
+                16,
+                128,
+                128
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 1.0,
+            "elements": 262144,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 6.1875,
+              "minimum": -6.25,
+              "retained_array": false,
+              "sha256": "cad8d83d21c1da006ed497413961b7a3d019c18a9723cdc280afc7ba400d2228",
+              "shape": [
+                1,
+                16,
+                128,
+                128
+              ]
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "encoder_hidden_states": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 856.0,
+              "minimum": -808.0,
+              "retained_array": false,
+              "sha256": "c8cc92d97aab5fbb2f02d80b31d7d9793950f44ecd3a317d43a4098064abb53a",
+              "shape": [
+                2,
+                333,
+                4096
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 1.0000000000000875,
+            "elements": 2727936,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 856.0,
+              "minimum": -808.0,
+              "retained_array": false,
+              "sha256": "c8cc92d97aab5fbb2f02d80b31d7d9793950f44ecd3a317d43a4098064abb53a",
+              "shape": [
+                2,
+                333,
+                4096
+              ]
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "hidden_states": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.328125,
+              "minimum": -3.328125,
+              "retained_array": false,
+              "sha256": "7bf83aec8d6ac132e62bab3859f5321d0c2b442eb79faaa08dae9a81a8189df1",
+              "shape": [
+                2,
+                16,
+                128,
+                128
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 1.0000000000000009,
+            "elements": 524288,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.328125,
+              "minimum": -3.328125,
+              "retained_array": false,
+              "sha256": "7bf83aec8d6ac132e62bab3859f5321d0c2b442eb79faaa08dae9a81a8189df1",
+              "shape": [
+                2,
+                16,
+                128,
+                128
+              ]
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "pooled_projections": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 6.5625,
+              "minimum": -5.375,
+              "retained_array": false,
+              "sha256": "26d0b9830ba99dcc9988bae838061d1e57340d3f04b073cd4adf49f57da7a5f1",
+              "shape": [
+                2,
+                2048
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 1.0,
+            "elements": 4096,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 6.5625,
+              "minimum": -5.375,
+              "retained_array": false,
+              "sha256": "26d0b9830ba99dcc9988bae838061d1e57340d3f04b073cd4adf49f57da7a5f1",
+              "shape": [
+                2,
+                2048
+              ]
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "scheduler_output": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.3125,
+              "minimum": -3.3125,
+              "retained_array": false,
+              "sha256": "04adcb59513f57fca3a5efa890fa6b17d0a8e976dc669212f9eddd2ab92045c3",
+              "shape": [
+                1,
+                16,
+                128,
+                128
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 0.9999999999999999,
+            "elements": 262144,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.3125,
+              "minimum": -3.3125,
+              "retained_array": false,
+              "sha256": "04adcb59513f57fca3a5efa890fa6b17d0a8e976dc669212f9eddd2ab92045c3",
+              "shape": [
+                1,
+                16,
+                128,
+                128
+              ]
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "scheduler_sample": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.328125,
+              "minimum": -3.328125,
+              "retained_array": false,
+              "sha256": "83904595e01e3d02f92f355a7d28b75831774669586a6fd343cc54d79055d0c9",
+              "shape": [
+                1,
+                16,
+                128,
+                128
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 1.0000000000000007,
+            "elements": 262144,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.328125,
+              "minimum": -3.328125,
+              "retained_array": false,
+              "sha256": "83904595e01e3d02f92f355a7d28b75831774669586a6fd343cc54d79055d0c9",
+              "shape": [
+                1,
+                16,
+                128,
+                128
+              ]
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "scheduler_timestep": {
+            "actual": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 1000.0,
+              "retained_array": false,
+              "sha256": "907a13441e01da66409332d107abc1dbe98c125f60a3846c75eebdc3bc094d56",
+              "shape": []
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 1.0,
+            "elements": 1,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 1000.0,
+              "retained_array": false,
+              "sha256": "907a13441e01da66409332d107abc1dbe98c125f60a3846c75eebdc3bc094d56",
+              "shape": []
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "timestep": {
+            "actual": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 1000.0,
+              "retained_array": false,
+              "sha256": "66bab7780aa6e0f5656b8b7d4c32b91e7fb4efda68d8f05c698758ea624c9bbc",
+              "shape": [
+                2
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 0.9999999999999999,
+            "elements": 2,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 1000.0,
+              "retained_array": false,
+              "sha256": "66bab7780aa6e0f5656b8b7d4c32b91e7fb4efda68d8f05c698758ea624c9bbc",
+              "shape": [
+                2
+              ]
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "transformer_prediction": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 5.21875,
+              "minimum": -4.4375,
+              "retained_array": false,
+              "sha256": "d182dc33c6e0c93c9d7342b91b0180e1f14f28000195f956c77503e670330a8c",
+              "shape": [
+                2,
+                16,
+                128,
+                128
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 1.0000000000000007,
+            "elements": 524288,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 5.21875,
+              "minimum": -4.4375,
+              "retained_array": false,
+              "sha256": "d182dc33c6e0c93c9d7342b91b0180e1f14f28000195f956c77503e670330a8c",
+              "shape": [
+                2,
+                16,
+                128,
+                128
+              ]
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          }
+        },
+        "first_bitwise": null,
+        "first_tolerance": null
+      },
+      "sp1_native_vs_sp2_round": {
+        "boundaries": {
+          "cfg_prediction": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 6.6875,
+              "minimum": -5.625,
+              "retained_array": false,
+              "sha256": "2c185aeea6af2ed62717c5bc52d1825d7a9d8db6514b4a7b42b6d20441b7cec5",
+              "shape": [
+                1,
+                16,
+                64,
+                128
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": false,
+            "cosine_similarity": 0.9062017085971081,
+            "elements": 131072,
+            "max_abs_error": 5.4375,
+            "passed": false,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 6.0,
+              "minimum": -5.9375,
+              "retained_array": false,
+              "sha256": "6a92927f16d5cc1ab0a9fd9da82713335aaa312bba8f360f0585e053fafac34f",
+              "shape": [
+                1,
+                16,
+                64,
+                128
+              ]
+            },
+            "relative_l2_error": 0.44999202919593223,
+            "rmse": 0.6796831562961178,
+            "rtol": 1e-05
+          },
+          "encoder_hidden_states": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 856.0,
+              "minimum": -808.0,
+              "retained_array": false,
+              "sha256": "c8cc92d97aab5fbb2f02d80b31d7d9793950f44ecd3a317d43a4098064abb53a",
+              "shape": [
+                2,
+                333,
+                4096
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 1.0000000000000875,
+            "elements": 2727936,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 856.0,
+              "minimum": -808.0,
+              "retained_array": false,
+              "sha256": "c8cc92d97aab5fbb2f02d80b31d7d9793950f44ecd3a317d43a4098064abb53a",
+              "shape": [
+                2,
+                333,
+                4096
+              ]
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "hidden_states": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.328125,
+              "minimum": -3.328125,
+              "retained_array": false,
+              "sha256": "0110357761f65caf40515ea1e4f21afe2dfdf473fde60d0a2088fd81293de03a",
+              "shape": [
+                2,
+                16,
+                64,
+                128
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 1.0000000000000004,
+            "elements": 262144,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.328125,
+              "minimum": -3.328125,
+              "retained_array": false,
+              "sha256": "0110357761f65caf40515ea1e4f21afe2dfdf473fde60d0a2088fd81293de03a",
+              "shape": [
+                2,
+                16,
+                64,
+                128
+              ]
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "pooled_projections": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 6.5625,
+              "minimum": -5.375,
+              "retained_array": false,
+              "sha256": "26d0b9830ba99dcc9988bae838061d1e57340d3f04b073cd4adf49f57da7a5f1",
+              "shape": [
+                2,
+                2048
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 1.0,
+            "elements": 4096,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 6.5625,
+              "minimum": -5.375,
+              "retained_array": false,
+              "sha256": "26d0b9830ba99dcc9988bae838061d1e57340d3f04b073cd4adf49f57da7a5f1",
+              "shape": [
+                2,
+                2048
+              ]
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "scheduler_output": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.3125,
+              "minimum": -3.3125,
+              "retained_array": false,
+              "sha256": "f23cf9551065984c0c84089f364a9460c6f5b8b5c479dc2cd289f91a26ed59be",
+              "shape": [
+                1,
+                16,
+                64,
+                128
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": false,
+            "cosine_similarity": 0.9999589994887288,
+            "elements": 131072,
+            "max_abs_error": 0.078125,
+            "passed": false,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.296875,
+              "minimum": -3.3125,
+              "retained_array": false,
+              "sha256": "93e2329054e568ac89546e079275c83e88b0617c636bae62a9998510514e12d4",
+              "shape": [
+                1,
+                16,
+                64,
+                128
+              ]
+            },
+            "relative_l2_error": 0.009065656953852448,
+            "rmse": 0.00887054330770217,
+            "rtol": 1e-05
+          },
+          "scheduler_sample": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.328125,
+              "minimum": -3.328125,
+              "retained_array": false,
+              "sha256": "81a7be98f1954d3eb9111b1086c9268938778754885d771734093ba360c06a78",
+              "shape": [
+                1,
+                16,
+                64,
+                128
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 1.0000000000000002,
+            "elements": 131072,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.328125,
+              "minimum": -3.328125,
+              "retained_array": false,
+              "sha256": "81a7be98f1954d3eb9111b1086c9268938778754885d771734093ba360c06a78",
+              "shape": [
+                1,
+                16,
+                64,
+                128
+              ]
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "scheduler_timestep": {
+            "actual": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 1000.0,
+              "retained_array": false,
+              "sha256": "907a13441e01da66409332d107abc1dbe98c125f60a3846c75eebdc3bc094d56",
+              "shape": []
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 1.0,
+            "elements": 1,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 1000.0,
+              "retained_array": false,
+              "sha256": "907a13441e01da66409332d107abc1dbe98c125f60a3846c75eebdc3bc094d56",
+              "shape": []
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "timestep": {
+            "actual": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 1000.0,
+              "retained_array": false,
+              "sha256": "66bab7780aa6e0f5656b8b7d4c32b91e7fb4efda68d8f05c698758ea624c9bbc",
+              "shape": [
+                2
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 0.9999999999999999,
+            "elements": 2,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 1000.0,
+              "retained_array": false,
+              "sha256": "66bab7780aa6e0f5656b8b7d4c32b91e7fb4efda68d8f05c698758ea624c9bbc",
+              "shape": [
+                2
+              ]
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "transformer_prediction": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 5.3125,
+              "minimum": -4.4375,
+              "retained_array": false,
+              "sha256": "6a2ce7020db4e9edcd34fafbea0a3e1856e05da85e7c10c3963ecd310a3a22a2",
+              "shape": [
+                2,
+                16,
+                64,
+                128
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": false,
+            "cosine_similarity": 0.9916872017052203,
+            "elements": 262144,
+            "max_abs_error": 1.40625,
+            "passed": false,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 5.03125,
+              "minimum": -4.4375,
+              "retained_array": false,
+              "sha256": "89b6234a674d22008e4d81d6a6ddc53ef7a0eb432ec133f57facafd1103e66eb",
+              "shape": [
+                2,
+                16,
+                64,
+                128
+              ]
+            },
+            "relative_l2_error": 0.13361353101150023,
+            "rmse": 0.16215511323721257,
+            "rtol": 1e-05
+          }
+        },
+        "first_bitwise": "transformer_prediction",
+        "first_tolerance": "transformer_prediction"
+      },
+      "sp1_round_vs_sp2_round": {
+        "boundaries": {
+          "cfg_prediction": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 6.6875,
+              "minimum": -5.625,
+              "retained_array": false,
+              "sha256": "2c185aeea6af2ed62717c5bc52d1825d7a9d8db6514b4a7b42b6d20441b7cec5",
+              "shape": [
+                1,
+                16,
+                64,
+                128
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": false,
+            "cosine_similarity": 0.9062017085971081,
+            "elements": 131072,
+            "max_abs_error": 5.4375,
+            "passed": false,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 6.0,
+              "minimum": -5.9375,
+              "retained_array": false,
+              "sha256": "6a92927f16d5cc1ab0a9fd9da82713335aaa312bba8f360f0585e053fafac34f",
+              "shape": [
+                1,
+                16,
+                64,
+                128
+              ]
+            },
+            "relative_l2_error": 0.44999202919593223,
+            "rmse": 0.6796831562961178,
+            "rtol": 1e-05
+          },
+          "encoder_hidden_states": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 856.0,
+              "minimum": -808.0,
+              "retained_array": false,
+              "sha256": "c8cc92d97aab5fbb2f02d80b31d7d9793950f44ecd3a317d43a4098064abb53a",
+              "shape": [
+                2,
+                333,
+                4096
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 1.0000000000000875,
+            "elements": 2727936,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 856.0,
+              "minimum": -808.0,
+              "retained_array": false,
+              "sha256": "c8cc92d97aab5fbb2f02d80b31d7d9793950f44ecd3a317d43a4098064abb53a",
+              "shape": [
+                2,
+                333,
+                4096
+              ]
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "hidden_states": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.328125,
+              "minimum": -3.328125,
+              "retained_array": false,
+              "sha256": "0110357761f65caf40515ea1e4f21afe2dfdf473fde60d0a2088fd81293de03a",
+              "shape": [
+                2,
+                16,
+                64,
+                128
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 1.0000000000000004,
+            "elements": 262144,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.328125,
+              "minimum": -3.328125,
+              "retained_array": false,
+              "sha256": "0110357761f65caf40515ea1e4f21afe2dfdf473fde60d0a2088fd81293de03a",
+              "shape": [
+                2,
+                16,
+                64,
+                128
+              ]
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "pooled_projections": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 6.5625,
+              "minimum": -5.375,
+              "retained_array": false,
+              "sha256": "26d0b9830ba99dcc9988bae838061d1e57340d3f04b073cd4adf49f57da7a5f1",
+              "shape": [
+                2,
+                2048
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 1.0,
+            "elements": 4096,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 6.5625,
+              "minimum": -5.375,
+              "retained_array": false,
+              "sha256": "26d0b9830ba99dcc9988bae838061d1e57340d3f04b073cd4adf49f57da7a5f1",
+              "shape": [
+                2,
+                2048
+              ]
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "scheduler_output": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.3125,
+              "minimum": -3.3125,
+              "retained_array": false,
+              "sha256": "f23cf9551065984c0c84089f364a9460c6f5b8b5c479dc2cd289f91a26ed59be",
+              "shape": [
+                1,
+                16,
+                64,
+                128
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": false,
+            "cosine_similarity": 0.9999589994887288,
+            "elements": 131072,
+            "max_abs_error": 0.078125,
+            "passed": false,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.296875,
+              "minimum": -3.3125,
+              "retained_array": false,
+              "sha256": "93e2329054e568ac89546e079275c83e88b0617c636bae62a9998510514e12d4",
+              "shape": [
+                1,
+                16,
+                64,
+                128
+              ]
+            },
+            "relative_l2_error": 0.009065656953852448,
+            "rmse": 0.00887054330770217,
+            "rtol": 1e-05
+          },
+          "scheduler_sample": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.328125,
+              "minimum": -3.328125,
+              "retained_array": false,
+              "sha256": "81a7be98f1954d3eb9111b1086c9268938778754885d771734093ba360c06a78",
+              "shape": [
+                1,
+                16,
+                64,
+                128
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 1.0000000000000002,
+            "elements": 131072,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.328125,
+              "minimum": -3.328125,
+              "retained_array": false,
+              "sha256": "81a7be98f1954d3eb9111b1086c9268938778754885d771734093ba360c06a78",
+              "shape": [
+                1,
+                16,
+                64,
+                128
+              ]
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "scheduler_timestep": {
+            "actual": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 1000.0,
+              "retained_array": false,
+              "sha256": "907a13441e01da66409332d107abc1dbe98c125f60a3846c75eebdc3bc094d56",
+              "shape": []
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 1.0,
+            "elements": 1,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 1000.0,
+              "retained_array": false,
+              "sha256": "907a13441e01da66409332d107abc1dbe98c125f60a3846c75eebdc3bc094d56",
+              "shape": []
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "timestep": {
+            "actual": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 1000.0,
+              "retained_array": false,
+              "sha256": "66bab7780aa6e0f5656b8b7d4c32b91e7fb4efda68d8f05c698758ea624c9bbc",
+              "shape": [
+                2
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 0.9999999999999999,
+            "elements": 2,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 1000.0,
+              "retained_array": false,
+              "sha256": "66bab7780aa6e0f5656b8b7d4c32b91e7fb4efda68d8f05c698758ea624c9bbc",
+              "shape": [
+                2
+              ]
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "transformer_prediction": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 5.3125,
+              "minimum": -4.4375,
+              "retained_array": false,
+              "sha256": "6a2ce7020db4e9edcd34fafbea0a3e1856e05da85e7c10c3963ecd310a3a22a2",
+              "shape": [
+                2,
+                16,
+                64,
+                128
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": false,
+            "cosine_similarity": 0.9916872017052203,
+            "elements": 262144,
+            "max_abs_error": 1.40625,
+            "passed": false,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 5.03125,
+              "minimum": -4.4375,
+              "retained_array": false,
+              "sha256": "89b6234a674d22008e4d81d6a6ddc53ef7a0eb432ec133f57facafd1103e66eb",
+              "shape": [
+                2,
+                16,
+                64,
+                128
+              ]
+            },
+            "relative_l2_error": 0.13361353101150023,
+            "rmse": 0.16215511323721257,
+            "rtol": 1e-05
+          }
+        },
+        "first_bitwise": "transformer_prediction",
+        "first_tolerance": "transformer_prediction"
+      },
+      "sp2_step0_reproduced": true,
+      "status": "failed",
+      "traceback": "Traceback (most recent call last):\n  File \"/shared/data/DITSERVE/external-probes/tetri-parlayers-524c16b-r8/external_sd35_cross_sp_check.py\", line 485, in worker\n    result['parallel_wrapper_candidate']=run_parallel_candidate(\n  File \"/shared/data/DITSERVE/external-probes/tetri-parlayers-524c16b-r8/external_sd35_cross_sp_check.py\", line 394, in run_parallel_candidate\n    converted['sp2_round'],result['routes']['sp2_round']=observe_route(pipeline,initial,request,'sp2_round')\n  File \"/shared/data/DITSERVE/external-probes/tetri-parlayers-524c16b-r8/external_sd35_cross_sp_check.py\", line 320, in observe_route\n    pipeline.advance(state,1)\n  File \"/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-630ea30-r2/result/derived/external_sd35_round.py\", line 351, in advance\n    output = self.inference_denoising(height=state.request.height, width=state.request.width,\n  File \"/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-630ea30-r2/result/derived/external_sd35_round.py\", line 317, in inference_denoising\n    result_latents = self.pipe._sync_pipeline(\n  File \"/shared/data/DITSERVE/external-probes/tetri-parlayers-524c16b-r8/external_sd35_cross_sp_check.py\", line 95, in counted\n    return _original(*args, **kwargs)\n  File \"/shared/code/DITSERVE/builds/51740c0/share/ditserve/python/xfuser/model_executor/pipelines/pipeline_stable_diffusion_3.py\", line 569, in _sync_pipeline\n    latents, encoder_hidden_states = self._backbone_forward(\n  File \"/shared/code/DITSERVE/builds/51740c0/share/ditserve/python/xfuser/model_executor/pipelines/pipeline_stable_diffusion_3.py\", line 799, in _backbone_forward\n    ret = self.transformer(\n  File \"/opt/venv/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1776, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n  File \"/opt/venv/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1882, in _call_impl\n    return inner()\n  File \"/opt/venv/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1830, in inner\n    result = forward_call(*args, **kwargs)\n  File \"/shared/code/DITSERVE/builds/51740c0/share/ditserve/python/xfuser/model_executor/models/transformers/transformer_sd3.py\", line 162, in forward\n    encoder_hidden_states, hidden_states = block(\n  File \"/opt/venv/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1776, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n  File \"/opt/venv/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1787, in _call_impl\n    return forward_call(*args, **kwargs)\n  File \"/opt/venv/lib/python3.10/site-packages/diffusers/models/attention.py\", line 715, in forward\n    attn_output2 = self.attn2(hidden_states=norm_hidden_states2, **joint_attention_kwargs)\n  File \"/opt/venv/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1776, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n  File \"/opt/venv/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1882, in _call_impl\n    return inner()\n  File \"/opt/venv/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1830, in inner\n    result = forward_call(*args, **kwargs)\n  File \"/shared/code/DITSERVE/builds/51740c0/share/ditserve/python/xfuser/model_executor/layers/attention_processor.py\", line 147, in forward\n    return self.processor(\n  File \"/shared/code/DITSERVE/builds/51740c0/share/ditserve/python/xfuser/model_executor/layers/attention_processor.py\", line 430, in __call__\n    joint_strategy=joint_strategy,\nUnboundLocalError: local variable 'joint_strategy' referenced before assignment\n"
+    },
+    {
+      "distributed_closed": true,
+      "error": "UnboundLocalError(\"local variable 'joint_strategy' referenced before assignment\")",
+      "gpu_uuid": "601e4969-39bd-d7bc-af70-7e99a34cd529",
+      "initial_five_tensors": {
+        "latents": {
+          "dtype": "torch.bfloat16",
+          "finite": true,
+          "maximum": 3.328125,
+          "minimum": -3.328125,
+          "retained_array": false,
+          "sha256": "83904595e01e3d02f92f355a7d28b75831774669586a6fd343cc54d79055d0c9",
+          "shape": [
+            1,
+            16,
+            128,
+            128
+          ]
+        },
+        "pooled_prompt_embeds": {
+          "dtype": "torch.bfloat16",
+          "finite": true,
+          "maximum": 6.5625,
+          "minimum": -5.375,
+          "retained_array": false,
+          "sha256": "26d0b9830ba99dcc9988bae838061d1e57340d3f04b073cd4adf49f57da7a5f1",
+          "shape": [
+            2,
+            2048
+          ]
+        },
+        "prompt_embeds": {
+          "dtype": "torch.bfloat16",
+          "finite": true,
+          "maximum": 856.0,
+          "minimum": -808.0,
+          "retained_array": false,
+          "sha256": "c8cc92d97aab5fbb2f02d80b31d7d9793950f44ecd3a317d43a4098064abb53a",
+          "shape": [
+            2,
+            333,
+            4096
+          ]
+        },
+        "sigmas": {
+          "dtype": "torch.float32",
+          "finite": true,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "retained_array": false,
+          "sha256": "4c213b991b25a4355f1f5afba6ac1942bb0e2167b19411a9f4766ef2a1acf2c9",
+          "shape": [
+            29
+          ]
+        },
+        "timesteps": {
+          "dtype": "torch.float32",
+          "finite": true,
+          "maximum": 1000.0,
+          "minimum": 8.928571701049805,
+          "retained_array": false,
+          "sha256": "ac5e0569db004651b24d8da459e117606324698b110ada9784492c9b2fffd98b",
+          "shape": [
+            28
+          ]
+        }
+      },
+      "provenance": {
+        "group_ownership": "official TetriServe",
+        "model_integrity": {
+          "model_integrity": "manifest_verified",
+          "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+          "model_verified_bytes": 16274913511,
+          "model_verified_files": 28,
+          "model_verified_revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80"
+        },
+        "new_groups_created_by_bridge": 0,
+        "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a"
+      },
+      "qualification_eligible": false,
+      "rank": 1,
+      "routes": {
+        "sp2_round": {
+          "actual_inputs_match_initial": {
+            "encoder_hidden_states": true,
+            "hidden_states": true,
+            "pooled_projections": true,
+            "scheduler_sample": true,
+            "scheduler_timestep": true,
+            "sigmas": true,
+            "timestep": true,
+            "timesteps": true
+          },
+          "actual_row_ranges": [
+            [
+              64,
+              128
+            ]
+          ],
+          "arrays_retained": false,
+          "boundary_owner": "actual local computation before final pipeline output collection",
+          "counts": {
+            "async_": 0,
+            "naive": 0,
+            "solver_enter": 1,
+            "solver_return": 1,
+            "sync": 1,
+            "transformer_enter": 1,
+            "transformer_return": 1
+          },
+          "hooks_restored": true,
+          "intentional_native_stop": false,
+          "local_height": 64,
+          "logical_step": 0,
+          "metadata": {
+            "begin_index": 0,
+            "runtime": {
+              "num_pipeline_patch": 1,
+              "parallel": {
+                "cfg_degree": 1,
+                "dp_degree": 1,
+                "pp_degree": 1,
+                "sp_degree": 2
+              },
+              "patch_mode": false,
+              "pipeline_patch_idx": 0,
+              "pp_patches_height": [
+                64
+              ],
+              "pp_patches_start_end_idx_global": [
+                [
+                  64,
+                  128
+                ]
+              ],
+              "pp_patches_start_idx_local": [
+                0,
+                64
+              ],
+              "pp_patches_token_num": [
+                2048
+              ],
+              "pp_patches_token_start_end_idx_global": [
+                [
+                  2048,
+                  4096
+                ]
+              ],
+              "pp_patches_token_start_idx_local": [
+                0,
+                2048
+              ],
+              "split_latents_by_rows": true,
+              "split_text_embed_in_sp": false,
+              "text_embed_sp_pad": 0
+            },
+            "scheduler": {
+              "bound_step": {
+                "file": "/opt/venv/lib/python3.10/site-packages/diffusers/schedulers/scheduling_flow_match_euler_discrete.py",
+                "file_sha256": "c2f47ed75801a7bd11f43aa793671986b7d382461b8d6e9d60786ca77fa61bca",
+                "qualified_name": "diffusers.schedulers.scheduling_flow_match_euler_discrete.FlowMatchEulerDiscreteScheduler.step"
+              },
+              "class_source": {
+                "file": "/opt/venv/lib/python3.10/site-packages/diffusers/schedulers/scheduling_flow_match_euler_discrete.py",
+                "file_sha256": "c2f47ed75801a7bd11f43aa793671986b7d382461b8d6e9d60786ca77fa61bca",
+                "qualified_name": "diffusers.schedulers.scheduling_flow_match_euler_discrete.FlowMatchEulerDiscreteScheduler"
+              },
+              "config": {
+                "_class_name": "FlowMatchEulerDiscreteScheduler",
+                "_diffusers_version": "0.29.0.dev0",
+                "_use_default_values": [
+                  "base_image_seq_len",
+                  "use_beta_sigmas",
+                  "shift_terminal",
+                  "max_image_seq_len",
+                  "use_karras_sigmas",
+                  "use_exponential_sigmas",
+                  "use_dynamic_shifting",
+                  "invert_sigmas",
+                  "max_shift",
+                  "stochastic_sampling",
+                  "base_shift",
+                  "time_shift_type"
+                ],
+                "base_image_seq_len": 256,
+                "base_shift": 0.5,
+                "invert_sigmas": false,
+                "max_image_seq_len": 4096,
+                "max_shift": 1.15,
+                "num_train_timesteps": 1000,
+                "shift": 3.0,
+                "shift_terminal": null,
+                "stochastic_sampling": false,
+                "time_shift_type": "exponential",
+                "use_beta_sigmas": false,
+                "use_dynamic_shifting": false,
+                "use_exponential_sigmas": false,
+                "use_karras_sigmas": false
+              },
+              "type": "diffusers.schedulers.scheduling_flow_match_euler_discrete.FlowMatchEulerDiscreteScheduler",
+              "unwrapped_step": {
+                "file": "/opt/venv/lib/python3.10/site-packages/diffusers/schedulers/scheduling_flow_match_euler_discrete.py",
+                "file_sha256": "c2f47ed75801a7bd11f43aa793671986b7d382461b8d6e9d60786ca77fa61bca",
+                "qualified_name": "diffusers.schedulers.scheduling_flow_match_euler_discrete.FlowMatchEulerDiscreteScheduler.step"
+              }
+            },
+            "step_index": 0
+          },
+          "original_schedule_steps": 28,
+          "processors": {
+            "HAS_LONG_CTX_ATTN": true,
+            "modules": [
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 0,
+                "name": "transformer_blocks.0.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 1,
+                "name": "transformer_blocks.0.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 2,
+                "name": "transformer_blocks.1.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 3,
+                "name": "transformer_blocks.1.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 4,
+                "name": "transformer_blocks.2.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 5,
+                "name": "transformer_blocks.2.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 6,
+                "name": "transformer_blocks.3.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 7,
+                "name": "transformer_blocks.3.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 8,
+                "name": "transformer_blocks.4.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 9,
+                "name": "transformer_blocks.4.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 10,
+                "name": "transformer_blocks.5.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 11,
+                "name": "transformer_blocks.5.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 12,
+                "name": "transformer_blocks.6.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 13,
+                "name": "transformer_blocks.6.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 14,
+                "name": "transformer_blocks.7.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 15,
+                "name": "transformer_blocks.7.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 16,
+                "name": "transformer_blocks.8.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 17,
+                "name": "transformer_blocks.8.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 18,
+                "name": "transformer_blocks.9.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 19,
+                "name": "transformer_blocks.9.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 20,
+                "name": "transformer_blocks.10.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 21,
+                "name": "transformer_blocks.10.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 22,
+                "name": "transformer_blocks.11.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 23,
+                "name": "transformer_blocks.11.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 24,
+                "name": "transformer_blocks.12.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 25,
+                "name": "transformer_blocks.12.attn2",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 26,
+                "name": "transformer_blocks.13.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 27,
+                "name": "transformer_blocks.14.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 28,
+                "name": "transformer_blocks.15.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 29,
+                "name": "transformer_blocks.16.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 30,
+                "name": "transformer_blocks.17.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 31,
+                "name": "transformer_blocks.18.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 32,
+                "name": "transformer_blocks.19.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 33,
+                "name": "transformer_blocks.20.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 34,
+                "name": "transformer_blocks.21.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 35,
+                "name": "transformer_blocks.22.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              },
+              {
+                "attention_type": "diffusers.models.attention_processor.Attention",
+                "calls": 1,
+                "index": 36,
+                "name": "transformer_blocks.23.attn",
+                "processor_type": "diffusers.models.attention_processor.JointAttnProcessor2_0",
+                "use_long_ctx_attn_kvcache": null
+              }
+            ]
+          },
+          "route": "sp2_round",
+          "tensors": {
+            "cfg_prediction": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 6.6875,
+              "minimum": -5.8125,
+              "retained_array": false,
+              "sha256": "4ba680a2605562bfb663e61e49326641086ce4fb763b5c9d4aa9b1b378299aa5",
+              "shape": [
+                1,
+                16,
+                64,
+                128
+              ]
+            },
+            "encoder_hidden_states": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 856.0,
+              "minimum": -808.0,
+              "retained_array": false,
+              "sha256": "c8cc92d97aab5fbb2f02d80b31d7d9793950f44ecd3a317d43a4098064abb53a",
+              "shape": [
+                2,
+                333,
+                4096
+              ]
+            },
+            "hidden_states": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.328125,
+              "minimum": -3.328125,
+              "retained_array": false,
+              "sha256": "a073b882ce2e20f6bbe600864a2977bc6473219d032198b6ed55ad31eaf08653",
+              "shape": [
+                2,
+                16,
+                64,
+                128
+              ]
+            },
+            "pooled_projections": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 6.5625,
+              "minimum": -5.375,
+              "retained_array": false,
+              "sha256": "26d0b9830ba99dcc9988bae838061d1e57340d3f04b073cd4adf49f57da7a5f1",
+              "shape": [
+                2,
+                2048
+              ]
+            },
+            "scheduler_output": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.296875,
+              "minimum": -3.296875,
+              "retained_array": false,
+              "sha256": "961c24c6b7e86b31500bfbdcb9b1fb54dd4245ae99e129e37141051f2f9ebbf2",
+              "shape": [
+                1,
+                16,
+                64,
+                128
+              ]
+            },
+            "scheduler_sample": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.328125,
+              "minimum": -3.328125,
+              "retained_array": false,
+              "sha256": "4cc41b420454ddc835ae89c9d8c70587c61ea76850da58ee05055214aace695e",
+              "shape": [
+                1,
+                16,
+                64,
+                128
+              ]
+            },
+            "scheduler_timestep": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 1000.0,
+              "retained_array": false,
+              "sha256": "907a13441e01da66409332d107abc1dbe98c125f60a3846c75eebdc3bc094d56",
+              "shape": []
+            },
+            "sigmas": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1.0,
+              "minimum": 0.9873806238174438,
+              "retained_array": false,
+              "sha256": "3f8d9403fdead7e634a7421c18b256ec6cece3352864e9f513420f7a2899d993",
+              "shape": [
+                2
+              ]
+            },
+            "timestep": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 1000.0,
+              "retained_array": false,
+              "sha256": "66bab7780aa6e0f5656b8b7d4c32b91e7fb4efda68d8f05c698758ea624c9bbc",
+              "shape": [
+                2
+              ]
+            },
+            "timesteps": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 1000.0,
+              "retained_array": false,
+              "sha256": "effa21ae104ca5a33acdd762a3d5bcd0789cf076357d989ec98ccc0fe22164c3",
+              "shape": [
+                1
+              ]
+            },
+            "transformer_prediction": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 5.3125,
+              "minimum": -4.53125,
+              "retained_array": false,
+              "sha256": "a42f84fb0e59b7eb241f0d977f46d7e357890717175636afe11d5429473d1b52",
+              "shape": [
+                2,
+                16,
+                64,
+                128
+              ]
+            }
+          }
+        }
+      },
+      "row_partition": [
+        {
+          "local_height": 64,
+          "ranges": [
+            [
+              0,
+              64
+            ]
+          ],
+          "rank": 0
+        },
+        {
+          "local_height": 64,
+          "ranges": [
+            [
+              64,
+              128
+            ]
+          ],
+          "rank": 1
+        }
+      ],
+      "sp1_native_vs_sp2_round": {
+        "boundaries": {
+          "cfg_prediction": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 6.6875,
+              "minimum": -5.8125,
+              "retained_array": false,
+              "sha256": "4ba680a2605562bfb663e61e49326641086ce4fb763b5c9d4aa9b1b378299aa5",
+              "shape": [
+                1,
+                16,
+                64,
+                128
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": false,
+            "cosine_similarity": 0.8772256205872678,
+            "elements": 131072,
+            "max_abs_error": 5.703125,
+            "passed": false,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 6.1875,
+              "minimum": -6.25,
+              "retained_array": false,
+              "sha256": "fc8805df52732231bdc86c167442759448f09e43c35c746736e9299edacc7c6b",
+              "shape": [
+                1,
+                16,
+                64,
+                128
+              ]
+            },
+            "relative_l2_error": 0.4925517400356639,
+            "rmse": 0.817228459789968,
+            "rtol": 1e-05
+          },
+          "encoder_hidden_states": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 856.0,
+              "minimum": -808.0,
+              "retained_array": false,
+              "sha256": "c8cc92d97aab5fbb2f02d80b31d7d9793950f44ecd3a317d43a4098064abb53a",
+              "shape": [
+                2,
+                333,
+                4096
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 1.0000000000000875,
+            "elements": 2727936,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 856.0,
+              "minimum": -808.0,
+              "retained_array": false,
+              "sha256": "c8cc92d97aab5fbb2f02d80b31d7d9793950f44ecd3a317d43a4098064abb53a",
+              "shape": [
+                2,
+                333,
+                4096
+              ]
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "hidden_states": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.328125,
+              "minimum": -3.328125,
+              "retained_array": false,
+              "sha256": "a073b882ce2e20f6bbe600864a2977bc6473219d032198b6ed55ad31eaf08653",
+              "shape": [
+                2,
+                16,
+                64,
+                128
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 1.0000000000000004,
+            "elements": 262144,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.328125,
+              "minimum": -3.328125,
+              "retained_array": false,
+              "sha256": "a073b882ce2e20f6bbe600864a2977bc6473219d032198b6ed55ad31eaf08653",
+              "shape": [
+                2,
+                16,
+                64,
+                128
+              ]
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "pooled_projections": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 6.5625,
+              "minimum": -5.375,
+              "retained_array": false,
+              "sha256": "26d0b9830ba99dcc9988bae838061d1e57340d3f04b073cd4adf49f57da7a5f1",
+              "shape": [
+                2,
+                2048
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 1.0,
+            "elements": 4096,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 6.5625,
+              "minimum": -5.375,
+              "retained_array": false,
+              "sha256": "26d0b9830ba99dcc9988bae838061d1e57340d3f04b073cd4adf49f57da7a5f1",
+              "shape": [
+                2,
+                2048
+              ]
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "scheduler_output": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.296875,
+              "minimum": -3.296875,
+              "retained_array": false,
+              "sha256": "961c24c6b7e86b31500bfbdcb9b1fb54dd4245ae99e129e37141051f2f9ebbf2",
+              "shape": [
+                1,
+                16,
+                64,
+                128
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": false,
+            "cosine_similarity": 0.9999418420165143,
+            "elements": 131072,
+            "max_abs_error": 0.078125,
+            "passed": false,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.3125,
+              "minimum": -3.296875,
+              "retained_array": false,
+              "sha256": "7729bb455286232bb591f20ed4a8453a533b07de89122673fa1e46523e39930f",
+              "shape": [
+                1,
+                16,
+                64,
+                128
+              ]
+            },
+            "relative_l2_error": 0.01078859190016006,
+            "rmse": 0.010571136416261456,
+            "rtol": 1e-05
+          },
+          "scheduler_sample": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.328125,
+              "minimum": -3.328125,
+              "retained_array": false,
+              "sha256": "4cc41b420454ddc835ae89c9d8c70587c61ea76850da58ee05055214aace695e",
+              "shape": [
+                1,
+                16,
+                64,
+                128
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 1.0,
+            "elements": 131072,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.328125,
+              "minimum": -3.328125,
+              "retained_array": false,
+              "sha256": "4cc41b420454ddc835ae89c9d8c70587c61ea76850da58ee05055214aace695e",
+              "shape": [
+                1,
+                16,
+                64,
+                128
+              ]
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "scheduler_timestep": {
+            "actual": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 1000.0,
+              "retained_array": false,
+              "sha256": "907a13441e01da66409332d107abc1dbe98c125f60a3846c75eebdc3bc094d56",
+              "shape": []
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 1.0,
+            "elements": 1,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 1000.0,
+              "retained_array": false,
+              "sha256": "907a13441e01da66409332d107abc1dbe98c125f60a3846c75eebdc3bc094d56",
+              "shape": []
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "timestep": {
+            "actual": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 1000.0,
+              "retained_array": false,
+              "sha256": "66bab7780aa6e0f5656b8b7d4c32b91e7fb4efda68d8f05c698758ea624c9bbc",
+              "shape": [
+                2
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 0.9999999999999999,
+            "elements": 2,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 1000.0,
+              "retained_array": false,
+              "sha256": "66bab7780aa6e0f5656b8b7d4c32b91e7fb4efda68d8f05c698758ea624c9bbc",
+              "shape": [
+                2
+              ]
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "transformer_prediction": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 5.3125,
+              "minimum": -4.53125,
+              "retained_array": false,
+              "sha256": "a42f84fb0e59b7eb241f0d977f46d7e357890717175636afe11d5429473d1b52",
+              "shape": [
+                2,
+                16,
+                64,
+                128
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": false,
+            "cosine_similarity": 0.9889604302850389,
+            "elements": 262144,
+            "max_abs_error": 1.390625,
+            "passed": false,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 5.21875,
+              "minimum": -4.40625,
+              "retained_array": false,
+              "sha256": "23680a60536d33fe9c47bc24d09d5f8039135950851c300168b00fc35c1f4e77",
+              "shape": [
+                2,
+                16,
+                64,
+                128
+              ]
+            },
+            "relative_l2_error": 0.1526336610244986,
+            "rmse": 0.18913161521998778,
+            "rtol": 1e-05
+          }
+        },
+        "first_bitwise": "transformer_prediction",
+        "first_tolerance": "transformer_prediction"
+      },
+      "sp1_round_vs_sp2_round": {
+        "boundaries": {
+          "cfg_prediction": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 6.6875,
+              "minimum": -5.8125,
+              "retained_array": false,
+              "sha256": "4ba680a2605562bfb663e61e49326641086ce4fb763b5c9d4aa9b1b378299aa5",
+              "shape": [
+                1,
+                16,
+                64,
+                128
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": false,
+            "cosine_similarity": 0.8772256205872678,
+            "elements": 131072,
+            "max_abs_error": 5.703125,
+            "passed": false,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 6.1875,
+              "minimum": -6.25,
+              "retained_array": false,
+              "sha256": "fc8805df52732231bdc86c167442759448f09e43c35c746736e9299edacc7c6b",
+              "shape": [
+                1,
+                16,
+                64,
+                128
+              ]
+            },
+            "relative_l2_error": 0.4925517400356639,
+            "rmse": 0.817228459789968,
+            "rtol": 1e-05
+          },
+          "encoder_hidden_states": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 856.0,
+              "minimum": -808.0,
+              "retained_array": false,
+              "sha256": "c8cc92d97aab5fbb2f02d80b31d7d9793950f44ecd3a317d43a4098064abb53a",
+              "shape": [
+                2,
+                333,
+                4096
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 1.0000000000000875,
+            "elements": 2727936,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 856.0,
+              "minimum": -808.0,
+              "retained_array": false,
+              "sha256": "c8cc92d97aab5fbb2f02d80b31d7d9793950f44ecd3a317d43a4098064abb53a",
+              "shape": [
+                2,
+                333,
+                4096
+              ]
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "hidden_states": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.328125,
+              "minimum": -3.328125,
+              "retained_array": false,
+              "sha256": "a073b882ce2e20f6bbe600864a2977bc6473219d032198b6ed55ad31eaf08653",
+              "shape": [
+                2,
+                16,
+                64,
+                128
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 1.0000000000000004,
+            "elements": 262144,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.328125,
+              "minimum": -3.328125,
+              "retained_array": false,
+              "sha256": "a073b882ce2e20f6bbe600864a2977bc6473219d032198b6ed55ad31eaf08653",
+              "shape": [
+                2,
+                16,
+                64,
+                128
+              ]
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "pooled_projections": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 6.5625,
+              "minimum": -5.375,
+              "retained_array": false,
+              "sha256": "26d0b9830ba99dcc9988bae838061d1e57340d3f04b073cd4adf49f57da7a5f1",
+              "shape": [
+                2,
+                2048
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 1.0,
+            "elements": 4096,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 6.5625,
+              "minimum": -5.375,
+              "retained_array": false,
+              "sha256": "26d0b9830ba99dcc9988bae838061d1e57340d3f04b073cd4adf49f57da7a5f1",
+              "shape": [
+                2,
+                2048
+              ]
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "scheduler_output": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.296875,
+              "minimum": -3.296875,
+              "retained_array": false,
+              "sha256": "961c24c6b7e86b31500bfbdcb9b1fb54dd4245ae99e129e37141051f2f9ebbf2",
+              "shape": [
+                1,
+                16,
+                64,
+                128
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": false,
+            "cosine_similarity": 0.9999418420165143,
+            "elements": 131072,
+            "max_abs_error": 0.078125,
+            "passed": false,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.3125,
+              "minimum": -3.296875,
+              "retained_array": false,
+              "sha256": "7729bb455286232bb591f20ed4a8453a533b07de89122673fa1e46523e39930f",
+              "shape": [
+                1,
+                16,
+                64,
+                128
+              ]
+            },
+            "relative_l2_error": 0.01078859190016006,
+            "rmse": 0.010571136416261456,
+            "rtol": 1e-05
+          },
+          "scheduler_sample": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.328125,
+              "minimum": -3.328125,
+              "retained_array": false,
+              "sha256": "4cc41b420454ddc835ae89c9d8c70587c61ea76850da58ee05055214aace695e",
+              "shape": [
+                1,
+                16,
+                64,
+                128
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 1.0,
+            "elements": 131072,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 3.328125,
+              "minimum": -3.328125,
+              "retained_array": false,
+              "sha256": "4cc41b420454ddc835ae89c9d8c70587c61ea76850da58ee05055214aace695e",
+              "shape": [
+                1,
+                16,
+                64,
+                128
+              ]
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "scheduler_timestep": {
+            "actual": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 1000.0,
+              "retained_array": false,
+              "sha256": "907a13441e01da66409332d107abc1dbe98c125f60a3846c75eebdc3bc094d56",
+              "shape": []
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 1.0,
+            "elements": 1,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 1000.0,
+              "retained_array": false,
+              "sha256": "907a13441e01da66409332d107abc1dbe98c125f60a3846c75eebdc3bc094d56",
+              "shape": []
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "timestep": {
+            "actual": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 1000.0,
+              "retained_array": false,
+              "sha256": "66bab7780aa6e0f5656b8b7d4c32b91e7fb4efda68d8f05c698758ea624c9bbc",
+              "shape": [
+                2
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": true,
+            "cosine_similarity": 0.9999999999999999,
+            "elements": 2,
+            "max_abs_error": 0.0,
+            "passed": true,
+            "reference": {
+              "dtype": "torch.float32",
+              "finite": true,
+              "maximum": 1000.0,
+              "minimum": 1000.0,
+              "retained_array": false,
+              "sha256": "66bab7780aa6e0f5656b8b7d4c32b91e7fb4efda68d8f05c698758ea624c9bbc",
+              "shape": [
+                2
+              ]
+            },
+            "relative_l2_error": 0.0,
+            "rmse": 0.0,
+            "rtol": 1e-05
+          },
+          "transformer_prediction": {
+            "actual": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 5.3125,
+              "minimum": -4.53125,
+              "retained_array": false,
+              "sha256": "a42f84fb0e59b7eb241f0d977f46d7e357890717175636afe11d5429473d1b52",
+              "shape": [
+                2,
+                16,
+                64,
+                128
+              ]
+            },
+            "atol": 1e-05,
+            "bitwise_equal": false,
+            "cosine_similarity": 0.9889604302850389,
+            "elements": 262144,
+            "max_abs_error": 1.390625,
+            "passed": false,
+            "reference": {
+              "dtype": "torch.bfloat16",
+              "finite": true,
+              "maximum": 5.21875,
+              "minimum": -4.40625,
+              "retained_array": false,
+              "sha256": "23680a60536d33fe9c47bc24d09d5f8039135950851c300168b00fc35c1f4e77",
+              "shape": [
+                2,
+                16,
+                64,
+                128
+              ]
+            },
+            "relative_l2_error": 0.1526336610244986,
+            "rmse": 0.18913161521998778,
+            "rtol": 1e-05
+          }
+        },
+        "first_bitwise": "transformer_prediction",
+        "first_tolerance": "transformer_prediction"
+      },
+      "sp2_step0_reproduced": true,
+      "status": "failed",
+      "traceback": "Traceback (most recent call last):\n  File \"/shared/data/DITSERVE/external-probes/tetri-parlayers-524c16b-r8/external_sd35_cross_sp_check.py\", line 485, in worker\n    result['parallel_wrapper_candidate']=run_parallel_candidate(\n  File \"/shared/data/DITSERVE/external-probes/tetri-parlayers-524c16b-r8/external_sd35_cross_sp_check.py\", line 394, in run_parallel_candidate\n    converted['sp2_round'],result['routes']['sp2_round']=observe_route(pipeline,initial,request,'sp2_round')\n  File \"/shared/data/DITSERVE/external-probes/tetri-parlayers-524c16b-r8/external_sd35_cross_sp_check.py\", line 320, in observe_route\n    pipeline.advance(state,1)\n  File \"/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-630ea30-r2/result/derived/external_sd35_round.py\", line 351, in advance\n    output = self.inference_denoising(height=state.request.height, width=state.request.width,\n  File \"/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-630ea30-r2/result/derived/external_sd35_round.py\", line 317, in inference_denoising\n    result_latents = self.pipe._sync_pipeline(\n  File \"/shared/data/DITSERVE/external-probes/tetri-parlayers-524c16b-r8/external_sd35_cross_sp_check.py\", line 95, in counted\n    return _original(*args, **kwargs)\n  File \"/shared/code/DITSERVE/builds/51740c0/share/ditserve/python/xfuser/model_executor/pipelines/pipeline_stable_diffusion_3.py\", line 569, in _sync_pipeline\n    latents, encoder_hidden_states = self._backbone_forward(\n  File \"/shared/code/DITSERVE/builds/51740c0/share/ditserve/python/xfuser/model_executor/pipelines/pipeline_stable_diffusion_3.py\", line 799, in _backbone_forward\n    ret = self.transformer(\n  File \"/opt/venv/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1776, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n  File \"/opt/venv/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1882, in _call_impl\n    return inner()\n  File \"/opt/venv/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1830, in inner\n    result = forward_call(*args, **kwargs)\n  File \"/shared/code/DITSERVE/builds/51740c0/share/ditserve/python/xfuser/model_executor/models/transformers/transformer_sd3.py\", line 162, in forward\n    encoder_hidden_states, hidden_states = block(\n  File \"/opt/venv/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1776, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n  File \"/opt/venv/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1787, in _call_impl\n    return forward_call(*args, **kwargs)\n  File \"/opt/venv/lib/python3.10/site-packages/diffusers/models/attention.py\", line 715, in forward\n    attn_output2 = self.attn2(hidden_states=norm_hidden_states2, **joint_attention_kwargs)\n  File \"/opt/venv/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1776, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n  File \"/opt/venv/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1882, in _call_impl\n    return inner()\n  File \"/opt/venv/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1830, in inner\n    result = forward_call(*args, **kwargs)\n  File \"/shared/code/DITSERVE/builds/51740c0/share/ditserve/python/xfuser/model_executor/layers/attention_processor.py\", line 147, in forward\n    return self.processor(\n  File \"/shared/code/DITSERVE/builds/51740c0/share/ditserve/python/xfuser/model_executor/layers/attention_processor.py\", line 430, in __call__\n    joint_strategy=joint_strategy,\nUnboundLocalError: local variable 'joint_strategy' referenced before assignment\n"
+    }
+  ],
+  "routes": [
+    "sp1_native",
+    "sp1_round",
+    "sp2_round"
+  ],
+  "schema": "ditserve.sd35-cross-sp-first-step.v1",
+  "scope": "first differing observed boundary, not an attention root cause or 28-step correctness result",
+  "sp2_reference_sha256": "a716aed06acdbc54b661d945bb5bd188ff3e38b8b6aa6ef31a4a9dd8a39425b1",
+  "sp2_references": [
+    {
+      "cfg_prediction": {
+        "dtype": "torch.bfloat16",
+        "finite": true,
+        "maximum": 6.6875,
+        "minimum": -5.625,
+        "retained_array": false,
+        "sha256": "2c185aeea6af2ed62717c5bc52d1825d7a9d8db6514b4a7b42b6d20441b7cec5",
+        "shape": [
+          1,
+          16,
+          64,
+          128
+        ]
+      },
+      "initial_five_tensors": {
+        "latents": {
+          "dtype": "torch.bfloat16",
+          "finite": true,
+          "maximum": 3.328125,
+          "minimum": -3.328125,
+          "retained_array": false,
+          "sha256": "83904595e01e3d02f92f355a7d28b75831774669586a6fd343cc54d79055d0c9",
+          "shape": [
+            1,
+            16,
+            128,
+            128
+          ]
+        },
+        "pooled_prompt_embeds": {
+          "dtype": "torch.bfloat16",
+          "finite": true,
+          "maximum": 6.5625,
+          "minimum": -5.375,
+          "retained_array": false,
+          "sha256": "26d0b9830ba99dcc9988bae838061d1e57340d3f04b073cd4adf49f57da7a5f1",
+          "shape": [
+            2,
+            2048
+          ]
+        },
+        "prompt_embeds": {
+          "dtype": "torch.bfloat16",
+          "finite": true,
+          "maximum": 856.0,
+          "minimum": -808.0,
+          "retained_array": false,
+          "sha256": "c8cc92d97aab5fbb2f02d80b31d7d9793950f44ecd3a317d43a4098064abb53a",
+          "shape": [
+            2,
+            333,
+            4096
+          ]
+        },
+        "sigmas": {
+          "dtype": "torch.float32",
+          "finite": true,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "retained_array": false,
+          "sha256": "4c213b991b25a4355f1f5afba6ac1942bb0e2167b19411a9f4766ef2a1acf2c9",
+          "shape": [
+            29
+          ]
+        },
+        "timesteps": {
+          "dtype": "torch.float32",
+          "finite": true,
+          "maximum": 1000.0,
+          "minimum": 8.928571701049805,
+          "retained_array": false,
+          "sha256": "ac5e0569db004651b24d8da459e117606324698b110ada9784492c9b2fffd98b",
+          "shape": [
+            28
+          ]
+        }
+      },
+      "inputs": {
+        "latents": {
+          "dtype": "torch.bfloat16",
+          "finite": true,
+          "maximum": 3.328125,
+          "minimum": -3.328125,
+          "retained_array": false,
+          "sha256": "81a7be98f1954d3eb9111b1086c9268938778754885d771734093ba360c06a78",
+          "shape": [
+            1,
+            16,
+            64,
+            128
+          ]
+        },
+        "noise_pred": {
+          "dtype": "torch.bfloat16",
+          "finite": true,
+          "maximum": 6.6875,
+          "minimum": -5.625,
+          "retained_array": false,
+          "sha256": "2c185aeea6af2ed62717c5bc52d1825d7a9d8db6514b4a7b42b6d20441b7cec5",
+          "shape": [
+            1,
+            16,
+            64,
+            128
+          ]
+        },
+        "t": {
+          "dtype": "torch.float32",
+          "finite": true,
+          "maximum": 1000.0,
+          "minimum": 1000.0,
+          "retained_array": false,
+          "sha256": "907a13441e01da66409332d107abc1dbe98c125f60a3846c75eebdc3bc094d56",
+          "shape": []
+        }
+      },
+      "rank": 0,
+      "runtime": {
+        "num_pipeline_patch": 1,
+        "parallel": {
+          "cfg_degree": 1,
+          "dp_degree": 1,
+          "pp_degree": 1,
+          "sp_degree": 2
+        },
+        "patch_mode": false,
+        "pipeline_patch_idx": 0,
+        "pp_patches_height": [
+          64
+        ],
+        "pp_patches_start_end_idx_global": [
+          [
+            0,
+            64
+          ]
+        ],
+        "pp_patches_start_idx_local": [
+          0,
+          64
+        ],
+        "pp_patches_token_num": [
+          2048
+        ],
+        "pp_patches_token_start_end_idx_global": [
+          [
+            0,
+            2048
+          ]
+        ],
+        "pp_patches_token_start_idx_local": [
+          0,
+          2048
+        ],
+        "split_latents_by_rows": true,
+        "split_text_embed_in_sp": false,
+        "text_embed_sp_pad": 0
+      },
+      "scheduler_output": {
+        "dtype": "torch.bfloat16",
+        "finite": true,
+        "maximum": 3.3125,
+        "minimum": -3.3125,
+        "retained_array": false,
+        "sha256": "f23cf9551065984c0c84089f364a9460c6f5b8b5c479dc2cd289f91a26ed59be",
+        "shape": [
+          1,
+          16,
+          64,
+          128
+        ]
+      },
+      "trace_sha256": "777679bdb5a11a3e842c95e9db16ac3da70dbf7e502667eb70db5aa96a9a72e1"
+    },
+    {
+      "cfg_prediction": {
+        "dtype": "torch.bfloat16",
+        "finite": true,
+        "maximum": 6.6875,
+        "minimum": -5.8125,
+        "retained_array": false,
+        "sha256": "4ba680a2605562bfb663e61e49326641086ce4fb763b5c9d4aa9b1b378299aa5",
+        "shape": [
+          1,
+          16,
+          64,
+          128
+        ]
+      },
+      "initial_five_tensors": {
+        "latents": {
+          "dtype": "torch.bfloat16",
+          "finite": true,
+          "maximum": 3.328125,
+          "minimum": -3.328125,
+          "retained_array": false,
+          "sha256": "83904595e01e3d02f92f355a7d28b75831774669586a6fd343cc54d79055d0c9",
+          "shape": [
+            1,
+            16,
+            128,
+            128
+          ]
+        },
+        "pooled_prompt_embeds": {
+          "dtype": "torch.bfloat16",
+          "finite": true,
+          "maximum": 6.5625,
+          "minimum": -5.375,
+          "retained_array": false,
+          "sha256": "26d0b9830ba99dcc9988bae838061d1e57340d3f04b073cd4adf49f57da7a5f1",
+          "shape": [
+            2,
+            2048
+          ]
+        },
+        "prompt_embeds": {
+          "dtype": "torch.bfloat16",
+          "finite": true,
+          "maximum": 856.0,
+          "minimum": -808.0,
+          "retained_array": false,
+          "sha256": "c8cc92d97aab5fbb2f02d80b31d7d9793950f44ecd3a317d43a4098064abb53a",
+          "shape": [
+            2,
+            333,
+            4096
+          ]
+        },
+        "sigmas": {
+          "dtype": "torch.float32",
+          "finite": true,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "retained_array": false,
+          "sha256": "4c213b991b25a4355f1f5afba6ac1942bb0e2167b19411a9f4766ef2a1acf2c9",
+          "shape": [
+            29
+          ]
+        },
+        "timesteps": {
+          "dtype": "torch.float32",
+          "finite": true,
+          "maximum": 1000.0,
+          "minimum": 8.928571701049805,
+          "retained_array": false,
+          "sha256": "ac5e0569db004651b24d8da459e117606324698b110ada9784492c9b2fffd98b",
+          "shape": [
+            28
+          ]
+        }
+      },
+      "inputs": {
+        "latents": {
+          "dtype": "torch.bfloat16",
+          "finite": true,
+          "maximum": 3.328125,
+          "minimum": -3.328125,
+          "retained_array": false,
+          "sha256": "4cc41b420454ddc835ae89c9d8c70587c61ea76850da58ee05055214aace695e",
+          "shape": [
+            1,
+            16,
+            64,
+            128
+          ]
+        },
+        "noise_pred": {
+          "dtype": "torch.bfloat16",
+          "finite": true,
+          "maximum": 6.6875,
+          "minimum": -5.8125,
+          "retained_array": false,
+          "sha256": "4ba680a2605562bfb663e61e49326641086ce4fb763b5c9d4aa9b1b378299aa5",
+          "shape": [
+            1,
+            16,
+            64,
+            128
+          ]
+        },
+        "t": {
+          "dtype": "torch.float32",
+          "finite": true,
+          "maximum": 1000.0,
+          "minimum": 1000.0,
+          "retained_array": false,
+          "sha256": "907a13441e01da66409332d107abc1dbe98c125f60a3846c75eebdc3bc094d56",
+          "shape": []
+        }
+      },
+      "rank": 1,
+      "runtime": {
+        "num_pipeline_patch": 1,
+        "parallel": {
+          "cfg_degree": 1,
+          "dp_degree": 1,
+          "pp_degree": 1,
+          "sp_degree": 2
+        },
+        "patch_mode": false,
+        "pipeline_patch_idx": 0,
+        "pp_patches_height": [
+          64
+        ],
+        "pp_patches_start_end_idx_global": [
+          [
+            64,
+            128
+          ]
+        ],
+        "pp_patches_start_idx_local": [
+          0,
+          64
+        ],
+        "pp_patches_token_num": [
+          2048
+        ],
+        "pp_patches_token_start_end_idx_global": [
+          [
+            2048,
+            4096
+          ]
+        ],
+        "pp_patches_token_start_idx_local": [
+          0,
+          2048
+        ],
+        "split_latents_by_rows": true,
+        "split_text_embed_in_sp": false,
+        "text_embed_sp_pad": 0
+      },
+      "scheduler_output": {
+        "dtype": "torch.bfloat16",
+        "finite": true,
+        "maximum": 3.296875,
+        "minimum": -3.296875,
+        "retained_array": false,
+        "sha256": "961c24c6b7e86b31500bfbdcb9b1fb54dd4245ae99e129e37141051f2f9ebbf2",
+        "shape": [
+          1,
+          16,
+          64,
+          128
+        ]
+      },
+      "trace_sha256": "4a64d543e74739779c8f444bf1609ef97451ff591db5f7b917a33b17a88051d3"
+    }
+  ],
+  "status": "failed",
+  "tolerance": {
+    "atol": 1e-05,
+    "rtol": 1e-05
+  },
+  "worker_error": "ProcessRaisedException('\\n\\n-- Process 0 terminated with the following error:\\nTraceback (most recent call last):\\n  File \"/opt/venv/lib/python3.10/site-packages/torch/multiprocessing/spawn.py\", line 87, in _wrap\\n    fn(i, *args)\\n  File \"/shared/data/DITSERVE/external-probes/tetri-parlayers-524c16b-r8/external_sd35_cross_sp_check.py\", line 506, in worker\\n    raise RuntimeError(\\'cross-SP first-step worker failed; see rank receipt\\')\\nRuntimeError: cross-SP first-step worker failed; see rank receipt\\n')"
+}

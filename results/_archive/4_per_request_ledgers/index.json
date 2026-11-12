@@ -1,0 +1,577 @@
+{
+  "schema": "ditserve.compact_run_ledger_index.v1",
+  "entries": [
+    {
+      "trace": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation",
+      "job_slice": "d20261107-formal-v2-ablation-8gpu-5d9ee3f-r1-gamma2-abl",
+      "file": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation__d20261107-formal-v2-ablation-8gpu-5d9ee3f-r1-gamma2-abl.ledger.json.gz",
+      "requests_count": 600,
+      "compressed_bytes": 1100593,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation",
+      "job_slice": "d20261110-formal-v2-cb-g2-ablation-8gpu-1b54f37-r1-gamma2-abl",
+      "file": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation__d20261110-formal-v2-cb-g2-ablation-8gpu-1b54f37-r1-gamma2-abl.ledger.json.gz",
+      "requests_count": 700,
+      "compressed_bytes": 1613905,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation",
+      "job_slice": "d20261111-formal-v2-cb-abl-fix-8gpu-8c50c7a-r1-gamma2-abl-loo",
+      "file": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation__d20261111-formal-v2-cb-abl-fix-8gpu-8c50c7a-r1-gamma2-abl-loo.ledger.json.gz",
+      "requests_count": 0,
+      "compressed_bytes": 10212,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation",
+      "job_slice": "d20261111-formal-v2-cb-abl-fix-8gpu-8c50c7a-r1-gamma2-abl",
+      "file": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation__d20261111-formal-v2-cb-abl-fix-8gpu-8c50c7a-r1-gamma2-abl.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 276503,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation",
+      "job_slice": "d20261111-formal-v2-cb-abl-loo-8gpu-8c50c7a-r1-gamma2-abl-loo",
+      "file": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation__d20261111-formal-v2-cb-abl-loo-8gpu-8c50c7a-r1-gamma2-abl-loo.ledger.json.gz",
+      "requests_count": 300,
+      "compressed_bytes": 805324,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p1-slo1p5-cv2p0-sweep",
+      "job_slice": "d20261108-formal-v2-modality-mix-8gpu-43f1ca3-r1-g2-mix-0p1",
+      "status": "skipped_permission_denied"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p1-slo1p5-cv2p0-sweep",
+      "job_slice": "d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-mix-0p1",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p1-slo1p5-cv2p0-sweep__d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-mix-0p1.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 414397,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p3-slo1p5-cv2p0-sweep",
+      "job_slice": "d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-mix-0p3",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p3-slo1p5-cv2p0-sweep__d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-mix-0p3.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 707155,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p0-cv2p0-ditserve",
+      "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-g2-slo-1p0",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p0-cv2p0-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-g2-slo-1p0.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 278004,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p0-cv2p0-sweep",
+      "job_slice": "d20261107-formal-v2-slo-scale-8gpu-7a77c45-r1-g2-slo-1p0",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p0-cv2p0-sweep__d20261107-formal-v2-slo-scale-8gpu-7a77c45-r1-g2-slo-1p0.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 898430,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p25-cv2p0-ditserve",
+      "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-g2-slo-1p25",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p25-cv2p0-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-g2-slo-1p25.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 276127,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p25-cv2p0-sweep",
+      "job_slice": "d20261107-formal-v2-slo-scale-8gpu-7a77c45-r1-g2-slo-1p25",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p25-cv2p0-sweep__d20261107-formal-v2-slo-scale-8gpu-7a77c45-r1-g2-slo-1p25.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 903187,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p5-cv2p0-ditserve",
+      "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-g2-slo-1p5",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p5-cv2p0-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-g2-slo-1p5.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 274553,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p5-cv2p0-ditserve",
+      "job_slice": "d20261111-formal-v2-cb-abl-fix-8gpu-8c50c7a-r1-g2-slo-1p5",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p5-cv2p0-ditserve__d20261111-formal-v2-cb-abl-fix-8gpu-8c50c7a-r1-g2-slo-1p5.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 275864,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p5-cv2p0-sweep",
+      "job_slice": "d20261107-formal-v2-slo-scale-8gpu-7a77c45-r1-g2-slo-1p5",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p5-cv2p0-sweep__d20261107-formal-v2-slo-scale-8gpu-7a77c45-r1-g2-slo-1p5.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 902684,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p75-cv2p0-ditserve",
+      "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-g2-slo-1p75",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p75-cv2p0-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-g2-slo-1p75.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 272532,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p75-cv2p0-sweep",
+      "job_slice": "d20261107-formal-v2-slo-scale-8gpu-7a77c45-r1-g2-slo-1p75",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p75-cv2p0-sweep__d20261107-formal-v2-slo-scale-8gpu-7a77c45-r1-g2-slo-1p75.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 903691,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo2p0-cv2p0-ditserve",
+      "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-g2-slo-2p0",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo2p0-cv2p0-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-g2-slo-2p0.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 271810,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo2p0-cv2p0-sweep",
+      "job_slice": "d20261107-formal-v2-slo-scale-8gpu-7a77c45-r1-g2-slo-2p0",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo2p0-cv2p0-sweep__d20261107-formal-v2-slo-scale-8gpu-7a77c45-r1-g2-slo-2p0.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 903571,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p7-slo1p5-cv2p0-sweep",
+      "job_slice": "d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-mix-0p7",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p7-slo1p5-cv2p0-sweep__d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-mix-0p7.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 1258370,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p9-slo1p5-cv2p0-sweep",
+      "job_slice": "d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-mix-0p9",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p9-slo1p5-cv2p0-sweep__d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-mix-0p9.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 1526860,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r16rpm-v0p5-slo1p5-cv2p0-sweep",
+      "job_slice": "d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-rate-16",
+      "file": "formal-wan22-test-gamma-s301-r16rpm-v0p5-slo1p5-cv2p0-sweep__d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-rate-16.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 988204,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r20rpm-v0p5-slo1p5-cv2p0-sweep",
+      "job_slice": "d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-rate-20",
+      "file": "formal-wan22-test-gamma-s301-r20rpm-v0p5-slo1p5-cv2p0-sweep__d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-rate-20.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 989665,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r24rpm-v0p5-slo1p5-cv2p0-g16gpu-scalability",
+      "job_slice": "d20261110-formal-v2-scale-n0-8gpu-ae4ba3d-r3-g2-gpu-16",
+      "file": "formal-wan22-test-gamma-s301-r24rpm-v0p5-slo1p5-cv2p0-g16gpu-scalability__d20261110-formal-v2-scale-n0-8gpu-ae4ba3d-r3-g2-gpu-16.ledger.json.gz",
+      "requests_count": 600,
+      "compressed_bytes": 1246631,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r24rpm-v0p5-slo1p5-cv2p0-sweep",
+      "job_slice": "d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-rate-24",
+      "file": "formal-wan22-test-gamma-s301-r24rpm-v0p5-slo1p5-cv2p0-sweep__d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-rate-24.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 991317,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r28rpm-v0p5-slo1p5-cv2p0-sweep",
+      "job_slice": "d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-rate-28",
+      "file": "formal-wan22-test-gamma-s301-r28rpm-v0p5-slo1p5-cv2p0-sweep__d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-rate-28.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 991969,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r32rpm-v0p5-slo1p5-cv2p0-sweep",
+      "job_slice": "d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-rate-32",
+      "file": "formal-wan22-test-gamma-s301-r32rpm-v0p5-slo1p5-cv2p0-sweep__d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-rate-32.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 992479,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r36rpm-v0p5-slo1p5-cv2p0-sweep",
+      "job_slice": "d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-rate-36",
+      "file": "formal-wan22-test-gamma-s301-r36rpm-v0p5-slo1p5-cv2p0-sweep__d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-rate-36.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 992458,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r3rpm-v0p5-slo1p5-cv2p0-g2gpu-scalability",
+      "job_slice": "d20261110-formal-v2-scale-n0-8gpu-ae4ba3d-r3-g2-gpu-2",
+      "file": "formal-wan22-test-gamma-s301-r3rpm-v0p5-slo1p5-cv2p0-g2gpu-scalability__d20261110-formal-v2-scale-n0-8gpu-ae4ba3d-r3-g2-gpu-2.ledger.json.gz",
+      "requests_count": 72,
+      "compressed_bytes": 155827,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r6rpm-v0p5-slo1p5-cv2p0-g4gpu-scalability",
+      "job_slice": "d20261110-formal-v2-scale-g4-8gpu-ae4ba3d-r1-g2-gpu-4",
+      "file": "formal-wan22-test-gamma-s301-r6rpm-v0p5-slo1p5-cv2p0-g4gpu-scalability__d20261110-formal-v2-scale-g4-8gpu-ae4ba3d-r1-g2-gpu-4.ledger.json.gz",
+      "requests_count": 150,
+      "compressed_bytes": 317002,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r8rpm-v0p5-slo1p5-cv2p0-sweep",
+      "job_slice": "d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-rate-8",
+      "file": "formal-wan22-test-gamma-s301-r8rpm-v0p5-slo1p5-cv2p0-sweep__d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-rate-8.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 979797,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-l1p75-v0p5-slo1p5-ablation",
+      "job_slice": "d20261107-formal-v2-ablation-8gpu-5d9ee3f-r1-anchor-abl",
+      "file": "formal-wan22-test-poisson-s301-l1p75-v0p5-slo1p5-ablation__d20261107-formal-v2-ablation-8gpu-5d9ee3f-r1-anchor-abl.ledger.json.gz",
+      "requests_count": 600,
+      "compressed_bytes": 1092449,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-l1p75-v0p5-slo1p5-ablation",
+      "job_slice": "d20261108-formal-v2-cb-ablation-8gpu-1b54f37-r1-anchor-abl",
+      "file": "formal-wan22-test-poisson-s301-l1p75-v0p5-slo1p5-ablation__d20261108-formal-v2-cb-ablation-8gpu-1b54f37-r1-anchor-abl.ledger.json.gz",
+      "requests_count": 700,
+      "compressed_bytes": 1622878,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-l1p75-v0p5-slo1p5-ablation",
+      "job_slice": "d20261111-formal-v2-cb-abl-fix-8gpu-8c50c7a-r1-anchor-abl",
+      "file": "formal-wan22-test-poisson-s301-l1p75-v0p5-slo1p5-ablation__d20261111-formal-v2-cb-abl-fix-8gpu-8c50c7a-r1-anchor-abl.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 279848,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p1-slo1p5-ditserve",
+      "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-mix-0p1",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p1-slo1p5-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-mix-0p1.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 207358,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p1-slo1p5-sweep",
+      "job_slice": "d20261108-formal-v2-modality-mix-8gpu-43f1ca3-r1-p-mix-0p1",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p1-slo1p5-sweep__d20261108-formal-v2-modality-mix-8gpu-43f1ca3-r1-p-mix-0p1.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 268734,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p3-slo1p5-ditserve",
+      "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-mix-0p3",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p3-slo1p5-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-mix-0p3.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 243570,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p3-slo1p5-sweep",
+      "job_slice": "d20261108-formal-v2-modality-mix-8gpu-43f1ca3-r1-p-mix-0p3",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p3-slo1p5-sweep__d20261108-formal-v2-modality-mix-8gpu-43f1ca3-r1-p-mix-0p3.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 590313,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p0-ditserve",
+      "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-slo-1p0",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p0-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-slo-1p0.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 280096,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p0-sweep",
+      "job_slice": "d20261107-formal-v2-slo-scale-8gpu-7a77c45-r1-p-slo-1p0",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p0-sweep__d20261107-formal-v2-slo-scale-8gpu-7a77c45-r1-p-slo-1p0.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 898037,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p25-ditserve",
+      "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-slo-1p25",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p25-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-slo-1p25.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 278755,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p25-sweep",
+      "job_slice": "d20261107-formal-v2-slo-scale-8gpu-7a77c45-r1-p-slo-1p25",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p25-sweep__d20261107-formal-v2-slo-scale-8gpu-7a77c45-r1-p-slo-1p25.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 902056,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p5-ditserve",
+      "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-12",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p5-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-12.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 279067,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p5-sweep",
+      "job_slice": "d20261107-formal-v2-rate-rpm-p1-5d9ee3f-r1-rate-12",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p5-sweep__d20261107-formal-v2-rate-rpm-p1-5d9ee3f-r1-rate-12.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 902671,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p75-ditserve",
+      "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-slo-1p75",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p75-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-slo-1p75.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 277640,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p75-sweep",
+      "job_slice": "d20261107-formal-v2-slo-scale-8gpu-7a77c45-r1-p-slo-1p75",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p75-sweep__d20261107-formal-v2-slo-scale-8gpu-7a77c45-r1-p-slo-1p75.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 903276,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo2p0-ditserve",
+      "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-slo-2p0",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo2p0-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-slo-2p0.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 276678,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo2p0-sweep",
+      "job_slice": "d20261107-formal-v2-slo-scale-8gpu-7a77c45-r1-p-slo-2p0",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo2p0-sweep__d20261107-formal-v2-slo-scale-8gpu-7a77c45-r1-p-slo-2p0.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 901905,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p7-slo1p5-ditserve",
+      "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-mix-0p7",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p7-slo1p5-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-mix-0p7.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 308357,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p7-slo1p5-sweep",
+      "job_slice": "d20261108-formal-v2-modality-mix-8gpu-43f1ca3-r1-p-mix-0p7",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p7-slo1p5-sweep__d20261108-formal-v2-modality-mix-8gpu-43f1ca3-r1-p-mix-0p7.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 1209796,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p9-slo1p5-ditserve",
+      "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-mix-0p9",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p9-slo1p5-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-mix-0p9.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 334127,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p9-slo1p5-sweep",
+      "job_slice": "d20261108-formal-v2-modality-mix-8gpu-43f1ca3-r1-p-mix-0p9",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p9-slo1p5-sweep__d20261108-formal-v2-modality-mix-8gpu-43f1ca3-r1-p-mix-0p9.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 1508901,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r15rpm-v0p5-slo1p5-sweep",
+      "job_slice": "d20261107-formal-v2-rate-rpm-p2-ff5b7cd-r1-rate-15",
+      "status": "skipped_permission_denied"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r16rpm-v0p5-slo1p5-ditserve",
+      "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-16",
+      "file": "formal-wan22-test-poisson-s301-r16rpm-v0p5-slo1p5-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-16.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 279901,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r16rpm-v0p5-slo1p5-sweep",
+      "job_slice": "d20261107-formal-v2-rate-rpm-p1-5d9ee3f-r1-rate-16",
+      "file": "formal-wan22-test-poisson-s301-r16rpm-v0p5-slo1p5-sweep__d20261107-formal-v2-rate-rpm-p1-5d9ee3f-r1-rate-16.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 905735,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r20rpm-v0p5-slo1p5-ditserve",
+      "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-20",
+      "file": "formal-wan22-test-poisson-s301-r20rpm-v0p5-slo1p5-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-20.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 280455,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r20rpm-v0p5-slo1p5-sweep",
+      "job_slice": "d20261107-formal-v2-rate-rpm-p1-5d9ee3f-r1-rate-20",
+      "file": "formal-wan22-test-poisson-s301-r20rpm-v0p5-slo1p5-sweep__d20261107-formal-v2-rate-rpm-p1-5d9ee3f-r1-rate-20.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 906536,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r24rpm-v0p5-slo1p5-ditserve",
+      "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-24",
+      "file": "formal-wan22-test-poisson-s301-r24rpm-v0p5-slo1p5-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-24.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 281438,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r24rpm-v0p5-slo1p5-g16gpu-scalability",
+      "job_slice": "d20261110-formal-v2-scale-n0-8gpu-0ef480f-r1-p-gpu-16",
+      "file": "formal-wan22-test-poisson-s301-r24rpm-v0p5-slo1p5-g16gpu-scalability__d20261110-formal-v2-scale-n0-8gpu-0ef480f-r1-p-gpu-16.ledger.json.gz",
+      "requests_count": 0,
+      "compressed_bytes": 11268,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r24rpm-v0p5-slo1p5-g16gpu-scalability",
+      "job_slice": "d20261110-formal-v2-scale-n0-8gpu-ae4ba3d-r3-p-gpu-16",
+      "file": "formal-wan22-test-poisson-s301-r24rpm-v0p5-slo1p5-g16gpu-scalability__d20261110-formal-v2-scale-n0-8gpu-ae4ba3d-r3-p-gpu-16.ledger.json.gz",
+      "requests_count": 600,
+      "compressed_bytes": 1259769,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r24rpm-v0p5-slo1p5-sweep",
+      "job_slice": "d20261107-formal-v2-rate-rpm-p2-5d9ee3f-r1-rate-24",
+      "file": "formal-wan22-test-poisson-s301-r24rpm-v0p5-slo1p5-sweep__d20261107-formal-v2-rate-rpm-p2-5d9ee3f-r1-rate-24.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 906729,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r28rpm-v0p5-slo1p5-ditserve",
+      "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-28",
+      "file": "formal-wan22-test-poisson-s301-r28rpm-v0p5-slo1p5-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-28.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 281625,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r28rpm-v0p5-slo1p5-sweep",
+      "job_slice": "d20261107-formal-v2-rate-rpm-p2-5d9ee3f-r1-rate-28",
+      "file": "formal-wan22-test-poisson-s301-r28rpm-v0p5-slo1p5-sweep__d20261107-formal-v2-rate-rpm-p2-5d9ee3f-r1-rate-28.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 908536,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r32rpm-v0p5-slo1p5-ditserve",
+      "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-32",
+      "file": "formal-wan22-test-poisson-s301-r32rpm-v0p5-slo1p5-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-32.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 282393,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r32rpm-v0p5-slo1p5-sweep",
+      "job_slice": "d20261107-formal-v2-rate-rpm-p2-5d9ee3f-r1-rate-32",
+      "file": "formal-wan22-test-poisson-s301-r32rpm-v0p5-slo1p5-sweep__d20261107-formal-v2-rate-rpm-p2-5d9ee3f-r1-rate-32.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 909139,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r36rpm-v0p5-slo1p5-ditserve",
+      "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-36",
+      "file": "formal-wan22-test-poisson-s301-r36rpm-v0p5-slo1p5-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-36.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 282586,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r36rpm-v0p5-slo1p5-sweep",
+      "job_slice": "d20261107-formal-v2-rate-rpm-p2-5d9ee3f-r1-rate-36",
+      "file": "formal-wan22-test-poisson-s301-r36rpm-v0p5-slo1p5-sweep__d20261107-formal-v2-rate-rpm-p2-5d9ee3f-r1-rate-36.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 908770,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r3rpm-v0p5-slo1p5-g2gpu-scalability",
+      "job_slice": "d20261110-formal-v2-scale-n0-8gpu-ae4ba3d-r3-p-gpu-2",
+      "file": "formal-wan22-test-poisson-s301-r3rpm-v0p5-slo1p5-g2gpu-scalability__d20261110-formal-v2-scale-n0-8gpu-ae4ba3d-r3-p-gpu-2.ledger.json.gz",
+      "requests_count": 72,
+      "compressed_bytes": 157753,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r6rpm-v0p5-slo1p5-g4gpu-scalability",
+      "job_slice": "d20261110-formal-v2-scale-g4-8gpu-ae4ba3d-r1-p-gpu-4",
+      "file": "formal-wan22-test-poisson-s301-r6rpm-v0p5-slo1p5-g4gpu-scalability__d20261110-formal-v2-scale-g4-8gpu-ae4ba3d-r1-p-gpu-4.ledger.json.gz",
+      "requests_count": 150,
+      "compressed_bytes": 319277,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r6rpm-v0p5-slo1p5-g4gpu-scalability",
+      "job_slice": "d20261110-formal-v2-scale-n1-8gpu-0ef480f-r1-p-gpu-4",
+      "status": "skipped_permission_denied"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r7rpm-v0p5-slo1p5-sweep",
+      "job_slice": "d20261107-formal-v2-rate-rpm-p1-ff5b7cd-r1-rate-07",
+      "status": "skipped_permission_denied"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r8rpm-v0p5-slo1p5-ditserve",
+      "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-8",
+      "file": "formal-wan22-test-poisson-s301-r8rpm-v0p5-slo1p5-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-8.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 275678,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r8rpm-v0p5-slo1p5-sweep",
+      "job_slice": "d20261107-formal-v2-rate-rpm-p1-5d9ee3f-r1-rate-08",
+      "file": "formal-wan22-test-poisson-s301-r8rpm-v0p5-slo1p5-sweep__d20261107-formal-v2-rate-rpm-p1-5d9ee3f-r1-rate-08.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 896620,
+      "status": "ok"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+ "commit": "afa324f97395247f330f2c8e8b8e92be17060f4b",
+ "subject": "Strengthen native serving evidence and CFG approximation controls",
+ "built_utc": "2026-11-02T13:03:20+00:00",
+ "builder_image": "local-cmake-install",
+ "runtime_image": "192.168.1.114:30500/jjjkairos/ditserve:xdit-dev-016e1ca-slim",
+ "core_sha256": "1e9b86f8936387c9577b1fc9a582bd079b6b4da6ffa0cac7fa6add97159556dc",
+ "runtime_smoke": "pending_cluster",
+ "local_checks": [
+  "cmake",
+  "ctest",
+  "installed_doctor"
+ ],
+ "files": 272,
+ "bytes": 4280677
+}

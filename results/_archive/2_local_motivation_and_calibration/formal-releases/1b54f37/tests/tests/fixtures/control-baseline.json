@@ -1,0 +1,2702 @@
+{
+  "schema": "ditserve.control-baseline.v1",
+  "provenance": {
+    "snapshot": ".cache/rewrite-baseline/20261016T064045Z",
+    "archive_sha256": "c2bafafcd408dddebb8f5928ac010ed6a5ac5a7ca3776b32a9fec77d5a63e721",
+    "sources": {
+      "python/ditserve/scheduling/policy.py": "ddd6ddd179ab4b6670269161c6768d0fc7ca6fe09fb77e1a8e003d12e6a9b262",
+      "python/ditserve/scheduling/next_policy.py": "69cbdc18bd24f327d66a574eca09f255bc6c00b153ab11a21fa27d3bd0e593dd",
+      "python/ditserve/sessions/policy.py": "15546d5dcfad03de2de63b1c88ece55d65038a8995720714e2330a800dbcfc72"
+    },
+    "method": "Expected decisions and rejections executed directly from frozen Python modules; deterministic behavioral cases; session oracle specifies request_id only."
+  },
+  "cases": [
+    {
+      "name": "late-and-feasible-edf_b1",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "okay",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "late",
+          "kind": "image",
+          "deadline_ms": 1,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 20,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "edf_b1",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected": {
+        "request_id": "late",
+        "quantum": 1,
+        "reason": "edf",
+        "predicted_deadline_conflict": false,
+        "slack_ms": -19.0
+      }
+    },
+    {
+      "name": "no-ready-edf_b1",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "future",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 1,
+          "service_ms": 100.0,
+          "ready_since_ms": 1,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "unready",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": false,
+          "status": "pending"
+        },
+        {
+          "request_id": "done",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "completed"
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "edf_b1",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected": {
+        "request_id": null,
+        "quantum": null,
+        "reason": "no_ready_request",
+        "predicted_deadline_conflict": false,
+        "slack_ms": null
+      }
+    },
+    {
+      "name": "late-and-feasible-edf_b1_async",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "okay",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "late",
+          "kind": "image",
+          "deadline_ms": 1,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 20,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "edf_b1_async",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected": {
+        "request_id": "late",
+        "quantum": 1,
+        "reason": "edf",
+        "predicted_deadline_conflict": false,
+        "slack_ms": -19.0
+      }
+    },
+    {
+      "name": "no-ready-edf_b1_async",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "future",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 1,
+          "service_ms": 100.0,
+          "ready_since_ms": 1,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "unready",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": false,
+          "status": "pending"
+        },
+        {
+          "request_id": "done",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "completed"
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "edf_b1_async",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected": {
+        "request_id": null,
+        "quantum": null,
+        "reason": "no_ready_request",
+        "predicted_deadline_conflict": false,
+        "slack_ms": null
+      }
+    },
+    {
+      "name": "late-and-feasible-edf_b2",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "okay",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "late",
+          "kind": "image",
+          "deadline_ms": 1,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 20,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "edf_b2",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected": {
+        "request_id": "late",
+        "quantum": 2,
+        "reason": "edf",
+        "predicted_deadline_conflict": false,
+        "slack_ms": -19.0
+      }
+    },
+    {
+      "name": "no-ready-edf_b2",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "future",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 1,
+          "service_ms": 100.0,
+          "ready_since_ms": 1,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "unready",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": false,
+          "status": "pending"
+        },
+        {
+          "request_id": "done",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "completed"
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "edf_b2",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected": {
+        "request_id": null,
+        "quantum": null,
+        "reason": "no_ready_request",
+        "predicted_deadline_conflict": false,
+        "slack_ms": null
+      }
+    },
+    {
+      "name": "late-and-feasible-edf_b4",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "okay",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "late",
+          "kind": "image",
+          "deadline_ms": 1,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 20,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "edf_b4",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected": {
+        "request_id": "late",
+        "quantum": 4,
+        "reason": "edf",
+        "predicted_deadline_conflict": false,
+        "slack_ms": -19.0
+      }
+    },
+    {
+      "name": "no-ready-edf_b4",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "future",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 1,
+          "service_ms": 100.0,
+          "ready_since_ms": 1,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "unready",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": false,
+          "status": "pending"
+        },
+        {
+          "request_id": "done",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "completed"
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "edf_b4",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected": {
+        "request_id": null,
+        "quantum": null,
+        "reason": "no_ready_request",
+        "predicted_deadline_conflict": false,
+        "slack_ms": null
+      }
+    },
+    {
+      "name": "late-and-feasible-edf_step",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "okay",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "late",
+          "kind": "image",
+          "deadline_ms": 1,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 20,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "edf_step",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected": {
+        "request_id": "late",
+        "quantum": "step",
+        "reason": "edf",
+        "predicted_deadline_conflict": false,
+        "slack_ms": -19.0
+      }
+    },
+    {
+      "name": "no-ready-edf_step",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "future",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 1,
+          "service_ms": 100.0,
+          "ready_since_ms": 1,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "unready",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": false,
+          "status": "pending"
+        },
+        {
+          "request_id": "done",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "completed"
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "edf_step",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected": {
+        "request_id": null,
+        "quantum": null,
+        "reason": "no_ready_request",
+        "predicted_deadline_conflict": false,
+        "slack_ms": null
+      }
+    },
+    {
+      "name": "late-and-feasible-guarded_b4",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "okay",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "late",
+          "kind": "image",
+          "deadline_ms": 1,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 20,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "guarded_b4",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected": {
+        "request_id": "okay",
+        "quantum": 4,
+        "reason": "feasible_edf",
+        "predicted_deadline_conflict": false,
+        "slack_ms": 90.0
+      }
+    },
+    {
+      "name": "no-ready-guarded_b4",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "future",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 1,
+          "service_ms": 100.0,
+          "ready_since_ms": 1,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "unready",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": false,
+          "status": "pending"
+        },
+        {
+          "request_id": "done",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "completed"
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "guarded_b4",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected": {
+        "request_id": null,
+        "quantum": null,
+        "reason": "no_ready_request",
+        "predicted_deadline_conflict": false,
+        "slack_ms": null
+      }
+    },
+    {
+      "name": "late-and-feasible-guarded_adaptive",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "okay",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "late",
+          "kind": "image",
+          "deadline_ms": 1,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 20,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "guarded_adaptive",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected": {
+        "request_id": "okay",
+        "quantum": 1,
+        "reason": "feasible_edf",
+        "predicted_deadline_conflict": false,
+        "slack_ms": 90.0
+      }
+    },
+    {
+      "name": "no-ready-guarded_adaptive",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "future",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 1,
+          "service_ms": 100.0,
+          "ready_since_ms": 1,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "unready",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": false,
+          "status": "pending"
+        },
+        {
+          "request_id": "done",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "completed"
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "guarded_adaptive",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected": {
+        "request_id": null,
+        "quantum": null,
+        "reason": "no_ready_request",
+        "predicted_deadline_conflict": false,
+        "slack_ms": null
+      }
+    },
+    {
+      "name": "late-and-feasible-feasible_b4",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "okay",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "late",
+          "kind": "image",
+          "deadline_ms": 1,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 20,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "feasible_b4",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected": {
+        "request_id": "okay",
+        "quantum": 4,
+        "reason": "feasible_edf",
+        "predicted_deadline_conflict": false,
+        "slack_ms": 90.0
+      }
+    },
+    {
+      "name": "no-ready-feasible_b4",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "future",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 1,
+          "service_ms": 100.0,
+          "ready_since_ms": 1,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "unready",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": false,
+          "status": "pending"
+        },
+        {
+          "request_id": "done",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "completed"
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "feasible_b4",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected": {
+        "request_id": null,
+        "quantum": null,
+        "reason": "no_ready_request",
+        "predicted_deadline_conflict": false,
+        "slack_ms": null
+      }
+    },
+    {
+      "name": "all-late-stable-tie",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "b",
+          "kind": "image",
+          "deadline_ms": 1,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "a",
+          "kind": "image",
+          "deadline_ms": 1,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0,
+      "policy": "guarded_b4",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected": {
+        "request_id": "a",
+        "quantum": 4,
+        "reason": "edf_all_predicted_late",
+        "predicted_deadline_conflict": false,
+        "slack_ms": -9.0
+      }
+    },
+    {
+      "name": "waiting-guard",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "fresh",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 20,
+          "service_ms": 100.0,
+          "ready_since_ms": 20,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "waiting",
+          "kind": "image",
+          "deadline_ms": 5,
+          "arrival_ms": 0.0,
+          "service_ms": 10,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 25,
+      "policy": "guarded_b4",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected": {
+        "request_id": "waiting",
+        "quantum": 4,
+        "reason": "waiting_guard",
+        "predicted_deadline_conflict": false,
+        "slack_ms": -30.0
+      }
+    },
+    {
+      "name": "waiting-reset-after-service",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "fresh",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 20,
+          "service_ms": 100.0,
+          "ready_since_ms": 20,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "waiting",
+          "kind": "image",
+          "deadline_ms": 5,
+          "arrival_ms": 0.0,
+          "service_ms": 10,
+          "ready_since_ms": 25,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 25,
+      "policy": "guarded_b4",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected": {
+        "request_id": "fresh",
+        "quantum": 4,
+        "reason": "feasible_edf",
+        "predicted_deadline_conflict": false,
+        "slack_ms": 65.0
+      }
+    },
+    {
+      "name": "waiting-trigger-order",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "long",
+          "kind": "video",
+          "deadline_ms": 200,
+          "arrival_ms": 0.0,
+          "service_ms": 40,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "denoise",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "short",
+          "kind": "image",
+          "deadline_ms": 300,
+          "arrival_ms": 0.0,
+          "service_ms": 10,
+          "ready_since_ms": 50,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 100,
+      "policy": "guarded_b4",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected": {
+        "request_id": "short",
+        "quantum": 4,
+        "reason": "waiting_guard",
+        "predicted_deadline_conflict": false,
+        "slack_ms": 190.0
+      }
+    },
+    {
+      "name": "waiting-conflict-fallback",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "waiting",
+          "kind": "image",
+          "deadline_ms": 200,
+          "arrival_ms": 0.0,
+          "service_ms": 10,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 20,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "urgent",
+          "kind": "image",
+          "deadline_ms": 31,
+          "arrival_ms": 20,
+          "service_ms": 100.0,
+          "ready_since_ms": 20,
+          "started": false,
+          "remaining_ms": 5,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 25,
+      "policy": "guarded_b4",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected": {
+        "request_id": "urgent",
+        "quantum": 1,
+        "reason": "deadline_conflict_edf_min_quantum",
+        "predicted_deadline_conflict": true,
+        "slack_ms": 1.0
+      }
+    },
+    {
+      "name": "resume-video-guard",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "image",
+          "kind": "image",
+          "deadline_ms": 50,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 10,
+            "2": 10.0,
+            "4": 10,
+            "8": 10,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "video",
+          "kind": "video",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": true,
+          "remaining_ms": 95,
+          "action": "denoise",
+          "action_ms_by_quantum": {
+            "1": 2,
+            "2": 3.0,
+            "4": 4,
+            "8": 8,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0,
+      "policy": "guarded_b4",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected": {
+        "request_id": "video",
+        "quantum": 4,
+        "reason": "video_resume_guard",
+        "predicted_deadline_conflict": false,
+        "slack_ms": 5.0
+      }
+    },
+    {
+      "name": "resume-cannot-sacrifice-candidate",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "image",
+          "kind": "image",
+          "deadline_ms": 50,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 48,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 10,
+            "2": 10.0,
+            "4": 10,
+            "8": 10,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "video",
+          "kind": "video",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": true,
+          "remaining_ms": 95,
+          "action": "denoise",
+          "action_ms_by_quantum": {
+            "1": 2,
+            "2": 3.0,
+            "4": 4,
+            "8": 8,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0,
+      "policy": "guarded_b4",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected": {
+        "request_id": "image",
+        "quantum": 1,
+        "reason": "deadline_conflict_edf_min_quantum",
+        "predicted_deadline_conflict": true,
+        "slack_ms": 2.0
+      }
+    },
+    {
+      "name": "resume-cannot-sacrifice-third",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "image",
+          "kind": "image",
+          "deadline_ms": 50,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 10,
+            "2": 10.0,
+            "4": 10,
+            "8": 10,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "video",
+          "kind": "video",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": true,
+          "remaining_ms": 95,
+          "action": "denoise",
+          "action_ms_by_quantum": {
+            "1": 2,
+            "2": 3.0,
+            "4": 4,
+            "8": 8,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "third",
+          "kind": "image",
+          "deadline_ms": 110,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 107,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 1,
+            "2": 1.0,
+            "4": 1,
+            "8": 1,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0,
+      "policy": "guarded_b4",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected": {
+        "request_id": "image",
+        "quantum": 1,
+        "reason": "deadline_conflict_edf_min_quantum",
+        "predicted_deadline_conflict": true,
+        "slack_ms": 40.0
+      }
+    },
+    {
+      "name": "video-must-have-started",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "image",
+          "kind": "image",
+          "deadline_ms": 50,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 10,
+            "2": 10.0,
+            "4": 10,
+            "8": 10,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "video",
+          "kind": "video",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 95,
+          "action": "denoise",
+          "action_ms_by_quantum": {
+            "1": 2,
+            "2": 3.0,
+            "4": 4,
+            "8": 8,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0,
+      "policy": "guarded_b4",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected": {
+        "request_id": "image",
+        "quantum": 1,
+        "reason": "deadline_conflict_edf_min_quantum",
+        "predicted_deadline_conflict": true,
+        "slack_ms": 40.0
+      }
+    },
+    {
+      "name": "feasible-ablation-no-video-guard",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "image",
+          "kind": "image",
+          "deadline_ms": 50,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 10,
+            "2": 10.0,
+            "4": 10,
+            "8": 10,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "video",
+          "kind": "video",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": true,
+          "remaining_ms": 95,
+          "action": "denoise",
+          "action_ms_by_quantum": {
+            "1": 2,
+            "2": 3.0,
+            "4": 4,
+            "8": 8,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0,
+      "policy": "feasible_b4",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected": {
+        "request_id": "image",
+        "quantum": 1,
+        "reason": "deadline_conflict_edf_min_quantum",
+        "predicted_deadline_conflict": true,
+        "slack_ms": 40.0
+      }
+    },
+    {
+      "name": "adaptive-eight",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "video",
+          "kind": "video",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "denoise",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0,
+      "policy": "guarded_adaptive",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected": {
+        "request_id": "video",
+        "quantum": 8,
+        "reason": "feasible_edf",
+        "predicted_deadline_conflict": false,
+        "slack_ms": 90.0
+      }
+    },
+    {
+      "name": "adaptive-four",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "video",
+          "kind": "video",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "denoise",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "peer",
+          "kind": "image",
+          "deadline_ms": 120,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 110,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0,
+      "policy": "guarded_adaptive",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected": {
+        "request_id": "video",
+        "quantum": 4,
+        "reason": "feasible_edf",
+        "predicted_deadline_conflict": false,
+        "slack_ms": 90.0
+      }
+    },
+    {
+      "name": "adaptive-shortest-conflict",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "video",
+          "kind": "video",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "denoise",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "peer",
+          "kind": "image",
+          "deadline_ms": 120,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 119,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0,
+      "policy": "guarded_adaptive",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected": {
+        "request_id": "video",
+        "quantum": 1,
+        "reason": "deadline_conflict_edf_min_quantum",
+        "predicted_deadline_conflict": true,
+        "slack_ms": 90.0
+      }
+    },
+    {
+      "name": "atomic-decode-conflict",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "video",
+          "kind": "video",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "decode",
+          "action_ms_by_quantum": {
+            "1": 50,
+            "2": 50.0,
+            "4": 50,
+            "8": 50,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0,
+      "policy": "guarded_adaptive",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected": {
+        "request_id": "video",
+        "quantum": 1,
+        "reason": "deadline_conflict_edf_min_quantum",
+        "predicted_deadline_conflict": true,
+        "slack_ms": 90.0
+      }
+    },
+    {
+      "name": "unknown-policy",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [],
+      "now_ms": 0.0,
+      "policy": "unknown",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expect_error": true,
+      "error_type": "ValueError",
+      "error_message": "unknown scheduling arm: unknown"
+    },
+    {
+      "name": "duplicate-ready-id",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "same",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "same",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "guarded_b4",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expect_error": true,
+      "error_type": "ValueError",
+      "error_message": "duplicate ready request: same"
+    },
+    {
+      "name": "invalid-ready-interval",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "bad",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 1,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "guarded_b4",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expect_error": true,
+      "error_type": "ValueError",
+      "error_message": "ready_since_ms must be between arrival and now"
+    },
+    {
+      "name": "zero-service",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "bad",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "guarded_b4",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expect_error": true,
+      "error_type": "ValueError",
+      "error_message": "invalid request kind or independent service cost"
+    },
+    {
+      "name": "unknown-action",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "bad",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "invented",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "guarded_b4",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expect_error": true,
+      "error_type": "ValueError",
+      "error_message": "unknown request action"
+    },
+    {
+      "name": "missing-remaining-cost",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "bad",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "guarded_b4",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expect_error": true,
+      "error_type": "KeyError",
+      "error_message": "'remaining_ms'"
+    },
+    {
+      "name": "boolean-action-cost",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "bad",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "2": 5.0,
+            "4": true,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "guarded_b4",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expect_error": true,
+      "error_type": "ValueError",
+      "error_message": "action cost must be a finite number"
+    },
+    {
+      "name": "missing-two-block-cost",
+      "oracle": "scheduling.next_policy.select_dispatch",
+      "rows": [
+        {
+          "request_id": "bad",
+          "kind": "image",
+          "deadline_ms": 100.0,
+          "arrival_ms": 0.0,
+          "service_ms": 100.0,
+          "ready_since_ms": 0.0,
+          "started": false,
+          "remaining_ms": 10.0,
+          "action": "image",
+          "action_ms_by_quantum": {
+            "1": 2.0,
+            "4": 8.0,
+            "8": 16.0,
+            "step": 60.0
+          },
+          "arrived": true,
+          "gpu_ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "edf_b2",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expect_error": true,
+      "error_type": "ValueError",
+      "error_message": "missing action cost for bad quantum 2"
+    },
+    {
+      "name": "distinct-ranks-session_serial",
+      "oracle": "sessions.policy.select",
+      "rows": [
+        {
+          "request_id": "a",
+          "release_ms": 0.0,
+          "deadline_ms": 80,
+          "stage_deadline_ms": 30,
+          "remaining_total_ms": 70,
+          "ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "b",
+          "release_ms": 0.0,
+          "deadline_ms": 60,
+          "stage_deadline_ms": 20,
+          "remaining_total_ms": 10,
+          "ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "session_serial",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected_request_id": "b"
+    },
+    {
+      "name": "active-round-session_serial",
+      "oracle": "sessions.policy.select",
+      "rows": [
+        {
+          "request_id": "active",
+          "release_ms": 0.0,
+          "deadline_ms": 100.0,
+          "stage_deadline_ms": 50.0,
+          "remaining_total_ms": 20.0,
+          "ready": true,
+          "status": "running"
+        },
+        {
+          "request_id": "urgent",
+          "release_ms": 0.0,
+          "deadline_ms": 2,
+          "stage_deadline_ms": 1,
+          "remaining_total_ms": 20.0,
+          "ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "session_serial",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "active",
+      "expected_request_id": "active"
+    },
+    {
+      "name": "overdue-stable-tie-session_serial",
+      "oracle": "sessions.policy.select",
+      "rows": [
+        {
+          "request_id": "b",
+          "release_ms": 0.0,
+          "deadline_ms": 100.0,
+          "stage_deadline_ms": 50.0,
+          "remaining_total_ms": 20.0,
+          "ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "a",
+          "release_ms": 0.0,
+          "deadline_ms": 100.0,
+          "stage_deadline_ms": 50.0,
+          "remaining_total_ms": 20.0,
+          "ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 1000,
+      "policy": "session_serial",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected_request_id": "a"
+    },
+    {
+      "name": "exclude-future-unready-session_serial",
+      "oracle": "sessions.policy.select",
+      "rows": [
+        {
+          "request_id": "valid",
+          "release_ms": 0.0,
+          "deadline_ms": 100.0,
+          "stage_deadline_ms": 50.0,
+          "remaining_total_ms": 20.0,
+          "ready": true,
+          "status": "pending"
+        },
+        {
+          "ready": true,
+          "status": "pending",
+          "release_ms": 999
+        },
+        {
+          "ready": false
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "session_serial",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected_request_id": "valid"
+    },
+    {
+      "name": "distinct-ranks-stage_edf",
+      "oracle": "sessions.policy.select",
+      "rows": [
+        {
+          "request_id": "a",
+          "release_ms": 0.0,
+          "deadline_ms": 80,
+          "stage_deadline_ms": 30,
+          "remaining_total_ms": 70,
+          "ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "b",
+          "release_ms": 0.0,
+          "deadline_ms": 60,
+          "stage_deadline_ms": 20,
+          "remaining_total_ms": 10,
+          "ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "stage_edf",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected_request_id": "b"
+    },
+    {
+      "name": "active-round-stage_edf",
+      "oracle": "sessions.policy.select",
+      "rows": [
+        {
+          "request_id": "active",
+          "release_ms": 0.0,
+          "deadline_ms": 100.0,
+          "stage_deadline_ms": 50.0,
+          "remaining_total_ms": 20.0,
+          "ready": true,
+          "status": "running"
+        },
+        {
+          "request_id": "urgent",
+          "release_ms": 0.0,
+          "deadline_ms": 2,
+          "stage_deadline_ms": 1,
+          "remaining_total_ms": 20.0,
+          "ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "stage_edf",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "active",
+      "expected_request_id": "urgent"
+    },
+    {
+      "name": "overdue-stable-tie-stage_edf",
+      "oracle": "sessions.policy.select",
+      "rows": [
+        {
+          "request_id": "b",
+          "release_ms": 0.0,
+          "deadline_ms": 100.0,
+          "stage_deadline_ms": 50.0,
+          "remaining_total_ms": 20.0,
+          "ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "a",
+          "release_ms": 0.0,
+          "deadline_ms": 100.0,
+          "stage_deadline_ms": 50.0,
+          "remaining_total_ms": 20.0,
+          "ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 1000,
+      "policy": "stage_edf",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected_request_id": "a"
+    },
+    {
+      "name": "exclude-future-unready-stage_edf",
+      "oracle": "sessions.policy.select",
+      "rows": [
+        {
+          "request_id": "valid",
+          "release_ms": 0.0,
+          "deadline_ms": 100.0,
+          "stage_deadline_ms": 50.0,
+          "remaining_total_ms": 20.0,
+          "ready": true,
+          "status": "pending"
+        },
+        {
+          "ready": true,
+          "status": "pending",
+          "release_ms": 999
+        },
+        {
+          "ready": false
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "stage_edf",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected_request_id": "valid"
+    },
+    {
+      "name": "distinct-ranks-session_slack",
+      "oracle": "sessions.policy.select",
+      "rows": [
+        {
+          "request_id": "a",
+          "release_ms": 0.0,
+          "deadline_ms": 80,
+          "stage_deadline_ms": 30,
+          "remaining_total_ms": 70,
+          "ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "b",
+          "release_ms": 0.0,
+          "deadline_ms": 60,
+          "stage_deadline_ms": 20,
+          "remaining_total_ms": 10,
+          "ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "session_slack",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected_request_id": "a"
+    },
+    {
+      "name": "active-round-session_slack",
+      "oracle": "sessions.policy.select",
+      "rows": [
+        {
+          "request_id": "active",
+          "release_ms": 0.0,
+          "deadline_ms": 100.0,
+          "stage_deadline_ms": 50.0,
+          "remaining_total_ms": 20.0,
+          "ready": true,
+          "status": "running"
+        },
+        {
+          "request_id": "urgent",
+          "release_ms": 0.0,
+          "deadline_ms": 2,
+          "stage_deadline_ms": 1,
+          "remaining_total_ms": 20.0,
+          "ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "session_slack",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "active",
+      "expected_request_id": "urgent"
+    },
+    {
+      "name": "overdue-stable-tie-session_slack",
+      "oracle": "sessions.policy.select",
+      "rows": [
+        {
+          "request_id": "b",
+          "release_ms": 0.0,
+          "deadline_ms": 100.0,
+          "stage_deadline_ms": 50.0,
+          "remaining_total_ms": 20.0,
+          "ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "a",
+          "release_ms": 0.0,
+          "deadline_ms": 100.0,
+          "stage_deadline_ms": 50.0,
+          "remaining_total_ms": 20.0,
+          "ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 1000,
+      "policy": "session_slack",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected_request_id": "a"
+    },
+    {
+      "name": "exclude-future-unready-session_slack",
+      "oracle": "sessions.policy.select",
+      "rows": [
+        {
+          "request_id": "valid",
+          "release_ms": 0.0,
+          "deadline_ms": 100.0,
+          "stage_deadline_ms": 50.0,
+          "remaining_total_ms": 20.0,
+          "ready": true,
+          "status": "pending"
+        },
+        {
+          "ready": true,
+          "status": "pending",
+          "release_ms": 999
+        },
+        {
+          "ready": false
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "session_slack",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expected_request_id": "valid"
+    },
+    {
+      "name": "session-duplicate",
+      "oracle": "sessions.policy.select",
+      "rows": [
+        {
+          "request_id": "same",
+          "release_ms": 0.0,
+          "deadline_ms": 100.0,
+          "stage_deadline_ms": 50.0,
+          "remaining_total_ms": 20.0,
+          "ready": true,
+          "status": "pending"
+        },
+        {
+          "request_id": "same",
+          "release_ms": 0.0,
+          "deadline_ms": 100.0,
+          "stage_deadline_ms": 50.0,
+          "remaining_total_ms": 20.0,
+          "ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "session_slack",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expect_error": true,
+      "error_type": "ValueError",
+      "error_message": "ready request IDs must be nonempty and unique"
+    },
+    {
+      "name": "session-missing-stage-deadline",
+      "oracle": "sessions.policy.select",
+      "rows": [
+        {
+          "request_id": "bad",
+          "release_ms": 0.0,
+          "deadline_ms": 100.0,
+          "remaining_total_ms": 20.0,
+          "ready": true,
+          "status": "pending"
+        }
+      ],
+      "now_ms": 0.0,
+      "policy": "stage_edf",
+      "costs": {
+        "image_deadline_ms": 40.0
+      },
+      "active": "",
+      "expect_error": true,
+      "error_type": "KeyError",
+      "error_message": "'stage_deadline_ms'"
+    }
+  ]
+}

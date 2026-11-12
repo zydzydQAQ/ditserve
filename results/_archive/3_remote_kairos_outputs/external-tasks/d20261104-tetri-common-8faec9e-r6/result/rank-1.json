@@ -1,0 +1,333 @@
+{
+  "actual_dp": 1,
+  "actual_sp": 2,
+  "chunk_ends": [
+    4,
+    6,
+    8,
+    10,
+    12,
+    14,
+    16,
+    18,
+    20,
+    22,
+    24,
+    26,
+    28
+  ],
+  "common_solver": {
+    "complete": true,
+    "new_scheduler_constructed": false,
+    "pipeline_scheduler_identity_restored": true,
+    "qualification_eligible": false,
+    "raw_step_attribute_restored": true,
+    "recipe": "normal_sp2_uses_original_scheduler_module; round_paths_unchanged",
+    "returned_calls": 28,
+    "runtime": {
+      "cfg_degree": 1,
+      "dp_degree": 1,
+      "patch_mode": false,
+      "pp_degree": 1,
+      "sp_degree": 2
+    },
+    "scheduler_state_restored": false,
+    "schema": "ditserve.sd35-common-solver.v1",
+    "selected_existing_module": true,
+    "solver": {
+      "configuration": {
+        "_class_name": "FlowMatchEulerDiscreteScheduler",
+        "_diffusers_version": "0.29.0.dev0",
+        "_use_default_values": [
+          "base_shift",
+          "time_shift_type",
+          "max_image_seq_len",
+          "max_shift",
+          "stochastic_sampling",
+          "use_dynamic_shifting",
+          "shift_terminal",
+          "use_karras_sigmas",
+          "invert_sigmas",
+          "use_beta_sigmas",
+          "base_image_seq_len",
+          "use_exponential_sigmas"
+        ],
+        "base_image_seq_len": 256,
+        "base_shift": 0.5,
+        "invert_sigmas": false,
+        "max_image_seq_len": 4096,
+        "max_shift": 1.15,
+        "num_train_timesteps": 1000,
+        "shift": 3.0,
+        "shift_terminal": null,
+        "stochastic_sampling": false,
+        "time_shift_type": "exponential",
+        "use_beta_sigmas": false,
+        "use_dynamic_shifting": false,
+        "use_exponential_sigmas": false,
+        "use_karras_sigmas": false
+      },
+      "configuration_sha256": "6a3e8ef2991ab33b971023a58bfeb4bb206bc2f477b4e407d3a6658fba053da4",
+      "previous_bound_step": {
+        "file": "/shared/code/DITSERVE/builds/51740c0/share/ditserve/python/xfuser/model_executor/schedulers/base_scheduler.py",
+        "file_sha256": "570aa9cc5806b6dfc01eb66228deed5c41ffb0465947e27cfd42534493a58897",
+        "qualified_name": "xfuser.model_executor.schedulers.scheduling_flow_match_euler_discrete.xFuserFlowMatchEulerDiscreteSchedulerWrapper.step"
+      },
+      "previous_type": "xfuser.model_executor.schedulers.scheduling_flow_match_euler_discrete.xFuserFlowMatchEulerDiscreteSchedulerWrapper",
+      "previous_unwrapped_step": {
+        "file": "/shared/code/DITSERVE/builds/51740c0/share/ditserve/python/xfuser/model_executor/schedulers/scheduling_flow_match_euler_discrete.py",
+        "file_sha256": "66d472c4b8acc99c7651bfd0f69e4b94d646adaffe14670a0e4988a6741ec424",
+        "qualified_name": "xfuser.model_executor.schedulers.scheduling_flow_match_euler_discrete.xFuserFlowMatchEulerDiscreteSchedulerWrapper.step"
+      },
+      "selected_step": {
+        "file": "/opt/venv/lib/python3.10/site-packages/diffusers/schedulers/scheduling_flow_match_euler_discrete.py",
+        "file_sha256": "c2f47ed75801a7bd11f43aa793671986b7d382461b8d6e9d60786ca77fa61bca",
+        "qualified_name": "diffusers.schedulers.scheduling_flow_match_euler_discrete.FlowMatchEulerDiscreteScheduler.step"
+      },
+      "selected_type": "diffusers.schedulers.scheduling_flow_match_euler_discrete.FlowMatchEulerDiscreteScheduler"
+    },
+    "started_calls": 28
+  },
+  "distributed_closed": true,
+  "gpu_uuid": "01223588-2c22-bd16-60ba-2cb9a47e0951",
+  "groups": [
+    0,
+    1
+  ],
+  "initial_five_tensors": {
+    "latents": {
+      "dtype": "torch.bfloat16",
+      "finite": true,
+      "maximum": 3.328125,
+      "minimum": -3.328125,
+      "retained_array": false,
+      "sha256": "83904595e01e3d02f92f355a7d28b75831774669586a6fd343cc54d79055d0c9",
+      "shape": [
+        1,
+        16,
+        128,
+        128
+      ]
+    },
+    "pooled_prompt_embeds": {
+      "dtype": "torch.bfloat16",
+      "finite": true,
+      "maximum": 6.5625,
+      "minimum": -5.375,
+      "retained_array": false,
+      "sha256": "26d0b9830ba99dcc9988bae838061d1e57340d3f04b073cd4adf49f57da7a5f1",
+      "shape": [
+        2,
+        2048
+      ]
+    },
+    "prompt_embeds": {
+      "dtype": "torch.bfloat16",
+      "finite": true,
+      "maximum": 856.0,
+      "minimum": -808.0,
+      "retained_array": false,
+      "sha256": "c8cc92d97aab5fbb2f02d80b31d7d9793950f44ecd3a317d43a4098064abb53a",
+      "shape": [
+        2,
+        333,
+        4096
+      ]
+    },
+    "sigmas": {
+      "dtype": "torch.float32",
+      "finite": true,
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "retained_array": false,
+      "sha256": "4c213b991b25a4355f1f5afba6ac1942bb0e2167b19411a9f4766ef2a1acf2c9",
+      "shape": [
+        29
+      ]
+    },
+    "timesteps": {
+      "dtype": "torch.float32",
+      "finite": true,
+      "maximum": 1000.0,
+      "minimum": 8.928571701049805,
+      "retained_array": false,
+      "sha256": "ac5e0569db004651b24d8da459e117606324698b110ada9784492c9b2fffd98b",
+      "shape": [
+        28
+      ]
+    }
+  },
+  "normal_collection": {
+    "broadcast_backend": "nccl",
+    "broadcast_group_ranks": [
+      0,
+      1
+    ],
+    "collection_role": "owner",
+    "created_process_groups": 0,
+    "dtype": "torch.bfloat16",
+    "equality_scope": "Owner-returned normal latent replicated by post-inference broadcast; not independent rank agreement",
+    "independent_rank_agreement": false,
+    "native_output_owner_rank": 1,
+    "native_return": "pipeline_output",
+    "native_return_validations": [
+      {
+        "dtype": "torch.bfloat16",
+        "error": null,
+        "is_native_owner": false,
+        "native_return": "none",
+        "owner_rank": 1,
+        "rank": 0,
+        "shape": [
+          1,
+          16,
+          128,
+          128
+        ],
+        "valid": true
+      },
+      {
+        "dtype": "torch.bfloat16",
+        "error": null,
+        "is_native_owner": true,
+        "native_return": "pipeline_output",
+        "owner_rank": 1,
+        "rank": 1,
+        "shape": [
+          1,
+          16,
+          128,
+          128
+        ],
+        "valid": true
+      }
+    ],
+    "operation": "post_inference_broadcast",
+    "rank": 1,
+    "received_from_rank": 1,
+    "schema": "ditserve.tetriserve-normal-output-collection.v1",
+    "shape": [
+      1,
+      16,
+      128,
+      128
+    ],
+    "validation_backend": "gloo",
+    "validation_group_ranks": [
+      0,
+      1
+    ]
+  },
+  "outputs": {
+    "normal_sp2": {
+      "decoded": {
+        "dtype": "torch.bfloat16",
+        "finite": true,
+        "maximum": 1.1640625,
+        "minimum": -1.2109375,
+        "retained_array": false,
+        "sha256": "497231128b00b6e636cd713b6caa0c63ab1e1b4672ab112b64d33ded7b27126f",
+        "shape": [
+          1,
+          3,
+          1024,
+          1024
+        ]
+      },
+      "latents": {
+        "dtype": "torch.bfloat16",
+        "finite": true,
+        "maximum": 3.546875,
+        "minimum": -3.875,
+        "retained_array": false,
+        "sha256": "eeee8c90598dd41ad72a98498abf6cbaa922943ead2ee0c3d2785e1a9fdbdb3f",
+        "shape": [
+          1,
+          16,
+          128,
+          128
+        ]
+      }
+    },
+    "round_sp2_chunked": {
+      "decoded": {
+        "dtype": "torch.bfloat16",
+        "finite": true,
+        "maximum": 1.1640625,
+        "minimum": -1.2109375,
+        "retained_array": false,
+        "sha256": "497231128b00b6e636cd713b6caa0c63ab1e1b4672ab112b64d33ded7b27126f",
+        "shape": [
+          1,
+          3,
+          1024,
+          1024
+        ]
+      },
+      "latents": {
+        "dtype": "torch.bfloat16",
+        "finite": true,
+        "maximum": 3.546875,
+        "minimum": -3.875,
+        "retained_array": false,
+        "sha256": "eeee8c90598dd41ad72a98498abf6cbaa922943ead2ee0c3d2785e1a9fdbdb3f",
+        "shape": [
+          1,
+          16,
+          128,
+          128
+        ]
+      }
+    },
+    "round_sp2_full": {
+      "decoded": {
+        "dtype": "torch.bfloat16",
+        "finite": true,
+        "maximum": 1.1640625,
+        "minimum": -1.2109375,
+        "retained_array": false,
+        "sha256": "497231128b00b6e636cd713b6caa0c63ab1e1b4672ab112b64d33ded7b27126f",
+        "shape": [
+          1,
+          3,
+          1024,
+          1024
+        ]
+      },
+      "latents": {
+        "dtype": "torch.bfloat16",
+        "finite": true,
+        "maximum": 3.546875,
+        "minimum": -3.875,
+        "retained_array": false,
+        "sha256": "eeee8c90598dd41ad72a98498abf6cbaa922943ead2ee0c3d2785e1a9fdbdb3f",
+        "shape": [
+          1,
+          16,
+          128,
+          128
+        ]
+      }
+    }
+  },
+  "provenance": {
+    "group_ownership": "official TetriServe",
+    "model_integrity": {
+      "model_integrity": "manifest_verified",
+      "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+      "model_verified_bytes": 16274913511,
+      "model_verified_files": 28,
+      "model_verified_revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80"
+    },
+    "new_groups_created_by_bridge": 0,
+    "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a"
+  },
+  "rank": 1,
+  "stage": "cleanup",
+  "status": "completed",
+  "transformer_calls": {
+    "normal_sp2": 28,
+    "round_sp2_chunked": 28,
+    "round_sp2_full": 28
+  }
+}

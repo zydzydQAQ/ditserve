@@ -1,0 +1,71 @@
+{
+  "sources": [
+    {
+      "key": "BUILD_INFO.json",
+      "remote": "/data/share/jjjkairos/output/DITSERVE/acceptance/d20261103-formal-cal8-wan21-51740c0-r1/BUILD_INFO.json",
+      "local": "/mnt/e/000_code/zyd-2026/.local/ditserve-kairos-rewrite-runtime/evidence/20261103-cal8-51740c0/calibration-local/wan21/BUILD_INFO/source.json",
+      "bytes": 516,
+      "sha256": "76a70cb4246b15b0e82c3749841b81cb79e8f0692da812c19831108d27e7e0a6",
+      "remote_before_after_local_match": true
+    },
+    {
+      "key": "input-preflight.json",
+      "remote": "/data/share/jjjkairos/output/DITSERVE/acceptance/d20261103-formal-cal8-wan21-51740c0-r1/input-preflight.json",
+      "local": "/mnt/e/000_code/zyd-2026/.local/ditserve-kairos-rewrite-runtime/evidence/20261103-cal8-51740c0/calibration-local/wan21/input-preflight/source.json",
+      "bytes": 2182,
+      "sha256": "3f8c778239582dc29b65ac123951eea881378415913b7333257915b42e5c2dc5",
+      "remote_before_after_local_match": true
+    },
+    {
+      "key": "runtime-facts.json",
+      "remote": "/data/share/jjjkairos/output/DITSERVE/acceptance/d20261103-formal-cal8-wan21-51740c0-r1/runtime-facts.json",
+      "local": "/mnt/e/000_code/zyd-2026/.local/ditserve-kairos-rewrite-runtime/evidence/20261103-cal8-51740c0/calibration-local/wan21/runtime-facts/source.json",
+      "bytes": 15243,
+      "sha256": "a635044022b1b9c8816ef40d1822f572b1246be135961db386bf40140facfecf",
+      "remote_before_after_local_match": true
+    },
+    {
+      "key": "calibration-0.json",
+      "remote": "/data/share/jjjkairos/output/DITSERVE/acceptance/d20261103-formal-cal8-wan21-51740c0-r1/calibration-0.json",
+      "local": "/mnt/e/000_code/zyd-2026/.local/ditserve-kairos-rewrite-runtime/evidence/20261103-cal8-51740c0/calibration-local/wan21/calibration-0/source.json",
+      "bytes": 27000,
+      "sha256": "c19772613488cb19d17f05f4d3fa25c1feb2c61b4010a1416e40aa82f65fe115",
+      "remote_before_after_local_match": true
+    },
+    {
+      "key": "calibration-1.json",
+      "remote": "/data/share/jjjkairos/output/DITSERVE/acceptance/d20261103-formal-cal8-wan21-51740c0-r1/calibration-1.json",
+      "local": "/mnt/e/000_code/zyd-2026/.local/ditserve-kairos-rewrite-runtime/evidence/20261103-cal8-51740c0/calibration-local/wan21/calibration-1/source.json",
+      "bytes": 27028,
+      "sha256": "c5f380d1ff562c555871537a0b2c9c18e996c65cc31c7c8a0808ab194e07ef9f",
+      "remote_before_after_local_match": true
+    },
+    {
+      "key": "bundle.json",
+      "remote": "/data/share/jjjkairos/output/DITSERVE/acceptance/d20261103-formal-cal8-wan21-51740c0-r1/bundle.json",
+      "local": "/mnt/e/000_code/zyd-2026/.local/ditserve-kairos-rewrite-runtime/evidence/20261103-cal8-51740c0/calibration-local/wan21/bundle/source.json",
+      "bytes": 36725,
+      "sha256": "32eb854b0a093dc2ac097039ea0a7db001beb1cd9a0747a94fa389dc41a302c8",
+      "remote_before_after_local_match": true
+    },
+    {
+      "key": "raw-cal0.json",
+      "remote": "/data/share/jjjkairos/output/DITSERVE/.cache/results-work/kairos-wan21-native-calibration/d20261103-formal-cal8-wan21-51740c0-r1-cal0/run.json",
+      "local": "/mnt/e/000_code/zyd-2026/.local/ditserve-kairos-rewrite-runtime/evidence/20261103-cal8-51740c0/calibration-local/wan21/raw-cal0/source.json",
+      "bytes": 4942789,
+      "sha256": "658094e7419f6c6e70ea5fe9f9e810dc44b2953f8024688fd0f247a8370ef9d4",
+      "remote_before_after_local_match": true
+    },
+    {
+      "key": "raw-cal1.json",
+      "remote": "/data/share/jjjkairos/output/DITSERVE/.cache/results-work/kairos-wan21-native-calibration/d20261103-formal-cal8-wan21-51740c0-r1-cal1/run.json",
+      "local": "/mnt/e/000_code/zyd-2026/.local/ditserve-kairos-rewrite-runtime/evidence/20261103-cal8-51740c0/calibration-local/wan21/raw-cal1/source.json",
+      "bytes": 5174101,
+      "sha256": "c5fd905313352183bdfeb39506086c3ed3cf6f984d8d90abb30f36a6a4dfb3a2",
+      "remote_before_after_local_match": true
+    }
+  ],
+  "issues": [],
+  "no_logs_or_arrays_copied": true,
+  "dependencies_closed": false
+}

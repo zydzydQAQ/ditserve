@@ -1,0 +1,71 @@
+{
+  "schema": "ditserve.rate-rpm-contract.v1",
+  "status": "passed",
+  "commit": "5d9ee3fae6e6cbc5107a91e823865d994eee8bc5",
+  "protocol_sha256": "1531fe434654134d508d59fc88073a68585ef43a400a9113c0b300f0a08734de",
+  "bundle_sha256": "94c3238aee42925b57eb10dc1ad086c656db280cfba5c079b0a53d195aa62ff6",
+  "source_anchor_workload_sha256": "5ca20e217a44c630f382c857474d30411ccb717a325a215a953e5bd2fb0bd7ea",
+  "wrapper_rate_rpm": 8,
+  "wrapper_workload_sha256": "f845787c750afd4c24914b78a482c2a705d2452a802db1267e274b7b8cbc1acf",
+  "rate_points": 8,
+  "policies_per_point": 5,
+  "cells": [
+    {
+      "tag": "rate-08",
+      "rate_rpm": 8.0,
+      "load": 1.0594531413946922,
+      "workload_sha256": "f845787c750afd4c24914b78a482c2a705d2452a802db1267e274b7b8cbc1acf",
+      "watchdog_seconds": 56935
+    },
+    {
+      "tag": "rate-12",
+      "rate_rpm": 12.0,
+      "load": 1.5891797120920383,
+      "workload_sha256": "798a051e97fd9c1d729eddf84269ef792c01cf1d49eadeb8b15264af4438c950",
+      "watchdog_seconds": 55066
+    },
+    {
+      "tag": "rate-16",
+      "rate_rpm": 16.0,
+      "load": 2.1189062827893843,
+      "workload_sha256": "d1bdeff52a2bd0eea6bab4bc0e372e73fc100fe7aebe2ba591dea14ea4450a34",
+      "watchdog_seconds": 54131
+    },
+    {
+      "tag": "rate-20",
+      "rate_rpm": 20.0,
+      "load": 2.6486328534867303,
+      "workload_sha256": "b93a85eedcf4cf5644fe5bf5ed8fe28bc3bf78ee741be268eec5b97415d525a5",
+      "watchdog_seconds": 53570
+    },
+    {
+      "tag": "rate-24",
+      "rate_rpm": 24.0,
+      "load": 3.1783594241840767,
+      "workload_sha256": "327c60b91350e741a42f1be12df8e80f6c8ad4bacb149a15b31e1d1b733adb1f",
+      "watchdog_seconds": 53196
+    },
+    {
+      "tag": "rate-28",
+      "rate_rpm": 28.0,
+      "load": 3.7080859948814227,
+      "workload_sha256": "665fd1f23311d05b29e80063aca6bd839353a82b30a5cb0c11d32f7a0b476b77",
+      "watchdog_seconds": 52929
+    },
+    {
+      "tag": "rate-32",
+      "rate_rpm": 32.0,
+      "load": 4.237812565578769,
+      "workload_sha256": "19a6859ae6f68c716e3c30e31401a96884c18acdd7f6b3fa5ce08dee6214332e",
+      "watchdog_seconds": 52729
+    },
+    {
+      "tag": "rate-36",
+      "rate_rpm": 36.00000000000001,
+      "load": 4.767539136276115,
+      "workload_sha256": "cd000bd5e856a3acb0cc45586307d9af4593606606055287f9e4c3c20fafb3c6",
+      "watchdog_seconds": 52573
+    }
+  ],
+  "scope": "CPU-only frozen-input config and trace contract; serving performance pending"
+}

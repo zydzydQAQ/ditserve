@@ -1,0 +1,17 @@
+{
+ "commit": "30d183e96a288f1fbf1f147c0b4aa25164bab888",
+ "subject": "Add absolute arrival-rate serving sweep",
+ "built_utc": "2026-11-07T01:59:47+00:00",
+ "builder_image": "cluster-cmake-install",
+ "runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "tested_runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "core_sha256": "71affda92cf8617458e8801b9766c16e1a211210277264ab50f4c3c60e85ee66",
+ "runtime_smoke": "passed_cluster",
+ "local_checks": [
+  "cmake",
+  "ctest",
+  "installed_doctor"
+ ],
+ "files": 266,
+ "bytes": 5371713
+}

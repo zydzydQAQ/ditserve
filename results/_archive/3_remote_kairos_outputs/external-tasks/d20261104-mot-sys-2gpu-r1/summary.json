@@ -1,0 +1,4233 @@
+{
+  "job_name": "d20261104-mot-sys-2gpu-r1",
+  "timestamp_utc": "2026-11-04T17:16:04Z",
+  "total_elapsed_s": 1380.12,
+  "environment": {
+    "hostname": "d20261104-mot-sys-2gpu-r9-master-0",
+    "torch_version": "2.10.0+cu126",
+    "cuda_version": "12.6",
+    "gpu_count": 2,
+    "gpus": [
+      {
+        "index": 0,
+        "name": "NVIDIA A100-PCIE-40GB",
+        "total_memory_mb": 40442.38,
+        "multi_processor_count": 108,
+        "major": 8,
+        "minor": 0
+      },
+      {
+        "index": 1,
+        "name": "NVIDIA A100-PCIE-40GB",
+        "total_memory_mb": 40442.38,
+        "multi_processor_count": 108,
+        "major": 8,
+        "minor": 0
+      }
+    ],
+    "ditserve_build": "b97479e"
+  },
+  "part_a_s4_cross_modal_memory_and_encoder_pool": {
+    "cross_modal_memory_study_gpu_microbench": {
+      "schema": "ditserve.cross-modal-memory-study.v1",
+      "hardware": {
+        "gpu_model": "NVIDIA A100-PCIE-40GB",
+        "cluster_gpus": 8,
+        "usable_hbm_gib": 39.5,
+        "usable_hbm_mib": 40444,
+        "pcie_h2d_effective_gbps": 3.88
+      },
+      "component_ledger": {
+        "sd35": {
+          "model": "sd35",
+          "name": "SD3.5-Medium",
+          "kind": "image",
+          "runtime_dtype": "bfloat16",
+          "total_runtime_gib": 15.16,
+          "components_gib": {
+            "clip_l": 0.23,
+            "clip_g": 1.29,
+            "t5_xxl": 8.87,
+            "transformer": 4.6,
+            "vae": 0.16
+          },
+          "text_encoders_total_gib": 10.39,
+          "heavy_text_encoder_gib": 8.87,
+          "clip_encoders_gib": 1.52,
+          "text_encoder_share_pct": 68.5,
+          "backbone_plus_vae_gib": 4.76,
+          "backbone_plus_vae_plus_clip_gib": 6.28
+        },
+        "wan21": {
+          "model": "wan21",
+          "name": "Wan2.1-T2V-1.3B",
+          "kind": "video",
+          "runtime_dtype": "bfloat16/float16",
+          "total_runtime_gib": 13.47,
+          "total_disk_fp32_gib": 26.94,
+          "components_gib": {
+            "umt5_xxl": 10.58,
+            "transformer": 2.65,
+            "vae": 0.24
+          },
+          "disk_fp32_components_gib": {
+            "umt5_xxl_fp32": 21.16
+          },
+          "text_encoders_total_gib": 10.58,
+          "heavy_text_encoder_gib": 10.58,
+          "text_encoder_share_pct": 78.5,
+          "backbone_plus_vae_gib": 2.89
+        },
+        "wan22": {
+          "model": "wan22",
+          "name": "Wan2.2-TI2V-5B",
+          "kind": "video",
+          "runtime_dtype": "bfloat16/float16",
+          "total_runtime_gib": 21.22,
+          "total_disk_gib": 31.85,
+          "components_gib": {
+            "umt5_xxl": 10.58,
+            "transformer": 9.32,
+            "vae": 1.32
+          },
+          "text_encoders_total_gib": 10.58,
+          "heavy_text_encoder_gib": 10.58,
+          "text_encoder_share_pct": 49.9,
+          "backbone_plus_vae_gib": 10.64
+        }
+      },
+      "video_shapes": {
+        "wan21-480p": {
+          "shape_id": "wan21-480p",
+          "model": "wan21",
+          "frames": 81,
+          "height": 480,
+          "width": 832,
+          "steps": 50,
+          "active_workspace_gib": 4.45,
+          "single_model_full_peak_gib": 17.92,
+          "single_model_denoiser_only_peak_gib": 7.34,
+          "sigma_blk_gib": 0.22,
+          "sigma_blk_mib": 220,
+          "substep_block_preempt_ms_range": [
+            72.0,
+            96.0
+          ]
+        },
+        "wan21-720p": {
+          "shape_id": "wan21-720p",
+          "model": "wan21",
+          "frames": 81,
+          "height": 720,
+          "width": 1280,
+          "steps": 50,
+          "active_workspace_gib": 10.23,
+          "single_model_full_peak_gib": 23.7,
+          "single_model_denoiser_only_peak_gib": 13.12,
+          "sigma_blk_gib": 0.42,
+          "sigma_blk_mib": 420,
+          "substep_block_preempt_ms_range": [
+            95.0,
+            132.0
+          ]
+        },
+        "wan22-small": {
+          "shape_id": "wan22-small",
+          "model": "wan22",
+          "frames": 121,
+          "height": 512,
+          "width": 896,
+          "steps": 50,
+          "active_workspace_gib": 5.47,
+          "single_model_full_peak_gib": 26.69,
+          "single_model_denoiser_only_peak_gib": 16.11,
+          "sigma_blk_gib": 0.28,
+          "sigma_blk_mib": 280,
+          "substep_block_preempt_ms_range": [
+            84.0,
+            118.0
+          ]
+        },
+        "wan22-720p": {
+          "shape_id": "wan22-720p",
+          "model": "wan22",
+          "frames": 81,
+          "height": 720,
+          "width": 1280,
+          "steps": 50,
+          "active_workspace_gib": 10.68,
+          "single_model_full_peak_gib": 31.9,
+          "single_model_denoiser_only_peak_gib": 21.32,
+          "sigma_blk_gib": 0.48,
+          "sigma_blk_mib": 480,
+          "substep_block_preempt_ms_range": [
+            108.0,
+            145.0
+          ]
+        }
+      },
+      "image_shapes": {
+        "sd35-512": {
+          "shape_id": "sd35-512",
+          "model": "sd35",
+          "height": 512,
+          "width": 512,
+          "steps": 28,
+          "active_workspace_gib": 1.65,
+          "single_model_full_peak_gib": 16.81,
+          "without_t5_peak_gib": 7.94,
+          "interactive_slo_ms_range": [
+            1800.0,
+            3200.0
+          ]
+        },
+        "sd35-1024": {
+          "shape_id": "sd35-1024",
+          "model": "sd35",
+          "height": 1024,
+          "width": 1024,
+          "steps": 28,
+          "active_workspace_gib": 3.5,
+          "single_model_full_peak_gib": 18.66,
+          "without_t5_peak_gib": 9.79,
+          "interactive_slo_ms_range": [
+            3200.0,
+            6000.0
+          ]
+        }
+      },
+      "strategies": {
+        "s0_naive_gpu": {
+          "strategy": "s0_naive_gpu",
+          "code": "S0",
+          "label": "Naive GPU Co-Location (All Components on GPU)",
+          "descriptor": {
+            "strategy": "s0_naive_gpu",
+            "code": "S0",
+            "label": "Naive GPU Co-Location (All Components on GPU)",
+            "wan_text_encoder_device": "cuda",
+            "sd35_text_encoder_device": "cuda",
+            "offload_text_encoders_after_warmup": false,
+            "weight_swap_on_switch": false,
+            "release_cache_on_stop": false,
+            "tiered_memory": false,
+            "encoder_pool": {
+              "enabled": false,
+              "write_shm": false,
+              "pin_memory": false,
+              "shm_dir": "/dev/shm/ditserve-hetero-embeds"
+            }
+          },
+          "static_gpu_weights_gib": {
+            "wan21_plus_sd35": 28.63,
+            "wan22_plus_sd35": 36.38
+          },
+          "redundant_text_encoder_8gpu_gib": 167.76,
+          "redundant_heavy_t5_umt5_8gpu_gib": 155.6,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 0.0,
+          "saved_static_hbm_8gpu_vs_s0_gib": 0.0,
+          "peak_colocated_hbm_gib_range": [
+            36.73,
+            50.71
+          ],
+          "peak_with_allocator_reserve_gib_range": [
+            40.06,
+            54.04
+          ],
+          "free_hbm_headroom_gib_range": [
+            -11.21,
+            2.77
+          ],
+          "hard_oom_shapes": [
+            "wan21-720p",
+            "wan22-small",
+            "wan22-720p"
+          ],
+          "fragmentation_oom_shapes": [
+            "wan21-480p"
+          ],
+          "oom_free": false,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ],
+          "wan_prompt_encode_ms_range": [
+            45.0,
+            80.0
+          ],
+          "sd35_prompt_encode_ms_range": [
+            28.0,
+            42.0
+          ],
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.0,
+            0.0
+          ],
+          "shapes": {
+            "wan21-480p": {
+              "strategy": "s0_naive_gpu",
+              "code": "S0",
+              "label": "Naive GPU Co-Location (All Components on GPU)",
+              "video_shape": "wan21-480p",
+              "image_shape": "sd35-1024",
+              "video_model": "wan21",
+              "static_gpu_weights_gib": 28.63,
+              "video_active_workspace_gib": 4.45,
+              "video_sigma_blk_gib": 0.22,
+              "image_active_workspace_gib": 3.5,
+              "video_active_peak_gib": 33.08,
+              "peak_colocated_hbm_gib": 36.73,
+              "peak_with_allocator_reserve_gib": 40.06,
+              "usable_hbm_limit_gib": 39.5,
+              "free_hbm_headroom_gib": 2.77,
+              "free_hbm_headroom_with_reserve_gib": -0.56,
+              "redundant_text_encoder_per_gpu_gib": 20.97,
+              "redundant_text_encoder_8gpu_gib": 167.76,
+              "redundant_heavy_t5_umt5_8gpu_gib": 155.6,
+              "saved_static_hbm_per_gpu_vs_s0_gib": 0.0,
+              "saved_static_hbm_8gpu_vs_s0_gib": 0.0,
+              "hard_oom": false,
+              "fragmentation_oom": true,
+              "oom_status": "FRAGMENTATION_OOM",
+              "weight_swap_gib": 0.0,
+              "weight_swap_ms_range": [
+                0.0,
+                0.0
+              ],
+              "wan_prompt_encode_ms_range": [
+                45.0,
+                80.0
+              ],
+              "sd35_prompt_encode_ms_range": [
+                28.0,
+                42.0
+              ],
+              "pinned_shm_h2d_fetch_ms_range": [
+                0.0,
+                0.0
+              ]
+            },
+            "wan21-720p": {
+              "strategy": "s0_naive_gpu",
+              "code": "S0",
+              "label": "Naive GPU Co-Location (All Components on GPU)",
+              "video_shape": "wan21-720p",
+              "image_shape": "sd35-1024",
+              "video_model": "wan21",
+              "static_gpu_weights_gib": 28.63,
+              "video_active_workspace_gib": 10.23,
+              "video_sigma_blk_gib": 0.42,
+              "image_active_workspace_gib": 3.5,
+              "video_active_peak_gib": 38.86,
+              "peak_colocated_hbm_gib": 42.51,
+              "peak_with_allocator_reserve_gib": 45.84,
+              "usable_hbm_limit_gib": 39.5,
+              "free_hbm_headroom_gib": -3.01,
+              "free_hbm_headroom_with_reserve_gib": -6.34,
+              "redundant_text_encoder_per_gpu_gib": 20.97,
+              "redundant_text_encoder_8gpu_gib": 167.76,
+              "redundant_heavy_t5_umt5_8gpu_gib": 155.6,
+              "saved_static_hbm_per_gpu_vs_s0_gib": 0.0,
+              "saved_static_hbm_8gpu_vs_s0_gib": 0.0,
+              "hard_oom": true,
+              "fragmentation_oom": false,
+              "oom_status": "100%_HARD_OOM",
+              "weight_swap_gib": 0.0,
+              "weight_swap_ms_range": [
+                0.0,
+                0.0
+              ],
+              "wan_prompt_encode_ms_range": [
+                45.0,
+                80.0
+              ],
+              "sd35_prompt_encode_ms_range": [
+                28.0,
+                42.0
+              ],
+              "pinned_shm_h2d_fetch_ms_range": [
+                0.0,
+                0.0
+              ]
+            },
+            "wan22-small": {
+              "strategy": "s0_naive_gpu",
+              "code": "S0",
+              "label": "Naive GPU Co-Location (All Components on GPU)",
+              "video_shape": "wan22-small",
+              "image_shape": "sd35-1024",
+              "video_model": "wan22",
+              "static_gpu_weights_gib": 36.38,
+              "video_active_workspace_gib": 5.47,
+              "video_sigma_blk_gib": 0.28,
+              "image_active_workspace_gib": 3.5,
+              "video_active_peak_gib": 41.85,
+              "peak_colocated_hbm_gib": 45.5,
+              "peak_with_allocator_reserve_gib": 48.83,
+              "usable_hbm_limit_gib": 39.5,
+              "free_hbm_headroom_gib": -6.0,
+              "free_hbm_headroom_with_reserve_gib": -9.33,
+              "redundant_text_encoder_per_gpu_gib": 20.97,
+              "redundant_text_encoder_8gpu_gib": 167.76,
+              "redundant_heavy_t5_umt5_8gpu_gib": 155.6,
+              "saved_static_hbm_per_gpu_vs_s0_gib": -0.0,
+              "saved_static_hbm_8gpu_vs_s0_gib": -0.0,
+              "hard_oom": true,
+              "fragmentation_oom": false,
+              "oom_status": "100%_HARD_OOM",
+              "weight_swap_gib": 0.0,
+              "weight_swap_ms_range": [
+                0.0,
+                0.0
+              ],
+              "wan_prompt_encode_ms_range": [
+                45.0,
+                80.0
+              ],
+              "sd35_prompt_encode_ms_range": [
+                28.0,
+                42.0
+              ],
+              "pinned_shm_h2d_fetch_ms_range": [
+                0.0,
+                0.0
+              ]
+            },
+            "wan22-720p": {
+              "strategy": "s0_naive_gpu",
+              "code": "S0",
+              "label": "Naive GPU Co-Location (All Components on GPU)",
+              "video_shape": "wan22-720p",
+              "image_shape": "sd35-1024",
+              "video_model": "wan22",
+              "static_gpu_weights_gib": 36.38,
+              "video_active_workspace_gib": 10.68,
+              "video_sigma_blk_gib": 0.48,
+              "image_active_workspace_gib": 3.5,
+              "video_active_peak_gib": 47.06,
+              "peak_colocated_hbm_gib": 50.71,
+              "peak_with_allocator_reserve_gib": 54.04,
+              "usable_hbm_limit_gib": 39.5,
+              "free_hbm_headroom_gib": -11.21,
+              "free_hbm_headroom_with_reserve_gib": -14.54,
+              "redundant_text_encoder_per_gpu_gib": 20.97,
+              "redundant_text_encoder_8gpu_gib": 167.76,
+              "redundant_heavy_t5_umt5_8gpu_gib": 155.6,
+              "saved_static_hbm_per_gpu_vs_s0_gib": -0.0,
+              "saved_static_hbm_8gpu_vs_s0_gib": -0.0,
+              "hard_oom": true,
+              "fragmentation_oom": false,
+              "oom_status": "100%_HARD_OOM",
+              "weight_swap_gib": 0.0,
+              "weight_swap_ms_range": [
+                0.0,
+                0.0
+              ],
+              "wan_prompt_encode_ms_range": [
+                45.0,
+                80.0
+              ],
+              "sd35_prompt_encode_ms_range": [
+                28.0,
+                42.0
+              ],
+              "pinned_shm_h2d_fetch_ms_range": [
+                0.0,
+                0.0
+              ]
+            }
+          }
+        },
+        "s1_weight_swap": {
+          "strategy": "s1_weight_swap",
+          "code": "S1",
+          "label": "Reactive On-Demand CPU-GPU Weight Swapping",
+          "descriptor": {
+            "strategy": "s1_weight_swap",
+            "code": "S1",
+            "label": "Reactive On-Demand CPU-GPU Weight Swapping",
+            "wan_text_encoder_device": "cpu",
+            "sd35_text_encoder_device": "cpu",
+            "offload_text_encoders_after_warmup": true,
+            "weight_swap_on_switch": true,
+            "release_cache_on_stop": false,
+            "tiered_memory": false,
+            "encoder_pool": {
+              "enabled": false,
+              "write_shm": false,
+              "pin_memory": true,
+              "shm_dir": "/dev/shm/ditserve-hetero-embeds"
+            }
+          },
+          "static_gpu_weights_gib": {
+            "wan21_plus_sd35": 6.28,
+            "wan22_plus_sd35": 10.64
+          },
+          "redundant_text_encoder_8gpu_gib": 0.0,
+          "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 22.35,
+          "saved_static_hbm_8gpu_vs_s0_gib": 178.8,
+          "peak_colocated_hbm_gib_range": [
+            10.0,
+            21.32
+          ],
+          "peak_with_allocator_reserve_gib_range": [
+            10.0,
+            21.32
+          ],
+          "free_hbm_headroom_gib_range": [
+            18.18,
+            29.5
+          ],
+          "hard_oom_shapes": [],
+          "fragmentation_oom_shapes": [],
+          "oom_free": true,
+          "weight_swap_ms_range": [
+            2742.3,
+            3907.2
+          ],
+          "wan_prompt_encode_ms_range": [
+            14800.0,
+            15200.0
+          ],
+          "sd35_prompt_encode_ms_range": [
+            3600.0,
+            3950.0
+          ],
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.42,
+            0.55
+          ],
+          "shapes": {
+            "wan21-480p": {
+              "strategy": "s1_weight_swap",
+              "code": "S1",
+              "label": "Reactive On-Demand CPU-GPU Weight Swapping",
+              "video_shape": "wan21-480p",
+              "image_shape": "sd35-1024",
+              "video_model": "wan21",
+              "static_gpu_weights_gib": 6.28,
+              "video_active_workspace_gib": 4.45,
+              "video_sigma_blk_gib": 0.22,
+              "image_active_workspace_gib": 3.5,
+              "video_active_peak_gib": 7.34,
+              "peak_colocated_hbm_gib": 10.0,
+              "peak_with_allocator_reserve_gib": 10.0,
+              "usable_hbm_limit_gib": 39.5,
+              "free_hbm_headroom_gib": 29.5,
+              "free_hbm_headroom_with_reserve_gib": 29.5,
+              "redundant_text_encoder_per_gpu_gib": 0.0,
+              "redundant_text_encoder_8gpu_gib": 0.0,
+              "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+              "saved_static_hbm_per_gpu_vs_s0_gib": 22.35,
+              "saved_static_hbm_8gpu_vs_s0_gib": 178.8,
+              "hard_oom": false,
+              "fragmentation_oom": false,
+              "oom_status": "FIT_BUT_SWAP_STALLED",
+              "weight_swap_gib": 15.16,
+              "weight_swap_ms_range": [
+                2742.3,
+                3907.2
+              ],
+              "wan_prompt_encode_ms_range": [
+                14800.0,
+                15200.0
+              ],
+              "sd35_prompt_encode_ms_range": [
+                3600.0,
+                3950.0
+              ],
+              "pinned_shm_h2d_fetch_ms_range": [
+                0.42,
+                0.55
+              ]
+            },
+            "wan21-720p": {
+              "strategy": "s1_weight_swap",
+              "code": "S1",
+              "label": "Reactive On-Demand CPU-GPU Weight Swapping",
+              "video_shape": "wan21-720p",
+              "image_shape": "sd35-1024",
+              "video_model": "wan21",
+              "static_gpu_weights_gib": 6.28,
+              "video_active_workspace_gib": 10.23,
+              "video_sigma_blk_gib": 0.42,
+              "image_active_workspace_gib": 3.5,
+              "video_active_peak_gib": 13.12,
+              "peak_colocated_hbm_gib": 13.12,
+              "peak_with_allocator_reserve_gib": 13.12,
+              "usable_hbm_limit_gib": 39.5,
+              "free_hbm_headroom_gib": 26.38,
+              "free_hbm_headroom_with_reserve_gib": 26.38,
+              "redundant_text_encoder_per_gpu_gib": 0.0,
+              "redundant_text_encoder_8gpu_gib": 0.0,
+              "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+              "saved_static_hbm_per_gpu_vs_s0_gib": 22.35,
+              "saved_static_hbm_8gpu_vs_s0_gib": 178.8,
+              "hard_oom": false,
+              "fragmentation_oom": false,
+              "oom_status": "FIT_BUT_SWAP_STALLED",
+              "weight_swap_gib": 15.16,
+              "weight_swap_ms_range": [
+                2742.3,
+                3907.2
+              ],
+              "wan_prompt_encode_ms_range": [
+                14800.0,
+                15200.0
+              ],
+              "sd35_prompt_encode_ms_range": [
+                3600.0,
+                3950.0
+              ],
+              "pinned_shm_h2d_fetch_ms_range": [
+                0.42,
+                0.55
+              ]
+            },
+            "wan22-small": {
+              "strategy": "s1_weight_swap",
+              "code": "S1",
+              "label": "Reactive On-Demand CPU-GPU Weight Swapping",
+              "video_shape": "wan22-small",
+              "image_shape": "sd35-1024",
+              "video_model": "wan22",
+              "static_gpu_weights_gib": 10.64,
+              "video_active_workspace_gib": 5.47,
+              "video_sigma_blk_gib": 0.28,
+              "image_active_workspace_gib": 3.5,
+              "video_active_peak_gib": 16.11,
+              "peak_colocated_hbm_gib": 16.11,
+              "peak_with_allocator_reserve_gib": 16.11,
+              "usable_hbm_limit_gib": 39.5,
+              "free_hbm_headroom_gib": 23.39,
+              "free_hbm_headroom_with_reserve_gib": 23.39,
+              "redundant_text_encoder_per_gpu_gib": 0.0,
+              "redundant_text_encoder_8gpu_gib": 0.0,
+              "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+              "saved_static_hbm_per_gpu_vs_s0_gib": 25.74,
+              "saved_static_hbm_8gpu_vs_s0_gib": 205.92,
+              "hard_oom": false,
+              "fragmentation_oom": false,
+              "oom_status": "FIT_BUT_SWAP_STALLED",
+              "weight_swap_gib": 15.16,
+              "weight_swap_ms_range": [
+                2742.3,
+                3907.2
+              ],
+              "wan_prompt_encode_ms_range": [
+                14800.0,
+                15200.0
+              ],
+              "sd35_prompt_encode_ms_range": [
+                3600.0,
+                3950.0
+              ],
+              "pinned_shm_h2d_fetch_ms_range": [
+                0.42,
+                0.55
+              ]
+            },
+            "wan22-720p": {
+              "strategy": "s1_weight_swap",
+              "code": "S1",
+              "label": "Reactive On-Demand CPU-GPU Weight Swapping",
+              "video_shape": "wan22-720p",
+              "image_shape": "sd35-1024",
+              "video_model": "wan22",
+              "static_gpu_weights_gib": 10.64,
+              "video_active_workspace_gib": 10.68,
+              "video_sigma_blk_gib": 0.48,
+              "image_active_workspace_gib": 3.5,
+              "video_active_peak_gib": 21.32,
+              "peak_colocated_hbm_gib": 21.32,
+              "peak_with_allocator_reserve_gib": 21.32,
+              "usable_hbm_limit_gib": 39.5,
+              "free_hbm_headroom_gib": 18.18,
+              "free_hbm_headroom_with_reserve_gib": 18.18,
+              "redundant_text_encoder_per_gpu_gib": 0.0,
+              "redundant_text_encoder_8gpu_gib": 0.0,
+              "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+              "saved_static_hbm_per_gpu_vs_s0_gib": 25.74,
+              "saved_static_hbm_8gpu_vs_s0_gib": 205.92,
+              "hard_oom": false,
+              "fragmentation_oom": false,
+              "oom_status": "FIT_BUT_SWAP_STALLED",
+              "weight_swap_gib": 15.16,
+              "weight_swap_ms_range": [
+                2742.3,
+                3907.2
+              ],
+              "wan_prompt_encode_ms_range": [
+                14800.0,
+                15200.0
+              ],
+              "sd35_prompt_encode_ms_range": [
+                3600.0,
+                3950.0
+              ],
+              "pinned_shm_h2d_fetch_ms_range": [
+                0.42,
+                0.55
+              ]
+            }
+          }
+        },
+        "s2_wan_cpu_sd35_gpu": {
+          "strategy": "s2_wan_cpu_sd35_gpu",
+          "code": "S2",
+          "label": "Wan UMT5 on CPU + SD3.5 T5-XXL on GPU",
+          "descriptor": {
+            "strategy": "s2_wan_cpu_sd35_gpu",
+            "code": "S2",
+            "label": "Wan UMT5 on CPU + SD3.5 T5-XXL on GPU",
+            "wan_text_encoder_device": "cpu",
+            "sd35_text_encoder_device": "cuda",
+            "offload_text_encoders_after_warmup": false,
+            "weight_swap_on_switch": false,
+            "release_cache_on_stop": false,
+            "tiered_memory": false,
+            "encoder_pool": {
+              "enabled": true,
+              "write_shm": false,
+              "pin_memory": true,
+              "shm_dir": "/dev/shm/ditserve-hetero-embeds"
+            }
+          },
+          "static_gpu_weights_gib": {
+            "wan21_plus_sd35": 18.05,
+            "wan22_plus_sd35": 25.8
+          },
+          "redundant_text_encoder_8gpu_gib": 83.12,
+          "redundant_heavy_t5_umt5_8gpu_gib": 70.96,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 10.58,
+          "saved_static_hbm_8gpu_vs_s0_gib": 84.64,
+          "peak_colocated_hbm_gib_range": [
+            22.5,
+            36.48
+          ],
+          "peak_with_allocator_reserve_gib_range": [
+            24.82,
+            38.8
+          ],
+          "free_hbm_headroom_gib_range": [
+            3.02,
+            17.0
+          ],
+          "hard_oom_shapes": [],
+          "fragmentation_oom_shapes": [
+            "wan22-720p"
+          ],
+          "oom_free": false,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ],
+          "wan_prompt_encode_ms_range": [
+            14800.0,
+            15200.0
+          ],
+          "sd35_prompt_encode_ms_range": [
+            28.0,
+            42.0
+          ],
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.4,
+            0.52
+          ],
+          "shapes": {
+            "wan21-480p": {
+              "strategy": "s2_wan_cpu_sd35_gpu",
+              "code": "S2",
+              "label": "Wan UMT5 on CPU + SD3.5 T5-XXL on GPU",
+              "video_shape": "wan21-480p",
+              "image_shape": "sd35-1024",
+              "video_model": "wan21",
+              "static_gpu_weights_gib": 18.05,
+              "video_active_workspace_gib": 4.45,
+              "video_sigma_blk_gib": 0.22,
+              "image_active_workspace_gib": 3.5,
+              "video_active_peak_gib": 22.5,
+              "peak_colocated_hbm_gib": 22.5,
+              "peak_with_allocator_reserve_gib": 24.82,
+              "usable_hbm_limit_gib": 39.5,
+              "free_hbm_headroom_gib": 17.0,
+              "free_hbm_headroom_with_reserve_gib": 14.68,
+              "redundant_text_encoder_per_gpu_gib": 10.39,
+              "redundant_text_encoder_8gpu_gib": 83.12,
+              "redundant_heavy_t5_umt5_8gpu_gib": 70.96,
+              "saved_static_hbm_per_gpu_vs_s0_gib": 10.58,
+              "saved_static_hbm_8gpu_vs_s0_gib": 84.64,
+              "hard_oom": false,
+              "fragmentation_oom": false,
+              "oom_status": "TIGHT_FIT",
+              "weight_swap_gib": 0.0,
+              "weight_swap_ms_range": [
+                0.0,
+                0.0
+              ],
+              "wan_prompt_encode_ms_range": [
+                14800.0,
+                15200.0
+              ],
+              "sd35_prompt_encode_ms_range": [
+                28.0,
+                42.0
+              ],
+              "pinned_shm_h2d_fetch_ms_range": [
+                0.4,
+                0.52
+              ]
+            },
+            "wan21-720p": {
+              "strategy": "s2_wan_cpu_sd35_gpu",
+              "code": "S2",
+              "label": "Wan UMT5 on CPU + SD3.5 T5-XXL on GPU",
+              "video_shape": "wan21-720p",
+              "image_shape": "sd35-1024",
+              "video_model": "wan21",
+              "static_gpu_weights_gib": 18.05,
+              "video_active_workspace_gib": 10.23,
+              "video_sigma_blk_gib": 0.42,
+              "image_active_workspace_gib": 3.5,
+              "video_active_peak_gib": 28.28,
+              "peak_colocated_hbm_gib": 28.28,
+              "peak_with_allocator_reserve_gib": 30.6,
+              "usable_hbm_limit_gib": 39.5,
+              "free_hbm_headroom_gib": 11.22,
+              "free_hbm_headroom_with_reserve_gib": 8.9,
+              "redundant_text_encoder_per_gpu_gib": 10.39,
+              "redundant_text_encoder_8gpu_gib": 83.12,
+              "redundant_heavy_t5_umt5_8gpu_gib": 70.96,
+              "saved_static_hbm_per_gpu_vs_s0_gib": 10.58,
+              "saved_static_hbm_8gpu_vs_s0_gib": 84.64,
+              "hard_oom": false,
+              "fragmentation_oom": false,
+              "oom_status": "TIGHT_FIT",
+              "weight_swap_gib": 0.0,
+              "weight_swap_ms_range": [
+                0.0,
+                0.0
+              ],
+              "wan_prompt_encode_ms_range": [
+                14800.0,
+                15200.0
+              ],
+              "sd35_prompt_encode_ms_range": [
+                28.0,
+                42.0
+              ],
+              "pinned_shm_h2d_fetch_ms_range": [
+                0.4,
+                0.52
+              ]
+            },
+            "wan22-small": {
+              "strategy": "s2_wan_cpu_sd35_gpu",
+              "code": "S2",
+              "label": "Wan UMT5 on CPU + SD3.5 T5-XXL on GPU",
+              "video_shape": "wan22-small",
+              "image_shape": "sd35-1024",
+              "video_model": "wan22",
+              "static_gpu_weights_gib": 25.8,
+              "video_active_workspace_gib": 5.47,
+              "video_sigma_blk_gib": 0.28,
+              "image_active_workspace_gib": 3.5,
+              "video_active_peak_gib": 31.27,
+              "peak_colocated_hbm_gib": 31.27,
+              "peak_with_allocator_reserve_gib": 33.59,
+              "usable_hbm_limit_gib": 39.5,
+              "free_hbm_headroom_gib": 8.23,
+              "free_hbm_headroom_with_reserve_gib": 5.91,
+              "redundant_text_encoder_per_gpu_gib": 10.39,
+              "redundant_text_encoder_8gpu_gib": 83.12,
+              "redundant_heavy_t5_umt5_8gpu_gib": 70.96,
+              "saved_static_hbm_per_gpu_vs_s0_gib": 10.58,
+              "saved_static_hbm_8gpu_vs_s0_gib": 84.64,
+              "hard_oom": false,
+              "fragmentation_oom": false,
+              "oom_status": "TIGHT_FIT",
+              "weight_swap_gib": 0.0,
+              "weight_swap_ms_range": [
+                0.0,
+                0.0
+              ],
+              "wan_prompt_encode_ms_range": [
+                14800.0,
+                15200.0
+              ],
+              "sd35_prompt_encode_ms_range": [
+                28.0,
+                42.0
+              ],
+              "pinned_shm_h2d_fetch_ms_range": [
+                0.4,
+                0.52
+              ]
+            },
+            "wan22-720p": {
+              "strategy": "s2_wan_cpu_sd35_gpu",
+              "code": "S2",
+              "label": "Wan UMT5 on CPU + SD3.5 T5-XXL on GPU",
+              "video_shape": "wan22-720p",
+              "image_shape": "sd35-1024",
+              "video_model": "wan22",
+              "static_gpu_weights_gib": 25.8,
+              "video_active_workspace_gib": 10.68,
+              "video_sigma_blk_gib": 0.48,
+              "image_active_workspace_gib": 3.5,
+              "video_active_peak_gib": 36.48,
+              "peak_colocated_hbm_gib": 36.48,
+              "peak_with_allocator_reserve_gib": 38.8,
+              "usable_hbm_limit_gib": 39.5,
+              "free_hbm_headroom_gib": 3.02,
+              "free_hbm_headroom_with_reserve_gib": 0.7,
+              "redundant_text_encoder_per_gpu_gib": 10.39,
+              "redundant_text_encoder_8gpu_gib": 83.12,
+              "redundant_heavy_t5_umt5_8gpu_gib": 70.96,
+              "saved_static_hbm_per_gpu_vs_s0_gib": 10.58,
+              "saved_static_hbm_8gpu_vs_s0_gib": 84.64,
+              "hard_oom": false,
+              "fragmentation_oom": true,
+              "oom_status": "FRAGMENTATION_OOM",
+              "weight_swap_gib": 0.0,
+              "weight_swap_ms_range": [
+                0.0,
+                0.0
+              ],
+              "wan_prompt_encode_ms_range": [
+                14800.0,
+                15200.0
+              ],
+              "sd35_prompt_encode_ms_range": [
+                28.0,
+                42.0
+              ],
+              "pinned_shm_h2d_fetch_ms_range": [
+                0.4,
+                0.52
+              ]
+            }
+          }
+        },
+        "s3_both_encoders_cpu": {
+          "strategy": "s3_both_encoders_cpu",
+          "code": "S3",
+          "label": "Both Heavy T5 Encoders on CPU (No Cross-Worker Pool)",
+          "descriptor": {
+            "strategy": "s3_both_encoders_cpu",
+            "code": "S3",
+            "label": "Both Heavy T5 Encoders on CPU (No Cross-Worker Pool)",
+            "wan_text_encoder_device": "cpu",
+            "sd35_text_encoder_device": "cpu",
+            "offload_text_encoders_after_warmup": true,
+            "weight_swap_on_switch": false,
+            "release_cache_on_stop": false,
+            "tiered_memory": false,
+            "encoder_pool": {
+              "enabled": true,
+              "write_shm": false,
+              "pin_memory": true,
+              "shm_dir": "/dev/shm/ditserve-hetero-embeds"
+            }
+          },
+          "static_gpu_weights_gib": {
+            "wan21_plus_sd35": 9.17,
+            "wan22_plus_sd35": 16.92
+          },
+          "redundant_text_encoder_8gpu_gib": 12.16,
+          "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+          "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+          "peak_colocated_hbm_gib_range": [
+            17.12,
+            27.6
+          ],
+          "peak_with_allocator_reserve_gib_range": [
+            17.12,
+            27.6
+          ],
+          "free_hbm_headroom_gib_range": [
+            11.9,
+            22.38
+          ],
+          "hard_oom_shapes": [],
+          "fragmentation_oom_shapes": [],
+          "oom_free": true,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ],
+          "wan_prompt_encode_ms_range": [
+            14800.0,
+            15200.0
+          ],
+          "sd35_prompt_encode_ms_range": [
+            3650.0,
+            3950.0
+          ],
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.4,
+            0.52
+          ],
+          "shapes": {
+            "wan21-480p": {
+              "strategy": "s3_both_encoders_cpu",
+              "code": "S3",
+              "label": "Both Heavy T5 Encoders on CPU (No Cross-Worker Pool)",
+              "video_shape": "wan21-480p",
+              "image_shape": "sd35-1024",
+              "video_model": "wan21",
+              "static_gpu_weights_gib": 9.17,
+              "video_active_workspace_gib": 4.45,
+              "video_sigma_blk_gib": 0.22,
+              "image_active_workspace_gib": 3.5,
+              "video_active_peak_gib": 13.62,
+              "peak_colocated_hbm_gib": 17.12,
+              "peak_with_allocator_reserve_gib": 17.12,
+              "usable_hbm_limit_gib": 39.5,
+              "free_hbm_headroom_gib": 22.38,
+              "free_hbm_headroom_with_reserve_gib": 22.38,
+              "redundant_text_encoder_per_gpu_gib": 1.52,
+              "redundant_text_encoder_8gpu_gib": 12.16,
+              "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+              "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+              "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+              "hard_oom": false,
+              "fragmentation_oom": false,
+              "oom_status": "ZERO_OOM_CPU_ENCODE_BOTTLENECK",
+              "weight_swap_gib": 0.0,
+              "weight_swap_ms_range": [
+                0.0,
+                0.0
+              ],
+              "wan_prompt_encode_ms_range": [
+                14800.0,
+                15200.0
+              ],
+              "sd35_prompt_encode_ms_range": [
+                3650.0,
+                3950.0
+              ],
+              "pinned_shm_h2d_fetch_ms_range": [
+                0.4,
+                0.52
+              ]
+            },
+            "wan21-720p": {
+              "strategy": "s3_both_encoders_cpu",
+              "code": "S3",
+              "label": "Both Heavy T5 Encoders on CPU (No Cross-Worker Pool)",
+              "video_shape": "wan21-720p",
+              "image_shape": "sd35-1024",
+              "video_model": "wan21",
+              "static_gpu_weights_gib": 9.17,
+              "video_active_workspace_gib": 10.23,
+              "video_sigma_blk_gib": 0.42,
+              "image_active_workspace_gib": 3.5,
+              "video_active_peak_gib": 19.4,
+              "peak_colocated_hbm_gib": 19.4,
+              "peak_with_allocator_reserve_gib": 19.4,
+              "usable_hbm_limit_gib": 39.5,
+              "free_hbm_headroom_gib": 20.1,
+              "free_hbm_headroom_with_reserve_gib": 20.1,
+              "redundant_text_encoder_per_gpu_gib": 1.52,
+              "redundant_text_encoder_8gpu_gib": 12.16,
+              "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+              "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+              "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+              "hard_oom": false,
+              "fragmentation_oom": false,
+              "oom_status": "ZERO_OOM_CPU_ENCODE_BOTTLENECK",
+              "weight_swap_gib": 0.0,
+              "weight_swap_ms_range": [
+                0.0,
+                0.0
+              ],
+              "wan_prompt_encode_ms_range": [
+                14800.0,
+                15200.0
+              ],
+              "sd35_prompt_encode_ms_range": [
+                3650.0,
+                3950.0
+              ],
+              "pinned_shm_h2d_fetch_ms_range": [
+                0.4,
+                0.52
+              ]
+            },
+            "wan22-small": {
+              "strategy": "s3_both_encoders_cpu",
+              "code": "S3",
+              "label": "Both Heavy T5 Encoders on CPU (No Cross-Worker Pool)",
+              "video_shape": "wan22-small",
+              "image_shape": "sd35-1024",
+              "video_model": "wan22",
+              "static_gpu_weights_gib": 16.92,
+              "video_active_workspace_gib": 5.47,
+              "video_sigma_blk_gib": 0.28,
+              "image_active_workspace_gib": 3.5,
+              "video_active_peak_gib": 22.39,
+              "peak_colocated_hbm_gib": 22.39,
+              "peak_with_allocator_reserve_gib": 22.39,
+              "usable_hbm_limit_gib": 39.5,
+              "free_hbm_headroom_gib": 17.11,
+              "free_hbm_headroom_with_reserve_gib": 17.11,
+              "redundant_text_encoder_per_gpu_gib": 1.52,
+              "redundant_text_encoder_8gpu_gib": 12.16,
+              "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+              "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+              "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+              "hard_oom": false,
+              "fragmentation_oom": false,
+              "oom_status": "ZERO_OOM_CPU_ENCODE_BOTTLENECK",
+              "weight_swap_gib": 0.0,
+              "weight_swap_ms_range": [
+                0.0,
+                0.0
+              ],
+              "wan_prompt_encode_ms_range": [
+                14800.0,
+                15200.0
+              ],
+              "sd35_prompt_encode_ms_range": [
+                3650.0,
+                3950.0
+              ],
+              "pinned_shm_h2d_fetch_ms_range": [
+                0.4,
+                0.52
+              ]
+            },
+            "wan22-720p": {
+              "strategy": "s3_both_encoders_cpu",
+              "code": "S3",
+              "label": "Both Heavy T5 Encoders on CPU (No Cross-Worker Pool)",
+              "video_shape": "wan22-720p",
+              "image_shape": "sd35-1024",
+              "video_model": "wan22",
+              "static_gpu_weights_gib": 16.92,
+              "video_active_workspace_gib": 10.68,
+              "video_sigma_blk_gib": 0.48,
+              "image_active_workspace_gib": 3.5,
+              "video_active_peak_gib": 27.6,
+              "peak_colocated_hbm_gib": 27.6,
+              "peak_with_allocator_reserve_gib": 27.6,
+              "usable_hbm_limit_gib": 39.5,
+              "free_hbm_headroom_gib": 11.9,
+              "free_hbm_headroom_with_reserve_gib": 11.9,
+              "redundant_text_encoder_per_gpu_gib": 1.52,
+              "redundant_text_encoder_8gpu_gib": 12.16,
+              "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+              "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+              "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+              "hard_oom": false,
+              "fragmentation_oom": false,
+              "oom_status": "ZERO_OOM_CPU_ENCODE_BOTTLENECK",
+              "weight_swap_gib": 0.0,
+              "weight_swap_ms_range": [
+                0.0,
+                0.0
+              ],
+              "wan_prompt_encode_ms_range": [
+                14800.0,
+                15200.0
+              ],
+              "sd35_prompt_encode_ms_range": [
+                3650.0,
+                3950.0
+              ],
+              "pinned_shm_h2d_fetch_ms_range": [
+                0.4,
+                0.52
+              ]
+            }
+          }
+        },
+        "s4_disaggregated_pool": {
+          "strategy": "s4_disaggregated_pool",
+          "code": "S4",
+          "label": "DitServe Cross-Modal Disaggregated Encoder Pool + Safe-Point Cache Release",
+          "descriptor": {
+            "strategy": "s4_disaggregated_pool",
+            "code": "S4",
+            "label": "DitServe Cross-Modal Disaggregated Encoder Pool + Safe-Point Cache Release",
+            "wan_text_encoder_device": "cpu",
+            "sd35_text_encoder_device": "cpu",
+            "offload_text_encoders_after_warmup": true,
+            "weight_swap_on_switch": false,
+            "release_cache_on_stop": true,
+            "tiered_memory": true,
+            "encoder_pool": {
+              "enabled": true,
+              "write_shm": true,
+              "pin_memory": true,
+              "shm_dir": "/dev/shm/ditserve-hetero-embeds",
+              "max_entries": 64,
+              "max_bytes": 536870912
+            }
+          },
+          "static_gpu_weights_gib": {
+            "wan21_plus_sd35": 9.17,
+            "wan22_plus_sd35": 16.92
+          },
+          "redundant_text_encoder_8gpu_gib": 0.0,
+          "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+          "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+          "peak_colocated_hbm_gib_range": [
+            17.12,
+            27.6
+          ],
+          "peak_with_allocator_reserve_gib_range": [
+            13.62,
+            27.6
+          ],
+          "free_hbm_headroom_gib_range": [
+            11.9,
+            22.38
+          ],
+          "hard_oom_shapes": [],
+          "fragmentation_oom_shapes": [],
+          "oom_free": true,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ],
+          "wan_prompt_encode_ms_range": [
+            45.0,
+            80.0
+          ],
+          "sd35_prompt_encode_ms_range": [
+            28.0,
+            42.0
+          ],
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.35,
+            0.48
+          ],
+          "shapes": {
+            "wan21-480p": {
+              "strategy": "s4_disaggregated_pool",
+              "code": "S4",
+              "label": "DitServe Cross-Modal Disaggregated Encoder Pool + Safe-Point Cache Release",
+              "video_shape": "wan21-480p",
+              "image_shape": "sd35-1024",
+              "video_model": "wan21",
+              "static_gpu_weights_gib": 9.17,
+              "video_active_workspace_gib": 4.45,
+              "video_sigma_blk_gib": 0.22,
+              "image_active_workspace_gib": 3.5,
+              "video_active_peak_gib": 13.62,
+              "peak_colocated_hbm_gib": 17.12,
+              "peak_with_allocator_reserve_gib": 13.62,
+              "usable_hbm_limit_gib": 39.5,
+              "free_hbm_headroom_gib": 22.38,
+              "free_hbm_headroom_with_reserve_gib": 25.88,
+              "redundant_text_encoder_per_gpu_gib": 0.0,
+              "redundant_text_encoder_8gpu_gib": 0.0,
+              "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+              "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+              "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+              "hard_oom": false,
+              "fragmentation_oom": false,
+              "oom_status": "ZERO_OOM_SLO_COMPLIANT",
+              "weight_swap_gib": 0.0,
+              "weight_swap_ms_range": [
+                0.0,
+                0.0
+              ],
+              "wan_prompt_encode_ms_range": [
+                45.0,
+                80.0
+              ],
+              "sd35_prompt_encode_ms_range": [
+                28.0,
+                42.0
+              ],
+              "pinned_shm_h2d_fetch_ms_range": [
+                0.35,
+                0.48
+              ]
+            },
+            "wan21-720p": {
+              "strategy": "s4_disaggregated_pool",
+              "code": "S4",
+              "label": "DitServe Cross-Modal Disaggregated Encoder Pool + Safe-Point Cache Release",
+              "video_shape": "wan21-720p",
+              "image_shape": "sd35-1024",
+              "video_model": "wan21",
+              "static_gpu_weights_gib": 9.17,
+              "video_active_workspace_gib": 10.23,
+              "video_sigma_blk_gib": 0.42,
+              "image_active_workspace_gib": 3.5,
+              "video_active_peak_gib": 19.4,
+              "peak_colocated_hbm_gib": 19.4,
+              "peak_with_allocator_reserve_gib": 19.4,
+              "usable_hbm_limit_gib": 39.5,
+              "free_hbm_headroom_gib": 20.1,
+              "free_hbm_headroom_with_reserve_gib": 20.1,
+              "redundant_text_encoder_per_gpu_gib": 0.0,
+              "redundant_text_encoder_8gpu_gib": 0.0,
+              "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+              "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+              "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+              "hard_oom": false,
+              "fragmentation_oom": false,
+              "oom_status": "ZERO_OOM_SLO_COMPLIANT",
+              "weight_swap_gib": 0.0,
+              "weight_swap_ms_range": [
+                0.0,
+                0.0
+              ],
+              "wan_prompt_encode_ms_range": [
+                45.0,
+                80.0
+              ],
+              "sd35_prompt_encode_ms_range": [
+                28.0,
+                42.0
+              ],
+              "pinned_shm_h2d_fetch_ms_range": [
+                0.35,
+                0.48
+              ]
+            },
+            "wan22-small": {
+              "strategy": "s4_disaggregated_pool",
+              "code": "S4",
+              "label": "DitServe Cross-Modal Disaggregated Encoder Pool + Safe-Point Cache Release",
+              "video_shape": "wan22-small",
+              "image_shape": "sd35-1024",
+              "video_model": "wan22",
+              "static_gpu_weights_gib": 16.92,
+              "video_active_workspace_gib": 5.47,
+              "video_sigma_blk_gib": 0.28,
+              "image_active_workspace_gib": 3.5,
+              "video_active_peak_gib": 22.39,
+              "peak_colocated_hbm_gib": 22.39,
+              "peak_with_allocator_reserve_gib": 22.39,
+              "usable_hbm_limit_gib": 39.5,
+              "free_hbm_headroom_gib": 17.11,
+              "free_hbm_headroom_with_reserve_gib": 17.11,
+              "redundant_text_encoder_per_gpu_gib": 0.0,
+              "redundant_text_encoder_8gpu_gib": 0.0,
+              "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+              "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+              "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+              "hard_oom": false,
+              "fragmentation_oom": false,
+              "oom_status": "ZERO_OOM_SLO_COMPLIANT",
+              "weight_swap_gib": 0.0,
+              "weight_swap_ms_range": [
+                0.0,
+                0.0
+              ],
+              "wan_prompt_encode_ms_range": [
+                45.0,
+                80.0
+              ],
+              "sd35_prompt_encode_ms_range": [
+                28.0,
+                42.0
+              ],
+              "pinned_shm_h2d_fetch_ms_range": [
+                0.35,
+                0.48
+              ]
+            },
+            "wan22-720p": {
+              "strategy": "s4_disaggregated_pool",
+              "code": "S4",
+              "label": "DitServe Cross-Modal Disaggregated Encoder Pool + Safe-Point Cache Release",
+              "video_shape": "wan22-720p",
+              "image_shape": "sd35-1024",
+              "video_model": "wan22",
+              "static_gpu_weights_gib": 16.92,
+              "video_active_workspace_gib": 10.68,
+              "video_sigma_blk_gib": 0.48,
+              "image_active_workspace_gib": 3.5,
+              "video_active_peak_gib": 27.6,
+              "peak_colocated_hbm_gib": 27.6,
+              "peak_with_allocator_reserve_gib": 27.6,
+              "usable_hbm_limit_gib": 39.5,
+              "free_hbm_headroom_gib": 11.9,
+              "free_hbm_headroom_with_reserve_gib": 11.9,
+              "redundant_text_encoder_per_gpu_gib": 0.0,
+              "redundant_text_encoder_8gpu_gib": 0.0,
+              "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+              "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+              "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+              "hard_oom": false,
+              "fragmentation_oom": false,
+              "oom_status": "ZERO_OOM_SLO_COMPLIANT",
+              "weight_swap_gib": 0.0,
+              "weight_swap_ms_range": [
+                0.0,
+                0.0
+              ],
+              "wan_prompt_encode_ms_range": [
+                45.0,
+                80.0
+              ],
+              "sd35_prompt_encode_ms_range": [
+                28.0,
+                42.0
+              ],
+              "pinned_shm_h2d_fetch_ms_range": [
+                0.35,
+                0.48
+              ]
+            }
+          }
+        }
+      },
+      "strategy_shape_matrix": [
+        {
+          "strategy": "s0_naive_gpu",
+          "code": "S0",
+          "label": "Naive GPU Co-Location (All Components on GPU)",
+          "video_shape": "wan21-480p",
+          "image_shape": "sd35-1024",
+          "video_model": "wan21",
+          "static_gpu_weights_gib": 28.63,
+          "video_active_workspace_gib": 4.45,
+          "video_sigma_blk_gib": 0.22,
+          "image_active_workspace_gib": 3.5,
+          "video_active_peak_gib": 33.08,
+          "peak_colocated_hbm_gib": 36.73,
+          "peak_with_allocator_reserve_gib": 40.06,
+          "usable_hbm_limit_gib": 39.5,
+          "free_hbm_headroom_gib": 2.77,
+          "free_hbm_headroom_with_reserve_gib": -0.56,
+          "redundant_text_encoder_per_gpu_gib": 20.97,
+          "redundant_text_encoder_8gpu_gib": 167.76,
+          "redundant_heavy_t5_umt5_8gpu_gib": 155.6,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 0.0,
+          "saved_static_hbm_8gpu_vs_s0_gib": 0.0,
+          "hard_oom": false,
+          "fragmentation_oom": true,
+          "oom_status": "FRAGMENTATION_OOM",
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ],
+          "wan_prompt_encode_ms_range": [
+            45.0,
+            80.0
+          ],
+          "sd35_prompt_encode_ms_range": [
+            28.0,
+            42.0
+          ],
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "strategy": "s0_naive_gpu",
+          "code": "S0",
+          "label": "Naive GPU Co-Location (All Components on GPU)",
+          "video_shape": "wan21-720p",
+          "image_shape": "sd35-1024",
+          "video_model": "wan21",
+          "static_gpu_weights_gib": 28.63,
+          "video_active_workspace_gib": 10.23,
+          "video_sigma_blk_gib": 0.42,
+          "image_active_workspace_gib": 3.5,
+          "video_active_peak_gib": 38.86,
+          "peak_colocated_hbm_gib": 42.51,
+          "peak_with_allocator_reserve_gib": 45.84,
+          "usable_hbm_limit_gib": 39.5,
+          "free_hbm_headroom_gib": -3.01,
+          "free_hbm_headroom_with_reserve_gib": -6.34,
+          "redundant_text_encoder_per_gpu_gib": 20.97,
+          "redundant_text_encoder_8gpu_gib": 167.76,
+          "redundant_heavy_t5_umt5_8gpu_gib": 155.6,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 0.0,
+          "saved_static_hbm_8gpu_vs_s0_gib": 0.0,
+          "hard_oom": true,
+          "fragmentation_oom": false,
+          "oom_status": "100%_HARD_OOM",
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ],
+          "wan_prompt_encode_ms_range": [
+            45.0,
+            80.0
+          ],
+          "sd35_prompt_encode_ms_range": [
+            28.0,
+            42.0
+          ],
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "strategy": "s0_naive_gpu",
+          "code": "S0",
+          "label": "Naive GPU Co-Location (All Components on GPU)",
+          "video_shape": "wan22-small",
+          "image_shape": "sd35-1024",
+          "video_model": "wan22",
+          "static_gpu_weights_gib": 36.38,
+          "video_active_workspace_gib": 5.47,
+          "video_sigma_blk_gib": 0.28,
+          "image_active_workspace_gib": 3.5,
+          "video_active_peak_gib": 41.85,
+          "peak_colocated_hbm_gib": 45.5,
+          "peak_with_allocator_reserve_gib": 48.83,
+          "usable_hbm_limit_gib": 39.5,
+          "free_hbm_headroom_gib": -6.0,
+          "free_hbm_headroom_with_reserve_gib": -9.33,
+          "redundant_text_encoder_per_gpu_gib": 20.97,
+          "redundant_text_encoder_8gpu_gib": 167.76,
+          "redundant_heavy_t5_umt5_8gpu_gib": 155.6,
+          "saved_static_hbm_per_gpu_vs_s0_gib": -0.0,
+          "saved_static_hbm_8gpu_vs_s0_gib": -0.0,
+          "hard_oom": true,
+          "fragmentation_oom": false,
+          "oom_status": "100%_HARD_OOM",
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ],
+          "wan_prompt_encode_ms_range": [
+            45.0,
+            80.0
+          ],
+          "sd35_prompt_encode_ms_range": [
+            28.0,
+            42.0
+          ],
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "strategy": "s0_naive_gpu",
+          "code": "S0",
+          "label": "Naive GPU Co-Location (All Components on GPU)",
+          "video_shape": "wan22-720p",
+          "image_shape": "sd35-1024",
+          "video_model": "wan22",
+          "static_gpu_weights_gib": 36.38,
+          "video_active_workspace_gib": 10.68,
+          "video_sigma_blk_gib": 0.48,
+          "image_active_workspace_gib": 3.5,
+          "video_active_peak_gib": 47.06,
+          "peak_colocated_hbm_gib": 50.71,
+          "peak_with_allocator_reserve_gib": 54.04,
+          "usable_hbm_limit_gib": 39.5,
+          "free_hbm_headroom_gib": -11.21,
+          "free_hbm_headroom_with_reserve_gib": -14.54,
+          "redundant_text_encoder_per_gpu_gib": 20.97,
+          "redundant_text_encoder_8gpu_gib": 167.76,
+          "redundant_heavy_t5_umt5_8gpu_gib": 155.6,
+          "saved_static_hbm_per_gpu_vs_s0_gib": -0.0,
+          "saved_static_hbm_8gpu_vs_s0_gib": -0.0,
+          "hard_oom": true,
+          "fragmentation_oom": false,
+          "oom_status": "100%_HARD_OOM",
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ],
+          "wan_prompt_encode_ms_range": [
+            45.0,
+            80.0
+          ],
+          "sd35_prompt_encode_ms_range": [
+            28.0,
+            42.0
+          ],
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "strategy": "s1_weight_swap",
+          "code": "S1",
+          "label": "Reactive On-Demand CPU-GPU Weight Swapping",
+          "video_shape": "wan21-480p",
+          "image_shape": "sd35-1024",
+          "video_model": "wan21",
+          "static_gpu_weights_gib": 6.28,
+          "video_active_workspace_gib": 4.45,
+          "video_sigma_blk_gib": 0.22,
+          "image_active_workspace_gib": 3.5,
+          "video_active_peak_gib": 7.34,
+          "peak_colocated_hbm_gib": 10.0,
+          "peak_with_allocator_reserve_gib": 10.0,
+          "usable_hbm_limit_gib": 39.5,
+          "free_hbm_headroom_gib": 29.5,
+          "free_hbm_headroom_with_reserve_gib": 29.5,
+          "redundant_text_encoder_per_gpu_gib": 0.0,
+          "redundant_text_encoder_8gpu_gib": 0.0,
+          "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 22.35,
+          "saved_static_hbm_8gpu_vs_s0_gib": 178.8,
+          "hard_oom": false,
+          "fragmentation_oom": false,
+          "oom_status": "FIT_BUT_SWAP_STALLED",
+          "weight_swap_gib": 15.16,
+          "weight_swap_ms_range": [
+            2742.3,
+            3907.2
+          ],
+          "wan_prompt_encode_ms_range": [
+            14800.0,
+            15200.0
+          ],
+          "sd35_prompt_encode_ms_range": [
+            3600.0,
+            3950.0
+          ],
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.42,
+            0.55
+          ]
+        },
+        {
+          "strategy": "s1_weight_swap",
+          "code": "S1",
+          "label": "Reactive On-Demand CPU-GPU Weight Swapping",
+          "video_shape": "wan21-720p",
+          "image_shape": "sd35-1024",
+          "video_model": "wan21",
+          "static_gpu_weights_gib": 6.28,
+          "video_active_workspace_gib": 10.23,
+          "video_sigma_blk_gib": 0.42,
+          "image_active_workspace_gib": 3.5,
+          "video_active_peak_gib": 13.12,
+          "peak_colocated_hbm_gib": 13.12,
+          "peak_with_allocator_reserve_gib": 13.12,
+          "usable_hbm_limit_gib": 39.5,
+          "free_hbm_headroom_gib": 26.38,
+          "free_hbm_headroom_with_reserve_gib": 26.38,
+          "redundant_text_encoder_per_gpu_gib": 0.0,
+          "redundant_text_encoder_8gpu_gib": 0.0,
+          "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 22.35,
+          "saved_static_hbm_8gpu_vs_s0_gib": 178.8,
+          "hard_oom": false,
+          "fragmentation_oom": false,
+          "oom_status": "FIT_BUT_SWAP_STALLED",
+          "weight_swap_gib": 15.16,
+          "weight_swap_ms_range": [
+            2742.3,
+            3907.2
+          ],
+          "wan_prompt_encode_ms_range": [
+            14800.0,
+            15200.0
+          ],
+          "sd35_prompt_encode_ms_range": [
+            3600.0,
+            3950.0
+          ],
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.42,
+            0.55
+          ]
+        },
+        {
+          "strategy": "s1_weight_swap",
+          "code": "S1",
+          "label": "Reactive On-Demand CPU-GPU Weight Swapping",
+          "video_shape": "wan22-small",
+          "image_shape": "sd35-1024",
+          "video_model": "wan22",
+          "static_gpu_weights_gib": 10.64,
+          "video_active_workspace_gib": 5.47,
+          "video_sigma_blk_gib": 0.28,
+          "image_active_workspace_gib": 3.5,
+          "video_active_peak_gib": 16.11,
+          "peak_colocated_hbm_gib": 16.11,
+          "peak_with_allocator_reserve_gib": 16.11,
+          "usable_hbm_limit_gib": 39.5,
+          "free_hbm_headroom_gib": 23.39,
+          "free_hbm_headroom_with_reserve_gib": 23.39,
+          "redundant_text_encoder_per_gpu_gib": 0.0,
+          "redundant_text_encoder_8gpu_gib": 0.0,
+          "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 25.74,
+          "saved_static_hbm_8gpu_vs_s0_gib": 205.92,
+          "hard_oom": false,
+          "fragmentation_oom": false,
+          "oom_status": "FIT_BUT_SWAP_STALLED",
+          "weight_swap_gib": 15.16,
+          "weight_swap_ms_range": [
+            2742.3,
+            3907.2
+          ],
+          "wan_prompt_encode_ms_range": [
+            14800.0,
+            15200.0
+          ],
+          "sd35_prompt_encode_ms_range": [
+            3600.0,
+            3950.0
+          ],
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.42,
+            0.55
+          ]
+        },
+        {
+          "strategy": "s1_weight_swap",
+          "code": "S1",
+          "label": "Reactive On-Demand CPU-GPU Weight Swapping",
+          "video_shape": "wan22-720p",
+          "image_shape": "sd35-1024",
+          "video_model": "wan22",
+          "static_gpu_weights_gib": 10.64,
+          "video_active_workspace_gib": 10.68,
+          "video_sigma_blk_gib": 0.48,
+          "image_active_workspace_gib": 3.5,
+          "video_active_peak_gib": 21.32,
+          "peak_colocated_hbm_gib": 21.32,
+          "peak_with_allocator_reserve_gib": 21.32,
+          "usable_hbm_limit_gib": 39.5,
+          "free_hbm_headroom_gib": 18.18,
+          "free_hbm_headroom_with_reserve_gib": 18.18,
+          "redundant_text_encoder_per_gpu_gib": 0.0,
+          "redundant_text_encoder_8gpu_gib": 0.0,
+          "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 25.74,
+          "saved_static_hbm_8gpu_vs_s0_gib": 205.92,
+          "hard_oom": false,
+          "fragmentation_oom": false,
+          "oom_status": "FIT_BUT_SWAP_STALLED",
+          "weight_swap_gib": 15.16,
+          "weight_swap_ms_range": [
+            2742.3,
+            3907.2
+          ],
+          "wan_prompt_encode_ms_range": [
+            14800.0,
+            15200.0
+          ],
+          "sd35_prompt_encode_ms_range": [
+            3600.0,
+            3950.0
+          ],
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.42,
+            0.55
+          ]
+        },
+        {
+          "strategy": "s2_wan_cpu_sd35_gpu",
+          "code": "S2",
+          "label": "Wan UMT5 on CPU + SD3.5 T5-XXL on GPU",
+          "video_shape": "wan21-480p",
+          "image_shape": "sd35-1024",
+          "video_model": "wan21",
+          "static_gpu_weights_gib": 18.05,
+          "video_active_workspace_gib": 4.45,
+          "video_sigma_blk_gib": 0.22,
+          "image_active_workspace_gib": 3.5,
+          "video_active_peak_gib": 22.5,
+          "peak_colocated_hbm_gib": 22.5,
+          "peak_with_allocator_reserve_gib": 24.82,
+          "usable_hbm_limit_gib": 39.5,
+          "free_hbm_headroom_gib": 17.0,
+          "free_hbm_headroom_with_reserve_gib": 14.68,
+          "redundant_text_encoder_per_gpu_gib": 10.39,
+          "redundant_text_encoder_8gpu_gib": 83.12,
+          "redundant_heavy_t5_umt5_8gpu_gib": 70.96,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 10.58,
+          "saved_static_hbm_8gpu_vs_s0_gib": 84.64,
+          "hard_oom": false,
+          "fragmentation_oom": false,
+          "oom_status": "TIGHT_FIT",
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ],
+          "wan_prompt_encode_ms_range": [
+            14800.0,
+            15200.0
+          ],
+          "sd35_prompt_encode_ms_range": [
+            28.0,
+            42.0
+          ],
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.4,
+            0.52
+          ]
+        },
+        {
+          "strategy": "s2_wan_cpu_sd35_gpu",
+          "code": "S2",
+          "label": "Wan UMT5 on CPU + SD3.5 T5-XXL on GPU",
+          "video_shape": "wan21-720p",
+          "image_shape": "sd35-1024",
+          "video_model": "wan21",
+          "static_gpu_weights_gib": 18.05,
+          "video_active_workspace_gib": 10.23,
+          "video_sigma_blk_gib": 0.42,
+          "image_active_workspace_gib": 3.5,
+          "video_active_peak_gib": 28.28,
+          "peak_colocated_hbm_gib": 28.28,
+          "peak_with_allocator_reserve_gib": 30.6,
+          "usable_hbm_limit_gib": 39.5,
+          "free_hbm_headroom_gib": 11.22,
+          "free_hbm_headroom_with_reserve_gib": 8.9,
+          "redundant_text_encoder_per_gpu_gib": 10.39,
+          "redundant_text_encoder_8gpu_gib": 83.12,
+          "redundant_heavy_t5_umt5_8gpu_gib": 70.96,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 10.58,
+          "saved_static_hbm_8gpu_vs_s0_gib": 84.64,
+          "hard_oom": false,
+          "fragmentation_oom": false,
+          "oom_status": "TIGHT_FIT",
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ],
+          "wan_prompt_encode_ms_range": [
+            14800.0,
+            15200.0
+          ],
+          "sd35_prompt_encode_ms_range": [
+            28.0,
+            42.0
+          ],
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.4,
+            0.52
+          ]
+        },
+        {
+          "strategy": "s2_wan_cpu_sd35_gpu",
+          "code": "S2",
+          "label": "Wan UMT5 on CPU + SD3.5 T5-XXL on GPU",
+          "video_shape": "wan22-small",
+          "image_shape": "sd35-1024",
+          "video_model": "wan22",
+          "static_gpu_weights_gib": 25.8,
+          "video_active_workspace_gib": 5.47,
+          "video_sigma_blk_gib": 0.28,
+          "image_active_workspace_gib": 3.5,
+          "video_active_peak_gib": 31.27,
+          "peak_colocated_hbm_gib": 31.27,
+          "peak_with_allocator_reserve_gib": 33.59,
+          "usable_hbm_limit_gib": 39.5,
+          "free_hbm_headroom_gib": 8.23,
+          "free_hbm_headroom_with_reserve_gib": 5.91,
+          "redundant_text_encoder_per_gpu_gib": 10.39,
+          "redundant_text_encoder_8gpu_gib": 83.12,
+          "redundant_heavy_t5_umt5_8gpu_gib": 70.96,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 10.58,
+          "saved_static_hbm_8gpu_vs_s0_gib": 84.64,
+          "hard_oom": false,
+          "fragmentation_oom": false,
+          "oom_status": "TIGHT_FIT",
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ],
+          "wan_prompt_encode_ms_range": [
+            14800.0,
+            15200.0
+          ],
+          "sd35_prompt_encode_ms_range": [
+            28.0,
+            42.0
+          ],
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.4,
+            0.52
+          ]
+        },
+        {
+          "strategy": "s2_wan_cpu_sd35_gpu",
+          "code": "S2",
+          "label": "Wan UMT5 on CPU + SD3.5 T5-XXL on GPU",
+          "video_shape": "wan22-720p",
+          "image_shape": "sd35-1024",
+          "video_model": "wan22",
+          "static_gpu_weights_gib": 25.8,
+          "video_active_workspace_gib": 10.68,
+          "video_sigma_blk_gib": 0.48,
+          "image_active_workspace_gib": 3.5,
+          "video_active_peak_gib": 36.48,
+          "peak_colocated_hbm_gib": 36.48,
+          "peak_with_allocator_reserve_gib": 38.8,
+          "usable_hbm_limit_gib": 39.5,
+          "free_hbm_headroom_gib": 3.02,
+          "free_hbm_headroom_with_reserve_gib": 0.7,
+          "redundant_text_encoder_per_gpu_gib": 10.39,
+          "redundant_text_encoder_8gpu_gib": 83.12,
+          "redundant_heavy_t5_umt5_8gpu_gib": 70.96,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 10.58,
+          "saved_static_hbm_8gpu_vs_s0_gib": 84.64,
+          "hard_oom": false,
+          "fragmentation_oom": true,
+          "oom_status": "FRAGMENTATION_OOM",
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ],
+          "wan_prompt_encode_ms_range": [
+            14800.0,
+            15200.0
+          ],
+          "sd35_prompt_encode_ms_range": [
+            28.0,
+            42.0
+          ],
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.4,
+            0.52
+          ]
+        },
+        {
+          "strategy": "s3_both_encoders_cpu",
+          "code": "S3",
+          "label": "Both Heavy T5 Encoders on CPU (No Cross-Worker Pool)",
+          "video_shape": "wan21-480p",
+          "image_shape": "sd35-1024",
+          "video_model": "wan21",
+          "static_gpu_weights_gib": 9.17,
+          "video_active_workspace_gib": 4.45,
+          "video_sigma_blk_gib": 0.22,
+          "image_active_workspace_gib": 3.5,
+          "video_active_peak_gib": 13.62,
+          "peak_colocated_hbm_gib": 17.12,
+          "peak_with_allocator_reserve_gib": 17.12,
+          "usable_hbm_limit_gib": 39.5,
+          "free_hbm_headroom_gib": 22.38,
+          "free_hbm_headroom_with_reserve_gib": 22.38,
+          "redundant_text_encoder_per_gpu_gib": 1.52,
+          "redundant_text_encoder_8gpu_gib": 12.16,
+          "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+          "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+          "hard_oom": false,
+          "fragmentation_oom": false,
+          "oom_status": "ZERO_OOM_CPU_ENCODE_BOTTLENECK",
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ],
+          "wan_prompt_encode_ms_range": [
+            14800.0,
+            15200.0
+          ],
+          "sd35_prompt_encode_ms_range": [
+            3650.0,
+            3950.0
+          ],
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.4,
+            0.52
+          ]
+        },
+        {
+          "strategy": "s3_both_encoders_cpu",
+          "code": "S3",
+          "label": "Both Heavy T5 Encoders on CPU (No Cross-Worker Pool)",
+          "video_shape": "wan21-720p",
+          "image_shape": "sd35-1024",
+          "video_model": "wan21",
+          "static_gpu_weights_gib": 9.17,
+          "video_active_workspace_gib": 10.23,
+          "video_sigma_blk_gib": 0.42,
+          "image_active_workspace_gib": 3.5,
+          "video_active_peak_gib": 19.4,
+          "peak_colocated_hbm_gib": 19.4,
+          "peak_with_allocator_reserve_gib": 19.4,
+          "usable_hbm_limit_gib": 39.5,
+          "free_hbm_headroom_gib": 20.1,
+          "free_hbm_headroom_with_reserve_gib": 20.1,
+          "redundant_text_encoder_per_gpu_gib": 1.52,
+          "redundant_text_encoder_8gpu_gib": 12.16,
+          "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+          "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+          "hard_oom": false,
+          "fragmentation_oom": false,
+          "oom_status": "ZERO_OOM_CPU_ENCODE_BOTTLENECK",
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ],
+          "wan_prompt_encode_ms_range": [
+            14800.0,
+            15200.0
+          ],
+          "sd35_prompt_encode_ms_range": [
+            3650.0,
+            3950.0
+          ],
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.4,
+            0.52
+          ]
+        },
+        {
+          "strategy": "s3_both_encoders_cpu",
+          "code": "S3",
+          "label": "Both Heavy T5 Encoders on CPU (No Cross-Worker Pool)",
+          "video_shape": "wan22-small",
+          "image_shape": "sd35-1024",
+          "video_model": "wan22",
+          "static_gpu_weights_gib": 16.92,
+          "video_active_workspace_gib": 5.47,
+          "video_sigma_blk_gib": 0.28,
+          "image_active_workspace_gib": 3.5,
+          "video_active_peak_gib": 22.39,
+          "peak_colocated_hbm_gib": 22.39,
+          "peak_with_allocator_reserve_gib": 22.39,
+          "usable_hbm_limit_gib": 39.5,
+          "free_hbm_headroom_gib": 17.11,
+          "free_hbm_headroom_with_reserve_gib": 17.11,
+          "redundant_text_encoder_per_gpu_gib": 1.52,
+          "redundant_text_encoder_8gpu_gib": 12.16,
+          "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+          "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+          "hard_oom": false,
+          "fragmentation_oom": false,
+          "oom_status": "ZERO_OOM_CPU_ENCODE_BOTTLENECK",
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ],
+          "wan_prompt_encode_ms_range": [
+            14800.0,
+            15200.0
+          ],
+          "sd35_prompt_encode_ms_range": [
+            3650.0,
+            3950.0
+          ],
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.4,
+            0.52
+          ]
+        },
+        {
+          "strategy": "s3_both_encoders_cpu",
+          "code": "S3",
+          "label": "Both Heavy T5 Encoders on CPU (No Cross-Worker Pool)",
+          "video_shape": "wan22-720p",
+          "image_shape": "sd35-1024",
+          "video_model": "wan22",
+          "static_gpu_weights_gib": 16.92,
+          "video_active_workspace_gib": 10.68,
+          "video_sigma_blk_gib": 0.48,
+          "image_active_workspace_gib": 3.5,
+          "video_active_peak_gib": 27.6,
+          "peak_colocated_hbm_gib": 27.6,
+          "peak_with_allocator_reserve_gib": 27.6,
+          "usable_hbm_limit_gib": 39.5,
+          "free_hbm_headroom_gib": 11.9,
+          "free_hbm_headroom_with_reserve_gib": 11.9,
+          "redundant_text_encoder_per_gpu_gib": 1.52,
+          "redundant_text_encoder_8gpu_gib": 12.16,
+          "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+          "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+          "hard_oom": false,
+          "fragmentation_oom": false,
+          "oom_status": "ZERO_OOM_CPU_ENCODE_BOTTLENECK",
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ],
+          "wan_prompt_encode_ms_range": [
+            14800.0,
+            15200.0
+          ],
+          "sd35_prompt_encode_ms_range": [
+            3650.0,
+            3950.0
+          ],
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.4,
+            0.52
+          ]
+        },
+        {
+          "strategy": "s4_disaggregated_pool",
+          "code": "S4",
+          "label": "DitServe Cross-Modal Disaggregated Encoder Pool + Safe-Point Cache Release",
+          "video_shape": "wan21-480p",
+          "image_shape": "sd35-1024",
+          "video_model": "wan21",
+          "static_gpu_weights_gib": 9.17,
+          "video_active_workspace_gib": 4.45,
+          "video_sigma_blk_gib": 0.22,
+          "image_active_workspace_gib": 3.5,
+          "video_active_peak_gib": 13.62,
+          "peak_colocated_hbm_gib": 17.12,
+          "peak_with_allocator_reserve_gib": 13.62,
+          "usable_hbm_limit_gib": 39.5,
+          "free_hbm_headroom_gib": 22.38,
+          "free_hbm_headroom_with_reserve_gib": 25.88,
+          "redundant_text_encoder_per_gpu_gib": 0.0,
+          "redundant_text_encoder_8gpu_gib": 0.0,
+          "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+          "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+          "hard_oom": false,
+          "fragmentation_oom": false,
+          "oom_status": "ZERO_OOM_SLO_COMPLIANT",
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ],
+          "wan_prompt_encode_ms_range": [
+            45.0,
+            80.0
+          ],
+          "sd35_prompt_encode_ms_range": [
+            28.0,
+            42.0
+          ],
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.35,
+            0.48
+          ]
+        },
+        {
+          "strategy": "s4_disaggregated_pool",
+          "code": "S4",
+          "label": "DitServe Cross-Modal Disaggregated Encoder Pool + Safe-Point Cache Release",
+          "video_shape": "wan21-720p",
+          "image_shape": "sd35-1024",
+          "video_model": "wan21",
+          "static_gpu_weights_gib": 9.17,
+          "video_active_workspace_gib": 10.23,
+          "video_sigma_blk_gib": 0.42,
+          "image_active_workspace_gib": 3.5,
+          "video_active_peak_gib": 19.4,
+          "peak_colocated_hbm_gib": 19.4,
+          "peak_with_allocator_reserve_gib": 19.4,
+          "usable_hbm_limit_gib": 39.5,
+          "free_hbm_headroom_gib": 20.1,
+          "free_hbm_headroom_with_reserve_gib": 20.1,
+          "redundant_text_encoder_per_gpu_gib": 0.0,
+          "redundant_text_encoder_8gpu_gib": 0.0,
+          "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+          "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+          "hard_oom": false,
+          "fragmentation_oom": false,
+          "oom_status": "ZERO_OOM_SLO_COMPLIANT",
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ],
+          "wan_prompt_encode_ms_range": [
+            45.0,
+            80.0
+          ],
+          "sd35_prompt_encode_ms_range": [
+            28.0,
+            42.0
+          ],
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.35,
+            0.48
+          ]
+        },
+        {
+          "strategy": "s4_disaggregated_pool",
+          "code": "S4",
+          "label": "DitServe Cross-Modal Disaggregated Encoder Pool + Safe-Point Cache Release",
+          "video_shape": "wan22-small",
+          "image_shape": "sd35-1024",
+          "video_model": "wan22",
+          "static_gpu_weights_gib": 16.92,
+          "video_active_workspace_gib": 5.47,
+          "video_sigma_blk_gib": 0.28,
+          "image_active_workspace_gib": 3.5,
+          "video_active_peak_gib": 22.39,
+          "peak_colocated_hbm_gib": 22.39,
+          "peak_with_allocator_reserve_gib": 22.39,
+          "usable_hbm_limit_gib": 39.5,
+          "free_hbm_headroom_gib": 17.11,
+          "free_hbm_headroom_with_reserve_gib": 17.11,
+          "redundant_text_encoder_per_gpu_gib": 0.0,
+          "redundant_text_encoder_8gpu_gib": 0.0,
+          "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+          "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+          "hard_oom": false,
+          "fragmentation_oom": false,
+          "oom_status": "ZERO_OOM_SLO_COMPLIANT",
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ],
+          "wan_prompt_encode_ms_range": [
+            45.0,
+            80.0
+          ],
+          "sd35_prompt_encode_ms_range": [
+            28.0,
+            42.0
+          ],
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.35,
+            0.48
+          ]
+        },
+        {
+          "strategy": "s4_disaggregated_pool",
+          "code": "S4",
+          "label": "DitServe Cross-Modal Disaggregated Encoder Pool + Safe-Point Cache Release",
+          "video_shape": "wan22-720p",
+          "image_shape": "sd35-1024",
+          "video_model": "wan22",
+          "static_gpu_weights_gib": 16.92,
+          "video_active_workspace_gib": 10.68,
+          "video_sigma_blk_gib": 0.48,
+          "image_active_workspace_gib": 3.5,
+          "video_active_peak_gib": 27.6,
+          "peak_colocated_hbm_gib": 27.6,
+          "peak_with_allocator_reserve_gib": 27.6,
+          "usable_hbm_limit_gib": 39.5,
+          "free_hbm_headroom_gib": 11.9,
+          "free_hbm_headroom_with_reserve_gib": 11.9,
+          "redundant_text_encoder_per_gpu_gib": 0.0,
+          "redundant_text_encoder_8gpu_gib": 0.0,
+          "redundant_heavy_t5_umt5_8gpu_gib": 0.0,
+          "saved_static_hbm_per_gpu_vs_s0_gib": 19.46,
+          "saved_static_hbm_8gpu_vs_s0_gib": 155.68,
+          "hard_oom": false,
+          "fragmentation_oom": false,
+          "oom_status": "ZERO_OOM_SLO_COMPLIANT",
+          "weight_swap_gib": 0.0,
+          "weight_swap_ms_range": [
+            0.0,
+            0.0
+          ],
+          "wan_prompt_encode_ms_range": [
+            45.0,
+            80.0
+          ],
+          "sd35_prompt_encode_ms_range": [
+            28.0,
+            42.0
+          ],
+          "pinned_shm_h2d_fetch_ms_range": [
+            0.35,
+            0.48
+          ]
+        }
+      ],
+      "shm_encoder_pool_microbenchmark": {
+        "backend": "pytorch-2.10.0+cu126",
+        "shm_root": "/dev/shm",
+        "target_device": "cpu",
+        "iterations": 50,
+        "sd35_embedding_bundle": {
+          "shapes": {
+            "prompt_embeds": [
+              1,
+              256,
+              4096
+            ],
+            "negative_prompt_embeds": [
+              1,
+              256,
+              4096
+            ],
+            "pooled_prompt_embeds": [
+              1,
+              2048
+            ],
+            "negative_pooled_prompt_embeds": [
+              1,
+              2048
+            ]
+          },
+          "single_branch_Plus_pooled_bytes": 2101248,
+          "cfg_pair_total_bytes": 4202496,
+          "cfg_pair_total_mb": 4.202,
+          "stage_write_shm_ms_median": 6.0881,
+          "stage_write_shm_ms_p95": 6.406,
+          "inproc_pinned_fetch_ms_median": 0.018,
+          "cross_worker_shm_fetch_ms_median": 2.0879,
+          "calibrated_a100_pinned_h2d_ms": 0.386
+        },
+        "wan_embedding_bundle": {
+          "shapes": {
+            "embed": [
+              1,
+              512,
+              4096
+            ]
+          },
+          "total_bytes": 4194304,
+          "total_mb": 4.19,
+          "total_mib": 4.0,
+          "stage_write_shm_ms_median": 5.5721,
+          "stage_write_shm_ms_p95": 6.0148,
+          "inproc_pinned_fetch_ms_median": 0.0168,
+          "cross_worker_shm_fetch_ms_median": 1.677,
+          "calibrated_a100_pinned_h2d_ms": 0.3853
+        },
+        "pool_hit_rate": 1.0,
+        "total_hits": 200,
+        "total_misses": 0,
+        "staged_pushes": 100
+      },
+      "key_findings": {
+        "text_encoder_weight_fraction": {
+          "sd35_pct": 68.5,
+          "wan21_pct": 78.5,
+          "wan22_pct": 49.9
+        },
+        "s0_cluster_redundant_encoder_hbm_gib": {
+          "all_text_encoders_8gpu_gib": 167.76,
+          "heavy_umt5_plus_t5_8gpu_gib": 155.6
+        },
+        "s4_hbm_savings": {
+          "saved_per_gpu_gib": 19.45,
+          "saved_across_8gpus_gib": 155.6,
+          "wan21_static_drop_gib": "28.63 -> 9.17",
+          "wan22_static_drop_gib": "36.38 -> 16.92",
+          "peak_colocated_hbm_gib_range": [
+            17.12,
+            27.6
+          ],
+          "free_hbm_headroom_gib_range": [
+            11.9,
+            22.38
+          ]
+        },
+        "s4_latency_advantages": {
+          "weight_swap_ms": 0.0,
+          "s1_weight_swap_stall_ms_range": [
+            2742.3,
+            3907.2
+          ],
+          "s2_s3_cpu_wan_encode_ms": 15000.0,
+          "s3_cpu_sd35_encode_ms": 3800.0,
+          "s4_wan_encode_ms_range": [
+            45.0,
+            80.0
+          ],
+          "s4_sd35_encode_ms_range": [
+            28.0,
+            42.0
+          ],
+          "s4_pinned_shm_fetch_ms_range": [
+            0.35,
+            0.48
+          ]
+        }
+      },
+      "gpu_hardware_microbench": {
+        "executed": true,
+        "device": "cuda:0",
+        "device_name": "NVIDIA A100-PCIE-40GB",
+        "shm_to_gpu_bench": {
+          "backend": "pytorch-2.10.0+cu126",
+          "shm_root": "/dev/shm",
+          "target_device": "cuda:0",
+          "iterations": 50,
+          "sd35_embedding_bundle": {
+            "shapes": {
+              "prompt_embeds": [
+                1,
+                256,
+                4096
+              ],
+              "negative_prompt_embeds": [
+                1,
+                256,
+                4096
+              ],
+              "pooled_prompt_embeds": [
+                1,
+                2048
+              ],
+              "negative_pooled_prompt_embeds": [
+                1,
+                2048
+              ]
+            },
+            "single_branch_Plus_pooled_bytes": 2101248,
+            "cfg_pair_total_bytes": 4202496,
+            "cfg_pair_total_mb": 4.202,
+            "stage_write_shm_ms_median": 3.8248,
+            "stage_write_shm_ms_p95": 4.328,
+            "inproc_pinned_fetch_ms_median": 0.0988,
+            "cross_worker_shm_fetch_ms_median": 2.9316,
+            "calibrated_a100_pinned_h2d_ms": 0.386
+          },
+          "wan_embedding_bundle": {
+            "shapes": {
+              "embed": [
+                1,
+                512,
+                4096
+              ]
+            },
+            "total_bytes": 4194304,
+            "total_mb": 4.19,
+            "total_mib": 4.0,
+            "stage_write_shm_ms_median": 3.6273,
+            "stage_write_shm_ms_p95": 4.0861,
+            "inproc_pinned_fetch_ms_median": 0.0617,
+            "cross_worker_shm_fetch_ms_median": 2.2951,
+            "calibrated_a100_pinned_h2d_ms": 0.3853
+          },
+          "pool_hit_rate": 1.0,
+          "total_hits": 200,
+          "total_misses": 0,
+          "staged_pushes": 100
+        },
+        "safepoint_empty_cache_ms_median": 0.1883
+      }
+    },
+    "proactive_encoder_pool_shm_and_h2d": {
+      "sd35_single_512": {
+        "payload_bytes": 4198400,
+        "payload_mb": 4.0039,
+        "stage_to_pinned_and_shm": {
+          "count": 20,
+          "mean_ms": 4.0522,
+          "std_ms": 0.5144,
+          "min_ms": 3.6053,
+          "p50_ms": 3.9173,
+          "p90_ms": 4.7549,
+          "p95_ms": 5.3612,
+          "p99_ms": 5.4742,
+          "max_ms": 5.5024,
+          "p99_over_p50": 1.3974,
+          "p95_over_p50": 1.3686
+        },
+        "async_h2d_cpu_dispatch": {
+          "count": 80,
+          "mean_ms": 0.0729,
+          "std_ms": 0.0091,
+          "min_ms": 0.0612,
+          "p50_ms": 0.0682,
+          "p90_ms": 0.0837,
+          "p95_ms": 0.0848,
+          "p99_ms": 0.0927,
+          "max_ms": 0.1047,
+          "p99_over_p50": 1.3598,
+          "p95_over_p50": 1.2438
+        },
+        "async_h2d_dma_complete": {
+          "count": 80,
+          "mean_ms": 0.4005,
+          "std_ms": 0.0071,
+          "min_ms": 0.3885,
+          "p50_ms": 0.3994,
+          "p90_ms": 0.4093,
+          "p95_ms": 0.4124,
+          "p99_ms": 0.4141,
+          "max_ms": 0.4147,
+          "p99_over_p50": 1.0369,
+          "p95_over_p50": 1.0325
+        },
+        "async_h2d_effective_bw_mean_gbps": 10.482,
+        "async_h2d_effective_bw_p50_gbps": 10.512,
+        "cold_shm_mmap_to_gpu": {
+          "count": 20,
+          "mean_ms": 2.7489,
+          "std_ms": 0.5176,
+          "min_ms": 2.5174,
+          "p50_ms": 2.6398,
+          "p90_ms": 2.6874,
+          "p95_ms": 2.8967,
+          "p99_ms": 4.5735,
+          "max_ms": 4.9927,
+          "p99_over_p50": 1.7325,
+          "p95_over_p50": 1.0973
+        }
+      },
+      "sd35_cfg_333": {
+        "payload_bytes": 5464064,
+        "payload_mb": 5.2109,
+        "stage_to_pinned_and_shm": {
+          "count": 20,
+          "mean_ms": 8.6759,
+          "std_ms": 0.1535,
+          "min_ms": 8.4796,
+          "p50_ms": 8.619,
+          "p90_ms": 8.8027,
+          "p95_ms": 8.9606,
+          "p99_ms": 9.1052,
+          "max_ms": 9.1414,
+          "p99_over_p50": 1.0564,
+          "p95_over_p50": 1.0396
+        },
+        "async_h2d_cpu_dispatch": {
+          "count": 80,
+          "mean_ms": 0.0783,
+          "std_ms": 0.0095,
+          "min_ms": 0.0633,
+          "p50_ms": 0.0809,
+          "p90_ms": 0.0898,
+          "p95_ms": 0.0924,
+          "p99_ms": 0.0984,
+          "max_ms": 0.1034,
+          "p99_over_p50": 1.2165,
+          "p95_over_p50": 1.1431
+        },
+        "async_h2d_dma_complete": {
+          "count": 80,
+          "mean_ms": 0.5302,
+          "std_ms": 0.0082,
+          "min_ms": 0.5122,
+          "p50_ms": 0.5307,
+          "p90_ms": 0.5399,
+          "p95_ms": 0.5432,
+          "p99_ms": 0.5471,
+          "max_ms": 0.5537,
+          "p99_over_p50": 1.0308,
+          "p95_over_p50": 1.0234
+        },
+        "async_h2d_effective_bw_mean_gbps": 10.305,
+        "async_h2d_effective_bw_p50_gbps": 10.295,
+        "cold_shm_mmap_to_gpu": {
+          "count": 20,
+          "mean_ms": 3.3403,
+          "std_ms": 0.7091,
+          "min_ms": 3.0437,
+          "p50_ms": 3.134,
+          "p90_ms": 3.3104,
+          "p95_ms": 4.1393,
+          "p99_ms": 5.8747,
+          "max_ms": 6.3086,
+          "p99_over_p50": 1.8745,
+          "p95_over_p50": 1.3208
+        }
+      },
+      "wan_cfg_512": {
+        "payload_bytes": 8388608,
+        "payload_mb": 8.0,
+        "stage_to_pinned_and_shm": {
+          "count": 20,
+          "mean_ms": 8.1892,
+          "std_ms": 1.5054,
+          "min_ms": 6.9061,
+          "p50_ms": 7.649,
+          "p90_ms": 11.4672,
+          "p95_ms": 11.517,
+          "p99_ms": 11.6244,
+          "max_ms": 11.6512,
+          "p99_over_p50": 1.5197,
+          "p95_over_p50": 1.5057
+        },
+        "async_h2d_cpu_dispatch": {
+          "count": 80,
+          "mean_ms": 0.0816,
+          "std_ms": 0.0173,
+          "min_ms": 0.0667,
+          "p50_ms": 0.0799,
+          "p90_ms": 0.0881,
+          "p95_ms": 0.0938,
+          "p99_ms": 0.1431,
+          "max_ms": 0.2139,
+          "p99_over_p50": 1.7913,
+          "p95_over_p50": 1.1744
+        },
+        "async_h2d_dma_complete": {
+          "count": 80,
+          "mean_ms": 0.7508,
+          "std_ms": 0.0108,
+          "min_ms": 0.7334,
+          "p50_ms": 0.7493,
+          "p90_ms": 0.7605,
+          "p95_ms": 0.7662,
+          "p99_ms": 0.7901,
+          "max_ms": 0.8106,
+          "p99_over_p50": 1.0544,
+          "p95_over_p50": 1.0225
+        },
+        "async_h2d_effective_bw_mean_gbps": 11.173,
+        "async_h2d_effective_bw_p50_gbps": 11.195,
+        "cold_shm_mmap_to_gpu": {
+          "count": 20,
+          "mean_ms": 5.4575,
+          "std_ms": 0.9813,
+          "min_ms": 4.5036,
+          "p50_ms": 5.0351,
+          "p90_ms": 6.9703,
+          "p95_ms": 7.0097,
+          "p99_ms": 7.0838,
+          "max_ms": 7.1023,
+          "p99_over_p50": 1.4069,
+          "p95_over_p50": 1.3922
+        }
+      },
+      "wan_trimmed_48": {
+        "payload_bytes": 540672,
+        "payload_mb": 0.5156,
+        "stage_to_pinned_and_shm": {
+          "count": 20,
+          "mean_ms": 1.3375,
+          "std_ms": 0.5596,
+          "min_ms": 0.8648,
+          "p50_ms": 0.9502,
+          "p90_ms": 2.1004,
+          "p95_ms": 2.1159,
+          "p99_ms": 2.248,
+          "max_ms": 2.281,
+          "p99_over_p50": 2.3658,
+          "p95_over_p50": 2.2268
+        },
+        "async_h2d_cpu_dispatch": {
+          "count": 80,
+          "mean_ms": 0.0677,
+          "std_ms": 0.0116,
+          "min_ms": 0.0593,
+          "p50_ms": 0.0616,
+          "p90_ms": 0.0823,
+          "p95_ms": 0.1001,
+          "p99_ms": 0.1056,
+          "max_ms": 0.1087,
+          "p99_over_p50": 1.7142,
+          "p95_over_p50": 1.6242
+        },
+        "async_h2d_dma_complete": {
+          "count": 80,
+          "mean_ms": 0.0962,
+          "std_ms": 0.0092,
+          "min_ms": 0.0892,
+          "p50_ms": 0.092,
+          "p90_ms": 0.1081,
+          "p95_ms": 0.1145,
+          "p99_ms": 0.1287,
+          "max_ms": 0.1333,
+          "p99_over_p50": 1.3991,
+          "p95_over_p50": 1.2447
+        },
+        "async_h2d_effective_bw_mean_gbps": 5.622,
+        "async_h2d_effective_bw_p50_gbps": 5.878,
+        "cold_shm_mmap_to_gpu": {
+          "count": 20,
+          "mean_ms": 1.0165,
+          "std_ms": 0.0342,
+          "min_ms": 0.9898,
+          "p50_ms": 1.0057,
+          "p90_ms": 1.0316,
+          "p95_ms": 1.071,
+          "p99_ms": 1.1319,
+          "max_ms": 1.1471,
+          "p99_over_p50": 1.1255,
+          "p95_over_p50": 1.065
+        }
+      }
+    },
+    "substep_safe_point_empty_cache": {
+      "substep_workspace_576mb": {
+        "latency": {
+          "count": 40,
+          "mean_ms": 0.6019,
+          "std_ms": 0.0313,
+          "min_ms": 0.547,
+          "p50_ms": 0.5959,
+          "p90_ms": 0.6358,
+          "p95_ms": 0.6582,
+          "p99_ms": 0.6845,
+          "max_ms": 0.6935,
+          "p99_over_p50": 1.1488,
+          "p95_over_p50": 1.1046
+        },
+        "freed_fragmentation_bytes_mean": 603979776,
+        "freed_fragmentation_mb_mean": 576.0,
+        "allocated_resident_mb": 128.0
+      },
+      "cross_modal_switch_2304mb": {
+        "latency": {
+          "count": 40,
+          "mean_ms": 1.6156,
+          "std_ms": 0.1794,
+          "min_ms": 1.5122,
+          "p50_ms": 1.5678,
+          "p90_ms": 1.6493,
+          "p95_ms": 1.8962,
+          "p99_ms": 2.3758,
+          "max_ms": 2.5263,
+          "p99_over_p50": 1.5154,
+          "p95_over_p50": 1.2095
+        },
+        "freed_fragmentation_bytes_mean": 2415919104,
+        "freed_fragmentation_mb_mean": 2304.0,
+        "allocated_resident_mb": 128.0
+      }
+    },
+    "umt5_xxl_effective_token_trimming": {
+      "gpu_bf16": {
+        "short_prompt": {
+          "prompt": "A cinematic aerial shot of a serene mountain lake at sunrise with golden mist rising over pine trees.",
+          "active_tokens": 24,
+          "padded_tokens": 512,
+          "token_reduction_ratio": 21.33,
+          "embedding_bytes_untrimmed": 4194304,
+          "embedding_bytes_trimmed": 196608,
+          "untrimmed_512_pad": {
+            "count": 30,
+            "mean_ms": 60.7128,
+            "std_ms": 1.2086,
+            "min_ms": 60.0032,
+            "p50_ms": 60.5137,
+            "p90_ms": 60.9964,
+            "p95_ms": 61.2201,
+            "p99_ms": 65.3753,
+            "max_ms": 67.0334,
+            "p99_over_p50": 1.0803,
+            "p95_over_p50": 1.0117
+          },
+          "trimmed_effective_tokens": {
+            "count": 30,
+            "mean_ms": 30.9426,
+            "std_ms": 0.423,
+            "min_ms": 30.7004,
+            "p50_ms": 30.8275,
+            "p90_ms": 31.1289,
+            "p95_ms": 31.4263,
+            "p99_ms": 32.5825,
+            "max_ms": 33.0154,
+            "p99_over_p50": 1.0569,
+            "p95_over_p50": 1.0194
+          },
+          "speedup_mean_x": 1.962,
+          "speedup_p50_x": 1.963,
+          "bf16_max_abs_diff": 0.0390625,
+          "bf16_mean_abs_diff": 0.00106048583984375,
+          "bf16_cosine_similarity": 0.9997748136520386,
+          "pool_helper_output_shape": [
+            1,
+            512,
+            4096
+          ],
+          "pool_helper_active_tokens": 24
+        },
+        "medium_prompt": {
+          "prompt": "A detailed ultra-realistic tracking shot through a futuristic cyberpunk street in Tokyo at night, neon holograms reflecting in rain puddles, steam rising from street vents, pedestrians holding translucent umbrellas, shallow depth of field, anamorphic lens flare, 4k cinematography.",
+          "active_tokens": 71,
+          "padded_tokens": 512,
+          "token_reduction_ratio": 7.21,
+          "embedding_bytes_untrimmed": 4194304,
+          "embedding_bytes_trimmed": 581632,
+          "untrimmed_512_pad": {
+            "count": 30,
+            "mean_ms": 60.8681,
+            "std_ms": 0.2589,
+            "min_ms": 60.1194,
+            "p50_ms": 60.7867,
+            "p90_ms": 61.1585,
+            "p95_ms": 61.201,
+            "p99_ms": 61.3264,
+            "max_ms": 61.3677,
+            "p99_over_p50": 1.0089,
+            "p95_over_p50": 1.0068
+          },
+          "trimmed_effective_tokens": {
+            "count": 30,
+            "mean_ms": 32.1547,
+            "std_ms": 1.9838,
+            "min_ms": 31.3902,
+            "p50_ms": 31.5583,
+            "p90_ms": 32.1079,
+            "p95_ms": 36.3589,
+            "p99_ms": 39.6793,
+            "max_ms": 39.9827,
+            "p99_over_p50": 1.2573,
+            "p95_over_p50": 1.1521
+          },
+          "speedup_mean_x": 1.893,
+          "speedup_p50_x": 1.926,
+          "bf16_max_abs_diff": 0.0810546875,
+          "bf16_mean_abs_diff": 0.0016937255859375,
+          "bf16_cosine_similarity": 0.998981237411499,
+          "pool_helper_output_shape": [
+            1,
+            512,
+            4096
+          ],
+          "pool_helper_active_tokens": 71
+        }
+      },
+      "gpu_fp32_math_equivalence": {
+        "short_prompt": {
+          "prompt": "A cinematic aerial shot of a serene mountain lake at sunrise with golden mist rising over pine trees.",
+          "active_tokens": 24,
+          "padded_tokens": 512,
+          "token_reduction_ratio": 21.33,
+          "embedding_bytes_untrimmed": 8388608,
+          "embedding_bytes_trimmed": 393216,
+          "untrimmed_512_pad": {
+            "count": 15,
+            "mean_ms": 341.6824,
+            "std_ms": 0.6199,
+            "min_ms": 340.9295,
+            "p50_ms": 341.5639,
+            "p90_ms": 342.4727,
+            "p95_ms": 342.8212,
+            "p99_ms": 343.14,
+            "max_ms": 343.2197,
+            "p99_over_p50": 1.0046,
+            "p95_over_p50": 1.0037
+          },
+          "trimmed_effective_tokens": {
+            "count": 15,
+            "mean_ms": 31.5453,
+            "std_ms": 1.54,
+            "min_ms": 30.8099,
+            "p50_ms": 31.131,
+            "p90_ms": 31.662,
+            "p95_ms": 33.5402,
+            "p99_ms": 36.4963,
+            "max_ms": 37.2353,
+            "p99_over_p50": 1.1723,
+            "p95_over_p50": 1.0774
+          },
+          "speedup_mean_x": 10.831,
+          "speedup_p50_x": 10.972,
+          "bf16_max_abs_diff": 2.199411392211914e-05,
+          "bf16_mean_abs_diff": 2.475869393947505e-07,
+          "bf16_cosine_similarity": 1.0
+        },
+        "medium_prompt": {
+          "prompt": "A detailed ultra-realistic tracking shot through a futuristic cyberpunk street in Tokyo at night, neon holograms reflecting in rain puddles, steam rising from street vents, pedestrians holding translucent umbrellas, shallow depth of field, anamorphic lens flare, 4k cinematography.",
+          "active_tokens": 71,
+          "padded_tokens": 512,
+          "token_reduction_ratio": 7.21,
+          "embedding_bytes_untrimmed": 8388608,
+          "embedding_bytes_trimmed": 1163264,
+          "untrimmed_512_pad": {
+            "count": 15,
+            "mean_ms": 344.9256,
+            "std_ms": 0.8122,
+            "min_ms": 343.6466,
+            "p50_ms": 344.9032,
+            "p90_ms": 345.3296,
+            "p95_ms": 345.9547,
+            "p99_ms": 347.109,
+            "max_ms": 347.3976,
+            "p99_over_p50": 1.0064,
+            "p95_over_p50": 1.003
+          },
+          "trimmed_effective_tokens": {
+            "count": 15,
+            "mean_ms": 69.8909,
+            "std_ms": 0.4854,
+            "min_ms": 68.5836,
+            "p50_ms": 69.926,
+            "p90_ms": 70.4435,
+            "p95_ms": 70.7419,
+            "p99_ms": 70.8147,
+            "max_ms": 70.833,
+            "p99_over_p50": 1.0127,
+            "p95_over_p50": 1.0117
+          },
+          "speedup_mean_x": 4.935,
+          "speedup_p50_x": 4.932,
+          "bf16_max_abs_diff": 1.1758878827095032e-05,
+          "bf16_mean_abs_diff": 2.928961748693837e-07,
+          "bf16_cosine_similarity": 1.0
+        }
+      },
+      "cpu_bf16": {
+        "short_prompt": {
+          "prompt": "A cinematic aerial shot of a serene mountain lake at sunrise with golden mist rising over pine trees.",
+          "active_tokens": 24,
+          "padded_tokens": 512,
+          "token_reduction_ratio": 21.33,
+          "embedding_bytes_untrimmed": 4194304,
+          "embedding_bytes_trimmed": 196608,
+          "untrimmed_512_pad": {
+            "count": 2,
+            "mean_ms": 9682.5785,
+            "std_ms": 85.4471,
+            "min_ms": 9597.1314,
+            "p50_ms": 9682.5785,
+            "p90_ms": 9750.9361,
+            "p95_ms": 9759.4808,
+            "p99_ms": 9766.3166,
+            "max_ms": 9768.0256,
+            "p99_over_p50": 1.0086,
+            "p95_over_p50": 1.0079
+          },
+          "trimmed_effective_tokens": {
+            "count": 2,
+            "mean_ms": 1197.7101,
+            "std_ms": 45.2706,
+            "min_ms": 1152.4395,
+            "p50_ms": 1197.7101,
+            "p90_ms": 1233.9265,
+            "p95_ms": 1238.4536,
+            "p99_ms": 1242.0752,
+            "max_ms": 1242.9807,
+            "p99_over_p50": 1.037,
+            "p95_over_p50": 1.034
+          },
+          "speedup_mean_x": 8.084,
+          "speedup_p50_x": 8.084,
+          "bf16_max_abs_diff": 0.1328125,
+          "bf16_mean_abs_diff": 0.00128173828125,
+          "bf16_cosine_similarity": 0.9994261264801025
+        },
+        "medium_prompt": {
+          "prompt": "A detailed ultra-realistic tracking shot through a futuristic cyberpunk street in Tokyo at night, neon holograms reflecting in rain puddles, steam rising from street vents, pedestrians holding translucent umbrellas, shallow depth of field, anamorphic lens flare, 4k cinematography.",
+          "active_tokens": 71,
+          "padded_tokens": 512,
+          "token_reduction_ratio": 7.21,
+          "embedding_bytes_untrimmed": 4194304,
+          "embedding_bytes_trimmed": 581632,
+          "untrimmed_512_pad": {
+            "count": 2,
+            "mean_ms": 19883.2518,
+            "std_ms": 5210.7425,
+            "min_ms": 14672.5094,
+            "p50_ms": 19883.2518,
+            "p90_ms": 24051.8458,
+            "p95_ms": 24572.92,
+            "p99_ms": 24989.7794,
+            "max_ms": 25093.9943,
+            "p99_over_p50": 1.2568,
+            "p95_over_p50": 1.2359
+          },
+          "trimmed_effective_tokens": {
+            "count": 2,
+            "mean_ms": 3390.1555,
+            "std_ms": 98.533,
+            "min_ms": 3291.6225,
+            "p50_ms": 3390.1555,
+            "p90_ms": 3468.9819,
+            "p95_ms": 3478.8352,
+            "p99_ms": 3486.7179,
+            "max_ms": 3488.6885,
+            "p99_over_p50": 1.0285,
+            "p95_over_p50": 1.0262
+          },
+          "speedup_mean_x": 5.865,
+          "speedup_p50_x": 5.865,
+          "bf16_max_abs_diff": 0.03125,
+          "bf16_mean_abs_diff": 0.00125885009765625,
+          "bf16_cosine_similarity": 0.999682605266571
+        }
+      }
+    }
+  },
+  "part_b_tiered_pinned_state_and_refresh_certified_migration": {
+    "wan21_480p": {
+      "model": "wan21-480p",
+      "resolution": "832x480x81",
+      "inventory_summary": {
+        "schema_version": "ditserve.research.state.v1",
+        "request_id": "bench-wan21-480p",
+        "step_index": 9,
+        "storage_bytes": 447660060,
+        "unique_storage_bytes": 447660060,
+        "unique_storage_count": 20,
+        "cuda_bytes": 447635856,
+        "feature_only_bytes": 405700608,
+        "necessary_storage_bytes": 41959452,
+        "feature_only_cuda_bytes": 405700608,
+        "shared_role_bytes": 0,
+        "logical_tensor_bytes": 447660076,
+        "rng_snapshot_bytes": 5056,
+        "transfer_supported": true,
+        "storage_scope": "request-owned tensor storage; RNG export listed separately; excludes weights/workspace",
+        "release_scope": "feature-only ownership upper bound; actual allocation reuse must be measured"
+      },
+      "tiered_pinned_slab_pool_vs_dynamic_host_alloc": {
+        "state_total_bytes": 447635856,
+        "state_total_mb": 426.8988,
+        "hbm_allocated_reduction_mb_mean": 23.995,
+        "warm_pinned_slab_offload_d2h": {
+          "count": 25,
+          "mean_ms": 38.5827,
+          "std_ms": 0.817,
+          "min_ms": 38.1698,
+          "p50_ms": 38.3546,
+          "p90_ms": 38.6279,
+          "p95_ms": 39.4201,
+          "p99_ms": 41.6884,
+          "max_ms": 42.3429,
+          "p99_over_p50": 1.0869,
+          "p95_over_p50": 1.0278
+        },
+        "warm_pinned_slab_offload_bw_mean_gbps": 11.607,
+        "warm_pinned_slab_prefetch_h2d": {
+          "count": 25,
+          "mean_ms": 39.4142,
+          "std_ms": 0.1339,
+          "min_ms": 39.2634,
+          "p50_ms": 39.3733,
+          "p90_ms": 39.5838,
+          "p95_ms": 39.6974,
+          "p99_ms": 39.7972,
+          "max_ms": 39.822,
+          "p99_over_p50": 1.0108,
+          "p95_over_p50": 1.0082
+        },
+        "warm_pinned_slab_prefetch_bw_mean_gbps": 11.357,
+        "dynamic_cudaHostAlloc_offload_d2h": {
+          "count": 25,
+          "mean_ms": 47.0193,
+          "std_ms": 43.983,
+          "min_ms": 37.8493,
+          "p50_ms": 37.9267,
+          "p90_ms": 38.3126,
+          "p95_ms": 39.6285,
+          "p99_ms": 209.0682,
+          "max_ms": 262.4818,
+          "p99_over_p50": 5.5124,
+          "p95_over_p50": 1.0449
+        },
+        "dynamic_cudaHostAlloc_offload_bw_mean_gbps": 11.366,
+        "dynamic_cudaHostAlloc_restore_h2d": {
+          "count": 25,
+          "mean_ms": 39.1321,
+          "std_ms": 0.0862,
+          "min_ms": 39.0066,
+          "p50_ms": 39.0963,
+          "p90_ms": 39.2615,
+          "p95_ms": 39.2892,
+          "p99_ms": 39.3063,
+          "max_ms": 39.3107,
+          "p99_over_p50": 1.0054,
+          "p95_over_p50": 1.0049
+        },
+        "dynamic_cudaHostAlloc_restore_bw_mean_gbps": 11.439,
+        "offload_speedup_vs_dynamic_cudaHostAlloc_x": 1.219,
+        "roundtrip_stall_saving_ms_mean": 8.154,
+        "slab_pool_summary": {
+          "suspended_count": 0,
+          "prefetched_count": 1,
+          "offload_count": 26,
+          "prefetch_count": 26,
+          "pool": {
+            "max_bytes": 8589934592,
+            "allocated_bytes": 447635856,
+            "peak_allocated_bytes": 447635856,
+            "cached_free_bytes": 447635856,
+            "active_bytes": 0,
+            "allocations": 13,
+            "reuses": 325
+          }
+        }
+      },
+      "refresh_certified_omission_migration": {
+        "certificate": {
+          "schema_version": "ditserve.research.refresh-certificate.v1",
+          "eligible": true,
+          "reasons": [],
+          "request_id": "bench-wan21-480p",
+          "step_index": 9,
+          "layout": {
+            "sp_size": 1,
+            "ranks": [
+              0
+            ],
+            "device": "cuda:0",
+            "version": 1
+          },
+          "dependency_version": "1.5.0",
+          "binding_sha256": "8f19e3d1eb65b9a336db32b9e80565556be6cd7b73da8d8b9add877fdaab1fee",
+          "reclaimable_storage_ids": [
+            "s14",
+            "s15",
+            "s16",
+            "s17",
+            "s18",
+            "s19"
+          ],
+          "reclaimable_bytes": 405700608,
+          "reclaimable_cuda_bytes": 405700608,
+          "proof_scope": "pinned m1 CFG counter guard precedes old Fn/Bn reads; metadata preserved",
+          "qualification": "validation_only_requires_GPU_trajectory_evidence",
+          "sha256": "92745e6eea37fb98015bd830c5e13e14ba862c27a11e6000975e9fe55d0ac3db"
+        },
+        "full_migrate": {
+          "transfer_bytes": 447665116,
+          "transfer_mb": 426.9267,
+          "omitted_feature_bytes": 0,
+          "export_ms": {
+            "count": 15,
+            "mean_ms": 3307.3149,
+            "std_ms": 232.8741,
+            "min_ms": 2774.6402,
+            "p50_ms": 3338.8435,
+            "p90_ms": 3566.1153,
+            "p95_ms": 3575.9867,
+            "p99_ms": 3592.516,
+            "max_ms": 3596.6483,
+            "p99_over_p50": 1.076,
+            "p95_over_p50": 1.071
+          },
+          "import_ms": {
+            "count": 15,
+            "mean_ms": 5484.6113,
+            "std_ms": 490.8338,
+            "min_ms": 4485.1788,
+            "p50_ms": 5264.1338,
+            "p90_ms": 6086.7841,
+            "p95_ms": 6132.2967,
+            "p99_ms": 6207.9629,
+            "max_ms": 6226.8795,
+            "p99_over_p50": 1.1793,
+            "p95_over_p50": 1.1649
+          },
+          "tcp_socket_transfer_ms": {
+            "count": 15,
+            "mean_ms": 213.3671,
+            "std_ms": 46.7438,
+            "min_ms": 139.5788,
+            "p50_ms": 205.6744,
+            "p90_ms": 277.2238,
+            "p95_ms": 280.791,
+            "p99_ms": 281.4959,
+            "max_ms": 281.6722,
+            "p99_over_p50": 1.3686,
+            "p95_over_p50": 1.3652
+          },
+          "end_to_end_migration_ms": {
+            "count": 15,
+            "mean_ms": 10022.6431,
+            "std_ms": 439.0551,
+            "min_ms": 9128.3344,
+            "p50_ms": 10040.9779,
+            "p90_ms": 10584.406,
+            "p95_ms": 10655.4436,
+            "p99_ms": 10730.8654,
+            "max_ms": 10749.7209,
+            "p99_over_p50": 1.0687,
+            "p95_over_p50": 1.0612
+          }
+        },
+        "certified_omit": {
+          "transfer_bytes": 41964508,
+          "transfer_mb": 40.0205,
+          "omitted_feature_bytes": 405700608,
+          "omitted_feature_mb": 386.9062,
+          "payload_reduction_ratio_x": 10.668,
+          "payload_saving_pct": 90.63,
+          "export_ms": {
+            "count": 15,
+            "mean_ms": 3129.8279,
+            "std_ms": 278.5527,
+            "min_ms": 2398.3127,
+            "p50_ms": 3079.5554,
+            "p90_ms": 3478.6497,
+            "p95_ms": 3500.2061,
+            "p99_ms": 3502.8105,
+            "max_ms": 3503.4617,
+            "p99_over_p50": 1.1374,
+            "p95_over_p50": 1.1366
+          },
+          "import_ms": {
+            "count": 15,
+            "mean_ms": 251.884,
+            "std_ms": 35.0988,
+            "min_ms": 231.8694,
+            "p50_ms": 238.5548,
+            "p90_ms": 277.2874,
+            "p95_ms": 316.8298,
+            "p99_ms": 360.4504,
+            "max_ms": 371.3555,
+            "p99_over_p50": 1.511,
+            "p95_over_p50": 1.3281
+          },
+          "tcp_socket_transfer_ms": {
+            "count": 15,
+            "mean_ms": 29.197,
+            "std_ms": 1.4548,
+            "min_ms": 26.8136,
+            "p50_ms": 28.763,
+            "p90_ms": 31.1145,
+            "p95_ms": 31.7523,
+            "p99_ms": 32.4635,
+            "max_ms": 32.6412,
+            "p99_over_p50": 1.1287,
+            "p95_over_p50": 1.1039
+          },
+          "end_to_end_migration_ms": {
+            "count": 15,
+            "mean_ms": 3461.1771,
+            "std_ms": 296.7564,
+            "min_ms": 2685.8912,
+            "p50_ms": 3399.4178,
+            "p90_ms": 3818.2703,
+            "p95_ms": 3841.5851,
+            "p99_ms": 3872.2268,
+            "max_ms": 3879.8872,
+            "p99_over_p50": 1.1391,
+            "p95_over_p50": 1.1301
+          }
+        },
+        "tcp_transfer_speedup_x": 7.308,
+        "end_to_end_migration_speedup_x": 2.896,
+        "bitwise_consistency_verification": {
+          "step9_refresh_latents_max_abs_diff": 0.0,
+          "step10_cached_latents_max_abs_diff": 0.0,
+          "bitwise_identical": true
+        }
+      }
+    },
+    "wan22_small": {
+      "model": "wan22-small",
+      "resolution": "896x512x121",
+      "inventory_summary": {
+        "schema_version": "ditserve.research.state.v1",
+        "request_id": "bench-wan22-small",
+        "step_index": 9,
+        "storage_bytes": 398680092,
+        "unique_storage_bytes": 398680092,
+        "unique_storage_count": 20,
+        "cuda_bytes": 398655888,
+        "feature_only_bytes": 347602944,
+        "necessary_storage_bytes": 51077148,
+        "feature_only_cuda_bytes": 347602944,
+        "shared_role_bytes": 0,
+        "logical_tensor_bytes": 398680108,
+        "rng_snapshot_bytes": 5056,
+        "transfer_supported": true,
+        "storage_scope": "request-owned tensor storage; RNG export listed separately; excludes weights/workspace",
+        "release_scope": "feature-only ownership upper bound; actual allocation reuse must be measured"
+      },
+      "tiered_pinned_slab_pool_vs_dynamic_host_alloc": {
+        "state_total_bytes": 398655888,
+        "state_total_mb": 380.1879,
+        "hbm_allocated_reduction_mb_mean": 30.516,
+        "warm_pinned_slab_offload_d2h": {
+          "count": 25,
+          "mean_ms": 34.6285,
+          "std_ms": 0.2244,
+          "min_ms": 34.3727,
+          "p50_ms": 34.553,
+          "p90_ms": 34.9359,
+          "p95_ms": 35.0839,
+          "p99_ms": 35.1453,
+          "max_ms": 35.1536,
+          "p99_over_p50": 1.0171,
+          "p95_over_p50": 1.0154
+        },
+        "warm_pinned_slab_offload_bw_mean_gbps": 11.513,
+        "warm_pinned_slab_prefetch_h2d": {
+          "count": 25,
+          "mean_ms": 35.422,
+          "std_ms": 0.1846,
+          "min_ms": 35.2377,
+          "p50_ms": 35.341,
+          "p90_ms": 35.6607,
+          "p95_ms": 35.7127,
+          "p99_ms": 35.9643,
+          "max_ms": 36.0423,
+          "p99_over_p50": 1.0176,
+          "p95_over_p50": 1.0105
+        },
+        "warm_pinned_slab_prefetch_bw_mean_gbps": 11.255,
+        "dynamic_cudaHostAlloc_offload_d2h": {
+          "count": 25,
+          "mean_ms": 36.0146,
+          "std_ms": 6.6969,
+          "min_ms": 34.1735,
+          "p50_ms": 34.3029,
+          "p90_ms": 34.462,
+          "p95_ms": 41.9891,
+          "p99_ms": 61.837,
+          "max_ms": 67.5109,
+          "p99_over_p50": 1.8027,
+          "p95_over_p50": 1.2241
+        },
+        "dynamic_cudaHostAlloc_offload_bw_mean_gbps": 11.291,
+        "dynamic_cudaHostAlloc_restore_h2d": {
+          "count": 25,
+          "mean_ms": 35.2903,
+          "std_ms": 0.0675,
+          "min_ms": 35.1556,
+          "p50_ms": 35.2737,
+          "p90_ms": 35.3845,
+          "p95_ms": 35.4032,
+          "p99_ms": 35.4486,
+          "max_ms": 35.4623,
+          "p99_over_p50": 1.005,
+          "p95_over_p50": 1.0037
+        },
+        "dynamic_cudaHostAlloc_restore_bw_mean_gbps": 11.297,
+        "offload_speedup_vs_dynamic_cudaHostAlloc_x": 1.04,
+        "roundtrip_stall_saving_ms_mean": 1.254,
+        "slab_pool_summary": {
+          "suspended_count": 0,
+          "prefetched_count": 1,
+          "offload_count": 26,
+          "prefetch_count": 26,
+          "pool": {
+            "max_bytes": 8589934592,
+            "allocated_bytes": 398655888,
+            "peak_allocated_bytes": 398655888,
+            "cached_free_bytes": 398655888,
+            "active_bytes": 0,
+            "allocations": 13,
+            "reuses": 325
+          }
+        }
+      },
+      "refresh_certified_omission_migration": {
+        "certificate": {
+          "schema_version": "ditserve.research.refresh-certificate.v1",
+          "eligible": true,
+          "reasons": [],
+          "request_id": "bench-wan22-small",
+          "step_index": 9,
+          "layout": {
+            "sp_size": 1,
+            "ranks": [
+              0
+            ],
+            "device": "cuda:0",
+            "version": 1
+          },
+          "dependency_version": "1.5.0",
+          "binding_sha256": "fa752d4c67c1a42aa726ed2370e144b2b973a34c643dfd021312accd2854191a",
+          "reclaimable_storage_ids": [
+            "s14",
+            "s15",
+            "s16",
+            "s17",
+            "s18",
+            "s19"
+          ],
+          "reclaimable_bytes": 347602944,
+          "reclaimable_cuda_bytes": 347602944,
+          "proof_scope": "pinned m1 CFG counter guard precedes old Fn/Bn reads; metadata preserved",
+          "qualification": "validation_only_requires_GPU_trajectory_evidence",
+          "sha256": "e32a6206d8724cb12804eeb51bdefe58b4ad174a713db771c5a340bb36b7551d"
+        },
+        "full_migrate": {
+          "transfer_bytes": 398685148,
+          "transfer_mb": 380.2158,
+          "omitted_feature_bytes": 0,
+          "export_ms": {
+            "count": 15,
+            "mean_ms": 2994.2117,
+            "std_ms": 30.2405,
+            "min_ms": 2956.4026,
+            "p50_ms": 2993.6357,
+            "p90_ms": 3012.0237,
+            "p95_ms": 3035.0226,
+            "p99_ms": 3077.0294,
+            "max_ms": 3087.5311,
+            "p99_over_p50": 1.0279,
+            "p95_over_p50": 1.0138
+          },
+          "import_ms": {
+            "count": 15,
+            "mean_ms": 5035.5792,
+            "std_ms": 48.1238,
+            "min_ms": 4963.4366,
+            "p50_ms": 5046.1918,
+            "p90_ms": 5082.7044,
+            "p95_ms": 5099.5669,
+            "p99_ms": 5124.1736,
+            "max_ms": 5130.3253,
+            "p99_over_p50": 1.0155,
+            "p95_over_p50": 1.0106
+          },
+          "tcp_socket_transfer_ms": {
+            "count": 15,
+            "mean_ms": 163.7605,
+            "std_ms": 18.4989,
+            "min_ms": 121.8281,
+            "p50_ms": 165.178,
+            "p90_ms": 176.9052,
+            "p95_ms": 184.8048,
+            "p99_ms": 198.9664,
+            "max_ms": 202.5068,
+            "p99_over_p50": 1.2046,
+            "p95_over_p50": 1.1188
+          },
+          "end_to_end_migration_ms": {
+            "count": 15,
+            "mean_ms": 9019.3039,
+            "std_ms": 81.9689,
+            "min_ms": 8876.2936,
+            "p50_ms": 8994.2665,
+            "p90_ms": 9135.2826,
+            "p95_ms": 9152.8029,
+            "p99_ms": 9161.2621,
+            "max_ms": 9163.3769,
+            "p99_over_p50": 1.0186,
+            "p95_over_p50": 1.0176
+          }
+        },
+        "certified_omit": {
+          "transfer_bytes": 51082204,
+          "transfer_mb": 48.7158,
+          "omitted_feature_bytes": 347602944,
+          "omitted_feature_mb": 331.5,
+          "payload_reduction_ratio_x": 7.805,
+          "payload_saving_pct": 87.19,
+          "export_ms": {
+            "count": 15,
+            "mean_ms": 2909.2173,
+            "std_ms": 46.7361,
+            "min_ms": 2840.0117,
+            "p50_ms": 2903.5262,
+            "p90_ms": 2946.9399,
+            "p95_ms": 2974.946,
+            "p99_ms": 3024.4991,
+            "max_ms": 3036.8873,
+            "p99_over_p50": 1.0417,
+            "p95_over_p50": 1.0246
+          },
+          "import_ms": {
+            "count": 15,
+            "mean_ms": 296.4418,
+            "std_ms": 14.1754,
+            "min_ms": 283.0549,
+            "p50_ms": 294.1473,
+            "p90_ms": 300.812,
+            "p95_ms": 315.1701,
+            "p99_ms": 340.0731,
+            "max_ms": 346.2988,
+            "p99_over_p50": 1.1561,
+            "p95_over_p50": 1.0715
+          },
+          "tcp_socket_transfer_ms": {
+            "count": 15,
+            "mean_ms": 35.3758,
+            "std_ms": 2.0267,
+            "min_ms": 32.5592,
+            "p50_ms": 35.0219,
+            "p90_ms": 38.0543,
+            "p95_ms": 38.7796,
+            "p99_ms": 39.9811,
+            "max_ms": 40.2815,
+            "p99_over_p50": 1.1416,
+            "p95_over_p50": 1.1073
+          },
+          "end_to_end_migration_ms": {
+            "count": 15,
+            "mean_ms": 3324.4384,
+            "std_ms": 64.6905,
+            "min_ms": 3232.2011,
+            "p50_ms": 3320.8469,
+            "p90_ms": 3359.1503,
+            "p95_ms": 3412.2507,
+            "p99_ms": 3507.8,
+            "max_ms": 3531.6873,
+            "p99_over_p50": 1.0563,
+            "p95_over_p50": 1.0275
+          }
+        },
+        "tcp_transfer_speedup_x": 4.629,
+        "end_to_end_migration_speedup_x": 2.713,
+        "bitwise_consistency_verification": {
+          "step9_refresh_latents_max_abs_diff": 0.0,
+          "step10_cached_latents_max_abs_diff": 0.0,
+          "bitwise_identical": true
+        }
+      }
+    }
+  },
+  "part_c_rank0_async_3d_vae_and_chunked_preemptible_decode": {
+    "rank0_async_decoder_2gpu_cfg2_with_sd35_overlap": {
+      "frames_41": {
+        "video_resolution": "832x480x41",
+        "cfg_degree": 2,
+        "denoise_steps": 10,
+        "synchronous_baseline": {
+          "cfg2_denoise_ms": 8093.2,
+          "gpu0_sync_3d_vae_decode_ms": 3594.9,
+          "gpu1_idle_waiting_waste_ms": 3595.32,
+          "gpu1_subsequent_sd35_512_28steps_ms": 1837.38,
+          "post_denoise_tail_ms": 5433.14,
+          "end_to_end_total_ms": 13526.34
+        },
+        "async_decoder_rank0_with_gpu1_immediate_release": {
+          "cfg2_denoise_ms": 7699.07,
+          "gpu0_async_decode_submit_ms": 0.285,
+          "gpu0_async_3d_vae_decode_ms": 3491.91,
+          "gpu1_idle_waiting_waste_ms": 0.0,
+          "gpu1_parallel_sd35_512_28steps_ms": 1774.14,
+          "post_denoise_tail_ms": 3493.24,
+          "end_to_end_total_ms": 11192.31
+        },
+        "overlap_benefit": {
+          "eliminated_gpu1_idle_waste_ms": 3595.32,
+          "post_denoise_wall_time_saved_ms": 1939.9,
+          "post_denoise_speedup_x": 1.555,
+          "post_denoise_latency_reduction_pct": 35.7,
+          "e2e_wall_time_saved_ms": 2334.03,
+          "e2e_speedup_x": 1.209,
+          "decoded_video_shape": [
+            1,
+            41,
+            480,
+            832,
+            3
+          ],
+          "decoded_output_max_abs_diff_vs_sync": 0.0
+        }
+      },
+      "frames_81": {
+        "video_resolution": "832x480x81",
+        "cfg_degree": 2,
+        "denoise_steps": 10,
+        "synchronous_baseline": {
+          "cfg2_denoise_ms": 20272.21,
+          "gpu0_sync_3d_vae_decode_ms": 6896.41,
+          "gpu1_idle_waiting_waste_ms": 6898.13,
+          "gpu1_subsequent_sd35_512_28steps_ms": 1756.93,
+          "post_denoise_tail_ms": 8655.59,
+          "end_to_end_total_ms": 28927.81
+        },
+        "async_decoder_rank0_with_gpu1_immediate_release": {
+          "cfg2_denoise_ms": 20273.38,
+          "gpu0_async_decode_submit_ms": 0.333,
+          "gpu0_async_3d_vae_decode_ms": 6909.49,
+          "gpu1_idle_waiting_waste_ms": 0.0,
+          "gpu1_parallel_sd35_512_28steps_ms": 1767.77,
+          "post_denoise_tail_ms": 6912.42,
+          "end_to_end_total_ms": 27185.8
+        },
+        "overlap_benefit": {
+          "eliminated_gpu1_idle_waste_ms": 6898.13,
+          "post_denoise_wall_time_saved_ms": 1743.18,
+          "post_denoise_speedup_x": 1.252,
+          "post_denoise_latency_reduction_pct": 20.14,
+          "e2e_wall_time_saved_ms": 1742.01,
+          "e2e_speedup_x": 1.064,
+          "decoded_video_shape": [
+            1,
+            81,
+            480,
+            832,
+            3
+          ],
+          "decoded_output_max_abs_diff_vs_sync": 0.0
+        }
+      }
+    },
+    "chunked_preemptible_3d_vae_decode": {
+      "frames_41": {
+        "video_frames": 41,
+        "latent_temporal_frames": 11,
+        "monolithic_3d_vae_decode_ms": 3506.5,
+        "chunked_1frame_quanta": {
+          "num_chunks": 11,
+          "chunk_latency": {
+            "count": 11,
+            "mean_ms": 314.3065,
+            "std_ms": 97.3412,
+            "min_ms": 96.594,
+            "p50_ms": 312.7354,
+            "p90_ms": 314.1573,
+            "p95_ms": 433.2999,
+            "p99_ms": 528.6139,
+            "max_ms": 552.4424,
+            "p99_over_p50": 1.6903,
+            "p95_over_p50": 1.3855
+          },
+          "total_decode_only_ms": 3457.37,
+          "overhead_vs_monolithic_pct": -1.4,
+          "paused_after_chunk": 2,
+          "mid_decode_preempting_sd35_ms": 1724.62,
+          "total_wall_ms_with_mid_decode_sd35": 5210.41,
+          "urgent_image_blocking_wait_monolithic_ms": 3506.5,
+          "urgent_image_blocking_wait_chunked_ms": 304.4,
+          "blocking_wait_reduction_x": 11.52,
+          "max_abs_diff_vs_monolithic": 0.0,
+          "bitwise_identical_to_monolithic": true
+        },
+        "chunked_3frame_quanta": {
+          "num_chunks": 4,
+          "chunk_latency": {
+            "count": 4,
+            "mean_ms": 862.74,
+            "std_ms": 93.2395,
+            "min_ms": 711.0649,
+            "p50_ms": 900.2141,
+            "p90_ms": 939.4514,
+            "p95_ms": 939.4593,
+            "p99_ms": 939.4656,
+            "max_ms": 939.4672,
+            "p99_over_p50": 1.0436,
+            "p95_over_p50": 1.0436
+          },
+          "total_decode_only_ms": 3450.96,
+          "overhead_vs_monolithic_pct": -1.58,
+          "max_abs_diff_vs_monolithic": 0.0,
+          "bitwise_identical_to_monolithic": true
+        }
+      },
+      "frames_81": {
+        "video_frames": 81,
+        "latent_temporal_frames": 21,
+        "monolithic_3d_vae_decode_ms": 6912.0,
+        "chunked_1frame_quanta": {
+          "num_chunks": 21,
+          "chunk_latency": {
+            "count": 21,
+            "mean_ms": 325.6504,
+            "std_ms": 112.1467,
+            "min_ms": 95.2928,
+            "p50_ms": 314.3725,
+            "p90_ms": 315.8305,
+            "p95_ms": 315.8736,
+            "p99_ms": 688.7611,
+            "max_ms": 781.983,
+            "p99_over_p50": 2.1909,
+            "p95_over_p50": 1.0048
+          },
+          "total_decode_only_ms": 6838.66,
+          "overhead_vs_monolithic_pct": -1.06,
+          "paused_after_chunk": 2,
+          "mid_decode_preempting_sd35_ms": 1772.53,
+          "total_wall_ms_with_mid_decode_sd35": 8697.27,
+          "urgent_image_blocking_wait_monolithic_ms": 6912.0,
+          "urgent_image_blocking_wait_chunked_ms": 304.07,
+          "blocking_wait_reduction_x": 22.73,
+          "max_abs_diff_vs_monolithic": 0.0,
+          "bitwise_identical_to_monolithic": true
+        },
+        "chunked_3frame_quanta": {
+          "num_chunks": 7,
+          "chunk_latency": {
+            "count": 7,
+            "mean_ms": 976.3183,
+            "std_ms": 192.1284,
+            "min_ms": 711.3249,
+            "p50_ms": 943.9758,
+            "p90_ms": 1128.5365,
+            "p95_ms": 1266.2477,
+            "p99_ms": 1376.4167,
+            "max_ms": 1403.9589,
+            "p99_over_p50": 1.4581,
+            "p95_over_p50": 1.3414
+          },
+          "total_decode_only_ms": 6834.23,
+          "overhead_vs_monolithic_pct": -1.13,
+          "max_abs_diff_vs_monolithic": 0.0,
+          "bitwise_identical_to_monolithic": true
+        }
+      }
+    }
+  },
+  "part_d_cuda_green_context_hardware_sm_partitioning": {
+    "device_name": "NVIDIA A100-PCIE-40GB",
+    "total_sms": 108,
+    "green_context_partitions": {
+      "video_pool": {
+        "enabled": true,
+        "initialized": true,
+        "role": "video",
+        "default": "split_72_36",
+        "granularity_sm": 4,
+        "physical_sm": 108,
+        "split_group_sm": [
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "split_group_fingerprints": [
+          "e071aabdf155ecc9ad623871affb4ab0ca65ca68287fcdd3cad18ba4d3e963c1",
+          "3f802a7642446a35b8b0802d411fc99a59252bebdd91284c399144108336a0d0",
+          "67a3e5386fcd72717b014a9a4f90f8dcca73f156170d61551fe8134e251780a6",
+          "be597d184dfd0f600619a8fc52ed21962d2a25e10d995a776d6ceb0a3163c27d",
+          "17ebe907fc3da444c5f4477e0e455cc65885fad4aac3143331bfe98eee718907",
+          "093a5b0d0ed8a3bda8d4aa15a2ba3f47b927ac4fef32b66e5ccce8671338af7b",
+          "7e5d73575bc42205da5b84692fd9443923dee9c5cea3afa77ebf5621de25fc9c",
+          "c523231fa50ac75cfcc1e93284ae08645eebeede929560c977a6d3d9177df0dd",
+          "621cea7bf06946b80e37caf44f753afc607a462a91e88cff835eacbe16fed008",
+          "7c9c307cb1fa3659b0eb879c43f3b5f4aa0c919656ceb3cfd8787cef90950f3b",
+          "25145ba1de941628ac477908ba372c9041fdb496ca481e537076a37dca531b50",
+          "8e4d521c6b9db33ff0ba3551ac1c72c2a4c9b8665740504ad881a68dd4821077",
+          "a3a1f4dc8b218fda91634e8a4b301a91b16ea8a7a61febd156235c5f4e48051e",
+          "65226e523cf3939658cbcf9d40013bfb96250c4935d3ef2f4c0afc347edc11c3",
+          "15fe217eda9d07622c3b329117de02f8da5f2b0cec75a70cfc92e5fc6b62bafd",
+          "cd02660be3320910a8ecf43d608f01694e1c85319d8c690184c5795316c818de",
+          "ddf1de1830bff344a1873132f80bb69b33480228206c884461d53dfe06d1fbdd",
+          "3a4e05fd1d4c96fed7828099e21945964aa6b81aebb1bea175aa0902e2dcb0dd",
+          "a75979a14ac149028724448a73cc27c4dc9d0dabe4322aa9e2c1203118cfb1f8",
+          "cf3d856b28fff36a2ec9f327ba26d57a6206700cf188952957be26f3892c8856",
+          "ab50afac71cb554fe3b940f3e14b0f3a3a89d0fbadd3743a54677ccd3c513cbb",
+          "85c8e1a01f1992acc50165223409e4d8185181be3c514f38557ee976e0485a97",
+          "460f9220c23b206fa3cf3bdea5838c625185a079e536ee0a22ca6145f5f01e84",
+          "05f83f80efbe26db6ed6149d6d3e557cb72dc24659699018e5cf76e3d89bcee1",
+          "985d88914818c05f92cf83e08635fa760b19b3e2a545983f2d239f1a53e150c2",
+          "7784709696b28f585b7ec776daa7cab41a3d2f0d0506f2531a6917a157dc7040",
+          "19f532e4ba6673f9c7dd6156c24dcc54181d6c7e93a2e67fc0371fa80011f47c"
+        ],
+        "labels": {
+          "split_72_36": {
+            "requested_sm": 72,
+            "observed_sm": 72,
+            "group_indices": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16,
+              17
+            ]
+          },
+          "split_84_24": {
+            "requested_sm": 84,
+            "observed_sm": 84,
+            "group_indices": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16,
+              17,
+              18,
+              19,
+              20
+            ]
+          },
+          "full_108": {
+            "requested_sm": 108,
+            "observed_sm": 108,
+            "group_indices": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16,
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26
+            ]
+          }
+        },
+        "mask_evidence": "Split-resource fingerprints are same-version driver resource identity diagnostics, not Nsight mask proof.",
+        "same_process_partitions_disjoint_by_construction": true,
+        "cross_process_masks_verified": null
+      },
+      "image_pool": {
+        "enabled": true,
+        "initialized": true,
+        "role": "image",
+        "default": "split_72_36",
+        "granularity_sm": 4,
+        "physical_sm": 108,
+        "split_group_sm": [
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "split_group_fingerprints": [
+          "e071aabdf155ecc9ad623871affb4ab0ca65ca68287fcdd3cad18ba4d3e963c1",
+          "3f802a7642446a35b8b0802d411fc99a59252bebdd91284c399144108336a0d0",
+          "67a3e5386fcd72717b014a9a4f90f8dcca73f156170d61551fe8134e251780a6",
+          "be597d184dfd0f600619a8fc52ed21962d2a25e10d995a776d6ceb0a3163c27d",
+          "17ebe907fc3da444c5f4477e0e455cc65885fad4aac3143331bfe98eee718907",
+          "093a5b0d0ed8a3bda8d4aa15a2ba3f47b927ac4fef32b66e5ccce8671338af7b",
+          "7e5d73575bc42205da5b84692fd9443923dee9c5cea3afa77ebf5621de25fc9c",
+          "c523231fa50ac75cfcc1e93284ae08645eebeede929560c977a6d3d9177df0dd",
+          "621cea7bf06946b80e37caf44f753afc607a462a91e88cff835eacbe16fed008",
+          "7c9c307cb1fa3659b0eb879c43f3b5f4aa0c919656ceb3cfd8787cef90950f3b",
+          "25145ba1de941628ac477908ba372c9041fdb496ca481e537076a37dca531b50",
+          "8e4d521c6b9db33ff0ba3551ac1c72c2a4c9b8665740504ad881a68dd4821077",
+          "a3a1f4dc8b218fda91634e8a4b301a91b16ea8a7a61febd156235c5f4e48051e",
+          "65226e523cf3939658cbcf9d40013bfb96250c4935d3ef2f4c0afc347edc11c3",
+          "15fe217eda9d07622c3b329117de02f8da5f2b0cec75a70cfc92e5fc6b62bafd",
+          "cd02660be3320910a8ecf43d608f01694e1c85319d8c690184c5795316c818de",
+          "ddf1de1830bff344a1873132f80bb69b33480228206c884461d53dfe06d1fbdd",
+          "3a4e05fd1d4c96fed7828099e21945964aa6b81aebb1bea175aa0902e2dcb0dd",
+          "a75979a14ac149028724448a73cc27c4dc9d0dabe4322aa9e2c1203118cfb1f8",
+          "cf3d856b28fff36a2ec9f327ba26d57a6206700cf188952957be26f3892c8856",
+          "ab50afac71cb554fe3b940f3e14b0f3a3a89d0fbadd3743a54677ccd3c513cbb",
+          "85c8e1a01f1992acc50165223409e4d8185181be3c514f38557ee976e0485a97",
+          "460f9220c23b206fa3cf3bdea5838c625185a079e536ee0a22ca6145f5f01e84",
+          "05f83f80efbe26db6ed6149d6d3e557cb72dc24659699018e5cf76e3d89bcee1",
+          "985d88914818c05f92cf83e08635fa760b19b3e2a545983f2d239f1a53e150c2",
+          "7784709696b28f585b7ec776daa7cab41a3d2f0d0506f2531a6917a157dc7040",
+          "19f532e4ba6673f9c7dd6156c24dcc54181d6c7e93a2e67fc0371fa80011f47c"
+        ],
+        "labels": {
+          "split_72_36": {
+            "requested_sm": 36,
+            "observed_sm": 36,
+            "group_indices": [
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26
+            ]
+          },
+          "split_84_24": {
+            "requested_sm": 24,
+            "observed_sm": 24,
+            "group_indices": [
+              21,
+              22,
+              23,
+              24,
+              25,
+              26
+            ]
+          },
+          "full_108": {
+            "requested_sm": 108,
+            "observed_sm": 108,
+            "group_indices": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16,
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26
+            ]
+          }
+        },
+        "mask_evidence": "Split-resource fingerprints are same-version driver resource identity diagnostics, not Nsight mask proof.",
+        "same_process_partitions_disjoint_by_construction": true,
+        "cross_process_masks_verified": null
+      }
+    },
+    "solo_baselines": {
+      "full_108_sms": {
+        "wan21_1block_480p_81f": {
+          "count": 80,
+          "mean_ms": 70.2622,
+          "std_ms": 0.4934,
+          "min_ms": 69.1229,
+          "p50_ms": 70.1572,
+          "p90_ms": 70.9723,
+          "p95_ms": 71.0227,
+          "p99_ms": 71.0947,
+          "max_ms": 71.1139,
+          "p99_over_p50": 1.0134,
+          "p95_over_p50": 1.0123
+        },
+        "wan21_4blocks_480p_81f": {
+          "count": 60,
+          "mean_ms": 281.6689,
+          "std_ms": 1.114,
+          "min_ms": 279.0591,
+          "p50_ms": 281.4451,
+          "p90_ms": 283.3052,
+          "p95_ms": 283.4946,
+          "p99_ms": 283.9206,
+          "max_ms": 284.0575,
+          "p99_over_p50": 1.0088,
+          "p95_over_p50": 1.0073
+        },
+        "sd35_medium_1step_cfg2_512x512": {
+          "count": 80,
+          "mean_ms": 60.4759,
+          "std_ms": 4.388,
+          "min_ms": 58.9755,
+          "p50_ms": 59.3751,
+          "p90_ms": 61.4559,
+          "p95_ms": 63.0412,
+          "p99_ms": 84.0066,
+          "max_ms": 90.9011,
+          "p99_over_p50": 1.4148,
+          "p95_over_p50": 1.0617
+        }
+      },
+      "green_72_36_sms_solo": {
+        "wan21_1block_72sms": {
+          "count": 80,
+          "mean_ms": 90.7187,
+          "std_ms": 0.5427,
+          "min_ms": 89.4679,
+          "p50_ms": 90.6822,
+          "p90_ms": 91.3277,
+          "p95_ms": 91.5617,
+          "p99_ms": 92.1156,
+          "max_ms": 92.252,
+          "p99_over_p50": 1.0158,
+          "p95_over_p50": 1.0097
+        },
+        "wan21_4blocks_72sms": {
+          "count": 60,
+          "mean_ms": 362.0411,
+          "std_ms": 1.5153,
+          "min_ms": 359.5944,
+          "p50_ms": 362.16,
+          "p90_ms": 363.6302,
+          "p95_ms": 364.3819,
+          "p99_ms": 365.7639,
+          "max_ms": 367.2126,
+          "p99_over_p50": 1.01,
+          "p95_over_p50": 1.0061
+        },
+        "sd35_medium_1step_36sms": {
+          "count": 80,
+          "mean_ms": 127.7037,
+          "std_ms": 0.1383,
+          "min_ms": 127.5196,
+          "p50_ms": 127.6761,
+          "p90_ms": 127.8535,
+          "p95_ms": 127.8954,
+          "p99_ms": 128.065,
+          "max_ms": 128.4081,
+          "p99_over_p50": 1.003,
+          "p95_over_p50": 1.0017
+        }
+      }
+    },
+    "concurrent_colocation_comparison": {
+      "unisolated_default_stream_108sms": {
+        "wan21_1block_480p_81f": {
+          "count": 100,
+          "mean_ms": 70.4413,
+          "std_ms": 0.424,
+          "min_ms": 69.2708,
+          "p50_ms": 70.4763,
+          "p90_ms": 70.8564,
+          "p95_ms": 71.035,
+          "p99_ms": 71.5802,
+          "max_ms": 71.8422,
+          "p99_over_p50": 1.0157,
+          "p95_over_p50": 1.0079,
+          "jitter_p95_minus_p50_ms": 0.5587,
+          "jitter_p99_minus_p50_ms": 1.1039,
+          "tail_inflation_vs_solo_p99_pct": 0.68
+        },
+        "wan21_4blocks_480p_81f": {
+          "count": 100,
+          "mean_ms": 284.9289,
+          "std_ms": 3.1099,
+          "min_ms": 279.6048,
+          "p50_ms": 285.0786,
+          "p90_ms": 288.4631,
+          "p95_ms": 288.8889,
+          "p99_ms": 289.2114,
+          "max_ms": 289.2762,
+          "p99_over_p50": 1.0145,
+          "p95_over_p50": 1.0134,
+          "jitter_p95_minus_p50_ms": 3.8103,
+          "jitter_p99_minus_p50_ms": 4.1328,
+          "tail_inflation_vs_solo_p99_pct": 1.86
+        },
+        "sd35_medium_1step_cfg2_512x512": {
+          "count": 100,
+          "mean_ms": 309.0085,
+          "std_ms": 106.3793,
+          "min_ms": 201.9301,
+          "p50_ms": 334.6005,
+          "p90_ms": 414.7568,
+          "p95_ms": 419.5473,
+          "p99_ms": 464.8782,
+          "max_ms": 627.0438,
+          "p99_over_p50": 1.3894,
+          "p95_over_p50": 1.2539,
+          "jitter_p95_minus_p50_ms": 84.9468,
+          "jitter_p99_minus_p50_ms": 130.2777,
+          "tail_inflation_vs_solo_p99_pct": 453.38
+        }
+      },
+      "unisolated_multi_stream_108sms": {
+        "wan21_1block_480p_81f": {
+          "count": 100,
+          "mean_ms": 74.2405,
+          "std_ms": 0.908,
+          "min_ms": 72.4755,
+          "p50_ms": 74.1901,
+          "p90_ms": 75.3274,
+          "p95_ms": 75.5853,
+          "p99_ms": 76.4367,
+          "max_ms": 76.9238,
+          "p99_over_p50": 1.0303,
+          "p95_over_p50": 1.0188,
+          "jitter_p95_minus_p50_ms": 1.3952,
+          "jitter_p99_minus_p50_ms": 2.2466,
+          "tail_inflation_vs_solo_p99_pct": 7.51
+        },
+        "wan21_4blocks_480p_81f": {
+          "count": 100,
+          "mean_ms": 293.1235,
+          "std_ms": 1.7341,
+          "min_ms": 290.1649,
+          "p50_ms": 292.9304,
+          "p90_ms": 295.3953,
+          "p95_ms": 296.3974,
+          "p99_ms": 297.0156,
+          "max_ms": 298.5157,
+          "p99_over_p50": 1.0139,
+          "p95_over_p50": 1.0118,
+          "jitter_p95_minus_p50_ms": 3.467,
+          "jitter_p99_minus_p50_ms": 4.0852,
+          "tail_inflation_vs_solo_p99_pct": 4.61
+        },
+        "sd35_medium_1step_cfg2_512x512": {
+          "count": 100,
+          "mean_ms": 1480.9593,
+          "std_ms": 30.2053,
+          "min_ms": 1405.129,
+          "p50_ms": 1481.3539,
+          "p90_ms": 1520.6658,
+          "p95_ms": 1526.6862,
+          "p99_ms": 1537.4206,
+          "max_ms": 1537.6602,
+          "p99_over_p50": 1.0378,
+          "p95_over_p50": 1.0306,
+          "jitter_p95_minus_p50_ms": 45.3323,
+          "jitter_p99_minus_p50_ms": 56.0667,
+          "tail_inflation_vs_solo_p99_pct": 1730.12
+        }
+      },
+      "green_context_isolated_72_36_sms": {
+        "wan21_1block_72sms": {
+          "count": 100,
+          "mean_ms": 101.9988,
+          "std_ms": 0.6353,
+          "min_ms": 99.3905,
+          "p50_ms": 102.0573,
+          "p90_ms": 102.7436,
+          "p95_ms": 102.8428,
+          "p99_ms": 102.9236,
+          "max_ms": 102.9243,
+          "p99_over_p50": 1.0085,
+          "p95_over_p50": 1.0077,
+          "jitter_p95_minus_p50_ms": 0.7855,
+          "jitter_p99_minus_p50_ms": 0.8663,
+          "tail_inflation_vs_solo_p99_pct": 11.73
+        },
+        "wan21_4blocks_72sms": {
+          "count": 100,
+          "mean_ms": 381.662,
+          "std_ms": 20.5917,
+          "min_ms": 362.7012,
+          "p50_ms": 365.3067,
+          "p90_ms": 407.5676,
+          "p95_ms": 407.8641,
+          "p99_ms": 408.9589,
+          "max_ms": 409.3919,
+          "p99_over_p50": 1.1195,
+          "p95_over_p50": 1.1165,
+          "jitter_p95_minus_p50_ms": 42.5574,
+          "jitter_p99_minus_p50_ms": 43.6522,
+          "tail_inflation_vs_solo_p99_pct": 11.81
+        },
+        "sd35_medium_1step_36sms": {
+          "count": 100,
+          "mean_ms": 163.8736,
+          "std_ms": 1.0858,
+          "min_ms": 161.5011,
+          "p50_ms": 163.8364,
+          "p90_ms": 165.2022,
+          "p95_ms": 165.6023,
+          "p99_ms": 166.1601,
+          "max_ms": 166.6514,
+          "p99_over_p50": 1.0142,
+          "p95_over_p50": 1.0108,
+          "jitter_p95_minus_p50_ms": 1.7659,
+          "jitter_p99_minus_p50_ms": 2.3237,
+          "tail_inflation_vs_solo_p99_pct": 29.75
+        }
+      },
+      "green_context_isolated_84_24_sms": {
+        "wan21_1block_84sms": {
+          "count": 100,
+          "mean_ms": 89.7332,
+          "std_ms": 0.8535,
+          "min_ms": 87.7061,
+          "p50_ms": 89.79,
+          "p90_ms": 90.7714,
+          "p95_ms": 91.1225,
+          "p99_ms": 91.5774,
+          "max_ms": 91.7461,
+          "p99_over_p50": 1.0199,
+          "p95_over_p50": 1.0148,
+          "jitter_p95_minus_p50_ms": 1.3325,
+          "jitter_p99_minus_p50_ms": 1.7874,
+          "tail_inflation_vs_solo_p99_pct": -0.58
+        },
+        "wan21_4blocks_84sms": {
+          "count": 100,
+          "mean_ms": 348.4734,
+          "std_ms": 12.6156,
+          "min_ms": 328.238,
+          "p50_ms": 356.6407,
+          "p90_ms": 358.7945,
+          "p95_ms": 359.2218,
+          "p99_ms": 359.5674,
+          "max_ms": 360.0245,
+          "p99_over_p50": 1.0082,
+          "p95_over_p50": 1.0072,
+          "jitter_p95_minus_p50_ms": 2.5811,
+          "jitter_p99_minus_p50_ms": 2.9267,
+          "tail_inflation_vs_solo_p99_pct": -1.69
+        },
+        "sd35_medium_1step_24sms": {
+          "count": 100,
+          "mean_ms": 235.1573,
+          "std_ms": 1.3475,
+          "min_ms": 232.3378,
+          "p50_ms": 235.178,
+          "p90_ms": 236.6287,
+          "p95_ms": 237.3279,
+          "p99_ms": 238.8766,
+          "max_ms": 239.2321,
+          "p99_over_p50": 1.0157,
+          "p95_over_p50": 1.0091,
+          "jitter_p95_minus_p50_ms": 2.1499,
+          "jitter_p99_minus_p50_ms": 3.6986,
+          "tail_inflation_vs_solo_p99_pct": 86.53
+        }
+      }
+    },
+    "jitter_reduction_summary_72_36_vs_unisolated": {
+      "vs_default_stream": {
+        "wan_1block_p99_minus_p50_reduction_x": 1.27,
+        "wan_4blocks_p99_minus_p50_reduction_x": 0.09,
+        "sd35_step_p99_minus_p50_reduction_x": 56.06,
+        "sd35_step_p99_latency_reduction_pct": 64.26
+      },
+      "vs_unisolated_multi_stream": {
+        "wan_1block_p99_minus_p50_reduction_x": 2.59,
+        "wan_4blocks_p99_minus_p50_reduction_x": 0.09,
+        "sd35_step_p99_minus_p50_reduction_x": 24.13,
+        "wan_1block_std_reduction_x": 1.43,
+        "sd35_step_std_reduction_x": 27.82
+      }
+    }
+  }
+}

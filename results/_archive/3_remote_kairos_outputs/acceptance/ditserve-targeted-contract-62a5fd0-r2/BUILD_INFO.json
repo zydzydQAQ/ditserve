@@ -1,0 +1,10 @@
+{
+ "commit": "62a5fd0eed84b5b8d4f00507c7243b41cf95ae6a",
+ "subject": "Use measured form tables with analytical fallback",
+ "built_utc": "2026-11-01T11:12:21+00:00",
+ "builder_image": "local-cmake-install",
+ "tested_runtime_image": "192.168.1.114:30500/jjjkairos/ditserve:xdit-dev-016e1ca-slim",
+ "core_sha256": "d8fda3c3ec19a3a833566d697cca2956702fb329a100359ff89b4f6cc491ba68",
+ "files": 244,
+ "bytes": 3828557
+}

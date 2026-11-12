@@ -1,0 +1,1735 @@
+{
+  "schema": "ditserve.shape-profiles.v1",
+  "model": "wan22",
+  "protocol_sha256": "7039ac6717c73023eb77332c3026d1951cd190fd931adfea3a70731d73e607ba",
+  "gpu_uuids": [
+    "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+    "GPU-7bb0920b-6181-9486-380c-042e9fe68433",
+    "GPU-56f9344d-f279-ae6b-d287-b9024e4eb7fe",
+    "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+    "GPU-5a956ef1-5f15-8a3b-7055-02da1d96da75",
+    "GPU-d3c1776a-33b0-8800-0ed7-431fc605ba83",
+    "GPU-837bc934-205d-1796-b72f-0141a8855565",
+    "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529"
+  ],
+  "classes": {
+    "wan22-256p": {
+      "spec": {
+        "height": 256,
+        "width": 448,
+        "frames": 81,
+        "steps": 50,
+        "guidance_scale": 5.0,
+        "cache": false,
+        "threshold": 0.0,
+        "max_continuous": 1,
+        "negative_prompt": ""
+      },
+      "cost": {
+        "kind": "video",
+        "steps": 50,
+        "blocks_per_step": 60,
+        "prepare_ms": 0.0,
+        "encode_ms": 5089.165973849595,
+        "step_compute_ms": 411.3887995481491,
+        "comm_mb_per_step": 3468.16512,
+        "collectives_per_step": 240,
+        "cfg_exchange_mb": 0.903168,
+        "finish_ms": 1686.9539400562644,
+        "decode_chunks": 21,
+        "forms": {
+          "sp1": {
+            "placements": {
+              "0-0": {
+                "step_ms": 411.3887995481491
+              }
+            }
+          },
+          "cfg2": {
+            "placements": {
+              "0-1": {
+                "step_ms": 209.65171419084072
+              }
+            }
+          },
+          "sp2": {
+            "placements": {
+              "0-1": {
+                "step_ms": 475.7619481533766
+              }
+            }
+          },
+          "cfg2sp2": {
+            "placements": {
+              "0-3": {
+                "step_ms": 308.44637006521225
+              }
+            }
+          },
+          "sp3": {
+            "placements": {
+              "0-2": {
+                "step_ms": 421.7057656496763
+              }
+            }
+          },
+          "cfg2sp3": {
+            "placements": {
+              "0-5": {
+                "step_ms": 235.49551144242287
+              }
+            }
+          },
+          "sp4": {
+            "placements": {
+              "0-3": {
+                "step_ms": 414.77341763675213
+              }
+            }
+          },
+          "cfg2sp4": {
+            "placements": {
+              "0-7": {
+                "step_ms": 219.75728310644627
+              }
+            }
+          },
+          "sp6": {
+            "placements": {
+              "0-5": {
+                "step_ms": 322.8559158742428
+              }
+            }
+          },
+          "sp8": {
+            "placements": {
+              "0-7": {
+                "step_ms": 300.2454414963722
+              }
+            }
+          }
+        },
+        "links": {
+          "2": {
+            "gbps": 4.25,
+            "latency_ms": 0.5
+          },
+          "3": {
+            "gbps": 4.25,
+            "latency_ms": 0.5
+          },
+          "4": {
+            "gbps": 4.25,
+            "latency_ms": 0.5
+          },
+          "6": {
+            "gbps": 4.25,
+            "latency_ms": 0.5
+          },
+          "8": {
+            "gbps": 4.25,
+            "latency_ms": 0.5
+          }
+        }
+      },
+      "source": {
+        "run_sha256": "ae51a700e03a5d6a1305621f9182e09d7ab54641339ef65a9ac1f14ee8dd695c",
+        "run_id": "d20261105-formal-v2-wan22-b2-7ee8beb-r1-cal0",
+        "core_sha256": "2b30658e975246f9c57c590fd216276e60d8ac7bb1a09dc2755c93d0da8216be",
+        "gpu_uuids": [
+          "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+          "GPU-7bb0920b-6181-9486-380c-042e9fe68433",
+          "GPU-56f9344d-f279-ae6b-d287-b9024e4eb7fe",
+          "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+          "GPU-5a956ef1-5f15-8a3b-7055-02da1d96da75",
+          "GPU-d3c1776a-33b0-8800-0ed7-431fc605ba83",
+          "GPU-837bc934-205d-1796-b72f-0141a8855565",
+          "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529"
+        ],
+        "fit": {
+          "experiment": "kairos-wan22-native-calibration",
+          "run_id": "d20261105-formal-v2-wan22-b2-7ee8beb-r1-cal0",
+          "gpu_uuids": [
+            "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+            "GPU-7bb0920b-6181-9486-380c-042e9fe68433",
+            "GPU-56f9344d-f279-ae6b-d287-b9024e4eb7fe",
+            "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+            "GPU-5a956ef1-5f15-8a3b-7055-02da1d96da75",
+            "GPU-d3c1776a-33b0-8800-0ed7-431fc605ba83",
+            "GPU-837bc934-205d-1796-b72f-0141a8855565",
+            "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529"
+          ],
+          "run_sha256": "ae51a700e03a5d6a1305621f9182e09d7ab54641339ef65a9ac1f14ee8dd695c",
+          "model": "Wan2.2-TI2V-5B",
+          "shape": {
+            "cache": false,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "height": 256,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "cinematic drama, steaming coffee mug on table in modern kitchen, sunbeams falling through window, -neg &quot;morphing, erratic fluctuation in motion, noisy, bad quality, distorted, stabilized, blurry&quot; -camera rotate ccw  ",
+            "request_id": "video-calibration",
+            "seed": 101,
+            "steps": 50,
+            "threshold": 0.0,
+            "width": 448
+          },
+          "architecture": {
+            "tokens": 2352,
+            "dim": 3072,
+            "layers": 30,
+            "comm_mb_per_step": 3468.16512,
+            "collectives_per_step": 240,
+            "cfg_exchange_mb": 0.903168
+          },
+          "timing_scopes": {
+            "static_sp1": "median_steady_advance",
+            "static_cfg2": "median_steady_advance",
+            "static_sp2": "median_steady_advance",
+            "static_cfg2sp2": "median_steady_advance",
+            "static_sp3": "median_steady_advance",
+            "static_cfg2sp3": "median_steady_advance",
+            "static_sp4": "median_steady_advance",
+            "static_cfg2sp4": "median_steady_advance",
+            "static_sp6": "median_steady_advance",
+            "static_sp8": "median_steady_advance"
+          },
+          "steady_samples": {
+            "static_sp1": 49,
+            "static_cfg2": 49,
+            "static_sp2": 49,
+            "static_cfg2sp2": 49,
+            "static_sp3": 49,
+            "static_cfg2sp3": 49,
+            "static_sp4": 49,
+            "static_cfg2sp4": 49,
+            "static_sp6": 49,
+            "static_sp8": 49
+          },
+          "bandwidth_saturation_gbps": 4.25,
+          "bandwidth_gamma": 0.0,
+          "fit_policies": [
+            "static_cfg2",
+            "static_cfg2sp2",
+            "static_sp1",
+            "static_sp2",
+            "static_sp4"
+          ],
+          "fit_mean_relative_error_pct": 7.234292800082388,
+          "held_out_mean_relative_error_pct": 8.881139861684437,
+          "held_out_max_relative_error_pct": 14.159954224255046,
+          "predictions": [
+            {
+              "policy": "static_sp1",
+              "form": [
+                1,
+                1
+              ],
+              "measured_step_ms": 411.3887995481491,
+              "predicted_step_ms": 411.3887995481491,
+              "relative_error_pct": 0.0,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2",
+              "form": [
+                2,
+                1
+              ],
+              "measured_step_ms": 209.65171419084072,
+              "predicted_step_ms": 206.40690989172163,
+              "relative_error_pct": 1.5477117903102053,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_sp2",
+              "form": [
+                1,
+                2
+              ],
+              "measured_step_ms": 475.7619481533766,
+              "predicted_step_ms": 529.7041127152511,
+              "relative_error_pct": 11.338057776845277,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2sp2",
+              "form": [
+                2,
+                2
+              ],
+              "measured_step_ms": 308.44637006521225,
+              "predicted_step_ms": 265.5645664752726,
+              "relative_error_pct": 13.902515234941326,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_sp3",
+              "form": [
+                1,
+                3
+              ],
+              "measured_step_ms": 421.7057656496763,
+              "predicted_step_ms": 438.47156690820657,
+              "relative_error_pct": 3.9757107026272207,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_cfg2sp3",
+              "form": [
+                2,
+                3
+              ],
+              "measured_step_ms": 235.49551144242287,
+              "predicted_step_ms": 219.94829357175036,
+              "relative_error_pct": 6.601916858391463,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_sp4",
+              "form": [
+                1,
+                4
+              ],
+              "measured_step_ms": 414.77341763675213,
+              "predicted_step_ms": 375.8544845929197,
+              "relative_error_pct": 9.383179198315126,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2sp4",
+              "form": [
+                2,
+                4
+              ],
+              "measured_step_ms": 219.75728310644627,
+              "predicted_step_ms": 188.6397524141069,
+              "relative_error_pct": 14.159954224255046,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_sp6",
+              "form": [
+                1,
+                6
+              ],
+              "measured_step_ms": 322.8559158742428,
+              "predicted_step_ms": 301.9035293364562,
+              "relative_error_pct": 6.48970190961217,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_sp8",
+              "form": [
+                1,
+                8
+              ],
+              "measured_step_ms": 300.2454414963722,
+              "predicted_step_ms": 260.67784935528334,
+              "relative_error_pct": 13.17841561353629,
+              "partition": "held_out"
+            }
+          ],
+          "execution_cost_mode": "placement_bound_form_table_with_analytical_fallback",
+          "unbound_measurements": 0,
+          "image_batch_samples": {
+            "1": 10
+          },
+          "validation_scope": "held-out forms on calibration hardware and shape; not held-out request, placement or workload validation",
+          "method": "single constrained saturation model fitted once; no per-form bandwidth or overlap overrides"
+        },
+        "resize_ms": 37.175281904637814,
+        "quantum_overhead_ms": 1.0363655105537297
+      }
+    },
+    "sd35-512": {
+      "spec": {
+        "height": 512,
+        "width": 512,
+        "frames": 1,
+        "steps": 28,
+        "guidance_scale": 4.5,
+        "batch_size": 1,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality"
+      },
+      "cost": {
+        "kind": "image",
+        "service_ms": 1816.8618828058243,
+        "steps": 28,
+        "prepare_ms": 45.0,
+        "finish_ms": 2895.712,
+        "batch_step_ms": {
+          "1": 58.459,
+          "2": 107.448,
+          "3": 156.028,
+          "4": 208.525,
+          "6": 303.638,
+          "8": 405.766
+        }
+      },
+      "source": {
+        "run_sha256": "ae51a700e03a5d6a1305621f9182e09d7ab54641339ef65a9ac1f14ee8dd695c",
+        "run_id": "d20261105-formal-v2-wan22-b2-7ee8beb-r1-cal0",
+        "core_sha256": "2b30658e975246f9c57c590fd216276e60d8ac7bb1a09dc2755c93d0da8216be",
+        "gpu_uuids": [
+          "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+          "GPU-7bb0920b-6181-9486-380c-042e9fe68433",
+          "GPU-56f9344d-f279-ae6b-d287-b9024e4eb7fe",
+          "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+          "GPU-5a956ef1-5f15-8a3b-7055-02da1d96da75",
+          "GPU-d3c1776a-33b0-8800-0ed7-431fc605ba83",
+          "GPU-837bc934-205d-1796-b72f-0141a8855565",
+          "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529"
+        ],
+        "fit": {
+          "experiment": "kairos-wan22-native-calibration",
+          "run_id": "d20261105-formal-v2-wan22-b2-7ee8beb-r1-cal0",
+          "gpu_uuids": [
+            "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+            "GPU-7bb0920b-6181-9486-380c-042e9fe68433",
+            "GPU-56f9344d-f279-ae6b-d287-b9024e4eb7fe",
+            "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+            "GPU-5a956ef1-5f15-8a3b-7055-02da1d96da75",
+            "GPU-d3c1776a-33b0-8800-0ed7-431fc605ba83",
+            "GPU-837bc934-205d-1796-b72f-0141a8855565",
+            "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529"
+          ],
+          "run_sha256": "ae51a700e03a5d6a1305621f9182e09d7ab54641339ef65a9ac1f14ee8dd695c",
+          "model": "Wan2.2-TI2V-5B",
+          "shape": {
+            "cache": false,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "height": 256,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "cinematic drama, steaming coffee mug on table in modern kitchen, sunbeams falling through window, -neg &quot;morphing, erratic fluctuation in motion, noisy, bad quality, distorted, stabilized, blurry&quot; -camera rotate ccw  ",
+            "request_id": "video-calibration",
+            "seed": 101,
+            "steps": 50,
+            "threshold": 0.0,
+            "width": 448
+          },
+          "architecture": {
+            "tokens": 2352,
+            "dim": 3072,
+            "layers": 30,
+            "comm_mb_per_step": 3468.16512,
+            "collectives_per_step": 240,
+            "cfg_exchange_mb": 0.903168
+          },
+          "timing_scopes": {
+            "static_sp1": "median_steady_advance",
+            "static_cfg2": "median_steady_advance",
+            "static_sp2": "median_steady_advance",
+            "static_cfg2sp2": "median_steady_advance",
+            "static_sp3": "median_steady_advance",
+            "static_cfg2sp3": "median_steady_advance",
+            "static_sp4": "median_steady_advance",
+            "static_cfg2sp4": "median_steady_advance",
+            "static_sp6": "median_steady_advance",
+            "static_sp8": "median_steady_advance"
+          },
+          "steady_samples": {
+            "static_sp1": 49,
+            "static_cfg2": 49,
+            "static_sp2": 49,
+            "static_cfg2sp2": 49,
+            "static_sp3": 49,
+            "static_cfg2sp3": 49,
+            "static_sp4": 49,
+            "static_cfg2sp4": 49,
+            "static_sp6": 49,
+            "static_sp8": 49
+          },
+          "bandwidth_saturation_gbps": 4.25,
+          "bandwidth_gamma": 0.0,
+          "fit_policies": [
+            "static_cfg2",
+            "static_cfg2sp2",
+            "static_sp1",
+            "static_sp2",
+            "static_sp4"
+          ],
+          "fit_mean_relative_error_pct": 7.234292800082388,
+          "held_out_mean_relative_error_pct": 8.881139861684437,
+          "held_out_max_relative_error_pct": 14.159954224255046,
+          "predictions": [
+            {
+              "policy": "static_sp1",
+              "form": [
+                1,
+                1
+              ],
+              "measured_step_ms": 411.3887995481491,
+              "predicted_step_ms": 411.3887995481491,
+              "relative_error_pct": 0.0,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2",
+              "form": [
+                2,
+                1
+              ],
+              "measured_step_ms": 209.65171419084072,
+              "predicted_step_ms": 206.40690989172163,
+              "relative_error_pct": 1.5477117903102053,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_sp2",
+              "form": [
+                1,
+                2
+              ],
+              "measured_step_ms": 475.7619481533766,
+              "predicted_step_ms": 529.7041127152511,
+              "relative_error_pct": 11.338057776845277,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2sp2",
+              "form": [
+                2,
+                2
+              ],
+              "measured_step_ms": 308.44637006521225,
+              "predicted_step_ms": 265.5645664752726,
+              "relative_error_pct": 13.902515234941326,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_sp3",
+              "form": [
+                1,
+                3
+              ],
+              "measured_step_ms": 421.7057656496763,
+              "predicted_step_ms": 438.47156690820657,
+              "relative_error_pct": 3.9757107026272207,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_cfg2sp3",
+              "form": [
+                2,
+                3
+              ],
+              "measured_step_ms": 235.49551144242287,
+              "predicted_step_ms": 219.94829357175036,
+              "relative_error_pct": 6.601916858391463,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_sp4",
+              "form": [
+                1,
+                4
+              ],
+              "measured_step_ms": 414.77341763675213,
+              "predicted_step_ms": 375.8544845929197,
+              "relative_error_pct": 9.383179198315126,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2sp4",
+              "form": [
+                2,
+                4
+              ],
+              "measured_step_ms": 219.75728310644627,
+              "predicted_step_ms": 188.6397524141069,
+              "relative_error_pct": 14.159954224255046,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_sp6",
+              "form": [
+                1,
+                6
+              ],
+              "measured_step_ms": 322.8559158742428,
+              "predicted_step_ms": 301.9035293364562,
+              "relative_error_pct": 6.48970190961217,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_sp8",
+              "form": [
+                1,
+                8
+              ],
+              "measured_step_ms": 300.2454414963722,
+              "predicted_step_ms": 260.67784935528334,
+              "relative_error_pct": 13.17841561353629,
+              "partition": "held_out"
+            }
+          ],
+          "execution_cost_mode": "placement_bound_form_table_with_analytical_fallback",
+          "unbound_measurements": 0,
+          "image_batch_samples": {
+            "1": 10
+          },
+          "validation_scope": "held-out forms on calibration hardware and shape; not held-out request, placement or workload validation",
+          "method": "single constrained saturation model fitted once; no per-form bandwidth or overlap overrides"
+        },
+        "resize_ms": 37.175281904637814,
+        "quantum_overhead_ms": 1.0363655105537297
+      }
+    },
+    "wan22-480p": {
+      "spec": {
+        "height": 512,
+        "width": 896,
+        "frames": 81,
+        "steps": 50,
+        "guidance_scale": 5.0,
+        "cache": false,
+        "threshold": 0.0,
+        "max_continuous": 1,
+        "negative_prompt": ""
+      },
+      "cost": {
+        "kind": "video",
+        "steps": 50,
+        "blocks_per_step": 60,
+        "prepare_ms": 0.0,
+        "encode_ms": 15.874374844133854,
+        "step_compute_ms": 1851.5090197324753,
+        "comm_mb_per_step": 13872.66048,
+        "collectives_per_step": 240,
+        "cfg_exchange_mb": 3.612672,
+        "finish_ms": 6402.364306896925,
+        "decode_chunks": 21,
+        "forms": {
+          "sp1": {
+            "placements": {
+              "0-0": {
+                "step_ms": 1851.5090197324753
+              }
+            }
+          },
+          "cfg2": {
+            "placements": {
+              "0-1": {
+                "step_ms": 932.8385666012764
+              }
+            }
+          },
+          "sp2": {
+            "placements": {
+              "0-1": {
+                "step_ms": 1742.8038455545902
+              }
+            }
+          },
+          "cfg2sp2": {
+            "placements": {
+              "0-3": {
+                "step_ms": 1136.9749400764704
+              }
+            }
+          },
+          "sp3": {
+            "placements": {
+              "0-2": {
+                "step_ms": 1550.159802660346
+              }
+            }
+          },
+          "cfg2sp3": {
+            "placements": {
+              "0-5": {
+                "step_ms": 871.0122164338827
+              }
+            }
+          },
+          "sp4": {
+            "placements": {
+              "0-3": {
+                "step_ms": 1530.3548369556665
+              }
+            }
+          },
+          "cfg2sp4": {
+            "placements": {
+              "0-7": {
+                "step_ms": 781.1702769249678
+              }
+            }
+          },
+          "sp6": {
+            "placements": {
+              "0-5": {
+                "step_ms": 1102.971836924553
+              }
+            }
+          },
+          "sp8": {
+            "placements": {
+              "0-7": {
+                "step_ms": 943.5024783015251
+              }
+            }
+          }
+        },
+        "links": {
+          "2": {
+            "gbps": 3.75,
+            "latency_ms": 0.5
+          },
+          "3": {
+            "gbps": 3.75,
+            "latency_ms": 0.5
+          },
+          "4": {
+            "gbps": 3.75,
+            "latency_ms": 0.5
+          },
+          "6": {
+            "gbps": 3.75,
+            "latency_ms": 0.5
+          },
+          "8": {
+            "gbps": 3.75,
+            "latency_ms": 0.5
+          }
+        }
+      },
+      "source": {
+        "run_sha256": "735983ff9c80ccc879026db7da3b9d3ad5bc5f192cc53ed64b00ff1acf6391a4",
+        "run_id": "d20261105-formal-v2-wan22-b2-7ee8beb-r1-cal1",
+        "core_sha256": "2b30658e975246f9c57c590fd216276e60d8ac7bb1a09dc2755c93d0da8216be",
+        "gpu_uuids": [
+          "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+          "GPU-7bb0920b-6181-9486-380c-042e9fe68433",
+          "GPU-56f9344d-f279-ae6b-d287-b9024e4eb7fe",
+          "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+          "GPU-5a956ef1-5f15-8a3b-7055-02da1d96da75",
+          "GPU-d3c1776a-33b0-8800-0ed7-431fc605ba83",
+          "GPU-837bc934-205d-1796-b72f-0141a8855565",
+          "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529"
+        ],
+        "fit": {
+          "experiment": "kairos-wan22-native-calibration",
+          "run_id": "d20261105-formal-v2-wan22-b2-7ee8beb-r1-cal1",
+          "gpu_uuids": [
+            "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+            "GPU-7bb0920b-6181-9486-380c-042e9fe68433",
+            "GPU-56f9344d-f279-ae6b-d287-b9024e4eb7fe",
+            "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+            "GPU-5a956ef1-5f15-8a3b-7055-02da1d96da75",
+            "GPU-d3c1776a-33b0-8800-0ed7-431fc605ba83",
+            "GPU-837bc934-205d-1796-b72f-0141a8855565",
+            "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529"
+          ],
+          "run_sha256": "735983ff9c80ccc879026db7da3b9d3ad5bc5f192cc53ed64b00ff1acf6391a4",
+          "model": "Wan2.2-TI2V-5B",
+          "shape": {
+            "cache": false,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "height": 512,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "cinematic drama, steaming coffee mug on table in modern kitchen, sunbeams falling through window, -neg &quot;morphing, erratic fluctuation in motion, noisy, bad quality, distorted, stabilized, blurry&quot; -camera rotate ccw  ",
+            "request_id": "video-calibration",
+            "seed": 101,
+            "steps": 50,
+            "threshold": 0.0,
+            "width": 896
+          },
+          "architecture": {
+            "tokens": 9408,
+            "dim": 3072,
+            "layers": 30,
+            "comm_mb_per_step": 13872.66048,
+            "collectives_per_step": 240,
+            "cfg_exchange_mb": 3.612672
+          },
+          "timing_scopes": {
+            "static_sp1": "median_steady_advance",
+            "static_cfg2": "median_steady_advance",
+            "static_sp2": "median_steady_advance",
+            "static_cfg2sp2": "median_steady_advance",
+            "static_sp3": "median_steady_advance",
+            "static_cfg2sp3": "median_steady_advance",
+            "static_sp4": "median_steady_advance",
+            "static_cfg2sp4": "median_steady_advance",
+            "static_sp6": "median_steady_advance",
+            "static_sp8": "median_steady_advance"
+          },
+          "steady_samples": {
+            "static_sp1": 49,
+            "static_cfg2": 49,
+            "static_sp2": 49,
+            "static_cfg2sp2": 49,
+            "static_sp3": 49,
+            "static_cfg2sp3": 49,
+            "static_sp4": 49,
+            "static_cfg2sp4": 49,
+            "static_sp6": 49,
+            "static_sp8": 49
+          },
+          "bandwidth_saturation_gbps": 3.75,
+          "bandwidth_gamma": 0.0,
+          "fit_policies": [
+            "static_cfg2",
+            "static_cfg2sp2",
+            "static_sp1",
+            "static_sp2",
+            "static_sp4"
+          ],
+          "fit_mean_relative_error_pct": 8.694399420730928,
+          "held_out_mean_relative_error_pct": 12.688866058526791,
+          "held_out_max_relative_error_pct": 19.866888656445276,
+          "predictions": [
+            {
+              "policy": "static_sp1",
+              "form": [
+                1,
+                1
+              ],
+              "measured_step_ms": 1851.5090197324753,
+              "predicted_step_ms": 1851.5090197324753,
+              "relative_error_pct": 0.0,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2",
+              "form": [
+                2,
+                1
+              ],
+              "measured_step_ms": 932.8385666012764,
+              "predicted_step_ms": 927.2178890662376,
+              "relative_error_pct": 0.6025348582571247,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_sp2",
+              "form": [
+                1,
+                2
+              ],
+              "measured_step_ms": 1742.8038455545902,
+              "predicted_step_ms": 1970.5985418662376,
+              "relative_error_pct": 13.070587197330816,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2sp2",
+              "form": [
+                2,
+                2
+              ],
+              "measured_step_ms": 1136.9749400764704,
+              "predicted_step_ms": 986.7626501331188,
+              "relative_error_pct": 13.211574384678054,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_sp3",
+              "form": [
+                1,
+                3
+              ],
+              "measured_step_ms": 1550.159802660346,
+              "predicted_step_ms": 1559.2532572441582,
+              "relative_error_pct": 0.5866140102592168,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_cfg2sp3",
+              "form": [
+                2,
+                3
+              ],
+              "measured_step_ms": 871.0122164338827,
+              "predicted_step_ms": 781.0900078220791,
+              "relative_error_pct": 10.32387455826568,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_sp4",
+              "form": [
+                1,
+                4
+              ],
+              "measured_step_ms": 1530.3548369556665,
+              "predicted_step_ms": 1276.510278933119,
+              "relative_error_pct": 16.587300663388646,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2sp4",
+              "form": [
+                2,
+                4
+              ],
+              "measured_step_ms": 781.1702769249678,
+              "predicted_step_ms": 639.7185186665595,
+              "relative_error_pct": 18.107672864260156,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_sp6",
+              "form": [
+                1,
+                6
+              ],
+              "measured_step_ms": 1102.971836924553,
+              "predicted_step_ms": 942.3870766220791,
+              "relative_error_pct": 14.55928020340363,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_sp8",
+              "form": [
+                1,
+                8
+              ],
+              "measured_step_ms": 943.5024783015251,
+              "predicted_step_ms": 756.0578914665593,
+              "relative_error_pct": 19.866888656445276,
+              "partition": "held_out"
+            }
+          ],
+          "execution_cost_mode": "placement_bound_form_table_with_analytical_fallback",
+          "unbound_measurements": 0,
+          "image_batch_samples": {
+            "1": 10
+          },
+          "validation_scope": "held-out forms on calibration hardware and shape; not held-out request, placement or workload validation",
+          "method": "single constrained saturation model fitted once; no per-form bandwidth or overlap overrides"
+        },
+        "resize_ms": 56.954277493059635,
+        "quantum_overhead_ms": 1.1556612625718117
+      }
+    },
+    "sd35-1024": {
+      "spec": {
+        "height": 1024,
+        "width": 1024,
+        "frames": 1,
+        "steps": 28,
+        "guidance_scale": 4.5,
+        "batch_size": 1,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality"
+      },
+      "cost": {
+        "kind": "image",
+        "service_ms": 6554.171063005924,
+        "steps": 28,
+        "prepare_ms": 45.0,
+        "finish_ms": 7618.331,
+        "batch_step_ms": {
+          "1": 227.649,
+          "2": 441.639,
+          "3": 645.157,
+          "4": 862.334,
+          "6": 1283.03,
+          "8": 1710.554
+        }
+      },
+      "source": {
+        "run_sha256": "735983ff9c80ccc879026db7da3b9d3ad5bc5f192cc53ed64b00ff1acf6391a4",
+        "run_id": "d20261105-formal-v2-wan22-b2-7ee8beb-r1-cal1",
+        "core_sha256": "2b30658e975246f9c57c590fd216276e60d8ac7bb1a09dc2755c93d0da8216be",
+        "gpu_uuids": [
+          "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+          "GPU-7bb0920b-6181-9486-380c-042e9fe68433",
+          "GPU-56f9344d-f279-ae6b-d287-b9024e4eb7fe",
+          "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+          "GPU-5a956ef1-5f15-8a3b-7055-02da1d96da75",
+          "GPU-d3c1776a-33b0-8800-0ed7-431fc605ba83",
+          "GPU-837bc934-205d-1796-b72f-0141a8855565",
+          "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529"
+        ],
+        "fit": {
+          "experiment": "kairos-wan22-native-calibration",
+          "run_id": "d20261105-formal-v2-wan22-b2-7ee8beb-r1-cal1",
+          "gpu_uuids": [
+            "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+            "GPU-7bb0920b-6181-9486-380c-042e9fe68433",
+            "GPU-56f9344d-f279-ae6b-d287-b9024e4eb7fe",
+            "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+            "GPU-5a956ef1-5f15-8a3b-7055-02da1d96da75",
+            "GPU-d3c1776a-33b0-8800-0ed7-431fc605ba83",
+            "GPU-837bc934-205d-1796-b72f-0141a8855565",
+            "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529"
+          ],
+          "run_sha256": "735983ff9c80ccc879026db7da3b9d3ad5bc5f192cc53ed64b00ff1acf6391a4",
+          "model": "Wan2.2-TI2V-5B",
+          "shape": {
+            "cache": false,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "height": 512,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "cinematic drama, steaming coffee mug on table in modern kitchen, sunbeams falling through window, -neg &quot;morphing, erratic fluctuation in motion, noisy, bad quality, distorted, stabilized, blurry&quot; -camera rotate ccw  ",
+            "request_id": "video-calibration",
+            "seed": 101,
+            "steps": 50,
+            "threshold": 0.0,
+            "width": 896
+          },
+          "architecture": {
+            "tokens": 9408,
+            "dim": 3072,
+            "layers": 30,
+            "comm_mb_per_step": 13872.66048,
+            "collectives_per_step": 240,
+            "cfg_exchange_mb": 3.612672
+          },
+          "timing_scopes": {
+            "static_sp1": "median_steady_advance",
+            "static_cfg2": "median_steady_advance",
+            "static_sp2": "median_steady_advance",
+            "static_cfg2sp2": "median_steady_advance",
+            "static_sp3": "median_steady_advance",
+            "static_cfg2sp3": "median_steady_advance",
+            "static_sp4": "median_steady_advance",
+            "static_cfg2sp4": "median_steady_advance",
+            "static_sp6": "median_steady_advance",
+            "static_sp8": "median_steady_advance"
+          },
+          "steady_samples": {
+            "static_sp1": 49,
+            "static_cfg2": 49,
+            "static_sp2": 49,
+            "static_cfg2sp2": 49,
+            "static_sp3": 49,
+            "static_cfg2sp3": 49,
+            "static_sp4": 49,
+            "static_cfg2sp4": 49,
+            "static_sp6": 49,
+            "static_sp8": 49
+          },
+          "bandwidth_saturation_gbps": 3.75,
+          "bandwidth_gamma": 0.0,
+          "fit_policies": [
+            "static_cfg2",
+            "static_cfg2sp2",
+            "static_sp1",
+            "static_sp2",
+            "static_sp4"
+          ],
+          "fit_mean_relative_error_pct": 8.694399420730928,
+          "held_out_mean_relative_error_pct": 12.688866058526791,
+          "held_out_max_relative_error_pct": 19.866888656445276,
+          "predictions": [
+            {
+              "policy": "static_sp1",
+              "form": [
+                1,
+                1
+              ],
+              "measured_step_ms": 1851.5090197324753,
+              "predicted_step_ms": 1851.5090197324753,
+              "relative_error_pct": 0.0,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2",
+              "form": [
+                2,
+                1
+              ],
+              "measured_step_ms": 932.8385666012764,
+              "predicted_step_ms": 927.2178890662376,
+              "relative_error_pct": 0.6025348582571247,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_sp2",
+              "form": [
+                1,
+                2
+              ],
+              "measured_step_ms": 1742.8038455545902,
+              "predicted_step_ms": 1970.5985418662376,
+              "relative_error_pct": 13.070587197330816,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2sp2",
+              "form": [
+                2,
+                2
+              ],
+              "measured_step_ms": 1136.9749400764704,
+              "predicted_step_ms": 986.7626501331188,
+              "relative_error_pct": 13.211574384678054,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_sp3",
+              "form": [
+                1,
+                3
+              ],
+              "measured_step_ms": 1550.159802660346,
+              "predicted_step_ms": 1559.2532572441582,
+              "relative_error_pct": 0.5866140102592168,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_cfg2sp3",
+              "form": [
+                2,
+                3
+              ],
+              "measured_step_ms": 871.0122164338827,
+              "predicted_step_ms": 781.0900078220791,
+              "relative_error_pct": 10.32387455826568,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_sp4",
+              "form": [
+                1,
+                4
+              ],
+              "measured_step_ms": 1530.3548369556665,
+              "predicted_step_ms": 1276.510278933119,
+              "relative_error_pct": 16.587300663388646,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2sp4",
+              "form": [
+                2,
+                4
+              ],
+              "measured_step_ms": 781.1702769249678,
+              "predicted_step_ms": 639.7185186665595,
+              "relative_error_pct": 18.107672864260156,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_sp6",
+              "form": [
+                1,
+                6
+              ],
+              "measured_step_ms": 1102.971836924553,
+              "predicted_step_ms": 942.3870766220791,
+              "relative_error_pct": 14.55928020340363,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_sp8",
+              "form": [
+                1,
+                8
+              ],
+              "measured_step_ms": 943.5024783015251,
+              "predicted_step_ms": 756.0578914665593,
+              "relative_error_pct": 19.866888656445276,
+              "partition": "held_out"
+            }
+          ],
+          "execution_cost_mode": "placement_bound_form_table_with_analytical_fallback",
+          "unbound_measurements": 0,
+          "image_batch_samples": {
+            "1": 10
+          },
+          "validation_scope": "held-out forms on calibration hardware and shape; not held-out request, placement or workload validation",
+          "method": "single constrained saturation model fitted once; no per-form bandwidth or overlap overrides"
+        },
+        "resize_ms": 56.954277493059635,
+        "quantum_overhead_ms": 1.1556612625718117
+      }
+    },
+    "wan22-720p": {
+      "spec": {
+        "height": 704,
+        "width": 1280,
+        "frames": 81,
+        "steps": 50,
+        "guidance_scale": 5.0,
+        "cache": false,
+        "threshold": 0.0,
+        "max_continuous": 1,
+        "negative_prompt": ""
+      },
+      "cost": {
+        "kind": "video",
+        "steps": 50,
+        "blocks_per_step": 60,
+        "prepare_ms": 0.0,
+        "encode_ms": 15.858731605112553,
+        "step_compute_ms": 4559.33840572834,
+        "comm_mb_per_step": 27249.8688,
+        "collectives_per_step": 240,
+        "cfg_exchange_mb": 7.09632,
+        "finish_ms": 11809.612820670009,
+        "decode_chunks": 21,
+        "forms": {
+          "sp1": {
+            "placements": {
+              "0-0": {
+                "step_ms": 4559.33840572834
+              }
+            }
+          },
+          "cfg2": {
+            "placements": {
+              "0-1": {
+                "step_ms": 2294.4623809307814
+              }
+            }
+          },
+          "sp2": {
+            "placements": {
+              "0-1": {
+                "step_ms": 3724.6364559978247
+              }
+            }
+          },
+          "cfg2sp2": {
+            "placements": {
+              "0-3": {
+                "step_ms": 2370.629759505391
+              }
+            }
+          },
+          "sp3": {
+            "placements": {
+              "0-2": {
+                "step_ms": 3244.1860903054476
+              }
+            }
+          },
+          "cfg2sp3": {
+            "placements": {
+              "0-5": {
+                "step_ms": 1765.6510099768639
+              }
+            }
+          },
+          "sp4": {
+            "placements": {
+              "0-3": {
+                "step_ms": 3119.4556206464767
+              }
+            }
+          },
+          "cfg2sp4": {
+            "placements": {
+              "0-7": {
+                "step_ms": 1584.8997794091702
+              }
+            }
+          },
+          "sp6": {
+            "placements": {
+              "0-5": {
+                "step_ms": 2224.2958284914494
+              }
+            }
+          },
+          "sp8": {
+            "placements": {
+              "0-7": {
+                "step_ms": 1824.351316317916
+              }
+            }
+          }
+        },
+        "links": {
+          "2": {
+            "gbps": 3.75,
+            "latency_ms": 0.5
+          },
+          "3": {
+            "gbps": 3.75,
+            "latency_ms": 0.5
+          },
+          "4": {
+            "gbps": 3.75,
+            "latency_ms": 0.5
+          },
+          "6": {
+            "gbps": 3.75,
+            "latency_ms": 0.5
+          },
+          "8": {
+            "gbps": 3.75,
+            "latency_ms": 0.5
+          }
+        }
+      },
+      "source": {
+        "run_sha256": "e5204fcad70196ee4902e36f9b82a0309e28c76d9f1e63ac242e8b01ca3af3d7",
+        "run_id": "d20261105-formal-v2-wan22-b2-7ee8beb-r1-cal2",
+        "core_sha256": "2b30658e975246f9c57c590fd216276e60d8ac7bb1a09dc2755c93d0da8216be",
+        "gpu_uuids": [
+          "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+          "GPU-7bb0920b-6181-9486-380c-042e9fe68433",
+          "GPU-56f9344d-f279-ae6b-d287-b9024e4eb7fe",
+          "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+          "GPU-5a956ef1-5f15-8a3b-7055-02da1d96da75",
+          "GPU-d3c1776a-33b0-8800-0ed7-431fc605ba83",
+          "GPU-837bc934-205d-1796-b72f-0141a8855565",
+          "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529"
+        ],
+        "fit": {
+          "experiment": "kairos-wan22-native-calibration",
+          "run_id": "d20261105-formal-v2-wan22-b2-7ee8beb-r1-cal2",
+          "gpu_uuids": [
+            "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+            "GPU-7bb0920b-6181-9486-380c-042e9fe68433",
+            "GPU-56f9344d-f279-ae6b-d287-b9024e4eb7fe",
+            "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+            "GPU-5a956ef1-5f15-8a3b-7055-02da1d96da75",
+            "GPU-d3c1776a-33b0-8800-0ed7-431fc605ba83",
+            "GPU-837bc934-205d-1796-b72f-0141a8855565",
+            "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529"
+          ],
+          "run_sha256": "e5204fcad70196ee4902e36f9b82a0309e28c76d9f1e63ac242e8b01ca3af3d7",
+          "model": "Wan2.2-TI2V-5B",
+          "shape": {
+            "cache": false,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "height": 704,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "cinematic drama, steaming coffee mug on table in modern kitchen, sunbeams falling through window, -neg &quot;morphing, erratic fluctuation in motion, noisy, bad quality, distorted, stabilized, blurry&quot; -camera rotate ccw  ",
+            "request_id": "video-calibration",
+            "seed": 101,
+            "steps": 50,
+            "threshold": 0.0,
+            "width": 1280
+          },
+          "architecture": {
+            "tokens": 18480,
+            "dim": 3072,
+            "layers": 30,
+            "comm_mb_per_step": 27249.8688,
+            "collectives_per_step": 240,
+            "cfg_exchange_mb": 7.09632
+          },
+          "timing_scopes": {
+            "static_sp1": "median_steady_advance",
+            "static_cfg2": "median_steady_advance",
+            "static_sp2": "median_steady_advance",
+            "static_cfg2sp2": "median_steady_advance",
+            "static_sp3": "median_steady_advance",
+            "static_cfg2sp3": "median_steady_advance",
+            "static_sp4": "median_steady_advance",
+            "static_cfg2sp4": "median_steady_advance",
+            "static_sp6": "median_steady_advance",
+            "static_sp8": "median_steady_advance"
+          },
+          "steady_samples": {
+            "static_sp1": 49,
+            "static_cfg2": 49,
+            "static_sp2": 49,
+            "static_cfg2sp2": 49,
+            "static_sp3": 49,
+            "static_cfg2sp3": 49,
+            "static_sp4": 49,
+            "static_cfg2sp4": 49,
+            "static_sp6": 49,
+            "static_sp8": 49
+          },
+          "bandwidth_saturation_gbps": 3.75,
+          "bandwidth_gamma": 0.0,
+          "fit_policies": [
+            "static_cfg2",
+            "static_cfg2sp2",
+            "static_sp1",
+            "static_sp2",
+            "static_sp4"
+          ],
+          "fit_mean_relative_error_pct": 8.129705425783948,
+          "held_out_mean_relative_error_pct": 11.76536833197019,
+          "held_out_max_relative_error_pct": 18.617366762854676,
+          "predictions": [
+            {
+              "policy": "static_sp1",
+              "form": [
+                1,
+                1
+              ],
+              "measured_step_ms": 4559.33840572834,
+              "predicted_step_ms": 4559.33840572834,
+              "relative_error_pct": 0.0,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2",
+              "form": [
+                2,
+                1
+              ],
+              "measured_step_ms": 2294.4623809307814,
+              "predicted_step_ms": 2282.06155486417,
+              "relative_error_pct": 0.5404676132271505,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_sp2",
+              "form": [
+                1,
+                2
+              ],
+              "measured_step_ms": 3724.6364559978247,
+              "predicted_step_ms": 4216.32712286417,
+              "relative_error_pct": 13.201037810671965,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2sp2",
+              "form": [
+                2,
+                2
+              ],
+              "measured_step_ms": 2370.629759505391,
+              "predicted_step_ms": 2110.5559134320847,
+              "relative_error_pct": 10.970664863650759,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_sp3",
+              "form": [
+                1,
+                3
+              ],
+              "measured_step_ms": 3244.1860903054476,
+              "predicted_step_ms": 3254.5865085761134,
+              "relative_error_pct": 0.32058636530577606,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_cfg2sp3",
+              "form": [
+                2,
+                3
+              ],
+              "measured_step_ms": 1765.6510099768639,
+              "predicted_step_ms": 1629.6856062880568,
+              "relative_error_pct": 7.7005819904687005,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_sp4",
+              "form": [
+                1,
+                4
+              ],
+              "measured_step_ms": 3119.4556206464767,
+              "predicted_step_ms": 2622.3280414320852,
+              "relative_error_pct": 15.936356841369864,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2sp4",
+              "form": [
+                2,
+                4
+              ],
+              "measured_step_ms": 1584.8997794091702,
+              "predicted_step_ms": 1313.5563727160427,
+              "relative_error_pct": 17.12054037853931,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_sp6",
+              "form": [
+                1,
+                6
+              ],
+              "measured_step_ms": 2224.2958284914494,
+              "predicted_step_ms": 1889.1441342880566,
+              "relative_error_pct": 15.067766162682489,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_sp8",
+              "form": [
+                1,
+                8
+              ],
+              "measured_step_ms": 1824.351316317916,
+              "predicted_step_ms": 1484.7051407160425,
+              "relative_error_pct": 18.617366762854676,
+              "partition": "held_out"
+            }
+          ],
+          "execution_cost_mode": "placement_bound_form_table_with_analytical_fallback",
+          "unbound_measurements": 0,
+          "image_batch_samples": {
+            "1": 10
+          },
+          "validation_scope": "held-out forms on calibration hardware and shape; not held-out request, placement or workload validation",
+          "method": "single constrained saturation model fitted once; no per-form bandwidth or overlap overrides"
+        },
+        "resize_ms": 81.38676788657904,
+        "quantum_overhead_ms": 1.2649214655465009
+      }
+    },
+    "sd35-1440": {
+      "spec": {
+        "height": 1440,
+        "width": 1440,
+        "frames": 1,
+        "steps": 28,
+        "guidance_scale": 4.5,
+        "batch_size": 1,
+        "max_sequence_length": 256,
+        "negative_prompt": "blurry, low quality"
+      },
+      "cost": {
+        "kind": "image",
+        "service_ms": 15112.497119233012,
+        "steps": 28,
+        "prepare_ms": 45.0,
+        "finish_ms": 16144.19,
+        "batch_step_ms": {
+          "1": 533.303,
+          "2": 1034.609,
+          "3": 1511.382,
+          "4": 2020.154,
+          "6": 3005.698,
+          "8": 4007.242
+        }
+      },
+      "source": {
+        "run_sha256": "e5204fcad70196ee4902e36f9b82a0309e28c76d9f1e63ac242e8b01ca3af3d7",
+        "run_id": "d20261105-formal-v2-wan22-b2-7ee8beb-r1-cal2",
+        "core_sha256": "2b30658e975246f9c57c590fd216276e60d8ac7bb1a09dc2755c93d0da8216be",
+        "gpu_uuids": [
+          "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+          "GPU-7bb0920b-6181-9486-380c-042e9fe68433",
+          "GPU-56f9344d-f279-ae6b-d287-b9024e4eb7fe",
+          "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+          "GPU-5a956ef1-5f15-8a3b-7055-02da1d96da75",
+          "GPU-d3c1776a-33b0-8800-0ed7-431fc605ba83",
+          "GPU-837bc934-205d-1796-b72f-0141a8855565",
+          "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529"
+        ],
+        "fit": {
+          "experiment": "kairos-wan22-native-calibration",
+          "run_id": "d20261105-formal-v2-wan22-b2-7ee8beb-r1-cal2",
+          "gpu_uuids": [
+            "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+            "GPU-7bb0920b-6181-9486-380c-042e9fe68433",
+            "GPU-56f9344d-f279-ae6b-d287-b9024e4eb7fe",
+            "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+            "GPU-5a956ef1-5f15-8a3b-7055-02da1d96da75",
+            "GPU-d3c1776a-33b0-8800-0ed7-431fc605ba83",
+            "GPU-837bc934-205d-1796-b72f-0141a8855565",
+            "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529"
+          ],
+          "run_sha256": "e5204fcad70196ee4902e36f9b82a0309e28c76d9f1e63ac242e8b01ca3af3d7",
+          "model": "Wan2.2-TI2V-5B",
+          "shape": {
+            "cache": false,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "height": 704,
+            "max_continuous": 1,
+            "negative_prompt": "",
+            "prompt": "cinematic drama, steaming coffee mug on table in modern kitchen, sunbeams falling through window, -neg &quot;morphing, erratic fluctuation in motion, noisy, bad quality, distorted, stabilized, blurry&quot; -camera rotate ccw  ",
+            "request_id": "video-calibration",
+            "seed": 101,
+            "steps": 50,
+            "threshold": 0.0,
+            "width": 1280
+          },
+          "architecture": {
+            "tokens": 18480,
+            "dim": 3072,
+            "layers": 30,
+            "comm_mb_per_step": 27249.8688,
+            "collectives_per_step": 240,
+            "cfg_exchange_mb": 7.09632
+          },
+          "timing_scopes": {
+            "static_sp1": "median_steady_advance",
+            "static_cfg2": "median_steady_advance",
+            "static_sp2": "median_steady_advance",
+            "static_cfg2sp2": "median_steady_advance",
+            "static_sp3": "median_steady_advance",
+            "static_cfg2sp3": "median_steady_advance",
+            "static_sp4": "median_steady_advance",
+            "static_cfg2sp4": "median_steady_advance",
+            "static_sp6": "median_steady_advance",
+            "static_sp8": "median_steady_advance"
+          },
+          "steady_samples": {
+            "static_sp1": 49,
+            "static_cfg2": 49,
+            "static_sp2": 49,
+            "static_cfg2sp2": 49,
+            "static_sp3": 49,
+            "static_cfg2sp3": 49,
+            "static_sp4": 49,
+            "static_cfg2sp4": 49,
+            "static_sp6": 49,
+            "static_sp8": 49
+          },
+          "bandwidth_saturation_gbps": 3.75,
+          "bandwidth_gamma": 0.0,
+          "fit_policies": [
+            "static_cfg2",
+            "static_cfg2sp2",
+            "static_sp1",
+            "static_sp2",
+            "static_sp4"
+          ],
+          "fit_mean_relative_error_pct": 8.129705425783948,
+          "held_out_mean_relative_error_pct": 11.76536833197019,
+          "held_out_max_relative_error_pct": 18.617366762854676,
+          "predictions": [
+            {
+              "policy": "static_sp1",
+              "form": [
+                1,
+                1
+              ],
+              "measured_step_ms": 4559.33840572834,
+              "predicted_step_ms": 4559.33840572834,
+              "relative_error_pct": 0.0,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2",
+              "form": [
+                2,
+                1
+              ],
+              "measured_step_ms": 2294.4623809307814,
+              "predicted_step_ms": 2282.06155486417,
+              "relative_error_pct": 0.5404676132271505,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_sp2",
+              "form": [
+                1,
+                2
+              ],
+              "measured_step_ms": 3724.6364559978247,
+              "predicted_step_ms": 4216.32712286417,
+              "relative_error_pct": 13.201037810671965,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2sp2",
+              "form": [
+                2,
+                2
+              ],
+              "measured_step_ms": 2370.629759505391,
+              "predicted_step_ms": 2110.5559134320847,
+              "relative_error_pct": 10.970664863650759,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_sp3",
+              "form": [
+                1,
+                3
+              ],
+              "measured_step_ms": 3244.1860903054476,
+              "predicted_step_ms": 3254.5865085761134,
+              "relative_error_pct": 0.32058636530577606,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_cfg2sp3",
+              "form": [
+                2,
+                3
+              ],
+              "measured_step_ms": 1765.6510099768639,
+              "predicted_step_ms": 1629.6856062880568,
+              "relative_error_pct": 7.7005819904687005,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_sp4",
+              "form": [
+                1,
+                4
+              ],
+              "measured_step_ms": 3119.4556206464767,
+              "predicted_step_ms": 2622.3280414320852,
+              "relative_error_pct": 15.936356841369864,
+              "partition": "fit"
+            },
+            {
+              "policy": "static_cfg2sp4",
+              "form": [
+                2,
+                4
+              ],
+              "measured_step_ms": 1584.8997794091702,
+              "predicted_step_ms": 1313.5563727160427,
+              "relative_error_pct": 17.12054037853931,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_sp6",
+              "form": [
+                1,
+                6
+              ],
+              "measured_step_ms": 2224.2958284914494,
+              "predicted_step_ms": 1889.1441342880566,
+              "relative_error_pct": 15.067766162682489,
+              "partition": "held_out"
+            },
+            {
+              "policy": "static_sp8",
+              "form": [
+                1,
+                8
+              ],
+              "measured_step_ms": 1824.351316317916,
+              "predicted_step_ms": 1484.7051407160425,
+              "relative_error_pct": 18.617366762854676,
+              "partition": "held_out"
+            }
+          ],
+          "execution_cost_mode": "placement_bound_form_table_with_analytical_fallback",
+          "unbound_measurements": 0,
+          "image_batch_samples": {
+            "1": 10
+          },
+          "validation_scope": "held-out forms on calibration hardware and shape; not held-out request, placement or workload validation",
+          "method": "single constrained saturation model fitted once; no per-form bandwidth or overlap overrides"
+        },
+        "resize_ms": 81.38676788657904,
+        "quantum_overhead_ms": 1.2649214655465009
+      }
+    }
+  },
+  "model_manifests": {
+    "sd35": {
+      "path": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/sd35.manifest.json",
+      "sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424"
+    },
+    "wan21": {
+      "path": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/wan21.manifest.json",
+      "sha256": "3c0dbaa3dab1ac025a95dc4d0f3a835a83e044fc811fa7512387e094aeb006ca"
+    },
+    "wan22": {
+      "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b-official-b8fff731",
+      "path": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/wan22-official-b8fff731.manifest.json",
+      "sha256": "02ac66402d23a0ad25fa9fece1f6f57e2dc08783dda18ff4c9904fddf28d2c5f"
+    }
+  },
+  "qualification": "measured calibration only; numerical, quality and serving qualification pending",
+  "sha256": "150b7659500e870d2f5895f2c8a299c1b5ed733e81372ba7ef17b101d1d292a7"
+}

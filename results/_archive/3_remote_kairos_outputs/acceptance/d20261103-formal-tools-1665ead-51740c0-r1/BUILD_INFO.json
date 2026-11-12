@@ -1,0 +1,16 @@
+{
+ "commit": "51740c05944b063e39bc325b64241cd611a73b41",
+ "subject": "Use installed runtime packages in isolated batch fixture",
+ "built_utc": "2026-11-02T20:25:25+00:00",
+ "builder_image": "local-cmake-install",
+ "runtime_image": "192.168.1.114:30500/jjjkairos/ditserve:xdit-dev-016e1ca-slim",
+ "core_sha256": "e358e29d1a3ca238bbf2b7f981db71e951519715aedf46d58454738aabcbd42b",
+ "runtime_smoke": "pending_cluster",
+ "local_checks": [
+  "cmake",
+  "ctest",
+  "installed_doctor"
+ ],
+ "files": 294,
+ "bytes": 4747317
+}

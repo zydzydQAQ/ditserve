@@ -1,0 +1,17 @@
+{
+  "at_utc": "2026-11-02T23:39:22.247344+00:00",
+  "reason": "replaced by source-bound corrected operator after ledger fix; original records retained",
+  "processes": [
+    {
+      "pid": 2200089,
+      "entry": "/mnt/e/000_code/zyd-2026/.local/ditserve-kairos-rewrite-runtime/orchestration/20261103-a1a52a8/advance_isolated_p1.py",
+      "state": "SIGTERM_local_observer_only"
+    },
+    {
+      "pid": 2212510,
+      "entry": "/mnt/e/000_code/zyd-2026/.local/ditserve-kairos-rewrite-runtime/orchestration/20261103-a1a52a8/collect_completed_isolated_p1.py",
+      "state": "SIGTERM_local_observer_only"
+    }
+  ],
+  "remote_jobs_stopped": false
+}

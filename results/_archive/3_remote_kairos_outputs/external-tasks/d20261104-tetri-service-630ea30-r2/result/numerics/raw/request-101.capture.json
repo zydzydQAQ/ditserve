@@ -1,0 +1,60 @@
+{
+  "actual_final_sync_calls": 1,
+  "actual_raw_decode_calls": 1,
+  "capture_adds_synchronization": true,
+  "capture_before_postprocess": true,
+  "final_interval": [
+    26,
+    28
+  ],
+  "final_ranks": [
+    0,
+    1
+  ],
+  "native_request_id": 1,
+  "owner_rank": 0,
+  "plan_sha256": "300db58b53936e474598043dcfb0bbe44cfcf1157928f408d7729e61a3855cde",
+  "request": {
+    "guidance_scale": 4.5,
+    "height": 1024,
+    "max_sequence_length": 256,
+    "negative_prompt": "blurry, low quality",
+    "prompt": "A white rabbit in a field of blue flowers.",
+    "seed": 102,
+    "steps": 28,
+    "width": 1024
+  },
+  "request_id": 101,
+  "request_sha256": "322f6325298a57bda08d8cfbfe3fd487b5d27b6d0e4ffedfad73e210ed435a07",
+  "schema": "ditserve.tetriserve-service-raw-capture.v1",
+  "sub_request_id": -2,
+  "tensor_file": {
+    "bytes": 6816152,
+    "file": "request-101.safetensors",
+    "sha256": "d7fe78f22a21e5732774c45abd19327e83b4bbb087954b14c80365a2d7bb5f31",
+    "tensors": {
+      "decoded": {
+        "bytes": 6291456,
+        "dtype": "BF16",
+        "shape": [
+          1,
+          3,
+          1024,
+          1024
+        ],
+        "tensor_sha256": "8656b05fd0c6449bd0d5601f8df5dc16dad2950e498f6350b9c9c50699913f27"
+      },
+      "latents": {
+        "bytes": 524288,
+        "dtype": "BF16",
+        "shape": [
+          1,
+          16,
+          128,
+          128
+        ],
+        "tensor_sha256": "a3832332ed09b791048cb8d339faad4f025bf5002f61cab700649948eec41392"
+      }
+    }
+  }
+}

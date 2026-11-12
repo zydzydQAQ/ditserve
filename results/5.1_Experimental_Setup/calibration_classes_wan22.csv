@@ -1,0 +1,7 @@
+class_id,kind,height,width,frames,steps,guidance_scale,prepare_ms,encode_ms,step_or_service_ms,finish_ms,measured_forms
+wan22-256p,video,256,448,81,50,5.0,0.0,5078.93,417.4,1730.35,"cfg2,cfg2sp2,cfg2sp3,cfg2sp4,sp1,sp2,sp3,sp4,sp6,sp8"
+sd35-512,image,512,512,1,28,4.5,45.0,0.0,1778.08,135.01,sp1_cb
+wan22-480p,video,512,896,81,50,5.0,0.0,15.01,1881.1,6517.11,"cfg2,cfg2sp2,cfg2sp3,cfg2sp4,sp1,sp2,sp3,sp4,sp6,sp8"
+sd35-1024,image,1024,1024,1,28,4.5,45.0,0.0,6525.52,134.99,sp1_cb
+wan22-720p,video,704,1280,81,50,5.0,0.0,15.3,4611.02,11992.36,"cfg2,cfg2sp2,cfg2sp3,cfg2sp4,sp1,sp2,sp3,sp4,sp6,sp8"
+sd35-1440,image,1440,1440,1,28,4.5,45.0,0.0,15058.31,135.01,sp1_cb

@@ -1,0 +1,815 @@
+#!/usr/bin/env python3
+"""Review paired P2 measurements, including failed and unstarted planned cells.
+
+This is a local descriptive review, not a stage receipt or a quality certificate.
+The evidence manifest has schema ditserve.p2-evidence.v1, hash references to
+protocol and plan, and runs [{case_id, arm, record:{path,sha256}}]. The plan has
+schema ditserve.p2-plan.v1, protocol_sha256, statistics, and cases [{id,
+workload_id, contrast, seed, reference, candidate}]. Each arm names a frozen
+config reference and explicit phase, attempt, cell, order. Config references
+are relative to the plan; run references are relative to the evidence manifest.
+Missing run entries and cells stay in the planned denominator; they never
+become measured zero-throughput counterfactuals. Repetitions resample seeds.
+"""
+
+import argparse
+import copy
+import hashlib
+import json
+import math
+from pathlib import Path
+import random
+import re
+import statistics
+
+from formal_benchmark import input_shape, shape_spec
+from native_exact import checked_digest, percentile, stop_samples, validate_pair_identity
+from native_serving import FORM_DEGREES
+from p1_benchmark import canonical_hash, config_identity, match_native_config, read_json, source_file
+
+
+_POLICY_SOURCES = {
+    'src/ditserve/control/policy.cpp': '6a52ff3a2caabd73ccf076a9158050fa8765d772ffedad498ffe4a18f1e1d2fb',
+    'include/ditserve/control/policy.hpp': '10d5ed4df6da5c8a9151a3adcbea76d16bf5a435b8daaf99968ec4114f51b9c8',
+}
+_LEGACY_RUNTIME_SOURCES = {
+    'src/ditserve/control/budget.cpp': 'a0ebe611274ad2d76436cd0a8a550e8039e571ae9d4f0c1d5bc2d2399cda6537',
+    'src/ditserve/control/dispatch.cpp': '3c9bdd18f9d48c708922831bd3e543de3ea232d25bf92236b07c1ced5b2e2f59',
+    'src/ditserve/runtime/process.cpp': 'b632695f39bc692e2474c258c33f6423dfbe32486e64258b837f4dd23c708105',
+    'include/ditserve/runtime/process.hpp': '8af98ae7fd383d8c1ce4e010477bd198ba8eabda40576cf5a6a20305697014f4',
+    'src/ditserve/interface/command.cpp': 'bae8e76882f6efe55c9b50a7a802b55da7f9fc56bc6535c2f4e4038f74bb0a57',
+}
+
+
+def _native_bundle(cluster, study, header, runtime=None):
+    return dict(_POLICY_SOURCES, **(_LEGACY_RUNTIME_SOURCES if runtime is None else runtime), **{
+        'src/ditserve/control/cluster.cpp': cluster, 'src/ditserve/control/study.cpp': study,
+        'include/ditserve/control/cluster.hpp': header})
+
+
+AUDITED_NATIVE_BUNDLES = {
+    '12b0918': _native_bundle('5c2054931ec6d1b8c5dfa3c50f781e0f57594783633494b64f409adad7a5ed54',
+        '34582d968cd1558e826849c86d408f958b9217825b7486f942d2b4e1ecc10374',
+        '38856fb9c9a8f2812bfd9a06e3bc048038e509b051f68d92b78b4e91ae37d34e'),
+    'f79f6fb-cf46c3b': _native_bundle('6cf1044cc837e26ba5bfb4e1b83870a10709e6e989cb58662e8bbf4d46287d0e',
+        '34582d968cd1558e826849c86d408f958b9217825b7486f942d2b4e1ecc10374',
+        '38856fb9c9a8f2812bfd9a06e3bc048038e509b051f68d92b78b4e91ae37d34e'),
+    '92b72ff': _native_bundle('6cf1044cc837e26ba5bfb4e1b83870a10709e6e989cb58662e8bbf4d46287d0e',
+        'c7f104e0cc6da4e0ffd7fae4d4f3cefcb1706bf20efe5f7a32b6145c40ad02f4',
+        '38856fb9c9a8f2812bfd9a06e3bc048038e509b051f68d92b78b4e91ae37d34e'),
+    'c4b9e26-51740c0': _native_bundle('eded7812a8400430f0a1fc97d6ad9f4769c29a211deca7288b4a30d11b9b6ffd',
+        '0b64d3f11b1a90174b77f3297e9536b465f359ce4e8a5365dec7610d4732525a',
+        '5a9c3dff8df8d78df5f16618c8b13057e4d20857f6e0916923b715fda22866f3'),
+    '97f0713': _native_bundle('eded7812a8400430f0a1fc97d6ad9f4769c29a211deca7288b4a30d11b9b6ffd',
+        '20193ea379745bc79b56e3448f72b10ea51e61e60943da0aebe0273010c213bb',
+        '5a9c3dff8df8d78df5f16618c8b13057e4d20857f6e0916923b715fda22866f3', runtime={
+            'src/ditserve/control/budget.cpp': 'c1b1f3dce50073f8f3a858b33382d2c0991af4059eb2c6999b357caafe4f0eb2',
+            'src/ditserve/control/dispatch.cpp': 'fa9ff789cefc8c095a08121d18d6bb62cf7352d623112af08c7bf518fec7d5a6',
+            'src/ditserve/runtime/process.cpp': '30c36b89ef5b69d6fe44910099f6921d581846692e8acc11f7ba76198af0d4ce',
+            'include/ditserve/runtime/process.hpp': 'cb410642d81d755e16cab9ba842ce0e9d6a768d0735a23907d48d95aff84d4ca',
+            'src/ditserve/interface/command.cpp': '52f3a18f7b423ff949cedf5b50da0eaa704fd71a3dfea03b89405b4de7c85a42'}),
+}
+REQUIRED_NATIVE_SOURCES = frozenset(AUDITED_NATIVE_BUNDLES['97f0713'])
+AUDITED_NATIVE_SOURCES = {path: (digest,) for path, digest in AUDITED_NATIVE_BUNDLES['f79f6fb-cf46c3b'].items()}
+CONTRASTS = {
+    'block-fixed': dict(reference='edf-cfg2', candidate='block-cfg2', mechanism='block preemption', field='blocks'),
+    'block-elastic': dict(reference='cfg2-first', candidate='ditserve', mechanism='block preemption', field='blocks'),
+    'pruning': dict(reference='abl-no-prune', candidate='ditserve', mechanism='form pruning', field='prune_dominated'),
+    'minimum-pair': dict(reference='abl-no-mindeg', candidate='ditserve', mechanism='minimum CFG-pair admission', field='min_video_degree'),
+    'placement': dict(reference='abl-first-fit', candidate='ditserve', mechanism='pair-fit image placement', field='image_placement'),
+    'lazy': dict(reference='ditserve', candidate='ditserve', mechanism='deadline utility filter',
+                 option='lazy_preemption', values=[False, True], field='lazy_preemption'),
+    'remaining-work': dict(reference='ditserve', candidate='ditserve', mechanism='remaining-work widening',
+                           option='widen_remaining_work', values=[False, True], field='widen_remaining_work'),
+    'doorbell': dict(reference='ditserve', candidate='ditserve', mechanism='continuous doorbell execution',
+                      option='doorbell', values=[False, True], field='doorbell'),
+}
+for _policy in ('xdit', 'tetriserve', 'sbp-esp', 'edf-bestfit', 'edf-cfg2', 'cfg2-first'):
+    CONTRASTS['system-' + _policy] = dict(reference=_policy, candidate='ditserve', mechanism='system comparison', system=True)
+
+_OURS = ('ditserve', 'cfg2-first', 'abl-no-block', 'abl-no-prune', 'abl-no-mindeg', 'abl-first-fit')
+
+
+def _policy_rows(xdit_form, tetriserve_prunes, edf_bestfit_demotes, sbp_esp_late_short_ms):
+    xdit = 'xdit-' + xdit_form
+    rows = {}
+    for policy in _OURS + ('edf-cfg2', 'block-cfg2', xdit, 'tetriserve', 'sbp-esp', 'edf-bestfit'):
+        ours = policy in _OURS
+        fixed = policy in {'edf-cfg2', 'block-cfg2', xdit}
+        rows[policy] = dict(
+            elastic=not fixed, blocks=policy in {'ditserve', 'abl-no-prune', 'abl-no-mindeg', 'abl-first-fit', 'block-cfg2'},
+            fixed_form=(xdit_form if policy == xdit else 'cfg2') if fixed else None,
+            prune_dominated=ours and policy != 'abl-no-prune' or policy == 'tetriserve' and tetriserve_prunes,
+            min_video_degree=2 if ours and policy != 'abl-no-mindeg' else 1,
+            widen_efficiency=.9 if ours else 0., image_placement='pair_fit' if ours and policy != 'abl-first-fit' else 'first',
+            order='fcfs' if policy == xdit else 'edf', hold_diffuse=policy == xdit,
+            demote_late=policy != xdit and (policy != 'edf-bestfit' or edf_bestfit_demotes),
+            late_short_ms=float(sbp_esp_late_short_ms) if policy == 'sbp-esp' else 2000.,
+            rounds=policy == 'tetriserve', deadline_dp=policy in {'tetriserve', 'sbp-esp'}, best_fit=policy == 'edf-bestfit',
+            image_batching=policy == 'sbp-esp', partition_divisor=4 if policy == xdit else 0)
+    return rows
+
+
+LEGACY_POLICY_SOURCE = _POLICY_SOURCES['src/ditserve/control/policy.cpp']
+CURRENT_POLICY_SOURCE = '8d45d88d2b977fd1edc1501ad4e224a7d28f539c8d35a8d4c86af07bff2ed310'
+POLICY_REGISTRIES = {
+    LEGACY_POLICY_SOURCE: dict(xdit='xdit-cfg2', policies=_policy_rows('cfg2', False, True, 2000),
+                               planner_fields=False, partition_clamp=False),
+    CURRENT_POLICY_SOURCE: dict(xdit='xdit-sp1', policies=_policy_rows('sp1', False, False, 0),
+                                planner_fields=True, partition_clamp=True),
+}
+
+
+def policy_registry(policy_source=CURRENT_POLICY_SOURCE):
+    try:
+        return POLICY_REGISTRIES[policy_source]
+    except (KeyError, TypeError):
+        raise ValueError('no reviewed P2 policy registry for policy.cpp digest: ' + str(policy_source)) from None
+
+
+def canonical_policy(policy, policy_source=CURRENT_POLICY_SOURCE):
+    return policy_registry(policy_source)['xdit'] if policy == 'xdit' else policy
+
+
+def _reviewed_policy_source(pins):
+    digest = pins.get('src/ditserve/control/policy.cpp')
+    policy_registry(digest)
+    return digest
+
+
+def audit_native_sources(native, explicit_pins=None):
+    if not isinstance(native, dict):
+        raise ValueError('native source snapshot is missing')
+    if explicit_pins is None:
+        for name, pins in AUDITED_NATIVE_BUNDLES.items():
+            if all(native.get(path) == digest for path, digest in pins.items()):
+                return dict(bundle=name, pins_sha256=canonical_hash(pins), qualification_eligible=False,
+                            policy_source_sha256=_reviewed_policy_source(pins),
+                            scope='reviewed native source combination only; core, execution and scientific gates remain independent')
+        raise ValueError('native option resolver has not been audited for this source bundle')
+    if (not isinstance(explicit_pins, dict) or not REQUIRED_NATIVE_SOURCES <= set(explicit_pins)
+            or any(not isinstance(path, str) or not path or not isinstance(hashes, (tuple, list))
+                   or len(hashes) != 1 or not isinstance(hashes[0], str)
+                   or re.fullmatch(r'[0-9a-f]{64}', hashes[0]) is None for path, hashes in explicit_pins.items())):
+        raise ValueError('explicit native source pins require a complete singleton hash map')
+    pins = {path: hashes[0] for path, hashes in explicit_pins.items()}
+    if any(native.get(path) != digest for path, digest in pins.items()):
+        raise ValueError('native source snapshot differs from explicit singleton pins')
+    return dict(bundle='explicit-singleton-map', pins_sha256=canonical_hash(pins), qualification_eligible=False,
+                policy_source_sha256=_reviewed_policy_source(pins),
+                scope='explicit internal-caller pins; caller owns source review, independent of all qualification gates')
+
+
+def resolved_options(policy, options, gpus, policy_source=CURRENT_POLICY_SOURCE):
+    if (options.get('sp_transport') != 'export' or options.get('pin_started', False)
+            or options.get('tiered_memory', False) or gpus not in (2, 4, 6, 8)):
+        raise ValueError('unsupported: P2 resolver covers unpinned export transport on 2/4/6/8 GPUs only')
+    registry = policy_registry(policy_source)
+    policy = canonical_policy(policy, policy_source)
+    if policy not in registry['policies']:
+        raise ValueError('policy has no audited exact resolver: ' + policy)
+    traits = registry['policies'][policy]
+    fixed, blocks = traits['fixed_form'], traits['blocks']
+    default = {key: value for key, value in traits.items() if key not in ('late_short_ms', 'partition_divisor')}
+    default.update(lazy_preemption=True, widen_remaining_work=True, doorbell=False, check_blocks=1,
+                   quantum_blocks=4, quantum_ms=0., pin_started=False, round_steps=5)
+    overridable = {'prune_dominated', 'min_video_degree', 'widen_efficiency', 'image_placement', 'order',
+                   'hold_diffuse', 'demote_late', 'lazy_preemption', 'widen_remaining_work', 'doorbell',
+                   'check_blocks', 'quantum_blocks', 'quantum_ms', 'pin_started', 'round_steps'}
+    if registry['planner_fields']:
+        overridable.add('late_short_ms')
+        default['late_short_ms'] = traits['late_short_ms']
+    default.update({key: options[key] for key in overridable if key in options})
+    if registry['planner_fields']:
+        default['round_hold'] = traits['rounds'] and type(default['round_steps']) is int and default['round_steps'] > 1
+    default['forms'] = [fixed] if fixed else options.get('forms')
+    if (not isinstance(default['forms'], list) or not default['forms']
+            or any(form not in FORM_DEGREES for form in default['forms'])):
+        raise ValueError('unsupported or implicit parallel form space')
+    partitioned = traits['partition_divisor'] > 0
+    share = options.get('partition_image_gpus', max(1, gpus // traits['partition_divisor'])) if partitioned else 0
+    if registry['partition_clamp'] and fixed and type(share) is int and share > 0:
+        share = min(share, max(0, gpus - FORM_DEGREES[fixed]))
+    default['reserve_image_gpus'] = options.get('reserve_image_gpus', share)
+    default['strict_partition'] = options.get('strict_partition', partitioned)
+    reserve = default['reserve_image_gpus']
+    if type(reserve) is not int or reserve < 0 or reserve >= gpus or fixed and gpus - reserve < FORM_DEGREES[fixed]:
+        raise ValueError('unsupported baseline: image partition leaves no complete fixed '
+                         + fixed.upper() + ' video group' if fixed else
+                         'unsupported baseline: image partition leaves no video GPU')
+    default['doorbell_effective'] = blocks and default['doorbell']
+    default['image_batching_effective'] = default['image_batching'] and 'image_batch' not in options
+    default['shared_options'] = {key: value for key, value in options.items() if key not in overridable
+                                 and key not in {'forms', 'reserve_image_gpus', 'partition_image_gpus', 'strict_partition'}}
+    return default
+
+
+def validate_contrast(name, reference, candidate, policy_source=CURRENT_POLICY_SOURCE):
+    definition = CONTRASTS[name]
+    for arm, phase in (('reference', reference), ('candidate', candidate)):
+        if canonical_policy(phase['policy'], policy_source) != canonical_policy(definition[arm], policy_source):
+            raise ValueError('selected policy differs from contrast ' + arm)
+    normalized = [copy.deepcopy(phase) for phase in (reference, candidate)]
+    for phase in normalized:
+        phase.pop('policy', None)
+    if 'option' in definition:
+        key = definition['option']
+        for index, phase in enumerate(normalized):
+            if phase.get('options', {}).get(key) is not definition['values'][index]:
+                raise ValueError('both contrast option values must be explicit and different')
+            phase['options'].pop(key)
+    if normalized[0] != normalized[1]:
+        raise ValueError('contrast changes inputs or settings beyond its declared mechanism/policy')
+    resolved = [resolved_options(phase['policy'], phase.get('options', {}), len(phase['gpus']), policy_source)
+                for phase in (reference, candidate)]
+    for phase, options in zip((reference, candidate), resolved):
+        available = len(phase['gpus']) - options['reserve_image_gpus']
+        if any(row.get('kind') == 'video' and row.get('min_degree', 1) > available
+               for row in phase.get('profile', {}).get('classes', {}).values()):
+            raise ValueError('unsupported model: partition cannot accommodate its minimum degree')
+        fixed = options['fixed_form']
+        if fixed and any(row.get('kind') == 'video' and row.get('min_degree', 1) > FORM_DEGREES[fixed]
+                         for row in phase.get('profile', {}).get('classes', {}).values()):
+            raise ValueError('unsupported: class minimum would replace the declared fixed '
+                             + fixed.upper() + ' form with SP')
+    differing = {key for key in resolved[0] if resolved[0][key] != resolved[1][key]}
+    if not differing:
+        raise ValueError('policy/options overrides make the two supposedly different arms identical')
+    if not definition.get('system'):
+        allowed = {definition['field']}
+        if definition['field'] in {'blocks', 'doorbell'}:
+            allowed.add('doorbell_effective')
+        if not differing <= allowed or definition['field'] not in differing:
+            raise ValueError('resolved options do not isolate the declared mechanism')
+    if name == 'lazy' and not all(item['doorbell_effective'] for item in resolved):
+        raise ValueError('lazy doorbell contrast is disabled by the resolved runtime configuration')
+    if name == 'remaining-work' and not all(item['widen_efficiency'] > 0 for item in resolved):
+        raise ValueError('remaining-work widening is disabled by the resolved runtime configuration')
+    if name == 'minimum-pair' and any('sp1' not in item['forms'] for item in resolved):
+        raise ValueError('minimum-pair ablation needs an actually available SP1 form')
+    if name == 'pruning' and any(len(item['forms']) < 2 for item in resolved):
+        raise ValueError('pruning ablation needs multiple candidate forms')
+    if name == 'remaining-work' and any(len({FORM_DEGREES[form] for form in item['forms']}) < 2 for item in resolved):
+        raise ValueError('remaining-work widening needs multiple candidate degrees')
+    if name == 'placement' and len(reference['gpus']) < 4:
+        raise ValueError('placement ablation needs at least two CFG pairs')
+    video_classes = [row for row in reference.get('profile', {}).get('classes', {}).values() if row.get('kind') == 'video']
+    if name == 'minimum-pair' and video_classes and all(row.get('min_degree', 1) >= 2 for row in video_classes):
+        raise ValueError('model minimum degree makes the minimum-pair option ineffective')
+    if name in ('pruning', 'remaining-work') and video_classes:
+        allowed = [[form for form in resolved[1]['forms'] if FORM_DEGREES[form] <= len(reference['gpus'])
+                    and FORM_DEGREES[form] >= max(row.get('min_degree', 1), resolved[1]['min_video_degree'])]
+                   for row in video_classes]
+        if not any(len(forms if name == 'pruning' else {FORM_DEGREES[form] for form in forms}) > 1 for forms in allowed):
+            raise ValueError('model minimum/form constraints disable the declared mechanism')
+    if name == 'doorbell':
+        if any(item['quantum_ms'] != 0 or item['quantum_blocks'] != item['check_blocks'] for item in resolved):
+            raise ValueError('doorbell contrast requires the same explicit block-check spacing')
+    return dict(reference=resolved[0], candidate=resolved[1], differing_fields=sorted(differing),
+                scope='audited registry/options resolution; actual execution evidence is reviewed separately')
+
+
+def finite(value, name, positive=False):
+    if type(value) not in (int, float) or not math.isfinite(value) or value < 0 or positive and value == 0:
+        raise ValueError('invalid measured ' + name)
+    return value
+
+
+def sha(value):
+    return isinstance(value, str) and re.fullmatch(r'[0-9a-f]{64}', value) is not None
+
+
+def trace_hash(rows):
+    # Frozen workload generator uses ASCII JSON, unlike protocol canonical JSON.
+    return hashlib.sha256(json.dumps(rows, sort_keys=True, separators=(',', ':'), allow_nan=False).encode()).hexdigest()
+
+
+def expanded(phase):
+    """Match native expand_matrix's lexicographic JSON-pointer Cartesian order."""
+    rows = [copy.deepcopy({key: value for key, value in phase.items() if key != 'matrix'})]
+    for pointer, choices in sorted(phase.get('matrix', {}).items()):
+        if not pointer.startswith('/') or not isinstance(choices, list) or not choices:
+            raise ValueError('invalid frozen phase matrix')
+        parts = [part.replace('~1', '/').replace('~0', '~') for part in pointer[1:].split('/')]
+        next_rows = []
+        for row in rows:
+            for value in choices:
+                item = copy.deepcopy(row)
+                target = item
+                for part in parts[:-1]:
+                    target = target[int(part)] if isinstance(target, list) else target.setdefault(part, {})
+                target[int(parts[-1]) if isinstance(target, list) else parts[-1]] = copy.deepcopy(value)
+                next_rows.append(item)
+                if len(next_rows) > 10000:
+                    raise ValueError('matrix exceeds native cell limit')
+        rows = next_rows
+    return rows
+
+
+def planned_arm(config, selector, protocol, seed):
+    phases = [phase for phase in config.get('phases', []) if phase.get('id') == selector['phase']]
+    if len(phases) != 1 or type(selector['attempt']) is not int or selector['attempt'] < 1:
+        raise ValueError('explicit unique phase and positive attempt required')
+    original = phases[0]
+    cells = expanded(original)
+    index = selector['cell']
+    if type(index) is not int or not 0 <= index < len(cells):
+        raise ValueError('selected cell is not in the frozen configuration')
+    order = selector['order']
+    if order not in ('forward', 'reverse') or order == 'reverse' and not original.get('paired', False):
+        raise ValueError('selected order is not planned')
+    sequence = [(i, 'forward') for i in range(len(cells))]
+    if original.get('paired', False):
+        sequence += [(i, 'reverse') for i in reversed(range(len(cells)))]
+    phase = cells[index]
+    benchmark = config.get('benchmark', {})
+    formal = benchmark.get('formal_protocol', {})
+    if (phase.get('kind') != 'cluster' or benchmark.get('native_serving') is not True
+            or benchmark.get('exact_mode') is not True or benchmark.get('seed') != seed
+            or formal.get('sha256') != canonical_hash(protocol) or formal.get('schema') != protocol.get('schema')):
+        raise ValueError('configuration lacks frozen formal native/exact/seed identity')
+    split, role = formal.get('split'), formal.get('role')
+    if (split not in ('development', 'test') or type(seed) is not int
+            or seed not in protocol.get('seeds', {}).get(split, [])):
+        raise ValueError('seed/split is outside the frozen formal protocol')
+    if role == 'serving':
+        shape_scope = 'development' if split == 'development' else 'formal'
+    elif (role == 'p3_sustained' and isinstance(benchmark.get('p3'), dict)
+          and sha(benchmark['p3'].get('plan_sha256'))):
+        # P3's caller separately verifies the bound plan, windows and arrivals.
+        shape_scope = 'development' if split == 'development' else 'formal'
+    elif role in ('preemption', 'no_preemption', 'p1_contention', 'p1_no_preemption') and split == 'development':
+        shape_scope = 'formal' if role.startswith('p1_') else 'development'
+    else:
+        raise ValueError('formal role is inconsistent with its prompt split')
+    if 'p2' in benchmark and benchmark['p2'].get('parent_role') != role:
+        raise ValueError('formal role differs from the frozen parent role')
+    shape_ids = formal.get('shape_ids')
+    shapes = protocol.get('shapes', {})
+    if (not isinstance(shape_ids, list) or not shape_ids or not all(isinstance(sid, str) for sid in shape_ids)
+            or len(set(shape_ids)) != len(shape_ids)
+            or any(sid not in shapes or shapes[sid].get('scope') != shape_scope for sid in shape_ids)):
+        raise ValueError('formal shape scope is inconsistent with its split/role')
+    bundle_hash = formal.get('profile_bundle_sha256')
+    if not sha(bundle_hash) or phase.get('profile', {}).get('source', {}).get('bundle_sha256') != bundle_hash:
+        raise ValueError('formal/profile bundle hash bindings differ')
+    workload = phase.get('workload')
+    provenance = phase.get('trace_provenance', {})
+    if (not isinstance(workload, list) or not workload or benchmark.get('trace') != provenance
+            or provenance.get('sha256') != trace_hash(workload)
+            or provenance.get('manifest', {}).get('workload_sha256') != trace_hash(workload)
+            or provenance['manifest'].get('seed') != seed):
+        raise ValueError('trace inputs do not match their frozen hash and seed')
+    ids = [row['request_id'] for row in workload]
+    if len(ids) != len(set(ids)):
+        raise ValueError('duplicate planned request identity')
+    for row in workload:
+        if row['kind'] not in ('image', 'video') or row['class'] not in formal.get('shape_ids', []):
+            raise ValueError('planned modality or shape is outside formal identity')
+        if input_shape(row['spec']) != shape_spec(protocol, row['class']):
+            raise ValueError('planned request differs from its frozen shape')
+        finite(row['arrival_ms'], 'arrival_ms'); finite(row['deadline_ms'], 'deadline_ms')
+        if row['deadline_ms'] <= row['arrival_ms']:
+            raise ValueError('nonpositive planned request SLO')
+    workers = config['workers']
+    uuids = []
+    for slot in phase['gpus']:
+        video_uuid, image_uuid = (workers[slot[kind]]['gpu_uuid'] for kind in ('video', 'image'))
+        if not video_uuid or video_uuid != image_uuid or video_uuid in uuids:
+            raise ValueError('slots must bind distinct co-resident video/image GPU UUIDs')
+        uuids.append(video_uuid)
+    if not uuids or phase['profile']['source'].get('gpu_uuids') != uuids or benchmark.get('gpus') != len(uuids):
+        raise ValueError('profile and worker allocations differ')
+    return dict(config=config, selector=selector, phase=phase, sequence=sequence,
+                position=sequence.index((index, order)), workload=workload, gpu_uuids=uuids)
+
+
+def counts(planned, rows, state):
+    result = {}
+    for kind in ('image', 'video'):
+        expected = [row for row in planned if row['kind'] == kind]
+        observed = [row for row in rows if row.get('kind') == kind]
+        complete = [row for row in observed if row.get('status') == 'completed']
+        result[kind] = dict(planned=len(expected), observed=len(observed), completed=len(complete),
+            failed=sum(row.get('status') == 'failed' for row in observed),
+            interrupted=sum(row.get('status') not in ('completed', 'failed') for row in observed),
+            not_started=len(expected) if state == 'not_started' else 0,
+            unobserved_after_failure=max(0, len(expected) - len(observed)) if state == 'failed' else 0)
+    return result
+
+
+def produced_identity(row, planned, arm, protocol):
+    if row.get('status') != 'completed':
+        return None
+    if not row.get('outputs'):
+        raise ValueError('completed request has no measured output')
+    output = row['outputs'][-1]
+    generation, artifact = output.get('generation', {}), output.get('output', {})
+    spec = planned['spec']
+    shape = protocol['shapes'][planned['class']]
+    wanted = ([1, shape['frames'], shape['height'], shape['width'], 3] if row['kind'] == 'video'
+              else [1, shape['height'], shape['width'], 3])
+    required = {'model_path', 'model_manifest_sha256', 'model_integrity', 'runtime_identity',
+                'dtype', 'text_encoder_dtype', 'attention', 'engine', 'revision'}
+    if row['kind'] == 'video':
+        required |= {'vae_dtype', 'xdit_revision'}
+        # Reuse native exact's full video input/runtime validation, without
+        # asserting cross-SP hash equivalence from an exact_mode label.
+        validate_pair_identity(row, row)
+    else:
+        required |= {'seed_protocol', 'batch_protocol'}
+    if (not required <= generation.keys() or generation.get('approximate') is not False
+            or not generation.get('runtime_identity') or not generation.get('engine')
+            or generation.get('model_integrity') != 'manifest_verified'):
+        raise ValueError('missing verified model/runtime/input identity')
+    for field in ('prompt', 'negative_prompt', 'seed', 'steps', 'frames', 'height', 'width', 'guidance_scale'):
+        if field not in spec or generation.get(field) != spec[field]:
+            raise ValueError('measured generation differs from frozen input: ' + field)
+    model = shape['model']
+    binding = arm['config']['benchmark']['model_manifests'][model]
+    if not sha(binding.get('sha256')) or generation['model_manifest_sha256'] != binding['sha256']:
+        raise ValueError('measured weights differ from configured manifest')
+    workers = arm['config']['workers']
+    for slot in arm['phase']['gpus']:
+        worker = workers[slot[row['kind']]]['config']
+        if (worker.get('model_manifest_sha256') != binding['sha256']
+                or worker.get('model_manifest_path') != binding['path']
+                or worker.get('model_path') != generation['model_path']):
+            raise ValueError('worker model binding differs from measured output')
+    if (artifact.get('shape') != wanted or not isinstance(artifact.get('dtype'), str)
+            or artifact.get('finite') is not True or artifact.get('output_mode') not in ('check', 'digest')):
+        raise ValueError('decoded output has wrong requested dimensions or lacks finite verification')
+    if artifact['output_mode'] != planned.get('output_mode', arm['phase'].get('output_mode', 'file')):
+        raise ValueError('produced output mode differs from frozen request')
+    digest = checked_digest(row) if artifact['output_mode'] == 'digest' else None
+    identity = {key: generation[key] for key in required}
+    return dict(model=model, identity=identity, digest=digest,
+                output_dtype=artifact['dtype'],
+                generation={key: value for key, value in generation.items() if key != 'request_id'})
+
+
+def audit_arm(record, arm, protocol, *, audited_native_sources=None):
+    """Retain frozen denominators; an internal caller may provide singleton pins."""
+    selector, workload = arm['selector'], arm['workload']
+    rows, result = [], dict(status='not_started', by_kind=counts(workload, [], 'not_started'),
+                           metrics={}, identities={}, outputs={}, stops=0, forms=[])
+    if record is None:
+        return result
+    result['run_id'] = record.get('run_id')
+    try:
+        if record.get('schema') != 'ditserve.run.v1' or record.get('config') != arm['config'] or not record.get('run_id'):
+            raise ValueError('run differs from frozen planned configuration')
+        # Legacy records may omit this redundant native digest, but a supplied
+        # digest must be valid and agree with the selected session/charge. The
+        # frozen parsed configuration and raw evidence SHA remain independent.
+        config_binding = config_identity(record, arm['config'], require_native=False)
+        result['config_identity'] = config_binding
+        source = record.get('source', {})
+        if not sha(source.get('core_sha256')) or not source.get('files') or not all(sha(h) for h in source['files'].values()):
+            raise ValueError('run lacks C++ and Python source identity')
+        result['native_source_audit'] = audit_native_sources(source.get('native_files'), audited_native_sources)
+        phases = [phase for phase in record.get('phases', [])
+                  if phase.get('id') == selector['phase'] and phase.get('attempt') == selector['attempt']]
+        if len(phases) > 1:
+            raise ValueError('duplicate selected attempt')
+        if not phases:
+            return result
+        phase = phases[0]
+        cells = phase.get('cells', [])
+        if len(cells) > len(arm['sequence']):
+            raise ValueError('extra unplanned cell observations')
+        for position, cell in enumerate(cells):
+            expected_index, expected_order = arm['sequence'][position]
+            if (cell.get('cell') != expected_index or cell.get('order', expected_order) != expected_order
+                    or 'order' not in cell and (cell.get('status') != 'failed' or position != len(cells) - 1)):
+                raise ValueError('recorded cell order is not the frozen execution prefix')
+        rows = [row for row in record.get('requests', []) if row.get('phase') == selector['phase']
+                and row.get('attempt') == selector['attempt'] and row.get('cell') == selector['cell']
+                and row.get('order') == selector['order']]
+        if len(cells) <= arm['position']:
+            if rows:
+                raise ValueError('unstarted cell unexpectedly contains request observations')
+            return result
+        cell = cells[arm['position']]
+        status = cell.get('status')
+        if status not in ('completed', 'failed'):
+            raise ValueError('cell has no terminal measured outcome')
+        result['status'] = status
+        result['by_kind'] = counts(workload, rows, status)
+        if status == 'failed':
+            result['error'] = cell.get('error', phase.get('error'))
+        policy_source = result['native_source_audit']['policy_source_sha256']
+        if (cell.get('policy') is not None and canonical_policy(cell['policy'], policy_source)
+                != canonical_policy(arm['phase']['policy'], policy_source)):
+            raise ValueError('executed policy differs from selected frozen cell')
+        sessions = [session for session in record.get('budget', {}).get('sessions', [])
+                    if session.get('session_id') == phase.get('session_id')]
+        if len(sessions) != 1:
+            raise ValueError('selected attempt has no unique measured allocation session')
+        session = sessions[0]
+        identity = session.get('identity', {})
+        match_native_config(config_binding, identity,
+                            required=config_binding['native_config_sha256'] is not None)
+        if 'identity' in phase.get('charge', {}):
+            match_native_config(config_binding, phase['charge']['identity'],
+                                required=config_binding['native_config_sha256'] is not None)
+        if (identity.get('gpu_uuids') != arm['gpu_uuids'] or identity.get('attempt') != selector['attempt']
+                or identity.get('run_id') != record['run_id'] or session.get('phase') != selector['phase']
+                or session.get('devices') != len(arm['gpu_uuids'])
+                or status == 'completed' and cell.get('gpus') != len(arm['gpu_uuids'])):
+            raise ValueError('measured GPU allocation/budget differs from frozen workers/profile')
+        expected = {row['request_id']: row for row in workload}
+        observed = {row['request_id']: row for row in rows}
+        if len(observed) != len(rows) or not observed.keys() <= expected.keys():
+            raise ValueError('duplicate or unexpected request observation')
+        if status == 'completed' and (observed.keys() != expected.keys() or any(row.get('status') != 'completed' for row in rows)):
+            raise ValueError('completed cell omits or fails planned requests')
+        identities, outputs, forms = {}, {}, set()
+        for row in rows:
+            planned = expected[row['request_id']]
+            if any(row.get(key) != value for key, value in planned.items()):
+                raise ValueError('measured request changed a frozen input, SLO or dataset identity')
+            if row.get('status') == 'completed':
+                finish = finite(row.get('finish_ms'), 'finish_ms')
+                if finish < planned['arrival_ms']:
+                    raise ValueError('request finished before arrival')
+                output = produced_identity(row, planned, arm, protocol)
+                previous = identities.setdefault(output['model'], output['identity'])
+                if previous != output['identity']:
+                    raise ValueError('runtime or model identity changes within one cell')
+                outputs[row['request_id']] = output
+            forms.update(row.get('forms', []))
+        result.update(identities=identities, outputs=outputs, stops=len(stop_samples(rows)), forms=sorted(forms))
+        elapsed = cell.get('elapsed_ms')
+        if elapsed is not None:
+            finite(elapsed, 'cell elapsed_ms', positive=True)
+            if any(row.get('finish_ms', 0) > elapsed + 1e-6 for row in rows):
+                raise ValueError('cell elapsed time excludes the observed request tail')
+        elif status == 'completed':
+            raise ValueError('completed cell lacks measured elapsed time')
+        result['elapsed_ms'] = elapsed
+        result['serving_gpu_seconds'] = elapsed * len(arm['gpu_uuids']) / 1000 if elapsed is not None else None
+        result['gpu_time_scope'] = 'replay elapsed times allocated GPUs; excludes initialization/warmup, not active-GPU utilization'
+        for kind, count in result['by_kind'].items():
+            complete = [row for row in rows if row['kind'] == kind and row.get('status') == 'completed']
+            ontime = sum(row['finish_ms'] <= row['deadline_ms'] for row in complete)
+            count['ontime'] = ontime
+            n = count['planned']
+            if not n:
+                continue
+            values = [row['finish_ms'] - row['arrival_ms'] for row in complete]
+            result['metrics'][kind] = dict(completion=count['completed'] / n, attainment=ontime / n,
+                ontime_rps=1000 * ontime / elapsed if elapsed is not None else None,
+                ontime_per_gpu_second=ontime / result['serving_gpu_seconds'] if elapsed is not None else None,
+                mean_latency_ms=statistics.fmean(values) if len(values) == n else None,
+                p95_latency_ms=percentile(values, .95) if len(values) == n else None)
+        result['source'] = source
+    except (ValueError, KeyError, TypeError, IndexError) as error:
+        result['status'] = 'invalid'
+        result['reason'] = str(error)
+        result['metrics'] = {}
+        result['by_kind'] = counts(workload, rows, result.get('status'))
+    return result
+
+
+def paired(reference, candidate, expected_models):
+    output = dict(status='pending', metrics={}, numeric_equivalence='pending', mismatched_digests=0)
+    if reference['status'] not in ('completed', 'failed') or candidate['status'] not in ('completed', 'failed'):
+        return output
+    if reference['source'] != candidate['source']:
+        raise ValueError('paired arms have different frozen C++/Python/native sources')
+    common_models = reference['identities'].keys() & candidate['identities'].keys()
+    if any(reference['identities'][model] != candidate['identities'][model] for model in common_models):
+        raise ValueError('paired executed model/runtime identities differ')
+    for request_id in reference['outputs'].keys() & candidate['outputs'].keys():
+        left, right = reference['outputs'][request_id], candidate['outputs'][request_id]
+        if left['generation'] != right['generation'] or left['output_dtype'] != right['output_dtype']:
+            raise ValueError('paired executed generation identities differ')
+        if left['digest'] is not None and right['digest'] is not None and left['digest'] != right['digest']:
+            output['mismatched_digests'] += 1
+    for kind in ('image', 'video'):
+        if kind not in reference['metrics'] or kind not in candidate['metrics']:
+            continue
+        left, right = reference['metrics'][kind], candidate['metrics'][kind]
+        metrics = {}
+        for name in ('completion', 'attainment', 'ontime_rps', 'ontime_per_gpu_second'):
+            if left[name] is not None and right[name] is not None:
+                metrics[name + '_delta'] = right[name] - left[name]
+        for name in ('ontime_rps', 'ontime_per_gpu_second', 'mean_latency_ms', 'p95_latency_ms'):
+            metrics[name + '_ratio'] = right[name] / left[name] if left[name] and right[name] is not None else None
+        output['metrics'][kind] = metrics
+    # Exact digest agreement is reported only over complete measured outputs.
+    all_outputs = list(reference['outputs'].values()) + list(candidate['outputs'].values())
+    all_complete = reference['status'] == candidate['status'] == 'completed'
+    if all_complete and all_outputs and all(row['digest'] is not None for row in all_outputs):
+        output['numeric_equivalence'] = 'digest_mismatch' if output['mismatched_digests'] else 'paired_digest_agreement'
+    output['metrics']['allocation'] = {}
+    for name in ('elapsed_ms', 'serving_gpu_seconds'):
+        left, right = reference.get(name), candidate.get(name)
+        output['metrics']['allocation'][name + '_ratio'] = right / left if left and right is not None else None
+    output['status'] = 'measured' if expected_models <= common_models else 'pending'
+    output['runtime_identity_scope'] = dict(observed_models=sorted(common_models),
+        reference_models_without_output=sorted(expected_models - reference['identities'].keys()),
+        candidate_models_without_output=sorted(expected_models - candidate['identities'].keys()))
+    return output
+
+
+def interval(values, expected, settings):
+    result = dict(seed_count=len(values), expected_seeds=expected, mean=statistics.fmean(values) if values else None,
+                  ci95=None, status='pending', resampling_unit='independent paired seed')
+    if len(values) == expected and len(values) >= settings['minimum_independent_seeds']:
+        rng = random.Random(settings['bootstrap_seed'])
+        means = [statistics.fmean(rng.choices(values, k=len(values))) for _ in range(settings['bootstrap_samples'])]
+        tail = (1 - settings['confidence']) / 2
+        result.update(ci95=[percentile(means, tail), percentile(means, 1 - tail)], status='measured')
+    return result
+
+
+def measurement_scope(arm):
+    benchmark = arm['config']['benchmark']
+    formal = benchmark['formal_protocol']
+    by_class = {}
+    for row in arm['workload']:
+        entry = by_class.setdefault(row['class'], dict(count=0, kind=row['kind'], effective_slo_scales=[], slo_ms=[]))
+        entry['count'] += 1
+        for field in ('effective_slo_scale', 'slo_ms'):
+            target = 'effective_slo_scales' if field == 'effective_slo_scale' else field
+            if row.get(field) not in entry[target]:
+                entry[target].append(row.get(field))
+    return dict(split=formal['split'], source_role=formal['role'],
+        population='development_diagnostic' if formal['split'] == 'development' or formal['role'] != 'serving'
+                   else 'test_serving_source',
+        parent_controls=benchmark.get('p2', {}).get('parent_controls', benchmark.get('p0_diagnostic_controls',
+            benchmark.get('p1', {}).get('controls'))),
+        actual_classes=by_class, actual_windows=[row['parameters'] for row in arm['phase']['trace_provenance']['manifest']['windows']],
+        actual_lazy_preemption=arm['phase'].get('options', {}).get('lazy_preemption', True),
+        formal_performance_qualified=False,
+        scope='source purpose and measured controls; no unseen-dataset, full-protocol, performance or quality certification')
+
+
+def resolution_source(arms, audits):
+    """Resolve contrast defaults with the policy.cpp the arms executed.
+
+    An audited run source selects its reviewed registry. Without one, the plan's
+    recorded registry applies; plans prepared before it was recorded used 6429a94's.
+    """
+    executed = {audit['native_source_audit']['policy_source_sha256']
+                for audit in audits.values() if 'native_source_audit' in audit}
+    if len(executed) > 1:
+        raise ValueError('paired arms executed different policy.cpp revisions')
+    if executed:
+        return dict(sha256=executed.pop(), basis='audited run native source')
+    planned = {arm['config']['benchmark'].get('p2', {}).get('policy_source_sha256', LEGACY_POLICY_SOURCE)
+               for arm in arms.values()}
+    if len(planned) > 1:
+        raise ValueError('paired arms were prepared with different policy registries')
+    return dict(sha256=planned.pop(), basis='prepared plan registry; no audited run source')
+
+
+def evaluate(manifest, base):
+    if manifest.get('schema') != 'ditserve.p2-evidence.v1':
+        raise ValueError('unknown P2 evidence schema')
+    plan = read_json(source_file(base, manifest['plan']))
+    plan_base = (base / manifest['plan']['path']).resolve().parent
+    protocol = read_json(source_file(base, manifest['protocol']))
+    if plan.get('schema') != 'ditserve.p2-plan.v1' or plan.get('protocol_sha256') != canonical_hash(protocol):
+        raise ValueError('plan/protocol identity differs')
+    settings = plan['statistics']
+    if (settings.get('confidence') != .95 or settings.get('resampling_unit') != 'seed'
+            or type(settings.get('minimum_independent_seeds')) is not int or settings['minimum_independent_seeds'] < 3
+            or type(settings.get('bootstrap_samples')) is not int or not 1000 <= settings['bootstrap_samples'] <= 100000
+            or type(settings.get('bootstrap_seed')) is not int):
+        raise ValueError('P2 requires frozen seed-based confidence interval settings')
+    cases = plan.get('cases', [])
+    if not cases or len({case['id'] for case in cases}) != len(cases):
+        raise ValueError('plan must contain unique case IDs')
+    supplied, supplied_sources = {}, {}
+    for item in manifest.get('runs', []):
+        key = (item['case_id'], item['arm'])
+        if key in supplied or item['case_id'] not in {case['id'] for case in cases} or item['arm'] not in ('reference', 'candidate'):
+            raise ValueError('duplicate or unplanned run reference')
+        supplied[key] = read_json(source_file(base, item['record']))
+        supplied_sources[key] = item['record']
+    results, groups, signatures, observed_ids = [], {}, {}, {}
+    runtime_sources, runtime_models, workload_seeds = {}, {}, {}
+    for case in cases:
+        seed = case['seed']
+        if type(seed) is not int or case['contrast'] not in CONTRASTS:
+            raise ValueError('invalid case seed/contrast')
+        key = (case['workload_id'], case['contrast'])
+        group = groups.setdefault(key, {})
+        if seed in group:
+            raise ValueError('duplicate seed within one workload contrast')
+        arms = {arm: planned_arm(read_json(source_file(plan_base, case[arm]['config'])), case[arm], protocol, seed)
+                for arm in ('reference', 'candidate')}
+        workload_identity = (key, trace_hash(arms['reference']['workload']))
+        if workload_identity in workload_seeds and workload_seeds[workload_identity] != seed:
+            raise ValueError('same frozen trace relabelled as independent seeds')
+        workload_seeds[workload_identity] = seed
+        left, right = (arms[arm]['config'] for arm in ('reference', 'candidate'))
+        for field in ('workers',):
+            if left[field] != right[field]:
+                raise ValueError('paired worker configuration or GPU identity differs')
+        for field in ('formal_protocol', 'model_manifests'):
+            if left['benchmark'].get(field) != right['benchmark'].get(field):
+                raise ValueError('paired protocol or model-manifest identity differs')
+        # Freeze non-random conditions across seeds rather than averaging
+        # unrelated loads, shapes, budgets or software into one interval.
+        signature = []
+        for arm in ('reference', 'candidate'):
+            item = arms[arm]
+            phase = {k: v for k, v in item['phase'].items() if k not in ('workload', 'trace_provenance')}
+            trace = item['phase']['trace_provenance']['manifest']
+            signature.append(dict(phase=phase, workers=item['config']['workers'],
+                protocol=item['config']['benchmark']['formal_protocol'],
+                weights=item['config']['benchmark']['model_manifests'], counts=trace['counts'],
+                class_counts=trace['class_counts'], windows=[row['parameters'] for row in trace['windows']]))
+        if key in signatures and signatures[key] != signature:
+            raise ValueError('independent seeds change workload controls, shapes, GPU allocation or weights')
+        signatures[key] = signature
+        audits = {}
+        for arm in ('reference', 'candidate'):
+            record = supplied.get((case['id'], arm))
+            if record is not None:
+                locator = (record.get('run_id'), case[arm]['phase'], case[arm]['attempt'], case[arm]['cell'], case[arm]['order'])
+                if locator in observed_ids and observed_ids[locator] != seed:
+                    raise ValueError('one observation reused as independent seeds')
+                observed_ids[locator] = seed
+            audits[arm] = audit_arm(record, arms[arm], protocol)
+            audits[arm]['record'] = supplied_sources.get((case['id'], arm))
+        policy_source = resolution_source(arms, audits)
+        resolved = validate_contrast(case['contrast'], arms['reference']['phase'], arms['candidate']['phase'],
+                                     policy_source['sha256'])
+        resolved['policy_source'] = policy_source
+        try:
+            expected_models = {protocol['shapes'][row['class']]['model'] for row in arms['reference']['workload']}
+            comparison = paired(audits['reference'], audits['candidate'], expected_models)
+        except (ValueError, KeyError, TypeError) as error:
+            comparison = dict(status='invalid', reason=str(error), metrics={}, numeric_equivalence='pending')
+        if comparison['status'] == 'measured':
+            audit = audits['reference']
+            if runtime_sources.setdefault(key, audit['source']) != audit['source']:
+                raise ValueError('independent seeds change frozen C++/Python/native sources')
+            for model, identity in audit['identities'].items():
+                if runtime_models.setdefault((key, model), identity) != identity:
+                    raise ValueError('independent seeds change measured model/runtime identity')
+        row = dict(case_id=case['id'], workload_id=case['workload_id'], contrast=case['contrast'], seed=seed,
+                   resolved_options=resolved, comparison=comparison, arms=audits,
+                   measurement_scope={arm: measurement_scope(arms[arm]) for arm in ('reference', 'candidate')},
+                   activation=dict(reference_stops=audits['reference']['stops'], candidate_stops=audits['candidate']['stops'],
+                       reference_forms=audits['reference']['forms'], candidate_forms=audits['candidate']['forms'],
+                       scope='observed stops/forms; planner decision-cost attribution requires separate evidence'))
+        for audit in audits.values():
+            audit.pop('outputs', None)
+            source = audit.pop('source', None)
+            if source is not None:
+                audit['source_identity'] = dict(core_sha256=source['core_sha256'],
+                    python_sources_sha256=canonical_hash(source['files']),
+                    native_sources_sha256=canonical_hash(source['native_files']))
+        results.append(row); group[seed] = row
+    repetitions = []
+    for (workload, contrast), seeds in groups.items():
+        if len(seeds) < settings['minimum_independent_seeds']:
+            raise ValueError('plan needs at least three independent seeds per workload/contrast; supplied runs may be missing')
+        metrics = {}
+        for kind in ('image', 'video', 'allocation'):
+            names = {name for row in seeds.values() for name in row['comparison']['metrics'].get(kind, {})}
+            metrics[kind] = {}
+            for name in sorted(names):
+                values = [row['comparison']['metrics'].get(kind, {}).get(name)
+                          if row['comparison']['status'] == 'measured' else None for row in seeds.values()]
+                metrics[kind][name] = interval([value for value in values if value is not None], len(seeds), settings)
+        repetitions.append(dict(workload_id=workload, contrast=contrast, seeds=sorted(seeds), intervals=metrics))
+    totals = {arm: {kind: {} for kind in ('image', 'video')} for arm in ('reference', 'candidate')}
+    for row in results:
+        for arm, audit in row['arms'].items():
+            for kind, counts_ in audit['by_kind'].items():
+                for field, count in counts_.items():
+                    totals[arm][kind][field] = totals[arm][kind].get(field, 0) + count
+    complete = all(row['comparison']['status'] == 'measured' for row in results)
+    return dict(schema='ditserve.p2-review.v1', status='measured' if complete else 'incomplete',
+        scope='paired descriptive performance; neither stage promotion nor qualified/semantic goodput',
+        denominator_scope='planned contrast-arm request slots; a reused arm counts within each declared contrast',
+        allows=[], expected_cases=len(cases), expected_requests=sum(v['planned'] for a in totals.values() for v in a.values()),
+        totals=totals, cases=results, repetitions=repetitions,
+        quality=dict(status='pending', reason='independent fixed/cross-form numerical and semantic qualification required'),
+        interval_limit='seed bootstrap describes workload variation; three seeds do not establish timing repeatability or broad generalization',
+        source=dict(plan_sha256=manifest['plan']['sha256'], protocol_sha256=canonical_hash(protocol)))
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--manifest', required=True, type=Path)
+    parser.add_argument('--output', required=True, type=Path)
+    args = parser.parse_args()
+    result = evaluate(read_json(args.manifest.read_bytes()), args.manifest.resolve().parent)
+    result['source_manifest'] = dict(path=str(args.manifest.resolve()), sha256=hashlib.sha256(args.manifest.read_bytes()).hexdigest())
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    with args.output.open('x', encoding='utf-8') as stream:
+        json.dump(result, stream, indent=2, ensure_ascii=False, allow_nan=False)
+        stream.write('\n')
+    print(json.dumps({key: result[key] for key in ('status', 'expected_cases', 'expected_requests')}))
+
+
+if __name__ == '__main__':
+    main()

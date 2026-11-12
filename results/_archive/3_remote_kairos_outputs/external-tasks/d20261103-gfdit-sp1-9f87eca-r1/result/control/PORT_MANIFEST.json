@@ -1,0 +1,168 @@
+{
+  "allows": [],
+  "extracted_message": {
+    "class_ast_sha256": "1d418ee51f19194891f2105bf99c4f3c21bd1fae8b79dad33410fc92bc822142",
+    "class_name": "WorkerReadyMessage",
+    "destination": "gfdit_shared_runtime/transport_protocol.py",
+    "upstream_path": "vllm_omni/diffusion/runtime_v2/multiproc_worker.py",
+    "upstream_sha256": "914b8b105be7eeb799303de8f81646b9edc0e77f8b4beb6b9e7e71ada6e584a8"
+  },
+  "files": {
+    "UPSTREAM_LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+    "gfdit_shared_runtime/__init__.py": "253267d0dc571080803c4ae5aa57ec32bf5943dc40563516c09f1d9bc22c63fc",
+    "gfdit_shared_runtime/_env.py": "a204e3f239c880f3dd1b368859f89b02b261700f470d5404a0c3ed198d659fae",
+    "gfdit_shared_runtime/adapters/__init__.py": "253267d0dc571080803c4ae5aa57ec32bf5943dc40563516c09f1d9bc22c63fc",
+    "gfdit_shared_runtime/adapters/common.py": "832b93c65526fdc2c034e083566a79ee67a3afbdd48566e03f7935517fb97ba0",
+    "gfdit_shared_runtime/codec.py": "61270def67ef18f02d5205535836cbefda197ae23bcc4664353568753b433835",
+    "gfdit_shared_runtime/cost_model.py": "1fc3794eccb63bc969fe505bcd1e7cf33424a73996beda46b1319bbd35312b72",
+    "gfdit_shared_runtime/interfaces.py": "be9ee735fd38e604551e8c21b66a687f6478f35f3ff9cb1124b23292568d793a",
+    "gfdit_shared_runtime/policies/__init__.py": "d46d3e6cfb029b5e11c86c2cd277145d88aa5daaa85c53b294cc1f1136706687",
+    "gfdit_shared_runtime/policies/common.py": "4c7d0420c0ff9b3009d4cc8f72f6028d5aa82c7383b5c73ac4b3b76294d5ea20",
+    "gfdit_shared_runtime/policies/disaggregate.py": "97c0092cf0c89148a1747927f7d0ab89c754a98fb0624281f75075a433f3727a",
+    "gfdit_shared_runtime/policies/edf_best_fit.py": "561568d182c37fbb59a4c22bcbdfd54a5000c98f1612ffcd29fbf0823301d58b",
+    "gfdit_shared_runtime/policies/edf_greedy.py": "059964e4f48632fb3f122ed8a78e813110e291a346800b5072170374e8e04675",
+    "gfdit_shared_runtime/policies/fcfs.py": "7f10cfd777b9074ffad44e95fce56a56e2b748545efca8f217ae165db41ca8cf",
+    "gfdit_shared_runtime/policies/sjf.py": "44811c779ef92b317ffce8b553480be4f9a6f38e749fd4c3f8757b0912e352d9",
+    "gfdit_shared_runtime/policies/srtf.py": "5b3f1191da2126e38a0d05d4ce45d610e6c73bf0114daa9e42a50ec179a1e5a9",
+    "gfdit_shared_runtime/policies/wave_stress.py": "3f16ea2e10c8485ca7e8535b0f3a1471f87dac837771a83998c7f561d3d60eaa",
+    "gfdit_shared_runtime/protocol.py": "05ddd505d66d5113ac791c6fb4a56bd771e0d399757596f128b351b560140bf7",
+    "gfdit_shared_runtime/scheduler.py": "cb93b5ce98d1463abd1951f7e0efd5a14cf9582db9ef966a0c210fe3b20ce33c",
+    "gfdit_shared_runtime/topology.py": "52510365593e59bbb00b59553ea6632f0a9a68f11ae56ce22e45ff5d1beba5ca",
+    "gfdit_shared_runtime/transport_protocol.py": "9b1f1a06dfe3dffdf6450a689d64822357b6d5eb20c08f96c5c9d4b746265465"
+  },
+  "imports_relocated": {
+    "gfdit_shared_runtime/_env.py": {
+      "algorithm_ast_sha256": "08fe267a37b61bba0c033fa478851d3f471f5d1ee720ac927a030d670ac23958",
+      "change": "import namespace and logging provider only",
+      "derived_sha256": "a204e3f239c880f3dd1b368859f89b02b261700f470d5404a0c3ed198d659fae",
+      "upstream_path": "vllm_omni/diffusion/runtime_v2/_env.py",
+      "upstream_sha256": "e57a2eabcff193ba353f16ce9ff1de341d188cd54d10d9fba661645f5889b77d"
+    },
+    "gfdit_shared_runtime/adapters/common.py": {
+      "algorithm_ast_sha256": "5fd18818ee59077aa64272964cff8c71da8df767176e48328af5eaa4f6b6cbf4",
+      "change": "import namespace and logging provider only",
+      "derived_sha256": "832b93c65526fdc2c034e083566a79ee67a3afbdd48566e03f7935517fb97ba0",
+      "upstream_path": "vllm_omni/diffusion/runtime_v2/adapters/common.py",
+      "upstream_sha256": "6a649bd79dd248fff6e71908a8da71a0019fd69f7925812c9347bf689514fb3d"
+    },
+    "gfdit_shared_runtime/codec.py": {
+      "algorithm_ast_sha256": "7ce0f04b85548979b55b791a05d86a4525b07e4c1c25f9d0f072ca46cadfba8e",
+      "change": "import namespace and logging provider only",
+      "derived_sha256": "61270def67ef18f02d5205535836cbefda197ae23bcc4664353568753b433835",
+      "upstream_path": "vllm_omni/diffusion/runtime_v2/codec.py",
+      "upstream_sha256": "796bb845ec61ca46746d53560c90b280223addd7c19633ffd50ab93c6d9d49e6"
+    },
+    "gfdit_shared_runtime/cost_model.py": {
+      "algorithm_ast_sha256": "d7a6a6b434131ed900703127959b74e204f9b1cbcef78bebc762a4cce559f0d7",
+      "change": "import namespace and logging provider only",
+      "derived_sha256": "1fc3794eccb63bc969fe505bcd1e7cf33424a73996beda46b1319bbd35312b72",
+      "upstream_path": "vllm_omni/diffusion/runtime_v2/cost_model.py",
+      "upstream_sha256": "83d533c95599582101fb34e116c7fc2f9376299b03c2b5484e2ce1116df67a47"
+    },
+    "gfdit_shared_runtime/interfaces.py": {
+      "algorithm_ast_sha256": "0b5c141a62da2d7a0a192f188aa0e0c43b57ca8aff74425799e6cc4aa5054d3e",
+      "change": "import namespace and logging provider only",
+      "derived_sha256": "be9ee735fd38e604551e8c21b66a687f6478f35f3ff9cb1124b23292568d793a",
+      "upstream_path": "vllm_omni/diffusion/runtime_v2/interfaces.py",
+      "upstream_sha256": "507b38b3be5e994e55223b544b451c551da81d0eb241ffbbabd2ad31beb941c2"
+    },
+    "gfdit_shared_runtime/policies/__init__.py": {
+      "algorithm_ast_sha256": "a0e2e7d885783b9aefe9a6df7ae67426ce4d26eff2cec158d42644614a32cd94",
+      "change": "import namespace and logging provider only",
+      "derived_sha256": "d46d3e6cfb029b5e11c86c2cd277145d88aa5daaa85c53b294cc1f1136706687",
+      "upstream_path": "vllm_omni/diffusion/runtime_v2/policies/__init__.py",
+      "upstream_sha256": "0013fcb64c76a42fc047a5f262e1d2b77e7bf782566fb66e7d2ac9d3e7ea8473"
+    },
+    "gfdit_shared_runtime/policies/common.py": {
+      "algorithm_ast_sha256": "63e86a4b569deaecda5bd3f746c88dec7827a6a8552bca795f1c7713a0cd076b",
+      "change": "import namespace and logging provider only",
+      "derived_sha256": "4c7d0420c0ff9b3009d4cc8f72f6028d5aa82c7383b5c73ac4b3b76294d5ea20",
+      "upstream_path": "vllm_omni/diffusion/runtime_v2/policies/common.py",
+      "upstream_sha256": "bbfa044f7c08549796486a9560fd82d210f33c07d7c8ff047722f1626bba930c"
+    },
+    "gfdit_shared_runtime/policies/disaggregate.py": {
+      "algorithm_ast_sha256": "8bb5053a2919a84a676288ccd88d2bb7173b5d9c78e91bdb3b0e6c79d094de3d",
+      "change": "import namespace and logging provider only",
+      "derived_sha256": "97c0092cf0c89148a1747927f7d0ab89c754a98fb0624281f75075a433f3727a",
+      "upstream_path": "vllm_omni/diffusion/runtime_v2/policies/disaggregate.py",
+      "upstream_sha256": "de8cbe049de01f2dd5267afd81235f089e473adfedb065a616cddfb724f5ffe8"
+    },
+    "gfdit_shared_runtime/policies/edf_best_fit.py": {
+      "algorithm_ast_sha256": "177df754341f1f5cab4d56801f23e8731881794183e279a4ecba1766381d0e13",
+      "change": "import namespace and logging provider only",
+      "derived_sha256": "561568d182c37fbb59a4c22bcbdfd54a5000c98f1612ffcd29fbf0823301d58b",
+      "upstream_path": "vllm_omni/diffusion/runtime_v2/policies/edf_best_fit.py",
+      "upstream_sha256": "a16392d749c10d81f969d49b5e55ccb68d62abf51967b3a399b8e50e6a365113"
+    },
+    "gfdit_shared_runtime/policies/edf_greedy.py": {
+      "algorithm_ast_sha256": "229ae683b8dfcf67e3426088b24be1cf5db571c863f45f2202f4d987c21f833f",
+      "change": "import namespace and logging provider only",
+      "derived_sha256": "059964e4f48632fb3f122ed8a78e813110e291a346800b5072170374e8e04675",
+      "upstream_path": "vllm_omni/diffusion/runtime_v2/policies/edf_greedy.py",
+      "upstream_sha256": "a91486464f4319a7024696dbf2a6f59759b0d81994e26de22c7b286ac8e3e5f0"
+    },
+    "gfdit_shared_runtime/policies/fcfs.py": {
+      "algorithm_ast_sha256": "eb5cfc3890c0f00efdfe486cfa15a7d7aca5db19d370d158e1019be47ad3ddd7",
+      "change": "import namespace and logging provider only",
+      "derived_sha256": "7f10cfd777b9074ffad44e95fce56a56e2b748545efca8f217ae165db41ca8cf",
+      "upstream_path": "vllm_omni/diffusion/runtime_v2/policies/fcfs.py",
+      "upstream_sha256": "759330c88c5b59a0c526820d56d92d68a6de416f4e4ac6966b1c5f4f5df01bd5"
+    },
+    "gfdit_shared_runtime/policies/sjf.py": {
+      "algorithm_ast_sha256": "097eaafbcd6abaca5c8a827632c7087372fc58ba89de17ee44ab970073e44697",
+      "change": "import namespace and logging provider only",
+      "derived_sha256": "44811c779ef92b317ffce8b553480be4f9a6f38e749fd4c3f8757b0912e352d9",
+      "upstream_path": "vllm_omni/diffusion/runtime_v2/policies/sjf.py",
+      "upstream_sha256": "ab8c6d2e011feee77e9fd3c88c5a9bb008e75f11b5e78e07c5e049c1dabfcb5e"
+    },
+    "gfdit_shared_runtime/policies/srtf.py": {
+      "algorithm_ast_sha256": "a8c9c22e665a16d7bcc082165b6e629198bce0fafa159df70c1c23fd291d219e",
+      "change": "import namespace and logging provider only",
+      "derived_sha256": "5b3f1191da2126e38a0d05d4ce45d610e6c73bf0114daa9e42a50ec179a1e5a9",
+      "upstream_path": "vllm_omni/diffusion/runtime_v2/policies/srtf.py",
+      "upstream_sha256": "67df53d543fa9f9dd96f19670b244c1297e793b30fef9fa5fc3856dfdaaa4eef"
+    },
+    "gfdit_shared_runtime/policies/wave_stress.py": {
+      "algorithm_ast_sha256": "3dbe02baeb9a028270d45587b6f045fc6d6df2ebe43d7b3fac90e255e42d5c1e",
+      "change": "import namespace and logging provider only",
+      "derived_sha256": "3f16ea2e10c8485ca7e8535b0f3a1471f87dac837771a83998c7f561d3d60eaa",
+      "upstream_path": "vllm_omni/diffusion/runtime_v2/policies/wave_stress.py",
+      "upstream_sha256": "705db617758bc37208e4c99082acb375a98f487b396cabd047fb54c502eb7b2e"
+    },
+    "gfdit_shared_runtime/protocol.py": {
+      "algorithm_ast_sha256": "5442b6b3e27ef8aed55be745ff57b7b5cff05e8f3809a39285ca4be021d59980",
+      "change": "import namespace and logging provider only",
+      "derived_sha256": "05ddd505d66d5113ac791c6fb4a56bd771e0d399757596f128b351b560140bf7",
+      "upstream_path": "vllm_omni/diffusion/runtime_v2/protocol.py",
+      "upstream_sha256": "05ddd505d66d5113ac791c6fb4a56bd771e0d399757596f128b351b560140bf7"
+    },
+    "gfdit_shared_runtime/scheduler.py": {
+      "algorithm_ast_sha256": "18eb74b4c4407f37279116c6086ee9ff284e148ade9e9e0969351c6287697057",
+      "change": "import namespace and logging provider only",
+      "derived_sha256": "cb93b5ce98d1463abd1951f7e0efd5a14cf9582db9ef966a0c210fe3b20ce33c",
+      "upstream_path": "vllm_omni/diffusion/runtime_v2/scheduler.py",
+      "upstream_sha256": "d949221b43e4079d2adf09a801cc01eacce8be462ed6e505e48d15a74d25c6b8"
+    },
+    "gfdit_shared_runtime/topology.py": {
+      "algorithm_ast_sha256": "27306e883a8126538de5a707ead64cb9165e8e8f7dc3c83ef5c227050e67811c",
+      "change": "import namespace and logging provider only",
+      "derived_sha256": "52510365593e59bbb00b59553ea6632f0a9a68f11ae56ce22e45ff5d1beba5ca",
+      "upstream_path": "vllm_omni/diffusion/runtime_v2/topology.py",
+      "upstream_sha256": "11fd010ee7f95f300aa5ce4f9d697c540f85f832c6398599e774b16e68574816"
+    }
+  },
+  "migration_implemented": false,
+  "native_execution_not_ported": {
+    "data_plane.py": "e972dbb046aaee1033ec20e2c9df7570bceb00df5375c569e47f99c462d924c5",
+    "migration_engine.py": "5b96a0f8fc1a77cc38f5422d04b5dffa3992cd0550fcee9c3296c39fc3bcb503",
+    "multiproc_worker.py": "914b8b105be7eeb799303de8f81646b9edc0e77f8b4beb6b9e7e71ada6e584a8"
+  },
+  "native_vllm_worker_implemented": false,
+  "port_sha256": "4ad145195091d5ca053f921465e156e63ecfda347bb09d014a855b3bcdb7106a",
+  "qualification_eligible": false,
+  "round_sha256": "11fd66b622f848d446aed543041ca8269c1b3d1fb3f7e4055028dda5dcaff377",
+  "schema": "ditserve.gfdit-shared-source.v1",
+  "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a",
+  "upstream_commit": "442531e499891d4ffa654e87c076f03326a37b98",
+  "upstream_manifest_sha256": "e1b54cf09241ff70fc27e9d1666a44cbe38e00eaf1713b57cd5c9ade9c9db3f4"
+}

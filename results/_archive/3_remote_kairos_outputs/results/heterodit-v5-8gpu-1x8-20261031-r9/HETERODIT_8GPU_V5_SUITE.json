@@ -1,0 +1,351 @@
+{
+  "schema": "ditserve.hetero.8gpu_v5_suite.v1",
+  "provenance": "measured: real 8-GPU distributed Wan2.1+SD3.5 execution on jjjkairos",
+  "hosts_by_rank": [
+    "heterodit-v5-8gpu-1x8-20261031-r9-master-0",
+    "heterodit-v5-8gpu-1x8-20261031-r9-master-0",
+    "heterodit-v5-8gpu-1x8-20261031-r9-master-0",
+    "heterodit-v5-8gpu-1x8-20261031-r9-master-0",
+    "heterodit-v5-8gpu-1x8-20261031-r9-master-0",
+    "heterodit-v5-8gpu-1x8-20261031-r9-master-0",
+    "heterodit-v5-8gpu-1x8-20261031-r9-master-0",
+    "heterodit-v5-8gpu-1x8-20261031-r9-master-0"
+  ],
+  "cross_node": false,
+  "gpu": "NVIDIA A100-PCIE-40GB",
+  "torch": "2.10.0+cu126",
+  "nccl": "2.27.5",
+  "five_optimizations_verification": {
+    "opt3_cpu_encoder_acceleration": {
+      "fp32_full512_baseline_ms": 37937.72,
+      "fp32_active_token_trimmed_ms": 1773.26,
+      "fp32_trimmed_cosine_sim": 1.000002,
+      "bf16_active_token_trimmed_cold_ms": 3941.77,
+      "bf16_trimmed_cosine_sim": 0.999662,
+      "pinned_lru_cache_hit_ms": 1.2447,
+      "cold_speedup_vs_fp32_full512": 9.62,
+      "cache_hit_speedup_vs_fp32_full512": 30480.5,
+      "encoder_optimization_summary": {
+        "mode": "bf16_trimmed",
+        "orig_gb": 21.163,
+        "new_gb": 10.582,
+        "convert_ms": 1857.29
+      },
+      "pool_stats": {
+        "entries": 2,
+        "bytes": 16777216,
+        "max_entries": 64,
+        "max_bytes": 536870912,
+        "hits": 2,
+        "misses": 0,
+        "staged_pushes": 2
+      }
+    },
+    "opt4_curvature_dynamic_cfg": {
+      "exact_20step_ms": 11127.02,
+      "curvature_dynamic_cfg_ms": 7551.7,
+      "speedup_vs_exact": 1.473,
+      "psnr_db": 31.39,
+      "ssim": 0.9627,
+      "stepper_summary": {
+        "enabled": true,
+        "folded_steps": [
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18
+        ],
+        "cfg_damping": 0.97,
+        "cfg_vel_alpha": 0.12,
+        "final_step_exact_anchor": true,
+        "curvature_threshold": 0.14,
+        "min_full_cfg_steps": 8,
+        "dynamic_fold_start_step": null,
+        "curvature_history": [
+          {
+            "step": 1,
+            "curvature": 2.06598
+          },
+          {
+            "step": 2,
+            "curvature": 1.50891
+          },
+          {
+            "step": 3,
+            "curvature": 1.49452
+          },
+          {
+            "step": 4,
+            "curvature": 1.62037
+          },
+          {
+            "step": 5,
+            "curvature": 1.1351
+          },
+          {
+            "step": 6,
+            "curvature": 1.05076
+          },
+          {
+            "step": 7,
+            "curvature": 0.88988
+          },
+          {
+            "step": 8,
+            "curvature": 0.30714
+          },
+          {
+            "step": 9,
+            "curvature": 1.19938
+          },
+          {
+            "step": 10,
+            "curvature": 0.25651
+          },
+          {
+            "step": 19,
+            "curvature": 0.15508
+          }
+        ],
+        "full_cfg_steps": 12,
+        "folded_cfg_steps": 8,
+        "saved_uncond_forwards": 8,
+        "curvature_triggered_folds": 0,
+        "curvature_guarded_unfolds": 0
+      }
+    },
+    "opt5_xfuser_usp_int8_ring_hook": {
+      "config": "8-GPU 2D-USP + INT8 Ring Hook (u4r2 - Opt #5)",
+      "gpus": 8,
+      "cfg_degree": 1,
+      "ulysses_degree": 4,
+      "ring_degree": 2,
+      "status": "OK",
+      "step_latency_ms": 445.74,
+      "est_20step_diffusion_ms": 8914.7,
+      "int8_ring_hook_stats": {
+        "quantized_packets": 240,
+        "fp16_anchor_packets": 0,
+        "orig_bytes": 1437696000,
+        "wire_bytes": 730080000,
+        "compression_ratio": 1.9692,
+        "bandwidth_saving_pct": 49.22
+      },
+      "latent_cos_sim_vs_fp16_ring": 0.999998
+    },
+    "opt2_rank0_disaggregated_async_vae": {
+      "sync_8gpu_barrier_vae_ms": 954.85,
+      "sync_wasted_gpu_ms_across_7_workers": 6683.9,
+      "disaggregated_worker_release_ms": 0.912,
+      "rank0_async_vae_decode_ms": 6579.02,
+      "effective_blocking_bubble_ms": 0.912
+    }
+  },
+  "scaling_matrix_8gpu": [
+    {
+      "config": "1-GPU (SP1: u1r1)",
+      "gpus": 1,
+      "cfg_degree": 1,
+      "ulysses_degree": 1,
+      "ring_degree": 1,
+      "status": "OK",
+      "step_latency_ms": 538.6,
+      "est_20step_diffusion_ms": 10771.9
+    },
+    {
+      "config": "2-GPU (1D-Ulysses: u2r1)",
+      "gpus": 2,
+      "cfg_degree": 1,
+      "ulysses_degree": 2,
+      "ring_degree": 1,
+      "status": "OK",
+      "step_latency_ms": 620.91,
+      "est_20step_diffusion_ms": 12418.2
+    },
+    {
+      "config": "3-GPU Asymmetric (1D-Ulysses: u3r1)",
+      "gpus": 3,
+      "cfg_degree": 1,
+      "ulysses_degree": 3,
+      "ring_degree": 1,
+      "status": "OK",
+      "step_latency_ms": 617.32,
+      "est_20step_diffusion_ms": 12346.4
+    },
+    {
+      "config": "4-GPU (1D-Ulysses: u4r1)",
+      "gpus": 4,
+      "cfg_degree": 1,
+      "ulysses_degree": 4,
+      "ring_degree": 1,
+      "status": "OK",
+      "step_latency_ms": 597.89,
+      "est_20step_diffusion_ms": 11957.8
+    },
+    {
+      "config": "4-GPU (2D-USP: u2r2)",
+      "gpus": 4,
+      "cfg_degree": 1,
+      "ulysses_degree": 2,
+      "ring_degree": 2,
+      "status": "OK",
+      "step_latency_ms": 871.98,
+      "est_20step_diffusion_ms": 17439.6
+    },
+    {
+      "config": "6-GPU Asymmetric (2D-USP: u3r2)",
+      "gpus": 6,
+      "cfg_degree": 1,
+      "ulysses_degree": 3,
+      "ring_degree": 2,
+      "status": "OK",
+      "step_latency_ms": 672.23,
+      "est_20step_diffusion_ms": 13444.7
+    },
+    {
+      "config": "6-GPU Asymmetric (3D-Hybrid: cfg2u3r1)",
+      "gpus": 6,
+      "cfg_degree": 2,
+      "ulysses_degree": 3,
+      "ring_degree": 1,
+      "status": "OK",
+      "step_latency_ms": 345.2,
+      "est_20step_diffusion_ms": 6904.1
+    },
+    {
+      "config": "8-GPU Naive 1D-Ulysses (u8r1 - 12%8!=0)",
+      "gpus": 8,
+      "cfg_degree": 1,
+      "ulysses_degree": 8,
+      "ring_degree": 1,
+      "status": "Architectural Constraint: Wan2.1 num_heads=12 is not divisible by ulysses_degree=8"
+    },
+    {
+      "config": "8-GPU 2D-USP (u4r2 - FP16 Ring)",
+      "gpus": 8,
+      "cfg_degree": 1,
+      "ulysses_degree": 4,
+      "ring_degree": 2,
+      "status": "OK",
+      "step_latency_ms": 570.52,
+      "est_20step_diffusion_ms": 11410.5
+    },
+    {
+      "config": "8-GPU 2D-USP + INT8 Ring Hook (u4r2 - Opt #5)",
+      "gpus": 8,
+      "cfg_degree": 1,
+      "ulysses_degree": 4,
+      "ring_degree": 2,
+      "status": "OK",
+      "step_latency_ms": 445.74,
+      "est_20step_diffusion_ms": 8914.7,
+      "int8_ring_hook_stats": {
+        "quantized_packets": 240,
+        "fp16_anchor_packets": 0,
+        "orig_bytes": 1437696000,
+        "wire_bytes": 730080000,
+        "compression_ratio": 1.9692,
+        "bandwidth_saving_pct": 49.22
+      },
+      "latent_cos_sim_vs_fp16_ring": 0.999998
+    },
+    {
+      "config": "8-GPU 3D-Hybrid (cfg2u4r1: CFG2 x Ulysses4)",
+      "gpus": 8,
+      "cfg_degree": 2,
+      "ulysses_degree": 4,
+      "ring_degree": 1,
+      "status": "OK",
+      "step_latency_ms": 303.18,
+      "est_20step_diffusion_ms": 6063.5
+    },
+    {
+      "config": "8-GPU 3D-Hybrid (cfg2u2r2: CFG2 x Ulysses2 x Ring2)",
+      "gpus": 8,
+      "cfg_degree": 2,
+      "ulysses_degree": 2,
+      "ring_degree": 2,
+      "status": "OK",
+      "step_latency_ms": 447.27,
+      "est_20step_diffusion_ms": 8945.4
+    }
+  ],
+  "mixed_serving_8gpu_policies": [
+    {
+      "policy": "Policy 1: Vanilla-xDiT-8GPU (Static u4r2, Non-Preemptive, FP32-VAE, SDPA_MATH)",
+      "image_wave1_latency_ms": 14551.2,
+      "image_wave2_latency_ms": 13451.2,
+      "image_wave3_latency_ms": 14621.5,
+      "image_mean_latency_ms": 14311.3,
+      "image_p99_latency_ms": 14621.5,
+      "video_latency_ms": 12879.6,
+      "image_slo_pct": 0.0,
+      "video_slo_pct": 0.0,
+      "total_slo_pct": 0.0
+    },
+    {
+      "policy": "Policy 2: DitServe-8GPU-GangPreempt (8-GPU u4r2 Gang Step-Preempt, FP32-VAE)",
+      "image_wave1_latency_ms": 2810.6,
+      "image_wave2_latency_ms": 4069.0,
+      "image_wave3_latency_ms": 5242.3,
+      "image_mean_latency_ms": 4341.1,
+      "image_p99_latency_ms": 5242.3,
+      "video_latency_ms": 19947.0,
+      "image_slo_pct": 0.0,
+      "video_slo_pct": 0.0,
+      "total_slo_pct": 0.0
+    },
+    {
+      "policy": "Policy 3: Static-Partition-4v4i (4-GPU Video u4r1 + 4-GPU Dedicated T2I)",
+      "image_wave1_latency_ms": 651.8,
+      "image_wave2_latency_ms": 621.0,
+      "image_wave3_latency_ms": 1006.1,
+      "image_mean_latency_ms": 821.3,
+      "image_p99_latency_ms": 1006.1,
+      "video_latency_ms": 10947.3,
+      "image_slo_pct": 100.0,
+      "video_slo_pct": 0.0,
+      "total_slo_pct": 94.12
+    },
+    {
+      "policy": "Policy 4: HeteroDiT-Joint-v4 (8-GPU Gang u4r2 + Static AsymCFG + Taylor + BF16-VAE)",
+      "image_wave1_latency_ms": 1038.5,
+      "image_wave2_latency_ms": 1072.0,
+      "image_wave3_latency_ms": 1044.7,
+      "image_mean_latency_ms": 1050.0,
+      "image_p99_latency_ms": 1072.0,
+      "video_latency_ms": 9431.8,
+      "image_slo_pct": 100.0,
+      "video_slo_pct": 0.0,
+      "total_slo_pct": 94.12
+    },
+    {
+      "policy": "Policy 5: HeteroDiT-Elastic-v5 (Opt #1-#5: 6+2 Sub-Cluster u3r2 + Curvature-CFG + INT8-Ring + Rank0-Async-VAE)",
+      "image_wave1_latency_ms": 1006.7,
+      "image_wave2_latency_ms": 1003.0,
+      "image_wave3_latency_ms": 1065.6,
+      "image_mean_latency_ms": 1035.2,
+      "image_p99_latency_ms": 1065.6,
+      "video_latency_ms": 8251.3,
+      "image_slo_pct": 100.0,
+      "video_slo_pct": 100.0,
+      "total_slo_pct": 100.0
+    },
+    {
+      "policy": "Policy 6: HeteroDiT-Morphing-v5 (Opt #1-#5: CFG-Morphing 6+2->3+5 Sub-Cluster + Curvature-CFG + Rank0-Async-VAE)",
+      "image_wave1_latency_ms": 1006.6,
+      "image_wave2_latency_ms": 918.2,
+      "image_wave3_latency_ms": 597.5,
+      "image_mean_latency_ms": 780.0,
+      "image_p99_latency_ms": 1006.6,
+      "video_latency_ms": 7358.8,
+      "image_slo_pct": 100.0,
+      "video_slo_pct": 100.0,
+      "total_slo_pct": 100.0
+    }
+  ]
+}

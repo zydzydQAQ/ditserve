@@ -1,0 +1,10 @@
+{
+ "commit": "ee163dfb265c9e08d64922da71f79fa396ad12c2",
+ "subject": "Fix AsymmetricCFGStepper force_exact_cond_on_fold kwarg, 16-GPU fair baselines, and ISCA paper sections",
+ "built_utc": "2026-11-01T05:31:51+00:00",
+ "builder_image": "local-cmake-install",
+ "tested_runtime_image": "192.168.1.114:30500/jjjkairos/ditserve:xdit-dev-016e1ca-slim",
+ "core_sha256": "14fe2b95d6e2e63427887d8c604fbfb0a5358bf973591bc809f2625c5bfe91b8",
+ "files": 258,
+ "bytes": 4313347
+}

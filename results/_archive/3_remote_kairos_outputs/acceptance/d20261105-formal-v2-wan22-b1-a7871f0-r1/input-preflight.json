@@ -1,0 +1,53 @@
+{
+  "schema": "ditserve.formal-preflight.v1",
+  "status": "passed",
+  "model": "wan22",
+  "scope": "formal",
+  "protocol_sha256": "7039ac6717c73023eb77332c3026d1951cd190fd931adfea3a70731d73e607ba",
+  "pools": {
+    "calibration": {
+      "video": {
+        "available": 795,
+        "required": 1,
+        "split_sha256": "bff63ddedb3bd987e876cfe96377bd5bf555480364fc3831a890ed65bc762c16",
+        "parent_pool_sha256": "66e450c04c88954362b26a5623eb9fe8e7717940e8b61c54ccf1de1ee1a0415c"
+      },
+      "image": {
+        "available": 769,
+        "required": 1,
+        "split_sha256": "c159b184f50363d9e00d34ae311cfddf178c1d9261ed8687c918d02bd97f9770",
+        "parent_pool_sha256": "9c032e6987da46730d7eb754d17df4e1150749abb026f4b72779dfbf7e1906ee"
+      }
+    },
+    "test": {
+      "video": {
+        "available": 2436,
+        "required": 80,
+        "split_sha256": "bb0ce332d221451f716e3be976b181329574ecd9ac33a147a602993c66bda11c",
+        "parent_pool_sha256": "66e450c04c88954362b26a5623eb9fe8e7717940e8b61c54ccf1de1ee1a0415c"
+      },
+      "image": {
+        "available": 2380,
+        "required": 80,
+        "split_sha256": "c0e9ace143cec51f91b6704b38d7bf11f8f5f8467a6345bab3b813f97d98b83d",
+        "parent_pool_sha256": "9c032e6987da46730d7eb754d17df4e1150749abb026f4b72779dfbf7e1906ee"
+      }
+    }
+  },
+  "model_manifests": {
+    "sd35": {
+      "path": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/sd35.manifest.json",
+      "sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424"
+    },
+    "wan21": {
+      "path": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/wan21.manifest.json",
+      "sha256": "3c0dbaa3dab1ac025a95dc4d0f3a835a83e044fc811fa7512387e094aeb006ca"
+    },
+    "wan22": {
+      "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b-official-b8fff731",
+      "path": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/wan22-official-b8fff731.manifest.json",
+      "sha256": "02ac66402d23a0ad25fa9fece1f6f57e2dc08783dda18ff4c9904fddf28d2c5f"
+    }
+  },
+  "scientific_qualification": "pending; input counts and declarations only, no GPU or weight verification"
+}

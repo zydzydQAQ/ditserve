@@ -1,0 +1,484 @@
+{
+  "schema": "ditserve.collectives.v1",
+  "world_size": 8,
+  "backend": "nccl",
+  "torch": "2.10.0+cu126",
+  "nccl": "2.27.5",
+  "scope": "all_to_all_single fp16; per-rank send volume / median wall time",
+  "rows": [
+    {
+      "group": [
+        0,
+        1
+      ],
+      "degree": 2,
+      "mode": "concurrent",
+      "buffer_mb": 16,
+      "per_rank_send_mb": 8.0,
+      "iterations": 5,
+      "ms_median": 3.585340455174446,
+      "ms_max": 3.8636457175016403,
+      "per_rank_gbps": 2.1790120346102193
+    },
+    {
+      "group": [
+        0,
+        1
+      ],
+      "degree": 2,
+      "mode": "concurrent",
+      "buffer_mb": 64,
+      "per_rank_send_mb": 32.0,
+      "iterations": 5,
+      "ms_median": 13.643634505569935,
+      "ms_max": 13.90459481626749,
+      "per_rank_gbps": 2.2904454078744463
+    },
+    {
+      "group": [
+        0,
+        1
+      ],
+      "degree": 2,
+      "mode": "concurrent",
+      "buffer_mb": 256,
+      "per_rank_send_mb": 128.0,
+      "iterations": 5,
+      "ms_median": 52.92303953319788,
+      "ms_max": 54.25527971237898,
+      "per_rank_gbps": 2.3619202733355715
+    },
+    {
+      "group": [
+        0,
+        1
+      ],
+      "degree": 2,
+      "mode": "isolated",
+      "buffer_mb": 16,
+      "per_rank_send_mb": 8.0,
+      "iterations": 5,
+      "ms_median": 2.053705044090748,
+      "ms_max": 2.1855421364307404,
+      "per_rank_gbps": 3.80410031249589
+    },
+    {
+      "group": [
+        0,
+        1
+      ],
+      "degree": 2,
+      "mode": "isolated",
+      "buffer_mb": 64,
+      "per_rank_send_mb": 32.0,
+      "iterations": 5,
+      "ms_median": 8.195501752197742,
+      "ms_max": 8.382498286664486,
+      "per_rank_gbps": 3.8130673319202035
+    },
+    {
+      "group": [
+        0,
+        1
+      ],
+      "degree": 2,
+      "mode": "isolated",
+      "buffer_mb": 256,
+      "per_rank_send_mb": 128.0,
+      "iterations": 5,
+      "ms_median": 31.597746536135674,
+      "ms_max": 32.348125241696835,
+      "per_rank_gbps": 3.955978311840943
+    },
+    {
+      "group": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "degree": 4,
+      "mode": "concurrent",
+      "buffer_mb": 16,
+      "per_rank_send_mb": 12.0,
+      "iterations": 5,
+      "ms_median": 5.158903077244759,
+      "ms_max": 5.17665408551693,
+      "per_rank_gbps": 2.271558473678225
+    },
+    {
+      "group": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "degree": 4,
+      "mode": "concurrent",
+      "buffer_mb": 64,
+      "per_rank_send_mb": 48.0,
+      "iterations": 5,
+      "ms_median": 19.5952532812953,
+      "ms_max": 19.67972330749035,
+      "per_rank_gbps": 2.3921609650610973
+    },
+    {
+      "group": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "degree": 4,
+      "mode": "concurrent",
+      "buffer_mb": 256,
+      "per_rank_send_mb": 192.0,
+      "iterations": 5,
+      "ms_median": 77.34455820173025,
+      "ms_max": 77.5774996727705,
+      "per_rank_gbps": 2.4242170924418764
+    },
+    {
+      "group": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "degree": 4,
+      "mode": "isolated",
+      "buffer_mb": 16,
+      "per_rank_send_mb": 12.0,
+      "iterations": 5,
+      "ms_median": 5.149942822754383,
+      "ms_max": 5.194747820496559,
+      "per_rank_gbps": 2.275510700472665
+    },
+    {
+      "group": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "degree": 4,
+      "mode": "isolated",
+      "buffer_mb": 64,
+      "per_rank_send_mb": 48.0,
+      "iterations": 5,
+      "ms_median": 19.611510448157787,
+      "ms_max": 20.05526702851057,
+      "per_rank_gbps": 2.390177958190019
+    },
+    {
+      "group": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "degree": 4,
+      "mode": "isolated",
+      "buffer_mb": 256,
+      "per_rank_send_mb": 192.0,
+      "iterations": 5,
+      "ms_median": 77.16851867735386,
+      "ms_max": 77.37214211374521,
+      "per_rank_gbps": 2.4297473012790176
+    },
+    {
+      "group": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "degree": 8,
+      "mode": "concurrent",
+      "buffer_mb": 16,
+      "per_rank_send_mb": 14.0,
+      "iterations": 5,
+      "ms_median": 6.072342395782471,
+      "ms_max": 6.20599091053009,
+      "per_rank_gbps": 2.2514993570678365
+    },
+    {
+      "group": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "degree": 8,
+      "mode": "concurrent",
+      "buffer_mb": 64,
+      "per_rank_send_mb": 56.0,
+      "iterations": 5,
+      "ms_median": 22.938190028071404,
+      "ms_max": 23.208750411868095,
+      "per_rank_gbps": 2.38412446374689
+    },
+    {
+      "group": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "degree": 8,
+      "mode": "concurrent",
+      "buffer_mb": 256,
+      "per_rank_send_mb": 224.0,
+      "iterations": 5,
+      "ms_median": 90.44668544083834,
+      "ms_max": 90.74552357196808,
+      "per_rank_gbps": 2.4185518676976345
+    },
+    {
+      "group": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "degree": 8,
+      "mode": "isolated",
+      "buffer_mb": 16,
+      "per_rank_send_mb": 14.0,
+      "iterations": 5,
+      "ms_median": 6.0455892235040665,
+      "ms_max": 6.123053841292858,
+      "per_rank_gbps": 2.261462777994646
+    },
+    {
+      "group": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "degree": 8,
+      "mode": "isolated",
+      "buffer_mb": 64,
+      "per_rank_send_mb": 56.0,
+      "iterations": 5,
+      "ms_median": 23.017076775431633,
+      "ms_max": 23.111614398658276,
+      "per_rank_gbps": 2.375953320813236
+    },
+    {
+      "group": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "degree": 8,
+      "mode": "isolated",
+      "buffer_mb": 256,
+      "per_rank_send_mb": 224.0,
+      "iterations": 5,
+      "ms_median": 90.28912335634232,
+      "ms_max": 90.36673419177532,
+      "per_rank_gbps": 2.4227724433281255
+    },
+    {
+      "group": [
+        2,
+        3
+      ],
+      "degree": 2,
+      "mode": "concurrent",
+      "buffer_mb": 16,
+      "per_rank_send_mb": 8.0,
+      "iterations": 5,
+      "ms_median": 3.65504901856184,
+      "ms_max": 3.903428092598915,
+      "per_rank_gbps": 2.1374542339445837
+    },
+    {
+      "group": [
+        2,
+        3
+      ],
+      "degree": 2,
+      "mode": "concurrent",
+      "buffer_mb": 64,
+      "per_rank_send_mb": 32.0,
+      "iterations": 5,
+      "ms_median": 13.643992133438587,
+      "ms_max": 13.866525143384933,
+      "per_rank_gbps": 2.290385372138463
+    },
+    {
+      "group": [
+        2,
+        3
+      ],
+      "degree": 2,
+      "mode": "concurrent",
+      "buffer_mb": 256,
+      "per_rank_send_mb": 128.0,
+      "iterations": 5,
+      "ms_median": 53.51776909083128,
+      "ms_max": 54.02564164251089,
+      "per_rank_gbps": 2.3356728451787263
+    },
+    {
+      "group": [
+        4,
+        5
+      ],
+      "degree": 2,
+      "mode": "concurrent",
+      "buffer_mb": 16,
+      "per_rank_send_mb": 8.0,
+      "iterations": 5,
+      "ms_median": 3.6111297085881233,
+      "ms_max": 3.6581624299287796,
+      "per_rank_gbps": 2.163450396539349
+    },
+    {
+      "group": [
+        4,
+        5
+      ],
+      "degree": 2,
+      "mode": "concurrent",
+      "buffer_mb": 64,
+      "per_rank_send_mb": 32.0,
+      "iterations": 5,
+      "ms_median": 13.70956003665924,
+      "ms_max": 14.579009264707565,
+      "per_rank_gbps": 2.2794312812692588
+    },
+    {
+      "group": [
+        4,
+        5
+      ],
+      "degree": 2,
+      "mode": "concurrent",
+      "buffer_mb": 256,
+      "per_rank_send_mb": 128.0,
+      "iterations": 5,
+      "ms_median": 54.257518611848354,
+      "ms_max": 54.559607058763504,
+      "per_rank_gbps": 2.303828173459879
+    },
+    {
+      "group": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "degree": 4,
+      "mode": "concurrent",
+      "buffer_mb": 16,
+      "per_rank_send_mb": 12.0,
+      "iterations": 5,
+      "ms_median": 5.187601782381535,
+      "ms_max": 5.2536604925990105,
+      "per_rank_gbps": 2.258991821577356
+    },
+    {
+      "group": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "degree": 4,
+      "mode": "concurrent",
+      "buffer_mb": 64,
+      "per_rank_send_mb": 48.0,
+      "iterations": 5,
+      "ms_median": 19.879167899489403,
+      "ms_max": 20.131575874984264,
+      "per_rank_gbps": 2.357996080972986
+    },
+    {
+      "group": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "degree": 4,
+      "mode": "concurrent",
+      "buffer_mb": 256,
+      "per_rank_send_mb": 192.0,
+      "iterations": 5,
+      "ms_median": 78.02809588611126,
+      "ms_max": 78.2496789470315,
+      "per_rank_gbps": 2.402980591422767
+    },
+    {
+      "group": [
+        6,
+        7
+      ],
+      "degree": 2,
+      "mode": "concurrent",
+      "buffer_mb": 16,
+      "per_rank_send_mb": 8.0,
+      "iterations": 5,
+      "ms_median": 3.574999049305916,
+      "ms_max": 3.653787076473236,
+      "per_rank_gbps": 2.1853152664521107
+    },
+    {
+      "group": [
+        6,
+        7
+      ],
+      "degree": 2,
+      "mode": "concurrent",
+      "buffer_mb": 64,
+      "per_rank_send_mb": 32.0,
+      "iterations": 5,
+      "ms_median": 13.773424550890923,
+      "ms_max": 14.844337478280067,
+      "per_rank_gbps": 2.2688620309738887
+    },
+    {
+      "group": [
+        6,
+        7
+      ],
+      "degree": 2,
+      "mode": "concurrent",
+      "buffer_mb": 256,
+      "per_rank_send_mb": 128.0,
+      "iterations": 5,
+      "ms_median": 54.40932512283325,
+      "ms_max": 54.58725243806839,
+      "per_rank_gbps": 2.2974003025731866
+    }
+  ]
+}

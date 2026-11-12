@@ -1,0 +1,11 @@
+property,SD3.5-Medium,Wan2.1-1.3B,Wan2.2-5B
+"Backbone (K, D, H)","24, 1536, 24","30, 1536, 12","30, 3072, 24"
+Text Encoder (BF16),10.39 GiB (68.5%),10.58 GiB (78.5%),10.58 GiB (49.9%)
+DiT + VAE (BF16),4.60 + 0.16 GiB,2.65 + 0.24 GiB,9.32 + 1.32 GiB
+Tokens L / Branch,1.0K / 4.1K,14.0K / 32.8K / 75.6K,5.8K / 13.9K / 27.3K-43.2K
+Steps S (Blocks),28 (1-GPU 2B),20 / 50 (60 blk),20 / 50 (60 blk)
+SP Volume / Step,0 MB (1-GPU),10.4 / 24.2 / 55.7 GB,8.6 / 20.5 / 40.2 GB
+CFG2 Step-End Exchange,Fused 2B,1.8 / 4.2 / 9.7 MB,2.2 / 5.3 / 10.5 MB
+SP1 Step Latency (ms),59.2 / 221.4,1150 / 3965 / 16213,1061 / 3069 / 7813
+CFG2 Step Latency (ms),1.72 / 6.51 s E2E,579 / 1998 / 8154,538 / 1545 / 3902
+Rank-0 VAE Decode (s),0.16 s (2D),1.83 / 6.91 / 10.8,3.75 / 9.54 / 19.3

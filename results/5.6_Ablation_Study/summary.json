@@ -1,0 +1,1251 @@
+{
+  "schema": "ditserve.paper-results.subsection.v1",
+  "section": "5.6",
+  "title": "Ablation Study",
+  "paper_source": "ditserve-writing/body/05-evaluation.tex",
+  "figures": [
+    "figure/05-evaluation/fig_eval_ablation.pdf"
+  ],
+  "build_commit": "8c50c7a",
+  "operating_point": {
+    "arrival_rate_rpm": 13.2,
+    "overload_lambda_vs_R0": 1.75,
+    "video_fraction_v": 0.5,
+    "slo_scale_kappa": 1.5,
+    "gpus": 8,
+    "requests_per_policy": 100
+  },
+  "staircase_sar_pct": {
+    "poisson": {
+      "edf-cfg2": 74.0,
+      "block-cfg2": 87.0,
+      "abl-no-cb": 92.0,
+      "DitServe": 94.0
+    },
+    "gamma_cv2": {
+      "edf-cfg2": 64.0,
+      "block-cfg2": 78.0,
+      "abl-no-cb": 93.0,
+      "DitServe": 94.0
+    }
+  },
+  "leave_one_out_sar_pct": {
+    "poisson": {
+      "abl-no-block": 80.0,
+      "abl-first-fit": 82.0,
+      "abl-no-prune": 84.0,
+      "abl-no-cb": 92.0,
+      "DitServe": 94.0
+    },
+    "gamma_cv2": {
+      "abl-no-block": 80.0,
+      "abl-first-fit": 76.0,
+      "abl-no-prune": 86.0,
+      "abl-no-cb": 93.0,
+      "DitServe": 94.0
+    }
+  },
+  "tight_slo_kappa1p0_cb_rescue": {
+    "abl_no_cb_total_sar_pct": {
+      "poisson": 41.0,
+      "gamma_cv2": 36.0
+    },
+    "abl_no_cb_image_sar_pct": {
+      "poisson": 0.0,
+      "gamma_cv2": 0.0
+    },
+    "ditserve_total_sar_pct": {
+      "poisson": 66.0,
+      "gamma_cv2": 56.0
+    },
+    "ditserve_image_sar_pct": {
+      "poisson": 52.0,
+      "gamma_cv2": 40.0
+    }
+  },
+  "l1_cost_model_summary": {
+    "chosen_variant": "3-parameter baseline_grid (B_inf, gamma, alpha_u)",
+    "jacobian_condition_number_kappa": [
+      68.3,
+      75.4
+    ],
+    "held_out_mean_error_pct": [
+      7.03,
+      12.78
+    ],
+    "four_param_overfit_error_pct": [
+      21.33,
+      29.24
+    ],
+    "same_gpu_form_ranking_regret_pct": 0.0
+  },
+  "numerical_parity_gates": {
+    "tier1_block_continuation_sha256": "624/624 (100% bitwise exact)",
+    "tier2_xdit_speed_parity": "1.000x",
+    "tetriserve_sd35_cross_sp_rmse_fix": "0.1762 -> 7.97e-5"
+  },
+  "ablation_7policies": {
+    "poisson": {
+      "edf-cfg2": {
+        "policy": "edf-cfg2",
+        "run_id": "d20261108-formal-v2-cb-ablation-8gpu-1b54f37-r1-anchor-abl",
+        "config_sha256": "2a813c565bffaafb09419ddb783cb1cc4b607553b77cf20d0757251dbb204f7b",
+        "qualification_status": "numeric=verified_lossless_exact, semantic=verified_bitwise_invariant, performance=verified_real_gpu",
+        "requests": 100,
+        "completed": 100,
+        "ontime": 74,
+        "slo_attainment_rate": 0.74,
+        "image_slo_attainment": 0.58,
+        "video_slo_attainment": 0.9,
+        "latency_p50_s": 22.1,
+        "latency_p95_s": 370.75,
+        "goodput_rps": 0.0782,
+        "qualified_goodput_rps": 0.0782,
+        "allocated_gpu_seconds": 7568.26,
+        "gpu_seconds_per_completed_request": 75.68,
+        "gpu_seconds_per_ontime_request": 102.27,
+        "busy_gpu_seconds": 6602.8,
+        "busy_gpu_seconds_per_ontime_request": 89.23,
+        "busy_gpu_utilization_pct": 87.24,
+        "ontime_gpu_utilization_pct": 70.98,
+        "late_wasted_gpu_utilization_pct": 16.26,
+        "quantiles": {
+          "requests": 100,
+          "ontime": 74,
+          "sar_pct": 74.0,
+          "norm_le_1_pct": 74.0,
+          "image_requests": 50,
+          "image_ontime": 29,
+          "image_sar_pct": 58.0,
+          "video_requests": 50,
+          "video_ontime": 45,
+          "video_sar_pct": 90.0,
+          "latency_s": {
+            "p50": 22.1046,
+            "p90": 340.9099,
+            "p95": 370.7521,
+            "p99": 743.7573,
+            "max": 757.2778
+          },
+          "norm_latency": {
+            "p50": 0.7357,
+            "p90": 2.1718,
+            "p95": 2.807,
+            "p99": 6.5204,
+            "max": 8.346
+          },
+          "image_latency_s": {
+            "p50": 10.5805,
+            "p90": 27.7516,
+            "p95": 44.5864,
+            "p99": 52.6168
+          },
+          "video_latency_s": {
+            "p50": 100.0226,
+            "p90": 379.3049,
+            "p95": 686.0448,
+            "p99": 750.5858
+          },
+          "image_norm_latency": {
+            "p50": 0.8114,
+            "p90": 2.6512,
+            "p95": 4.8729,
+            "p99": 7.4424
+          },
+          "video_norm_latency": {
+            "p50": 0.7018,
+            "p90": 1.0425,
+            "p95": 2.0405,
+            "p99": 3.1122
+          },
+          "run_id": "d20261108-formal-v2-cb-ablation-8gpu-1b54f37-r1-anchor-abl"
+        }
+      },
+      "block-cfg2": {
+        "policy": "block-cfg2",
+        "run_id": "d20261108-formal-v2-cb-ablation-8gpu-1b54f37-r1-anchor-abl",
+        "config_sha256": "2a813c565bffaafb09419ddb783cb1cc4b607553b77cf20d0757251dbb204f7b",
+        "qualification_status": "numeric=verified_lossless_exact, semantic=verified_bitwise_invariant, performance=verified_real_gpu",
+        "requests": 100,
+        "completed": 100,
+        "ontime": 87,
+        "slo_attainment_rate": 0.87,
+        "image_slo_attainment": 0.86,
+        "video_slo_attainment": 0.88,
+        "latency_p50_s": 17.04,
+        "latency_p95_s": 637.57,
+        "goodput_rps": 0.0906,
+        "qualified_goodput_rps": 0.0906,
+        "allocated_gpu_seconds": 7684.1,
+        "gpu_seconds_per_completed_request": 76.84,
+        "gpu_seconds_per_ontime_request": 88.32,
+        "busy_gpu_seconds": 6531.05,
+        "busy_gpu_seconds_per_ontime_request": 75.07,
+        "busy_gpu_utilization_pct": 84.99,
+        "ontime_gpu_utilization_pct": 65.16,
+        "late_wasted_gpu_utilization_pct": 19.83,
+        "quantiles": {
+          "requests": 100,
+          "ontime": 87,
+          "sar_pct": 87.0,
+          "norm_le_1_pct": 87.0,
+          "image_requests": 50,
+          "image_ontime": 43,
+          "image_sar_pct": 86.0,
+          "video_requests": 50,
+          "video_ontime": 44,
+          "video_sar_pct": 88.0,
+          "latency_s": {
+            "p50": 17.0384,
+            "p90": 318.1326,
+            "p95": 637.5721,
+            "p99": 780.8924,
+            "max": 783.1916
+          },
+          "norm_latency": {
+            "p50": 0.692,
+            "p90": 1.1775,
+            "p95": 1.7524,
+            "p99": 2.1463,
+            "max": 2.1526
+          },
+          "image_latency_s": {
+            "p50": 6.8734,
+            "p90": 15.6575,
+            "p95": 18.9877,
+            "p99": 29.0904
+          },
+          "video_latency_s": {
+            "p50": 73.0396,
+            "p90": 641.2243,
+            "p95": 732.8525,
+            "p99": 782.0536
+          },
+          "image_norm_latency": {
+            "p50": 0.7167,
+            "p90": 1.0343,
+            "p95": 1.403,
+            "p99": 1.5112
+          },
+          "video_norm_latency": {
+            "p50": 0.5251,
+            "p90": 1.7624,
+            "p95": 2.0142,
+            "p99": 2.1495
+          },
+          "run_id": "d20261108-formal-v2-cb-ablation-8gpu-1b54f37-r1-anchor-abl"
+        }
+      },
+      "abl-no-block": {
+        "policy": "abl-no-block",
+        "run_id": "d20261108-formal-v2-cb-ablation-8gpu-1b54f37-r1-anchor-abl",
+        "config_sha256": "2a813c565bffaafb09419ddb783cb1cc4b607553b77cf20d0757251dbb204f7b",
+        "qualification_status": "numeric=verified_lossless_exact, semantic=verified_bitwise_invariant, performance=verified_real_gpu",
+        "requests": 100,
+        "completed": 100,
+        "ontime": 80,
+        "slo_attainment_rate": 0.8,
+        "image_slo_attainment": 0.76,
+        "video_slo_attainment": 0.84,
+        "latency_p50_s": 19.25,
+        "latency_p95_s": 457.75,
+        "goodput_rps": 0.0831,
+        "qualified_goodput_rps": 0.0831,
+        "allocated_gpu_seconds": 7706.17,
+        "gpu_seconds_per_completed_request": 77.06,
+        "gpu_seconds_per_ontime_request": 96.33,
+        "busy_gpu_seconds": 6615.27,
+        "busy_gpu_seconds_per_ontime_request": 82.69,
+        "busy_gpu_utilization_pct": 85.84,
+        "ontime_gpu_utilization_pct": 61.66,
+        "late_wasted_gpu_utilization_pct": 24.19,
+        "quantiles": {
+          "requests": 100,
+          "ontime": 80,
+          "sar_pct": 80.0,
+          "norm_le_1_pct": 80.0,
+          "image_requests": 50,
+          "image_ontime": 38,
+          "image_sar_pct": 76.0,
+          "video_requests": 50,
+          "video_ontime": 42,
+          "video_sar_pct": 84.0,
+          "latency_s": {
+            "p50": 19.2468,
+            "p90": 336.5021,
+            "p95": 457.7481,
+            "p99": 641.1954,
+            "max": 650.7336
+          },
+          "norm_latency": {
+            "p50": 0.7366,
+            "p90": 1.508,
+            "p95": 2.9457,
+            "p99": 4.9095,
+            "max": 18.0544
+          },
+          "image_latency_s": {
+            "p50": 8.0963,
+            "p90": 16.3335,
+            "p95": 30.3037,
+            "p99": 132.7949
+          },
+          "video_latency_s": {
+            "p50": 106.881,
+            "p90": 460.5483,
+            "p95": 541.746,
+            "p99": 646.0127
+          },
+          "image_norm_latency": {
+            "p50": 0.7364,
+            "p90": 2.9667,
+            "p95": 3.9103,
+            "p99": 11.5483
+          },
+          "video_norm_latency": {
+            "p50": 0.7366,
+            "p90": 1.2658,
+            "p95": 1.489,
+            "p99": 1.7755
+          },
+          "run_id": "d20261108-formal-v2-cb-ablation-8gpu-1b54f37-r1-anchor-abl"
+        }
+      },
+      "abl-first-fit": {
+        "policy": "abl-first-fit",
+        "run_id": "d20261108-formal-v2-cb-ablation-8gpu-1b54f37-r1-anchor-abl",
+        "config_sha256": "2a813c565bffaafb09419ddb783cb1cc4b607553b77cf20d0757251dbb204f7b",
+        "qualification_status": "numeric=verified_lossless_exact, semantic=verified_bitwise_invariant, performance=verified_real_gpu",
+        "requests": 100,
+        "completed": 100,
+        "ontime": 82,
+        "slo_attainment_rate": 0.82,
+        "image_slo_attainment": 0.72,
+        "video_slo_attainment": 0.92,
+        "latency_p50_s": 19.59,
+        "latency_p95_s": 362.8,
+        "goodput_rps": 0.0821,
+        "qualified_goodput_rps": 0.0821,
+        "allocated_gpu_seconds": 7989.23,
+        "gpu_seconds_per_completed_request": 79.89,
+        "gpu_seconds_per_ontime_request": 97.43,
+        "busy_gpu_seconds": 6521.42,
+        "busy_gpu_seconds_per_ontime_request": 79.53,
+        "busy_gpu_utilization_pct": 81.63,
+        "ontime_gpu_utilization_pct": 67.64,
+        "late_wasted_gpu_utilization_pct": 13.99,
+        "quantiles": {
+          "requests": 100,
+          "ontime": 82,
+          "sar_pct": 82.0,
+          "norm_le_1_pct": 82.0,
+          "image_requests": 50,
+          "image_ontime": 36,
+          "image_sar_pct": 72.0,
+          "video_requests": 50,
+          "video_ontime": 46,
+          "video_sar_pct": 92.0,
+          "latency_s": {
+            "p50": 19.5862,
+            "p90": 339.5897,
+            "p95": 362.7981,
+            "p99": 754.934,
+            "max": 790.4239
+          },
+          "norm_latency": {
+            "p50": 0.701,
+            "p90": 2.0073,
+            "p95": 2.876,
+            "p99": 4.4901,
+            "max": 43.4592
+          },
+          "image_latency_s": {
+            "p50": 8.6121,
+            "p90": 32.7926,
+            "p95": 67.274,
+            "p99": 262.2888
+          },
+          "video_latency_s": {
+            "p50": 72.6017,
+            "p90": 350.0896,
+            "p95": 716.5152,
+            "p99": 772.8582
+          },
+          "image_norm_latency": {
+            "p50": 0.7753,
+            "p90": 2.8863,
+            "p95": 3.4915,
+            "p99": 24.1715
+          },
+          "video_norm_latency": {
+            "p50": 0.545,
+            "p90": 0.9622,
+            "p95": 1.9693,
+            "p99": 2.1242
+          },
+          "run_id": "d20261108-formal-v2-cb-ablation-8gpu-1b54f37-r1-anchor-abl"
+        }
+      },
+      "abl-no-prune": {
+        "policy": "abl-no-prune",
+        "run_id": "d20261108-formal-v2-cb-ablation-8gpu-1b54f37-r1-anchor-abl",
+        "config_sha256": "2a813c565bffaafb09419ddb783cb1cc4b607553b77cf20d0757251dbb204f7b",
+        "qualification_status": "numeric=verified_lossless_exact, semantic=verified_bitwise_invariant, performance=verified_real_gpu",
+        "requests": 100,
+        "completed": 100,
+        "ontime": 84,
+        "slo_attainment_rate": 0.84,
+        "image_slo_attainment": 0.96,
+        "video_slo_attainment": 0.72,
+        "latency_p50_s": 17.22,
+        "latency_p95_s": 852.31,
+        "goodput_rps": 0.065,
+        "qualified_goodput_rps": 0.065,
+        "allocated_gpu_seconds": 10335.01,
+        "gpu_seconds_per_completed_request": 103.35,
+        "gpu_seconds_per_ontime_request": 123.04,
+        "busy_gpu_seconds": 9660.72,
+        "busy_gpu_seconds_per_ontime_request": 115.01,
+        "busy_gpu_utilization_pct": 93.48,
+        "ontime_gpu_utilization_pct": 45.99,
+        "late_wasted_gpu_utilization_pct": 47.49,
+        "quantiles": {
+          "requests": 100,
+          "ontime": 84,
+          "sar_pct": 84.0,
+          "norm_le_1_pct": 84.0,
+          "image_requests": 50,
+          "image_ontime": 48,
+          "image_sar_pct": 96.0,
+          "video_requests": 50,
+          "video_ontime": 36,
+          "video_sar_pct": 72.0,
+          "latency_s": {
+            "p50": 17.2221,
+            "p90": 604.1518,
+            "p95": 852.309,
+            "p99": 909.8235,
+            "max": 918.159
+          },
+          "norm_latency": {
+            "p50": 0.726,
+            "p90": 2.3437,
+            "p95": 2.5802,
+            "p99": 3.995,
+            "max": 4.0962
+          },
+          "image_latency_s": {
+            "p50": 6.5069,
+            "p90": 14.7891,
+            "p95": 15.1043,
+            "p99": 18.4325
+          },
+          "video_latency_s": {
+            "p50": 118.2732,
+            "p90": 852.745,
+            "p95": 889.626,
+            "p99": 914.0334
+          },
+          "image_norm_latency": {
+            "p50": 0.6794,
+            "p90": 0.8909,
+            "p95": 0.9238,
+            "p99": 1.03
+          },
+          "video_norm_latency": {
+            "p50": 0.7839,
+            "p90": 2.6369,
+            "p95": 3.8165,
+            "p99": 4.0461
+          },
+          "run_id": "d20261108-formal-v2-cb-ablation-8gpu-1b54f37-r1-anchor-abl"
+        }
+      },
+      "abl-no-cb": {
+        "policy": "abl-no-cb",
+        "run_id": "d20261108-formal-v2-cb-ablation-8gpu-1b54f37-r1-anchor-abl",
+        "config_sha256": "2a813c565bffaafb09419ddb783cb1cc4b607553b77cf20d0757251dbb204f7b",
+        "qualification_status": "numeric=verified_lossless_exact, semantic=verified_bitwise_invariant, performance=verified_real_gpu",
+        "requests": 100,
+        "completed": 100,
+        "ontime": 92,
+        "slo_attainment_rate": 0.92,
+        "image_slo_attainment": 0.98,
+        "video_slo_attainment": 0.86,
+        "latency_p50_s": 15.8,
+        "latency_p95_s": 499.87,
+        "goodput_rps": 0.0966,
+        "qualified_goodput_rps": 0.0966,
+        "allocated_gpu_seconds": 7619.88,
+        "gpu_seconds_per_completed_request": 76.2,
+        "gpu_seconds_per_ontime_request": 82.82,
+        "busy_gpu_seconds": 6700.64,
+        "busy_gpu_seconds_per_ontime_request": 72.83,
+        "busy_gpu_utilization_pct": 87.94,
+        "ontime_gpu_utilization_pct": 64.44,
+        "late_wasted_gpu_utilization_pct": 23.5,
+        "quantiles": {
+          "requests": 100,
+          "ontime": 92,
+          "sar_pct": 92.0,
+          "norm_le_1_pct": 92.0,
+          "image_requests": 50,
+          "image_ontime": 49,
+          "image_sar_pct": 98.0,
+          "video_requests": 50,
+          "video_ontime": 43,
+          "video_sar_pct": 86.0,
+          "latency_s": {
+            "p50": 15.7964,
+            "p90": 349.1605,
+            "p95": 499.8735,
+            "p99": 729.87,
+            "max": 739.4015
+          },
+          "norm_latency": {
+            "p50": 0.6918,
+            "p90": 0.9616,
+            "p95": 1.3739,
+            "p99": 2.006,
+            "max": 2.0322
+          },
+          "image_latency_s": {
+            "p50": 6.818,
+            "p90": 15.4862,
+            "p95": 15.5959,
+            "p99": 16.1703
+          },
+          "video_latency_s": {
+            "p50": 96.5667,
+            "p90": 501.9697,
+            "p95": 645.3256,
+            "p99": 734.6839
+          },
+          "image_norm_latency": {
+            "p50": 0.6965,
+            "p90": 0.7377,
+            "p95": 0.7538,
+            "p99": 0.9528
+          },
+          "video_norm_latency": {
+            "p50": 0.615,
+            "p90": 1.3797,
+            "p95": 1.7737,
+            "p99": 2.0193
+          },
+          "run_id": "d20261108-formal-v2-cb-ablation-8gpu-1b54f37-r1-anchor-abl"
+        }
+      },
+      "ditserve": {
+        "policy": "ditserve",
+        "run_id": "d20261111-formal-v2-cb-abl-fix-8gpu-8c50c7a-r1-anchor-abl",
+        "config_sha256": "cd27d06deee8911caaee5104b0e71b38fc471e3021194aa9869276f4d9b5af4b",
+        "qualification_status": "numeric=verified_lossless_exact, semantic=verified_bitwise_invariant, performance=verified_real_gpu",
+        "requests": 100,
+        "completed": 100,
+        "ontime": 94,
+        "slo_attainment_rate": 0.94,
+        "image_slo_attainment": 1.0,
+        "video_slo_attainment": 0.88,
+        "latency_p50_s": 14.91,
+        "latency_p90_s": 341.92,
+        "latency_p95_s": 373.17,
+        "latency_p99_s": 732.85,
+        "image_p50_s": 6.5,
+        "image_p95_s": 14.75,
+        "video_p50_s": 92.17,
+        "video_p95_s": 704.56,
+        "goodput_rps": 0.0979,
+        "qualified_goodput_rps": 0.0979,
+        "elapsed_s": 960.64,
+        "allocated_gpu_seconds": 7685.13,
+        "gpu_seconds_per_completed_request": 76.85,
+        "gpu_seconds_per_ontime_request": 81.76,
+        "busy_gpu_seconds": 6672.49,
+        "busy_gpu_seconds_per_ontime_request": 70.98,
+        "busy_gpu_utilization_pct": 86.82,
+        "ontime_gpu_utilization_pct": 67.06,
+        "late_wasted_gpu_utilization_pct": 19.76,
+        "cb_rounds": 1400,
+        "cb_late_joins": 0,
+        "cb_early_exits": 0,
+        "cb_batch_sizes": {
+          "1": 1400
+        },
+        "quantiles": {
+          "requests": 100,
+          "ontime": 94,
+          "sar_pct": 94.0,
+          "norm_le_1_pct": 94.0,
+          "image_requests": 50,
+          "image_ontime": 50,
+          "image_sar_pct": 100.0,
+          "video_requests": 50,
+          "video_ontime": 44,
+          "video_sar_pct": 88.0,
+          "latency_s": {
+            "p50": 14.9087,
+            "p90": 341.9229,
+            "p95": 373.1716,
+            "p99": 732.8503,
+            "max": 747.0906
+          },
+          "norm_latency": {
+            "p50": 0.6657,
+            "p90": 0.9592,
+            "p95": 1.0257,
+            "p99": 2.0142,
+            "max": 2.0534
+          },
+          "image_latency_s": {
+            "p50": 6.4991,
+            "p90": 14.6971,
+            "p95": 14.749,
+            "p99": 14.8961
+          },
+          "video_latency_s": {
+            "p50": 92.1691,
+            "p90": 382.365,
+            "p95": 704.5627,
+            "p99": 740.0424
+          },
+          "image_norm_latency": {
+            "p50": 0.6675,
+            "p90": 0.7691,
+            "p95": 0.7883,
+            "p99": 0.9481
+          },
+          "video_norm_latency": {
+            "p50": 0.6109,
+            "p90": 1.0509,
+            "p95": 1.9365,
+            "p99": 2.034
+          },
+          "run_id": "d20261111-formal-v2-cb-abl-fix-8gpu-8c50c7a-r1-anchor-abl"
+        }
+      }
+    },
+    "gamma_cv2": {
+      "edf-cfg2": {
+        "policy": "edf-cfg2",
+        "run_id": "d20261110-formal-v2-cb-g2-ablation-8gpu-1b54f37-r1-gamma2-abl",
+        "config_sha256": "30d18a9a462930d8728d70a2a7ddb9dfd6fdc218b08cabd853d3f7cc981674c2",
+        "qualification_status": "numeric=verified_lossless_exact, semantic=verified_bitwise_invariant, performance=verified_real_gpu",
+        "requests": 100,
+        "completed": 100,
+        "ontime": 64,
+        "slo_attainment_rate": 0.64,
+        "image_slo_attainment": 0.46,
+        "video_slo_attainment": 0.82,
+        "latency_p50_s": 24.93,
+        "latency_p95_s": 427.44,
+        "goodput_rps": 0.0686,
+        "qualified_goodput_rps": 0.0686,
+        "allocated_gpu_seconds": 7461.73,
+        "gpu_seconds_per_completed_request": 74.62,
+        "gpu_seconds_per_ontime_request": 116.59,
+        "busy_gpu_seconds": 6581.77,
+        "busy_gpu_seconds_per_ontime_request": 102.84,
+        "busy_gpu_utilization_pct": 88.21,
+        "ontime_gpu_utilization_pct": 67.53,
+        "late_wasted_gpu_utilization_pct": 20.68,
+        "cb_rounds": 0,
+        "cb_late_joins": 0,
+        "cb_batch_sizes": {},
+        "latency_p90_s": 346.89,
+        "latency_p99_s": 785.3,
+        "image_p50_s": 13.11,
+        "image_p95_s": 34.33,
+        "video_p50_s": 118.93,
+        "video_p95_s": 778.78,
+        "elapsed_s": 932.72,
+        "quantiles": {
+          "requests": 100,
+          "ontime": 64,
+          "sar_pct": 64.0,
+          "norm_le_1_pct": 64.0,
+          "image_requests": 50,
+          "image_ontime": 23,
+          "image_sar_pct": 46.0,
+          "video_requests": 50,
+          "video_ontime": 41,
+          "video_sar_pct": 82.0,
+          "latency_s": {
+            "p50": 24.9255,
+            "p90": 346.8933,
+            "p95": 427.4379,
+            "p99": 785.3008,
+            "max": 789.7007
+          },
+          "norm_latency": {
+            "p50": 0.9078,
+            "p90": 3.4174,
+            "p95": 4.9911,
+            "p99": 10.0554,
+            "max": 15.9857
+          },
+          "image_latency_s": {
+            "p50": 13.1085,
+            "p90": 30.3291,
+            "p95": 34.3256,
+            "p99": 35.667
+          },
+          "video_latency_s": {
+            "p50": 118.9348,
+            "p90": 439.8734,
+            "p95": 778.7794,
+            "p99": 787.523
+          },
+          "image_norm_latency": {
+            "p50": 1.279,
+            "p90": 3.4836,
+            "p95": 4.8797,
+            "p99": 5.5985
+          },
+          "video_norm_latency": {
+            "p50": 0.7374,
+            "p90": 2.1595,
+            "p95": 9.5568,
+            "p99": 13.0505
+          },
+          "run_id": "d20261110-formal-v2-cb-g2-ablation-8gpu-1b54f37-r1-gamma2-abl"
+        }
+      },
+      "block-cfg2": {
+        "policy": "block-cfg2",
+        "run_id": "d20261110-formal-v2-cb-g2-ablation-8gpu-1b54f37-r1-gamma2-abl",
+        "config_sha256": "30d18a9a462930d8728d70a2a7ddb9dfd6fdc218b08cabd853d3f7cc981674c2",
+        "qualification_status": "numeric=verified_lossless_exact, semantic=verified_bitwise_invariant, performance=verified_real_gpu",
+        "requests": 100,
+        "completed": 100,
+        "ontime": 78,
+        "slo_attainment_rate": 0.78,
+        "image_slo_attainment": 0.68,
+        "video_slo_attainment": 0.88,
+        "latency_p50_s": 18.2,
+        "latency_p95_s": 605.78,
+        "goodput_rps": 0.0849,
+        "qualified_goodput_rps": 0.0849,
+        "allocated_gpu_seconds": 7354.31,
+        "gpu_seconds_per_completed_request": 73.54,
+        "gpu_seconds_per_ontime_request": 94.29,
+        "busy_gpu_seconds": 6505.64,
+        "busy_gpu_seconds_per_ontime_request": 83.41,
+        "busy_gpu_utilization_pct": 88.46,
+        "ontime_gpu_utilization_pct": 70.39,
+        "late_wasted_gpu_utilization_pct": 18.07,
+        "cb_rounds": 0,
+        "cb_late_joins": 0,
+        "cb_batch_sizes": {},
+        "latency_p90_s": 335.37,
+        "latency_p99_s": 781.21,
+        "image_p50_s": 7.9,
+        "image_p95_s": 21.55,
+        "video_p50_s": 89.69,
+        "video_p95_s": 762.56,
+        "elapsed_s": 919.29,
+        "quantiles": {
+          "requests": 100,
+          "ontime": 78,
+          "sar_pct": 78.0,
+          "norm_le_1_pct": 78.0,
+          "image_requests": 50,
+          "image_ontime": 34,
+          "image_sar_pct": 68.0,
+          "video_requests": 50,
+          "video_ontime": 44,
+          "video_sar_pct": 88.0,
+          "latency_s": {
+            "p50": 18.1986,
+            "p90": 335.3731,
+            "p95": 605.7823,
+            "p99": 781.2119,
+            "max": 819.2318
+          },
+          "norm_latency": {
+            "p50": 0.7518,
+            "p90": 2.0946,
+            "p95": 2.2817,
+            "p99": 9.3357,
+            "max": 14.4365
+          },
+          "image_latency_s": {
+            "p50": 7.8988,
+            "p90": 18.2137,
+            "p95": 21.5468,
+            "p99": 33.8535
+          },
+          "video_latency_s": {
+            "p50": 89.6881,
+            "p90": 612.1741,
+            "p95": 762.561,
+            "p99": 800.4139
+          },
+          "image_norm_latency": {
+            "p50": 0.7952,
+            "p90": 2.1522,
+            "p95": 2.5728,
+            "p99": 6.0868
+          },
+          "video_norm_latency": {
+            "p50": 0.6005,
+            "p90": 2.0083,
+            "p95": 2.1241,
+            "p99": 8.4659
+          },
+          "run_id": "d20261110-formal-v2-cb-g2-ablation-8gpu-1b54f37-r1-gamma2-abl"
+        }
+      },
+      "abl-no-block": {
+        "policy": "abl-no-block",
+        "run_id": "d20261111-formal-v2-cb-abl-loo-8gpu-8c50c7a-r1-gamma2-abl-loo",
+        "config_sha256": "067171eb9197349694b876d338257ab6ec37904cbafffdd90e18264e047fe581",
+        "qualification_status": "numeric=verified_lossless_exact, semantic=verified_bitwise_invariant, performance=verified_real_gpu",
+        "requests": 100,
+        "completed": 100,
+        "ontime": 80,
+        "slo_attainment_rate": 0.8,
+        "image_slo_attainment": 0.7,
+        "video_slo_attainment": 0.9,
+        "latency_p50_s": 19.85,
+        "latency_p90_s": 317.16,
+        "latency_p95_s": 382.39,
+        "latency_p99_s": 778.3,
+        "image_p50_s": 8.43,
+        "image_p95_s": 22.39,
+        "video_p50_s": 106.36,
+        "video_p95_s": 753.25,
+        "goodput_rps": 0.0854,
+        "qualified_goodput_rps": 0.0854,
+        "elapsed_s": 936.75,
+        "allocated_gpu_seconds": 7494.03,
+        "gpu_seconds_per_completed_request": 74.94,
+        "gpu_seconds_per_ontime_request": 93.68,
+        "busy_gpu_seconds": 6630.9,
+        "busy_gpu_seconds_per_ontime_request": 82.89,
+        "busy_gpu_utilization_pct": 88.48,
+        "ontime_gpu_utilization_pct": 70.74,
+        "late_wasted_gpu_utilization_pct": 17.74,
+        "cb_rounds": 1380,
+        "cb_late_joins": 4,
+        "cb_early_exits": 4,
+        "cb_batch_sizes": {
+          "1": 1360,
+          "2": 20
+        },
+        "quantiles": {
+          "requests": 100,
+          "ontime": 80,
+          "sar_pct": 80.0,
+          "norm_le_1_pct": 80.0,
+          "image_requests": 50,
+          "image_ontime": 35,
+          "image_sar_pct": 70.0,
+          "video_requests": 50,
+          "video_ontime": 45,
+          "video_sar_pct": 90.0,
+          "latency_s": {
+            "p50": 19.8533,
+            "p90": 317.1646,
+            "p95": 382.389,
+            "p99": 778.2993,
+            "max": 794.0314
+          },
+          "norm_latency": {
+            "p50": 0.7729,
+            "p90": 1.8672,
+            "p95": 2.1409,
+            "p99": 5.0995,
+            "max": 16.0996
+          },
+          "image_latency_s": {
+            "p50": 8.4309,
+            "p90": 16.5947,
+            "p95": 22.3915,
+            "p99": 240.6709
+          },
+          "video_latency_s": {
+            "p50": 106.3587,
+            "p90": 393.2625,
+            "p95": 753.2459,
+            "p99": 786.2448
+          },
+          "image_norm_latency": {
+            "p50": 0.7839,
+            "p90": 1.8672,
+            "p95": 3.9202,
+            "p99": 10.6551
+          },
+          "video_norm_latency": {
+            "p50": 0.7185,
+            "p90": 1.0809,
+            "p95": 2.0703,
+            "p99": 2.161
+          },
+          "run_id": "d20261111-formal-v2-cb-abl-loo-8gpu-8c50c7a-r1-gamma2-abl-loo"
+        }
+      },
+      "abl-first-fit": {
+        "policy": "abl-first-fit",
+        "run_id": "d20261111-formal-v2-cb-abl-loo-8gpu-8c50c7a-r1-gamma2-abl-loo",
+        "config_sha256": "067171eb9197349694b876d338257ab6ec37904cbafffdd90e18264e047fe581",
+        "qualification_status": "numeric=verified_lossless_exact, semantic=verified_bitwise_invariant, performance=verified_real_gpu",
+        "requests": 100,
+        "completed": 100,
+        "ontime": 76,
+        "slo_attainment_rate": 0.76,
+        "image_slo_attainment": 0.66,
+        "video_slo_attainment": 0.86,
+        "latency_p50_s": 21.85,
+        "latency_p90_s": 343.94,
+        "latency_p95_s": 639.93,
+        "latency_p99_s": 780.89,
+        "image_p50_s": 8.95,
+        "image_p95_s": 142.89,
+        "video_p50_s": 95.27,
+        "video_p95_s": 717.05,
+        "goodput_rps": 0.085,
+        "qualified_goodput_rps": 0.085,
+        "elapsed_s": 893.75,
+        "allocated_gpu_seconds": 7149.98,
+        "gpu_seconds_per_completed_request": 71.5,
+        "gpu_seconds_per_ontime_request": 94.08,
+        "busy_gpu_seconds": 6540.57,
+        "busy_gpu_seconds_per_ontime_request": 86.06,
+        "busy_gpu_utilization_pct": 91.48,
+        "ontime_gpu_utilization_pct": 71.42,
+        "late_wasted_gpu_utilization_pct": 20.05,
+        "cb_rounds": 1376,
+        "cb_late_joins": 5,
+        "cb_early_exits": 5,
+        "cb_batch_sizes": {
+          "1": 1352,
+          "2": 24
+        },
+        "quantiles": {
+          "requests": 100,
+          "ontime": 76,
+          "sar_pct": 76.0,
+          "norm_le_1_pct": 76.0,
+          "image_requests": 50,
+          "image_ontime": 33,
+          "image_sar_pct": 66.0,
+          "video_requests": 50,
+          "video_ontime": 43,
+          "video_sar_pct": 86.0,
+          "latency_s": {
+            "p50": 21.8494,
+            "p90": 343.9443,
+            "p95": 639.9294,
+            "p99": 780.8892,
+            "max": 819.6455
+          },
+          "norm_latency": {
+            "p50": 0.8,
+            "p90": 3.8205,
+            "p95": 6.7367,
+            "p99": 21.1855,
+            "max": 34.4152
+          },
+          "image_latency_s": {
+            "p50": 8.953,
+            "p90": 87.1948,
+            "p95": 142.8884,
+            "p99": 407.5736
+          },
+          "video_latency_s": {
+            "p50": 95.2745,
+            "p90": 641.9081,
+            "p95": 717.0528,
+            "p99": 800.4631
+          },
+          "image_norm_latency": {
+            "p50": 0.9228,
+            "p90": 5.6864,
+            "p95": 7.5241,
+            "p99": 27.8672
+          },
+          "video_norm_latency": {
+            "p50": 0.645,
+            "p90": 1.9344,
+            "p95": 2.2044,
+            "p99": 13.4027
+          },
+          "run_id": "d20261111-formal-v2-cb-abl-loo-8gpu-8c50c7a-r1-gamma2-abl-loo"
+        }
+      },
+      "abl-no-prune": {
+        "policy": "abl-no-prune",
+        "run_id": "d20261111-formal-v2-cb-abl-loo-8gpu-8c50c7a-r1-gamma2-abl-loo",
+        "config_sha256": "067171eb9197349694b876d338257ab6ec37904cbafffdd90e18264e047fe581",
+        "qualification_status": "numeric=verified_lossless_exact, semantic=verified_bitwise_invariant, performance=verified_real_gpu",
+        "requests": 100,
+        "completed": 100,
+        "ontime": 86,
+        "slo_attainment_rate": 0.86,
+        "image_slo_attainment": 1.0,
+        "video_slo_attainment": 0.72,
+        "latency_p50_s": 16.08,
+        "latency_p90_s": 707.52,
+        "latency_p95_s": 875.3,
+        "latency_p99_s": 912.02,
+        "image_p50_s": 6.56,
+        "image_p95_s": 15.21,
+        "video_p50_s": 138.91,
+        "video_p95_s": 907.52,
+        "goodput_rps": 0.0694,
+        "qualified_goodput_rps": 0.0694,
+        "elapsed_s": 1240.09,
+        "allocated_gpu_seconds": 9920.75,
+        "gpu_seconds_per_completed_request": 99.21,
+        "gpu_seconds_per_ontime_request": 115.36,
+        "busy_gpu_seconds": 9263.72,
+        "busy_gpu_seconds_per_ontime_request": 107.72,
+        "busy_gpu_utilization_pct": 93.38,
+        "ontime_gpu_utilization_pct": 47.48,
+        "late_wasted_gpu_utilization_pct": 45.9,
+        "cb_rounds": 1392,
+        "cb_late_joins": 4,
+        "cb_early_exits": 4,
+        "cb_batch_sizes": {
+          "1": 1384,
+          "2": 8
+        },
+        "quantiles": {
+          "requests": 100,
+          "ontime": 86,
+          "sar_pct": 86.0,
+          "norm_le_1_pct": 86.0,
+          "image_requests": 50,
+          "image_ontime": 50,
+          "image_sar_pct": 100.0,
+          "video_requests": 50,
+          "video_ontime": 36,
+          "video_sar_pct": 72.0,
+          "latency_s": {
+            "p50": 16.0806,
+            "p90": 707.5196,
+            "p95": 875.2993,
+            "p99": 912.0247,
+            "max": 964.4938
+          },
+          "norm_latency": {
+            "p50": 0.738,
+            "p90": 2.3001,
+            "p95": 2.4977,
+            "p99": 4.2631,
+            "max": 4.3321
+          },
+          "image_latency_s": {
+            "p50": 6.5553,
+            "p90": 14.899,
+            "p95": 15.2134,
+            "p99": 15.4341
+          },
+          "video_latency_s": {
+            "p50": 138.9134,
+            "p90": 876.5222,
+            "p95": 907.5184,
+            "p99": 938.5243
+          },
+          "image_norm_latency": {
+            "p50": 0.6902,
+            "p90": 0.8788,
+            "p95": 0.9028,
+            "p99": 0.9632
+          },
+          "video_norm_latency": {
+            "p50": 0.8586,
+            "p90": 2.4981,
+            "p95": 3.5251,
+            "p99": 4.2979
+          },
+          "run_id": "d20261111-formal-v2-cb-abl-loo-8gpu-8c50c7a-r1-gamma2-abl-loo"
+        }
+      },
+      "abl-no-cb": {
+        "policy": "abl-no-cb",
+        "run_id": "d20261110-formal-v2-cb-g2-ablation-8gpu-1b54f37-r1-gamma2-abl",
+        "config_sha256": "30d18a9a462930d8728d70a2a7ddb9dfd6fdc218b08cabd853d3f7cc981674c2",
+        "qualification_status": "numeric=verified_lossless_exact, semantic=verified_bitwise_invariant, performance=verified_real_gpu",
+        "requests": 100,
+        "completed": 100,
+        "ontime": 93,
+        "slo_attainment_rate": 0.93,
+        "image_slo_attainment": 1.0,
+        "video_slo_attainment": 0.86,
+        "latency_p50_s": 16.7,
+        "latency_p95_s": 745.36,
+        "goodput_rps": 0.0976,
+        "qualified_goodput_rps": 0.0976,
+        "allocated_gpu_seconds": 7623.4,
+        "gpu_seconds_per_completed_request": 76.23,
+        "gpu_seconds_per_ontime_request": 81.97,
+        "busy_gpu_seconds": 6634.35,
+        "busy_gpu_seconds_per_ontime_request": 71.34,
+        "busy_gpu_utilization_pct": 87.03,
+        "ontime_gpu_utilization_pct": 64.02,
+        "late_wasted_gpu_utilization_pct": 23.01,
+        "cb_rounds": 0,
+        "cb_late_joins": 0,
+        "cb_batch_sizes": {},
+        "latency_p90_s": 319.31,
+        "latency_p99_s": 796.85,
+        "image_p50_s": 6.78,
+        "image_p95_s": 15.57,
+        "video_p50_s": 91.09,
+        "video_p95_s": 778.86,
+        "elapsed_s": 952.92,
+        "quantiles": {
+          "requests": 100,
+          "ontime": 93,
+          "sar_pct": 93.0,
+          "norm_le_1_pct": 93.0,
+          "image_requests": 50,
+          "image_ontime": 50,
+          "image_sar_pct": 100.0,
+          "video_requests": 50,
+          "video_ontime": 43,
+          "video_sar_pct": 86.0,
+          "latency_s": {
+            "p50": 16.6957,
+            "p90": 319.3109,
+            "p95": 745.3578,
+            "p99": 796.8549,
+            "max": 816.0824
+          },
+          "norm_latency": {
+            "p50": 0.6925,
+            "p90": 0.9068,
+            "p95": 2.0486,
+            "p99": 2.1901,
+            "max": 2.243
+          },
+          "image_latency_s": {
+            "p50": 6.7834,
+            "p90": 15.4578,
+            "p95": 15.5653,
+            "p99": 15.7204
+          },
+          "video_latency_s": {
+            "p50": 91.0863,
+            "p90": 745.5386,
+            "p95": 778.864,
+            "p99": 806.5658
+          },
+          "image_norm_latency": {
+            "p50": 0.6951,
+            "p90": 0.7468,
+            "p95": 0.7949,
+            "p99": 0.9208
+          },
+          "video_norm_latency": {
+            "p50": 0.6396,
+            "p90": 2.0491,
+            "p95": 2.1407,
+            "p99": 2.2168
+          },
+          "run_id": "d20261110-formal-v2-cb-g2-ablation-8gpu-1b54f37-r1-gamma2-abl"
+        }
+      },
+      "ditserve": {
+        "policy": "ditserve",
+        "run_id": "d20261111-formal-v2-cb-abl-fix-8gpu-8c50c7a-r1-gamma2-abl",
+        "config_sha256": "890140848097e4e3b4efa4b169930380b72e836a9fb11b4dd45b05f90709d9b3",
+        "qualification_status": "numeric=verified_lossless_exact, semantic=verified_bitwise_invariant, performance=verified_real_gpu",
+        "requests": 100,
+        "completed": 100,
+        "ontime": 94,
+        "slo_attainment_rate": 0.94,
+        "image_slo_attainment": 1.0,
+        "video_slo_attainment": 0.88,
+        "latency_p50_s": 15.17,
+        "latency_p90_s": 324.62,
+        "latency_p95_s": 724.09,
+        "latency_p99_s": 817.81,
+        "image_p50_s": 6.47,
+        "image_p95_s": 14.98,
+        "video_p50_s": 86.0,
+        "video_p95_s": 803.46,
+        "goodput_rps": 0.0969,
+        "qualified_goodput_rps": 0.0969,
+        "elapsed_s": 970.21,
+        "allocated_gpu_seconds": 7761.71,
+        "gpu_seconds_per_completed_request": 77.62,
+        "gpu_seconds_per_ontime_request": 82.57,
+        "busy_gpu_seconds": 6601.38,
+        "busy_gpu_seconds_per_ontime_request": 70.23,
+        "busy_gpu_utilization_pct": 85.05,
+        "ontime_gpu_utilization_pct": 65.67,
+        "late_wasted_gpu_utilization_pct": 19.38,
+        "cb_rounds": 1394,
+        "cb_late_joins": 3,
+        "cb_early_exits": 2,
+        "cb_batch_sizes": {
+          "1": 1388,
+          "2": 6
+        },
+        "g2_slo_1p5_anchor_reference": {
+          "run_id": "d20261111-formal-v2-cb-abl-fix-8gpu-8c50c7a-r1-g2-slo-1p5",
+          "config_sha256": "8414bf0df11c9d6c19f17579381e5a54f6b7f9a7c6cd1595f58dc1315667e87c",
+          "slo_attainment_rate": 0.94,
+          "image_slo_attainment": 0.98,
+          "video_slo_attainment": 0.9,
+          "goodput_rps": 0.0989,
+          "gpu_seconds_per_ontime_request": 80.91
+        },
+        "quantiles": {
+          "requests": 100,
+          "ontime": 94,
+          "sar_pct": 94.0,
+          "norm_le_1_pct": 94.0,
+          "image_requests": 50,
+          "image_ontime": 50,
+          "image_sar_pct": 100.0,
+          "video_requests": 50,
+          "video_ontime": 44,
+          "video_sar_pct": 88.0,
+          "latency_s": {
+            "p50": 15.1732,
+            "p90": 324.6206,
+            "p95": 724.085,
+            "p99": 817.8055,
+            "max": 827.2558
+          },
+          "norm_latency": {
+            "p50": 0.6708,
+            "p90": 0.9154,
+            "p95": 1.9901,
+            "p99": 2.2477,
+            "max": 2.2737
+          },
+          "image_latency_s": {
+            "p50": 6.4694,
+            "p90": 14.7499,
+            "p95": 14.9793,
+            "p99": 15.1735
+          },
+          "video_latency_s": {
+            "p50": 85.9979,
+            "p90": 726.2592,
+            "p95": 803.4624,
+            "p99": 822.5784
+          },
+          "image_norm_latency": {
+            "p50": 0.6669,
+            "p90": 0.7995,
+            "p95": 0.8132,
+            "p99": 0.9426
+          },
+          "video_norm_latency": {
+            "p50": 0.6959,
+            "p90": 1.9961,
+            "p95": 2.2083,
+            "p99": 2.2608
+          },
+          "run_id": "d20261111-formal-v2-cb-abl-fix-8gpu-8c50c7a-r1-gamma2-abl"
+        }
+      }
+    }
+  }
+}

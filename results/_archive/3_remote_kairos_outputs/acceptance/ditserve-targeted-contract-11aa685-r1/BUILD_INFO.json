@@ -1,0 +1,10 @@
+{
+ "commit": "11aa685c5147692b27b557fd1992150f734a43f9",
+ "subject": "Restrict native studies to model-valid forms",
+ "built_utc": "2026-11-01T10:32:52+00:00",
+ "builder_image": "local-cmake-install",
+ "tested_runtime_image": "192.168.1.114:30500/jjjkairos/ditserve:xdit-dev-016e1ca-slim",
+ "core_sha256": "c5d15d845a39ff3e5f05742845ac260544ac8d3e2caf73082451412ac7934481",
+ "files": 244,
+ "bytes": 3821201
+}

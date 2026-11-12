@@ -1,0 +1,90 @@
+[
+  {
+    "avg_denoising_time": 1.961805110797286,
+    "avg_text_encoding_time": 0.41085577942430973,
+    "bs": 1,
+    "height": 512,
+    "mlp_world_size": 1,
+    "ring_degree": 1,
+    "steps": 28,
+    "ulysses_degree": 1,
+    "width": 512
+  },
+  {
+    "avg_denoising_time": 2.205444425344467,
+    "avg_text_encoding_time": 0.41091329604387283,
+    "bs": 1,
+    "height": 512,
+    "mlp_world_size": 2,
+    "ring_degree": 1,
+    "steps": 28,
+    "ulysses_degree": 2,
+    "width": 512
+  },
+  {
+    "avg_denoising_time": 3.1762778889387846,
+    "avg_text_encoding_time": 0.23796774819493294,
+    "bs": 2,
+    "height": 512,
+    "mlp_world_size": 1,
+    "ring_degree": 1,
+    "steps": 28,
+    "ulysses_degree": 1,
+    "width": 512
+  },
+  {
+    "avg_denoising_time": 2.0113023798912764,
+    "avg_text_encoding_time": 0.2747375126928091,
+    "bs": 2,
+    "height": 512,
+    "mlp_world_size": 2,
+    "ring_degree": 1,
+    "steps": 28,
+    "ulysses_degree": 2,
+    "width": 512
+  },
+  {
+    "avg_denoising_time": 6.511708663776517,
+    "avg_text_encoding_time": 0.11814120970666409,
+    "bs": 1,
+    "height": 1024,
+    "mlp_world_size": 1,
+    "ring_degree": 1,
+    "steps": 28,
+    "ulysses_degree": 1,
+    "width": 1024
+  },
+  {
+    "avg_denoising_time": 3.2873036563396454,
+    "avg_text_encoding_time": 0.14032984897494316,
+    "bs": 1,
+    "height": 1024,
+    "mlp_world_size": 2,
+    "ring_degree": 1,
+    "steps": 28,
+    "ulysses_degree": 2,
+    "width": 1024
+  },
+  {
+    "avg_denoising_time": 12.65402645803988,
+    "avg_text_encoding_time": 0.2417070996016264,
+    "bs": 2,
+    "height": 1024,
+    "mlp_world_size": 1,
+    "ring_degree": 1,
+    "steps": 28,
+    "ulysses_degree": 1,
+    "width": 1024
+  },
+  {
+    "avg_denoising_time": 6.29139238409698,
+    "avg_text_encoding_time": 0.2656517531722784,
+    "bs": 2,
+    "height": 1024,
+    "mlp_world_size": 2,
+    "ring_degree": 1,
+    "steps": 28,
+    "ulysses_degree": 2,
+    "width": 1024
+  }
+]

@@ -1,0 +1,79 @@
+{
+  "allows": [],
+  "extracted_messages": {
+    "classes": [
+      "MigrateArtifactsCommand",
+      "MigrateArtifactsRankResult"
+    ],
+    "declaration_sha256": "d63facf0d6ce41f722396c4cf8f8b8fccc73ff5571d243752fb9f33e0d52f2c9",
+    "source": "vllm_omni/diffusion/runtime_v2/multiproc_worker.py",
+    "source_sha256": "914b8b105be7eeb799303de8f81646b9edc0e77f8b4beb6b9e7e71ada6e584a8"
+  },
+  "files": {
+    "UPSTREAM_LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+    "gfdit_migration_runtime/__init__.py": "b5ab3b423c955ef70db79f22eacbf9c8eec77ca5bfb853dba8dff1e431614936",
+    "gfdit_migration_runtime/_env.py": "82875dbc44e7fd5e135266d48dcd4ec0fd57c3c8027bc4f6d0717e54e4a09503",
+    "gfdit_migration_runtime/adapters/__init__.py": "b5ab3b423c955ef70db79f22eacbf9c8eec77ca5bfb853dba8dff1e431614936",
+    "gfdit_migration_runtime/adapters/common.py": "ae5b6c95fd5bb5a1d47f595cbb6937b75f248ab018460da449d7525d4763ff0d",
+    "gfdit_migration_runtime/codec.py": "783f86f2c8d190d19c895c8ffc19af5a84c21ae8a03da867710ff2fa3d81c485",
+    "gfdit_migration_runtime/collective_runtime.py": "0202fee24bafdd619f5acd4bd3a7c493b0aaf56319abc563e6a9b1abcfde0368",
+    "gfdit_migration_runtime/data_plane.py": "f382e1cc68d68d25b5335d2447dd87daa75a99a87749388b8f1e87bb879ac535",
+    "gfdit_migration_runtime/group_context.py": "d00c9869baf431fd575dc1ca47f29bc19d1eb1dbcd670d00d930c482a0f9acfd",
+    "gfdit_migration_runtime/migration_engine.py": "9ffe9d49f9a532d512ded833ef7f26318d51c01611cb82713843cf6f05ec2498",
+    "gfdit_migration_runtime/migration_phases.py": "46897f60891327bde8cc6950498daddb545adb9dc5acfeb62a04464e1d1816b1",
+    "gfdit_migration_runtime/protocol.py": "b56f2693381f7f5fde508c9c0fe43c018ba379852c6be77b41ccc82019e292d6",
+    "gfdit_migration_runtime/transport_protocol.py": "f3542dbba3b8c6116487b1e1c81ac337d50afa0f22f47d1b5cc172a2cdbaec8a"
+  },
+  "group_context": "actual original LogicalGroupHandle/GFC session binding",
+  "import_only_files": {
+    "_env.py": {
+      "derived_sha256": "82875dbc44e7fd5e135266d48dcd4ec0fd57c3c8027bc4f6d0717e54e4a09503",
+      "normalized_algorithm_ast_sha256": "08fe267a37b61bba0c033fa478851d3f471f5d1ee720ac927a030d670ac23958",
+      "upstream_path": "vllm_omni/diffusion/runtime_v2/_env.py",
+      "upstream_sha256": "e57a2eabcff193ba353f16ce9ff1de341d188cd54d10d9fba661645f5889b77d"
+    },
+    "adapters/common.py": {
+      "derived_sha256": "ae5b6c95fd5bb5a1d47f595cbb6937b75f248ab018460da449d7525d4763ff0d",
+      "normalized_algorithm_ast_sha256": "f686bd1fa4e8f5343b35e9ff06f52fb8ecb89e29ff1311d06d45a4ef7dd401d0",
+      "upstream_path": "vllm_omni/diffusion/runtime_v2/adapters/common.py",
+      "upstream_sha256": "6a649bd79dd248fff6e71908a8da71a0019fd69f7925812c9347bf689514fb3d"
+    },
+    "codec.py": {
+      "derived_sha256": "783f86f2c8d190d19c895c8ffc19af5a84c21ae8a03da867710ff2fa3d81c485",
+      "normalized_algorithm_ast_sha256": "27c50bff11c267eadd2453787f8760c660d40406fa257ea7aebe93479c5d9dad",
+      "upstream_path": "vllm_omni/diffusion/runtime_v2/codec.py",
+      "upstream_sha256": "796bb845ec61ca46746d53560c90b280223addd7c19633ffd50ab93c6d9d49e6"
+    },
+    "collective_runtime.py": {
+      "derived_sha256": "0202fee24bafdd619f5acd4bd3a7c493b0aaf56319abc563e6a9b1abcfde0368",
+      "normalized_algorithm_ast_sha256": "b13c61b0c89b9627a46bb004a3d879fb02836e0ca84d96266ac6f0c613ff20c3",
+      "upstream_path": "vllm_omni/diffusion/distributed/collective_runtime.py",
+      "upstream_sha256": "fc6a3bbd9defd18c87b1e0375a8667fca331e9f000acdc5faf392ee8fbc6ec7e"
+    },
+    "data_plane.py": {
+      "derived_sha256": "f382e1cc68d68d25b5335d2447dd87daa75a99a87749388b8f1e87bb879ac535",
+      "normalized_algorithm_ast_sha256": "89061b89bf70adc950106b9d9c2c59eeaa6e0d2b8f7eb575c5b5c67678d97c6d",
+      "upstream_path": "vllm_omni/diffusion/runtime_v2/data_plane.py",
+      "upstream_sha256": "e972dbb046aaee1033ec20e2c9df7570bceb00df5375c569e47f99c462d924c5"
+    },
+    "migration_engine.py": {
+      "derived_sha256": "9ffe9d49f9a532d512ded833ef7f26318d51c01611cb82713843cf6f05ec2498",
+      "normalized_algorithm_ast_sha256": "0b4cc282249d5a98b8cee65fdc904c27bdc77c79d4b913fec6dc582271c5b777",
+      "upstream_path": "vllm_omni/diffusion/runtime_v2/migration_engine.py",
+      "upstream_sha256": "5b96a0f8fc1a77cc38f5422d04b5dffa3992cd0550fcee9c3296c39fc3bcb503"
+    },
+    "protocol.py": {
+      "derived_sha256": "b56f2693381f7f5fde508c9c0fe43c018ba379852c6be77b41ccc82019e292d6",
+      "normalized_algorithm_ast_sha256": "5442b6b3e27ef8aed55be745ff57b7b5cff05e8f3809a39285ca4be021d59980",
+      "upstream_path": "vllm_omni/diffusion/runtime_v2/protocol.py",
+      "upstream_sha256": "05ddd505d66d5113ac791c6fb4a56bd771e0d399757596f128b351b560140bf7"
+    }
+  },
+  "model_executed": false,
+  "native_multiproc_worker_reproduced": false,
+  "port_sha256": "405aba8fce3c5712d613ffe51353f09a44b36682e113e7fcf02f1847872a8365",
+  "qualification_eligible": false,
+  "schema": "ditserve.gfdit-migration-source.v1",
+  "upstream_commit": "442531e499891d4ffa654e87c076f03326a37b98",
+  "upstream_manifest_sha256": "e1b54cf09241ff70fc27e9d1666a44cbe38e00eaf1713b57cd5c9ade9c9db3f4"
+}

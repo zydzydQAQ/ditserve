@@ -1,0 +1,51 @@
+{
+  "active": null,
+  "allocation_id": "725439efc611ec9debb0a41823bffa09",
+  "limits": {
+    "carry": "none",
+    "phase_gpu_seconds": {},
+    "phase_order": [
+      "cluster"
+    ],
+    "repair_reserve_gpu_seconds": 0.0,
+    "total_gpu_seconds": 172800.0
+  },
+  "phase_cursor": 0,
+  "phase_usage": {
+    "cluster": 2370.165620572865
+  },
+  "schema_version": "ditserve.budget.v1",
+  "sessions": [
+    {
+      "cleanup_verified": true,
+      "deadline_monotonic": 8504879.614195842,
+      "devices": 4,
+      "elapsed_seconds": 592.5414051432163,
+      "ended_at": 1793691316.075936,
+      "ended_monotonic": 8462272.155600986,
+      "gpu_seconds": 2370.165620572865,
+      "identity": {
+        "attempt": 1,
+        "config_sha256": "ea1e62587cd2e2974a2d1af78db0e2c3603f6c09361cbca5373eb42f21667626",
+        "gpu_uuids": [
+          "GPU-bf5b40f5-b606-6ff3-8bb6-375c58fca67a",
+          "GPU-ef078ff8-6d9e-6509-ce65-53a9c4c2df85",
+          "GPU-29ad4cf3-1e6a-08a9-5bde-6d17726e9fa3",
+          "GPU-83566cdb-86ec-7bb4-c2c2-736c074f2fca"
+        ],
+        "run_id": "d20261103-serve-wan21-4f0e5ff-s301-diag-calibration",
+        "source_sha256": "f464ad8809b7c6569de60b701eac2c68c0b0d61c7962aff4f95ab603f486d1a6"
+      },
+      "phase": "cluster",
+      "repair": false,
+      "session_id": "f85cc54b6ee93e46c0b05d80ea709393",
+      "started_at": 1793690723.534545,
+      "started_monotonic": 8461679.614195842,
+      "status": "completed",
+      "supervisor_pid": 152
+    }
+  ],
+  "used_gpu_seconds": 2370.165620572865,
+  "used_regular_gpu_seconds": 2370.165620572865,
+  "used_repair_gpu_seconds": 0.0
+}

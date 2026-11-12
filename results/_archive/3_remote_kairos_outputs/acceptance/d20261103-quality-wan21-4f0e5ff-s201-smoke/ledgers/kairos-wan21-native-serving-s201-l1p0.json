@@ -1,0 +1,233 @@
+{
+  "active": null,
+  "allocation_id": "0d1b71ec730c3046c7dd9590b88f1a68",
+  "limits": {
+    "carry": "none",
+    "phase_gpu_seconds": {},
+    "phase_order": [
+      "cluster"
+    ],
+    "repair_reserve_gpu_seconds": 0.0,
+    "total_gpu_seconds": 43200.0
+  },
+  "phase_cursor": 0,
+  "phase_usage": {
+    "cluster": 5875.15986109525
+  },
+  "schema_version": "ditserve.budget.v1",
+  "sessions": [
+    {
+      "cleanup_verified": true,
+      "deadline_monotonic": 8469394.081401968,
+      "devices": 6,
+      "elapsed_seconds": 163.184369251132,
+      "ended_at": 1793691407.1945674,
+      "ended_monotonic": 8462357.26577122,
+      "gpu_seconds": 979.1062155067921,
+      "identity": {
+        "attempt": 1,
+        "config_sha256": "2cc88119f0dcc82cce1fdd5f321eeecba51494dc9a27bc331f5e93f6f0b9a515",
+        "gpu_uuids": [
+          "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+          "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+          "GPU-5a956ef1-5f15-8a3b-7055-02da1d96da75",
+          "GPU-d3c1776a-33b0-8800-0ed7-431fc605ba83",
+          "GPU-837bc934-205d-1796-b72f-0141a8855565",
+          "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529"
+        ],
+        "run_id": "d20261103-quality-wan21-4f0e5ff-s201-smoke-exact",
+        "source_sha256": "f464ad8809b7c6569de60b701eac2c68c0b0d61c7962aff4f95ab603f486d1a6"
+      },
+      "phase": "cluster",
+      "repair": false,
+      "session_id": "90cfd962eae692bf3cc7ce734025e5a0",
+      "started_at": 1793691244.0101998,
+      "started_monotonic": 8462194.081401968,
+      "status": "completed",
+      "supervisor_pid": 11937
+    },
+    {
+      "cleanup_verified": true,
+      "deadline_monotonic": 8469568.655161839,
+      "devices": 6,
+      "elapsed_seconds": 159.72702679224312,
+      "ended_at": 1793691578.310979,
+      "ended_monotonic": 8462528.382188631,
+      "gpu_seconds": 958.3621607534587,
+      "identity": {
+        "attempt": 1,
+        "config_sha256": "b98d4d17b51881db4208685e2e264399d74cda605709ae9440ff321ab542e130",
+        "gpu_uuids": [
+          "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+          "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+          "GPU-5a956ef1-5f15-8a3b-7055-02da1d96da75",
+          "GPU-d3c1776a-33b0-8800-0ed7-431fc605ba83",
+          "GPU-837bc934-205d-1796-b72f-0141a8855565",
+          "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529"
+        ],
+        "run_id": "d20261103-quality-wan21-4f0e5ff-s201-smoke-fixed7",
+        "source_sha256": "f464ad8809b7c6569de60b701eac2c68c0b0d61c7962aff4f95ab603f486d1a6"
+      },
+      "phase": "cluster",
+      "repair": false,
+      "session_id": "a5e53037f5ac9254b4e672bdb7a481ac",
+      "started_at": 1793691418.583967,
+      "started_monotonic": 8462368.655161839,
+      "status": "completed",
+      "supervisor_pid": 13999
+    },
+    {
+      "cleanup_verified": true,
+      "deadline_monotonic": 8469739.660683358,
+      "devices": 6,
+      "elapsed_seconds": 164.86854425817728,
+      "ended_at": 1793691754.458016,
+      "ended_monotonic": 8462704.529227616,
+      "gpu_seconds": 989.2112655490637,
+      "identity": {
+        "attempt": 1,
+        "config_sha256": "dd684fa76dec09668c93aa951c31910e0976572bca6a0dbc6a8279c8324e3778",
+        "gpu_uuids": [
+          "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+          "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+          "GPU-5a956ef1-5f15-8a3b-7055-02da1d96da75",
+          "GPU-d3c1776a-33b0-8800-0ed7-431fc605ba83",
+          "GPU-837bc934-205d-1796-b72f-0141a8855565",
+          "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529"
+        ],
+        "run_id": "d20261103-quality-wan21-4f0e5ff-s201-smoke-curvature",
+        "source_sha256": "f464ad8809b7c6569de60b701eac2c68c0b0d61c7962aff4f95ab603f486d1a6"
+      },
+      "phase": "cluster",
+      "repair": false,
+      "session_id": "8bfe261853aa9b6f8d205d2562c3bb8d",
+      "started_at": 1793691589.5894942,
+      "started_monotonic": 8462539.660683358,
+      "status": "completed",
+      "supervisor_pid": 16060
+    },
+    {
+      "cleanup_verified": true,
+      "deadline_monotonic": 8469925.252473328,
+      "devices": 6,
+      "elapsed_seconds": 123.30506406724453,
+      "ended_at": 1793691898.4863255,
+      "ended_monotonic": 8462848.557537396,
+      "gpu_seconds": 739.8303844034672,
+      "identity": {
+        "attempt": 1,
+        "config_sha256": "d55445d72714d2e7b44a982fb284eb80c8283bddde661381bd33933cc8434a09",
+        "gpu_uuids": [
+          "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+          "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+          "GPU-5a956ef1-5f15-8a3b-7055-02da1d96da75",
+          "GPU-d3c1776a-33b0-8800-0ed7-431fc605ba83",
+          "GPU-837bc934-205d-1796-b72f-0141a8855565",
+          "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529"
+        ],
+        "run_id": "d20261103-quality-wan21-4f0e5ff-s201-smoke-mixed-exact",
+        "source_sha256": "f464ad8809b7c6569de60b701eac2c68c0b0d61c7962aff4f95ab603f486d1a6"
+      },
+      "phase": "cluster",
+      "repair": false,
+      "session_id": "2d31c2f80c2064be98a76d957266b1c2",
+      "started_at": 1793691775.1812844,
+      "started_monotonic": 8462725.252473328,
+      "status": "completed",
+      "supervisor_pid": 18169
+    },
+    {
+      "cleanup_verified": true,
+      "deadline_monotonic": 8470057.467392579,
+      "devices": 6,
+      "elapsed_seconds": 122.56365093775094,
+      "ended_at": 1793692029.9598327,
+      "ended_monotonic": 8462980.031043516,
+      "gpu_seconds": 735.3819056265056,
+      "identity": {
+        "attempt": 1,
+        "config_sha256": "9fd9a850f1e4adb5e71136cec01629f2f6826521d7a631a91bd5d2169d12d16e",
+        "gpu_uuids": [
+          "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+          "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+          "GPU-5a956ef1-5f15-8a3b-7055-02da1d96da75",
+          "GPU-d3c1776a-33b0-8800-0ed7-431fc605ba83",
+          "GPU-837bc934-205d-1796-b72f-0141a8855565",
+          "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529"
+        ],
+        "run_id": "d20261103-quality-wan21-4f0e5ff-s201-smoke-mixed-fold-fixed7",
+        "source_sha256": "f464ad8809b7c6569de60b701eac2c68c0b0d61c7962aff4f95ab603f486d1a6"
+      },
+      "phase": "cluster",
+      "repair": false,
+      "session_id": "f0ef3a90ca2a4a290d2748664738045b",
+      "started_at": 1793691907.3962069,
+      "started_monotonic": 8462857.467392579,
+      "status": "completed",
+      "supervisor_pid": 19932
+    },
+    {
+      "cleanup_verified": true,
+      "deadline_monotonic": 8470187.94363091,
+      "devices": 6,
+      "elapsed_seconds": 121.25729838199914,
+      "ended_at": 1793692159.1297183,
+      "ended_monotonic": 8463109.200929292,
+      "gpu_seconds": 727.5437902919948,
+      "identity": {
+        "attempt": 1,
+        "config_sha256": "973a722a9c804f547ad0cb66ad948346640710a2e856d3a505296f99d7e6aa47",
+        "gpu_uuids": [
+          "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+          "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+          "GPU-5a956ef1-5f15-8a3b-7055-02da1d96da75",
+          "GPU-d3c1776a-33b0-8800-0ed7-431fc605ba83",
+          "GPU-837bc934-205d-1796-b72f-0141a8855565",
+          "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529"
+        ],
+        "run_id": "d20261103-quality-wan21-4f0e5ff-s201-smoke-mixed-fission-fixed7",
+        "source_sha256": "f464ad8809b7c6569de60b701eac2c68c0b0d61c7962aff4f95ab603f486d1a6"
+      },
+      "phase": "cluster",
+      "repair": false,
+      "session_id": "553860b61ff58cc7650fec0a171b1033",
+      "started_at": 1793692037.872448,
+      "started_monotonic": 8462987.94363091,
+      "status": "completed",
+      "supervisor_pid": 21695
+    },
+    {
+      "cleanup_verified": true,
+      "deadline_monotonic": 8470317.03037197,
+      "devices": 6,
+      "elapsed_seconds": 124.2873564939946,
+      "ended_at": 1793692291.2465162,
+      "ended_monotonic": 8463241.317728464,
+      "gpu_seconds": 745.7241389639676,
+      "identity": {
+        "attempt": 1,
+        "config_sha256": "096a885e295c1202409b748729681c5e994e930f1fff9d230a9c1289b669c64b",
+        "gpu_uuids": [
+          "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+          "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+          "GPU-5a956ef1-5f15-8a3b-7055-02da1d96da75",
+          "GPU-d3c1776a-33b0-8800-0ed7-431fc605ba83",
+          "GPU-837bc934-205d-1796-b72f-0141a8855565",
+          "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529"
+        ],
+        "run_id": "d20261103-quality-wan21-4f0e5ff-s201-smoke-mixed-fission-curvature",
+        "source_sha256": "f464ad8809b7c6569de60b701eac2c68c0b0d61c7962aff4f95ab603f486d1a6"
+      },
+      "phase": "cluster",
+      "repair": false,
+      "session_id": "63a3bc5f0ddfada4b8f05fe0e6724870",
+      "started_at": 1793692166.9591942,
+      "started_monotonic": 8463117.03037197,
+      "status": "completed",
+      "supervisor_pid": 23422
+    }
+  ],
+  "used_gpu_seconds": 5875.15986109525,
+  "used_regular_gpu_seconds": 5875.15986109525,
+  "used_repair_gpu_seconds": 0.0
+}

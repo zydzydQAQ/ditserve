@@ -1,0 +1,263 @@
+{
+  "schema": "ditserve.hetero.real_verification_suite.v1",
+  "device_name": "NVIDIA A100-PCIE-40GB",
+  "exp1_tier0_memory_and_switch": {
+    "provenance": "measured_on_a100_pcie_40gb",
+    "module_footprints": {
+      "wan_umt5_xxl_fp32_mb": 21670.95,
+      "wan_umt5_xxl_fp32_gb": 21.163,
+      "wan_umt5_xxl_bf16_equiv_gb": 10.582,
+      "wan_umt5_params_b": 5.681,
+      "wan_transformer_3d_fp16_mb": 2707.02,
+      "wan_transformer_3d_fp16_gb": 2.644,
+      "wan_transformer_params_b": 1.419,
+      "wan_vae_3d_fp32_mb": 484.06,
+      "wan_vae_3d_bf16_mb": 242.03,
+      "sd35_clip_l_bf16_mb": 235.84,
+      "sd35_clip_g_bf16_mb": 1324.96,
+      "sd35_t5_xxl_bf16_mb": 9083.39,
+      "sd35_t5_xxl_bf16_gb": 8.87,
+      "sd35_mmdit_transformer_bf16_mb": 4710.51,
+      "sd35_mmdit_transformer_bf16_gb": 4.6,
+      "sd35_vae_2d_bf16_mb": 159.87,
+      "combined_dit_backbones_gb": 7.244,
+      "tier0_permanent_resident_mb": 9380.24,
+      "tier0_permanent_resident_gb": 9.16,
+      "tier0_measured_cuda_allocated_mb": 9454.58,
+      "full_undecoupled_weights_gb": 39.43,
+      "encoder_weight_fraction_pct": 80.03
+    },
+    "switch_latencies_ms": {
+      "cold_wan_to_sd35_incl_t5_ms": 4720.02,
+      "cold_sd35_to_wan_incl_t5_ms": 9501.34,
+      "cold_full_roundtrip_swap_ms": 14221.36,
+      "cold_oneway_mean_swap_ms": 7110.68,
+      "cold_backbone_only_oneway_swap_ms": 2186.87,
+      "hot_pinned_offload_ms": 4.484,
+      "hot_pinned_prefetch_ms": 4.1,
+      "hot_offload_plus_prefetch_ms": 8.584,
+      "hot_overlapped_resume_wait_ms": 0.65,
+      "state_payload_mb": 13.71,
+      "speedup_roundtrip_vs_hot": 1656.8,
+      "speedup_oneway_vs_hot": 828.4
+    },
+    "wan_cpu_prompt_encode_ms": 15448.12
+  },
+  "exp2_sd35_hooked_mmdit_cache": {
+    "provenance": "measured_on_a100_pcie_40gb",
+    "modes": [
+      {
+        "mode": "SDPA_MATH (Baseline BS=1)",
+        "batch_size": 1,
+        "cache": false,
+        "reused_steps": 0,
+        "per_image_ms": 2301.05,
+        "speedup": 1.0,
+        "psnr_db": 99.99,
+        "ssim": 1.0
+      },
+      {
+        "mode": "SDPA_FLASH + ChannelsLast-2DVAE (BS=1, Exact)",
+        "batch_size": 1,
+        "cache": false,
+        "reused_steps": 0,
+        "per_image_ms": 806.34,
+        "speedup": 2.854,
+        "psnr_db": 41.44,
+        "ssim": 0.98578
+      },
+      {
+        "mode": "SDPA_FLASH + Hooked MM-DiT-DBCache (BS=1, tau=0.22)",
+        "batch_size": 1,
+        "cache": true,
+        "reused_steps": 4,
+        "per_image_ms": 667.18,
+        "speedup": 3.449,
+        "psnr_db": 29.71,
+        "ssim": 0.91052
+      },
+      {
+        "mode": "MicroBatch-BS4 + SDPA_FLASH (4 Prompts, Exact)",
+        "batch_size": 4,
+        "cache": false,
+        "reused_steps": 0,
+        "per_image_ms": 714.15,
+        "speedup": 3.222,
+        "psnr_db": 99.99,
+        "ssim": 1.0
+      },
+      {
+        "mode": "MicroBatch-BS4 + SDPA_FLASH + Hooked MM-DiT-DBCache (4 Prompts, tau=0.22)",
+        "batch_size": 4,
+        "cache": true,
+        "reused_steps": 4,
+        "per_image_ms": 544.19,
+        "speedup": 4.228,
+        "psnr_db": 25.27,
+        "ssim": 0.86291
+      }
+    ]
+  },
+  "exp3_unified_1xa100_replay": {
+    "provenance": "measured_on_a100_pcie_40gb_unified_trace_online_clock",
+    "trace": {
+      "video_arrival_ms": 0.0,
+      "image_arrivals_ms": [
+        1200.0,
+        1350.0,
+        3500.0
+      ],
+      "image_slo_ms": 4500.0,
+      "video_slo_ms": 17000.0,
+      "wan_cpu_prompt_encode_ms": 19973.69
+    },
+    "systems": [
+      {
+        "system": "Vanilla-xDiT (Run-to-Comp FCFS)",
+        "image_latencies_ms": [
+          13482.1,
+          15674.8,
+          15867.7
+        ],
+        "image_mean_ms": 15008.2,
+        "image_p99_ms": 15867.7,
+        "video_latency_ms": 12339.7,
+        "video_latency_incl_cpu_encode_ms": 32313.3,
+        "peak_hbm_mb": 17788.4,
+        "image_slo_pct": 0.0,
+        "video_slo_pct": 100.0,
+        "total_slo_pct": 25.0,
+        "preemption_points": [
+          "none (non-preemptive)"
+        ],
+        "notes": "Wan runs 20 steps + FP32 3D-VAE to completion before serving queued T2I requests sequentially."
+      },
+      {
+        "system": "GenServe-40GB (Step-Preempt + Cold Swap)",
+        "image_latencies_ms": [
+          5884.1,
+          8080.4,
+          14454.6
+        ],
+        "image_mean_ms": 9473.0,
+        "image_p99_ms": 14454.6,
+        "video_latency_ms": 30276.6,
+        "video_latency_incl_cpu_encode_ms": 50250.3,
+        "peak_hbm_mb": 13042.7,
+        "image_slo_pct": 0.0,
+        "video_slo_pct": 0.0,
+        "total_slo_pct": 0.0,
+        "preemption_points": [
+          "step=3@1675ms(imgs=[0, 1])",
+          "step=4@13462ms(imgs=[2])"
+        ],
+        "notes": "Online step-boundary preemption with real PCIe weight swap (.to('cpu')/.to('cuda:0')) between Wan and SD3.5."
+      },
+      {
+        "system": "HeteroDiT-v1 (Exact, Opts #1-#3)",
+        "image_latencies_ms": [
+          2500.9,
+          7096.7,
+          4946.7
+        ],
+        "image_mean_ms": 4848.1,
+        "image_p99_ms": 7096.7,
+        "video_latency_ms": 19278.7,
+        "video_latency_incl_cpu_encode_ms": 39252.4,
+        "peak_hbm_mb": 17779.4,
+        "image_slo_pct": 33.3,
+        "video_slo_pct": 0.0,
+        "total_slo_pct": 25.0,
+        "preemption_points": [
+          "blocks=140@1339ms(imgs=[0])",
+          "blocks=160@3876ms(imgs=[1, 2])"
+        ],
+        "notes": "Online 20-block sub-step preemption + Tier-0 permanent HBM residency + Pinned state prefetch."
+      },
+      {
+        "system": "HeteroDiT-v1 (Approx, Opts #1-#4)",
+        "image_latencies_ms": [
+          5116.2,
+          4966.2,
+          5754.2
+        ],
+        "image_mean_ms": 5278.9,
+        "image_p99_ms": 5754.2,
+        "video_latency_ms": 17487.5,
+        "video_latency_incl_cpu_encode_ms": 37461.2,
+        "peak_hbm_mb": 17873.8,
+        "image_slo_pct": 0.0,
+        "video_slo_pct": 0.0,
+        "total_slo_pct": 0.0,
+        "preemption_points": [
+          "step=3@1658ms(imgs=[0, 1])",
+          "step=4@6862ms(imgs=[2])"
+        ],
+        "notes": "Adds laxity-gated zero-order DBCache (tau=0.16) to recover video slack after image preemptions."
+      },
+      {
+        "system": "HeteroDiT-v2 (Opts #1-#8)",
+        "image_latencies_ms": [
+          1928.0,
+          1778.0,
+          970.5
+        ],
+        "image_mean_ms": 1558.8,
+        "image_p99_ms": 1928.0,
+        "video_latency_ms": 12755.2,
+        "video_latency_incl_cpu_encode_ms": 32728.9,
+        "peak_hbm_mb": 18102.7,
+        "image_slo_pct": 100.0,
+        "video_slo_pct": 100.0,
+        "total_slo_pct": 100.0,
+        "preemption_points": [
+          "step=3@1662ms(imgs=[0, 1])",
+          "step=4@3675ms(imgs=[2])"
+        ],
+        "notes": "Adds SD3.5 SDPA_FLASH multi-prompt micro-batching and 1st-order Taylor residual compensation."
+      },
+      {
+        "system": "HeteroDiT-v3 (All Optimizations)",
+        "image_latencies_ms": [
+          1624.9,
+          1474.9,
+          1061.9
+        ],
+        "image_mean_ms": 1387.3,
+        "image_p99_ms": 1624.9,
+        "video_latency_ms": 10856.1,
+        "video_latency_incl_cpu_encode_ms": 30829.8,
+        "peak_hbm_mb": 14353.3,
+        "image_slo_pct": 100.0,
+        "video_slo_pct": 100.0,
+        "total_slo_pct": 100.0,
+        "preemption_points": [
+          "step=3@1666ms(imgs=[0, 1])",
+          "step=5@3924ms(imgs=[2])"
+        ],
+        "notes": "Adds late-step Asymmetric CFG reuse, BF16 Tensor-Core 3D-VAE decode, and hooked SD3.5 MM-DiT block cache."
+      },
+      {
+        "system": "HeteroDiT-Joint-v4 (Slack-Coalesced BS2 + Extended-CFG [10..18] + Taylor + SD3.5-Cache)",
+        "image_latencies_ms": [
+          1622.8,
+          1472.8,
+          1066.4
+        ],
+        "image_mean_ms": 1387.3,
+        "image_p99_ms": 1622.8,
+        "video_latency_ms": 10102.4,
+        "video_latency_incl_cpu_encode_ms": 30076.1,
+        "peak_hbm_mb": 14586.9,
+        "image_slo_pct": 100.0,
+        "video_slo_pct": 100.0,
+        "total_slo_pct": 100.0,
+        "preemption_points": [
+          "step=3@1666ms(imgs=[0, 1])",
+          "step=5@3923ms(imgs=[2])"
+        ],
+        "notes": "Combines slack-aware micro-batch coalescing, extended late-step CFG reuse [10..18], Taylor-DBCache, hooked SD3.5 cache, and BF16 3D-VAE."
+      }
+    ]
+  }
+}

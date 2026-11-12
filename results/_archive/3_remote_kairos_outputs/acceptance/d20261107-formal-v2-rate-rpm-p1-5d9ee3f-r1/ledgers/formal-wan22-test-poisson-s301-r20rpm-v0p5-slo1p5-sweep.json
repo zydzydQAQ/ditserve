@@ -1,0 +1,55 @@
+{
+  "active": null,
+  "allocation_id": "3b54a6b448b219a85fa1c481b74f93d3",
+  "limits": {
+    "carry": "none",
+    "phase_gpu_seconds": {},
+    "phase_order": [
+      "cluster"
+    ],
+    "repair_reserve_gpu_seconds": 0.0,
+    "total_gpu_seconds": 428560.0
+  },
+  "phase_cursor": 0,
+  "phase_usage": {
+    "cluster": 45723.709261119366
+  },
+  "schema_version": "ditserve.budget.v1",
+  "sessions": [
+    {
+      "cleanup_verified": true,
+      "deadline_monotonic": 8863984.900713762,
+      "devices": 8,
+      "elapsed_seconds": 5715.463657639921,
+      "ended_at": 1794045191.2946427,
+      "ended_monotonic": 8816130.364371402,
+      "gpu_seconds": 45723.709261119366,
+      "identity": {
+        "attempt": 1,
+        "config_sha256": "7c32b7d8ac3db3fc8f5cef55a6cbf7ad9e21cf515277cae2a655ee23e6a4221a",
+        "gpu_uuids": [
+          "GPU-afb5ebb2-a584-abce-e912-6cd50477f4bb",
+          "GPU-c2195fc4-0579-e149-dcd5-8f912dfb44c2",
+          "GPU-a331a424-15be-fa45-6b08-d951d2dce277",
+          "GPU-6c6892f8-1aa0-4c8f-d1ec-bc514adcbd42",
+          "GPU-9bd9082d-b7d4-f4de-cd0a-5788492a5247",
+          "GPU-bb1751f0-c0e1-a4e8-ae83-008e4246cced",
+          "GPU-979da027-ad90-4f70-6203-0e86fce22d4c",
+          "GPU-e6a7b9a6-b668-5e8d-5989-b9934c468d94"
+        ],
+        "run_id": "d20261107-formal-v2-rate-rpm-p1-5d9ee3f-r1-rate-20",
+        "source_sha256": "30edfbb081196b2ba6e0b83d2d49d9b36cf39603b291798078eca7377c9a59de"
+      },
+      "phase": "cluster",
+      "repair": false,
+      "session_id": "aa19112503416ed893d5fa92180b183e",
+      "started_at": 1794039475.8309789,
+      "started_monotonic": 8810414.900713762,
+      "status": "completed",
+      "supervisor_pid": 121456
+    }
+  ],
+  "used_gpu_seconds": 45723.709261119366,
+  "used_regular_gpu_seconds": 45723.709261119366,
+  "used_repair_gpu_seconds": 0.0
+}

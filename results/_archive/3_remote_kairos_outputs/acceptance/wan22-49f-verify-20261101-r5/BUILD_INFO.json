@@ -1,0 +1,10 @@
+{
+ "commit": "0b68f3485460d914cd1e733444dfa7f9d326e037",
+ "subject": "Fix decode_chunks latent frame count for 49-frame and 33-frame video workloads",
+ "built_utc": "2026-11-01T05:38:48+00:00",
+ "builder_image": "local-cmake-install",
+ "tested_runtime_image": "192.168.1.114:30500/jjjkairos/ditserve:xdit-dev-016e1ca-slim",
+ "core_sha256": "ab7cfbbc4a88fdf5f82a53e595e907af89d1ba4523a9634694ff7d01b5ae470e",
+ "files": 258,
+ "bytes": 4313383
+}

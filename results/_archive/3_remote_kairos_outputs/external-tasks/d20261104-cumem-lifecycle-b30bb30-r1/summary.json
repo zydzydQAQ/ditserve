@@ -1,0 +1,117 @@
+{
+  "schema": "ditserve.external-task.v1",
+  "run_id": "d20261104-cumem-lifecycle-b30bb30-r1",
+  "binding": {
+    "commit": "b30bb304c2c791fb755c172b0272afd72b403c6b",
+    "manifest_sha256": "39f0a607e5d7df98bb6ac6caa020a3bd4dd24318ce80b941cb7f12e4d40e3743",
+    "job_spec_sha256": "74ed315e3c14ed981a6c06b1ca2d9be4062f78d76ba1f4ecd54fdf2922a96495",
+    "build_info_sha256": "76a70cb4246b15b0e82c3749841b81cb79e8f0692da812c19831108d27e7e0a6",
+    "core_sha256": "e358e29d1a3ca238bbf2b7f981db71e951519715aedf46d58454738aabcbd42b",
+    "worker_sources_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a",
+    "gfc_sources_sha256": "e6c7f47a26d02a8091463bf9cb8ca58835c2b07c3c2cd4827d1b319c3bebf6e6",
+    "image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+    "image_identity_scope": "digest-pinned submitted spec, not independent pod imageID",
+    "probe_plan_sha256": "115ad81d33aff4542c8415b87da9fe432bc6e656196f67f47e179a4881289b47"
+  },
+  "allocation_gpus": 1,
+  "initial_storage": {
+    "used_gib": 779,
+    "percent": 77
+  },
+  "final_storage": {
+    "used_gib": 779,
+    "percent": 77
+  },
+  "task": "r3-native-cumem-explicit-pool-lifetime-diagnostic",
+  "execution": {
+    "argv": [
+      "/opt/venv/bin/python",
+      "-B",
+      "/shared/data/DITSERVE/external-probes/cumem-lifecycle-b30bb30-r1/external_cumem_lifecycle.py",
+      "--output-dir",
+      "/shared/output/DITSERVE/external-tasks/d20261104-cumem-lifecycle-b30bb30-r1/result"
+    ],
+    "returncode": 0,
+    "timed_out": false,
+    "seconds": 8.219663921743631,
+    "stderr_tail": "",
+    "stdout_tail": "build=51740c0 core=e358e29d1a3ca238bbf2b7f981db71e951519715aedf46d58454738aabcbd42b image=192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05\nDITSERVE_CUMEM_STAGE={\"stage\": \"import_actual_r3_allocator\", \"monotonic_ns\": 8524079611609260}\nDITSERVE_CUMEM_STAGE={\"stage\": \"original_allocation_sleep_wake\", \"monotonic_ns\": 8524085886548358}\nINFO 11-04 00:45:36 [cumem.py:216] CuMemAllocator: sleep freed 0.00 GiB memory in total, of which 0.00 GiB is backed up in CPU and the rest 0.00 GiB is discarded directly.\nDITSERVE_CUMEM_STAGE={\"stage\": \"drop_tensor_references_and_synchronize\", \"monotonic_ns\": 8524086293618045}\nDITSERVE_CUMEM_STAGE={\"stage\": \"release_mempools_keep_allocator_wrappers\", \"monotonic_ns\": 8524086384595831}\nDITSERVE_CUMEM_STAGE={\"stage\": \"native_allocation_reclaimed_release_allocator_wrappers\", \"monotonic_ns\": 8524086482028560}\nDITSERVE_CUMEM_STAGE={\"stage\": \"normal_interpreter_exit_pending\", \"monotonic_ns\": 8524086580065586}\n{\"summary\": \"/shared/output/DITSERVE/external-tasks/d20261104-cumem-lifecycle-b30bb30-r1/result/summary.json\", \"sha256\": \"4bb42d3f5b0d683ce2f36e069b35d407c2612c36d1d6d4a96e33c4619e212031\", \"status\": \"cleanup_completed\", \"normal_exit_not_yet_observed\": true}\n",
+    "json_output": false,
+    "child_summary_path": "/shared/output/DITSERVE/external-tasks/d20261104-cumem-lifecycle-b30bb30-r1/result/summary.json",
+    "child_summary_sha256": "4bb42d3f5b0d683ce2f36e069b35d407c2612c36d1d6d4a96e33c4619e212031",
+    "child_summary": {
+      "schema": "ditserve.external-cumem-lifecycle.v1",
+      "status": "cleanup_completed",
+      "stage": "normal_interpreter_exit_pending",
+      "binding": {
+        "commit": "b30bb304c2c791fb755c172b0272afd72b403c6b",
+        "manifest_sha256": "39f0a607e5d7df98bb6ac6caa020a3bd4dd24318ce80b941cb7f12e4d40e3743",
+        "job_spec_sha256": "74ed315e3c14ed981a6c06b1ca2d9be4062f78d76ba1f4ecd54fdf2922a96495",
+        "build_info_sha256": "76a70cb4246b15b0e82c3749841b81cb79e8f0692da812c19831108d27e7e0a6",
+        "core_sha256": "e358e29d1a3ca238bbf2b7f981db71e951519715aedf46d58454738aabcbd42b",
+        "worker_sources_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a",
+        "gfc_sources_sha256": "e6c7f47a26d02a8091463bf9cb8ca58835c2b07c3c2cd4827d1b319c3bebf6e6",
+        "image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+        "image_identity_scope": "digest-pinned submitted spec, not independent pod imageID",
+        "probe_plan_sha256": "115ad81d33aff4542c8415b87da9fe432bc6e656196f67f47e179a4881289b47"
+      },
+      "initial_storage": {
+        "used_gib": 779,
+        "percent": 77
+      },
+      "qualification_eligible": false,
+      "allows": [],
+      "full_image_validation_passed": false,
+      "performance_measurements": false,
+      "hypothesis": "late pool/allocator finalization order; no native fault stack from original r1",
+      "scope": "allocation/sleep/wake plus explicit native pool cleanup only; normal process exit requires the outer receipt; GF dependencies remain unvalidated",
+      "allocator_source_sha256": "e3301b98d8d9c6438584afffc8a2ea2d4b8233894c191ab10c3c25799d618512",
+      "operations": {
+        "status": "passed",
+        "elements": 4096,
+        "sleep_wake_exact": true,
+        "native_extension": {
+          "path": "/opt/venv/lib/python3.10/site-packages/vllm/cumem_allocator.abi3.so",
+          "sha256": "49b6f9e4cc443732727aa842e124309b57e7e361d53a3091d0da96a6f5a48c96",
+          "native": true
+        },
+        "allocation_tracked": true,
+        "allocation_tag": "ditserve_image_probe",
+        "tensor_pointer": 131239354826752,
+        "tensor_bytes": 16384,
+        "allocation_base": 131239354826752,
+        "allocation_bytes": 2097152,
+        "allocation_device": 0,
+        "cpu_backup_bytes": 2097152,
+        "cpu_backup_observed_after_sleep": true,
+        "cpu_backup_cleared_after_wake": true,
+        "usage_bytes": {
+          "before": 0,
+          "allocated": 2097152,
+          "asleep": 2097152,
+          "awake": 2097152
+        },
+        "usage_scope": "Tracked reserved bytes, not physical resident bytes while asleep."
+      },
+      "cleanup": {
+        "pool_count": 1,
+        "tracked_allocations_before": 1,
+        "tracked_allocations_after": 0,
+        "usage_before_bytes": 2097152,
+        "usage_after_bytes": 0,
+        "inactive_segments_before": 1,
+        "pool_released_before_allocator": true,
+        "native_free_callback_observed": true,
+        "package_sources_modified": false
+      },
+      "normal_process_exit_requires_outer_receipt": true,
+      "final_storage": {
+        "used_gib": 779,
+        "percent": 77
+      }
+    }
+  },
+  "qualification_eligible": false,
+  "allows": [],
+  "scope": "Native implementation diagnostic; not full-system serving or quality qualification."
+}

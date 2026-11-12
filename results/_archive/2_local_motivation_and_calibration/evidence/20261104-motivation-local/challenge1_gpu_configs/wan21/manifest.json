@@ -1,0 +1,90 @@
+{
+  "configs": {
+    "ditserve": {
+      "forms": [
+        "sp1",
+        "cfg2",
+        "sp2",
+        "cfg2sp2",
+        "sp3",
+        "cfg2sp3",
+        "sp4",
+        "cfg2sp4",
+        "sp6"
+      ],
+      "path": "/mnt/e/000_code/zyd-2026/.local/ditserve-kairos-rewrite-runtime/evidence/20261104-motivation-local/challenge1_gpu_configs/wan21/c1-wan21-ditserve-s301-l0p8-slo0p65.json",
+      "policy": "ditserve",
+      "sha256": "c7e0fbc3b03e4d0866a95fef52d46b12cf4cfba742989b515a537fec74b27ee0"
+    },
+    "edf-bestfit": {
+      "forms": [
+        "sp1",
+        "cfg2",
+        "sp2",
+        "cfg2sp2",
+        "sp3",
+        "cfg2sp3",
+        "sp4",
+        "cfg2sp4",
+        "sp6"
+      ],
+      "path": "/mnt/e/000_code/zyd-2026/.local/ditserve-kairos-rewrite-runtime/evidence/20261104-motivation-local/challenge1_gpu_configs/wan21/c1-wan21-edf-bestfit-s301-l0p8-slo0p65.json",
+      "policy": "edf-bestfit",
+      "sha256": "8b8b832fb03d958f5e0c38d84e83f4b4b1fac793c405b855cf9cac81f633b6dc"
+    },
+    "sbp-esp": {
+      "forms": [
+        "sp1",
+        "cfg2",
+        "sp2",
+        "cfg2sp2",
+        "sp3",
+        "cfg2sp3",
+        "sp4",
+        "cfg2sp4",
+        "sp6"
+      ],
+      "path": "/mnt/e/000_code/zyd-2026/.local/ditserve-kairos-rewrite-runtime/evidence/20261104-motivation-local/challenge1_gpu_configs/wan21/c1-wan21-sbp-esp-s301-l0p8-slo0p65.json",
+      "policy": "sbp-esp",
+      "sha256": "3d76a2a8590d206363fa6615be5e4dcfe41fb572091eafe66599ad6303c9dfec"
+    },
+    "static-cfg2sp4": {
+      "forms": [
+        "sp1",
+        "cfg2",
+        "sp2",
+        "cfg2sp2",
+        "sp3",
+        "cfg2sp3",
+        "sp4",
+        "cfg2sp4",
+        "sp6"
+      ],
+      "path": "/mnt/e/000_code/zyd-2026/.local/ditserve-kairos-rewrite-runtime/evidence/20261104-motivation-local/challenge1_gpu_configs/wan21/c1-wan21-static-cfg2sp4-s301-l0p8-slo0p65.json",
+      "policy": "static-cfg2sp4",
+      "sha256": "2bf2e3ba9f4239ce055e09857c3d7fe08480eda5f842e402deeb43b4475a9130"
+    },
+    "tetriserve": {
+      "forms": [
+        "sp1",
+        "cfg2",
+        "sp2",
+        "cfg2sp2",
+        "sp3",
+        "cfg2sp3",
+        "sp4",
+        "cfg2sp4",
+        "sp6"
+      ],
+      "path": "/mnt/e/000_code/zyd-2026/.local/ditserve-kairos-rewrite-runtime/evidence/20261104-motivation-local/challenge1_gpu_configs/wan21/c1-wan21-tetriserve-s301-l0p8-slo0p65.json",
+      "policy": "tetriserve",
+      "sha256": "674d4aec6d0ead6917fd4e56ccf45d39c167106d198fbb3a705f6f904d98acf5"
+    }
+  },
+  "gpus": 8,
+  "load": 0.8,
+  "model": "wan21",
+  "schema": "ditserve.challenge1-gpu-configs.v1",
+  "seed": 301,
+  "video_slo_scale": 0.65
+}

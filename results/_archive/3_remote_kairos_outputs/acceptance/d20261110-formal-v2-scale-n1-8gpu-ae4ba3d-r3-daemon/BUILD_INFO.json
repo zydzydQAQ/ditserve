@@ -1,0 +1,17 @@
+{
+ "commit": "ae4ba3d9bf36c88989c9456bed73b112e6435282",
+ "subject": "Fix 16-GPU warmup serialization, remote worker env forwarding, and weak-scaling arrival window",
+ "built_utc": "2026-11-10T08:59:41+00:00",
+ "builder_image": "cluster-cmake-install",
+ "runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "tested_runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "core_sha256": "fcbb01dcb9c27f0dc70211255fe6478e24cfaa2963d89b6b4fbca2f8065cd654",
+ "runtime_smoke": "passed_cluster",
+ "local_checks": [
+  "cmake",
+  "ctest",
+  "installed_doctor"
+ ],
+ "files": 269,
+ "bytes": 5483077
+}

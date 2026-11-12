@@ -1,0 +1,17 @@
+{
+  "schema": "ditserve.runtime-smoke.v1",
+  "status": "passed",
+  "run_id": "d20261102-contract-afa324f-r1",
+  "commit": "afa324f97395247f330f2c8e8b8e92be17060f4b",
+  "core_sha256": "1e9b86f8936387c9577b1fc9a582bd079b6b4da6ffa0cac7fa6add97159556dc",
+  "test_revision": "afa324f",
+  "previous_contract": null,
+  "runtime_image": "192.168.1.114:30500/jjjkairos/ditserve:xdit-dev-016e1ca-slim",
+  "torch": "2.10.0+cu126",
+  "cuda": "12.6",
+  "gpu": "NVIDIA A100-PCIE-40GB",
+  "devices": 1,
+  "sum": 524800.0,
+  "matmul_value": 32,
+  "scope": "CUDA arithmetic and deployed runtime; model and serving qualification pending"
+}

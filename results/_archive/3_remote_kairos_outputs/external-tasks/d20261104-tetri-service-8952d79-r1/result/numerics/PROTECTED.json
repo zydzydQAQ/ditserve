@@ -1,0 +1,9 @@
+{
+  "automatic_cleanup_allowed": false,
+  "dependencies": [
+    "raw service/reference numerical comparison",
+    "independent acceptance"
+  ],
+  "plan_sha256": "ccd612d42ef58386f769d6b823a7d7897a5e6a4f9147d109eec9bfc0803a0226",
+  "schema": "ditserve.protected-numerical-work.v1"
+}

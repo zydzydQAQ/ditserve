@@ -1,0 +1,392 @@
+{
+  "allows": [],
+  "completion_payload_is_synthetic": true,
+  "cost_fixture_sha256": "fca7642f3e009b967543bc31dc0fd637a66ffe09f590db7a1559cc65e73ed8f1",
+  "costs_are_measurements": false,
+  "derived_manifest_sha256": "5ab5b86ee32a96039a50bcaed54bf10ce1cdc5415cac473bc4504375ce8485fb",
+  "model_loaded": false,
+  "native_scheduler_sha256": "44eb6d060ff1b1fb4efa36304f35af97210198fbb0b2b966eb82c0ce03a8153e",
+  "native_tracker_sha256": "8fd986cf384bd70a874277027abec2095870d591e25bddd864e75dd79f382f24",
+  "qualification_eligible": false,
+  "records": [
+    {
+      "batch": 1,
+      "batch_metadata_aligned": true,
+      "complete_steps_covered": true,
+      "completed_steps": {
+        "1": 10
+      },
+      "cpp_optimizer_used": false,
+      "cursor_contiguous": true,
+      "final_completed_steps": {
+        "1": 28
+      },
+      "first": [
+        {
+          "batch": 1,
+          "end": 10,
+          "final": [
+            false
+          ],
+          "origin_steps": [
+            28
+          ],
+          "prompts": [
+            "fox"
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "start": 0,
+          "steps": 10,
+          "sub_req_ids": [
+            1
+          ]
+        }
+      ],
+      "rounds": [
+        [
+          {
+            "batch": 1,
+            "end": 10,
+            "final": [
+              false
+            ],
+            "origin_steps": [
+              28
+            ],
+            "prompts": [
+              "fox"
+            ],
+            "ranks": [
+              0,
+              1
+            ],
+            "start": 0,
+            "steps": 10,
+            "sub_req_ids": [
+              1
+            ]
+          }
+        ],
+        [
+          {
+            "batch": 1,
+            "end": 20,
+            "final": [
+              false
+            ],
+            "origin_steps": [
+              28
+            ],
+            "prompts": [
+              "fox"
+            ],
+            "ranks": [
+              0,
+              1
+            ],
+            "start": 10,
+            "steps": 10,
+            "sub_req_ids": [
+              1
+            ]
+          }
+        ],
+        [
+          {
+            "batch": 1,
+            "end": 28,
+            "final": [
+              true
+            ],
+            "origin_steps": [
+              28
+            ],
+            "prompts": [
+              "fox"
+            ],
+            "ranks": [
+              0,
+              1
+            ],
+            "start": 20,
+            "steps": 8,
+            "sub_req_ids": [
+              1
+            ]
+          }
+        ]
+      ],
+      "second": [
+        {
+          "batch": 1,
+          "end": 20,
+          "final": [
+            false
+          ],
+          "origin_steps": [
+            28
+          ],
+          "prompts": [
+            "fox"
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "start": 10,
+          "steps": 10,
+          "sub_req_ids": [
+            1
+          ]
+        }
+      ],
+      "terminal_items": 1,
+      "tracker_remaining": 0
+    },
+    {
+      "batch": 2,
+      "batch_metadata_aligned": true,
+      "complete_steps_covered": true,
+      "completed_steps": {
+        "1": 10,
+        "2": 10
+      },
+      "cpp_optimizer_used": false,
+      "cursor_contiguous": true,
+      "final_completed_steps": {
+        "1": 28,
+        "2": 28
+      },
+      "first": [
+        {
+          "batch": 1,
+          "end": 10,
+          "final": [
+            false
+          ],
+          "origin_steps": [
+            28
+          ],
+          "prompts": [
+            "fox"
+          ],
+          "ranks": [
+            0
+          ],
+          "start": 0,
+          "steps": 10,
+          "sub_req_ids": [
+            1
+          ]
+        },
+        {
+          "batch": 1,
+          "end": 10,
+          "final": [
+            false
+          ],
+          "origin_steps": [
+            28
+          ],
+          "prompts": [
+            "hare"
+          ],
+          "ranks": [
+            1
+          ],
+          "start": 0,
+          "steps": 10,
+          "sub_req_ids": [
+            2
+          ]
+        }
+      ],
+      "rounds": [
+        [
+          {
+            "batch": 1,
+            "end": 10,
+            "final": [
+              false
+            ],
+            "origin_steps": [
+              28
+            ],
+            "prompts": [
+              "fox"
+            ],
+            "ranks": [
+              0
+            ],
+            "start": 0,
+            "steps": 10,
+            "sub_req_ids": [
+              1
+            ]
+          },
+          {
+            "batch": 1,
+            "end": 10,
+            "final": [
+              false
+            ],
+            "origin_steps": [
+              28
+            ],
+            "prompts": [
+              "hare"
+            ],
+            "ranks": [
+              1
+            ],
+            "start": 0,
+            "steps": 10,
+            "sub_req_ids": [
+              2
+            ]
+          }
+        ],
+        [
+          {
+            "batch": 1,
+            "end": 20,
+            "final": [
+              false
+            ],
+            "origin_steps": [
+              28
+            ],
+            "prompts": [
+              "fox"
+            ],
+            "ranks": [
+              0
+            ],
+            "start": 10,
+            "steps": 10,
+            "sub_req_ids": [
+              1
+            ]
+          },
+          {
+            "batch": 1,
+            "end": 20,
+            "final": [
+              false
+            ],
+            "origin_steps": [
+              28
+            ],
+            "prompts": [
+              "hare"
+            ],
+            "ranks": [
+              1
+            ],
+            "start": 10,
+            "steps": 10,
+            "sub_req_ids": [
+              2
+            ]
+          }
+        ],
+        [
+          {
+            "batch": 1,
+            "end": 28,
+            "final": [
+              true
+            ],
+            "origin_steps": [
+              28
+            ],
+            "prompts": [
+              "fox"
+            ],
+            "ranks": [
+              0
+            ],
+            "start": 20,
+            "steps": 8,
+            "sub_req_ids": [
+              1
+            ]
+          },
+          {
+            "batch": 1,
+            "end": 28,
+            "final": [
+              true
+            ],
+            "origin_steps": [
+              28
+            ],
+            "prompts": [
+              "hare"
+            ],
+            "ranks": [
+              1
+            ],
+            "start": 20,
+            "steps": 8,
+            "sub_req_ids": [
+              2
+            ]
+          }
+        ]
+      ],
+      "second": [
+        {
+          "batch": 1,
+          "end": 20,
+          "final": [
+            false
+          ],
+          "origin_steps": [
+            28
+          ],
+          "prompts": [
+            "fox"
+          ],
+          "ranks": [
+            0
+          ],
+          "start": 10,
+          "steps": 10,
+          "sub_req_ids": [
+            1
+          ]
+        },
+        {
+          "batch": 1,
+          "end": 20,
+          "final": [
+            false
+          ],
+          "origin_steps": [
+            28
+          ],
+          "prompts": [
+            "hare"
+          ],
+          "ranks": [
+            1
+          ],
+          "start": 10,
+          "steps": 10,
+          "sub_req_ids": [
+            2
+          ]
+        }
+      ],
+      "terminal_items": 2,
+      "tracker_remaining": 0
+    }
+  ],
+  "schema": "ditserve.tetriserve-native-scheduler-logic.v1",
+  "status": "native_logic_observed",
+  "upstream_commit": "414ec2956c09466ccd7842fda9851511462bd42a"
+}

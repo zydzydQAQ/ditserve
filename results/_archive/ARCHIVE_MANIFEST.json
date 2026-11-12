@@ -1,0 +1,29 @@
+{
+  "schema": "ditserve.migration_archive_manifest.v1",
+  "generated_at": "2026-11-12T13:53:00+08:00",
+  "sections": {
+    "1_local_formal_v2": {
+      "files": 77,
+      "bytes": 4996608
+    },
+    "2_local_motivation_and_calibration": {
+      "files": 441,
+      "bytes": 41083344
+    },
+    "3_remote_kairos_outputs": {
+      "files": 2029,
+      "bytes": 72389784
+    },
+    "4_per_request_ledgers": {
+      "files": 70,
+      "bytes": 46168631
+    }
+  },
+  "total_archive_files": 2619,
+  "total_archive_mb": 157.01,
+  "refreshed_writing_zip": {
+    "files": 87,
+    "bytes": 5040453,
+    "mb": 4.81
+  }
+}

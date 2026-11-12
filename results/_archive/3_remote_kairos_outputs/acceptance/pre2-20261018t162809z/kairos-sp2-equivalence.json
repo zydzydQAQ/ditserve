@@ -1,0 +1,211 @@
+{
+  "schema": "ditserve.study.v1",
+  "experiment": "kairos-sp2-equivalence",
+  "note": "Whole-step Ulysses SP2 vs unsharded SP1 step worker, Flash, Wan2.1-1.3B 480x832x17, 8 steps, cache off. Finite/shape gates only; max_abs is the reported deviation.",
+  "workers": {
+    "ref": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-dd208b13-f954-864c-d65a-05fe43dc8613",
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {}
+      }
+    },
+    "0": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-dd208b13-f954-864c-d65a-05fe43dc8613",
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {}
+      }
+    },
+    "1": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-d84c993d-42a5-a56b-86cc-2ad8254c2351",
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {}
+      }
+    }
+  },
+  "budget": {
+    "limit_gpu_seconds": 2400,
+    "watchdog_seconds": 1800,
+    "repair_reserve_gpu_seconds": 0,
+    "carry": "none"
+  },
+  "phases": [
+    {
+      "id": "sp1",
+      "kind": "state",
+      "workers": [
+        "ref"
+      ],
+      "artifact_dependencies": [],
+      "actions": [
+        {
+          "op": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 8,
+            "height": 480,
+            "width": 832,
+            "frames": 17,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "ref"
+          },
+          "state_id": "ref"
+        },
+        {
+          "op": "advance",
+          "state_id": "ref",
+          "steps": 8
+        },
+        {
+          "op": "finish",
+          "state_id": "ref",
+          "output_path": "ref.npy",
+          "save_latents": true
+        },
+        {
+          "op": "release",
+          "state_id": "ref"
+        }
+      ]
+    },
+    {
+      "id": "sp2",
+      "kind": "sp",
+      "requires": [
+        "sp1"
+      ],
+      "workers": [
+        "0",
+        "1"
+      ],
+      "artifact_dependencies": [],
+      "actions": [
+        {
+          "op": "distributed",
+          "action": "init",
+          "init_method": "tcp://127.0.0.1:29501",
+          "ranks": [
+            0,
+            1
+          ]
+        },
+        {
+          "op": "distributed",
+          "action": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 8,
+            "height": 480,
+            "width": 832,
+            "frames": 17,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "sp"
+          },
+          "state_id": "sp"
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "sp",
+          "steps": 8
+        },
+        {
+          "op": "finish",
+          "state_id": "sp",
+          "output_path": "sp.npy",
+          "save_latents": true
+        },
+        {
+          "op": "evaluate",
+          "reference": "/shared/output/DITSERVE/.cache/results-work/kairos-sp2-equivalence/pre2-20261018t162809z/attempts/sp1/attempt-1/cell-0/artifacts/0/ref.latent.npy",
+          "output": "sp.latent.npy",
+          "atol": 0,
+          "rtol": 0
+        },
+        {
+          "op": "evaluate",
+          "reference": "/shared/output/DITSERVE/.cache/results-work/kairos-sp2-equivalence/pre2-20261018t162809z/attempts/sp1/attempt-1/cell-0/artifacts/0/ref.npy",
+          "output": "sp.npy",
+          "atol": 0,
+          "rtol": 0
+        },
+        {
+          "op": "release",
+          "state_id": "sp"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "/cells/0/operations/4/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/4/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/4/ranks/1/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/4/ranks/1/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/0/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/0/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/1/finite",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        },
+        {
+          "metric": "/cells/0/operations/5/ranks/1/shape_equal",
+          "op": "eq",
+          "value": true,
+          "scope": "numeric"
+        }
+      ]
+    }
+  ]
+}

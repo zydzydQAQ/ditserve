@@ -1,0 +1,7 @@
+stage,workload,stop_p50_ms,stop_p95_ms,no_preempt_overhead_pct,image_wait_ms,image_e2e_ms,image_sar_pct,sha256_parity
+P0 Dev Block Parity,"wan21-dev (33x480x832, 120 pairs)",51.26,56.84,0.0,51.3,1770.2,100.0,120/120 (100%)
+P0 Dev Block Parity,"wan22-dev (49x512x896, 120 pairs)",43.68,49.97,0.0,43.7,1762.6,100.0,120/120 (100%)
+P1iso Formal 50-Step ABBA,"wan21/wan22 480p & 720p (192 videos, 48 quads)",0.0,0.0,0.24,0.0,0.0,100.0,192/192 (100%)
+P1-Partial Loose SLO (kappa=2.5x),"560 mixed reqs (140 video pairs, slack 2.63s > step)",0.0,0.0,0.9,0.92,1720.0,100.0,140/140 (100%)
+Formal Tight-SLO Baseline (edf-cfg2),"wan21-480p (81f) + sd35-512 (kappa=1.25x, B=429.7ms)",1706.32,1706.32,0.0,1706.32,3434.9,0.0,Baseline
+Formal Tight-SLO Rescue (block-cfg2),"wan21-480p (81f) + sd35-512 (kappa=1.25x, B=429.7ms)",63.75,63.75,0.0,56.6,1806.11,100.0,100% (max_abs_diff=0.0)

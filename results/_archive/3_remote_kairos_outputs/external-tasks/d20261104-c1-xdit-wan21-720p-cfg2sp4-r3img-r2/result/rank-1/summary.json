@@ -1,0 +1,18 @@
+{
+  "allows": [],
+  "cfg_degree": 2,
+  "error": "FileNotFoundError(2, 'No such file or directory')",
+  "initial_storage": {
+    "percent": 77,
+    "used_gib": 780
+  },
+  "parallel_form": "cfg2sp4",
+  "planned_returncode": 1,
+  "qualification_eligible": false,
+  "rank": 1,
+  "schema": "ditserve.external-xdit-scaling.v1",
+  "status": "native_scaling_failed",
+  "traceback": "Traceback (most recent call last):\n  File \"/shared/data/DITSERVE/external-probes/c1-xdit-wan21-720p-cfg2sp4-r3img-r2/external_xdit_scaling.py\", line 394, in run_scaling\n    identity = verify_any_model(args.model, args.model_root, args.models, args.models_sha256)\n  File \"/shared/data/DITSERVE/external-probes/c1-xdit-wan21-720p-cfg2sp4-r3img-r2/external_xdit_scaling.py\", line 328, in verify_any_model\n    return native.verify_model(model, model_root, bindings_path, bindings_sha256)\n  File \"/shared/data/DITSERVE/external-probes/c1-xdit-wan21-720p-cfg2sp4-r3img-r2/external_xdit_native.py\", line 75, in verify_model\n    root = Path(model_root).resolve(strict=True)\n  File \"/usr/local/lib/python3.10/pathlib.py\", line 1077, in resolve\n    s = self._accessor.realpath(self, strict=strict)\n  File \"/usr/local/lib/python3.10/posixpath.py\", line 393, in realpath\n    path, ok = _joinrealpath(filename[:0], filename, strict, {})\n  File \"/usr/local/lib/python3.10/posixpath.py\", line 437, in _joinrealpath\n    st = os.lstat(newpath)\nFileNotFoundError: [Errno 2] No such file or directory: '/shared/data/DITSERVE/models/wan2.1-t2v-1.3b'\n",
+  "ulysses_degree": 4,
+  "world_size": 8
+}

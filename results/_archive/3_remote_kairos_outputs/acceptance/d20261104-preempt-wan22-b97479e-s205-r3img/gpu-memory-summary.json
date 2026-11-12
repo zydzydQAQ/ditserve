@@ -1,0 +1,27 @@
+{
+  "cadence_ms": 100,
+  "gpus": {
+    "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44": {
+      "first_timestamp": "2026/11/04 01:05:05.441",
+      "last_timestamp": "2026/11/04 01:21:29.110",
+      "memory_free_min_mib": 5762.0,
+      "memory_total_mib": 40960.0,
+      "memory_used_max_mib": 34681.0,
+      "samples": 9808,
+      "utilization_mean_pct": 32.158340130505664
+    },
+    "GPU-7bb0920b-6181-9486-380c-042e9fe68433": {
+      "first_timestamp": "2026/11/04 01:05:05.443",
+      "last_timestamp": "2026/11/04 01:21:29.110",
+      "memory_free_min_mib": 6248.0,
+      "memory_total_mib": 40960.0,
+      "memory_used_max_mib": 34195.0,
+      "samples": 9808,
+      "utilization_mean_pct": 23.42954730831975
+    }
+  },
+  "invalid_samples": 0,
+  "schema": "ditserve.memory-summary.v1",
+  "scope": "sampled NVML extrema; not allocator peaks",
+  "status": "completed"
+}

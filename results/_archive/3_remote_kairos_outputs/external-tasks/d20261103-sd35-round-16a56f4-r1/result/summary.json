@@ -1,0 +1,235 @@
+{
+  "adapter_sha256": "11fd66b622f848d446aed543041ca8269c1b3d1fb3f7e4055028dda5dcaff377",
+  "allows": [],
+  "arrays_retained": false,
+  "attention": "sdpa_math",
+  "backend": {
+    "attention": "SDPA_MATH",
+    "name": "xdit",
+    "pipeline": "SD35XDitPipeline",
+    "revision": "16c34e7f070de65d9d2c67a6d74e0007dd8b426a",
+    "sp_ranks": [
+      0
+    ],
+    "transformer": "xFuserSD3Transformer2DWrapper"
+  },
+  "checker_sha256": "b848a20494668306816a0e3774e64cdf39ca64ec3734c25019ffd913b96c366f",
+  "completed_trajectories": 3,
+  "cross_gpu_transfer_tested": false,
+  "decoded": {
+    "reference": {
+      "dtype": "torch.bfloat16",
+      "finite": true,
+      "maximum": 1.2421875,
+      "minimum": -1.390625,
+      "retained_array": false,
+      "sha256": "e7a01f60f9f5d2b851deedc7a0302f58822992df4ad37063a1fec7af72e96b11",
+      "shape": [
+        1,
+        3,
+        512,
+        512
+      ]
+    },
+    "round28": {
+      "dtype": "torch.bfloat16",
+      "finite": true,
+      "maximum": 1.2421875,
+      "minimum": -1.390625,
+      "retained_array": false,
+      "sha256": "e7a01f60f9f5d2b851deedc7a0302f58822992df4ad37063a1fec7af72e96b11",
+      "shape": [
+        1,
+        3,
+        512,
+        512
+      ]
+    },
+    "round2_26": {
+      "dtype": "torch.bfloat16",
+      "finite": true,
+      "maximum": 1.2421875,
+      "minimum": -1.390625,
+      "retained_array": false,
+      "sha256": "e7a01f60f9f5d2b851deedc7a0302f58822992df4ad37063a1fec7af72e96b11",
+      "shape": [
+        1,
+        3,
+        512,
+        512
+      ]
+    }
+  },
+  "decoded_comparisons": {
+    "reference_vs_round28": {
+      "atol": 1e-05,
+      "bitwise_equal": true,
+      "cosine_similarity": 1.0,
+      "elements": 786432,
+      "max_abs_error": 0.0,
+      "passed": true,
+      "relative_l2_error": 0.0,
+      "rmse": 0.0,
+      "rtol": 1e-05
+    },
+    "reference_vs_round2_26": {
+      "atol": 1e-05,
+      "bitwise_equal": true,
+      "cosine_similarity": 1.0,
+      "elements": 786432,
+      "max_abs_error": 0.0,
+      "passed": true,
+      "relative_l2_error": 0.0,
+      "rmse": 0.0,
+      "rtol": 1e-05
+    },
+    "round28_vs_round2_26": {
+      "atol": 1e-05,
+      "bitwise_equal": true,
+      "cosine_similarity": 1.0,
+      "elements": 786432,
+      "max_abs_error": 0.0,
+      "passed": true,
+      "relative_l2_error": 0.0,
+      "rmse": 0.0,
+      "rtol": 1e-05
+    }
+  },
+  "generator_device": "cpu",
+  "intervals": [
+    [
+      0,
+      2
+    ],
+    [
+      2,
+      28
+    ]
+  ],
+  "latent_comparisons": {
+    "reference_vs_round28": {
+      "atol": 1e-05,
+      "bitwise_equal": true,
+      "cosine_similarity": 1.0000000000000002,
+      "elements": 65536,
+      "max_abs_error": 0.0,
+      "passed": true,
+      "relative_l2_error": 0.0,
+      "rmse": 0.0,
+      "rtol": 1e-05
+    },
+    "reference_vs_round2_26": {
+      "atol": 1e-05,
+      "bitwise_equal": true,
+      "cosine_similarity": 1.0000000000000002,
+      "elements": 65536,
+      "max_abs_error": 0.0,
+      "passed": true,
+      "relative_l2_error": 0.0,
+      "rmse": 0.0,
+      "rtol": 1e-05
+    },
+    "round28_vs_round2_26": {
+      "atol": 1e-05,
+      "bitwise_equal": true,
+      "cosine_similarity": 1.0000000000000002,
+      "elements": 65536,
+      "max_abs_error": 0.0,
+      "passed": true,
+      "relative_l2_error": 0.0,
+      "rmse": 0.0,
+      "rtol": 1e-05
+    }
+  },
+  "latents": {
+    "reference": {
+      "dtype": "torch.bfloat16",
+      "finite": true,
+      "maximum": 2.828125,
+      "minimum": -3.8125,
+      "retained_array": false,
+      "sha256": "63671ac2bc2d70164f5231fbce0b72148300e3f401e72ec6142459a8746239c6",
+      "shape": [
+        1,
+        16,
+        64,
+        64
+      ]
+    },
+    "round28": {
+      "dtype": "torch.bfloat16",
+      "finite": true,
+      "maximum": 2.828125,
+      "minimum": -3.8125,
+      "retained_array": false,
+      "sha256": "63671ac2bc2d70164f5231fbce0b72148300e3f401e72ec6142459a8746239c6",
+      "shape": [
+        1,
+        16,
+        64,
+        64
+      ]
+    },
+    "round2_26": {
+      "dtype": "torch.bfloat16",
+      "finite": true,
+      "maximum": 2.828125,
+      "minimum": -3.8125,
+      "retained_array": false,
+      "sha256": "63671ac2bc2d70164f5231fbce0b72148300e3f401e72ec6142459a8746239c6",
+      "shape": [
+        1,
+        16,
+        64,
+        64
+      ]
+    }
+  },
+  "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+  "model_weights_loaded": true,
+  "numerical_check_passed": true,
+  "performance_measurements": false,
+  "planned_trajectories": 3,
+  "protocol_sha256": "86aae608c7f86d194e77a5e2e9645b192b921d8137174cbcdb2825ed7d94b392",
+  "provenance": {
+    "model_integrity": {
+      "model_integrity": "manifest_verified",
+      "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+      "model_verified_bytes": 16274913511,
+      "model_verified_files": 28,
+      "model_verified_revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80"
+    },
+    "model_revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+    "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a"
+  },
+  "qualification_eligible": false,
+  "request": {
+    "guidance_scale": 4.5,
+    "height": 512,
+    "max_sequence_length": 256,
+    "negative_prompt": "blurry, low quality",
+    "prompt": "A dog walking in a park.",
+    "seed": 101,
+    "steps": 28,
+    "width": 512
+  },
+  "runtime": {
+    "cuda": "12.6",
+    "diffusers": "0.36.0",
+    "gpu": "NVIDIA A100-PCIE-40GB",
+    "gpu_uuid": "ef078ff8-6d9e-6509-ce65-53a9c4c2df85",
+    "torch": "2.10.0+cu126"
+  },
+  "schema": "ditserve.external-sd35-round-check.v1",
+  "scope": "One-GPU shared-backend numerical check, not a full TetriServe reproduction",
+  "serving_executed": false,
+  "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a",
+  "stage": "completed",
+  "status": "numerical_check_passed",
+  "tetriserve_scheduler_executed": false,
+  "tolerance": {
+    "atol": 1e-05,
+    "rtol": 1e-05,
+    "scope": "predeclared diagnostic; not a paper quality criterion"
+  }
+}

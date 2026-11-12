@@ -1,0 +1,387 @@
+{
+  "schema": "ditserve.calibration-collection.v1",
+  "build": "51740c05944b063e39bc325b64241cd611a73b41",
+  "jobs": [
+    {
+      "job": "d20261103-formal-cal8-wan21-51740c0-r1",
+      "model": "wan21",
+      "platform_state": "Succeeded",
+      "status": "measured_calibration",
+      "gpu_count": 8,
+      "expected_cells": 18,
+      "expected_requests": 36,
+      "measured_requests": 36,
+      "pairs": [
+        {
+          "pair": [
+            "wan21-480p",
+            "sd35-512"
+          ],
+          "run_id": "d20261103-formal-cal8-wan21-51740c0-r1-cal0",
+          "policies": [
+            "static_sp1",
+            "static_cfg2",
+            "static_sp2",
+            "static_cfg2sp2",
+            "static_sp3",
+            "static_cfg2sp3",
+            "static_sp4",
+            "static_cfg2sp4",
+            "static_sp6"
+          ],
+          "fit_policies": [
+            "static_sp1",
+            "static_cfg2",
+            "static_sp2",
+            "static_cfg2sp2",
+            "static_sp4"
+          ],
+          "held_out_policies": [
+            "static_sp3",
+            "static_cfg2sp3",
+            "static_cfg2sp4",
+            "static_sp6"
+          ],
+          "expected_cells": 9,
+          "expected_requests": 18,
+          "observed_completed_requests": 18,
+          "measured_requests": 18,
+          "status": "validated_calibration",
+          "issues": [],
+          "failures": [],
+          "config_identity": {
+            "parsed_config_sha256": "91afa238a9acb6c1d6ab187e74d1e226b7b41d7438d40dbd5fe0cc1aa6b9243a",
+            "native_config_sha256": "91afa238a9acb6c1d6ab187e74d1e226b7b41d7438d40dbd5fe0cc1aa6b9243a",
+            "native_digest_recomputed": false,
+            "scope": "parsed content binding and native digest consistency; raw bytes/source verified by caller"
+          },
+          "gpu_uuids": [
+            "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+            "GPU-7bb0920b-6181-9486-380c-042e9fe68433",
+            "GPU-56f9344d-f279-ae6b-d287-b9024e4eb7fe",
+            "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+            "GPU-5a956ef1-5f15-8a3b-7055-02da1d96da75",
+            "GPU-d3c1776a-33b0-8800-0ed7-431fc605ba83",
+            "GPU-837bc934-205d-1796-b72f-0141a8855565",
+            "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529"
+          ],
+          "runtime_identity_sha256": "1fd8595d5f8ed504a3aee073525a53a78bc9b6ea8b6dbcef073ba9a8d0adf1f9"
+        },
+        {
+          "pair": [
+            "wan21-720p",
+            "sd35-1024"
+          ],
+          "run_id": "d20261103-formal-cal8-wan21-51740c0-r1-cal1",
+          "policies": [
+            "static_sp1",
+            "static_cfg2",
+            "static_sp2",
+            "static_cfg2sp2",
+            "static_sp3",
+            "static_cfg2sp3",
+            "static_sp4",
+            "static_cfg2sp4",
+            "static_sp6"
+          ],
+          "fit_policies": [
+            "static_sp1",
+            "static_cfg2",
+            "static_sp2",
+            "static_cfg2sp2",
+            "static_sp4"
+          ],
+          "held_out_policies": [
+            "static_sp3",
+            "static_cfg2sp3",
+            "static_cfg2sp4",
+            "static_sp6"
+          ],
+          "expected_cells": 9,
+          "expected_requests": 18,
+          "observed_completed_requests": 18,
+          "measured_requests": 18,
+          "status": "validated_calibration",
+          "issues": [],
+          "failures": [],
+          "config_identity": {
+            "parsed_config_sha256": "2f1ef977aefaf9bd5711a4b88b95a48f558917fbe2ded0e741dc82c72a65c451",
+            "native_config_sha256": "2f1ef977aefaf9bd5711a4b88b95a48f558917fbe2ded0e741dc82c72a65c451",
+            "native_digest_recomputed": false,
+            "scope": "parsed content binding and native digest consistency; raw bytes/source verified by caller"
+          },
+          "gpu_uuids": [
+            "GPU-35d3f0d9-9f4d-f0dd-7857-fd40af31af44",
+            "GPU-7bb0920b-6181-9486-380c-042e9fe68433",
+            "GPU-56f9344d-f279-ae6b-d287-b9024e4eb7fe",
+            "GPU-01223588-2c22-bd16-60ba-2cb9a47e0951",
+            "GPU-5a956ef1-5f15-8a3b-7055-02da1d96da75",
+            "GPU-d3c1776a-33b0-8800-0ed7-431fc605ba83",
+            "GPU-837bc934-205d-1796-b72f-0141a8855565",
+            "GPU-601e4969-39bd-d7bc-af70-7e99a34cd529"
+          ],
+          "runtime_identity_sha256": "1fd8595d5f8ed504a3aee073525a53a78bc9b6ea8b6dbcef073ba9a8d0adf1f9"
+        }
+      ],
+      "issues": [],
+      "bundle_reproduced": true,
+      "fit_summary": {
+        "wan21-480p": {
+          "fit_mean_relative_error_pct": 8.389620835164498,
+          "held_out_mean_relative_error_pct": 10.596772284034827,
+          "held_out_max_relative_error_pct": 17.740258723801098,
+          "validation_scope": "held-out forms on calibration hardware and shape; not held-out request, placement or workload validation",
+          "execution_cost_mode": "placement_bound_form_table_with_analytical_fallback"
+        },
+        "sd35-512": {
+          "fit_mean_relative_error_pct": 8.389620835164498,
+          "held_out_mean_relative_error_pct": 10.596772284034827,
+          "held_out_max_relative_error_pct": 17.740258723801098,
+          "validation_scope": "held-out forms on calibration hardware and shape; not held-out request, placement or workload validation",
+          "execution_cost_mode": "placement_bound_form_table_with_analytical_fallback"
+        },
+        "wan21-720p": {
+          "fit_mean_relative_error_pct": 5.529577715343422,
+          "held_out_mean_relative_error_pct": 7.034934718427106,
+          "held_out_max_relative_error_pct": 12.546909930007208,
+          "validation_scope": "held-out forms on calibration hardware and shape; not held-out request, placement or workload validation",
+          "execution_cost_mode": "placement_bound_form_table_with_analytical_fallback"
+        },
+        "sd35-1024": {
+          "fit_mean_relative_error_pct": 5.529577715343422,
+          "held_out_mean_relative_error_pct": 7.034934718427106,
+          "held_out_max_relative_error_pct": 12.546909930007208,
+          "validation_scope": "held-out forms on calibration hardware and shape; not held-out request, placement or workload validation",
+          "execution_cost_mode": "placement_bound_form_table_with_analytical_fallback"
+        }
+      },
+      "qualification_eligible": false,
+      "allows": [],
+      "dependencies_closed": false,
+      "limitations": [
+        "eight-GPU allocation and formal paired shapes only; not the two-GPU isolated P1 calibration",
+        "held-out forms validate the analytical fit only; all measured forms enter the execution cost table",
+        "not held-out prompts, placements, mixed serving or end-to-end utilization validation",
+        "no numerical, quality, SLO/capacity or P1 qualification"
+      ]
+    },
+    {
+      "job": "d20261103-formal-cal8-wan22-51740c0-r1",
+      "model": "wan22",
+      "platform_state": "Succeeded",
+      "status": "measured_calibration",
+      "gpu_count": 8,
+      "expected_cells": 20,
+      "expected_requests": 40,
+      "measured_requests": 40,
+      "pairs": [
+        {
+          "pair": [
+            "wan22-small",
+            "sd35-512"
+          ],
+          "run_id": "d20261103-formal-cal8-wan22-51740c0-r1-cal0",
+          "policies": [
+            "static_sp1",
+            "static_cfg2",
+            "static_sp2",
+            "static_cfg2sp2",
+            "static_sp3",
+            "static_cfg2sp3",
+            "static_sp4",
+            "static_cfg2sp4",
+            "static_sp6",
+            "static_sp8"
+          ],
+          "fit_policies": [
+            "static_sp1",
+            "static_cfg2",
+            "static_sp2",
+            "static_cfg2sp2",
+            "static_sp4"
+          ],
+          "held_out_policies": [
+            "static_sp3",
+            "static_cfg2sp3",
+            "static_cfg2sp4",
+            "static_sp6",
+            "static_sp8"
+          ],
+          "expected_cells": 10,
+          "expected_requests": 20,
+          "observed_completed_requests": 20,
+          "measured_requests": 20,
+          "status": "validated_calibration",
+          "issues": [],
+          "failures": [],
+          "config_identity": {
+            "parsed_config_sha256": "f1eaeca7fdf55666e994bbc63671c5b7941c8f4c3ece1f0fcf6485e042122049",
+            "native_config_sha256": "f1eaeca7fdf55666e994bbc63671c5b7941c8f4c3ece1f0fcf6485e042122049",
+            "native_digest_recomputed": false,
+            "scope": "parsed content binding and native digest consistency; raw bytes/source verified by caller"
+          },
+          "gpu_uuids": [
+            "GPU-bf5b40f5-b606-6ff3-8bb6-375c58fca67a",
+            "GPU-ef078ff8-6d9e-6509-ce65-53a9c4c2df85",
+            "GPU-6967ee01-0c82-8215-9256-9fde2e18f5d0",
+            "GPU-abe707e2-3284-aa3e-c3c9-ec0f14ee61c3",
+            "GPU-304d76bc-0629-fdc9-7cfe-929ff331b7f0",
+            "GPU-2bae337e-03ae-f01e-47bf-59b25b815ab8",
+            "GPU-29ad4cf3-1e6a-08a9-5bde-6d17726e9fa3",
+            "GPU-83566cdb-86ec-7bb4-c2c2-736c074f2fca"
+          ],
+          "runtime_identity_sha256": "1fd8595d5f8ed504a3aee073525a53a78bc9b6ea8b6dbcef073ba9a8d0adf1f9"
+        },
+        {
+          "pair": [
+            "wan22-720p",
+            "sd35-1024"
+          ],
+          "run_id": "d20261103-formal-cal8-wan22-51740c0-r1-cal1",
+          "policies": [
+            "static_sp1",
+            "static_cfg2",
+            "static_sp2",
+            "static_cfg2sp2",
+            "static_sp3",
+            "static_cfg2sp3",
+            "static_sp4",
+            "static_cfg2sp4",
+            "static_sp6",
+            "static_sp8"
+          ],
+          "fit_policies": [
+            "static_sp1",
+            "static_cfg2",
+            "static_sp2",
+            "static_cfg2sp2",
+            "static_sp4"
+          ],
+          "held_out_policies": [
+            "static_sp3",
+            "static_cfg2sp3",
+            "static_cfg2sp4",
+            "static_sp6",
+            "static_sp8"
+          ],
+          "expected_cells": 10,
+          "expected_requests": 20,
+          "observed_completed_requests": 20,
+          "measured_requests": 20,
+          "status": "validated_calibration",
+          "issues": [],
+          "failures": [],
+          "config_identity": {
+            "parsed_config_sha256": "c802f526a400a6268429d4cf0a6c1df927cc7149adc00e2686ad804fbab624ff",
+            "native_config_sha256": "c802f526a400a6268429d4cf0a6c1df927cc7149adc00e2686ad804fbab624ff",
+            "native_digest_recomputed": false,
+            "scope": "parsed content binding and native digest consistency; raw bytes/source verified by caller"
+          },
+          "gpu_uuids": [
+            "GPU-bf5b40f5-b606-6ff3-8bb6-375c58fca67a",
+            "GPU-ef078ff8-6d9e-6509-ce65-53a9c4c2df85",
+            "GPU-6967ee01-0c82-8215-9256-9fde2e18f5d0",
+            "GPU-abe707e2-3284-aa3e-c3c9-ec0f14ee61c3",
+            "GPU-304d76bc-0629-fdc9-7cfe-929ff331b7f0",
+            "GPU-2bae337e-03ae-f01e-47bf-59b25b815ab8",
+            "GPU-29ad4cf3-1e6a-08a9-5bde-6d17726e9fa3",
+            "GPU-83566cdb-86ec-7bb4-c2c2-736c074f2fca"
+          ],
+          "runtime_identity_sha256": "1fd8595d5f8ed504a3aee073525a53a78bc9b6ea8b6dbcef073ba9a8d0adf1f9"
+        }
+      ],
+      "issues": [],
+      "bundle_reproduced": true,
+      "fit_summary": {
+        "wan22-small": {
+          "fit_mean_relative_error_pct": 7.519959260729671,
+          "held_out_mean_relative_error_pct": 12.776516322515672,
+          "held_out_max_relative_error_pct": 19.182161822701413,
+          "validation_scope": "held-out forms on calibration hardware and shape; not held-out request, placement or workload validation",
+          "execution_cost_mode": "placement_bound_form_table_with_analytical_fallback"
+        },
+        "sd35-512": {
+          "fit_mean_relative_error_pct": 7.519959260729671,
+          "held_out_mean_relative_error_pct": 12.776516322515672,
+          "held_out_max_relative_error_pct": 19.182161822701413,
+          "validation_scope": "held-out forms on calibration hardware and shape; not held-out request, placement or workload validation",
+          "execution_cost_mode": "placement_bound_form_table_with_analytical_fallback"
+        },
+        "wan22-720p": {
+          "fit_mean_relative_error_pct": 6.327511268954323,
+          "held_out_mean_relative_error_pct": 11.99787770151751,
+          "held_out_max_relative_error_pct": 17.83589665250801,
+          "validation_scope": "held-out forms on calibration hardware and shape; not held-out request, placement or workload validation",
+          "execution_cost_mode": "placement_bound_form_table_with_analytical_fallback"
+        },
+        "sd35-1024": {
+          "fit_mean_relative_error_pct": 6.327511268954323,
+          "held_out_mean_relative_error_pct": 11.99787770151751,
+          "held_out_max_relative_error_pct": 17.83589665250801,
+          "validation_scope": "held-out forms on calibration hardware and shape; not held-out request, placement or workload validation",
+          "execution_cost_mode": "placement_bound_form_table_with_analytical_fallback"
+        }
+      },
+      "qualification_eligible": false,
+      "allows": [],
+      "dependencies_closed": false,
+      "limitations": [
+        "eight-GPU allocation and formal paired shapes only; not the two-GPU isolated P1 calibration",
+        "held-out forms validate the analytical fit only; all measured forms enter the execution cost table",
+        "not held-out prompts, placements, mixed serving or end-to-end utilization validation",
+        "no numerical, quality, SLO/capacity or P1 qualification"
+      ]
+    }
+  ],
+  "status": "measured_calibration",
+  "expected_requests": 76,
+  "measured_requests": 76,
+  "sources": {
+    "protocol": {
+      "path": "sources/protocol.json",
+      "sha256": "86aae608c7f86d194e77a5e2e9645b192b921d8137174cbcdb2825ed7d94b392"
+    },
+    "exclusions": {
+      "path": "sources/exclusions.json",
+      "sha256": "4eadf8f4ed01fba12c462091da98beb4c622d38a819295d426facf64369b60c8"
+    },
+    "video": {
+      "path": "sources/video.json",
+      "sha256": "afdb173350d8d04e8ac23b69d5be2c66b383f221ff3607e469366f7efd494cdd"
+    },
+    "image": {
+      "path": "sources/image.json",
+      "sha256": "dd4617253de9267c34a222818e3dd931a554ebb0afbf6d3985cbfda6a8063ef3"
+    },
+    "manifests": {
+      "path": "sources/manifests.json",
+      "sha256": "3e612738984ae56ac369f48b5a207c94d31cd1071d6506c633692ed9ccce37be"
+    },
+    "spec-wan21": {
+      "path": "sources/spec-wan21.json",
+      "sha256": "606374752ba070849d121a7a49ead74831a3db5c482caac3f75ce228dc1c6eda"
+    },
+    "spec-wan22": {
+      "path": "sources/spec-wan22.json",
+      "sha256": "d1e1279e9cf783938b5143deef547ebab65cee0aa80b8bcd13c1f88b51aee017"
+    }
+  },
+  "downloads": {
+    "wan21": {
+      "path": "wan21/download-verification.json",
+      "sha256": "c2beca64e2111469d4c3342957c49e7ba120f7d8932b110611a94a04a3b69656"
+    },
+    "wan22": {
+      "path": "wan22/download-verification.json",
+      "sha256": "bc766610b9ecf079f928339ec7ffd52deb5624975801fa3e5e12b51692d78445"
+    }
+  },
+  "source_manifest": {
+    "path": "collector-start.json",
+    "sha256": "5ee95ced1004a9d24a13d9699be7ba9ec30f2a1c04708a1bedb54e6f3c3cdd1f"
+  },
+  "qualification_eligible": false,
+  "allows": [],
+  "dependencies_closed": false,
+  "remote_cleanup_performed": false
+}

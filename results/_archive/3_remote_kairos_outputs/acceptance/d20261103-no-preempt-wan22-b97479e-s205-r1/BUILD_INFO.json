@@ -1,0 +1,16 @@
+{
+ "commit": "b97479e9ca27484cd6804a81e0d590208ea99fd5",
+ "subject": "Record file sha256 in base.artifact for persisted NPY outputs",
+ "built_utc": "2026-11-03T08:36:56+00:00",
+ "builder_image": "local-cmake-install",
+ "runtime_image": "192.168.1.114:30500/jjjkairos/ditserve:xdit-dev-016e1ca-slim",
+ "core_sha256": "faa93ed586ae5cc6e378a3d0647cab3469e9feaa93ea6d34383966e8f815dce3",
+ "runtime_smoke": "pending_cluster",
+ "local_checks": [
+  "cmake",
+  "ctest",
+  "installed_doctor"
+ ],
+ "files": 311,
+ "bytes": 5187224
+}

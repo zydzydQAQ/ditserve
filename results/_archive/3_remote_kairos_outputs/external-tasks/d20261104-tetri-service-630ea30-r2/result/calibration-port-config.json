@@ -1,0 +1,27 @@
+{
+  "attention": "math",
+  "derived_manifest": "/shared/output/DITSERVE/external-tasks/d20261104-tetri-service-630ea30-r2/result/derived/PORT_MANIFEST.json",
+  "derived_manifest_sha256": "5ab5b86ee32a96039a50bcaed54bf10ce1cdc5415cac473bc4504375ce8485fb",
+  "diagnostic_only": true,
+  "guidance_scale": 4.5,
+  "max_sequence_length": 256,
+  "model": "stabilityai/stable-diffusion-3.5-medium",
+  "model_manifest": "/shared/data/DITSERVE/models/formal-manifests/20261103-inputs-v1/sd35.manifest.json",
+  "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+  "model_path": "/shared/data/DITSERVE/models/sd3.5-medium",
+  "resolutions": [
+    [
+      512,
+      512
+    ],
+    [
+      1024,
+      1024
+    ]
+  ],
+  "revision": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+  "schema": "ditserve.tetriserve-sd35-port.v1",
+  "server_launch_allowed": false,
+  "shared_python_root": "/shared/code/DITSERVE/builds/51740c0/share/ditserve/python",
+  "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a"
+}

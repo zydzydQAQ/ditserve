@@ -1,0 +1,16 @@
+{
+ "commit": "dd2e4a084aee43b3c30673894eaccf361dd60147",
+ "subject": "Re-evaluate CFG fold eligibility at solver boundaries",
+ "built_utc": "2026-11-02T13:23:14+00:00",
+ "builder_image": "local-cmake-install",
+ "runtime_image": "192.168.1.114:30500/jjjkairos/ditserve:xdit-dev-016e1ca-slim",
+ "core_sha256": "bf7f4c2cb64f23a3237baefe546bd52499c8f6d86434a77847e228d2d77a5d48",
+ "runtime_smoke": "pending_cluster",
+ "local_checks": [
+  "cmake",
+  "ctest",
+  "installed_doctor"
+ ],
+ "files": 272,
+ "bytes": 4281607
+}

@@ -1,0 +1,14 @@
+{
+  "schema": "ditserve.rate-rpm-smoke.v1",
+  "status": "cuda_passed_contract_pending",
+  "run_id": "d20261107-rate-rpm-smoke-1ea9060-r1",
+  "commit": "1ea9060243b802180075dbaf0aefdacafd3e8c14",
+  "core_sha256": "0548eaa9f5cea374c5b878cb416e400a7560b1ae7541f59fe0e9d70ff1be3926",
+  "image_digest": "sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+  "image_job_spec_sha256": "36beee2ccb7f8cf4ec737bfeb166ab56d15ab5902c30211697a33ad10647319c",
+  "gpu": "NVIDIA A100-PCIE-40GB",
+  "devices": 1,
+  "sum": 524800.0,
+  "matmul_value": 32,
+  "scope": "CUDA arithmetic and deployed runtime; Archive contract and serving performance pending"
+}

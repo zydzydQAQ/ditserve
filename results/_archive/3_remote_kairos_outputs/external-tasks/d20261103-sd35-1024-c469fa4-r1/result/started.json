@@ -1,0 +1,50 @@
+{
+  "adapter_sha256": "11fd66b622f848d446aed543041ca8269c1b3d1fb3f7e4055028dda5dcaff377",
+  "allows": [],
+  "arrays_retained": false,
+  "attention": "sdpa_math",
+  "checker_sha256": "8655090d5a4423b03e587380b7e1b4c7b2a482e82ab060ea4691951e180c20a3",
+  "completed_trajectories": 0,
+  "cross_gpu_transfer_tested": false,
+  "generator_device": "cpu",
+  "intervals": [
+    [
+      0,
+      2
+    ],
+    [
+      2,
+      28
+    ]
+  ],
+  "model_manifest_sha256": "ea082cea29ff607d58dca53913dae779834664d4832c10bf938bdb7410c6d424",
+  "model_weights_loaded": false,
+  "numerical_check_passed": false,
+  "performance_measurements": false,
+  "planned_trajectories": 3,
+  "protocol_sha256": "86aae608c7f86d194e77a5e2e9645b192b921d8137174cbcdb2825ed7d94b392",
+  "qualification_eligible": false,
+  "request": {
+    "guidance_scale": 4.5,
+    "height": 1024,
+    "max_sequence_length": 256,
+    "negative_prompt": "blurry, low quality",
+    "prompt": "A dog walking in a park.",
+    "seed": 101,
+    "steps": 28,
+    "width": 1024
+  },
+  "schema": "ditserve.external-sd35-round-check.v1",
+  "scope": "One-GPU shared-backend numerical check, not a full TetriServe reproduction",
+  "serving_executed": false,
+  "shape_id": "sd35-1024",
+  "shared_worker_sha256": "fc493414a9ff589850ec25303c9166fb86e138af340f40dfd4caa62ed1b6995a",
+  "stage": "binding",
+  "status": "planned",
+  "tetriserve_scheduler_executed": false,
+  "tolerance": {
+    "atol": 1e-05,
+    "rtol": 1e-05,
+    "scope": "predeclared diagnostic; not a paper quality criterion"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "started_at_utc": "2026-11-02T23:34:47.659806+00:00",
+  "guard_pid": 2232388,
+  "guard_log": "/mnt/e/000_code/zyd-2026/.local/ditserve-kairos-rewrite-runtime/evidence/20261103-cal8-51740c0/storage-guard.log",
+  "specs": [
+    "/mnt/e/000_code/zyd-2026/.local/ditserve-kairos-rewrite-runtime/job-specs/20261103-cal8-51740c0/d20261103-formal-cal8-wan22-51740c0-r1.json",
+    "/mnt/e/000_code/zyd-2026/.local/ditserve-kairos-rewrite-runtime/job-specs/20261103-cal8-51740c0/d20261103-formal-cal8-wan21-51740c0-r1.json"
+  ],
+  "queue_pid": 2232407,
+  "queue_log": "/mnt/e/000_code/zyd-2026/.local/ditserve-kairos-rewrite-runtime/evidence/20261103-cal8-51740c0/queue.log",
+  "guard_ready": true,
+  "collector_pending": true
+}

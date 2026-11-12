@@ -1,0 +1,822 @@
+{
+  "schema": "ditserve.study.v1",
+  "experiment": "kairos-sp-scaling-4gpu-5b-te21",
+  "note": "Whole-step Ulysses SP[1, 2, 4] timing on wan2.2-ti2v-5b-te21, Flash, cache off, 4 steps per shape over ['512x896x17', '512x896x33', '512x896x81', '512x896x121', '704x1280x17', '704x1280x33', '704x1280x81', '704x1280x121']. Measurement only: no decode, no gates.",
+  "workers": {
+    "sp1-0": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-50f853c6-0c1d-425b-af23-c022a616c030",
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b-te21",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "step"
+        }
+      }
+    },
+    "sp2-0": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-50f853c6-0c1d-425b-af23-c022a616c030",
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b-te21",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "step"
+        }
+      }
+    },
+    "sp2-1": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-d48241f7-4e77-e195-59a0-63552f67e285",
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b-te21",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "step"
+        }
+      }
+    },
+    "sp4-0": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-50f853c6-0c1d-425b-af23-c022a616c030",
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b-te21",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "step"
+        }
+      }
+    },
+    "sp4-1": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-d48241f7-4e77-e195-59a0-63552f67e285",
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b-te21",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "step"
+        }
+      }
+    },
+    "sp4-2": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-4f488320-12e4-9e69-aee0-d3e9e5dbb452",
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b-te21",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "step"
+        }
+      }
+    },
+    "sp4-3": {
+      "backend": "wan",
+      "python": "python3",
+      "gpu_uuid": "GPU-8940ccee-259b-0b4f-f459-b9811246fae9",
+      "config": {
+        "model_path": "/shared/data/DITSERVE/models/wan2.2-ti2v-5b-te21",
+        "device": "cuda:0",
+        "attention": "flash",
+        "options": {
+          "execution": "step"
+        }
+      }
+    }
+  },
+  "budget": {
+    "limit_gpu_seconds": 43200,
+    "watchdog_seconds": 3600,
+    "repair_reserve_gpu_seconds": 0,
+    "carry": "none"
+  },
+  "phases": [
+    {
+      "id": "sp1",
+      "kind": "state",
+      "workers": [
+        "sp1-0"
+      ],
+      "artifact_dependencies": [],
+      "actions": [
+        {
+          "op": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 4,
+            "height": 512,
+            "width": 896,
+            "frames": 17,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "512x896x17"
+          },
+          "state_id": "512x896x17"
+        },
+        {
+          "op": "advance",
+          "state_id": "512x896x17",
+          "steps": 4
+        },
+        {
+          "op": "release",
+          "state_id": "512x896x17"
+        },
+        {
+          "op": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 4,
+            "height": 512,
+            "width": 896,
+            "frames": 33,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "512x896x33"
+          },
+          "state_id": "512x896x33"
+        },
+        {
+          "op": "advance",
+          "state_id": "512x896x33",
+          "steps": 4
+        },
+        {
+          "op": "release",
+          "state_id": "512x896x33"
+        },
+        {
+          "op": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 4,
+            "height": 512,
+            "width": 896,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "512x896x81"
+          },
+          "state_id": "512x896x81"
+        },
+        {
+          "op": "advance",
+          "state_id": "512x896x81",
+          "steps": 4
+        },
+        {
+          "op": "release",
+          "state_id": "512x896x81"
+        },
+        {
+          "op": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 4,
+            "height": 512,
+            "width": 896,
+            "frames": 121,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "512x896x121"
+          },
+          "state_id": "512x896x121"
+        },
+        {
+          "op": "advance",
+          "state_id": "512x896x121",
+          "steps": 4
+        },
+        {
+          "op": "release",
+          "state_id": "512x896x121"
+        },
+        {
+          "op": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 4,
+            "height": 704,
+            "width": 1280,
+            "frames": 17,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "704x1280x17"
+          },
+          "state_id": "704x1280x17"
+        },
+        {
+          "op": "advance",
+          "state_id": "704x1280x17",
+          "steps": 4
+        },
+        {
+          "op": "release",
+          "state_id": "704x1280x17"
+        },
+        {
+          "op": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 4,
+            "height": 704,
+            "width": 1280,
+            "frames": 33,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "704x1280x33"
+          },
+          "state_id": "704x1280x33"
+        },
+        {
+          "op": "advance",
+          "state_id": "704x1280x33",
+          "steps": 4
+        },
+        {
+          "op": "release",
+          "state_id": "704x1280x33"
+        },
+        {
+          "op": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 4,
+            "height": 704,
+            "width": 1280,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "704x1280x81"
+          },
+          "state_id": "704x1280x81"
+        },
+        {
+          "op": "advance",
+          "state_id": "704x1280x81",
+          "steps": 4
+        },
+        {
+          "op": "release",
+          "state_id": "704x1280x81"
+        },
+        {
+          "op": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 4,
+            "height": 704,
+            "width": 1280,
+            "frames": 121,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "704x1280x121"
+          },
+          "state_id": "704x1280x121"
+        },
+        {
+          "op": "advance",
+          "state_id": "704x1280x121",
+          "steps": 4
+        },
+        {
+          "op": "release",
+          "state_id": "704x1280x121"
+        }
+      ]
+    },
+    {
+      "id": "sp2",
+      "kind": "sp",
+      "workers": [
+        "sp2-0",
+        "sp2-1"
+      ],
+      "artifact_dependencies": [],
+      "actions": [
+        {
+          "op": "distributed",
+          "action": "init",
+          "init_method": "tcp://127.0.0.1:29512",
+          "ranks": [
+            0,
+            1
+          ]
+        },
+        {
+          "op": "distributed",
+          "action": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 4,
+            "height": 512,
+            "width": 896,
+            "frames": 17,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "512x896x17"
+          },
+          "state_id": "512x896x17"
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "512x896x17",
+          "steps": 4
+        },
+        {
+          "op": "release",
+          "state_id": "512x896x17"
+        },
+        {
+          "op": "distributed",
+          "action": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 4,
+            "height": 512,
+            "width": 896,
+            "frames": 33,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "512x896x33"
+          },
+          "state_id": "512x896x33"
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "512x896x33",
+          "steps": 4
+        },
+        {
+          "op": "release",
+          "state_id": "512x896x33"
+        },
+        {
+          "op": "distributed",
+          "action": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 4,
+            "height": 512,
+            "width": 896,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "512x896x81"
+          },
+          "state_id": "512x896x81"
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "512x896x81",
+          "steps": 4
+        },
+        {
+          "op": "release",
+          "state_id": "512x896x81"
+        },
+        {
+          "op": "distributed",
+          "action": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 4,
+            "height": 512,
+            "width": 896,
+            "frames": 121,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "512x896x121"
+          },
+          "state_id": "512x896x121"
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "512x896x121",
+          "steps": 4
+        },
+        {
+          "op": "release",
+          "state_id": "512x896x121"
+        },
+        {
+          "op": "distributed",
+          "action": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 4,
+            "height": 704,
+            "width": 1280,
+            "frames": 17,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "704x1280x17"
+          },
+          "state_id": "704x1280x17"
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "704x1280x17",
+          "steps": 4
+        },
+        {
+          "op": "release",
+          "state_id": "704x1280x17"
+        },
+        {
+          "op": "distributed",
+          "action": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 4,
+            "height": 704,
+            "width": 1280,
+            "frames": 33,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "704x1280x33"
+          },
+          "state_id": "704x1280x33"
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "704x1280x33",
+          "steps": 4
+        },
+        {
+          "op": "release",
+          "state_id": "704x1280x33"
+        },
+        {
+          "op": "distributed",
+          "action": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 4,
+            "height": 704,
+            "width": 1280,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "704x1280x81"
+          },
+          "state_id": "704x1280x81"
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "704x1280x81",
+          "steps": 4
+        },
+        {
+          "op": "release",
+          "state_id": "704x1280x81"
+        },
+        {
+          "op": "distributed",
+          "action": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 4,
+            "height": 704,
+            "width": 1280,
+            "frames": 121,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "704x1280x121"
+          },
+          "state_id": "704x1280x121"
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "704x1280x121",
+          "steps": 4
+        },
+        {
+          "op": "release",
+          "state_id": "704x1280x121"
+        }
+      ],
+      "requires": [
+        "sp1"
+      ]
+    },
+    {
+      "id": "sp4",
+      "kind": "sp",
+      "workers": [
+        "sp4-0",
+        "sp4-1",
+        "sp4-2",
+        "sp4-3"
+      ],
+      "artifact_dependencies": [],
+      "actions": [
+        {
+          "op": "distributed",
+          "action": "init",
+          "init_method": "tcp://127.0.0.1:29514",
+          "ranks": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "op": "distributed",
+          "action": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 4,
+            "height": 512,
+            "width": 896,
+            "frames": 17,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "512x896x17"
+          },
+          "state_id": "512x896x17"
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "512x896x17",
+          "steps": 4
+        },
+        {
+          "op": "release",
+          "state_id": "512x896x17"
+        },
+        {
+          "op": "distributed",
+          "action": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 4,
+            "height": 512,
+            "width": 896,
+            "frames": 33,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "512x896x33"
+          },
+          "state_id": "512x896x33"
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "512x896x33",
+          "steps": 4
+        },
+        {
+          "op": "release",
+          "state_id": "512x896x33"
+        },
+        {
+          "op": "distributed",
+          "action": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 4,
+            "height": 512,
+            "width": 896,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "512x896x81"
+          },
+          "state_id": "512x896x81"
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "512x896x81",
+          "steps": 4
+        },
+        {
+          "op": "release",
+          "state_id": "512x896x81"
+        },
+        {
+          "op": "distributed",
+          "action": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 4,
+            "height": 512,
+            "width": 896,
+            "frames": 121,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "512x896x121"
+          },
+          "state_id": "512x896x121"
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "512x896x121",
+          "steps": 4
+        },
+        {
+          "op": "release",
+          "state_id": "512x896x121"
+        },
+        {
+          "op": "distributed",
+          "action": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 4,
+            "height": 704,
+            "width": 1280,
+            "frames": 17,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "704x1280x17"
+          },
+          "state_id": "704x1280x17"
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "704x1280x17",
+          "steps": 4
+        },
+        {
+          "op": "release",
+          "state_id": "704x1280x17"
+        },
+        {
+          "op": "distributed",
+          "action": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 4,
+            "height": 704,
+            "width": 1280,
+            "frames": 33,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "704x1280x33"
+          },
+          "state_id": "704x1280x33"
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "704x1280x33",
+          "steps": 4
+        },
+        {
+          "op": "release",
+          "state_id": "704x1280x33"
+        },
+        {
+          "op": "distributed",
+          "action": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 4,
+            "height": 704,
+            "width": 1280,
+            "frames": 81,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "704x1280x81"
+          },
+          "state_id": "704x1280x81"
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "704x1280x81",
+          "steps": 4
+        },
+        {
+          "op": "release",
+          "state_id": "704x1280x81"
+        },
+        {
+          "op": "distributed",
+          "action": "prepare",
+          "spec": {
+            "prompt": "A red ceramic kettle on a wooden table.",
+            "seed": 7,
+            "steps": 4,
+            "height": 704,
+            "width": 1280,
+            "frames": 121,
+            "guidance_scale": 5.0,
+            "cache": false,
+            "threshold": 0.0,
+            "max_continuous": 1,
+            "request_id": "704x1280x121"
+          },
+          "state_id": "704x1280x121"
+        },
+        {
+          "op": "distributed",
+          "action": "step",
+          "state_id": "704x1280x121",
+          "steps": 4
+        },
+        {
+          "op": "release",
+          "state_id": "704x1280x121"
+        }
+      ],
+      "requires": [
+        "sp2"
+      ]
+    }
+  ]
+}

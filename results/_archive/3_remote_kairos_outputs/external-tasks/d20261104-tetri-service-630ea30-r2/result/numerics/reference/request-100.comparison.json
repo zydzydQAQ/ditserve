@@ -1,0 +1,66 @@
+{
+  "comparisons": {
+    "decoded": {
+      "atol": 1e-05,
+      "bitwise_equal": true,
+      "cosine_similarity": 1.0000000000000002,
+      "elements": 786432,
+      "exactly_equal": true,
+      "max_abs_error": 0.0,
+      "passed": true,
+      "raw_dtype": "torch.bfloat16",
+      "relative_l2_error": 0.0,
+      "rmse": 0.0,
+      "rtol": 1e-05
+    },
+    "latents": {
+      "atol": 1e-05,
+      "bitwise_equal": true,
+      "cosine_similarity": 1.0,
+      "elements": 65536,
+      "exactly_equal": true,
+      "max_abs_error": 0.0,
+      "passed": true,
+      "raw_dtype": "torch.bfloat16",
+      "relative_l2_error": 0.0,
+      "rmse": 0.0,
+      "rtol": 1e-05
+    }
+  },
+  "generator_device": "cpu",
+  "normal_pipeline_output_type": "latent",
+  "numerical_passed": true,
+  "reference_file": {
+    "bytes": 1704344,
+    "file": "request-100.safetensors",
+    "sha256": "1aa181cd49e5f08f44c843ad073cf4b6bde96029457eb3affdfe854aa9bc9d52",
+    "tensors": {
+      "decoded": {
+        "bytes": 1572864,
+        "dtype": "BF16",
+        "shape": [
+          1,
+          3,
+          512,
+          512
+        ],
+        "tensor_sha256": "4fd9f450b4417607449c9e1a04587c875e6b1fb557e24c07a1c8a469650387bf"
+      },
+      "latents": {
+        "bytes": 131072,
+        "dtype": "BF16",
+        "shape": [
+          1,
+          16,
+          64,
+          64
+        ],
+        "tensor_sha256": "923b345414bf0bd84a7e4a19170b8ecfaaa69e8da165be27e453631e8cb09e49"
+      }
+    }
+  },
+  "reference_transformer_calls": 28,
+  "request_id": 100,
+  "request_sha256": "7234818bfd7268383601980048f841a51c2126e134f213b4d9f374027fcc46e8",
+  "service_file_sha256": "2130e5a34d2009fc1b8ea170f6f9a3ad52f75e00eb9f632f5fb1936425798099"
+}
