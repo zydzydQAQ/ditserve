@@ -1346,6 +1346,9 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             }
             const bool bubble_free = allow_cb && class_cb > 0 ? bool_field(options, "bubble_free", policy.bubble_free) : false;
             const bool sequence_packing = allow_cb ? bool_field(options, "sequence_packing", class_cb > 0 ? policy.sequence_packing : false) : false;
+            const double max_step_dilation = options.contains("max_step_dilation")
+                ? number(options.at("max_step_dilation"), "max_step_dilation")
+                : 5.0;
             auto compatible_batch_spec = [&](const Json& lhs, const Json& rhs) {
                 if (!lhs.contains("batch_spec")) return true;
                 Json a = lhs.at("batch_spec"), b = rhs.value("batch_spec", Json::object());
@@ -1354,6 +1357,33 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                     b.erase("height"); b.erase("width");
                 }
                 return a == b;
+            };
+            auto beneficial_co_batch = [&](const std::vector<const Json*>& batch) {
+                if (batch.size() <= 1) return true;
+                const double cand_step = cost.continuous_batch_step_ms(klass, batch, sequence_packing);
+                double sum_solo = 0.0;
+                double min_solo = std::numeric_limits<double>::infinity();
+                double max_solo = 0.0;
+                bool hetero_class = false;
+                const auto first_klass = batch.front()->at("class").get<std::string>();
+                for (const Json* m : batch) {
+                    const auto mklass = m->at("class").get<std::string>();
+                    if (mklass != first_klass) hetero_class = true;
+                    const double solo_m = cost.continuous_batch_step_ms(mklass, {m}, sequence_packing);
+                    sum_solo += solo_m;
+                    min_solo = std::min(min_solo, solo_m);
+                    max_solo = std::max(max_solo, solo_m);
+                }
+                const bool hetero = hetero_class || (max_solo - min_solo > 1e-6);
+                if (hetero) {
+                    if (cand_step >= sum_solo - 1e-6) return false;
+                } else {
+                    if (cand_step > sum_solo + 1e-6) return false;
+                }
+                if (max_step_dilation > 0.0 && min_solo > 0.0 && cand_step > max_step_dilation * min_solo + 1e-6) {
+                    return false;
+                }
+                return true;
             };
             auto round_cost = [&](const std::vector<const Json*>& batch) {
                 double value = cost.continuous_batch_step_ms(klass, batch, sequence_packing) + cost.quantum_overhead_ms();
@@ -1374,7 +1404,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                     }
                     if (any_prepared) {
                         for (const Json* m : batch) {
-                            if (!m->value("prepared", false)) {
+                            if (!m->value("prepared", false) && !m->value("encode_ready", false)) {
                                 const auto mklass = m->at("class").get<std::string>();
                                 value += number_field(cost.klass(mklass), "prepare_ms");
                             }
@@ -1391,30 +1421,50 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             auto fits_subset = [&](const std::vector<const Json*>& batch, const std::vector<const Json*>& must_fit) {
                 if (must_fit.empty()) return true;
                 const double service = round_cost(batch);
-                std::vector<const Json*> active_after;
-                int min_shared_rem = std::numeric_limits<int>::max();
+                std::vector<std::pair<int, const Json*>> active_after;
+                active_after.reserve(batch.size());
                 for (const Json* x : batch) {
                     const int rx = rem_steps_of(x);
-                    if (rx > 0) {
-                        active_after.push_back(x);
-                        min_shared_rem = std::min(min_shared_rem, rx);
-                    }
+                    if (rx > 0) active_after.emplace_back(rx, x);
                 }
-                const double shared_step_ms = active_after.size() > 1
-                    ? cost.continuous_batch_step_ms(klass, active_after, sequence_packing)
-                    : 0.0;
+                std::sort(active_after.begin(), active_after.end(),
+                          [](const auto& a, const auto& b) { return a.first < b.first; });
+                struct StepPhase { int end_step; double step_cost; };
+                std::vector<StepPhase> phases;
+                phases.reserve(active_after.size());
+                int prev_step = 0;
+                for (std::size_t idx = 0; idx < active_after.size(); ++idx) {
+                    const int cur_step = active_after[idx].first;
+                    if (cur_step <= prev_step) continue;
+                    std::vector<const Json*> still_active;
+                    still_active.reserve(active_after.size() - idx);
+                    for (std::size_t k = idx; k < active_after.size(); ++k) still_active.push_back(active_after[k].second);
+                    double st_ms = 0.0;
+                    if (still_active.size() == 1) {
+                        const auto sole_klass = still_active[0]->at("class").get<std::string>();
+                        st_ms = cost.continuous_step_ms(sole_klass, 1) + cost.quantum_overhead_ms();
+                    } else {
+                        st_ms = cost.continuous_batch_step_ms(klass, still_active, sequence_packing) + cost.quantum_overhead_ms();
+                    }
+                    phases.push_back(StepPhase{cur_step, st_ms});
+                    prev_step = cur_step;
+                }
                 for (const Json* m : must_fit) {
                     const auto mklass = m->at("class").get<std::string>();
                     const int remaining = rem_steps_of(m);
                     double complete = service;
                     if (remaining > 0) {
-                        if (active_after.size() <= 1) {
-                            complete += remaining * (cost.continuous_step_ms(mklass, 1) + cost.quantum_overhead_ms());
-                        } else {
-                            const int shared = std::min(remaining, min_shared_rem);
-                            const int solo = remaining - shared;
-                            complete += shared * (shared_step_ms + cost.quantum_overhead_ms())
-                                        + solo * (cost.continuous_step_ms(mklass, 1) + cost.quantum_overhead_ms());
+                        int covered = 0;
+                        for (const auto& ph : phases) {
+                            if (covered >= remaining) break;
+                            const int span = std::min(remaining, ph.end_step) - covered;
+                            if (span > 0) {
+                                complete += span * ph.step_cost;
+                                covered += span;
+                            }
+                        }
+                        if (covered < remaining) {
+                            complete += (remaining - covered) * (cost.continuous_step_ms(mklass, 1) + cost.quantum_overhead_ms());
                         }
                         complete += number_field(cost.klass(mklass), "finish_ms");
                     } else if (bubble_free) {
@@ -1452,7 +1502,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                             }
                             probe.push_back(cb_m);
                         }
-                        if (can_join_resident && !fits(probe)) can_join_resident = false;
+                        if (can_join_resident && (!beneficial_co_batch(probe) || !fits(probe))) can_join_resident = false;
                         if (!can_join_resident && any_feasible_resident) continue;
                     }
                 }
@@ -1550,6 +1600,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                     if (other.front() != chosen) continue;
                     auto candidate = members;
                     candidate.push_back(&q);
+                    if (!prepared && !beneficial_co_batch(candidate)) continue;
                     if (late.at(&q)) {
                         if (!fits(candidate)) continue;
                     } else {
@@ -1579,7 +1630,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                         const double cand_step = cost.continuous_batch_step_ms(klass, candidate, sequence_packing);
                         if (cand_step > cur_step * 1.02) continue;
                     }
-                    if (!fits(candidate)) continue;
+                    if (!beneficial_co_batch(candidate) || !fits(candidate)) continue;
                     members = std::move(candidate);
                 }
                 Json batch = Json::array();

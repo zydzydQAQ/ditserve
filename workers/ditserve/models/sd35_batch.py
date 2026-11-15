@@ -9,8 +9,15 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import nullcontext
 import copy
+from dataclasses import dataclass
+import threading
 import time
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+
+try:
+    from flash_attn import flash_attn_varlen_func as _FLASH_ATTN_VARLEN_FUNC
+except Exception:  # pragma: no cover - optional on CPU-only hosts
+    _FLASH_ATTN_VARLEN_FUNC = None
 
 
 def calculate_shift(
@@ -80,19 +87,167 @@ def _unwrap_attn(attn: Any) -> Any:
     return getattr(attn, "module", attn)
 
 
-def _expand_per_segment(torch_mod: Any, values: Any, counts_tensor: Any, total_tokens: Optional[int] = None) -> Any:
+def _can_use_flash_varlen(torch_mod: Any, sample_tensor: Any) -> bool:
+    """Return True when fused ``flash_attn_varlen_func`` can execute on ``sample_tensor``."""
+    if _FLASH_ATTN_VARLEN_FUNC is None:
+        return False
+    dev = getattr(sample_tensor, "device", None)
+    if getattr(dev, "type", "") != "cuda":
+        return False
+    allowed_dtypes = tuple(
+        dt for dt in (getattr(torch_mod, "float16", None), getattr(torch_mod, "bfloat16", None)) if dt is not None
+    )
+    if sample_tensor.dtype not in allowed_dtypes:
+        return False
+    cuda_backends = getattr(getattr(torch_mod, "backends", None), "cuda", None)
+    if cuda_backends is not None and callable(getattr(cuda_backends, "flash_sdp_enabled", None)):
+        if not cuda_backends.flash_sdp_enabled():
+            return False
+    return True
+
+
+@dataclass
+class _PackedBatchPlan:
+    """Precomputed per-step metadata for packed heterogeneous MM-DiT execution."""
+
+    cu_img: List[int]
+    cu_txt: List[int]
+    img_counts: List[int]
+    txt_counts: List[int]
+    img_seg_ids: Any
+    txt_seg_ids: Any
+    joint_groups: List[Tuple[Tuple[int, int], List[int]]]
+    img_only_groups: List[Tuple[int, List[int]]]
+    use_fa_varlen: bool
+    cu_img_i32: Optional[Any] = None
+    max_seqlen_img: int = 0
+    cu_joint_i32: Optional[Any] = None
+    max_seqlen_joint: int = 0
+    total_joint: int = 0
+    img_in_joint_idx: Optional[Any] = None
+    txt_in_joint_idx: Optional[Any] = None
+
+
+def _build_packed_batch_plan(
+    torch_mod: Any,
+    img_counts: List[int],
+    txt_counts: List[int],
+    sample_tensor: Any,
+) -> _PackedBatchPlan:
+    device = sample_tensor.device
+    cu_img = build_cu_seqlens(img_counts)
+    cu_txt = build_cu_seqlens(txt_counts)
+    num_segments = len(img_counts)
+
+    img_seg_cpu = torch_mod.cat(
+        [torch_mod.full((n_m,), m, dtype=torch_mod.long) for m, n_m in enumerate(img_counts)],
+        dim=0,
+    )
+    txt_seg_cpu = torch_mod.cat(
+        [torch_mod.full((t_m,), m, dtype=torch_mod.long) for m, t_m in enumerate(txt_counts)],
+        dim=0,
+    )
+    non_blocking = getattr(device, "type", "") == "cuda"
+    img_seg_ids = img_seg_cpu.to(device=device, non_blocking=non_blocking)
+    txt_seg_ids = txt_seg_cpu.to(device=device, non_blocking=non_blocking)
+
+    j_groups: Dict[Tuple[int, int], List[int]] = {}
+    i_groups: Dict[int, List[int]] = {}
+    for m in range(num_segments):
+        n_m = img_counts[m]
+        t_m = txt_counts[m]
+        j_groups.setdefault((n_m, t_m), []).append(m)
+        i_groups.setdefault(n_m, []).append(m)
+
+    use_fa = _can_use_flash_varlen(torch_mod, sample_tensor)
+    if not use_fa:
+        return _PackedBatchPlan(
+            cu_img=cu_img,
+            cu_txt=cu_txt,
+            img_counts=img_counts,
+            txt_counts=txt_counts,
+            img_seg_ids=img_seg_ids,
+            txt_seg_ids=txt_seg_ids,
+            joint_groups=list(j_groups.items()),
+            img_only_groups=list(i_groups.items()),
+            use_fa_varlen=False,
+        )
+
+    cu_joint = [cu_img[m] + cu_txt[m] for m in range(num_segments + 1)]
+    max_seqlen_img = max(img_counts)
+    max_seqlen_joint = max(img_counts[m] + txt_counts[m] for m in range(num_segments))
+    total_joint = cu_joint[-1]
+
+    img_idx_cpu = torch_mod.cat(
+        [torch_mod.arange(cu_joint[m], cu_joint[m] + img_counts[m], dtype=torch_mod.long) for m in range(num_segments)],
+        dim=0,
+    )
+    txt_idx_cpu = torch_mod.cat(
+        [
+            torch_mod.arange(
+                cu_joint[m] + img_counts[m],
+                cu_joint[m + 1],
+                dtype=torch_mod.long,
+            )
+            for m in range(num_segments)
+        ],
+        dim=0,
+    )
+    cu_img_i32 = torch_mod.tensor(cu_img, dtype=torch_mod.int32, device=device)
+    cu_joint_i32 = torch_mod.tensor(cu_joint, dtype=torch_mod.int32, device=device)
+    img_in_joint_idx = img_idx_cpu.to(device=device, non_blocking=non_blocking)
+    txt_in_joint_idx = txt_idx_cpu.to(device=device, non_blocking=non_blocking)
+
+    return _PackedBatchPlan(
+        cu_img=cu_img,
+        cu_txt=cu_txt,
+        img_counts=img_counts,
+        txt_counts=txt_counts,
+        img_seg_ids=img_seg_ids,
+        txt_seg_ids=txt_seg_ids,
+        joint_groups=list(j_groups.items()),
+        img_only_groups=list(i_groups.items()),
+        use_fa_varlen=True,
+        cu_img_i32=cu_img_i32,
+        max_seqlen_img=max_seqlen_img,
+        cu_joint_i32=cu_joint_i32,
+        max_seqlen_joint=max_seqlen_joint,
+        total_joint=total_joint,
+        img_in_joint_idx=img_in_joint_idx,
+        txt_in_joint_idx=txt_in_joint_idx,
+    )
+
+
+def _expand_per_segment(
+    torch_mod: Any,
+    values: Any,
+    counts_tensor: Any = None,
+    total_tokens: Optional[int] = None,
+    *,
+    seg_ids: Any = None,
+) -> Any:
     """Expand [M, D] per-item modulation vectors to [1, sum(counts), D] along the packed token dimension."""
+    if seg_ids is not None:
+        return values.index_select(0, seg_ids).unsqueeze(0)
     if total_tokens is not None:
         return torch_mod.repeat_interleave(values, counts_tensor, dim=0, output_size=int(total_tokens)).unsqueeze(0)
     return torch_mod.repeat_interleave(values, counts_tensor, dim=0).unsqueeze(0)
 
 
-def _packed_adaln_zero(torch_mod: Any, norm_layer: Any, packed_x: Any, temb_vec: Any, counts_tensor: Any):
+def _packed_adaln_zero(
+    torch_mod: Any,
+    norm_layer: Any,
+    packed_x: Any,
+    temb_vec: Any,
+    counts_tensor: Any = None,
+    *,
+    seg_ids: Any = None,
+):
     """Apply AdaLayerNormZero or SD35AdaLayerNormZeroX to a 1D packed token tensor [1, N_total, D]."""
     total_tokens = int(packed_x.shape[1])
     dim = int(packed_x.shape[-1])
     emb = norm_layer.linear(norm_layer.silu(temb_vec))
-    emb_tok = _expand_per_segment(torch_mod, emb, counts_tensor, total_tokens)
+    emb_tok = _expand_per_segment(torch_mod, emb, counts_tensor, total_tokens, seg_ids=seg_ids)
     norm_x = norm_layer.norm(packed_x)
     if emb_tok.shape[-1] == 9 * dim:
         (
@@ -122,11 +277,19 @@ def _packed_adaln_zero(torch_mod: Any, norm_layer: Any, packed_x: Any, temb_vec:
     )
 
 
-def _packed_adaln_continuous(torch_mod: Any, norm_layer: Any, packed_x: Any, temb_vec: Any, counts_tensor: Any):
+def _packed_adaln_continuous(
+    torch_mod: Any,
+    norm_layer: Any,
+    packed_x: Any,
+    temb_vec: Any,
+    counts_tensor: Any = None,
+    *,
+    seg_ids: Any = None,
+):
     """Apply AdaLayerNormContinuous to a 1D packed token tensor [1, N_total, D] with per-segment temb [M, D]."""
     total_tokens = int(packed_x.shape[1])
     emb = norm_layer.linear(norm_layer.silu(temb_vec))
-    emb_tok = _expand_per_segment(torch_mod, emb, counts_tensor, total_tokens)
+    emb_tok = _expand_per_segment(torch_mod, emb, counts_tensor, total_tokens, seg_ids=seg_ids)
     scale, shift = emb_tok.chunk(2, dim=-1)
     return norm_layer.norm(packed_x) * (1.0 + scale) + shift
 
@@ -138,12 +301,14 @@ def _packed_joint_attention(
     norm_encoder_hidden_states: Optional[Any],
     cu_img: List[int],
     cu_txt: List[int],
+    *,
+    plan: Optional[_PackedBatchPlan] = None,
 ) -> Tuple[Any, Optional[Any]]:
     """Execute MM-DiT Joint Attention on packed [1, N_total, D] image tokens and [1, L_total, D] text tokens.
 
     All QKV and output linear projections execute as single packed GEMMs without padding tokens.
-    Joint attention is strictly isolated per segment via ``cu_img`` and ``cu_txt``, with segments
-    of identical ``(N_m, L_m)`` batched into a single FlashAttention/SDPA kernel call.
+    On CUDA FP16/BF16 with FlashAttention enabled, variable-length segments execute in a single
+    fused ``flash_attn_varlen_func`` kernel call across all resolutions without per-resolution Python loops.
     """
     attn = _unwrap_attn(attn_layer)
     F = torch_mod.nn.functional
@@ -178,19 +343,77 @@ def _packed_joint_attention(
     else:
         q_txt = k_txt = v_txt = None
 
-    # 3. Segment-isolated variable-length joint attention per (N_m + L_m) window,
-    #    batching segments that share identical (N_m, L_m) lengths into a single SDPA call.
+    context_pre_only = bool(getattr(attn, "context_pre_only", False))
+
+    # 3a. Fast path: single fused FlashAttention varlen kernel across all variable-resolution segments
+    if plan is not None and plan.use_fa_varlen and _FLASH_ATTN_VARLEN_FUNC is not None:
+        if q_txt is None:
+            out_img = _FLASH_ATTN_VARLEN_FUNC(
+                q_img.squeeze(0).contiguous(),
+                k_img.squeeze(0).contiguous(),
+                v_img.squeeze(0).contiguous(),
+                plan.cu_img_i32,
+                plan.cu_img_i32,
+                plan.max_seqlen_img,
+                plan.max_seqlen_img,
+                dropout_p=0.0,
+                causal=False,
+            )
+            packed_img_attn = out_img.reshape(1, -1, heads * head_dim).to(q_img.dtype)
+            packed_img_out = attn.to_out[0](packed_img_attn)
+            packed_img_out = attn.to_out[1](packed_img_out)
+            return packed_img_out, None
+
+        q_joint = torch_mod.empty((plan.total_joint, heads, head_dim), device=q_img.device, dtype=q_img.dtype)
+        k_joint = torch_mod.empty((plan.total_joint, heads, head_dim), device=q_img.device, dtype=q_img.dtype)
+        v_joint = torch_mod.empty((plan.total_joint, heads, head_dim), device=q_img.device, dtype=q_img.dtype)
+        q_joint.index_copy_(0, plan.img_in_joint_idx, q_img.squeeze(0))
+        q_joint.index_copy_(0, plan.txt_in_joint_idx, q_txt.squeeze(0))
+        k_joint.index_copy_(0, plan.img_in_joint_idx, k_img.squeeze(0))
+        k_joint.index_copy_(0, plan.txt_in_joint_idx, k_txt.squeeze(0))
+        v_joint.index_copy_(0, plan.img_in_joint_idx, v_img.squeeze(0))
+        v_joint.index_copy_(0, plan.txt_in_joint_idx, v_txt.squeeze(0))
+
+        out_joint = _FLASH_ATTN_VARLEN_FUNC(
+            q_joint,
+            k_joint,
+            v_joint,
+            plan.cu_joint_i32,
+            plan.cu_joint_i32,
+            plan.max_seqlen_joint,
+            plan.max_seqlen_joint,
+            dropout_p=0.0,
+            causal=False,
+        )
+        packed_img_attn = out_joint.index_select(0, plan.img_in_joint_idx).reshape(1, -1, heads * head_dim).to(q_img.dtype)
+        packed_img_out = attn.to_out[0](packed_img_attn)
+        packed_img_out = attn.to_out[1](packed_img_out)
+
+        packed_txt_out = None
+        if not context_pre_only:
+            packed_txt_attn = out_joint.index_select(0, plan.txt_in_joint_idx).reshape(1, -1, heads * head_dim).to(q_img.dtype)
+            packed_txt_out = attn.to_add_out(packed_txt_attn)
+        return packed_img_out, packed_txt_out
+
+    # 3b. Fallback path (CPU / FP32 / strict SDPA MATH mode): grouped SDPA by (N_m, L_m)
     num_segments = len(cu_img) - 1
     img_outputs: List[Any] = [None] * num_segments
     txt_outputs: List[Any] = [None] * num_segments
 
-    groups: Dict[Tuple[int, int], List[int]] = {}
-    for m in range(num_segments):
-        n_m = cu_img[m + 1] - cu_img[m]
-        t_m = (cu_txt[m + 1] - cu_txt[m]) if q_txt is not None else 0
-        groups.setdefault((n_m, t_m), []).append(m)
+    if plan is not None:
+        if q_txt is not None:
+            group_iter = plan.joint_groups
+        else:
+            group_iter = [((n_m, 0), seg_indices) for n_m, seg_indices in plan.img_only_groups]
+    else:
+        groups: Dict[Tuple[int, int], List[int]] = {}
+        for m in range(num_segments):
+            n_m = cu_img[m + 1] - cu_img[m]
+            t_m = (cu_txt[m + 1] - cu_txt[m]) if q_txt is not None else 0
+            groups.setdefault((n_m, t_m), []).append(m)
+        group_iter = list(groups.items())
 
-    for (n_m, t_m), seg_indices in groups.items():
+    for (n_m, t_m), seg_indices in group_iter:
         if len(seg_indices) == 1:
             m = seg_indices[0]
             i0, i1 = cu_img[m], cu_img[m + 1]
@@ -252,10 +475,9 @@ def _packed_joint_attention(
     packed_img_out = attn.to_out[1](packed_img_out)
 
     packed_txt_out = None
-    if q_txt is not None:
+    if q_txt is not None and not context_pre_only:
         packed_txt_attn = torch_mod.cat(txt_outputs, dim=1)
-        if not getattr(attn, "context_pre_only", False):
-            packed_txt_out = attn.to_add_out(packed_txt_attn)
+        packed_txt_out = attn.to_add_out(packed_txt_attn)
 
     return packed_img_out, packed_txt_out
 
@@ -302,8 +524,6 @@ def forward_packed_sd35(
         img_counts.append(int(seg.shape[1]))
 
     packed_hidden_states = torch_mod.cat(img_segments, dim=1)
-    cu_img = build_cu_seqlens(img_counts)
-    img_counts_tensor = torch_mod.tensor(img_counts, dtype=torch_mod.long, device=device)
 
     # 2. Pack context embeddings into [1, L_total, D] and compute [M, D] timestep+pooled embeddings
     txt_segments = []
@@ -316,8 +536,9 @@ def forward_packed_sd35(
         txt_counts.append(int(proj_enc.shape[1]))
 
     packed_encoder_hidden_states = torch_mod.cat(txt_segments, dim=1)
-    cu_txt = build_cu_seqlens(txt_counts)
-    txt_counts_tensor = torch_mod.tensor(txt_counts, dtype=torch_mod.long, device=device)
+    plan = _build_packed_batch_plan(torch_mod, img_counts, txt_counts, packed_hidden_states)
+    cu_img = plan.cu_img
+    cu_txt = plan.cu_txt
 
     t_stacked = torch_mod.cat([t.reshape(1).to(device=device) for t in timesteps_list], dim=0)
     pooled_stacked = torch_mod.cat([p.to(device=device) for p in pooled_projections_list], dim=0)
@@ -334,17 +555,17 @@ def forward_packed_sd35(
             norm_hidden_states2,
             gate_msa2,
         ) = _packed_adaln_zero(
-            torch_mod, block.norm1, packed_hidden_states, temb_vec, img_counts_tensor
+            torch_mod, block.norm1, packed_hidden_states, temb_vec, seg_ids=plan.img_seg_ids
         )
         context_pre_only = bool(getattr(block, "context_pre_only", False))
         if context_pre_only:
             norm_encoder_hidden_states = _packed_adaln_continuous(
-                torch_mod, block.norm1_context, packed_encoder_hidden_states, temb_vec, txt_counts_tensor
+                torch_mod, block.norm1_context, packed_encoder_hidden_states, temb_vec, seg_ids=plan.txt_seg_ids
             )
             c_gate_msa = c_shift_mlp = c_scale_mlp = c_gate_mlp = None
         else:
             norm_encoder_hidden_states, c_gate_msa, c_shift_mlp, c_scale_mlp, c_gate_mlp, _, _ = _packed_adaln_zero(
-                torch_mod, block.norm1_context, packed_encoder_hidden_states, temb_vec, txt_counts_tensor
+                torch_mod, block.norm1_context, packed_encoder_hidden_states, temb_vec, seg_ids=plan.txt_seg_ids
             )
 
         attn_output, context_attn_output = _packed_joint_attention(
@@ -354,6 +575,7 @@ def forward_packed_sd35(
             norm_encoder_hidden_states,
             cu_img,
             cu_txt,
+            plan=plan,
         )
         packed_hidden_states = packed_hidden_states + gate_msa * attn_output
 
@@ -363,12 +585,12 @@ def forward_packed_sd35(
                 norm_hidden_states2 = block.norm1_dual.norm(packed_hidden_states)
                 emb_dual = block.norm1_dual.linear(block.norm1_dual.silu(temb_vec))
                 emb_dual_tok = _expand_per_segment(
-                    torch_mod, emb_dual, img_counts_tensor, int(packed_hidden_states.shape[1])
+                    torch_mod, emb_dual, seg_ids=plan.img_seg_ids
                 )
                 shift_msa2, scale_msa2, gate_msa2 = emb_dual_tok.chunk(3, dim=-1)
                 norm_hidden_states2 = norm_hidden_states2 * (1.0 + scale_msa2) + shift_msa2
             attn_output2, _ = _packed_joint_attention(
-                torch_mod, block.attn2, norm_hidden_states2, None, cu_img, cu_txt
+                torch_mod, block.attn2, norm_hidden_states2, None, cu_img, cu_txt, plan=plan
             )
             packed_hidden_states = packed_hidden_states + gate_msa2 * attn_output2
 
@@ -388,7 +610,7 @@ def forward_packed_sd35(
 
     # 4. Final packed AdaLN + output projection + per-resolution unpatchify
     packed_hidden_states = _packed_adaln_continuous(
-        torch_mod, raw_tf.norm_out, packed_hidden_states, temb_vec, img_counts_tensor
+        torch_mod, raw_tf.norm_out, packed_hidden_states, temb_vec, seg_ids=plan.img_seg_ids
     )
     packed_hidden_states = raw_tf.proj_out(packed_hidden_states)
 
@@ -403,6 +625,7 @@ def forward_packed_sd35(
 
     meta = {
         "sequence_packed": True,
+        "attention_backend": "flash_attn_varlen" if plan.use_fa_varlen else "grouped_sdpa",
         "packed_segments": num_items,
         "cu_seqlens_img": cu_img,
         "cu_seqlens_txt": cu_txt,
@@ -426,6 +649,7 @@ class SD35AsyncPipelineManager:
         self.decode_counter = 0
         self._encode_stream = None
         self._vae_stream = None
+        self._vae_lock = threading.Lock()
 
     def _get_cuda_stream(self, attr: str):
         torch = getattr(self.backend, "torch", None)
@@ -467,12 +691,24 @@ class SD35AsyncPipelineManager:
             if delay_s > 0:
                 time.sleep(delay_s)
             if getattr(self.backend, "_effective_t5_device", lambda: "cuda")() == "cpu":
-                stage_info = self.backend._ensure_staged(
-                    spec["prompt"],
-                    spec["negative_prompt"],
-                    spec["max_sequence_length"],
-                    spec["guidance_scale"] > 1.0,
-                )
+                stream = self.encode_stream
+                if getattr(self.backend, "_supports_stream_stage", False):
+                    stage_info = self.backend._ensure_staged(
+                        spec["prompt"],
+                        spec["negative_prompt"],
+                        spec["max_sequence_length"],
+                        spec["guidance_scale"] > 1.0,
+                        stream=stream,
+                    )
+                else:
+                    stage_info = self.backend._ensure_staged(
+                        spec["prompt"],
+                        spec["negative_prompt"],
+                        spec["max_sequence_length"],
+                        spec["guidance_scale"] > 1.0,
+                    )
+                if stream is not None and hasattr(stream, "synchronize"):
+                    stream.synchronize()
                 direct_tensors = stage_info.pop("_direct_tensors", None)
                 elapsed_ms = (time.perf_counter() - t0) * 1000.0
                 return {
@@ -519,14 +755,29 @@ class SD35AsyncPipelineManager:
             return {"ticket": ticket, "ready": False}
         else:
             payload = future.result()
-        return {
+        stage_info = payload["stage_info"]
+        out = {
             "ticket": ticket,
             "ready": True,
             "model_ms": payload["encode_ms"],
             "push_ms": payload["push_ms"],
-            "cached": payload["stage_info"].get("cached", False),
+            "cached": stage_info.get("cached", False),
+            "shm_staged": bool(stage_info.get("shm_staged", False)),
             "bubble_free": True,
         }
+        if isinstance(stage_info.get("negative_prompt_cache"), dict):
+            out["negative_prompt_cache"] = stage_info["negative_prompt_cache"]
+        return out
+
+    def discard_encode(self, request: Dict[str, Any]) -> Dict[str, Any]:
+        ticket = request.get("ticket")
+        if not isinstance(ticket, str) or not ticket:
+            raise ValueError("encode_discard requires ticket")
+        entry = self.encode_tickets.pop(ticket, None)
+        if entry is not None:
+            _, future = entry
+            future.cancel()
+        return {"discarded": True, "ticket": ticket}
 
     def consume_encode_ticket(self, ticket: str, expected_spec: Dict[str, Any]) -> Dict[str, Any]:
         if ticket not in self.encode_tickets:
@@ -554,6 +805,8 @@ class SD35AsyncPipelineManager:
         delay_s = float(self.backend.config.get("options", {}).get("decode_delay_ms", 0.0)) / 1000.0
         latents = state.get("latents")
         existing_output = state.get("output")
+        if existing_output is None and latents is not None:
+            state["latents"] = None
 
         torch = getattr(self.backend, "torch", None)
         stream = self.vae_stream
@@ -574,13 +827,14 @@ class SD35AsyncPipelineManager:
             if existing_output is not None:
                 arr = existing_output
             else:
-                ctx = torch.cuda.stream(stream) if (stream is not None and torch is not None) else nullcontext()
-                with ctx:
-                    if boundary is not None and stream is not None:
-                        stream.wait_event(boundary)
-                    arr = self.backend._decode_latents_to_np(latents)
-                    if stream is not None and hasattr(stream, "synchronize"):
-                        stream.synchronize()
+                with self._vae_lock:
+                    ctx = torch.cuda.stream(stream) if (stream is not None and torch is not None) else nullcontext()
+                    with ctx:
+                        if boundary is not None and stream is not None:
+                            stream.wait_event(boundary)
+                        arr = self.backend._decode_latents_to_np(latents)
+                        if stream is not None and hasattr(stream, "synchronize"):
+                            stream.synchronize()
             elapsed_ms = (time.perf_counter() - t0) * 1000.0
             return arr, {
                 "kind": "decode",
@@ -626,6 +880,9 @@ class SD35AsyncPipelineManager:
 
     def has_active_decode(self, state_id: str) -> bool:
         return any(sid == state_id for sid, _, _ in self.decode_tickets.values())
+
+    def inflight_decode_count(self) -> int:
+        return len(self.decode_tickets)
 
     def close(self) -> None:
         for _, (_, _, fut) in list(self.decode_tickets.items()):

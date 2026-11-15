@@ -34,10 +34,12 @@ class SD35Backend(AtomicPipelineBackend):
         "advance_batch",
         "encode_start",
         "encode_poll",
+        "encode_discard",
         "decode_start",
         "decode_poll",
     )
     defaults = dict(AtomicPipelineBackend.defaults, steps=28, guidance_scale=4.5, max_sequence_length=256)
+    _supports_stream_stage = True
 
     def __init__(self, config):
         super().__init__(config)
@@ -54,12 +56,18 @@ class SD35Backend(AtomicPipelineBackend):
         te_dev = getattr(self, "text_encoder_device", config.get("text_encoder_device", "cuda"))
         self.t5_device = "cpu" if te_dev == "cpu" else str(self.device)
         self.encoders_offloaded = self.t5_device == "cpu"
+        if self.t5_device == "cpu" or "cpu_threads" in config or "cpu_threads" in options:
+            self.cpu_threads = positive_int(int(config.get("cpu_threads", options.get("cpu_threads", 8))), "cpu_threads")
+            self.torch.set_num_threads(self.cpu_threads)
         self._t5_lock = threading.Lock()
+        self._clip_lock = threading.RLock()
         self._gpu_lock = threading.RLock()
         self._async_pipeline_mgr = None
         self._install_fast_cache_hooks()
         if options.get("offload_text_encoders_after_warmup", False) and self.t5_device != "cpu":
             self.offload_encoders({})
+        if self.t5_device == "cpu" and self.encoder_pool is not None and options.get("prewarm_default_negative_prompt", False):
+            self._ensure_component_staged("neg", "", int(self.defaults["max_sequence_length"]), self.encoder_pool)
 
     def _effective_t5_device(self) -> str:
         if hasattr(self, "t5_device"):
@@ -105,7 +113,34 @@ class SD35Backend(AtomicPipelineBackend):
         mgr = getattr(self, "_async_pipeline_mgr", None)
         if mgr is not None and isinstance(state_id, str) and mgr.has_active_decode(state_id):
             raise ValueError("cannot release state while async decode is active")
-        return super().release(request)
+        res = super().release(request)
+        if not self.states and (mgr is None or mgr.inflight_decode_count() == 0):
+            self.release_cache()
+        return res
+
+    def _has_active_gpu_work(self) -> bool:
+        mgr = getattr(self, "_async_pipeline_mgr", None)
+        if mgr is not None and mgr.inflight_decode_count() > 0:
+            return True
+        for st in getattr(self, "states", {}).values():
+            if not isinstance(st, dict):
+                continue
+            if st.get("latents") is not None:
+                return True
+            steps = st.get("steps")
+            if steps is not None and st.get("output") is None and int(st.get("step", 0)) < int(steps):
+                return True
+        return False
+
+    def release_cache(self):
+        """Skip ``torch.cuda.empty_cache()`` while continuous-batch states or async decodes are active."""
+        if self._has_active_gpu_work():
+            return
+        return super().release_cache()
+
+    def _sync_compute_stream(self):
+        if str(getattr(self, "device", "")).startswith("cuda") and self.torch.cuda.is_available():
+            self.torch.cuda.current_stream(self.device).synchronize()
 
     def _install_fast_cache_hooks(self):
         """Install block-level Taylor MM-DiT fast-cache hooks on SD3Transformer2DModel.transformer_blocks."""
@@ -182,8 +217,21 @@ class SD35Backend(AtomicPipelineBackend):
             revision=str(self.config.get("revision") or ""),
         )
 
-    def _encode_split(self, prompt: str, negative_prompt: str, max_sequence_length: int, do_cfg: bool):
-        """Encode SD3.5 prompt with T5-XXL on CPU in `text_encoder_dtype` and CLIP-L/G on `self.device` under SDPA MATH."""
+    def _component_prompt_key(self, role: str, text_val: str, max_sequence_length: int) -> str:
+        return ProactiveEncoderPool.prompt_key(
+            modality=f"t2i_{role}",
+            model_id=str(self.config.get("model_path", "sd35")),
+            prompt=text_val if role == "pos" else "",
+            negative_prompt=text_val if role == "neg" else "",
+            max_sequence_length=max_sequence_length,
+            dtype=str(self.config.get("dtype", "bfloat16")),
+            do_cfg=False,
+            text_encoder_device=self._effective_t5_device(),
+            text_encoder_dtype=self._effective_text_encoder_dtype(),
+            revision=str(self.config.get("revision") or ""),
+        )
+
+    def _resolve_split_encoders(self, max_sequence_length: int):
         raw_pipe = getattr(self.pipe, "module", self.pipe)
         t5 = getattr(raw_pipe, "text_encoder_3", None)
         te_dtype_name = self._effective_text_encoder_dtype()
@@ -258,63 +306,143 @@ class SD35Backend(AtomicPipelineBackend):
             out = enc(tokens.input_ids.to(self.device), output_hidden_states=True)
             return out.hidden_states[-2], out[0]
 
-        t5_lock = getattr(self, "_t5_lock", None) or nullcontext()
-        gpu_lock = getattr(self, "_gpu_lock", None) or nullcontext()
-
-        with t5_lock, self.torch.inference_mode():
-            t5_pos = _t5_embeds(prompt)
-            if getattr(t5_pos.device, "type", str(t5_pos.device)) != "cpu":
-                raise RuntimeError("T5 prompt embeddings must be produced on CPU")
-            t5_pos = t5_pos.to(dtype=expected_t5_dtype)
-            t5_neg = None
-            if do_cfg:
-                t5_neg = _t5_embeds(negative_prompt)
-                if getattr(t5_neg.device, "type", str(t5_neg.device)) != "cpu":
-                    raise RuntimeError("Negative T5 prompt embeddings must be produced on CPU")
-                t5_neg = t5_neg.to(dtype=expected_t5_dtype)
-
-        with gpu_lock, self.torch.inference_mode(), _sdpa_math_context(self.torch):
-            clip_l_pos, pooled_l_pos = _clip_embeds(prompt, 0)
-            clip_g_pos, pooled_g_pos = _clip_embeds(prompt, 1)
-            if do_cfg:
-                clip_l_neg, pooled_l_neg = _clip_embeds(negative_prompt, 0)
-                clip_g_neg, pooled_g_neg = _clip_embeds(negative_prompt, 1)
-
         target_dtype = getattr(
             getattr(raw_pipe, "transformer", None),
             "dtype",
             getattr(self.torch, self.config.get("dtype", "bfloat16")),
         )
-        out_device = clip_l_pos.device
-        clip_pos = self.torch.cat([clip_l_pos, clip_g_pos], dim=-1)
-        pad_pos = int(t5_pos.shape[-1]) - int(clip_pos.shape[-1])
-        if pad_pos > 0:
-            clip_pos = self.torch.nn.functional.pad(clip_pos, (0, pad_pos))
-        pe = self.torch.cat(
-            [clip_pos.to(device=out_device, dtype=target_dtype), t5_pos.to(device=out_device, dtype=target_dtype)],
-            dim=-2,
-        )
-        ppe = self.torch.cat([pooled_l_pos, pooled_g_pos], dim=-1).to(device=out_device, dtype=target_dtype)
+        return _t5_embeds, _clip_embeds, expected_t5_dtype, target_dtype
 
+    def _encode_single_branch_split(
+        self,
+        text_val: str,
+        max_sequence_length: int,
+        *,
+        stream=None,
+        return_on_cpu: bool = False,
+    ):
+        """Encode a single SD3.5 prompt branch (T5-XXL on CPU, CLIP-L/G on ``stream`` under ``_clip_lock``)."""
+        _t5_embeds, _clip_embeds, expected_t5_dtype, target_dtype = self._resolve_split_encoders(max_sequence_length)
+        t5_lock = getattr(self, "_t5_lock", None) or nullcontext()
+        clip_lock = getattr(self, "_clip_lock", None) or getattr(self, "_gpu_lock", None) or nullcontext()
+
+        with t5_lock, self.torch.inference_mode():
+            t5_emb = _t5_embeds(text_val)
+            if getattr(t5_emb.device, "type", str(t5_emb.device)) != "cpu":
+                raise RuntimeError("T5 prompt embeddings must be produced on CPU")
+            t5_emb = t5_emb.to(dtype=expected_t5_dtype)
+
+        use_cuda_stream = (
+            stream is not None
+            and hasattr(self.torch, "cuda")
+            and str(getattr(self, "device", "")).startswith("cuda")
+            and self.torch.cuda.is_available()
+        )
+        stream_ctx = self.torch.cuda.stream(stream) if use_cuda_stream else nullcontext()
+
+        with clip_lock, stream_ctx, self.torch.inference_mode(), _sdpa_math_context(self.torch):
+            clip_l, pooled_l = _clip_embeds(text_val, 0)
+            clip_g, pooled_g = _clip_embeds(text_val, 1)
+            clip_cat = self.torch.cat([clip_l, clip_g], dim=-1)
+            pad_len = int(t5_emb.shape[-1]) - int(clip_cat.shape[-1])
+            if pad_len > 0:
+                clip_cat = self.torch.nn.functional.pad(clip_cat, (0, pad_len))
+            clip_cat = clip_cat.to(dtype=target_dtype)
+            ppe = self.torch.cat([pooled_l, pooled_g], dim=-1).to(dtype=target_dtype)
+            if return_on_cpu:
+                if getattr(clip_cat.device, "type", str(clip_cat.device)) == "cuda" and use_cuda_stream:
+                    clip_cpu = self.torch.empty(clip_cat.shape, dtype=target_dtype, device="cpu", pin_memory=True)
+                    ppe_cpu = self.torch.empty(ppe.shape, dtype=target_dtype, device="cpu", pin_memory=True)
+                    clip_cpu.copy_(clip_cat, non_blocking=True)
+                    ppe_cpu.copy_(ppe, non_blocking=True)
+                    stream.synchronize()
+                else:
+                    clip_cpu = clip_cat.to(device="cpu")
+                    ppe_cpu = ppe.to(device="cpu")
+            else:
+                out_device = clip_l.device
+                pe = self.torch.cat(
+                    [clip_cat, t5_emb.to(device=out_device, dtype=target_dtype)],
+                    dim=-2,
+                )
+                if use_cuda_stream and hasattr(stream, "synchronize"):
+                    stream.synchronize()
+                return pe, ppe
+
+        pe_cpu = self.torch.cat([clip_cpu, t5_emb.to(dtype=target_dtype)], dim=-2).contiguous()
+        return pe_cpu, ppe_cpu.contiguous()
+
+    def _encode_split(self, prompt: str, negative_prompt: str, max_sequence_length: int, do_cfg: bool, *, stream=None):
+        """Encode SD3.5 prompt with T5-XXL on CPU in `text_encoder_dtype` and CLIP-L/G on `self.device` under SDPA MATH."""
+        pe, ppe = self._encode_single_branch_split(prompt, max_sequence_length, stream=stream, return_on_cpu=False)
         if do_cfg:
-            clip_neg = self.torch.cat([clip_l_neg, clip_g_neg], dim=-1)
-            pad_neg = int(t5_neg.shape[-1]) - int(clip_neg.shape[-1])
-            if pad_neg > 0:
-                clip_neg = self.torch.nn.functional.pad(clip_neg, (0, pad_neg))
-            npe = self.torch.cat(
-                [clip_neg.to(device=out_device, dtype=target_dtype), t5_neg.to(device=out_device, dtype=target_dtype)],
-                dim=-2,
+            npe, nppe = self._encode_single_branch_split(
+                negative_prompt, max_sequence_length, stream=stream, return_on_cpu=False
             )
-            nppe = self.torch.cat([pooled_l_neg, pooled_g_neg], dim=-1).to(device=out_device, dtype=target_dtype)
         else:
             npe = None
             nppe = None
         return pe, npe, ppe, nppe
 
-    def _encode_raw_tensors(self, prompt: str, negative_prompt: str, max_sequence_length: int, do_cfg: bool) -> tuple[dict, float]:
+    def _ensure_component_staged(
+        self,
+        role: str,
+        text_val: str,
+        max_sequence_length: int,
+        pool: ProactiveEncoderPool,
+        *,
+        stream=None,
+    ) -> dict:
+        comp_key = self._component_prompt_key(role, text_val, max_sequence_length)
+        adoptions_before = pool.shm_adoptions
+        if pool.ensure_resident(comp_key):
+            return {
+                "key": comp_key,
+                "hit": True,
+                "adopted_shm": pool.shm_adoptions > adoptions_before,
+                "stage_ms": 0.0,
+                "raw_encode_ms": 0.0,
+                "bytes": 0,
+            }
+        t_raw = time.perf_counter()
+        emb, pooled = self._encode_single_branch_split(
+            text_val,
+            max_sequence_length,
+            stream=stream,
+            return_on_cpu=True,
+        )
+        raw_ms = (time.perf_counter() - t_raw) * 1000.0
+        if role == "pos":
+            tensors = {"prompt_embeds": emb, "pooled_prompt_embeds": pooled}
+        else:
+            tensors = {"negative_prompt_embeds": emb, "negative_pooled_prompt_embeds": pooled}
+        meta = pool.stage_embeddings(
+            comp_key,
+            tensors,
+            pin_memory=pool.pin_memory,
+            write_shm=pool.write_shm,
+        )
+        return {
+            "key": comp_key,
+            "hit": False,
+            "adopted_shm": False,
+            "stage_ms": float(meta["stage_ms"]),
+            "raw_encode_ms": raw_ms,
+            "bytes": int(meta["bytes"]),
+        }
+
+    def _encode_raw_tensors(
+        self,
+        prompt: str,
+        negative_prompt: str,
+        max_sequence_length: int,
+        do_cfg: bool,
+        *,
+        stream=None,
+    ) -> tuple[dict, float]:
         t0 = time.perf_counter()
         if self._effective_t5_device() == "cpu":
-            pe, npe, ppe, nppe = self._encode_split(prompt, negative_prompt, max_sequence_length, do_cfg)
+            pe, npe, ppe, nppe = self._encode_split(prompt, negative_prompt, max_sequence_length, do_cfg, stream=stream)
         else:
             was_offloaded = bool(getattr(self, "encoders_offloaded", False))
             if was_offloaded:
@@ -345,13 +473,23 @@ class SD35Backend(AtomicPipelineBackend):
             "negative_pooled_prompt_embeds": nppe,
         }, encode_ms
 
-    def _ensure_staged(self, prompt: str, negative_prompt: str, max_sequence_length: int, do_cfg: bool) -> dict:
+    def _ensure_staged(
+        self,
+        prompt: str,
+        negative_prompt: str,
+        max_sequence_length: int,
+        do_cfg: bool,
+        *,
+        stream=None,
+    ) -> dict:
         pool = self._resolve_pool()
         if not hasattr(self, "encoders_offloaded"):
             self.encoders_offloaded = self._effective_t5_device() == "cpu"
         key = self._prompt_key(prompt, negative_prompt, max_sequence_length, do_cfg)
         if pool is None:
-            tensors, encode_ms = self._encode_raw_tensors(prompt, negative_prompt, max_sequence_length, do_cfg)
+            tensors, encode_ms = self._encode_raw_tensors(
+                prompt, negative_prompt, max_sequence_length, do_cfg, stream=stream
+            )
             return dict(
                 key=key,
                 staged=False,
@@ -363,12 +501,65 @@ class SD35Backend(AtomicPipelineBackend):
                 _direct_tensors=tensors,
             )
         t0 = time.perf_counter()
-        # A /dev/shm slab staged by another worker is read into this pool now, so the
-        # fetch that follows never depends on a shared file that worker may evict.
+        if self._effective_t5_device() == "cpu":
+            pos_info = self._ensure_component_staged("pos", prompt, max_sequence_length, pool, stream=stream)
+            if do_cfg:
+                neg_info = self._ensure_component_staged(
+                    "neg", negative_prompt, max_sequence_length, pool, stream=stream
+                )
+            else:
+                neg_info = {
+                    "key": None,
+                    "hit": True,
+                    "adopted_shm": False,
+                    "stage_ms": 0.0,
+                    "raw_encode_ms": 0.0,
+                    "bytes": 0,
+                }
+            total_ms = (time.perf_counter() - t0) * 1000.0
+            all_cached = bool(pos_info["hit"] and neg_info["hit"])
+            raw_encode_ms = float(pos_info["raw_encode_ms"] + neg_info["raw_encode_ms"])
+            stage_ms = float(pos_info["stage_ms"] + neg_info["stage_ms"])
+            adopted_shm = bool(pos_info["adopted_shm"] or neg_info["adopted_shm"])
+            receipt = {
+                "outcome": "bypass" if not do_cfg else ("hit" if neg_info["hit"] else "miss"),
+                "pos_cache_hit": bool(pos_info["hit"]),
+                "neg_cache_hit": bool(neg_info["hit"]) if do_cfg else False,
+                "text_encoder_dtype": self._effective_text_encoder_dtype(),
+                "cpu_prompt_encode_ms": round(raw_encode_ms, 3),
+            }
+            return dict(
+                key=key,
+                pos_key=pos_info["key"],
+                neg_key=neg_info["key"],
+                staged=not all_cached,
+                cached=all_cached,
+                adopted_shm=adopted_shm,
+                shm_staged=bool(pool.write_shm),
+                enabled=True,
+                stage_ms=round(stage_ms, 3),
+                encode_ms=round(total_ms, 3),
+                raw_encode_ms=round(raw_encode_ms, 3),
+                bytes=int(pos_info["bytes"] + neg_info["bytes"]),
+                negative_prompt_cache=receipt,
+            )
+
+        # GPU encoder path: stage combined prompt+neg pair
+        adoptions_before = pool.shm_adoptions
         if pool.ensure_resident(key):
             elapsed_ms = (time.perf_counter() - t0) * 1000.0
-            return dict(key=key, staged=False, cached=True, enabled=True, encode_ms=round(elapsed_ms, 3))
-        tensors, raw_encode_ms = self._encode_raw_tensors(prompt, negative_prompt, max_sequence_length, do_cfg)
+            return dict(
+                key=key,
+                staged=False,
+                cached=True,
+                adopted_shm=pool.shm_adoptions > adoptions_before,
+                shm_staged=bool(pool.write_shm),
+                enabled=True,
+                encode_ms=round(elapsed_ms, 3),
+            )
+        tensors, raw_encode_ms = self._encode_raw_tensors(
+            prompt, negative_prompt, max_sequence_length, do_cfg, stream=stream
+        )
         meta = pool.stage_embeddings(
             key,
             tensors,
@@ -380,6 +571,8 @@ class SD35Backend(AtomicPipelineBackend):
             key=key,
             staged=True,
             cached=False,
+            adopted_shm=False,
+            shm_staged=bool(pool.write_shm),
             enabled=True,
             stage_ms=meta["stage_ms"],
             encode_ms=round(total_ms, 3),
@@ -398,7 +591,7 @@ class SD35Backend(AtomicPipelineBackend):
         device = self.device if device is None else device
         pool = self._resolve_pool()
         if pool is None:
-            stage_info = self._ensure_staged(prompt, negative_prompt, max_sequence_length, do_cfg)
+            stage_info = self._ensure_staged(prompt, negative_prompt, max_sequence_length, do_cfg, stream=stream)
             direct_tensors = stage_info.pop("_direct_tensors", {})
             t0 = time.perf_counter()
             target = self.torch.device(device) if hasattr(self.torch, "device") else device
@@ -419,9 +612,33 @@ class SD35Backend(AtomicPipelineBackend):
             push_ms = (time.perf_counter() - t0) * 1000.0
             return stage_info, {"tensors": out, "push_ms": push_ms, "hit": False}
         for attempt in range(3):
-            stage_info = self._ensure_staged(prompt, negative_prompt, max_sequence_length, do_cfg)
+            stage_info = self._ensure_staged(prompt, negative_prompt, max_sequence_length, do_cfg, stream=stream)
             try:
-                fetched = pool.fetch_to_device(stage_info["key"], device, stream=stream)
+                if stage_info.get("pos_key") is not None:
+                    pos_fetched = pool.fetch_to_device(stage_info["pos_key"], device, stream=stream)
+                    if do_cfg and stage_info.get("neg_key") is not None:
+                        neg_fetched = pool.fetch_to_device(stage_info["neg_key"], device, stream=stream)
+                        npe = neg_fetched["tensors"]["negative_prompt_embeds"]
+                        nppe = neg_fetched["tensors"]["negative_pooled_prompt_embeds"]
+                        neg_push_ms = float(neg_fetched["push_ms"])
+                        neg_hit = bool(neg_fetched["hit"])
+                    else:
+                        npe = None
+                        nppe = None
+                        neg_push_ms = 0.0
+                        neg_hit = True
+                    fetched = {
+                        "tensors": {
+                            "prompt_embeds": pos_fetched["tensors"]["prompt_embeds"],
+                            "pooled_prompt_embeds": pos_fetched["tensors"]["pooled_prompt_embeds"],
+                            "negative_prompt_embeds": npe,
+                            "negative_pooled_prompt_embeds": nppe,
+                        },
+                        "push_ms": float(pos_fetched["push_ms"]) + neg_push_ms,
+                        "hit": bool(pos_fetched["hit"] and neg_hit),
+                    }
+                else:
+                    fetched = pool.fetch_to_device(stage_info["key"], device, stream=stream)
             except KeyError:
                 if attempt == 2:
                     raise
@@ -435,6 +652,9 @@ class SD35Backend(AtomicPipelineBackend):
 
     def encode_poll(self, request):
         return self._pipeline_manager().poll_encode(request)
+
+    def encode_discard(self, request):
+        return self._pipeline_manager().discard_encode(request)
 
     def decode_start(self, request):
         state = self.state(request)
@@ -464,10 +684,12 @@ class SD35Backend(AtomicPipelineBackend):
 
     def prepare(self, request):
         encode_ticket = request.get("encode_ticket")
+        bubble_free = bool(request.get("bubble_free", self.config.get("options", {}).get("bubble_free", False)))
         res = super().prepare(request)
         state = self.states[res["state_id"]]
         spec = state["spec"]
         do_cfg = float(spec["guidance_scale"]) > 1.0
+        stream = self._pipeline_manager().encode_stream if bubble_free else None
         if encode_ticket is not None:
             payload = self._pipeline_manager().consume_encode_ticket(str(encode_ticket), spec)
             stage_info = payload["stage_info"]
@@ -480,7 +702,10 @@ class SD35Backend(AtomicPipelineBackend):
                     spec["negative_prompt"],
                     spec["max_sequence_length"],
                     do_cfg,
+                    stream=stream,
                 )
+                if stream is not None and hasattr(stream, "synchronize"):
+                    stream.synchronize()
                 tensors = fetched["tensors"]
                 push_ms = float(fetched["push_ms"])
                 hit = bool(fetched["hit"])
@@ -498,6 +723,7 @@ class SD35Backend(AtomicPipelineBackend):
                 spec["negative_prompt"],
                 spec["max_sequence_length"],
                 do_cfg,
+                stream=stream,
             )
             direct_tensors = stage_info.pop("_direct_tensors", None)
             state["embeds"] = direct_tensors
@@ -514,7 +740,10 @@ class SD35Backend(AtomicPipelineBackend):
         state["scheduler"] = None
         state["timesteps"] = None
         state["_prefetch_decode_future"] = None
-        return dict(res, model_ms=round(encode_ms, 3), encoder_pool_stage=stage_info)
+        out = dict(res, model_ms=round(encode_ms, 3), encoder_pool_stage=stage_info)
+        if isinstance(stage_info.get("negative_prompt_cache"), dict):
+            out["negative_prompt_cache"] = stage_info["negative_prompt_cache"]
+        return out
 
     def _encode(self, arguments, *, stream=None):
         prompts = arguments.get("prompt")
@@ -800,8 +1029,27 @@ class SD35Backend(AtomicPipelineBackend):
         - Late joins and early exits (requests at different step indices ``step_m`` via 1D vector ``timestep``)
         - Heterogeneous prompts and seeds per request
         - Heterogeneous resolutions ``(height_m, width_m)`` via ``forward_packed_sd35`` (Token Sequence Packing)
-        - Bubble-free side-stream H2D embedding prefetch for newly joined requests
+        - Bubble-free side-stream H2D embedding prefetch and fused prepare / async 2D-VAE decode launch
         """
+        options = self.config.get("options", {})
+        bubble_free = bool(request.get("bubble_free", options.get("bubble_free", False)))
+        force_packing = bool(request.get("sequence_packing", options.get("sequence_packing", False)))
+        attn_mode = str(request.get("attention", self.attention))
+
+        prepare_results = []
+        raw_prepares = request.get("prepares")
+        if isinstance(raw_prepares, list) and raw_prepares:
+            for prep_item in raw_prepares:
+                t_prep = time.perf_counter()
+                prep_req = dict(prep_item, id=request.get("id", 0))
+                if bubble_free and "bubble_free" not in prep_req:
+                    prep_req["bubble_free"] = True
+                prep_res = self.prepare(prep_req)
+                prep_res["state_id"] = prep_item["state_id"]
+                prep_res["worker_operation_ms"] = round((time.perf_counter() - t_prep) * 1000.0, 3)
+                prep_res["fused"] = True
+                prepare_results.append(prep_res)
+
         state_ids = request.get("state_ids")
         if not isinstance(state_ids, list) or not 1 <= len(state_ids) <= 8:
             raise ValueError("advance_batch requires 1 to 8 state_ids")
@@ -817,13 +1065,8 @@ class SD35Backend(AtomicPipelineBackend):
             states.append(st)
 
         steps_to_run = positive_int(request.get("steps", 1), "steps")
-        options = self.config.get("options", {})
-        bubble_free = bool(request.get("bubble_free", options.get("bubble_free", False)))
-        force_packing = bool(request.get("sequence_packing", options.get("sequence_packing", False)))
-        attn_mode = str(request.get("attention", self.attention))
 
-        if self.device.startswith("cuda") and self.torch.cuda.is_available():
-            self.torch.cuda.synchronize(self.device)
+        self._sync_compute_stream()
         started = time.perf_counter()
 
         gpu_lock = getattr(self, "_gpu_lock", None) or nullcontext()
@@ -841,8 +1084,7 @@ class SD35Backend(AtomicPipelineBackend):
                     break
                 step_meta = self._step_members_once(active, force_packing=force_packing)
 
-        if self.device.startswith("cuda") and self.torch.cuda.is_available():
-            self.torch.cuda.synchronize(self.device)
+        self._sync_compute_stream()
         elapsed_ms = (time.perf_counter() - started) * 1000.0
 
         heights = [int(st["spec"]["height"]) for st in states]
@@ -864,7 +1106,39 @@ class SD35Backend(AtomicPipelineBackend):
                 )
             )
 
-        return dict(
+        async_decodes = []
+        finish_results = []
+        output_modes = request.get("output_modes")
+        if isinstance(output_modes, dict):
+            rem_async = max(0, int(request.get("avail_async_decodes", 0))) if bubble_free else 0
+            for sid, st in zip(state_ids, states):
+                if int(st["step"]) < int(st["steps"]) or sid not in output_modes:
+                    continue
+                m_mode = output_modes[sid]
+                if rem_async > 0:
+                    dec_sub = self.decode_start(
+                        dict(
+                            id=request.get("id", 0),
+                            state_id=sid,
+                            output_mode=m_mode,
+                            allow_concurrent_decode=True,
+                        )
+                    )
+                    async_decodes.append({"state_id": sid, "ticket": dec_sub["ticket"]})
+                    rem_async -= 1
+                else:
+                    t_fin = time.perf_counter()
+                    fin_req = dict(id=request.get("id", 0), state_id=sid, output_mode=m_mode)
+                    if bubble_free:
+                        fin_req["bubble_free"] = True
+                    fin_res = self.finish(fin_req)
+                    self.release({"state_id": sid})
+                    fin_res["state_id"] = sid
+                    fin_res["worker_operation_ms"] = round((time.perf_counter() - t_fin) * 1000.0, 3)
+                    fin_res["fused"] = True
+                    finish_results.append(fin_res)
+
+        out = dict(
             results=results,
             batch_size=len(state_ids),
             quantum="continuous_batch",
@@ -876,6 +1150,11 @@ class SD35Backend(AtomicPipelineBackend):
             step_meta=step_meta,
             memory_after=self._memory(),
         )
+        if isinstance(raw_prepares, list) or isinstance(output_modes, dict):
+            out["prepare"] = prepare_results
+            out["async_decodes"] = async_decodes
+            out["finish"] = finish_results
+        return out
 
     def advance(self, request):
         state = self.state(request)
@@ -906,8 +1185,7 @@ class SD35Backend(AtomicPipelineBackend):
         spec = state["spec"]
         self._enable_cache(spec)
         attn_mode = str(request.get("attention", self.attention))
-        if self.device.startswith("cuda"):
-            self.torch.cuda.synchronize(self.device)
+        self._sync_compute_stream()
         started = time.perf_counter()
         observer = None
         if options.get("profile", False):
@@ -947,8 +1225,7 @@ class SD35Backend(AtomicPipelineBackend):
                         callback_on_step_end_tensor_inputs=["latents"],
                     )
                 state["output"] = getattr(self.pipe(**arguments), self.output_field)
-        if self.device.startswith("cuda"):
-            self.torch.cuda.synchronize(self.device)
+        self._sync_compute_stream()
         elapsed = (time.perf_counter() - started) * 1000
         state["step"] = int(spec["steps"])
         state["steps"] = int(spec["steps"])
@@ -971,23 +1248,24 @@ class SD35Backend(AtomicPipelineBackend):
         if state["output"] is None and state.get("latents") is not None:
             if int(state.get("step", 0)) < int(state.get("steps", state["spec"]["steps"])):
                 raise ValueError("pipeline has not completed all denoising steps")
-            if self.device.startswith("cuda") and self.torch.cuda.is_available():
-                self.torch.cuda.synchronize(self.device)
+            self._sync_compute_stream()
             t0 = time.perf_counter()
             options = self.config.get("options", {})
             bubble_free = bool(request.get("bubble_free", options.get("bubble_free", False)))
-            stream = self._pipeline_manager().vae_stream if bubble_free else None
+            mgr = self._pipeline_manager() if bubble_free else None
+            stream = mgr.vae_stream if mgr is not None else None
+            vae_lock = mgr._vae_lock if mgr is not None else nullcontext()
             ctx = (
                 self.torch.cuda.stream(stream)
                 if (stream is not None and hasattr(self.torch, "cuda"))
                 else nullcontext()
             )
-            with ctx:
+            with vae_lock, ctx:
                 state["output"] = self._decode_latents_to_np(state["latents"])
                 if stream is not None and hasattr(stream, "synchronize"):
                     stream.synchronize()
-            if self.device.startswith("cuda") and self.torch.cuda.is_available():
-                self.torch.cuda.synchronize(self.device)
+                else:
+                    self._sync_compute_stream()
             decode_ms = (time.perf_counter() - t0) * 1000.0
             state["latents"] = None
         res = super().finish(request)
@@ -1049,8 +1327,7 @@ class SD35Backend(AtomicPipelineBackend):
         patch_size = int(getattr(getattr(raw_tf, "config", None), "patch_size", 2))
         pack_summary = packing_stats(h_list, w_list, vae_scale_factor=vae_scale, patch_size=patch_size)
 
-        if self.device.startswith("cuda") and self.torch.cuda.is_available():
-            self.torch.cuda.synchronize(self.device)
+        self._sync_compute_stream()
         started = time.perf_counter()
 
         ephemeral_states = []
@@ -1103,9 +1380,9 @@ class SD35Backend(AtomicPipelineBackend):
                     images.append(decoded[0] if getattr(decoded, "ndim", 0) == 4 else decoded)
                 if vae_stream is not None and hasattr(vae_stream, "synchronize"):
                     vae_stream.synchronize()
+                else:
+                    self._sync_compute_stream()
 
-        if self.device.startswith("cuda") and self.torch.cuda.is_available():
-            self.torch.cuda.synchronize(self.device)
         elapsed_ms = (time.perf_counter() - started) * 1000.0
 
         hits = sum(1 for st in ephemeral_states if (st.get("encode_meta") or {}).get("encoder_pool_hit"))
@@ -1185,8 +1462,7 @@ class SD35Backend(AtomicPipelineBackend):
             for p_str, n_str in zip(prompts, neg_list):
                 self._ensure_staged(p_str, n_str, max_seq_len, guidance_scale > 1.0)
 
-        if self.device.startswith("cuda"):
-            self.torch.cuda.synchronize(self.device)
+        self._sync_compute_stream()
         started = time.perf_counter()
         generators = [self.torch.Generator(device="cpu").manual_seed(s) for s in seeds]
         arguments = dict(
@@ -1205,8 +1481,7 @@ class SD35Backend(AtomicPipelineBackend):
             getattr(self.xdit, "bind_global", lambda: None)()
             encoding = self._encode(arguments, stream=stream)
             images = getattr(self.pipe(**arguments), self.output_field)
-        if self.device.startswith("cuda"):
-            self.torch.cuda.synchronize(self.device)
+        self._sync_compute_stream()
         elapsed_ms = (time.perf_counter() - started) * 1000.0
         reused_steps = pop_sd35_reused_steps(transformer_wrapper)
         result = dict(

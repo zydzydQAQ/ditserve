@@ -849,8 +849,104 @@ class TestSD35RaggedBatchingAndChunkedDecode:
             assert dec_polled["ready"] is True
             assert dec_polled["shape"] == [1, 512, 512, 3]
             assert mgr.has_active_decode("sd35-state-1") is False
+
+            # Verify encode_discard cleans up unused prefetch tickets idempotently
+            sub_disc = mgr.submit_encode({"prompt": "discard me", "negative_prompt": "", "guidance_scale": 4.5})
+            disc_res = mgr.discard_encode({"ticket": sub_disc["ticket"]})
+            assert disc_res == {"discarded": True, "ticket": sub_disc["ticket"]}
+            assert mgr.discard_encode({"ticket": sub_disc["ticket"]}) == {"discarded": True, "ticket": sub_disc["ticket"]}
         finally:
             mgr.close()
+
+    def test_packed_flash_varlen_dispatch_and_mid_batch_release_cache_suppression(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from ditserve.models import sd35_batch
+        from ditserve.models.sd35 import SD35Backend
+
+        # 1. Verify _packed_joint_attention dispatches to fused _FLASH_ATTN_VARLEN_FUNC
+        #    for both joint (image+text) and image-only (attn2) calls with exact segment isolation.
+        varlen_calls: list[tuple[list[int], int, tuple[int, ...]]] = []
+
+        def _fake_flash_varlen(q, k, v, cu_q, cu_k, max_q, max_k, dropout_p=0.0, causal=False):
+            assert q.ndim == 3 and k.ndim == 3 and v.ndim == 3
+            assert cu_q.dtype == torch.int32 and torch.equal(cu_q, cu_k)
+            assert max_q == max_k and dropout_p == 0.0 and causal is False
+            cu_list = [int(x) for x in cu_q.tolist()]
+            varlen_calls.append((cu_list, int(max_q), tuple(q.shape)))
+            outs = []
+            for m in range(len(cu_list) - 1):
+                s0, s1 = cu_list[m], cu_list[m + 1]
+                qm = q[s0:s1].unsqueeze(0).transpose(1, 2)
+                km = k[s0:s1].unsqueeze(0).transpose(1, 2)
+                vm = v[s0:s1].unsqueeze(0).transpose(1, 2)
+                om = torch.nn.functional.scaled_dot_product_attention(qm, km, vm, dropout_p=0.0, is_causal=False)
+                outs.append(om.transpose(1, 2).squeeze(0))
+            return torch.cat(outs, dim=0)
+
+        class _JointAttn(torch.nn.Module):
+            def __init__(self, hidden: int = 8):
+                super().__init__()
+                self.heads = 2
+                self.context_pre_only = False
+                self.to_q = torch.nn.Linear(hidden, hidden)
+                self.to_k = torch.nn.Linear(hidden, hidden)
+                self.to_v = torch.nn.Linear(hidden, hidden)
+                self.add_q_proj = torch.nn.Linear(hidden, hidden)
+                self.add_k_proj = torch.nn.Linear(hidden, hidden)
+                self.add_v_proj = torch.nn.Linear(hidden, hidden)
+                self.to_out = torch.nn.ModuleList([torch.nn.Linear(hidden, hidden), torch.nn.Identity()])
+                self.to_add_out = torch.nn.Linear(hidden, hidden)
+
+        attn_mod = _JointAttn(hidden=8)
+        x_img = torch.randn((1, 13, 8), dtype=torch.float32)  # 4 + 9 image tokens
+        x_txt = torch.randn((1, 6, 8), dtype=torch.float32)   # 3 + 3 text tokens
+        plan_sdpa = sd35_batch._build_packed_batch_plan(torch, [4, 9], [3, 3], x_img)
+        ref_img, ref_txt = sd35_batch._packed_joint_attention(torch, attn_mod, x_img, x_txt, [0, 4, 13], [0, 3, 6], plan=plan_sdpa)
+        ref_img2, ref_txt2 = sd35_batch._packed_joint_attention(torch, attn_mod, x_img, None, [0, 4, 13], [0, 3, 6], plan=plan_sdpa)
+        assert ref_txt2 is None
+
+        monkeypatch.setattr(sd35_batch, "_FLASH_ATTN_VARLEN_FUNC", _fake_flash_varlen)
+        monkeypatch.setattr(sd35_batch, "_can_use_flash_varlen", lambda _t, _s: True)
+        plan_fa = sd35_batch._build_packed_batch_plan(torch, [4, 9], [3, 3], x_img)
+        assert plan_fa.use_fa_varlen is True
+        fa_img, fa_txt = sd35_batch._packed_joint_attention(torch, attn_mod, x_img, x_txt, [0, 4, 13], [0, 3, 6], plan=plan_fa)
+        fa_img2, fa_txt2 = sd35_batch._packed_joint_attention(torch, attn_mod, x_img, None, [0, 4, 13], [0, 3, 6], plan=plan_fa)
+        assert fa_txt2 is None
+        assert len(varlen_calls) == 2
+        assert varlen_calls[0] == ([0, 7, 19], 12, (19, 2, 4))
+        assert varlen_calls[1] == ([0, 4, 13], 9, (13, 2, 4))
+        torch.testing.assert_close(fa_img, ref_img, rtol=1e-5, atol=1e-5)
+        torch.testing.assert_close(fa_txt, ref_txt, rtol=1e-5, atol=1e-5)
+        torch.testing.assert_close(fa_img2, ref_img2, rtol=1e-5, atol=1e-5)
+
+        # 2. Verify SD35Backend.release_cache suppresses empty_cache while mid-batch states or async decodes remain active
+        empty_calls = 0
+
+        class _FakeCuda:
+            @staticmethod
+            def is_available() -> bool:
+                return True
+
+            @staticmethod
+            def is_initialized() -> bool:
+                return True
+
+            @staticmethod
+            def empty_cache() -> None:
+                nonlocal empty_calls
+                empty_calls += 1
+
+        sd = object.__new__(SD35Backend)
+        sd.config = {"options": {"release_cache": True}}
+        sd.torch = SimpleNamespace(cuda=_FakeCuda())
+        sd.states = {"active-img": {"step": 3, "steps": 28, "latents": torch.zeros((1, 4, 4, 4)), "output": None}}
+        sd._async_pipeline_mgr = None
+
+        sd.release_cache()
+        assert empty_calls == 0  # suppressed while active-img is mid-batch!
+
+        sd.states.clear()
+        sd.release_cache()
+        assert empty_calls == 1  # invoked cleanly once worker drains!
 
     def test_chunked_decode_parity_interleaved_isolation_and_async_decoder(self) -> None:
         class _ToyWanVAE(torch.nn.Module):

@@ -1601,3 +1601,119 @@ class TestBudgetLedgerStudyRunnerAndCliContracts:
             release_daemon(daemon.endpoint)
             daemon.shutdown()
 
+    def test_mixed_resolution_negative_optimization_guard_and_b3_retirement_pricing(self) -> None:
+        bridge = CoreBridge()
+        profile = {
+            "provenance": "synthetic",
+            "links": {"2": {"gbps": 10.0, "latency_ms": 0.0}},
+            "classes": {
+                "video": {
+                    "kind": "video",
+                    "steps": 4,
+                    "blocks_per_step": 4,
+                    "prepare_ms": 5.0,
+                    "encode_ms": 5.0,
+                    "step_compute_ms": 80.0,
+                    "comm_mb_per_step": 0.0,
+                    "collectives_per_step": 0,
+                    "finish_ms": 5.0,
+                },
+                "sd35_512": {
+                    "kind": "image",
+                    "service_ms": 1778.0,
+                    "steps": 28,
+                    "prepare_ms": 100.0,
+                    "finish_ms": 75.0,
+                    "base_pixels": 262144,
+                    "batch_step_ms": {"1": 57.0, "2": 105.0, "4": 210.0},
+                },
+                "sd35_1024": {
+                    "kind": "image",
+                    "service_ms": 4879.0,
+                    "steps": 28,
+                    "prepare_ms": 100.0,
+                    "finish_ms": 120.0,
+                    "base_pixels": 1048576,
+                    "batch_step_ms": {"1": 168.0, "2": 310.0, "4": 610.0},
+                },
+                "sd35_1440": {
+                    "kind": "image",
+                    "service_ms": 15058.0,
+                    "steps": 28,
+                    "prepare_ms": 100.0,
+                    "finish_ms": 230.0,
+                    "base_pixels": 2073600,
+                    "batch_step_ms": {"1": 531.0, "2": 980.0, "4": 1960.0},
+                },
+            },
+        }
+        r512 = {
+            "request_id": "i512",
+            "kind": "image",
+            "class": "sd35_512",
+            "arrival_ms": 0.0,
+            "deadline_ms": 20000.0,
+            "status": "waiting",
+            "ready": True,
+            "prepared": False,
+            "steps_done": 0,
+            "steps_total": 28,
+            "blocks_done": 0,
+            "decode_done": 0,
+            "group": [],
+            "continuous_batch": True,
+            "batch_spec": {"steps": 28, "height": 512, "width": 512},
+        }
+        r1024 = dict(
+            r512,
+            request_id="i1024",
+            **{"class": "sd35_1024", "batch_spec": {"steps": 28, "height": 1024, "width": 1024}},
+        )
+        r1440 = dict(
+            r512,
+            request_id="i1440",
+            deadline_ms=30000.0,
+            **{"class": "sd35_1440", "batch_spec": {"steps": 28, "height": 1440, "width": 1440}},
+        )
+
+        base_opts = {"continuous_batch": 4, "sequence_packing": True, "bubble_free": True}
+        # 1. 512^2 + 1024^2 (< 5x step dilation) co-batches under default guard
+        plan_mod = bridge.call(
+            "cluster_plan",
+            {
+                "policy": "ditserve",
+                "profile": profile,
+                "options": base_opts,
+                "state": {"now_ms": 0.0, "gpus": 1, "busy": [False], "requests": [r512, r1024]},
+            },
+        )
+        assert plan_mod["assignments"][0]["batch"] == ["i512", "i1024"]
+
+        # 2. 512^2 + 1440^2 (~10.3x step dilation) is blocked by default max_step_dilation=5.0
+        plan_ext = bridge.call(
+            "cluster_plan",
+            {
+                "policy": "ditserve",
+                "profile": profile,
+                "options": base_opts,
+                "state": {"now_ms": 0.0, "gpus": 1, "busy": [False], "requests": [r512, r1440]},
+            },
+        )
+        assert plan_ext["assignments"][0]["batch"] == ["i512"]
+
+        # 3. B=3 multi-phase retirement simulation protects middle member rb even when max_step_dilation=12.0
+        ra = dict(r512, request_id="ra", status="suspended", prepared=True, group=[0], steps_done=27, deadline_ms=1000.0)
+        rb = dict(r512, request_id="rb", status="suspended", prepared=True, group=[0], steps_done=7, deadline_ms=5000.0)
+        rc = dict(r1440, request_id="rc")
+        plan_b3 = bridge.call(
+            "cluster_plan",
+            {
+                "policy": "ditserve",
+                "profile": profile,
+                "options": dict(base_opts, max_step_dilation=12.0),
+                "state": {"now_ms": 0.0, "gpus": 1, "busy": [False], "requests": [ra, rb, rc]},
+            },
+        )
+        assert plan_b3["assignments"][0]["batch"] == ["ra", "rb"]
+
+

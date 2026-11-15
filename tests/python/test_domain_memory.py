@@ -879,3 +879,90 @@ class TestLosslessUMT5TruncationAndNegativePromptCache:
         assert len(rec4["evicted"]) == 1
         assert cache.counters["evictions"] == 1
         assert cache.snapshot()["entries"] == 2
+
+    def test_sd35_split_pos_neg_cpu_encoder_pool_deduplication_and_bit_exactness(
+        self, tmp_path: pathlib.Path
+    ) -> None:
+        from ditserve.models.sd35 import SD35Backend
+
+        t5_calls: list[str] = []
+        clip_calls: list[tuple[str, int]] = []
+
+        class _FakeSD35Pipe:
+            def __init__(self):
+                self.transformer = SimpleNamespace(dtype=torch.bfloat16)
+                self.text_encoder_3 = SimpleNamespace(device=torch.device("cpu"), dtype=torch.bfloat16)
+
+            def _get_t5_prompt_embeds(self, prompt, num_images_per_prompt=1, max_sequence_length=256, device="cpu"):
+                t5_calls.append(str(prompt))
+                gen = torch.Generator(device="cpu").manual_seed(abs(hash(("t5", str(prompt), int(max_sequence_length)))) % (1 << 31))
+                return torch.randn((1, max_sequence_length, 32), generator=gen, dtype=torch.bfloat16, device="cpu")
+
+            def _get_clip_prompt_embeds(self, prompt, device="cpu", num_images_per_prompt=1, clip_skip=None, clip_model_index=0):
+                clip_calls.append((str(prompt), int(clip_model_index)))
+                gen = torch.Generator(device="cpu").manual_seed(abs(hash(("clip", str(prompt), int(clip_model_index)))) % (1 << 31))
+                hid = torch.randn((1, 8, 8), generator=gen, dtype=torch.bfloat16, device=device)
+                pooled = torch.randn((1, 8), generator=gen, dtype=torch.bfloat16, device=device)
+                return hid, pooled
+
+        shared_shm = tmp_path / "sd35-split-shm"
+        pool_a = ProactiveEncoderPool(
+            {"shm_dir": str(shared_shm), "per_cell_isolation": False, "write_shm": True, "pin_memory": False}
+        )
+        pool_b = ProactiveEncoderPool(
+            {"shm_dir": str(shared_shm), "per_cell_isolation": False, "write_shm": True, "pin_memory": False}
+        )
+
+        def _make_sd35(pool_obj: ProactiveEncoderPool | None) -> SD35Backend:
+            b = object.__new__(SD35Backend)
+            b.torch = torch
+            b.device = "cpu"
+            b.t5_device = "cpu"
+            b.text_encoder_dtype = "bfloat16"
+            b.encoders_offloaded = True
+            b.config = {"model_path": "sd35-test", "dtype": "bfloat16", "text_encoder_device": "cpu", "text_encoder_dtype": "bfloat16", "options": {}}
+            b.pipe = SimpleNamespace(module=_FakeSD35Pipe())
+            b.encoder_pool = pool_obj
+            b._t5_lock = threading.Lock()
+            b._clip_lock = threading.RLock()
+            b._gpu_lock = threading.RLock()
+            return b
+
+        ref_backend = _make_sd35(None)
+        ref_pe, ref_npe, ref_ppe, ref_nppe = ref_backend._encode_split("neon samurai", "", 256, True)
+        t5_calls.clear()
+        clip_calls.clear()
+
+        worker_a = _make_sd35(pool_a)
+        # 1. First cold CFG prompt encodes both pos ("neon samurai") and neg ("") -> 2 T5 calls
+        st1, fetched1 = worker_a._fetch_staged("neon samurai", "", 256, True)
+        assert t5_calls == ["neon samurai", ""]
+        assert st1["negative_prompt_cache"]["pos_cache_hit"] is False
+        assert st1["negative_prompt_cache"]["neg_cache_hit"] is False
+        assert st1["negative_prompt_cache"]["outcome"] == "miss"
+
+        # Strict Tier-1 bit-exactness (max_abs_diff == 0.0) vs unpooled _encode_split
+        assert float((fetched1["tensors"]["prompt_embeds"].float() - ref_pe.float()).abs().max().item()) == 0.0
+        assert float((fetched1["tensors"]["negative_prompt_embeds"].float() - ref_npe.float()).abs().max().item()) == 0.0
+        assert float((fetched1["tensors"]["pooled_prompt_embeds"].float() - ref_ppe.float()).abs().max().item()) == 0.0
+        assert float((fetched1["tensors"]["negative_pooled_prompt_embeds"].float() - ref_nppe.float()).abs().max().item()) == 0.0
+
+        # 2. Second cold positive prompt ("alpine cabin") with same "" negative prompt runs T5 ONLY ONCE (50% CPU reduction!)
+        st2, fetched2 = worker_a._fetch_staged("alpine cabin", "", 256, True)
+        assert t5_calls == ["neon samurai", "", "alpine cabin"]
+        assert st2["negative_prompt_cache"]["pos_cache_hit"] is False
+        assert st2["negative_prompt_cache"]["neg_cache_hit"] is True
+        assert st2["negative_prompt_cache"]["outcome"] == "hit"
+        assert torch.equal(fetched2["tensors"]["negative_prompt_embeds"], ref_npe)
+
+        # 3. Cross-worker /dev/shm adoption: worker_b with cold Positive prompt ("desert oasis") + "" neg adopts "" from /dev/shm!
+        worker_b = _make_sd35(pool_b)
+        st3, fetched3 = worker_b._fetch_staged("desert oasis", "", 256, True)
+        assert t5_calls == ["neon samurai", "", "alpine cabin", "desert oasis"]
+        assert st3["negative_prompt_cache"]["neg_cache_hit"] is True
+        assert st3["adopted_shm"] is True
+        assert pool_b.shm_adoptions == 1
+        assert torch.equal(fetched3["tensors"]["negative_prompt_embeds"], ref_npe)
+        pool_a.clear()
+        pool_b.clear()
+

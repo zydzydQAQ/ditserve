@@ -11,12 +11,14 @@ from .base import Backend, artifact, file_hash, positive_int, progress
 class MockBackend(Backend):
     operations = Backend.operations + ("snapshot", "restore", "inventory", "update_prompt", "distributed", "generate_batch",
                                       "advance_batch", "migration_release", "migration_abort", "encode_start", "encode_poll",
-                                      "decode_start", "decode_poll", "block_export", "block_import", "tiered_offload", "tiered_prefetch")
+                                      "encode_discard", "decode_start", "decode_poll", "block_export", "block_import",
+                                      "tiered_offload", "tiered_prefetch")
 
     def __init__(self, config):
         super().__init__(config)
         self.migrations = {}
         self.tickets, self.decodes = {}, {}
+        self.decode_counter = 0
         # Like Wan's layout handle under SP groups: one request inside a solver step per worker.
         self.mid_step = None
 
@@ -32,34 +34,45 @@ class MockBackend(Backend):
         spec, ready_at = self.tickets[request["ticket"]]
         return dict(ticket=request["ticket"], ready=time.monotonic() >= ready_at, measured=False)
 
+    def encode_discard(self, request):
+        ticket = request.get("ticket")
+        if not isinstance(ticket, str) or not ticket:
+            raise ValueError("encode_discard requires ticket")
+        self.tickets.pop(ticket, None)
+        return dict(discarded=True, ticket=ticket, measured=False)
+
     def decode_start(self, request):
         state = self.state(request)
         if state["step"] != state["steps"] or state["paused"]:
             raise ValueError("decode requires completed resident state")
-        if self.decodes:
+        self._check_not_decoding(request["state_id"])
+        if self.decodes and not request.get("allow_concurrent_decode", False):
             raise ValueError("collect the previous decode first")
         delay = self.config.get("options", {}).get("decode_delay_ms", 0)
         if type(delay) not in (float, int) or not 0 <= delay <= 60000:
             raise ValueError("mock decode_delay_ms must be in [0, 60000]")
-        ticket = "decode-%d" % request["id"]
-        self.decodes[ticket] = (request["state_id"], time.monotonic() + delay / 1000)
-        return dict(ticket=ticket, ready=False, measured=False)
+        self.decode_counter += 1
+        base_ticket = "decode-%d" % request["id"]
+        ticket = base_ticket if base_ticket not in self.decodes else "%s-%d" % (base_ticket, self.decode_counter)
+        self.decodes[ticket] = (request["state_id"], time.monotonic() + delay / 1000, dict(request))
+        return dict(ticket=ticket, ready=False, state_id=request["state_id"], measured=False)
 
     def decode_poll(self, request):
         if request["ticket"] not in self.decodes:
             raise ValueError("unknown decode ticket")
-        key, ready_at = self.decodes[request["ticket"]]
+        key, ready_at, orig_req = self.decodes[request["ticket"]]
         remaining = ready_at - time.monotonic()
         if remaining > 0:
             if not request.get("wait"):
-                return dict(ticket=request["ticket"], ready=False, measured=False)
+                return dict(ticket=request["ticket"], ready=False, state_id=key, measured=False)
             time.sleep(remaining)
-        result = self._finish(dict(request, state_id=key))
+        merged = dict(orig_req, **request, state_id=key)
+        result = self._finish(merged)
         del self.decodes[request["ticket"]]
-        return dict(result, ticket=request["ticket"], ready=True)
+        return dict(result, ticket=request["ticket"], ready=True, state_id=key)
 
     def _check_not_decoding(self, key):
-        if any(owner == key for owner, ready_at in self.decodes.values()):
+        if any(owner == key for owner, _, _ in self.decodes.values()):
             raise ValueError("state is owned by an outstanding async decode")
 
     def _inject(self, op, request):
@@ -295,6 +308,17 @@ class MockBackend(Backend):
 
     def advance_batch(self, request):
         self._inject("advance_batch", request)
+        prepare_results = []
+        raw_prepares = request.get("prepares")
+        if isinstance(raw_prepares, list) and raw_prepares:
+            for prep_item in raw_prepares:
+                t_prep = time.perf_counter()
+                prep_res = self.prepare(dict(prep_item, id=request.get("id", 0)))
+                prep_res["state_id"] = prep_item["state_id"]
+                prep_res["worker_operation_ms"] = round((time.perf_counter() - t_prep) * 1000.0, 3)
+                prep_res["fused"] = True
+                prepare_results.append(prep_res)
+
         keys = request.get("state_ids")
         if not isinstance(keys, list) or not 1 <= len(keys) <= 8 or len(set(keys)) != len(keys):
             raise ValueError("advance_batch requires 1 to 8 distinct state_ids")
@@ -305,10 +329,46 @@ class MockBackend(Backend):
         for key in keys:
             event = self._advance_one({"state_id": key})
             results.append(dict(state_id=key, progress=event["progress"], event=event))
-        return dict(batch_size=len(keys), model_ms=0., results=results,
-                    memory_before=dict(allocated_bytes=0, reserved_bytes=0, peak_allocated_bytes=0, peak_reserved_bytes=0),
-                    memory_after=dict(allocated_bytes=0, reserved_bytes=0, peak_allocated_bytes=0, peak_reserved_bytes=0),
-                    measured=False)
+
+        async_decodes = []
+        finish_results = []
+        output_modes = request.get("output_modes")
+        bubble_free = bool(request.get("bubble_free", self.config.get("options", {}).get("bubble_free", False)))
+        if isinstance(output_modes, dict):
+            rem_async = max(0, int(request.get("avail_async_decodes", 0))) if bubble_free else 0
+            for key, state in zip(keys, states):
+                if state["step"] < state["steps"] or key not in output_modes:
+                    continue
+                m_mode = output_modes[key]
+                if rem_async > 0:
+                    dec_sub = self.decode_start(
+                        dict(
+                            id=request.get("id", 0),
+                            state_id=key,
+                            output_mode=m_mode,
+                            allow_concurrent_decode=True,
+                        )
+                    )
+                    async_decodes.append(dict(state_id=key, ticket=dec_sub["ticket"]))
+                    rem_async -= 1
+                else:
+                    t_fin = time.perf_counter()
+                    fin_res = self.finish(dict(id=request.get("id", 0), state_id=key, output_mode=m_mode))
+                    self.release(dict(state_id=key))
+                    fin_res["state_id"] = key
+                    fin_res["worker_operation_ms"] = round((time.perf_counter() - t_fin) * 1000.0, 3)
+                    fin_res["fused"] = True
+                    finish_results.append(fin_res)
+
+        out = dict(batch_size=len(keys), model_ms=0., results=results,
+                   memory_before=dict(allocated_bytes=0, reserved_bytes=0, peak_allocated_bytes=0, peak_reserved_bytes=0),
+                   memory_after=dict(allocated_bytes=0, reserved_bytes=0, peak_allocated_bytes=0, peak_reserved_bytes=0),
+                   measured=False)
+        if isinstance(raw_prepares, list) or isinstance(output_modes, dict):
+            out["prepare"] = prepare_results
+            out["async_decodes"] = async_decodes
+            out["finish"] = finish_results
+        return out
 
     def generate_batch(self, request):
         """Fixture batching: one call serves every prompt; costs.batch_ms[size] or size x step_ms."""

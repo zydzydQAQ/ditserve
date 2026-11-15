@@ -1760,14 +1760,36 @@ int main(int argc, char** argv) {
         require(guarded_cb.size() == 1 && guarded_cb[0].at("batch") == Json::array({"r512"}),
                 "cross-class deadline guard prevents 1440x1440 from trapping tight 512x512 in a 16s co-batch: " + guarded_cb.dump());
 
-        // When r512 has a relaxed deadline (20000 ms), it safely co-batches with r1440 even when r512 is the lead request.
+        // Default max_step_dilation (5.0x) blocks extreme 512x512 + 1440x1440 step dilation (~10.3x),
+        // while moderate 512x512 + 1024x1024 (< 5.0x) co-batches by default and max_step_dilation=12.0 allows 512+1440.
+        multi_prof["classes"]["sd35_1024"] = {{"kind", "image"}, {"service_ms", 4879}, {"steps", 28},
+                                              {"prepare_ms", 100}, {"finish_ms", 120}, {"base_pixels", 1048576},
+                                              {"batch_step_ms", {{"1", 168.0}, {"2", 310.0}, {"4", 610.0}}}};
+        const ClusterCost multi_cost_ext(multi_prof);
         Json r512_relaxed = r512_tight;
         r512_relaxed["deadline_ms"] = 20000.0;
+        const auto blocked_extreme = cluster_plan({{"now_ms", 0}, {"gpus", 1}, {"busy", Json::array()},
+                                                   {"requests", Json::array({r512_relaxed, r1440})}},
+                                                  "ditserve", multi_cost_ext, shared_opts).at("assignments");
+        require(blocked_extreme.size() == 1 && blocked_extreme[0].at("batch") == Json::array({"r512"}),
+                "default max_step_dilation=5.0 blocks extreme 512x512 + 1440x1440 (~10.3x) step dilation: " + blocked_extreme.dump());
+
+        Json r1024 = image("r1024", 21000.0);
+        r1024.merge_patch({{"class", "sd35_1024"}, {"steps_total", 28}, {"continuous_batch", true},
+                           {"batch_spec", {{"steps", 28}, {"height", 1024}, {"width", 1024}}}});
+        const auto moderate_co_cb = cluster_plan({{"now_ms", 0}, {"gpus", 1}, {"busy", Json::array()},
+                                                  {"requests", Json::array({r512_relaxed, r1024})}},
+                                                 "ditserve", multi_cost_ext, shared_opts).at("assignments");
+        require(moderate_co_cb.size() == 1 && moderate_co_cb[0].at("batch") == Json::array({"r512", "r1024"}),
+                "moderate 512x512 + 1024x1024 (<5.0x dilation) co-batches under default options: " + moderate_co_cb.dump());
+
+        Json relaxed_dilation_opts = shared_opts;
+        relaxed_dilation_opts["max_step_dilation"] = 12.0;
         const auto co_cb = cluster_plan({{"now_ms", 0}, {"gpus", 1}, {"busy", Json::array()},
                                          {"requests", Json::array({r512_relaxed, r1440})}},
-                                        "ditserve", multi_cost, shared_opts).at("assignments");
+                                        "ditserve", multi_cost_ext, relaxed_dilation_opts).at("assignments");
         require(co_cb.size() == 1 && co_cb[0].at("batch") == Json::array({"r512", "r1440"}),
-                "relaxed 512x512 co-batches with 1440x1440 using anchor-normalized sequence packing: " + co_cb.dump());
+                "explicit max_step_dilation=12.0 allows relaxed 512x512 + 1440x1440 co-batching: " + co_cb.dump());
 
         // Simulation parity: ditserve uses continuous_batch while abl-no-cb uses atomic execution under shared_opts.
         const Json sim_trace = Json::array({
@@ -1824,6 +1846,59 @@ int main(int argc, char** argv) {
         require(keep_coresident.size() == 1
                 && keep_coresident[0].at("batch") == Json::array({"i09", "i17_pinned"}),
                 "co-resident prepared non-late CB image stays in batch instead of stranding behind solo leader: " + keep_coresident.dump());
+
+        //    (d) Prefetched encode_ready=true eliminates the 100 ms late-join prepare_ms penalty under bubble_free.
+        Json prefetched_late_1440 = tight_late_1440;
+        prefetched_late_1440["encode_ready"] = true;
+        leader_1440["steps_done"] = 13;
+        const auto admit_prefetched_join = cluster_plan({{"now_ms", 0}, {"gpus", 1}, {"busy", Json::array()},
+                                                         {"requests", Json::array({leader_1440, prefetched_late_1440})}},
+                                                        "ditserve", multi_cost_ext, shared_opts).at("assignments");
+        require(admit_prefetched_join.size() == 1
+                && admit_prefetched_join[0].at("batch") == Json::array({"i09", "i17"}),
+                "encode_ready=true removes prepare_ms bubble penalty on late join: " + admit_prefetched_join.dump());
+
+        //    (e) Exact B>=3 multi-phase retirement simulation in fits_subset:
+        //        r_a (512x512, 27/28 done -> 0 rem after round) + r_b (512x512, 7/28 done -> 20 rem, deadline 5000 ms)
+        //        must NOT admit r_c (1440x1440, 0/28 done -> 27 rem) even under max_step_dilation=12.0, because after r_a
+        //        retires at step 1, r_b would remain co-batched with r_c for 20 steps (~11.7 s > 5000 ms)!
+        Json b3_ra = r512_tight;
+        b3_ra.merge_patch({{"request_id", "ra"}, {"status", "suspended"}, {"prepared", true},
+                           {"group", {0}}, {"steps_done", 27}, {"deadline_ms", 1000.0}});
+        Json b3_rb = r512_tight;
+        b3_rb.merge_patch({{"request_id", "rb"}, {"status", "suspended"}, {"prepared", true},
+                           {"group", {0}}, {"steps_done", 7}, {"deadline_ms", 5000.0}});
+        Json b3_rc = r1440;
+        b3_rc.merge_patch({{"request_id", "rc"}, {"status", "waiting"}, {"prepared", false},
+                           {"steps_done", 0}, {"deadline_ms", 30000.0}});
+        const auto b3_guarded = cluster_plan({{"now_ms", 0}, {"gpus", 1}, {"busy", Json::array()},
+                                              {"requests", Json::array({b3_ra, b3_rb, b3_rc})}},
+                                             "ditserve", multi_cost_ext, relaxed_dilation_opts).at("assignments");
+        require(b3_guarded.size() == 1 && b3_guarded[0].at("batch") == Json::array({"ra", "rb"}),
+                "B>=3 multi-phase retirement simulation protects rb from rc's 20-step post-ra co-batch tail: " + b3_guarded.dump());
+
+        //    (f) Net GPU-time negative-optimization guard rejects superlinear heterogeneous co-batching (cand_step >= sum(solo)).
+        Json reg_prof = multi_prof;
+        reg_prof["classes"]["sd35_reg_a"] = {{"kind", "image"}, {"service_ms", 5600}, {"steps", 28},
+                                             {"prepare_ms", 50}, {"finish_ms", 80}, {"base_pixels", 1048576},
+                                             {"batch_step_ms", {{"1", 180.0}, {"2", 420.0}, {"4", 900.0}}}};
+        reg_prof["classes"]["sd35_reg_b"] = {{"kind", "image"}, {"service_ms", 14800}, {"steps", 28},
+                                             {"prepare_ms", 50}, {"finish_ms", 180}, {"base_pixels", 2073600},
+                                             {"batch_step_ms", {{"1", 500.0}, {"2", 1150.0}, {"4", 2400.0}}}};
+        const ClusterCost reg_cost(reg_prof);
+        Json reg_a = image("reg_a", 40000.0);
+        reg_a.merge_patch({{"class", "sd35_reg_a"}, {"steps_total", 28}, {"continuous_batch", true},
+                           {"batch_spec", {{"steps", 28}, {"height", 1024}, {"width", 1024}}}});
+        Json reg_b = image("reg_b", 40000.0);
+        reg_b.merge_patch({{"class", "sd35_reg_b"}, {"steps_total", 28}, {"continuous_batch", true},
+                           {"batch_spec", {{"steps", 28}, {"height", 1440}, {"width", 1440}}}});
+        Json no_dilation_cap = shared_opts;
+        no_dilation_cap["max_step_dilation"] = 0.0;
+        const auto reg_rejected = cluster_plan({{"now_ms", 0}, {"gpus", 1}, {"busy", Json::array()},
+                                                {"requests", Json::array({reg_a, reg_b})}},
+                                               "ditserve", reg_cost, no_dilation_cap).at("assignments");
+        require(reg_rejected.size() == 1 && reg_rejected[0].at("batch") == Json::array({"reg_a"}),
+                "beneficial_co_batch rejects superlinear heterogeneous co-batching where cand_step >= sum(solo): " + reg_rejected.dump());
     });
     std::cout << checks - failures << "/" << checks << " cluster checks passed\n";
     return failures ? 1 : 0;

@@ -931,7 +931,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     // resumed_*: block quanta that followed another request there (the first quantum and regroups excluded).
     struct Live{
         std::string status="pending";
-        bool prepared=false,offloaded=false,cfg_folded=false,cfg_fold_eligible=false,shm_staged=false;
+        bool prepared=false,offloaded=false,cfg_folded=false,cfg_fold_eligible=false,shm_staged=false,encode_ready=false;
         int steps=0,blocks=0,total=0,encode_gpu=-1,decode_gpu=-1,decode_done=0,epoch=0;
         std::vector<int> group;
         std::string form="sp1",ticket,pair,decode_ticket,last_stop_event,last_restore_event;
@@ -947,7 +947,8 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
     std::vector<bool> busy(gpus,false);
     std::vector<std::string> last_on_gpu(gpus);   // request that last ran on each GPU
     std::vector<std::vector<std::string>> stale(gpus);   // states to release once the GPU is idle
-    std::vector<std::set<std::string>> stale_tickets(gpus);   // unused encode tickets to discard once the GPU is idle
+    std::vector<std::set<std::string>> stale_tickets(gpus);   // unused video encode tickets to discard once the GPU is idle
+    std::vector<std::set<std::string>> stale_image_tickets(gpus);   // unused image encode tickets to discard once the worker is idle
     std::map<std::string,std::size_t> index;
     for(std::size_t i=0;i<rows.size();++i){
         auto& row=rows[i];
@@ -1115,7 +1116,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
         std::function<Json()> work_unit;
         if(quantum=="continuous_batch"){
             const auto name=image(group.front());
-            Json specs=Json::object(),modes=Json::object(),ids=Json::array(),tickets=Json::object();
+            Json specs=Json::object(),modes=Json::object(),ids=Json::array(),tickets=Json::object(),prepares=Json::array();
             int new_count=0,active_count=0;
             for(const auto& member:assignment.at("batch")){
                 const auto mid=member.get<std::string>();const auto m=index.at(mid);
@@ -1124,13 +1125,20 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 if(mstate.prepared)++active_count;
                 else{
                     ++new_count;specs[mid]=spec_of(mrow);
+                    Json prep_item={{"state_id",mid},{"spec",specs[mid]}};
                     if(!mstate.ticket.empty()){
                         const bool same_worker=(mstate.encode_gpu==group.front());
-                        if(same_worker)tickets[mid]=mstate.ticket;
+                        if(same_worker){
+                            tickets[mid]=mstate.ticket;
+                            prep_item["encode_ticket"]=mstate.ticket;
+                        }else if(mstate.encode_gpu>=0){
+                            stale_image_tickets[mstate.encode_gpu].insert(mstate.ticket);
+                        }
                         mrow["encode_ticket_used"]=same_worker;
                         mrow["encode_cross_worker"]=!same_worker;
                         mstate.ticket.clear();
                     }
+                    prepares.push_back(std::move(prep_item));
                 }
                 if(!mrow.contains("start_ms"))mrow["start_ms"]=now();
                 mrow["batched"]=static_cast<int>(assignment.at("batch").size());
@@ -1138,24 +1146,43 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             }
             const bool cb_bubble_free=assignment.value("bubble_free",false);
             const bool cb_seq_pack=assignment.value("sequence_packing",false);
-            work_unit=[&workers,name,ids,specs,modes,tickets,new_count,active_count,deadline,origin,cb_bubble_free,cb_seq_pack]{
+            const int max_img_async=int_field(options,"max_image_async_decodes",2,0);
+            int inflight_img_decodes=0;
+            for(std::size_t k=0;k<live.size();++k)
+                if(live[k].status=="decoding"&&rows[k].at("kind")=="image"&&live[k].decode_gpu==group.front())++inflight_img_decodes;
+            const int avail_async_decodes=cb_bubble_free?std::max(0,max_img_async-inflight_img_decodes):0;
+            work_unit=[&workers,name,ids,specs,modes,tickets,prepares,new_count,active_count,deadline,origin,cb_bubble_free,cb_seq_pack,avail_async_decodes]{
                 auto& w=workers.get(name);
-                Json out={{"prepare",Json::array()},{"finish",Json::array()},
+                Json out={{"prepare",Json::array()},{"finish",Json::array()},{"async_decodes",Json::array()},
                           {"new_count",new_count},{"active_count",active_count}};
-                for(const auto& mid:ids)if(specs.contains(mid.get<std::string>())){
-                    const auto mid_str=mid.get<std::string>();
-                    Json prep_req={{"op","prepare"},{"state_id",mid},{"spec",specs.at(mid_str)}};
-                    if(tickets.contains(mid_str))prep_req["encode_ticket"]=tickets.at(mid_str);
-                    auto prepared=w.call(prep_req,deadline);
-                    prepared["state_id"]=mid;out["prepare"].push_back(prepared);
+                Json adv_req={{"op","advance_batch"},{"state_ids",ids},{"output_modes",modes}};
+                if(!prepares.empty())adv_req["prepares"]=prepares;
+                if(cb_bubble_free){
+                    adv_req["bubble_free"]=true;
+                    adv_req["avail_async_decodes"]=avail_async_decodes;
                 }
-                Json adv_req={{"op","advance_batch"},{"state_ids",ids}};
-                if(cb_bubble_free)adv_req["bubble_free"]=true;
                 if(cb_seq_pack)adv_req["sequence_packing"]=true;
                 const auto advanced=w.call(adv_req,deadline);
                 out["advance_batch"]=advanced;
+                if(advanced.contains("prepare")&&advanced.at("prepare").is_array())out["prepare"]=advanced.at("prepare");
+                std::set<std::string> settled;
+                if(advanced.contains("async_decodes")&&advanced.at("async_decodes").is_array()){
+                    for(const auto& dec:advanced.at("async_decodes")){
+                        settled.insert(dec.at("state_id").get<std::string>());
+                        out["async_decodes"].push_back(dec);
+                    }
+                }
+                if(advanced.contains("finish")&&advanced.at("finish").is_array()){
+                    for(auto finished:advanced.at("finish")){
+                        const auto mid=finished.at("state_id").get<std::string>();
+                        settled.insert(mid);
+                        if(!finished.contains("completed_at_ms"))finished["completed_at_ms"]=(monotonic_seconds()-origin)*1000;
+                        out["finish"].push_back(std::move(finished));
+                    }
+                }
                 for(const auto& result:advanced.at("results"))if(result.at("progress").value("done",false)){
                     const auto mid=result.at("state_id").get<std::string>();
+                    if(settled.count(mid))continue;
                     Json fin_req={{"op","finish"},{"state_id",mid},{"output_mode",modes.at(mid)}};
                     if(cb_bubble_free)fin_req["bubble_free"]=true;
                     auto finished=w.call(fin_req,deadline);
@@ -1177,6 +1204,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 members.push_back({{"request_id",member},{"spec",mspec},{"output_mode",mrow.at("output_mode")}});
                 if(!mstate.prepared&&!mstate.ticket.empty()){
                     const bool same_worker=(mstate.encode_gpu==group.front());
+                    if(mstate.encode_gpu>=0)stale_image_tickets[mstate.encode_gpu].insert(mstate.ticket);
                     mrow["encode_ticket_used"]=false;
                     mrow["encode_cross_worker"]=!same_worker;
                     mstate.ticket.clear();
@@ -1214,6 +1242,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             if(!state.prepared&&!state.ticket.empty()){
                 const bool same_worker=(state.encode_gpu==group.front());
                 if(same_worker)encode_ticket=state.ticket;
+                else if(state.encode_gpu>=0)stale_image_tickets[state.encode_gpu].insert(state.ticket);
                 row["encode_ticket_used"]=same_worker;
                 row["encode_cross_worker"]=!same_worker;
                 state.ticket.clear();
@@ -1500,7 +1529,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                     const double prep_stage=(prepared.contains("encoder_pool_stage")&&prepared.at("encoder_pool_stage").is_object())
                         ?number_field(prepared.at("encoder_pool_stage"),"stage_ms"):number_field(prepared,"stage_ms");
                     const double prep_cb=prep_model>0.?prep_model:(prep_stage>0.?prep_stage:prep_op);
-                    model+=prep_model;operation+=prep_op;
+                    model+=prep_model;if(!prepared.value("fused",false))operation+=prep_op;
                     mrow["prepare_cb_ms"]=number_field(mrow,"prepare_cb_ms")+prep_cb;
                     mrow["prepare_cb_wall_ms"]=number_field(mrow,"prepare_cb_wall_ms")+prep_op;
                     record_prepare_telemetry(mrow,prepared);
@@ -1511,9 +1540,9 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 if(progress==advanced.at("results").end())throw std::runtime_error("continuous batch omitted a member's progress");
                 mstate.steps=progress->at("progress").value("step",0);mstate.total=progress->at("progress").value("steps",0);
                 mstate.prepared=true;
-                bool decoded=false;
+                bool decoded=false,async_decoding_member=false;
                 for(const auto& finished:out.at("finish"))if(finished.at("state_id")==mid){
-                    model+=number_field(finished,"model_ms");operation+=number_field(finished,"worker_operation_ms");
+                    model+=number_field(finished,"model_ms");if(!finished.value("fused",false))operation+=number_field(finished,"worker_operation_ms");
                     mrow["decode_cb_ms"]=number_field(mrow,"decode_cb_ms")+number_field(finished,"model_ms");
                     add_artifacts(record,finished,work,phase.value("artifact_dependencies",Json::array()));
                     if(!mrow.contains("outputs"))mrow["outputs"]=Json::array();
@@ -1522,13 +1551,26 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 // async-thread completion timestamp received after the window.
                 mrow["finish_ms"]=cutoff_enabled?now():finished.value("completed_at_ms",now());
                 }
-                if(decoded!=progress->at("progress").value("done",false))
+                if(!decoded&&out.contains("async_decodes")){
+                    for(const auto& dec:out.at("async_decodes"))if(dec.at("state_id")==mid){
+                        mstate.decode_ticket=dec.at("ticket").get<std::string>();
+                        mstate.decode_gpu=task.assignment.at("group").front().get<int>();
+                        mstate.decode_started=now();
+                        mstate.status="decoding";
+                        mrow["status"]="decoding";
+                        mrow["async_decode_submits"]=mrow.value("async_decode_submits",0)+1;
+                        async_decoding_member=true;
+                    }
+                }
+                if((decoded||async_decoding_member)!=progress->at("progress").value("done",false))
                     throw std::runtime_error("continuous batch progress and decode completion disagree");
                 mrow["model_ms"]=number_field(mrow,"model_ms")+model;
                 mrow["worker_operation_ms"]=number_field(mrow,"worker_operation_ms")+operation;
                 mrow["timed_quanta"]=mrow.value("timed_quanta",0)+1;
                 if(decoded){
                     ++completed;mrow["status"]="completed";mstate.status="completed";mstate.group.clear();++terminal;
+                }else if(async_decoding_member){
+                    ++completed;mstate.group.clear();
                 }else mstate.status="suspended";
             }
             const int joins=out.value("active_count",0)>0?out.value("new_count",0):0;
@@ -1738,30 +1780,6 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             try{finish_task(*it,out);}catch(...){note_rpc_failure(rows[it->row],std::current_exception());throw;}
             persist_timing(*it,"completed");it=tasks.erase(it);progressed=true;
         }
-        for(std::size_t i=0;i<rows.size();++i){
-            auto& state=live[i];
-            if(state.status!="decoding")continue;
-            const double poll_now=now();
-            if(poll_now-state.last_decode_poll_ms<5.0)continue;
-            state.last_decode_poll_ms=poll_now;
-            auto polled=invoke(video(state.decode_gpu),{{"op","decode_poll"},{"ticket",state.decode_ticket},{"wait",false}},rows[i]);
-            if(!polled.value("ready",false))continue;
-            auto& row=rows[i];
-            row["model_ms"]=number_field(row,"model_ms")+number_field(polled,"model_ms");
-            row["decode_model_ms"]=number_field(polled,"model_ms");
-            row["async_decode_wall_ms"]=now()-state.decode_started;
-            row["async_decode_event"]=polled.value("event",Json::object());
-            add_artifacts(record,polled,work,phase.value("artifact_dependencies",Json::array()));
-            if(!row.contains("outputs"))row["outputs"]=Json::array();
-            row["outputs"].push_back(polled);
-            invoke(video(state.decode_gpu),{{"op","release"},{"state_id",row.at("request_id")}},row);
-            row["status"]="completed";row["finish_ms"]=now();
-            state.status="completed";state.group.clear();state.resident.clear();state.decode_ticket.clear();state.decode_gpu=-1;
-            ++terminal;progressed=true;
-        }
-        const double instant=now();
-        for(int gpu=0;gpu<gpus;++gpu)if(!busy[gpu])for(const auto& id:stale[gpu])invoke(video(gpu),{{"op","release"},{"state_id",id}},rows[index.at(id)]);
-        for(int gpu=0;gpu<gpus;++gpu)if(!busy[gpu])stale[gpu].clear();
         auto image_worker_busy=[&](int gpu){
             for(const auto& task:tasks){
                 if(rows[task.row].at("kind")!="image")continue;
@@ -1778,11 +1796,46 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             }
             return false;
         };
+        for(std::size_t i=0;i<rows.size();++i){
+            auto& state=live[i];
+            if(state.status!="decoding")continue;
+            const bool is_img_dec=rows[i].at("kind")=="image";
+            if(is_img_dec&&image_worker_busy(state.decode_gpu))continue;
+            const double poll_now=now();
+            const double min_poll_gap=is_img_dec?1.0:5.0;
+            if(poll_now-state.last_decode_poll_ms<min_poll_gap)continue;
+            state.last_decode_poll_ms=poll_now;
+            const auto dec_worker=is_img_dec?image(state.decode_gpu):video(state.decode_gpu);
+            auto polled=invoke(dec_worker,{{"op","decode_poll"},{"ticket",state.decode_ticket},{"wait",false}},rows[i]);
+            if(!polled.value("ready",false))continue;
+            auto& row=rows[i];
+            row["model_ms"]=number_field(row,"model_ms")+number_field(polled,"model_ms");
+            row["decode_model_ms"]=number_field(polled,"model_ms");
+            if(is_img_dec)row["decode_cb_ms"]=number_field(row,"decode_cb_ms")+number_field(polled,"model_ms");
+            row["async_decode_wall_ms"]=now()-state.decode_started;
+            row["async_decode_event"]=polled.value("event",Json::object());
+            add_artifacts(record,polled,work,phase.value("artifact_dependencies",Json::array()));
+            if(!row.contains("outputs"))row["outputs"]=Json::array();
+            row["outputs"].push_back(polled);
+            invoke(dec_worker,{{"op","release"},{"state_id",row.at("request_id")}},row);
+            row["status"]="completed";row["finish_ms"]=now();
+            state.status="completed";state.group.clear();state.resident.clear();state.decode_ticket.clear();state.decode_gpu=-1;
+            ++terminal;progressed=true;
+        }
+        const double instant=now();
+        for(int gpu=0;gpu<gpus;++gpu)if(!busy[gpu])for(const auto& id:stale[gpu])invoke(video(gpu),{{"op","release"},{"state_id",id}},rows[index.at(id)]);
+        for(int gpu=0;gpu<gpus;++gpu)if(!busy[gpu])stale[gpu].clear();
         for(int gpu=0;gpu<gpus;++gpu)if(!busy[gpu]&&!video_worker_busy(gpu)&&!stale_tickets[gpu].empty()){
             for(const auto& t:stale_tickets[gpu]){
                 try{workers.get(video(gpu)).call({{"op","encode_discard"},{"ticket",t}},budget.deadline());}catch(...){}
             }
             stale_tickets[gpu].clear();
+        }
+        for(int gpu=0;gpu<gpus;++gpu)if(!image_worker_busy(gpu)&&!stale_image_tickets[gpu].empty()){
+            for(const auto& t:stale_image_tickets[gpu]){
+                try{workers.get(image(gpu)).call({{"op","encode_discard"},{"ticket",t}},budget.deadline());}catch(...){}
+            }
+            stale_image_tickets[gpu].clear();
         }
         auto pick_image_encode_gpu=[&](){
             const int start=static_cast<int>(image_encoders++%gpus);
@@ -1851,6 +1904,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 const auto polled=invoke(encode_worker,{{"op","encode_poll"},{"ticket",state.ticket}},row);
                 if(polled.value("ready",false)){
                     if(polled.value("shm_staged",false))state.shm_staged=true;
+                    state.encode_ready=true;
                     state.status="waiting";row["encode_ready_ms"]=now();progressed=true;
                     // CPU encoding time and, with the negative-prompt cache, whether it hit.
                     if(polled.contains("model_ms"))row["encode_model_ms"]=number_field(polled,"model_ms");
@@ -1876,6 +1930,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 }
                 if(row.at("kind")=="image"){
                     view["continuous_batch"]=continuous_batch>0&&cost.klass(row.at("class").get<std::string>()).contains("batch_step_ms");
+                    if(state.encode_ready)view["encode_ready"]=true;
                     Json batch_spec=spec_of(row);
                     for(const auto* field:{"request_id","prompt","negative_prompt","seed"})batch_spec.erase(field);
                     view["batch_spec"]=batch_spec;
@@ -1893,9 +1948,10 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 Json flags=Json::array(),decode_flags=Json::array();
                 for(bool flag:busy)flags.push_back(flag);
                 for(int gpu=0;gpu<gpus;++gpu)decode_flags.push_back(false);
-                for(const auto& state:live)if(state.status=="decoding")decode_flags[state.decode_gpu]=true;
+                for(std::size_t k=0;k<live.size();++k)
+                    if(live[k].status=="decoding"&&rows[k].at("kind")=="video")decode_flags[live[k].decode_gpu]=true;
                 int sp_running=0;   // SP advances in flight contend for the host bridge
-                for(const auto& task:tasks){const auto& a=task.assignment;sp_running+=parse_form(a.value("form","sp"+std::to_string(a.at("degree").get<int>()))).sp>=2&&a.at("quantum")!="atomic"&&a.at("quantum")!="finish";}
+                for(const auto& task:tasks){const auto& a=task.assignment;sp_running+=parse_form(a.value("form","sp"+std::to_string(a.at("degree").get<int>()))).sp>=2&&a.at("quantum")!="atomic"&&a.at("quantum")!="continuous_batch"&&a.at("quantum")!="finish";}
                 const Json plan_input={{"now_ms",now()},{"gpus",gpus},{"busy",flags},{"async_decoding",decode_flags},
                     {"requests",requests},{"sp_groups_running",sp_running}};
                 Json plan;
