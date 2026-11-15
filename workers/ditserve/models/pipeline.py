@@ -14,11 +14,14 @@ def _sdpa_math_context(torch):
     attention = getattr(getattr(torch, "nn", None), "attention", None)
     if attention is not None and hasattr(attention, "sdpa_kernel"):
         return attention.sdpa_kernel([attention.SDPBackend.MATH])
+    sdp_kernel = getattr(getattr(getattr(torch, "backends", None), "cuda", None), "sdp_kernel", None)
+    if not callable(sdp_kernel):
+        return nullcontext()
     options = dict(enable_flash=False, enable_math=True, enable_mem_efficient=False)
     try:
-        return torch.backends.cuda.sdp_kernel(enable_cudnn=False, **options)
+        return sdp_kernel(enable_cudnn=False, **options)
     except TypeError:
-        return torch.backends.cuda.sdp_kernel(**options)
+        return sdp_kernel(**options)
 
 
 def _sdpa_context(torch, mode="math"):
@@ -32,11 +35,14 @@ def _sdpa_context(torch, mode="math"):
             attention.SDPBackend.EFFICIENT_ATTENTION,
             attention.SDPBackend.MATH,
         ])
+    sdp_kernel = getattr(getattr(getattr(torch, "backends", None), "cuda", None), "sdp_kernel", None)
+    if not callable(sdp_kernel):
+        return nullcontext()
     options = dict(enable_flash=True, enable_math=True, enable_mem_efficient=True)
     try:
-        return torch.backends.cuda.sdp_kernel(enable_cudnn=True, **options)
+        return sdp_kernel(enable_cudnn=True, **options)
     except TypeError:
-        return torch.backends.cuda.sdp_kernel(**options)
+        return sdp_kernel(**options)
 
 def _wan_pipeline_class(base_class):
     """Keep denoising on the DiT device with an explicitly resident CPU encoder.

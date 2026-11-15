@@ -820,27 +820,22 @@ class TestIdentifiableCostModelAndPhaseDiagram:
         for rel_path in ("docs/experiments.md", "docs/motivation.md", "docs/motivation-无损.md"):
             doc_text = (ROOT / rel_path).read_text(encoding="utf-8")
             for required_token in (
-                "anchor-main",
-                "0.93",
-                "load-2p5",
-                "0.87",
-                "mix-0p2",
-                "0.99",
-                "mix-0p8",
-                "0.89",
-                "gamma2-main",
-                "0.94",
-                "gamma4-main",
-                "0.80",
-                "gamma6-main",
-                "0.85",
-                "dist-skewed",
+                "formal-mixed-v2",
                 "tetriserve-cfg2",
                 "sbp-esp-cfg2",
                 "edf-bestfit-cfg2",
                 "topology_phase_diagram.py",
             ):
                 assert required_token in doc_text, f"Missing {required_token!r} in {rel_path}"
+        exp_text = (ROOT / "docs/experiments.md").read_text(encoding="utf-8")
+        for ledger_token in (
+            "modality_mix_summary.json",
+            "rate_scale_summary.json",
+            "slo_scale_summary.json",
+            "gpu_scale_summary.json",
+            "ablation_summary.json",
+        ):
+            assert ledger_token in exp_text, f"Missing {ledger_token!r} in docs/experiments.md"
 
 
 # ==============================================================================
@@ -1602,7 +1597,6 @@ class TestBudgetLedgerStudyRunnerAndCliContracts:
             daemon.shutdown()
 
     def test_mixed_resolution_negative_optimization_guard_and_b3_retirement_pricing(self) -> None:
-        bridge = CoreBridge()
         profile = {
             "provenance": "synthetic",
             "links": {"2": {"gbps": 10.0, "latency_ms": 0.0}},
@@ -1647,73 +1641,83 @@ class TestBudgetLedgerStudyRunnerAndCliContracts:
                 },
             },
         }
-        r512 = {
+        w512 = {
             "request_id": "i512",
             "kind": "image",
             "class": "sd35_512",
             "arrival_ms": 0.0,
             "deadline_ms": 20000.0,
-            "status": "waiting",
-            "ready": True,
-            "prepared": False,
-            "steps_done": 0,
-            "steps_total": 28,
-            "blocks_done": 0,
-            "decode_done": 0,
-            "group": [],
             "continuous_batch": True,
-            "batch_spec": {"steps": 28, "height": 512, "width": 512},
+            "spec": {"steps": 28, "height": 512, "width": 512},
         }
-        r1024 = dict(
-            r512,
-            request_id="i1024",
-            **{"class": "sd35_1024", "batch_spec": {"steps": 28, "height": 1024, "width": 1024}},
-        )
-        r1440 = dict(
-            r512,
-            request_id="i1440",
-            deadline_ms=30000.0,
-            **{"class": "sd35_1440", "batch_spec": {"steps": 28, "height": 1440, "width": 1440}},
-        )
+        w1024 = {
+            "request_id": "i1024",
+            "kind": "image",
+            "class": "sd35_1024",
+            "arrival_ms": 0.0,
+            "deadline_ms": 21000.0,
+            "continuous_batch": True,
+            "spec": {"steps": 28, "height": 1024, "width": 1024},
+        }
+        w1440 = {
+            "request_id": "i1440",
+            "kind": "image",
+            "class": "sd35_1440",
+            "arrival_ms": 0.0,
+            "deadline_ms": 30000.0,
+            "continuous_batch": True,
+            "spec": {"steps": 28, "height": 1440, "width": 1440},
+        }
 
         base_opts = {"continuous_batch": 4, "sequence_packing": True, "bubble_free": True}
-        # 1. 512^2 + 1024^2 (< 5x step dilation) co-batches under default guard
-        plan_mod = bridge.call(
-            "cluster_plan",
-            {
-                "policy": "ditserve",
-                "profile": profile,
-                "options": base_opts,
-                "state": {"now_ms": 0.0, "gpus": 1, "busy": [False], "requests": [r512, r1024]},
-            },
+        # 1. 512^2 + 1024^2 (< 5x step dilation) co-batches under default guard (28 shared steps)
+        sim_mod = _rpc_simulate(
+            {"workload": [w512, w1024], "profile": profile, "policy": "ditserve", "gpus": 1, "options": base_opts}
         )
-        assert plan_mod["assignments"][0]["batch"] == ["i512", "i1024"]
+        assert sim_mod["batches"] == 28
+        assert sim_mod["batched_images"] == 56
+        assert sim_mod["metrics"]["deadline_attainment"] == 1.0
 
-        # 2. 512^2 + 1440^2 (~10.3x step dilation) is blocked by default max_step_dilation=5.0
-        plan_ext = bridge.call(
-            "cluster_plan",
-            {
-                "policy": "ditserve",
-                "profile": profile,
-                "options": base_opts,
-                "state": {"now_ms": 0.0, "gpus": 1, "busy": [False], "requests": [r512, r1440]},
-            },
+        # 2. 512^2 + 1440^2 (~10.3x step dilation) is blocked by default max_step_dilation=5.0:
+        #    runs sequentially as 28 + 28 = 56 solo steps (mean batch 1.0), so i512 finishes < 2 s!
+        sim_ext = _rpc_simulate(
+            {"workload": [w512, w1440], "profile": profile, "policy": "ditserve", "gpus": 1, "options": base_opts}
         )
-        assert plan_ext["assignments"][0]["batch"] == ["i512"]
+        by_id_ext = {r["request_id"]: r for r in sim_ext["requests"]}
+        assert sim_ext["batches"] == 56
+        assert sim_ext["batched_images"] == 56
+        assert by_id_ext["i512"]["finish_ms"] < 2000.0
+        assert sim_ext["metrics"]["deadline_attainment"] == 1.0
+
+        # Disabling dilation cap (max_step_dilation=12.0) demonstrates the 9x+ latency blow-up on i512
+        sim_uncapped = _rpc_simulate(
+            {
+                "workload": [w512, w1440],
+                "profile": profile,
+                "policy": "ditserve",
+                "gpus": 1,
+                "options": dict(base_opts, max_step_dilation=12.0),
+            }
+        )
+        by_id_uncapped = {r["request_id"]: r for r in sim_uncapped["requests"]}
+        assert sim_uncapped["batches"] == 28
+        assert by_id_uncapped["i512"]["finish_ms"] > 15000.0
 
         # 3. B=3 multi-phase retirement simulation protects middle member rb even when max_step_dilation=12.0
-        ra = dict(r512, request_id="ra", status="suspended", prepared=True, group=[0], steps_done=27, deadline_ms=1000.0)
-        rb = dict(r512, request_id="rb", status="suspended", prepared=True, group=[0], steps_done=7, deadline_ms=5000.0)
-        rc = dict(r1440, request_id="rc")
-        plan_b3 = bridge.call(
-            "cluster_plan",
+        wa = dict(w512, request_id="ra", arrival_ms=0.0, deadline_ms=3500.0)
+        wb = dict(w512, request_id="rb", arrival_ms=1000.0, deadline_ms=5200.0)
+        wc = dict(w1440, request_id="rc", arrival_ms=1500.0, deadline_ms=30000.0)
+        sim_b3 = _rpc_simulate(
             {
-                "policy": "ditserve",
+                "workload": [wa, wb, wc],
                 "profile": profile,
+                "policy": "ditserve",
+                "gpus": 1,
                 "options": dict(base_opts, max_step_dilation=12.0),
-                "state": {"now_ms": 0.0, "gpus": 1, "busy": [False], "requests": [ra, rb, rc]},
-            },
+            }
         )
-        assert plan_b3["assignments"][0]["batch"] == ["ra", "rb"]
+        assert sim_b3["metrics"]["deadline_attainment"] == 1.0
+        by_id_b3 = {r["request_id"]: r for r in sim_b3["requests"]}
+        assert by_id_b3["rb"]["finish_ms"] <= 5200.0
 
 

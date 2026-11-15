@@ -428,6 +428,20 @@ class CpuTensor:
         rep = repeats._arr if isinstance(repeats, CpuTensor) else repeats
         return CpuTensor(np.repeat(self._arr, rep, axis=dim), dtype=self.dtype, device=self.device, pinned=self._pinned)
 
+    def index_select(self, dim: int, index: "CpuTensor") -> "CpuTensor":
+        idx = index._arr.astype(np.int64) if isinstance(index, CpuTensor) else np.asarray(index, dtype=np.int64)
+        out = np.take(self._arr, idx, axis=dim)
+        return CpuTensor(out.copy(), dtype=self.dtype, device=self.device, pinned=self._pinned)
+
+    def index_copy_(self, dim: int, index: "CpuTensor", source: "CpuTensor") -> "CpuTensor":
+        idx = index._arr.astype(np.int64) if isinstance(index, CpuTensor) else np.asarray(index, dtype=np.int64)
+        src = source._arr.astype(self.dtype.np_dtype) if isinstance(source, CpuTensor) else np.asarray(source, dtype=self.dtype.np_dtype)
+        d = dim if dim >= 0 else self.ndim + dim
+        slc: list[Any] = [slice(None)] * self.ndim
+        slc[d] = idx
+        self._arr[tuple(slc)] = src
+        return self
+
     def repeat(self, *sizes: int) -> "CpuTensor":
         if len(sizes) == 1 and isinstance(sizes[0], (tuple, list)):
             sizes = tuple(sizes[0])
@@ -972,6 +986,7 @@ def _build_cpu_torch_module() -> types.ModuleType:
     mod.cat = cat
     mod.stack = stack
     mod.repeat_interleave = repeat_interleave
+    mod.index_select = lambda input_t, dim, index: input_t.index_select(dim, index)
     mod.einsum = einsum
     mod.clamp = clamp
     mod.round = round_fn
@@ -1018,6 +1033,7 @@ def _build_cpu_torch_module() -> types.ModuleType:
     backends_cuda_mod.flash_sdp_enabled = lambda: False
     backends_cuda_mod.mem_efficient_sdp_enabled = lambda: False
     backends_cuda_mod.cudnn_sdp_enabled = lambda: False
+    backends_cuda_mod.sdp_kernel = lambda **kwargs: nullcontext()
     backends_mod.cuda = backends_cuda_mod
     backends_mod.mps = types.SimpleNamespace(is_available=lambda: False)
     mod.backends = backends_mod
