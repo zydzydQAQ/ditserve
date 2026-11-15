@@ -1151,7 +1151,38 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
             for(std::size_t k=0;k<live.size();++k)
                 if(live[k].status=="decoding"&&rows[k].at("kind")=="image"&&live[k].decode_gpu==group.front())++inflight_img_decodes;
             const int avail_async_decodes=cb_bubble_free?std::max(0,max_img_async-inflight_img_decodes):0;
-            work_unit=[&workers,name,ids,specs,modes,tickets,prepares,new_count,active_count,deadline,origin,cb_bubble_free,cb_seq_pack,avail_async_decodes]{
+            Json sync_finish_ids=Json::array();
+            if(cb_bubble_free&&avail_async_decodes>0&&assignment.at("batch").size()>1){
+                const double launch_now=now();
+                double batch_step_est=0.0,continuing_step_est=0.0;
+                for(const auto& member:assignment.at("batch")){
+                    const auto m=index.at(member.get<std::string>());
+                    const auto mklass=rows[m].at("class").get<std::string>();
+                    const auto& mstate=live[m];
+                    const int mtotal=mstate.total>0?mstate.total:int_field(cost.klass(mklass),"steps",28,1);
+                    const double solo_s=cost.klass(mklass).contains("batch_step_ms")?cost.continuous_step_ms(mklass,1):0.0;
+                    batch_step_est=std::max(batch_step_est,solo_s);
+                    if(mstate.steps+1<mtotal)continuing_step_est=std::max(continuing_step_est,solo_s);
+                }
+                if(continuing_step_est>0.0){
+                    for(const auto& member:assignment.at("batch")){
+                        const auto mid=member.get<std::string>();const auto m=index.at(mid);
+                        const auto& mrow=rows[m];const auto& mstate=live[m];
+                        const auto mklass=mrow.at("class").get<std::string>();
+                        const int mtotal=mstate.total>0?mstate.total:int_field(cost.klass(mklass),"steps",28,1);
+                        if(mstate.steps+1<mtotal)continue;
+                        const double fin_ms=number_field(cost.klass(mklass),"finish_ms");
+                        const double ddl_ms=number_field(mrow,"deadline_ms");
+                        // Async decode cannot be polled until the continuing batch's next step RPC returns;
+                        // if synchronous finish is faster than that next step and async poll lag risks the SLO, finish fused.
+                        if(ddl_ms>0.0&&fin_ms<continuing_step_est
+                                &&launch_now+batch_step_est+continuing_step_est+120.0>ddl_ms){
+                            sync_finish_ids.push_back(mid);
+                        }
+                    }
+                }
+            }
+            work_unit=[&workers,name,ids,specs,modes,tickets,prepares,new_count,active_count,deadline,origin,cb_bubble_free,cb_seq_pack,avail_async_decodes,sync_finish_ids]{
                 auto& w=workers.get(name);
                 Json out={{"prepare",Json::array()},{"finish",Json::array()},{"async_decodes",Json::array()},
                           {"new_count",new_count},{"active_count",active_count}};
@@ -1160,6 +1191,7 @@ Json cluster(const Json& phase,Workers& workers,Budget& budget,Json& record,cons
                 if(cb_bubble_free){
                     adv_req["bubble_free"]=true;
                     adv_req["avail_async_decodes"]=avail_async_decodes;
+                    if(!sync_finish_ids.empty())adv_req["sync_finish_ids"]=sync_finish_ids;
                 }
                 if(cb_seq_pack)adv_req["sequence_packing"]=true;
                 const auto advanced=w.call(adv_req,deadline);

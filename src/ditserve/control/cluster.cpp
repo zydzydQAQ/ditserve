@@ -671,17 +671,45 @@ double ClusterCost::continuous_batch_step_ms(const std::string& name, const std:
                                              bool sequence_packing) const {
     std::string anchor = name;
     double best_solo = klass(name).contains("batch_step_ms") ? continuous_step_ms(name, 1) : -1.0;
+    std::map<std::string, std::vector<const Json*>> by_class;
+    bool all_valid_image_cb = !batch.empty();
     for (const Json* m : batch) {
-        if (!m || !m->contains("class") || !m->at("class").is_string()) continue;
+        if (!m || !m->contains("class") || !m->at("class").is_string()) {
+            all_valid_image_cb = false;
+            continue;
+        }
         const auto mklass = m->at("class").get<std::string>();
-        if (!profile_.at("classes").contains(mklass)) continue;
+        if (!profile_.at("classes").contains(mklass)) {
+            all_valid_image_cb = false;
+            continue;
+        }
         const auto& mrow = klass(mklass);
-        if (mrow.value("kind", "") != "image" || !mrow.contains("batch_step_ms")) continue;
+        if (mrow.value("kind", "") != "image" || !mrow.contains("batch_step_ms")) {
+            all_valid_image_cb = false;
+            continue;
+        }
+        by_class[mklass].push_back(m);
         const double solo = continuous_step_ms(mklass, 1);
-        if (solo > best_solo + 1e-9) {
+        if (solo > best_solo + 1e-9 || (std::abs(solo - best_solo) <= 1e-9 && mklass < anchor)) {
             best_solo = solo;
             anchor = mklass;
         }
+    }
+    if (sequence_packing && all_valid_image_cb && by_class.size() > 1 && by_class.count(anchor)) {
+        // Under cu_seqlens packed varlen FlashAttention, self-attention is strictly block-diagonal
+        // per request while model weight fetch / launch overhead is amortized once by `anchor`.
+        double block_diag_ms = continuous_step_ms(
+            anchor, continuous_effective_batch_size(anchor, by_class.at(anchor), true));
+        for (const auto& [cklass, members] : by_class) {
+            if (cklass == anchor) continue;
+            const double eff_c = continuous_effective_batch_size(cklass, members, true);
+            const double marg_ms = continuous_step_ms(cklass, std::min(8.0, 1.0 + eff_c))
+                                 - continuous_step_ms(cklass, 1.0);
+            block_diag_ms += std::max(0.0, marg_ms);
+        }
+        const double pixel_interp_ms = continuous_step_ms(
+            anchor, continuous_effective_batch_size(anchor, batch, true));
+        return std::min(pixel_interp_ms, block_diag_ms);
     }
     return continuous_step_ms(anchor, continuous_effective_batch_size(anchor, batch, sequence_packing));
 }
@@ -1362,26 +1390,36 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                 if (batch.size() <= 1) return true;
                 const double cand_step = cost.continuous_batch_step_ms(klass, batch, sequence_packing);
                 double sum_solo = 0.0;
-                double min_solo = std::numeric_limits<double>::infinity();
-                double max_solo = 0.0;
-                bool hetero_class = false;
-                const auto first_klass = batch.front()->at("class").get<std::string>();
+                std::vector<const Json*> prepared_members;
+                prepared_members.reserve(batch.size());
+                std::vector<double> member_solos;
+                member_solos.reserve(batch.size());
                 for (const Json* m : batch) {
                     const auto mklass = m->at("class").get<std::string>();
-                    if (mklass != first_klass) hetero_class = true;
                     const double solo_m = cost.continuous_batch_step_ms(mklass, {m}, sequence_packing);
+                    member_solos.push_back(solo_m);
                     sum_solo += solo_m;
-                    min_solo = std::min(min_solo, solo_m);
-                    max_solo = std::max(max_solo, solo_m);
+                    if (m->value("prepared", false)) prepared_members.push_back(m);
                 }
-                const bool hetero = hetero_class || (max_solo - min_solo > 1e-6);
-                if (hetero) {
-                    if (cand_step >= sum_solo - 1e-6) return false;
-                } else {
-                    if (cand_step > sum_solo + 1e-6) return false;
-                }
-                if (max_step_dilation > 0.0 && min_solo > 0.0 && cand_step > max_step_dilation * min_solo + 1e-6) {
-                    return false;
+                if (cand_step > sum_solo + 1e-6) return false;
+                if (max_step_dilation > 0.0) {
+                    const double in_flight_step = prepared_members.empty()
+                        ? 0.0
+                        : cost.continuous_batch_step_ms(
+                              prepared_members.front()->at("class").get<std::string>(),
+                              prepared_members,
+                              sequence_packing);
+                    for (std::size_t idx = 0; idx < batch.size(); ++idx) {
+                        const double solo_m = member_solos[idx];
+                        if (solo_m <= 0.0) continue;
+                        const bool m_prepared = batch[idx]->value("prepared", false);
+                        const double base_m = m_prepared
+                            ? ((in_flight_step > max_step_dilation * solo_m + 1e-6) ? in_flight_step : solo_m)
+                            : std::max(solo_m, in_flight_step);
+                        if (cand_step > max_step_dilation * base_m + 1e-6) {
+                            return false;
+                        }
+                    }
                 }
                 return true;
             };

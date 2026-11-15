@@ -335,12 +335,19 @@ class MockBackend(Backend):
         output_modes = request.get("output_modes")
         bubble_free = bool(request.get("bubble_free", self.config.get("options", {}).get("bubble_free", False)))
         if isinstance(output_modes, dict):
-            rem_async = max(0, int(request.get("avail_async_decodes", 0))) if bubble_free else 0
+            has_continuing_member = any(int(state["step"]) < int(state["steps"]) for state in states)
+            raw_sync_ids = request.get("sync_finish_ids")
+            sync_finish_ids = set(raw_sync_ids) if isinstance(raw_sync_ids, list) else set()
+            rem_async = (
+                max(0, int(request.get("avail_async_decodes", 0)))
+                if (bubble_free and has_continuing_member)
+                else 0
+            )
             for key, state in zip(keys, states):
                 if state["step"] < state["steps"] or key not in output_modes:
                     continue
                 m_mode = output_modes[key]
-                if rem_async > 0:
+                if rem_async > 0 and key not in sync_finish_ids:
                     dec_sub = self.decode_start(
                         dict(
                             id=request.get("id", 0),

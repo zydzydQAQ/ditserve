@@ -1720,4 +1720,22 @@ class TestBudgetLedgerStudyRunnerAndCliContracts:
         by_id_b3 = {r["request_id"]: r for r in sim_b3["requests"]}
         assert by_id_b3["rb"]["finish_ms"] <= 5200.0
 
+        # 4. In-flight piggyback asymmetry: when 1440^2 is ALREADY mid-execution (arrival 0 ms)
+        #    and 512^2 arrives mid-run (arrival 5000 ms, deadline 19900 ms) on 1 GPU, piggybacking
+        #    beats waiting serially behind 1440^2!
+        w1440_first = dict(w1440, request_id="lead1440", arrival_ms=0.0, deadline_ms=25000.0)
+        w512_mid = dict(w512, request_id="mid512", arrival_ms=5000.0, deadline_ms=19900.0)
+        sim_piggy = _rpc_simulate(
+            {
+                "workload": [w1440_first, w512_mid],
+                "profile": profile,
+                "policy": "ditserve",
+                "gpus": 1,
+                "options": base_opts,
+            }
+        )
+        assert sim_piggy["metrics"]["deadline_attainment"] == 1.0
+        assert sim_piggy["batches"] < 56
+
+
 

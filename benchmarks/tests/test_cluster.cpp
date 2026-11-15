@@ -1899,6 +1899,44 @@ int main(int argc, char** argv) {
                                                "ditserve", reg_cost, no_dilation_cap).at("assignments");
         require(reg_rejected.size() == 1 && reg_rejected[0].at("batch") == Json::array({"reg_a"}),
                 "beneficial_co_batch rejects superlinear heterogeneous co-batching where cand_step >= sum(solo): " + reg_rejected.dump());
+
+        //    (g) Real A100 calibration profile (1024^2 + 1440^2) co-batches via block-diagonal packed marginal pricing,
+        //        and an unstarted 512^2 may piggyback onto an already-prepared 1440^2 when contended and deadlines fit,
+        //        while an already-prepared 512^2 remains protected against an unstarted 1440^2!
+        Json cal_prof = multi_prof;
+        cal_prof["classes"]["sd35_512"]["batch_step_ms"] = {{"1", 57.074}, {"2", 104.903}, {"4", 203.584}};
+        cal_prof["classes"]["sd35_1024"]["batch_step_ms"] = {{"1", 226.626}, {"2", 439.654}, {"4", 858.458}};
+        cal_prof["classes"]["sd35_1440"]["batch_step_ms"] = {{"1", 531.368}, {"2", 1030.854}, {"4", 2012.823}};
+        const ClusterCost cal_cost(cal_prof);
+        const auto admit_1024_1440 = cluster_plan({{"now_ms", 0}, {"gpus", 1}, {"busy", Json::array()},
+                                                   {"requests", Json::array({r1024, r1440})}},
+                                                  "ditserve", cal_cost, shared_opts).at("assignments");
+        require(admit_1024_1440.size() == 1 && admit_1024_1440[0].at("batch") == Json::array({"r1024", "r1440"}),
+                "packed marginal pricing admits 1024^2 + 1440^2 under calibrated quadratic curves: " + admit_1024_1440.dump());
+
+        Json inflight_1440 = r1440;
+        inflight_1440.merge_patch({{"request_id", "inf1440"}, {"status", "suspended"}, {"prepared", true},
+                                   {"group", {0}}, {"steps_done", 14}, {"deadline_ms", 20000.0}});
+        Json burst_512 = r512_relaxed;
+        burst_512.merge_patch({{"request_id", "b512"}, {"status", "waiting"}, {"prepared", false},
+                               {"steps_done", 0}, {"deadline_ms", 15000.0}, {"encode_ready", true}});
+        const auto piggyback_512 = cluster_plan({{"now_ms", 0}, {"gpus", 1}, {"busy", Json::array()},
+                                                 {"requests", Json::array({burst_512, inflight_1440})}},
+                                                "ditserve", cal_cost, shared_opts).at("assignments");
+        require(piggyback_512.size() == 1 && piggyback_512[0].at("batch") == Json::array({"b512", "inf1440"}),
+                "contended unstarted 512^2 piggybacks onto already-running 1440^2 when deadlines fit: " + piggyback_512.dump());
+
+        Json inflight_512 = r512_relaxed;
+        inflight_512.merge_patch({{"request_id", "inf512"}, {"status", "suspended"}, {"prepared", true},
+                                  {"group", {0}}, {"steps_done", 4}, {"deadline_ms", 20000.0}});
+        Json burst_1440 = r1440;
+        burst_1440.merge_patch({{"request_id", "b1440"}, {"status", "waiting"}, {"prepared", false},
+                                {"steps_done", 0}, {"deadline_ms", 25000.0}, {"encode_ready", true}});
+        const auto protect_inflight_512 = cluster_plan({{"now_ms", 0}, {"gpus", 1}, {"busy", Json::array()},
+                                                        {"requests", Json::array({inflight_512, burst_1440})}},
+                                                       "ditserve", cal_cost, shared_opts).at("assignments");
+        require(protect_inflight_512.size() == 1 && protect_inflight_512[0].at("batch") == Json::array({"inf512"}),
+                "already-running 512^2 stays protected against unstarted 1440^2 dilation hijack: " + protect_inflight_512.dump());
     });
     std::cout << checks - failures << "/" << checks << " cluster checks passed\n";
     return failures ? 1 : 0;

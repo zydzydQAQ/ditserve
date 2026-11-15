@@ -1110,12 +1110,19 @@ class SD35Backend(AtomicPipelineBackend):
         finish_results = []
         output_modes = request.get("output_modes")
         if isinstance(output_modes, dict):
-            rem_async = max(0, int(request.get("avail_async_decodes", 0))) if bubble_free else 0
+            has_continuing_member = any(int(st["step"]) < int(st["steps"]) for st in states)
+            raw_sync_ids = request.get("sync_finish_ids")
+            sync_finish_ids = set(raw_sync_ids) if isinstance(raw_sync_ids, list) else set()
+            rem_async = (
+                max(0, int(request.get("avail_async_decodes", 0)))
+                if (bubble_free and has_continuing_member)
+                else 0
+            )
             for sid, st in zip(state_ids, states):
                 if int(st["step"]) < int(st["steps"]) or sid not in output_modes:
                     continue
                 m_mode = output_modes[sid]
-                if rem_async > 0:
+                if rem_async > 0 and sid not in sync_finish_ids:
                     dec_sub = self.decode_start(
                         dict(
                             id=request.get("id", 0),
