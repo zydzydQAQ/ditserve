@@ -10,14 +10,113 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import nullcontext
 import copy
 from dataclasses import dataclass
+import inspect
 import threading
 import time
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
-try:
-    from flash_attn import flash_attn_varlen_func as _FLASH_ATTN_VARLEN_FUNC
-except Exception:  # pragma: no cover - optional on CPU-only hosts
-    _FLASH_ATTN_VARLEN_FUNC = None
+
+def _build_varlen_flash_adapter() -> Tuple[Optional[Callable[..., Any]], str]:
+    """Resolve a fused variable-length FlashAttention kernel across flash_attn, vLLM, and PyTorch >=2.8."""
+    # 1. Upstream Dao-AILab flash_attn / FA3 flash_attn_interface
+    for mod_name in ("flash_attn", "flash_attn_interface"):
+        try:
+            mod = __import__(mod_name, fromlist=["flash_attn_varlen_func"])
+            fn = getattr(mod, "flash_attn_varlen_func", None)
+            if callable(fn):
+                sig_params = set(inspect.signature(fn).parameters)
+
+                def _call_fa(
+                    q: Any,
+                    k: Any,
+                    v: Any,
+                    cu_q: Any,
+                    cu_k: Any,
+                    max_q: int,
+                    max_k: int,
+                    dropout_p: float = 0.0,
+                    causal: bool = False,
+                    _fn: Callable[..., Any] = fn,
+                    _params: set[str] = sig_params,
+                ) -> Any:
+                    kw: Dict[str, Any] = {"causal": bool(causal)}
+                    if "dropout_p" in _params:
+                        kw["dropout_p"] = float(dropout_p)
+                    out = _fn(q, k, v, cu_q, cu_k, int(max_q), int(max_k), **kw)
+                    return out[0] if isinstance(out, tuple) else out
+
+                return _call_fa, mod_name
+        except Exception:  # pragma: no cover
+            continue
+
+    # 2. vLLM's bundled SM80+ FlashAttention2 varlen kernel (note swapped max_seqlen/cu_seqlens order)
+    for mod_name in ("vllm.vllm_flash_attn.flash_attn_interface", "vllm.vllm_flash_attn"):
+        try:
+            mod = __import__(mod_name, fromlist=["flash_attn_varlen_func"])
+            fn = getattr(mod, "flash_attn_varlen_func", None)
+            if callable(fn):
+                sig_params = set(inspect.signature(fn).parameters)
+
+                def _call_vllm_fa(
+                    q: Any,
+                    k: Any,
+                    v: Any,
+                    cu_q: Any,
+                    cu_k: Any,
+                    max_q: int,
+                    max_k: int,
+                    dropout_p: float = 0.0,
+                    causal: bool = False,
+                    _fn: Callable[..., Any] = fn,
+                    _params: set[str] = sig_params,
+                ) -> Any:
+                    kw: Dict[str, Any] = {
+                        "q": q,
+                        "k": k,
+                        "v": v,
+                        "cu_seqlens_q": cu_q,
+                        "cu_seqlens_k": cu_k,
+                        "max_seqlen_q": int(max_q),
+                        "max_seqlen_k": int(max_k),
+                        "causal": bool(causal),
+                    }
+                    if "dropout_p" in _params:
+                        kw["dropout_p"] = float(dropout_p)
+                    out = _fn(**kw)
+                    return out[0] if isinstance(out, tuple) else out
+
+                return _call_vllm_fa, "vllm_flash_attn"
+        except Exception:  # pragma: no cover
+            continue
+
+    # 3. PyTorch native varlen FlashAttention (torch.nn.attention.varlen.varlen_attn, PyTorch >= 2.8)
+    try:
+        from torch.nn.attention.varlen import varlen_attn as _torch_varlen_attn  # type: ignore
+
+        if callable(_torch_varlen_attn):
+            def _call_torch_varlen(
+                q: Any,
+                k: Any,
+                v: Any,
+                cu_q: Any,
+                cu_k: Any,
+                max_q: int,
+                max_k: int,
+                dropout_p: float = 0.0,
+                causal: bool = False,
+                _fn: Callable[..., Any] = _torch_varlen_attn,
+            ) -> Any:
+                out = _fn(q, k, v, cu_q, cu_k, int(max_q), int(max_k), is_causal=bool(causal))
+                return out[0] if isinstance(out, tuple) else out
+
+            return _call_torch_varlen, "torch.nn.attention.varlen"
+    except Exception:  # pragma: no cover
+        pass
+
+    return None, "none"
+
+
+_FLASH_ATTN_VARLEN_FUNC, _FLASH_ATTN_VARLEN_PROVIDER = _build_varlen_flash_adapter()
 
 
 def calculate_shift(
@@ -626,6 +725,7 @@ def forward_packed_sd35(
     meta = {
         "sequence_packed": True,
         "attention_backend": "flash_attn_varlen" if plan.use_fa_varlen else "grouped_sdpa",
+        "attention_provider": _FLASH_ATTN_VARLEN_PROVIDER if plan.use_fa_varlen else "grouped_sdpa",
         "packed_segments": num_items,
         "cu_seqlens_img": cu_img,
         "cu_seqlens_txt": cu_txt,

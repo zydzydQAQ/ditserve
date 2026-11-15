@@ -918,6 +918,30 @@ class TestSD35RaggedBatchingAndChunkedDecode:
         torch.testing.assert_close(fa_txt, ref_txt, rtol=1e-5, atol=1e-5)
         torch.testing.assert_close(fa_img2, ref_img2, rtol=1e-5, atol=1e-5)
 
+        # 1b. Verify _build_varlen_flash_adapter handles vLLM's swapped (max_seqlen_q, cu_seqlens_q) signature and torch.nn.attention.varlen
+        import sys
+        import types
+
+        vllm_seen = []
+        vllm_pkg = types.ModuleType("vllm")
+        vllm_fa = types.ModuleType("vllm.vllm_flash_attn")
+        vllm_fai = types.ModuleType("vllm.vllm_flash_attn.flash_attn_interface")
+
+        def _mock_vllm_varlen(q, k, v, max_seqlen_q, cu_seqlens_q, max_seqlen_k, cu_seqlens_k, causal=False):
+            vllm_seen.append((int(max_seqlen_q), list(cu_seqlens_q), int(max_seqlen_k), list(cu_seqlens_k), bool(causal)))
+            return (q, None)
+
+        vllm_fai.flash_attn_varlen_func = _mock_vllm_varlen
+        vllm_fa.flash_attn_interface = vllm_fai
+        vllm_pkg.vllm_flash_attn = vllm_fa
+        monkeypatch.setitem(sys.modules, "vllm", vllm_pkg)
+        monkeypatch.setitem(sys.modules, "vllm.vllm_flash_attn", vllm_fa)
+        monkeypatch.setitem(sys.modules, "vllm.vllm_flash_attn.flash_attn_interface", vllm_fai)
+        fn_vllm, prov_vllm = sd35_batch._build_varlen_flash_adapter()
+        assert prov_vllm == "vllm_flash_attn" and fn_vllm is not None
+        out_v = fn_vllm("Q", "K", "V", [0, 4, 13], [0, 4, 13], 9, 9, dropout_p=0.0, causal=False)
+        assert out_v == "Q" and vllm_seen == [(9, [0, 4, 13], 9, [0, 4, 13], False)]
+
         # 2. Verify SD35Backend.release_cache suppresses empty_cache while mid-batch states or async decodes remain active
         empty_calls = 0
 
