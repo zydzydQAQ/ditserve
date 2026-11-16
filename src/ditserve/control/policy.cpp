@@ -165,6 +165,46 @@ const std::map<std::string, PolicyTraits>& named() {
             t.continuous_batch = t.sequence_packing = t.bubble_free = false;
             add(t);
         }
+        // Cumulative 5-rung design staircase (Base -> +Prune -> +PairFit -> +Block [abl-no-cb] -> +CB [ditserve]):
+        {
+            auto t = row("stair-base", "Base (Step-SP)", "ablation",
+                "Cumulative staircase Rung 1: step-level pure SP elastic scheduler with first-fit placement and atomic images.");
+            t.elastic = true;
+            t.prune_dominated = t.allow_cfg_forms = false;
+            t.min_video_degree = 1;
+            t.widen = 0.0;
+            t.image_placement = "first";
+            t.feasible_img_priority = false;
+            t.blocks = false;
+            t.continuous_batch = t.sequence_packing = t.bubble_free = false;
+            add(t);
+        }
+        {
+            auto t = row("stair-prune", "+Prune (CFG2 + L* Frontier)", "ablation",
+                "Cumulative staircase Rung 2: adds §4.2 offline CFG2 + L*-pruned parallel form frontier.");
+            t.elastic = true;
+            t.prune_dominated = t.allow_cfg_forms = true;
+            t.min_video_degree = 2;
+            t.widen = 0.0;
+            t.image_placement = "first";
+            t.feasible_img_priority = false;
+            t.blocks = false;
+            t.continuous_batch = t.sequence_packing = t.bubble_free = false;
+            add(t);
+        }
+        {
+            auto t = row("stair-pairfit", "+PairFit (Online Scheduler)", "ablation",
+                "Cumulative staircase Rung 3: adds §4.3 online tiered sizing, cross-modal priority, and pair-preserving placement.");
+            t.elastic = true;
+            t.prune_dominated = t.allow_cfg_forms = true;
+            t.min_video_degree = 2;
+            t.widen = 0.90;
+            t.image_placement = "pair_fit";
+            t.feasible_img_priority = true;
+            t.blocks = false;
+            t.continuous_batch = t.sequence_packing = t.bubble_free = false;
+            add(t);
+        }
         {
             auto t = v1_row("ditserve-v1", "DitServe-v1 (knapsack)", "ablation",
                 "earlier DitServe planner: block quanta + hand-weighted knapsack utility");

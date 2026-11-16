@@ -34,6 +34,9 @@ POLICY_DISPLAY = {
     "abl-no-decode-shrink": "DitServe w/o decode shrink",
     "abl-no-img-priority": "DitServe w/o feasible image priority",
     "abl-no-cb": "DitServe w/o continuous batching",
+    "stair-base": "Base (Step-SP)",
+    "stair-prune": "+Prune",
+    "stair-pairfit": "+PairFit",
     "ditserve-v1": "DitServe-v1 (knapsack)", "block-cfg2": "Block-cfg2", "block-cfg2sp3": "Block-cfg2sp3",
 }
 IN_FRAMEWORK_MECHANISM_DISPLAY = {
@@ -98,6 +101,14 @@ SUITES = {
         "abl-no-block",
         "abl-first-fit",
         "abl-no-cb",
+    ],
+    # Cumulative 5-rung additive staircase aligned 1-to-1 with §4.2 -> §4.3 -> §4.4.1 -> §4.4.3:
+    "staircase": [
+        "stair-base",
+        "stair-prune",
+        "stair-pairfit",
+        "abl-no-cb",
+        "ditserve",
     ],
     # Factorized CFG=2 unlocked baselines against DitServe.
     "cfg2": ["tetriserve-cfg2", "sbp-esp-cfg2", "edf-bestfit-cfg2", "ditserve"],

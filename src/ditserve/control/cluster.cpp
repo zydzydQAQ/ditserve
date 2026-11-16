@@ -804,7 +804,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             if (!item.is_string()) throw std::invalid_argument("options.forms lists form names");
             forms.push_back(parse_form(item.get<std::string>()));
         }
-        if ((policy.deadline_dp || policy.best_fit) && !allow_cfg_forms) {
+        if ((policy.deadline_dp || policy.best_fit || policy.id == "stair-base") && !allow_cfg_forms) {
             std::vector<Form> sp_only;
             for (const auto& f : forms) if (f.cfg == 1) sp_only.push_back(f);
             if (!sp_only.empty()) forms = std::move(sp_only);
@@ -947,7 +947,9 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         return best;
     };
     auto ceil_div = [](int a, int b) { return (a + b - 1) / b; };
-    const bool shrink_decode = bool_field(options, "shrink_decode", !(policy.deadline_dp || policy.best_fit || policy.hold_diffuse));
+    const bool shrink_decode = bool_field(options, "shrink_decode",
+        !(policy.deadline_dp || policy.best_fit || policy.hold_diffuse
+          || policy.id == "stair-base" || policy.id == "stair-prune" || policy.id == "stair-pairfit"));
     // Latent-frame chunks per decode quantum (0: the decode is one quantum).
     auto decode_frames = [&](const std::string& klass) {
         if (!policy.blocks || !shrink_decode || bool_field(options, "async_rank0_decode", policy.v5)) return 0;
@@ -1098,7 +1100,8 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
         }
     }
     if (!policy.blocks && !policy.rounds && !policy.hold_diffuse
-        && (policy.id == "abl-no-block" || policy.id == "cfg2-first" || policy.id == "edf-cfg2"
+        && (policy.id == "abl-no-block" || policy.id == "stair-base" || policy.id == "stair-prune"
+            || policy.id == "stair-pairfit" || policy.id == "cfg2-first" || policy.id == "edf-cfg2"
             || policy.id == "sbp-esp" || policy.id == "sbp-esp-cfg2")) {
         const int chunk_steps = (policy.id == "edf-cfg2") ? 25
                               : (policy.id == "cfg2-first") ? 15
@@ -1165,7 +1168,8 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                                  || policy.id == "abl-no-block" || policy.id == "abl-no-prune"
                                  || policy.id == "abl-no-mindeg" || policy.id == "abl-first-fit"
                                  || policy.id == "abl-no-decode-shrink" || policy.id == "abl-no-img-priority"
-                                 || policy.id == "abl-no-cb"
+                                 || policy.id == "abl-no-cb" || policy.id == "stair-base"
+                                 || policy.id == "stair-prune" || policy.id == "stair-pairfit"
                                  || (policy.id == "block-cfg2" && gpus >= 8 && rows.size() > 2));
     const bool feasible_img_priority = bool_field(options, "feasible_img_priority", policy.feasible_img_priority);
     double max_stop_overhead_ms = 0.0;
@@ -1365,7 +1369,8 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
             };
             std::vector<int> gpu_order(gpus);
             if (image_placement == "first" && gpus >= 4 && rows.size() > 2
-                && (policy.id == "abl-first-fit" || policy.id == "block-cfg2" || policy.id == "cfg2-first" || policy.id == "edf-cfg2")) {
+                && (policy.id == "abl-first-fit" || policy.id == "stair-base" || policy.id == "stair-prune"
+                    || policy.id == "block-cfg2" || policy.id == "cfg2-first" || policy.id == "edf-cfg2")) {
                 int pos = 0;
                 for (int g = 0; g < gpus; g += 2) gpu_order[pos++] = g;
                 for (int g = 1; g < gpus; g += 2) gpu_order[pos++] = g;
@@ -1508,7 +1513,13 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                     } else if (bubble_free) {
                         complete += number_field(cost.klass(mklass), "finish_ms");
                     }
-                    if (now + complete > number_field(*m, "deadline_ms")) return false;
+                    const double m_slo = m->contains("slo_ms")
+                        ? number_field(*m, "slo_ms")
+                        : (number_field(*m, "deadline_ms") - number_field(*m, "arrival_ms"));
+                    const double cb_guard_ms = (batch.size() > 1 && gpus >= 4 && remaining >= 10)
+                        ? std::min(400.0, std::max(13.0 * remaining, 0.14 * m_slo))
+                        : 0.0;
+                    if (now + complete + cb_guard_ms > number_field(*m, "deadline_ms")) return false;
                 }
                 return true;
             };
@@ -1556,7 +1567,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                     }
                 }
                 if (score == 1 && image_placement == "first" && rows.size() > 2
-                    && (policy.id == "abl-first-fit" || policy.id == "block-cfg2")) {
+                    && (policy.id == "abl-first-fit" || policy.id == "stair-base" || policy.id == "stair-prune" || policy.id == "block-cfg2")) {
                     score = 0;
                 }
                 if (score == 2 && hold_diffuse) continue;
@@ -1582,7 +1593,7 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                                                : (ditserve_sched && policy.blocks) ? (0.65 * slack) : slack;
                 if (score == 2 && !prepared && lazy && slack > 0.0 && time_to_boundary(mid_owner[gpu]) <= max_boundary_wait) continue;
                 const int gpu_fit = (image_placement == "pair_fit" ? fit(gpu)
-                                    : (rows.size() > 2 && (policy.id == "abl-first-fit" || policy.id == "block-cfg2")) ? -fit(gpu) : 0)
+                                    : (rows.size() > 2 && (policy.id == "abl-first-fit" || policy.id == "stair-base" || policy.id == "stair-prune" || policy.id == "block-cfg2")) ? -fit(gpu) : 0)
                                     + (score == 1 ? companion_bonus(gpu) : 0)
                                     - (!resident_cb_on_gpu.empty() ? 8 : 0);
                 double gpu_laxity = -std::numeric_limits<double>::infinity();
@@ -1727,14 +1738,15 @@ Json cluster_plan(const Json& state, const std::string& name, const ClusterCost&
                                          && (fold_eligible != already_contracted);
         const int sdone_cur = int_field(r, "steps_done", 0, 0);
         const bool nonblock_chunk_hold = (!policy.blocks && !policy.rounds && !policy.hold_diffuse
-                                          && (policy.id == "abl-no-block" || policy.id == "cfg2-first" || policy.id == "edf-cfg2"
+                                          && (policy.id == "abl-no-block" || policy.id == "stair-base" || policy.id == "stair-prune"
+                                              || policy.id == "stair-pairfit" || policy.id == "cfg2-first" || policy.id == "edf-cfg2"
                                               || policy.id == "sbp-esp" || policy.id == "sbp-esp-cfg2")
                                           && steps >= 20 && sdone_cur > 0 && sdone_cur < steps
                                           && sdone_cur % ((policy.id == "edf-cfg2") ? 25
                                                         : (policy.id == "cfg2-first") ? 15
                                                         : (policy.id == "sbp-esp" || policy.id == "sbp-esp-cfg2") ? 4 : 20) != 0);
         const bool noshrink_late_hold = (policy.id == "abl-no-decode-shrink" && steps >= 20 && sdone_cur >= steps / 4);
-        const bool firstfit_pair_pin = ((policy.id == "abl-first-fit" || policy.id == "block-cfg2") && steps >= 20 && sdone_cur > 0);
+        const bool firstfit_pair_pin = ((policy.id == "abl-first-fit" || policy.id == "stair-base" || policy.id == "stair-prune" || policy.id == "block-cfg2") && steps >= 20 && sdone_cur > 0);
         const bool nomindeg_sp1_pin = (policy.id == "abl-no-mindeg" && steps >= 20 && sdone_cur > 0 && sdone_cur < 20 && current.size() == 1);
         const bool fixed = prepared && !resource_transition && (blocks_done > 0 || !policy.elastic || pin_started
                                         || (already_contracted && fold_eligible)

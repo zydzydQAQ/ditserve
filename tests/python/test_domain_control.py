@@ -136,6 +136,9 @@ class TestControllerPolicyCatalogAndSeparation:
             "abl-no-decode-shrink",
             "abl-no-img-priority",
             "abl-no-cb",
+            "stair-base",
+            "stair-prune",
+            "stair-pairfit",
         )
         for pid in required_policies:
             assert pid in by_id, f"missing policy {pid} in policy_catalog()"
@@ -216,6 +219,29 @@ class TestControllerPolicyCatalogAndSeparation:
         assert by_id["abl-no-img-priority"]["feasible_img_priority"] is False
         assert by_id["abl-no-img-priority"]["blocks"] is True
         assert by_id["abl-no-img-priority"]["hold_diffuse"] is False
+
+        # Cumulative 5-rung design staircase forms a strict boolean feature lattice
+        stair_rungs = ("stair-base", "stair-prune", "stair-pairfit", "abl-no-cb", "ditserve")
+        stair_flags = (
+            "prune_dominated",
+            "feasible_img_priority",
+            "blocks",
+            "continuous_batch",
+            "sequence_packing",
+            "bubble_free",
+        )
+        for idx in range(len(stair_rungs) - 1):
+            cur = by_id[stair_rungs[idx]]
+            nxt = by_id[stair_rungs[idx + 1]]
+            for flag in stair_flags:
+                assert int(bool(cur[flag])) <= int(bool(nxt[flag])), f"{flag} regressed from {stair_rungs[idx]} to {stair_rungs[idx+1]}"
+            assert int(cur["min_video_degree"]) <= int(nxt["min_video_degree"])
+        assert by_id["stair-base"]["allow_cfg_forms"] is False
+        assert by_id["stair-base"]["image_placement"] == "first"
+        assert by_id["stair-prune"]["allow_cfg_forms"] is True
+        assert by_id["stair-prune"]["image_placement"] == "first"
+        assert by_id["stair-pairfit"]["image_placement"] == "pair_fit"
+        assert by_id["stair-pairfit"]["blocks"] is False
 
     def test_cfg2_unlocked_baselines_use_cfg_forms_on_pcie(self) -> None:
         prof = _pcie_profile()
