@@ -23,8 +23,8 @@
     }
   },
   "code_commits": {
-    "latest_head_commit": "8c50c7a",
-    "scalability_commit": "ae4ba3d",
+    "latest_head_commit": "720da72",
+    "scalability_commit": "720da72",
     "baseline_reuse_commits": [
       "1b54f37",
       "5d9ee3f",

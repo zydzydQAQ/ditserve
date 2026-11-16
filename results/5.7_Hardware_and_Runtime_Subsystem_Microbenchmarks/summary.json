@@ -33,10 +33,10 @@
       "mechanism": "Ragged cu_seqlens Token Packing",
       "table_label": "3. Varlen Pack",
       "baseline": "Static 2D padding across 512^2 / 768^2 / 1024^2 (37.5%-50% pad)",
-      "ditserve": "FlashAttention-2 cu_seqlens ragged packing (0% pad)",
-      "gain": "1.68x - 2.02x step (2.20x goodput)",
-      "quality_gate": "max_abs_diff = 4.77e-7",
-      "source_job": "20261104-sd35-continuous-batch-sweep"
+      "ditserve": "flash_attn_varlen cu_seqlens packing (260.09 ms) + 4.5x dilation guard + FlashPS 3-stream async decode",
+      "gain": "1.71x - 2.02x step / 5.12x 3-stream (-172.4 ms stall)",
+      "quality_gate": "cos = 0.999994, 512+1440 8.85x blocked",
+      "source_job": "20261104-sd35-continuous-batch-sweep + d20261115-val-img80-8gpu-01bee01-r1"
     },
     {
       "id": 4,
@@ -63,10 +63,10 @@
       "mechanism": "S4 Disaggregated Encoder Pool",
       "table_label": "6. S4 Enc. Pool",
       "baseline": "40.1 - 54.0 GiB HBM peak (100% OOM on 40GB A100)",
-      "ditserve": "17.1 - 27.6 GiB HBM peak (/dev/shm + 0.1-0.8 ms async DMA)",
-      "gain": "-19.45 GiB/GPU (-155.6 GiB/8GPU)",
-      "quality_gate": "0 OOM, bitwise lossless",
-      "source_job": "cross_modal_memory_study + d20261104-mot-sys-2gpu-r1"
+      "ditserve": "17.1 - 27.6 GiB HBM (/dev/shm + split T5 cache: 13.84 s cold / 0.68 ms warm H2D)",
+      "gain": "-19.45 GiB/GPU, 3.96x cold / 80,927x warm T5",
+      "quality_gate": "0 OOM, max_abs_diff = 0.0",
+      "source_job": "cross_modal_memory_study + d20261115-val-img80-8gpu-01bee01-r1"
     },
     {
       "id": 7,
@@ -121,5 +121,26 @@
         0.0006
       ]
     }
+  },
+  "sd35_cb_flashps_t5_validation_20261115": {
+    "source_job": "d20261115-val-img80-8gpu-01bee01-r1",
+    "flash_attn_varlen_512_1024_p50_ms": 260.09,
+    "grouped_sdpa_512_1024_p50_ms": 263.909,
+    "dilation_guard_512_1440_solo_vs_cobatch_ms": [
+      1709.8,
+      15133.0
+    ],
+    "flashps_3stream_sequential_vs_pipelined_ms": [
+      19857.965,
+      3876.036
+    ],
+    "flashps_3stream_speedup_x": 5.123,
+    "async_vae_step_retire_stall_saved_ms": 172.448,
+    "cpu_t5_split_unsplit4t_cold8t_warm_ms": [
+      54787.663,
+      13842.391,
+      0.677
+    ],
+    "cpu_t5_max_abs_diff": 0.0
   }
 }

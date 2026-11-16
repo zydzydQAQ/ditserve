@@ -1,7 +1,7 @@
 # §5.1 Experimental Setup
 
 - **对应论文小节**：`body/05-evaluation.tex` — `\subsection{Experimental Setup}`（引用 `Table 1: tab:bg_models`）
-- **核心构建版本**：`8c50c7a`（最新连续批处理修复提交；弱扩展节点运行于 `ae4ba3d`；基线复用提交 `1b54f37, 5d9ee3f, 7a77c45, 43f1ca3`）
+- **核心构建版本**：`720da72`（合入单核 `flash_attn_varlen`、跨分辨率膨胀门禁、FlashPS 三流异步解码与 T5 正负分离缓存后 16 卡全量刷新；基线复用提交 `1b54f37, 5d9ee3f, 7a77c45, 43f1ca3, 8c50c7a`）
 - **校准包（Calibration Bundle）**：`d20261106-formal-v2-wan22-b1-21a1ca3-r1`（`sha256: 3d838143675930045036f31ef7b9441751cb0cd2c00c0cdd1bfce3105f23e569`）
 
 ---

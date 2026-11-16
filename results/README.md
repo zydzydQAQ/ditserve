@@ -1,6 +1,6 @@
 # DitServe 论文实验结果归档总览（按论文当前小章节命名组织）
 
-本目录汇总整理了 `DitServe` 论文当前全部实验与硬件特征化测量结果（100% 对齐论文最新源码 `ditserve-writing/body/03-motivation.tex` 与 `body/05-evaluation.tex` 及最新修复提交 `8c50c7a`）。所有子目录严格按照论文当前小章节（`§3.1–§3.3` 与 `§5.1–§5.7`）命名，每个子目录均包含结构化报告 `README.md`、紧凑指标摘要 `summary.json` 以及可直接用于核验与绘图的 `.csv` 数据表。
+本目录汇总整理了 `DitServe` 论文全部实验与硬件特征化测量结果（对齐论文源码 `ditserve-writing/body/03-motivation.tex` 与 `body/05-evaluation.tex` 及最新提交 `720da72`）。所有子目录严格按照论文小章节（`§3.1–§3.3` 与 `§5.1–§5.8`）命名，每个子目录均包含结构化报告 `README.md`、紧凑指标摘要 `summary.json` 以及可直接用于核验与绘图的 `.csv` 数据表。
 
 ---
 
@@ -8,7 +8,7 @@
 
 - **硬件集群**：`jjjkairos` 集群，单节点 8× `NVIDIA A100-PCIE-40GB`（双路 PCIe 4.0 Host Bridge `PHB`，无 NVLink/NVSwitch；§5.5 扩展至 2×8 = 16 卡）
 - **验证镜像**：`192.168.1.114:30500/jjjkairos/ditserve:external-serving-vllm-cu126-sm80-20261104-r3`（`sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05`）
-- **代码版本**：`ditserve` (`8a100` 分支) 最新提交 **`8c50c7a`**（弱扩展提交 `ae4ba3d`；无损复用的非 CB 基线提交 `1b54f37`, `43f1ca3`, `7a77c45`, `5d9ee3f`）
+- **代码版本**：`ditserve` (`8a100` 分支) 最新提交 **`720da72`**（含 42 组主策略轨迹、32 组 `SBP+c2` 跨全扫描矩阵、`abl-no-cb` 同步消融、3×500 请求五阶段长稳浸泡实验及 36 组跨并行度 Step/Block `CV` 特征化矩阵；无损复用的非 CB 基线提交 `1b54f37`, `43f1ca3`, `7a77c45`, `5d9ee3f`, `8c50c7a`）
 - **校准包（Calibration Bundle）**：`d20261106-formal-v2-wan22-b1-21a1ca3-r1`（`sha256: 3d838143675930045036f31ef7b9441751cb0cd2c00c0cdd1bfce3105f23e569`）
 
 ---
@@ -17,16 +17,17 @@
 
 | 论文小节 | 论文英文标题 (`\subsection{...}`) | 对应图表 | 子目录链接 | 核心实验结论摘要 |
 | :---: | :--- | :--- | :--- | :--- |
-| **§3.1** | `Characterization I: Modality-Asymmetric SP and CFG Scaling on PCIe` | `Fig. 3`, `Fig. 4` | [`3.1_Characterization_I_Modality-Asymmetric_SP_and_CFG_Scaling_on_PCIe/`](./3.1_Characterization_I_Modality-Asymmetric_SP_and_CFG_Scaling_on_PCIe/) | 纯 SP 在图像上 `0.42×–0.77×` 负加速，视频 `42%–72%` 通信开销；CFG2 在视频达 `1.88×–1.91×` E2E (`<0.7%` 通信)，相变点 $L^* \approx 25\text{K}–38.1\text{K}$ |
-| **§3.2** | `Characterization II: Step vs. Block Timelines and Modality-Asymmetric Preemption` | `Fig. 5` | [`3.2_Characterization_II_Step_vs_Block_Timelines_and_Modality-Asymmetric_Preemption/`](./3.2_Characterization_II_Step_vs_Block_Timelines_and_Modality-Asymmetric_Preemption/) | 视频单 Block (`45–94 ms`) 原地暂停 `63.75 ms`，紧 SLO 下等待缩短 **`26.77×`**（`0%` $\to$ **`100%` SAR**，`624/624` SHA256 一致） |
-| **§3.3** | `Characterization III: Cross-Modal HBM Wall, Prompt Padding, and Batch Waste` | `Table 2` | [`3.3_Characterization_III_Cross-Modal_HBM_Wall_Prompt_Padding_and_Batch_Waste/`](./3.3_Characterization_III_Cross-Modal_HBM_Wall_Prompt_Padding_and_Batch_Waste/) | S4 解耦每卡省 **`19.45 GiB`**（`0 OOM`），UMT5 截断提速 `5.87×–15.58×`，`cu_seqlens` 打包提速 **`1.68×–2.02×`** |
-| **§5.1** | `Experimental Setup` | `Table 1`, 42-Trace Matrix | [`5.1_Experimental_Setup/`](./5.1_Experimental_Setup/) | 3 大 DiT 模型参数、校准包 6 档分辨率实测耗时与 42 组评测工作负载清单 |
-| **§5.2** | `Modality Mix Scale` | `Fig. 7`, `Fig. 8` | [`5.2_Modality_Mix_Scale/`](./5.2_Modality_Mix_Scale/) | $v \in \{0.1..0.9\}$ 平均 SAR **`91.4%` (Poisson) / `89.8%` (Gamma)**；均衡锚点归一化 P95 **`0.95× / 1.16×`** |
-| **§5.3** | `Rate Scale` | `Fig. 9`, `Fig. 10` | [`5.3_Rate_Scale/`](./5.3_Rate_Scale/) | $R \in \{8..36\}$ rpm 平均 SAR **`87.2% / 87.3%`**；重过载下图像 P95 锁在 **`14.77–16.23 s`**（基线高达 `364.89 s`） |
-| **§5.4** | `SLO Scale` | `Fig. 11` | [`5.4_SLO_Scale/`](./5.4_SLO_Scale/) | $\kappa \in \{1.0\times..2.0\times\}$ 平均 SAR **`89.6% / 86.4%`**；$\kappa=1.0\times$ 达 **`66.0% / 56.0%`**（基线 `1%–5%`） |
-| **§5.5** | `Scalability` | `Fig. 12` | [`5.5_Scalability/`](./5.5_Scalability/) | $2 \to 16$ 卡弱扩展合并 SAR **`93.9% / 93.6%`**，16 卡 Goodput 达 2 卡的 **`8.08×` / `8.84×`** |
-| **§5.6** | `Ablation Study` | `Fig. 13` | [`5.6_Ablation_Study/`](./5.6_Ablation_Study/) | 阶梯 `74%→87%→92%→94%` (Poisson) 与 `64%→78%→93%→94%` (Gamma)；L1 3 参数模型 **`0.0%` 遗憾** |
-| **§5.7** | `Hardware and Runtime Subsystem Microbenchmarks` | `Table 3` | [`5.7_Hardware_and_Runtime_Subsystem_Microbenchmarks/`](./5.7_Hardware_and_Runtime_Subsystem_Microbenchmarks/) | GreenPool 降抖动 **`56.1×`**、GFC 建组 **`>1.4M×`**、分块 VAE **`22.7×`**、PinnedSlab **`5.01×`**、Approx **`2.3–5.4×`** |
+| **§3.1** | `Characterization I: Modality-Asymmetric SP and CFG Scaling on PCIe` | `Fig. 3`, `Fig. 4`, `Table 1–2 CV` | [`3.1_Characterization_I_Modality-Asymmetric_SP_and_CFG_Scaling_on_PCIe/`](./3.1_Characterization_I_Modality-Asymmetric_SP_and_CFG_Scaling_on_PCIe/) | 纯 SP 在图像上 `0.42×–0.77×` 负加速，CFG2 在视频达 `1.88×–1.91×` E2E；全矩阵 36 组配置 Step `CV` **`0.05%–3.50%`**（`P99/P50` $\le 1.09$） |
+| **§3.2** | `Characterization II: Step vs. Block Timelines and Modality-Asymmetric Preemption` | `Fig. 5`, `Block CV` | [`3.2_Characterization_II_Step_vs_Block_Timelines_and_Modality-Asymmetric_Preemption/`](./3.2_Characterization_II_Step_vs_Block_Timelines_and_Modality-Asymmetric_Preemption/) | 视频 30 层同构 Block 空间 `CV` **`0.08%–3.85%`**、时间 `CV` **`0.33%–4.52%`**；紧 SLO 原地暂停等待缩短 **`26.77×`**（`0%` $\to$ **`100%` SAR**） |
+| **§3.3** | `Characterization III: Cross-Modal HBM Wall, Prompt Padding, and Batch Waste` | `Table 2` | [`3.3_Characterization_III_Cross-Modal_HBM_Wall_Prompt_Padding_and_Batch_Waste/`](./3.3_Characterization_III_Cross-Modal_HBM_Wall_Prompt_Padding_and_Batch_Waste/) | S4 解耦省 **`19.45 GiB/GPU`**（`0 OOM`），T5 正负分离缓存 **`3.96×` 冷 / `80,927×` 热**，单核 `flash_attn_varlen` **`1.71×–2.02×`** + `4.5×` 跨度门禁 |
+| **§5.1** | `Experimental Setup` | `Table 1`, 42-Trace Matrix | [`5.1_Experimental_Setup/`](./5.1_Experimental_Setup/) | 3 大 DiT 模型参数、校准包 6 档分辨率实测耗时与 42 组评测工作负载清单（`720da72`） |
+| **§5.2** | `Modality Mix Scale` | `Fig. 7`, `Fig. 8` | [`5.2_Modality_Mix_Scale/`](./5.2_Modality_Mix_Scale/) | 6 策略对比：$v \in \{0.1..0.9\}$ 平均 SAR **`91.2% / 90.4%`**（`SBP+c2` `86.6% / 79.8%`）；图像 P95 **`14.59 / 15.07 s`** |
+| **§5.3** | `Rate Scale` | `Fig. 9`, `Fig. 10` | [`5.3_Rate_Scale/`](./5.3_Rate_Scale/) | 6 策略对比：$R \in \{8..36\}$ rpm 平均 SAR **`87.5% / 87.1%`**（`SBP+c2` `81.8% / 70.8%`）；图像 P95 锁在 **`14.50–16.60 s`** |
+| **§5.4** | `SLO Scale` | `Fig. 11` | [`5.4_SLO_Scale/`](./5.4_SLO_Scale/) | 6 策略对比：$\kappa \in \{1.0\times..2.0\times\}$ 平均 SAR **`90.6% / 87.6%`**（`SBP+c2` `72.6% / 65.0%`）；$\kappa=1.0\times$ 达 **`69.0% / 60.0%`** |
+| **§5.5** | `Scalability` | `Fig. 12` | [`5.5_Scalability/`](./5.5_Scalability/) | $2 \to 16$ 卡弱扩展合并 SAR **`94.7% / 93.1%`**（Poisson 全规模 100% 图像 SAR），Goodput 扩展 **`7.49×` / `8.47×`** |
+| **§5.6** | `Ablation Study` | `Fig. 13` | [`5.6_Ablation_Study/`](./5.6_Ablation_Study/) | Poisson 阶梯 `74%→87%→94%→94%`；紧 $\kappa=1.0\times$ CB 增益 **`+28 / +24 pp`**；外部 `+CFG2` 最高仅 `85% / 76%` |
+| **§5.7** | `Hardware and Runtime Subsystem Microbenchmarks` | `Table 3` | [`5.7_Hardware_and_Runtime_Subsystem_Microbenchmarks/`](./5.7_Hardware_and_Runtime_Subsystem_Microbenchmarks/) | GreenPool **`56.1×`**、GFC **`>1.4M×`**、FlashPS 三流 **`5.12×`**、分块 VAE **`22.7×`**、PinnedSlab **`5.01×`** |
+| **§5.8** | `Sustained Multi-Phase Stability` | `Fig. 14` (Soak) | [`5.8_Sustained_Multi-Phase_Stability/`](./5.8_Sustained_Multi-Phase_Stability/) | 500 请求五阶段潮汐浸泡：**`85.4%` SAR** vs `SBP+c2` `71.6%` / `TetriServe` `66.6%`；`0 OOM`，HBM 斜率 **`+1166.24 MB/hr`** |
 
 ---
 

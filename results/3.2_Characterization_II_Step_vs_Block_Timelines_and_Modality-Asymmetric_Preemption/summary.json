@@ -9,7 +9,10 @@
   "provenance_jobs": [
     "d20261104-mot-alg-2gpu-r1",
     "20261103-formal-b97479e",
-    "20261104-motivation-local/gpu_timeline/summary.json"
+    "20261104-motivation-local/gpu_timeline/summary.json",
+    "d20261116-mot-cv-s0-8gpu-720da72-r2",
+    "d20261116-mot-cv-s1-8gpu-720da72-r2",
+    "d20261116-mot-cv-s2-8gpu-720da72-r1"
   ],
   "tight_t2i_slack_budget_ms": 429.7,
   "decode_idle_share_of_queued_gpu_idle_pct": [
@@ -138,5 +141,871 @@
       "image_sar_pct": 100.0,
       "sha256_parity": "100% (max_abs_diff=0.0)"
     }
-  ]
+  ],
+  "block_vs_step_cv_predictability": {
+    "provenance_jobs": [
+      "d20261116-mot-cv-s0-8gpu-720da72-r2",
+      "d20261116-mot-cv-s1-8gpu-720da72-r2",
+      "d20261116-mot-cv-s2-8gpu-720da72-r1"
+    ],
+    "build_commit": "720da72",
+    "tight_t2i_slack_budget_ms": 429.7,
+    "summary_ranges": {
+      "image_15_configs": {
+        "step_temporal_cv_pct_range": [
+          0.079,
+          2.341
+        ],
+        "cross_prompt_step_cv_pct_range": [
+          0.079,
+          2.439
+        ],
+        "step_p99_p50_ratio_range": [
+          1.0016,
+          1.0874
+        ],
+        "block_temporal_cv_mean_pct_range": [
+          0.409,
+          6.503
+        ],
+        "block_temporal_cv_p95_pct_range": [
+          0.52,
+          14.297
+        ],
+        "block_p99_p50_ratio_range": [
+          1.0129,
+          1.3806
+        ],
+        "block_spatial_cv_all_pct_range": [
+          15.473,
+          29.464
+        ],
+        "block_spatial_cv_homogeneous_pct_range": [
+          0.042,
+          1.7
+        ],
+        "peak_hbm_gib_range": [
+          6.41,
+          8.37
+        ]
+      },
+      "video_21_configs": {
+        "step_temporal_cv_pct_range": [
+          0.053,
+          3.503
+        ],
+        "cross_prompt_step_cv_pct_range": [
+          0.054,
+          3.53
+        ],
+        "step_p99_p50_ratio_range": [
+          1.0012,
+          1.0814
+        ],
+        "block_temporal_cv_mean_pct_range": [
+          0.333,
+          4.519
+        ],
+        "block_temporal_cv_p95_pct_range": [
+          0.337,
+          5.298
+        ],
+        "block_p99_p50_ratio_range": [
+          1.0096,
+          1.1202
+        ],
+        "block_spatial_cv_all_pct_range": [
+          0.081,
+          3.849
+        ],
+        "block_spatial_cv_homogeneous_pct_range": [
+          0.081,
+          3.849
+        ],
+        "peak_hbm_gib_range": [
+          9.52,
+          12.86
+        ]
+      },
+      "all_36_configs": {
+        "max_step_temporal_cv_pct": 3.503,
+        "max_cross_prompt_step_cv_pct": 3.53,
+        "max_step_p99_p50_ratio": 1.0874,
+        "max_block_temporal_cv_mean_pct": 6.503,
+        "max_block_p99_p50_ratio": 1.3806
+      }
+    },
+    "table3_single_block_vs_step_anchors": [
+      {
+        "modality": "Image",
+        "model": "SD3.5-Medium",
+        "resolution": "512x512",
+        "form": "SP1",
+        "gpus": 1,
+        "blocks_per_step": 24,
+        "block_mean_ms": 2.6967,
+        "block_p50_ms": 2.9881,
+        "block_p99_ms": 4.1252,
+        "block_p99_p50_ratio": 1.3806,
+        "block_temporal_cv_mean_pct": 6.5027,
+        "step_mean_ms": 66.0703,
+        "step_p50_ms": 65.3958,
+        "step_p99_ms": 71.1126,
+        "step_p99_p50_ratio": 1.0874,
+        "step_temporal_cv_pct": 2.3407,
+        "block_vs_tight_slack_429p7ms_ratio": 0.007,
+        "step_vs_tight_slack_429p7ms_ratio": 0.1522
+      },
+      {
+        "modality": "Image",
+        "model": "SD3.5-Medium",
+        "resolution": "1024x1024",
+        "form": "SP1",
+        "gpus": 1,
+        "blocks_per_step": 24,
+        "block_mean_ms": 9.0045,
+        "block_p50_ms": 10.5474,
+        "block_p99_ms": 10.7553,
+        "block_p99_p50_ratio": 1.0197,
+        "block_temporal_cv_mean_pct": 0.5587,
+        "step_mean_ms": 217.2253,
+        "step_p50_ms": 217.2104,
+        "step_p99_ms": 218.8869,
+        "step_p99_p50_ratio": 1.0077,
+        "step_temporal_cv_pct": 0.3189,
+        "block_vs_tight_slack_429p7ms_ratio": 0.0245,
+        "step_vs_tight_slack_429p7ms_ratio": 0.5055
+      },
+      {
+        "modality": "Image",
+        "model": "SD3.5-Medium",
+        "resolution": "1440x1440",
+        "form": "SP1",
+        "gpus": 1,
+        "blocks_per_step": 24,
+        "block_mean_ms": 21.0143,
+        "block_p50_ms": 25.1485,
+        "block_p99_ms": 25.5972,
+        "block_p99_p50_ratio": 1.0178,
+        "block_temporal_cv_mean_pct": 0.5917,
+        "step_mean_ms": 506.2607,
+        "step_p50_ms": 505.9525,
+        "step_p99_ms": 508.8625,
+        "step_p99_p50_ratio": 1.0057,
+        "step_temporal_cv_pct": 0.2035,
+        "block_vs_tight_slack_429p7ms_ratio": 0.0585,
+        "step_vs_tight_slack_429p7ms_ratio": 1.1775
+      },
+      {
+        "modality": "Video",
+        "model": "Wan2.2-TI2V-5B",
+        "resolution": "256p",
+        "form": "CFG2",
+        "gpus": 2,
+        "blocks_per_step": 30,
+        "block_mean_ms": 6.905,
+        "block_p50_ms": 6.9079,
+        "block_p99_ms": 7.0905,
+        "block_p99_p50_ratio": 1.0264,
+        "block_temporal_cv_mean_pct": 0.7707,
+        "step_mean_ms": 212.2974,
+        "step_p50_ms": 212.1789,
+        "step_p99_ms": 215.0335,
+        "step_p99_p50_ratio": 1.0134,
+        "step_temporal_cv_pct": 0.5147,
+        "block_vs_tight_slack_429p7ms_ratio": 0.0161,
+        "step_vs_tight_slack_429p7ms_ratio": 0.4938
+      },
+      {
+        "modality": "Video",
+        "model": "Wan2.2-TI2V-5B",
+        "resolution": "480p",
+        "form": "CFG2",
+        "gpus": 2,
+        "blocks_per_step": 30,
+        "block_mean_ms": 31.4542,
+        "block_p50_ms": 31.3927,
+        "block_p99_ms": 32.4509,
+        "block_p99_p50_ratio": 1.0337,
+        "block_temporal_cv_mean_pct": 1.0578,
+        "step_mean_ms": 956.0367,
+        "step_p50_ms": 956.3238,
+        "step_p99_ms": 960.3303,
+        "step_p99_p50_ratio": 1.0042,
+        "step_temporal_cv_pct": 0.1248,
+        "block_vs_tight_slack_429p7ms_ratio": 0.0731,
+        "step_vs_tight_slack_429p7ms_ratio": 2.2256
+      },
+      {
+        "modality": "Video",
+        "model": "Wan2.2-TI2V-5B",
+        "resolution": "720p",
+        "form": "CFG2",
+        "gpus": 2,
+        "blocks_per_step": 30,
+        "block_mean_ms": 76.5897,
+        "block_p50_ms": 76.6584,
+        "block_p99_ms": 77.8287,
+        "block_p99_p50_ratio": 1.0153,
+        "block_temporal_cv_mean_pct": 0.7196,
+        "step_mean_ms": 2319.5645,
+        "step_p50_ms": 2319.2258,
+        "step_p99_ms": 2330.1177,
+        "step_p99_p50_ratio": 1.0047,
+        "step_temporal_cv_pct": 0.1107,
+        "block_vs_tight_slack_429p7ms_ratio": 0.1784,
+        "step_vs_tight_slack_429p7ms_ratio": 5.3973
+      }
+    ],
+    "across_parallel_degrees": [
+      {
+        "modality": "Image",
+        "model": "SD3.5-Medium",
+        "form": "SP1",
+        "gpus": 1,
+        "sp_degree": 1,
+        "cfg_degree": 1,
+        "resolutions": [
+          "512x512",
+          "1024x1024",
+          "1440x1440"
+        ],
+        "step_p50_ms_range": [
+          65.4,
+          505.95
+        ],
+        "step_temporal_cv_pct_range": [
+          0.203,
+          2.341
+        ],
+        "cross_prompt_step_cv_pct_range": [
+          0.214,
+          2.439
+        ],
+        "step_p99_p50_ratio_range": [
+          1.0057,
+          1.0874
+        ],
+        "block_p50_ms_range": [
+          2.99,
+          25.15
+        ],
+        "block_temporal_cv_mean_pct_range": [
+          0.559,
+          6.503
+        ],
+        "block_temporal_cv_p95_pct_range": [
+          0.605,
+          14.297
+        ],
+        "block_p99_p50_ratio_range": [
+          1.0178,
+          1.3806
+        ],
+        "block_spatial_cv_all_pct_range": [
+          16.208,
+          22.963
+        ],
+        "block_spatial_cv_homogeneous_pct_range": [
+          0.05,
+          1.7
+        ],
+        "all_blocks_below_tight_slack_429p7ms": true
+      },
+      {
+        "modality": "Image",
+        "model": "SD3.5-Medium",
+        "form": "SP2",
+        "gpus": 2,
+        "sp_degree": 2,
+        "cfg_degree": 1,
+        "resolutions": [
+          "512x512",
+          "1024x1024",
+          "1440x1440"
+        ],
+        "step_p50_ms_range": [
+          127.59,
+          741.09
+        ],
+        "step_temporal_cv_pct_range": [
+          0.198,
+          0.451
+        ],
+        "cross_prompt_step_cv_pct_range": [
+          0.22,
+          0.457
+        ],
+        "step_p99_p50_ratio_range": [
+          1.0045,
+          1.0096
+        ],
+        "block_p50_ms_range": [
+          6.23,
+          38.3
+        ],
+        "block_temporal_cv_mean_pct_range": [
+          1.059,
+          2.026
+        ],
+        "block_temporal_cv_p95_pct_range": [
+          1.314,
+          2.275
+        ],
+        "block_p99_p50_ratio_range": [
+          1.0354,
+          1.0693
+        ],
+        "block_spatial_cv_all_pct_range": [
+          23.088,
+          28.846
+        ],
+        "block_spatial_cv_homogeneous_pct_range": [
+          0.102,
+          0.21
+        ],
+        "all_blocks_below_tight_slack_429p7ms": true
+      },
+      {
+        "modality": "Image",
+        "model": "SD3.5-Medium",
+        "form": "SP4",
+        "gpus": 4,
+        "sp_degree": 4,
+        "cfg_degree": 1,
+        "resolutions": [
+          "512x512",
+          "1024x1024",
+          "1440x1440"
+        ],
+        "step_p50_ms_range": [
+          149.7,
+          738.27
+        ],
+        "step_temporal_cv_pct_range": [
+          0.079,
+          0.195
+        ],
+        "cross_prompt_step_cv_pct_range": [
+          0.079,
+          0.201
+        ],
+        "step_p99_p50_ratio_range": [
+          1.0016,
+          1.0046
+        ],
+        "block_p50_ms_range": [
+          7.37,
+          38.75
+        ],
+        "block_temporal_cv_mean_pct_range": [
+          0.409,
+          1.009
+        ],
+        "block_temporal_cv_p95_pct_range": [
+          0.52,
+          1.238
+        ],
+        "block_p99_p50_ratio_range": [
+          1.0129,
+          1.0358
+        ],
+        "block_spatial_cv_all_pct_range": [
+          21.872,
+          29.464
+        ],
+        "block_spatial_cv_homogeneous_pct_range": [
+          0.047,
+          0.119
+        ],
+        "all_blocks_below_tight_slack_429p7ms": true
+      },
+      {
+        "modality": "Image",
+        "model": "SD3.5-Medium",
+        "form": "SP8",
+        "gpus": 8,
+        "sp_degree": 8,
+        "cfg_degree": 1,
+        "resolutions": [
+          "512x512",
+          "1024x1024",
+          "1440x1440"
+        ],
+        "step_p50_ms_range": [
+          134.99,
+          483.78
+        ],
+        "step_temporal_cv_pct_range": [
+          0.118,
+          0.154
+        ],
+        "cross_prompt_step_cv_pct_range": [
+          0.118,
+          0.158
+        ],
+        "step_p99_p50_ratio_range": [
+          1.0032,
+          1.0039
+        ],
+        "block_p50_ms_range": [
+          6.55,
+          25.13
+        ],
+        "block_temporal_cv_mean_pct_range": [
+          0.505,
+          0.807
+        ],
+        "block_temporal_cv_p95_pct_range": [
+          0.726,
+          1.089
+        ],
+        "block_p99_p50_ratio_range": [
+          1.0135,
+          1.0243
+        ],
+        "block_spatial_cv_all_pct_range": [
+          18.959,
+          28.401
+        ],
+        "block_spatial_cv_homogeneous_pct_range": [
+          0.076,
+          0.095
+        ],
+        "all_blocks_below_tight_slack_429p7ms": true
+      },
+      {
+        "modality": "Image",
+        "model": "SD3.5-Medium",
+        "form": "CFG2",
+        "gpus": 2,
+        "sp_degree": 1,
+        "cfg_degree": 2,
+        "resolutions": [
+          "512x512",
+          "1024x1024",
+          "1440x1440"
+        ],
+        "step_p50_ms_range": [
+          65.69,
+          260.44
+        ],
+        "step_temporal_cv_pct_range": [
+          0.309,
+          1.097
+        ],
+        "cross_prompt_step_cv_pct_range": [
+          0.399,
+          1.209
+        ],
+        "step_p99_p50_ratio_range": [
+          1.0043,
+          1.0399
+        ],
+        "block_p50_ms_range": [
+          2.97,
+          12.98
+        ],
+        "block_temporal_cv_mean_pct_range": [
+          0.529,
+          4.194
+        ],
+        "block_temporal_cv_p95_pct_range": [
+          0.553,
+          8.581
+        ],
+        "block_p99_p50_ratio_range": [
+          1.016,
+          1.205
+        ],
+        "block_spatial_cv_all_pct_range": [
+          15.473,
+          23.456
+        ],
+        "block_spatial_cv_homogeneous_pct_range": [
+          0.042,
+          0.538
+        ],
+        "all_blocks_below_tight_slack_429p7ms": true
+      },
+      {
+        "modality": "Video",
+        "model": "Wan2.2-TI2V-5B",
+        "form": "SP1",
+        "gpus": 1,
+        "sp_degree": 1,
+        "cfg_degree": 1,
+        "resolutions": [
+          "256p",
+          "480p",
+          "720p"
+        ],
+        "step_p50_ms_range": [
+          411.12,
+          4622.92
+        ],
+        "step_temporal_cv_pct_range": [
+          0.176,
+          0.331
+        ],
+        "cross_prompt_step_cv_pct_range": [
+          0.289,
+          0.416
+        ],
+        "step_p99_p50_ratio_range": [
+          1.0044,
+          1.0066
+        ],
+        "block_p50_ms_range": [
+          6.73,
+          76.29
+        ],
+        "block_temporal_cv_mean_pct_range": [
+          0.685,
+          0.892
+        ],
+        "block_temporal_cv_p95_pct_range": [
+          0.958,
+          1.149
+        ],
+        "block_p99_p50_ratio_range": [
+          1.0191,
+          1.0242
+        ],
+        "block_spatial_cv_all_pct_range": [
+          0.145,
+          0.313
+        ],
+        "block_spatial_cv_homogeneous_pct_range": [
+          0.145,
+          0.313
+        ],
+        "all_blocks_below_tight_slack_429p7ms": true
+      },
+      {
+        "modality": "Video",
+        "model": "Wan2.2-TI2V-5B",
+        "form": "SP2",
+        "gpus": 2,
+        "sp_degree": 2,
+        "cfg_degree": 1,
+        "resolutions": [
+          "256p",
+          "480p",
+          "720p"
+        ],
+        "step_p50_ms_range": [
+          462.92,
+          3758.13
+        ],
+        "step_temporal_cv_pct_range": [
+          0.113,
+          0.92
+        ],
+        "cross_prompt_step_cv_pct_range": [
+          0.119,
+          1.365
+        ],
+        "step_p99_p50_ratio_range": [
+          1.0027,
+          1.0464
+        ],
+        "block_p50_ms_range": [
+          7.61,
+          61.89
+        ],
+        "block_temporal_cv_mean_pct_range": [
+          0.674,
+          2.042
+        ],
+        "block_temporal_cv_p95_pct_range": [
+          0.718,
+          1.638
+        ],
+        "block_p99_p50_ratio_range": [
+          1.024,
+          1.0344
+        ],
+        "block_spatial_cv_all_pct_range": [
+          0.288,
+          1.16
+        ],
+        "block_spatial_cv_homogeneous_pct_range": [
+          0.288,
+          1.16
+        ],
+        "all_blocks_below_tight_slack_429p7ms": true
+      },
+      {
+        "modality": "Video",
+        "model": "Wan2.2-TI2V-5B",
+        "form": "SP4",
+        "gpus": 4,
+        "sp_degree": 4,
+        "cfg_degree": 1,
+        "resolutions": [
+          "256p",
+          "480p",
+          "720p"
+        ],
+        "step_p50_ms_range": [
+          410.29,
+          3103.95
+        ],
+        "step_temporal_cv_pct_range": [
+          0.053,
+          1.007
+        ],
+        "cross_prompt_step_cv_pct_range": [
+          0.055,
+          1.634
+        ],
+        "step_p99_p50_ratio_range": [
+          1.0016,
+          1.0536
+        ],
+        "block_p50_ms_range": [
+          6.74,
+          51.01
+        ],
+        "block_temporal_cv_mean_pct_range": [
+          0.392,
+          1.484
+        ],
+        "block_temporal_cv_p95_pct_range": [
+          0.424,
+          1.014
+        ],
+        "block_p99_p50_ratio_range": [
+          1.0106,
+          1.0249
+        ],
+        "block_spatial_cv_all_pct_range": [
+          0.083,
+          1.257
+        ],
+        "block_spatial_cv_homogeneous_pct_range": [
+          0.083,
+          1.257
+        ],
+        "all_blocks_below_tight_slack_429p7ms": true
+      },
+      {
+        "modality": "Video",
+        "model": "Wan2.2-TI2V-5B",
+        "form": "SP8",
+        "gpus": 8,
+        "sp_degree": 8,
+        "cfg_degree": 1,
+        "resolutions": [
+          "256p",
+          "480p",
+          "720p"
+        ],
+        "step_p50_ms_range": [
+          294.87,
+          1818.31
+        ],
+        "step_temporal_cv_pct_range": [
+          0.108,
+          1.471
+        ],
+        "cross_prompt_step_cv_pct_range": [
+          0.107,
+          2.441
+        ],
+        "step_p99_p50_ratio_range": [
+          1.002,
+          1.0814
+        ],
+        "block_p50_ms_range": [
+          4.82,
+          29.63
+        ],
+        "block_temporal_cv_mean_pct_range": [
+          0.555,
+          1.334
+        ],
+        "block_temporal_cv_p95_pct_range": [
+          0.337,
+          0.815
+        ],
+        "block_p99_p50_ratio_range": [
+          1.0109,
+          1.0185
+        ],
+        "block_spatial_cv_all_pct_range": [
+          0.081,
+          1.887
+        ],
+        "block_spatial_cv_homogeneous_pct_range": [
+          0.081,
+          1.887
+        ],
+        "all_blocks_below_tight_slack_429p7ms": true
+      },
+      {
+        "modality": "Video",
+        "model": "Wan2.2-TI2V-5B",
+        "form": "CFG2",
+        "gpus": 2,
+        "sp_degree": 1,
+        "cfg_degree": 2,
+        "resolutions": [
+          "256p",
+          "480p",
+          "720p"
+        ],
+        "step_p50_ms_range": [
+          212.18,
+          2319.23
+        ],
+        "step_temporal_cv_pct_range": [
+          0.111,
+          0.515
+        ],
+        "cross_prompt_step_cv_pct_range": [
+          0.216,
+          0.532
+        ],
+        "step_p99_p50_ratio_range": [
+          1.0042,
+          1.0134
+        ],
+        "block_p50_ms_range": [
+          6.91,
+          76.66
+        ],
+        "block_temporal_cv_mean_pct_range": [
+          0.72,
+          1.058
+        ],
+        "block_temporal_cv_p95_pct_range": [
+          0.84,
+          1.264
+        ],
+        "block_p99_p50_ratio_range": [
+          1.0153,
+          1.0337
+        ],
+        "block_spatial_cv_all_pct_range": [
+          0.214,
+          0.508
+        ],
+        "block_spatial_cv_homogeneous_pct_range": [
+          0.214,
+          0.508
+        ],
+        "all_blocks_below_tight_slack_429p7ms": true
+      },
+      {
+        "modality": "Video",
+        "model": "Wan2.2-TI2V-5B",
+        "form": "CFG2SP2",
+        "gpus": 4,
+        "sp_degree": 2,
+        "cfg_degree": 2,
+        "resolutions": [
+          "256p",
+          "480p",
+          "720p"
+        ],
+        "step_p50_ms_range": [
+          293.46,
+          2201.54
+        ],
+        "step_temporal_cv_pct_range": [
+          0.728,
+          3.503
+        ],
+        "cross_prompt_step_cv_pct_range": [
+          0.986,
+          3.53
+        ],
+        "step_p99_p50_ratio_range": [
+          1.0188,
+          1.0449
+        ],
+        "block_p50_ms_range": [
+          9.63,
+          71.61
+        ],
+        "block_temporal_cv_mean_pct_range": [
+          1.086,
+          4.519
+        ],
+        "block_temporal_cv_p95_pct_range": [
+          1.409,
+          5.298
+        ],
+        "block_p99_p50_ratio_range": [
+          1.1125,
+          1.1202
+        ],
+        "block_spatial_cv_all_pct_range": [
+          3.348,
+          3.849
+        ],
+        "block_spatial_cv_homogeneous_pct_range": [
+          3.348,
+          3.849
+        ],
+        "all_blocks_below_tight_slack_429p7ms": true
+      },
+      {
+        "modality": "Video",
+        "model": "Wan2.2-TI2V-5B",
+        "form": "CFG2SP4",
+        "gpus": 8,
+        "sp_degree": 4,
+        "cfg_degree": 2,
+        "resolutions": [
+          "256p",
+          "480p",
+          "720p"
+        ],
+        "step_p50_ms_range": [
+          207.32,
+          1559.98
+        ],
+        "step_temporal_cv_pct_range": [
+          0.054,
+          0.235
+        ],
+        "cross_prompt_step_cv_pct_range": [
+          0.054,
+          0.25
+        ],
+        "step_p99_p50_ratio_range": [
+          1.0012,
+          1.0101
+        ],
+        "block_p50_ms_range": [
+          6.78,
+          51.16
+        ],
+        "block_temporal_cv_mean_pct_range": [
+          0.333,
+          0.895
+        ],
+        "block_temporal_cv_p95_pct_range": [
+          0.39,
+          0.907
+        ],
+        "block_p99_p50_ratio_range": [
+          1.0096,
+          1.0258
+        ],
+        "block_spatial_cv_all_pct_range": [
+          0.086,
+          0.373
+        ],
+        "block_spatial_cv_homogeneous_pct_range": [
+          0.086,
+          0.373
+        ],
+        "all_blocks_below_tight_slack_429p7ms": true
+      }
+    ]
+  }
 }

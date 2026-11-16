@@ -1,43 +1,43 @@
 trace_index,primary_subsection,shared_in_subsections,arrival_distribution,cv,gpus,rate_rpm,video_fraction_v,slo_scale_kappa,requests_N,ditserve_run_id,ditserve_config_sha256
-1,5.3_Rate_Scale,5.3_Rate_Scale,Poisson,1.0,8,8,0.5,1.5,100,d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-8,78faa80494285cb523a0577a18d456d6af1373d2461fbfb2d26b76394253ac2e
-2,5.3_Rate_Scale,5.3_Rate_Scale;5.2_Modality_Mix_Scale;5.4_SLO_Scale;5.5_Scalability(8GPU),Poisson,1.0,8,12,0.5,1.5,100,d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-12,b1178c258d080aa07effc2dff3b2504096486fa19ff7a33c3c6da6a1d13b275a
-3,5.3_Rate_Scale,5.3_Rate_Scale,Poisson,1.0,8,16,0.5,1.5,100,d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-16,24dc746e212883db2963998072ab814e4ab56b3cf6830666e46afb3aa8cf64d5
-4,5.3_Rate_Scale,5.3_Rate_Scale,Poisson,1.0,8,20,0.5,1.5,100,d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-20,568ace2afd91eae5ae3cebc3417e4b01ac68a0ec271ab2c34c42188a19baf5d9
-5,5.3_Rate_Scale,5.3_Rate_Scale,Poisson,1.0,8,24,0.5,1.5,100,d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-24,267e541ce32008442df67287e68f1c4357635bf094707fd5116639442173df40
-6,5.3_Rate_Scale,5.3_Rate_Scale,Poisson,1.0,8,28,0.5,1.5,100,d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-28,c5d47bca7634888d53d38f0bc0c0364bf8efc9a0cd575f643978e281118d5846
-7,5.3_Rate_Scale,5.3_Rate_Scale,Poisson,1.0,8,32,0.5,1.5,100,d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-32,fa26b0255a58c15a9519fdfc7e4155ff0e28280506bd284aff391142667e068a
-8,5.3_Rate_Scale,5.3_Rate_Scale,Poisson,1.0,8,36,0.5,1.5,100,d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-36,2216ca6e39ec2feed8276beabe396d2bfc883421fc768dcda64f9821abe1bf6c
-9,5.3_Rate_Scale,5.3_Rate_Scale,Gamma,2.0,8,8,0.5,1.5,100,d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-rate-8,f9e178724ee363f4a4d60a1cf3c300ed00615dc936e98cd1977f66ca4961b061
-10,5.3_Rate_Scale,5.3_Rate_Scale;5.2_Modality_Mix_Scale;5.4_SLO_Scale;5.5_Scalability(8GPU),Gamma,2.0,8,12,0.5,1.5,100,d20261111-formal-v2-cb-abl-fix-8gpu-8c50c7a-r1-g2-slo-1p5,8414bf0df11c9d6c19f17579381e5a54f6b7f9a7c6cd1595f58dc1315667e87c
-11,5.3_Rate_Scale,5.3_Rate_Scale,Gamma,2.0,8,16,0.5,1.5,100,d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-rate-16,de08d39a8c69c051df053a147021bc1b73101ad8fa63f1e5b4b3ea10d24fd48e
-12,5.3_Rate_Scale,5.3_Rate_Scale,Gamma,2.0,8,20,0.5,1.5,100,d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-rate-20,213f92cafed0f36591d6aeb4412e22e0af8034d0806e7cb65a5c3575f7f8e6b4
-13,5.3_Rate_Scale,5.3_Rate_Scale,Gamma,2.0,8,24,0.5,1.5,100,d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-rate-24,daa5b47d5b78448967919f6450c90e722b1d6d695d147fbd1eb40df9538581c4
-14,5.3_Rate_Scale,5.3_Rate_Scale,Gamma,2.0,8,28,0.5,1.5,100,d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-rate-28,9f537bf477ec2c540e85c0b806fc9605d224969b29fd0dc133e673fbdf321e23
-15,5.3_Rate_Scale,5.3_Rate_Scale,Gamma,2.0,8,32,0.5,1.5,100,d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-rate-32,8e53430c45056da25621723f2cbb432f026482dfe2051febe267829f172876a2
-16,5.3_Rate_Scale,5.3_Rate_Scale,Gamma,2.0,8,36,0.5,1.5,100,d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-rate-36,e5c750da6772de069e46e0306b79999b79505531cf32b2060e844dc58bd29987
-17,5.2_Modality_Mix_Scale,5.2_Modality_Mix_Scale,Poisson,1.0,8,12,0.1,1.5,100,d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-mix-0p1,c868eb6c6d4997bfaa23ff2fccdaded648e4dd377ab552ac0405706d0d044cca
-18,5.2_Modality_Mix_Scale,5.2_Modality_Mix_Scale,Poisson,1.0,8,12,0.3,1.5,100,d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-mix-0p3,61af23de03315882b5b83b90d83349720bc916e5e6bce21c08632c5ea635b514
-19,5.2_Modality_Mix_Scale,5.2_Modality_Mix_Scale,Poisson,1.0,8,12,0.7,1.5,100,d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-mix-0p7,aa8e31ac702f7f3f459256fb80a1e9e032a548cd1827ea7f85ef0780419c86ea
-20,5.2_Modality_Mix_Scale,5.2_Modality_Mix_Scale,Poisson,1.0,8,12,0.9,1.5,100,d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-mix-0p9,f29a417b5ea83c57f08094fe33904d98a84739eb7719a1e38271f40c8bde4b07
-21,5.2_Modality_Mix_Scale,5.2_Modality_Mix_Scale,Gamma,2.0,8,12,0.1,1.5,100,d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-mix-0p1,0a3cf842a84fb0a5ce5ca152d6188afcf888aad36d47cdb80a5227bef1c92239
-22,5.2_Modality_Mix_Scale,5.2_Modality_Mix_Scale,Gamma,2.0,8,12,0.3,1.5,100,d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-mix-0p3,09a25d4877163b47df62bfefa650a178f97da8a8f405947bc4f36aac4a1198d7
-23,5.2_Modality_Mix_Scale,5.2_Modality_Mix_Scale,Gamma,2.0,8,12,0.7,1.5,100,d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-mix-0p7,2a041cbedf63a50fb8cba43c4a49e0767160811c4e8f826b3d1f791b20d32286
-24,5.2_Modality_Mix_Scale,5.2_Modality_Mix_Scale,Gamma,2.0,8,12,0.9,1.5,100,d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-mix-0p9,84283d36277c38dd82cab03c80ec6d4cdfebf95b97b9e4a5003c7698b0af8395
-25,5.4_SLO_Scale,5.4_SLO_Scale,Poisson,1.0,8,12,0.5,1.0,100,d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-slo-1p0,02978dc53d724f59319380422021a71ff71b6f195e8dcf0d97f46833904e2343
-26,5.4_SLO_Scale,5.4_SLO_Scale,Poisson,1.0,8,12,0.5,1.25,100,d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-slo-1p25,6ab3bf3066258f4d1f1aa467272ea3a7ff531bb818bb3ac7a783832c67f88cb8
-27,5.4_SLO_Scale,5.4_SLO_Scale,Poisson,1.0,8,12,0.5,1.75,100,d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-slo-1p75,54f1020031dc54ae79a1379a52b03e5efd645041927b21f0364d35900e78f953
-28,5.4_SLO_Scale,5.4_SLO_Scale,Poisson,1.0,8,12,0.5,2.0,100,d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-slo-2p0,236d780b521bce4ce5205329b6b028903eca4f93de5eb1490896a3e8181076f4
-29,5.4_SLO_Scale,5.4_SLO_Scale,Gamma,2.0,8,12,0.5,1.0,100,d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-g2-slo-1p0,bbeaf551c1cc4bed68b3ff70f9d052e28ee75a16d698245a14e35b05d1d5ecc4
-30,5.4_SLO_Scale,5.4_SLO_Scale,Gamma,2.0,8,12,0.5,1.25,100,d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-g2-slo-1p25,4f5149ed8ed7e8b2433bc495718ee915d2fae5d96dd2d3c69fbb7f39b579e46d
-31,5.4_SLO_Scale,5.4_SLO_Scale,Gamma,2.0,8,12,0.5,1.75,100,d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-g2-slo-1p75,77c42e90d9061eb16a840dbe2cdccfff2596a8bfd9ca0b06307f023b73bb716d
-32,5.4_SLO_Scale,5.4_SLO_Scale,Gamma,2.0,8,12,0.5,2.0,100,d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-g2-slo-2p0,63a9cdfbb5bca7418cf732b422653476d4ce90db0ef2ac747bd9d97e8dfa9e0e
-33,5.5_Scalability,5.5_Scalability,Poisson,1.0,2,3,0.5,1.5,24,d20261110-formal-v2-scale-n0-8gpu-ae4ba3d-r3-p-gpu-2,edd1a1228be6f186764a3a17aa5d3391b7185059fee0bf5ae4ed77a649785e5e
-34,5.5_Scalability,5.5_Scalability,Poisson,1.0,4,6,0.5,1.5,50,d20261110-formal-v2-scale-g4-8gpu-ae4ba3d-r1-p-gpu-4,bb4b701c283fc41f41de9e9a0f05cfc83cf1d484eaf12998f9de05f6b507c1d6
-35,5.5_Scalability,5.5_Scalability,Poisson,1.0,16,24,0.5,1.5,200,d20261110-formal-v2-scale-n0-8gpu-ae4ba3d-r3-p-gpu-16,2c87028da611589e92bc890c703a5c8bedb87bad9fb7ec14bec22a0e0f118d4f
-36,5.5_Scalability,5.5_Scalability,Gamma,2.0,2,3,0.5,1.5,24,d20261110-formal-v2-scale-n0-8gpu-ae4ba3d-r3-g2-gpu-2,7304d6bd99725c089d488faa8bf996b2cd5b071867cbd78eac6f6886ee120ed3
-37,5.5_Scalability,5.5_Scalability,Gamma,2.0,4,6,0.5,1.5,50,d20261110-formal-v2-scale-g4-8gpu-ae4ba3d-r1-g2-gpu-4,6115cdd1af31f6b60cab90d78d815e679bb7ecba2563e03a51dd0a69991da562
-38,5.5_Scalability,5.5_Scalability,Gamma,2.0,16,24,0.5,1.5,200,d20261110-formal-v2-scale-n0-8gpu-ae4ba3d-r3-g2-gpu-16,f0937dc44853e2a52ec79420c96f713b91597430ce3cf79b5ae1eb7530689b0b
-39,5.6_Ablation_Study,5.6_Ablation_Study (7-policy staircase & LOO),Poisson,1.0,8,13.2,0.5,1.5,100,d20261111-formal-v2-cb-abl-fix-8gpu-8c50c7a-r1-anchor-abl,cd27d06deee8911caaee5104b0e71b38fc471e3021194aa9869276f4d9b5af4b
-40,5.6_Ablation_Study,5.6_Ablation_Study (7-policy staircase & LOO),Gamma,2.0,8,13.2,0.5,1.5,100,d20261111-formal-v2-cb-abl-fix-8gpu-8c50c7a-r1-gamma2-abl,890140848097e4e3b4efa4b169930380b72e836a9fb11b4dd45b05f90709d9b3
-41,5.6_Ablation_Study,5.4_SLO_Scale;5.6_Ablation_Study (kappa=1.0x CB rescue),Poisson,1.0,8,12,0.5,1.0,100,d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-slo-1p0,02978dc53d724f59319380422021a71ff71b6f195e8dcf0d97f46833904e2343
-42,5.6_Ablation_Study,5.4_SLO_Scale;5.6_Ablation_Study (kappa=1.0x CB rescue),Gamma,2.0,8,12,0.5,1.0,100,d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-g2-slo-1p0,bbeaf551c1cc4bed68b3ff70f9d052e28ee75a16d698245a14e35b05d1d5ecc4
+1,5.3_Rate_Scale,5.3_Rate_Scale,Poisson,1.0,8,8,0.5,1.5,100,d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-rate-8,05bf2f1a97f5ebd4838349844b03c0f4369afe14aa69384f630b06cbb6ef6821
+2,5.3_Rate_Scale,5.3_Rate_Scale;5.2_Modality_Mix_Scale;5.4_SLO_Scale;5.5_Scalability(8GPU),Poisson,1.0,8,12,0.5,1.5,100,d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-rate-12,cd1b7267ea94fda66e9e889efce25aa59e0888446307822d1477195c03640913
+3,5.3_Rate_Scale,5.3_Rate_Scale,Poisson,1.0,8,16,0.5,1.5,100,d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-rate-16,575e528c59bca7d3e80d58a5c89c1deb998bb09f5d999efbfb5c73c89940619d
+4,5.3_Rate_Scale,5.3_Rate_Scale,Poisson,1.0,8,20,0.5,1.5,100,d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-rate-20,6ca9a4af6cd62c3d5216528161164a8a5246e42345f2245ebd5b0595558944cf
+5,5.3_Rate_Scale,5.3_Rate_Scale,Poisson,1.0,8,24,0.5,1.5,100,d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-rate-24,b8c4265592153761a73d0fee6fa332c4e0425231d1d26541e50eda637d4800de
+6,5.3_Rate_Scale,5.3_Rate_Scale,Poisson,1.0,8,28,0.5,1.5,100,d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-rate-28,3363eb16cdf730091798fddfe68a4c70f094f8ed3f4fe30df86d6348110ec115
+7,5.3_Rate_Scale,5.3_Rate_Scale,Poisson,1.0,8,32,0.5,1.5,100,d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-rate-32,48995834196905cb098663a532ccca8be0ea2aca95da63b1e3d050fbca382be8
+8,5.3_Rate_Scale,5.3_Rate_Scale,Poisson,1.0,8,36,0.5,1.5,100,d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-rate-36,cb456a513b36ff17cbb62deaf99b0d57daea6641cca8b08a74789191d3da8478
+9,5.3_Rate_Scale,5.3_Rate_Scale,Gamma,2.0,8,8,0.5,1.5,100,d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-rate-8,088954494baea504573d8f569f9ea426d7dd34a63b82d9c2dfab5f6a8f6f6b5b
+10,5.3_Rate_Scale,5.3_Rate_Scale;5.2_Modality_Mix_Scale;5.4_SLO_Scale;5.5_Scalability(8GPU),Gamma,2.0,8,12,0.5,1.5,100,d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-slo-1p5,2433853840f3ad629c31653d5a5d3efaffb86546948f0b3e59ec7324c04dff85
+11,5.3_Rate_Scale,5.3_Rate_Scale,Gamma,2.0,8,16,0.5,1.5,100,d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-rate-16,0193b1ab74c0fd68315b49f6a8f236e199e8bdde964c7cd0eb3b0c943f7fa5ad
+12,5.3_Rate_Scale,5.3_Rate_Scale,Gamma,2.0,8,20,0.5,1.5,100,d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-rate-20,538a1bf0dc62653d5f511a95e1332ef6eddecf5e9a68cfbd5f483d6e7c50eeff
+13,5.3_Rate_Scale,5.3_Rate_Scale,Gamma,2.0,8,24,0.5,1.5,100,d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-rate-24,fca51e4159ce27f9cc738d6e32bea35e2f6265f91d215290c20f9c89cae8f7eb
+14,5.3_Rate_Scale,5.3_Rate_Scale,Gamma,2.0,8,28,0.5,1.5,100,d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-rate-28,97c0d4f832fad2d4e24fdec83835ab6c76086bf7e976025fd73341ddf2a3ccf2
+15,5.3_Rate_Scale,5.3_Rate_Scale,Gamma,2.0,8,32,0.5,1.5,100,d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-rate-32,d9cfd98a788f7ecc23cc0e191627f3c9999996ceb0083fdbd8dfa8a583f7530e
+16,5.3_Rate_Scale,5.3_Rate_Scale,Gamma,2.0,8,36,0.5,1.5,100,d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-rate-36,b2053cf40fa95250d33a9f581030e942a6e080c11aa14d29996fd46bc3a0154a
+17,5.2_Modality_Mix_Scale,5.2_Modality_Mix_Scale,Poisson,1.0,8,12,0.1,1.5,100,d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-mix-0p1,44ecdc8102b2516f0fd0971137a7f1c07e50fbce7ccab81c3263d11f8ffdf063
+18,5.2_Modality_Mix_Scale,5.2_Modality_Mix_Scale,Poisson,1.0,8,12,0.3,1.5,100,d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-mix-0p3,e1ec232e77035944f27f78496c751c0d83ffecf2f2b9c65bad60c53e1e1adef4
+19,5.2_Modality_Mix_Scale,5.2_Modality_Mix_Scale,Poisson,1.0,8,12,0.7,1.5,100,d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-mix-0p7,840841a5fe57d0d5ff5e22ed7d42b95384e8aaf2c75d1b7c92f6d208cf4612d4
+20,5.2_Modality_Mix_Scale,5.2_Modality_Mix_Scale,Poisson,1.0,8,12,0.9,1.5,100,d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-mix-0p9,b8b7776e7e768ce64ff0e080810da4c5f7764b7e93b45180d4013462c0756fc7
+21,5.2_Modality_Mix_Scale,5.2_Modality_Mix_Scale,Gamma,2.0,8,12,0.1,1.5,100,d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-mix-0p1,700f2afc84b7b2d2dd0d4e436c1da075cfefc3d27be82444e3356d48a46d21e8
+22,5.2_Modality_Mix_Scale,5.2_Modality_Mix_Scale,Gamma,2.0,8,12,0.3,1.5,100,d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-mix-0p3,ab013e6d90dff67f609a767a4953aee4d0035ee232cee84bf6ee8500b6f18c9d
+23,5.2_Modality_Mix_Scale,5.2_Modality_Mix_Scale,Gamma,2.0,8,12,0.7,1.5,100,d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-mix-0p7,7bb7dde6bff3e75afa921feba650403e41ecef683afc979d86f2e43b2712c2b0
+24,5.2_Modality_Mix_Scale,5.2_Modality_Mix_Scale,Gamma,2.0,8,12,0.9,1.5,100,d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-mix-0p9,623e53df81e153ca8bab60c68915896890887a99c27a877a131fde99fcef875a
+25,5.4_SLO_Scale,5.4_SLO_Scale,Poisson,1.0,8,12,0.5,1.0,100,d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-slo-1p0,61220e83c2fe1ad2b9f851fd5b02747f55167e66d252b9a2929bcd07053948ba
+26,5.4_SLO_Scale,5.4_SLO_Scale,Poisson,1.0,8,12,0.5,1.25,100,d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-slo-1p25,947fe1ce39787363df27153af73cc31aa4ed1c7f98789d83173c198693671071
+27,5.4_SLO_Scale,5.4_SLO_Scale,Poisson,1.0,8,12,0.5,1.75,100,d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-slo-1p75,e60e5c16650d31034592ee91db1a8590a87a0bbe83835d1696c5e266c343e3c8
+28,5.4_SLO_Scale,5.4_SLO_Scale,Poisson,1.0,8,12,0.5,2.0,100,d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-slo-2p0,2fd84af12300e67bbc2d5e46917d8645417f974d5c59a77fd2efa6750edfe5c3
+29,5.4_SLO_Scale,5.4_SLO_Scale,Gamma,2.0,8,12,0.5,1.0,100,d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-slo-1p0,85957af02388baf67817c00ad2f8cf86f8081e491119af099c38c83f718a757b
+30,5.4_SLO_Scale,5.4_SLO_Scale,Gamma,2.0,8,12,0.5,1.25,100,d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-slo-1p25,071dfe33659ccef85af3496953c749b1b611b72ac59e67dae82de55b407c57fa
+31,5.4_SLO_Scale,5.4_SLO_Scale,Gamma,2.0,8,12,0.5,1.75,100,d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-slo-1p75,c047cb5ca83e3c2f749e0a8035205a9e63df827dce9574a6f777717e006149fd
+32,5.4_SLO_Scale,5.4_SLO_Scale,Gamma,2.0,8,12,0.5,2.0,100,d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-slo-2p0,e41dc21eb52601a5628b6b046f31e1496e9195320d96ff61bbcc58616c29155b
+33,5.5_Scalability,5.5_Scalability,Poisson,1.0,2,3,0.5,1.5,24,d20261116-formal-v2-scale-n0-8gpu-720da72-r1-p-gpu-2,02d1658de59257de398523bfe638723db8cf103368c8e891a5b1ba3ec0bb2645
+34,5.5_Scalability,5.5_Scalability,Poisson,1.0,4,6,0.5,1.5,50,d20261116-formal-v2-scale-n1-8gpu-720da72-r1-p-gpu-4,d2979ba2baf36d8bde2cde563d142661f16611ff668056b1f9a5b65fc9478d60
+35,5.5_Scalability,5.5_Scalability,Poisson,1.0,16,24,0.5,1.5,200,d20261116-formal-v2-scale-n0-8gpu-720da72-r1-p-gpu-16,f928155dc8c2720647fea8b560e2f5e7451c3e8c2e203ff45eca8d2a01aee363
+36,5.5_Scalability,5.5_Scalability,Gamma,2.0,2,3,0.5,1.5,24,d20261116-formal-v2-scale-n0-8gpu-720da72-r1-g2-gpu-2,23c655a9335baba741473b7d5ed6118daa15aa26246afd261e22959a1a1e8be8
+37,5.5_Scalability,5.5_Scalability,Gamma,2.0,4,6,0.5,1.5,50,d20261116-formal-v2-scale-n1-8gpu-720da72-r1-g2-gpu-4,5701d884722027112fef01a8610921a207e18d5cc09119b595018745e335d32c
+38,5.5_Scalability,5.5_Scalability,Gamma,2.0,16,24,0.5,1.5,200,d20261116-formal-v2-scale-n0-8gpu-720da72-r1-g2-gpu-16,2802398fdde7687895b6e58c161d75d0c699d65cce74423b332cebbd7437a218
+39,5.6_Ablation_Study,5.6_Ablation_Study (7-policy staircase & LOO),Poisson,1.0,8,13.2,0.5,1.5,100,d20261116-formal-v2-scale-n0-8gpu-720da72-r1-anchor-abl,cd27d06deee8911caaee5104b0e71b38fc471e3021194aa9869276f4d9b5af4b
+40,5.6_Ablation_Study,5.6_Ablation_Study (7-policy staircase & LOO),Gamma,2.0,8,13.2,0.5,1.5,100,d20261116-formal-v2-scale-n1-8gpu-720da72-r1-gamma2-abl,2199f1ee728b7246d74b9c8266bdf08c2e047faa01643823fbdbe0b011bf8974
+41,5.6_Ablation_Study,5.4_SLO_Scale;5.6_Ablation_Study (kappa=1.0x CB rescue),Poisson,1.0,8,12,0.5,1.0,100,d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-slo-1p0,61220e83c2fe1ad2b9f851fd5b02747f55167e66d252b9a2929bcd07053948ba
+42,5.6_Ablation_Study,5.4_SLO_Scale;5.6_Ablation_Study (kappa=1.0x CB rescue),Gamma,2.0,8,12,0.5,1.0,100,d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-slo-1p0,85957af02388baf67817c00ad2f8cf86f8081e491119af099c38c83f718a757b

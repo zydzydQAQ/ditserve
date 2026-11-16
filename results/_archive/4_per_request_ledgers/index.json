@@ -19,14 +19,6 @@
     },
     {
       "trace": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation",
-      "job_slice": "d20261111-formal-v2-cb-abl-fix-8gpu-8c50c7a-r1-gamma2-abl-loo",
-      "file": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation__d20261111-formal-v2-cb-abl-fix-8gpu-8c50c7a-r1-gamma2-abl-loo.ledger.json.gz",
-      "requests_count": 0,
-      "compressed_bytes": 10212,
-      "status": "ok"
-    },
-    {
-      "trace": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation",
       "job_slice": "d20261111-formal-v2-cb-abl-fix-8gpu-8c50c7a-r1-gamma2-abl",
       "file": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation__d20261111-formal-v2-cb-abl-fix-8gpu-8c50c7a-r1-gamma2-abl.ledger.json.gz",
       "requests_count": 100,
@@ -35,10 +27,26 @@
     },
     {
       "trace": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation",
+      "job_slice": "d20261111-formal-v2-cb-abl-fix-8gpu-8c50c7a-r1-gamma2-abl-loo",
+      "file": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation__d20261111-formal-v2-cb-abl-fix-8gpu-8c50c7a-r1-gamma2-abl-loo.ledger.json.gz",
+      "requests_count": 0,
+      "compressed_bytes": 10212,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation",
       "job_slice": "d20261111-formal-v2-cb-abl-loo-8gpu-8c50c7a-r1-gamma2-abl-loo",
       "file": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation__d20261111-formal-v2-cb-abl-loo-8gpu-8c50c7a-r1-gamma2-abl-loo.ledger.json.gz",
       "requests_count": 300,
       "compressed_bytes": 805324,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation",
+      "job_slice": "d20261112-formal-v2-abl-cfg2-g2-8gpu-8c50c7a-r1-gamma2-abl-cfg2",
+      "file": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation__d20261112-formal-v2-abl-cfg2-g2-8gpu-8c50c7a-r1-gamma2-abl-cfg2.ledger.json.gz",
+      "requests_count": 300,
+      "compressed_bytes": 573501,
       "status": "ok"
     },
     {
@@ -268,6 +276,14 @@
       "file": "formal-wan22-test-poisson-s301-l1p75-v0p5-slo1p5-ablation__d20261111-formal-v2-cb-abl-fix-8gpu-8c50c7a-r1-anchor-abl.ledger.json.gz",
       "requests_count": 100,
       "compressed_bytes": 279848,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-l1p75-v0p5-slo1p5-ablation",
+      "job_slice": "d20261112-formal-v2-abl-cfg2-p-8gpu-8c50c7a-r1-anchor-abl-cfg2",
+      "file": "formal-wan22-test-poisson-s301-l1p75-v0p5-slo1p5-ablation__d20261112-formal-v2-abl-cfg2-p-8gpu-8c50c7a-r1-anchor-abl-cfg2.ledger.json.gz",
+      "requests_count": 300,
+      "compressed_bytes": 572636,
       "status": "ok"
     },
     {
