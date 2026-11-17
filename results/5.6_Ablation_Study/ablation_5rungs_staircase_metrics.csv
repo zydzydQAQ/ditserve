@@ -1,0 +1,11 @@
+distribution,rung,policy,short_label,sar_pct,image_sar_pct,video_sar_pct,latency_p50_s,latency_p95_s,image_latency_p95_s,video_latency_p50_s,goodput_rps,block_preemptions,cb_steps,cb_late_joins,run_id,config_sha256
+poisson,1,stair-base,Base,25.0,18.57,40.0,184.51,527.98,237.56,216.3,0.0348,0,0,0,d20261117-formal-v2-staircase-p-8gpu-3878f01-r1-staircase-p,cd020c01a54ce36bace2d5a02a636046f994e78a22c917acaff8c90b441b8890
+poisson,2,stair-prune,+Prune,51.0,51.43,50.0,18.28,441.98,50.24,273.65,0.0807,0,0,0,d20261117-formal-v2-staircase-p-8gpu-3878f01-r1-staircase-p,cd020c01a54ce36bace2d5a02a636046f994e78a22c917acaff8c90b441b8890
+poisson,3,abl-first-fit-nocb,+Block,58.0,64.29,43.33,15.56,448.55,25.02,266.17,0.0929,0,0,0,d20261117-formal-v2-staircase-ff0-8gpu-3878f01-r1-ff0-p,47a3d920b0f5dbc8a14ffde655dc54b0fbd9d71ace89e219148cecbb475486d0
+poisson,4,abl-no-cb,+PairFit,63.0,74.29,36.67,15.33,453.42,17.81,273.88,0.1002,0,0,0,d20261117-formal-v2-staircase-p-8gpu-3878f01-r1-staircase-p,cd020c01a54ce36bace2d5a02a636046f994e78a22c917acaff8c90b441b8890
+poisson,5,ditserve,+CB,77.0,90.0,46.67,14.39,456.25,18.27,272.5,0.1198,0,0,11,d20261117-formal-v2-staircase-p-8gpu-3878f01-r1-staircase-p,cd020c01a54ce36bace2d5a02a636046f994e78a22c917acaff8c90b441b8890
+gamma_cv2,1,stair-base,Base,22.0,15.71,36.67,192.85,562.66,280.14,265.59,0.0276,0,0,0,d20261117-formal-v2-staircase-g2-8gpu-3878f01-r1-staircase-g2,8f4c5e449b1ad872a99a337fdfb1469f6e1c9ca4a2315801f89886512532485e
+gamma_cv2,2,stair-prune,+Prune,32.0,21.43,56.67,74.64,419.08,176.64,167.1,0.0541,0,0,0,d20261117-formal-v2-staircase-g2-8gpu-3878f01-r1-staircase-g2,8f4c5e449b1ad872a99a337fdfb1469f6e1c9ca4a2315801f89886512532485e
+gamma_cv2,3,abl-first-fit-nocb,+Block,46.0,42.86,53.33,17.2,448.23,38.14,269.11,0.0743,0,0,0,d20261117-formal-v2-staircase-ff0-8gpu-3878f01-r1-ff0-g2,6326893f23d44056b5fbe9ecafefc28483b13c1d12a026b0cace63abf28c5f98
+gamma_cv2,4,abl-no-cb,+PairFit,58.0,70.0,30.0,15.48,458.61,19.0,284.95,0.0916,0,0,0,d20261117-formal-v2-staircase-g2-8gpu-3878f01-r1-staircase-g2,8f4c5e449b1ad872a99a337fdfb1469f6e1c9ca4a2315801f89886512532485e
+gamma_cv2,5,ditserve,+CB,69.0,81.43,40.0,15.31,458.69,28.59,266.65,0.1094,0,0,13,d20261117-formal-v2-staircase-g2-8gpu-3878f01-r1-staircase-g2,8f4c5e449b1ad872a99a337fdfb1469f6e1c9ca4a2315801f89886512532485e

@@ -25,7 +25,7 @@
 | **§5.3** | `Rate Scale` | `Fig. 9`, `Fig. 10` | [`5.3_Rate_Scale/`](./5.3_Rate_Scale/) | 6 策略对比：$R \in \{8..36\}$ rpm 平均 SAR **`87.5% / 87.1%`**（`SBP+c2` `81.8% / 70.8%`）；图像 P95 锁在 **`14.50–16.60 s`** |
 | **§5.4** | `SLO Scale` | `Fig. 11` | [`5.4_SLO_Scale/`](./5.4_SLO_Scale/) | 6 策略对比：$\kappa \in \{1.0\times..2.0\times\}$ 平均 SAR **`90.6% / 87.6%`**（`SBP+c2` `72.6% / 65.0%`）；$\kappa=1.0\times$ 达 **`69.0% / 60.0%`** |
 | **§5.5** | `Scalability` | `Fig. 12` | [`5.5_Scalability/`](./5.5_Scalability/) | $2 \to 16$ 卡弱扩展合并 SAR **`94.7% / 93.1%`**（Poisson 全规模 100% 图像 SAR），Goodput 扩展 **`7.49×` / `8.47×`** |
-| **§5.6** | `Ablation Study` | `Fig. 13` | [`5.6_Ablation_Study/`](./5.6_Ablation_Study/) | Poisson 阶梯 `74%→87%→94%→94%`；紧 $\kappa=1.0\times$ CB 增益 **`+28 / +24 pp`**；外部 `+CFG2` 最高仅 `85% / 76%` |
+| **§5.6** | `Ablation Study` | `Fig. 15` | [`5.6_Ablation_Study/`](./5.6_Ablation_Study/) | 5 级累加阶梯 Poisson **`25%→51%→58%→63%→77%`**（Goodput `3.44×`），Gamma **`22%→32%→46%→58%→69%`**（Goodput `3.96×`） |
 | **§5.7** | `Hardware and Runtime Subsystem Microbenchmarks` | `Table 3` | [`5.7_Hardware_and_Runtime_Subsystem_Microbenchmarks/`](./5.7_Hardware_and_Runtime_Subsystem_Microbenchmarks/) | GreenPool **`56.1×`**、GFC **`>1.4M×`**、FlashPS 三流 **`5.12×`**、分块 VAE **`22.7×`**、PinnedSlab **`5.01×`** |
 | **§5.8** | `Sustained Multi-Phase Stability` | `Fig. 14` (Soak) | [`5.8_Sustained_Multi-Phase_Stability/`](./5.8_Sustained_Multi-Phase_Stability/) | 500 请求五阶段潮汐浸泡：**`85.4%` SAR** vs `SBP+c2` `71.6%` / `TetriServe` `66.6%`；`0 OOM`，HBM 斜率 **`+1166.24 MB/hr`** |
 

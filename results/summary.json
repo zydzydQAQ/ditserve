@@ -164,18 +164,32 @@
       }
     },
     "5.6_Ablation_Study": {
+      "staircase_build_commit": "3878f01",
+      "staircase_labels": [
+        "Base",
+        "+Prune",
+        "+Block",
+        "+PairFit",
+        "+CB"
+      ],
       "staircase_poisson_sar_pct": [
-        74.0,
-        87.0,
-        94.0,
-        94.0
+        25.0,
+        51.0,
+        58.0,
+        63.0,
+        77.0
       ],
       "staircase_gamma_cv2_sar_pct": [
-        64.0,
-        78.0,
-        93.0,
-        92.0
+        22.0,
+        32.0,
+        46.0,
+        58.0,
+        69.0
       ],
+      "staircase_goodput_gain_vs_base_x": {
+        "poisson": 3.44,
+        "gamma_cv2": 3.96
+      },
       "l1_cost_model_regret_pct": 0.0,
       "tier1_sha256_parity": "624/624",
       "factorized_cfg2_baselines_sar_pct": {
