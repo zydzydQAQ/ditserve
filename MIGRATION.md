@@ -172,11 +172,11 @@ python3 deploy/kairos/tools/kairos-api.py get /api/jobs
 # 提交 1x1 冒烟（自动触发 builds/.src-3878f01 -> builds/3878f01 容器内编译、ctest 与 doctor）
 python3 deploy/kairos/tools/kairos-api.py submit '{
   "name": "ditserve-rebuttal-smoke-1gpu-r1",
-  "image": "192.168.1.114:30500/jjjkairos/ditserve:external-serving-vllm-cu126-sm80-20261104-r3",
-  "gpuCount": 1,
-  "nodeCount": 1,
-  "mountSharedStorage": true,
-  "env": {"DITSERVE_BUILD": "3878f01"},
+  "image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+  "workers": 1,
+  "gpus_per_worker": 1,
+  "mount_shared": true,
+  "env": [{"name": "DITSERVE_BUILD", "value": "3878f01"}],
   "command": "bash -lc \"source /shared/data/DITSERVE/scripts/kairos_common.sh && ditserve_init_build && ditserve doctor --python /opt/venv/bin/python && ls -lh /shared/data/DITSERVE/models/sd3.5-medium/model_index.json /shared/data/DITSERVE/models/wan2.2-ti2v-5b-official-b8fff731/model_index.json\""
 }'
 ```
