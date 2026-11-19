@@ -1,0 +1,10 @@
+== kairos_val_sd35_cb_flashps.sh run=d20261115-val-sd35-cb-flashps-65ed8f3-r1 host=d20261115-val-sd35-cb-flashps-65ed8f3-r1-master-0 2026-11-15T13:04:18+00:00
+build=65ed8f3 core=069b1a1dc6650737 package=/shared/code/DITSERVE/builds/65ed8f3/share/ditserve
+ditserve 0.4.0
+GPU 0: NVIDIA A100-PCIE-40GB (UUID: GPU-7bb0920b-6181-9486-380c-042e9fe68433)
+Filesystem                           Size  Used Avail Use% Mounted on
+tmpfs                                 32G     0   32G   0% /dev/shm
+192.168.1.114:/data/share/jjjkairos  1.0T  787G  237G  77% /shared
+memlock=8192 nproc=8 cgroup_memory_max=68719476736
+== running 5 Python functional domain test suites (CPU)
+pytest: {"returncode": 1, "elapsed_s": 0.069, "suites": ["test_domain_control.py", "test_domain_block_executor.py", "test_domain_memory.py", "test_domain_collectives.py", "test_domain_archive.py"], "summary_lines": [], "stdout_tail": "", "stderr_tail": "/opt/venv/bin/python: No module named pytest\n"}

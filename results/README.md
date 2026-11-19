@@ -1,6 +1,6 @@
 # DitServe 论文实验结果归档总览（按论文当前小章节命名组织）
 
-本目录汇总整理了 `DitServe` 论文全部实验与硬件特征化测量结果（对齐论文源码 `ditserve-writing/body/03-motivation.tex` 与 `body/05-evaluation.tex` 及最新提交 `720da72`）。所有子目录严格按照论文小章节（`§3.1–§3.3` 与 `§5.1–§5.8`）命名，每个子目录均包含结构化报告 `README.md`、紧凑指标摘要 `summary.json` 以及可直接用于核验与绘图的 `.csv` 数据表。
+本目录汇总整理了 `DitServe` 论文全部实验与硬件特征化测量结果（对齐论文源码 `ditserve-writing/body/03-motivation.tex` 与 `body/05-evaluation.tex` 及最新提交 `720da72` / `3878f01`）。所有子目录严格按照论文小章节（`§3.1–§3.3` 与 `§5.1–§5.9`）命名，每个子目录均包含结构化报告 `README.md`（或日期报告）、紧凑指标摘要 `summary.json` 以及可直接用于核验与绘图的 `.csv` 数据表。
 
 ---
 
@@ -28,6 +28,7 @@
 | **§5.6** | `Ablation Study` | `Fig. 15` | [`5.6_Ablation_Study/`](./5.6_Ablation_Study/) | 5 级累加阶梯 Poisson **`25%→51%→58%→63%→77%`**（Goodput `3.44×`），Gamma **`22%→32%→46%→58%→69%`**（Goodput `3.96×`） |
 | **§5.7** | `Hardware and Runtime Subsystem Microbenchmarks` | `Table 3` | [`5.7_Hardware_and_Runtime_Subsystem_Microbenchmarks/`](./5.7_Hardware_and_Runtime_Subsystem_Microbenchmarks/) | GreenPool **`56.1×`**、GFC **`>1.4M×`**、FlashPS 三流 **`5.12×`**、分块 VAE **`22.7×`**、PinnedSlab **`5.01×`** |
 | **§5.8** | `Sustained Multi-Phase Stability` | `Fig. 14` (Soak) | [`5.8_Sustained_Multi-Phase_Stability/`](./5.8_Sustained_Multi-Phase_Stability/) | 500 请求五阶段潮汐浸泡：**`85.4%` SAR** vs `SBP+c2` `71.6%` / `TetriServe` `66.6%`；`0 OOM`，HBM 斜率 **`+1166.24 MB/hr`** |
+| **§5.9** | `Hardware Generalizability and ISCA27 Supplements` | `Fig. 17`, Multi-Seed, `121f` Elastic | [`5.9_Hardware_Generalizability_and_ISCA27_Supplements/`](./5.9_Hardware_Generalizability_and_ISCA27_Supplements/) | 3 种子 (`301/302/303`) 均第一（**`92.7±4.2%` / `91.7±4.0%`**）、`xDiT-c2` / `Static-Part` 对比、121 帧 720p (`27.3K > L^*`) 在线 `C2S2` 弹性与三维硬件外推 |
 
 ---
 
@@ -42,4 +43,4 @@
 
 ## 4. 全量离线补充归档（[`_archive/`](./_archive/)）
 
-为支持无 GPU 平台离线写作、后续改稿与审稿回复（Rebuttal），[`_archive/`](./_archive/) 目录已将本地 `.local/` 与远端 `jjjkairos` 集群上的全部底层实验凭据、补充套件（含 `Wan2.1-T2V-1.3B` Suite 2、xDiT/TetriServe 对齐与质量门禁）以及 70 个正式实验切片的**逐请求调度与抢占时间线明细**（`.ledger.json.gz`）汇总为自包含归档（共 `2,619` 个文件，`157.01 MB`）。详见 [`_archive/README.md`](./_archive/README.md) 与 [`_archive/ARCHIVE_MANIFEST.json`](./_archive/ARCHIVE_MANIFEST.json)。
+为支持无 GPU 平台离线写作、后续改稿与审稿回复（Rebuttal），[`_archive/`](./_archive/) 目录已将本地 `.local/` 与远端 `jjjkairos` 集群上截至 `2026-11-17 08:46` 的全部底层实验凭据、补充套件（含 `Wan2.1-T2V-1.3B` Suite 2、xDiT/TetriServe 对齐、质量门禁、`720da72` 全矩阵/`SBP+c2`/Soak、`3878f01` 5 级阶梯与 ISCA'27 补充评测）以及 **167 个**正式实验切片的**逐请求调度与抢占时间线明细**（`.ledger.json.gz`）汇总为自包含归档（共 `3,240` 个文件，`210.04 MB`）。详见 [`_archive/README.md`](./_archive/README.md) 与 [`_archive/ARCHIVE_MANIFEST.json`](./_archive/ARCHIVE_MANIFEST.json)；集群环境复原请见仓库根目录 [`MIGRATION.md`](../MIGRATION.md)。

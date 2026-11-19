@@ -1,0 +1,120 @@
+== kairos_rev_supplement.sh run=d20261117-formal-v2-staircase-g2-8gpu-3878f01-r1 host=d20261117-formal-v2-staircase-g2-8gpu-3878f01-r1-master-0 2026-11-16T23:18:17+00:00
+build=3878f01 core=0dcb5f73e15ccf00 package=/shared/code/DITSERVE/builds/3878f01/share/ditserve
+ditserve 0.4.0
+/shared/data/DITSERVE/scripts/releases/3878f01/benchmarks/formal_benchmark.py: OK
+serving_operator=/shared/data/DITSERVE/scripts/releases/3878f01/benchmarks compiler_sha256=9b8b64471cbb1f30eda877b6aa7239c2df5424c2d4f35385c724d095efddfdc1
+{"output": "/shared/output/DITSERVE/acceptance/d20261117-formal-v2-staircase-g2-8gpu-3878f01-r1/input-preflight.json", "sha256": "9be8f4d04db6305c096ad03a253146b229b53cd43947f7e7eb3744da64a3f838", "scientific_qualification": "pending"}
+{
+  "output": "/shared/output/DITSERVE/acceptance/d20261117-formal-v2-staircase-g2-8gpu-3878f01-r1/runtime-facts.json",
+  "gpus": [
+    "0, GPU-bf5b40f5-b606-6ff3-8bb6-375c58fca67a, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "1, GPU-ef078ff8-6d9e-6509-ce65-53a9c4c2df85, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "2, GPU-6967ee01-0c82-8215-9256-9fde2e18f5d0, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "3, GPU-abe707e2-3284-aa3e-c3c9-ec0f14ee61c3, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "4, GPU-304d76bc-0629-fdc9-7cfe-929ff331b7f0, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "5, GPU-2bae337e-03ae-f01e-47bf-59b25b815ab8, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "6, GPU-29ad4cf3-1e6a-08a9-5bde-6d17726e9fa3, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "7, GPU-83566cdb-86ec-7bb4-c2c2-736c074f2fca, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0"
+  ],
+  "packages": {
+    "torch": "2.10.0+cu126",
+    "diffusers": "0.36.0",
+    "transformers": "4.57.6",
+    "cache-dit": "1.5.0",
+    "accelerate": "1.12.0",
+    "safetensors": "0.8.0",
+    "numpy": "2.2.6"
+  },
+  "models": {
+    "Wan2.1-T2V-1.3B": {
+      "model_class": "WanPipeline",
+      "transformer_class": "WanTransformer3DModel",
+      "num_layers": 30,
+      "num_attention_heads": 12
+    },
+    "Wan2.2-TI2V-5B": {
+      "model_class": "WanPipeline",
+      "transformer_class": "WanTransformer3DModel",
+      "num_layers": 30,
+      "num_attention_heads": 24
+    },
+    "SD3.5-Medium": {
+      "model_class": "StableDiffusion3Pipeline",
+      "transformer_class": "SD3Transformer2DModel",
+      "num_layers": 24,
+      "num_attention_heads": 24
+    }
+  }
+}
+reused_calibration_bundle=/shared/output/DITSERVE/acceptance/d20261106-formal-v2-wan22-b1-21a1ca3-r1/bundle.json sha256=94c3238aee42925b57eb10dc1ad086c656db280cfba5c079b0a53d195aa62ff6 match_mode=homogeneous_topology_signature
+{"output": "/shared/output/DITSERVE/acceptance/d20261117-formal-v2-staircase-g2-8gpu-3878f01-r1/serving-staircase-g2.json", "experiment": "formal-wan22-test-gamma-s301-r76rpm-v0p3-slo1p25-cv2p0-staircase", "sha256": "8f4c5e449b1ad872a99a337fdfb1469f6e1c9ca4a2315801f89886512532485e"}
+Filesystem                           Size  Used Avail Use% Mounted on
+192.168.1.114:/data/share/jjjkairos  1.0T  790G  235G  78% /shared
+== running id=d20261117-formal-v2-staircase-g2-8gpu-3878f01-r1-staircase-g2 experiment=formal-wan22-test-gamma-s301-r76rpm-v0p3-slo1p25-cv2p0-staircase (2026-11-16T23:18:25+00:00)
+{
+  "archive": {
+    "deleted": 0,
+    "format": "ditserve.results-summary.v1",
+    "load_ms": 0.0,
+    "raw_re_evaluable": false,
+    "raw_re_evaluated": false,
+    "reclaimed_bytes": 0,
+    "report": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-r76rpm-v0p3-slo1p25-cv2p0-staircase/d20261117-formal-v2-staircase-g2-8gpu-3878f01-r1-staircase-g2/20261117-d20261117-formal-v2-staircase-g2-8gpu-3878f01-r1-staircase-g2.md",
+    "results_usage": {
+      "allocated_bytes": 32768,
+      "bytes": 28841,
+      "files": 2
+    },
+    "resumable": false,
+    "retained": 0,
+    "scope": "summary checksum and report consistency; aggregates only, no scientific qualification",
+    "status": "completed",
+    "summary": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-r76rpm-v0p3-slo1p25-cv2p0-staircase/d20261117-formal-v2-staircase-g2-8gpu-3878f01-r1-staircase-g2/summary.json",
+    "summary_sha256": "661f542a4e5f9c306f006e727f81c3b4b2109f5b6700896953d7a7e82e6df7c9",
+    "work_dir": "/shared/output/DITSERVE/.cache/results-work/formal-wan22-test-gamma-s301-r76rpm-v0p3-slo1p25-cv2p0-staircase/d20261117-formal-v2-staircase-g2-8gpu-3878f01-r1-staircase-g2",
+    "work_usage": {
+      "allocated_bytes": 71962624,
+      "bytes": 71077958,
+      "files": 385
+    },
+    "worker_operation_ms": 7920.997019857168
+  },
+  "failures": [],
+  "metrics": {
+    "communication_p50_ms": null,
+    "communication_p99_ms": null,
+    "completed": 500,
+    "control_ms": 0.0,
+    "deadline_attainment": 0.452,
+    "denominator": "all frozen requests, including failed and blocked",
+    "failed": 0,
+    "incomplete": 0,
+    "latency_p50_ms": 18274.68892935419,
+    "latency_p95_ms": 458331.13837037556,
+    "model_ms": 14236056.734418342,
+    "observation_count": 5,
+    "observation_ms": 3280721.171051264,
+    "ontime": 226,
+    "qualification_status": "unverified",
+    "qualification_verified_requests": 0,
+    "qualified_goodput_rps": null,
+    "qualified_ontime": 0,
+    "requests": 500
+  },
+  "run_id": "d20261117-formal-v2-staircase-g2-8gpu-3878f01-r1-staircase-g2",
+  "status": "completed"
+}
+{
+  "format": "ditserve.results-summary.v1",
+  "load_ms": 0.0,
+  "raw_re_evaluable": false,
+  "raw_re_evaluated": false,
+  "report": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-r76rpm-v0p3-slo1p25-cv2p0-staircase/d20261117-formal-v2-staircase-g2-8gpu-3878f01-r1-staircase-g2/20261117-d20261117-formal-v2-staircase-g2-8gpu-3878f01-r1-staircase-g2.md",
+  "resumable": false,
+  "scope": "summary checksum and report consistency; aggregates only, no scientific qualification",
+  "status": "verified",
+  "summary": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-r76rpm-v0p3-slo1p25-cv2p0-staircase/d20261117-formal-v2-staircase-g2-8gpu-3878f01-r1-staircase-g2/summary.json",
+  "summary_sha256": "4fb063ce1a0775e39c0221b94bab06903d4ae481af7e25d1f5c9d39eeb0bc31e",
+  "worker_operation_ms": 28.693202883005142
+}
+== completed kairos_rev_supplement.sh run=d20261117-formal-v2-staircase-g2-8gpu-3878f01-r1 (2026-11-17T00:31:24+00:00)

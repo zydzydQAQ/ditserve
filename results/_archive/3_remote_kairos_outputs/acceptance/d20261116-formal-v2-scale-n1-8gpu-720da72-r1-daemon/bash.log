@@ -1,0 +1,4 @@
+== bash run=d20261116-formal-v2-scale-n1-8gpu-720da72-r1-daemon host=d20261116-formal-v2-scale-n1-8gpu-720da72-r1-master-0 2026-11-15T16:39:56+00:00
+build=720da72 core=5fca839ebbb3e2df package=/shared/code/DITSERVE/builds/720da72/share/ditserve
+ditserve 0.4.0
+{"status": "listening", "endpoint": "10.244.205.164:29550", "gpu_count": 8, "gpu_uuids": ["GPU-488f5047-729a-fdfa-601b-7ba98b88a814", "GPU-4a80f271-d669-dad2-0301-0d7dd15a4095", "GPU-dd208b13-f954-864c-d65a-05fe43dc8613", "GPU-d84c993d-42a5-a56b-86cc-2ad8254c2351", "GPU-50f853c6-0c1d-425b-af23-c022a616c030", "GPU-d48241f7-4e77-e195-59a0-63552f67e285", "GPU-4f488320-12e4-9e69-aee0-d3e9e5dbb452", "GPU-8940ccee-259b-0b4f-f459-b9811246fae9"]}

@@ -1,0 +1,120 @@
+== kairos_formal_benchmark.sh run=d20261112-formal-v2-abl-cfg2-g2-8gpu-8c50c7a-r1 host=d20261112-formal-v2-abl-cfg2-g2-8gpu-8c50c7a-r1-master-0 2026-11-12T05:32:49+00:00
+build=8c50c7a core=067c9a1a7ea64853 package=/shared/code/DITSERVE/builds/8c50c7a/share/ditserve
+ditserve 0.4.0
+/shared/data/DITSERVE/scripts/releases/8c50c7a/benchmarks/formal_benchmark.py: OK
+serving_operator=/shared/data/DITSERVE/scripts/releases/8c50c7a/benchmarks compiler_sha256=9b8b64471cbb1f30eda877b6aa7239c2df5424c2d4f35385c724d095efddfdc1
+Filesystem                           Size  Used Avail Use% Mounted on
+192.168.1.114:/data/share/jjjkairos  1.0T  784G  241G  77% /shared
+{"output": "/shared/output/DITSERVE/acceptance/d20261112-formal-v2-abl-cfg2-g2-8gpu-8c50c7a-r1/input-preflight.json", "sha256": "9be8f4d04db6305c096ad03a253146b229b53cd43947f7e7eb3744da64a3f838", "scientific_qualification": "pending"}
+{
+  "output": "/shared/output/DITSERVE/acceptance/d20261112-formal-v2-abl-cfg2-g2-8gpu-8c50c7a-r1/runtime-facts.json",
+  "gpus": [
+    "0, GPU-488f5047-729a-fdfa-601b-7ba98b88a814, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "1, GPU-4a80f271-d669-dad2-0301-0d7dd15a4095, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "2, GPU-dd208b13-f954-864c-d65a-05fe43dc8613, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "3, GPU-d84c993d-42a5-a56b-86cc-2ad8254c2351, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "4, GPU-50f853c6-0c1d-425b-af23-c022a616c030, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "5, GPU-d48241f7-4e77-e195-59a0-63552f67e285, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "6, GPU-4f488320-12e4-9e69-aee0-d3e9e5dbb452, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "7, GPU-8940ccee-259b-0b4f-f459-b9811246fae9, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0"
+  ],
+  "packages": {
+    "torch": "2.10.0+cu126",
+    "diffusers": "0.36.0",
+    "transformers": "4.57.6",
+    "cache-dit": "1.5.0",
+    "accelerate": "1.12.0",
+    "safetensors": "0.8.0",
+    "numpy": "2.2.6"
+  },
+  "models": {
+    "Wan2.1-T2V-1.3B": {
+      "model_class": "WanPipeline",
+      "transformer_class": "WanTransformer3DModel",
+      "num_layers": 30,
+      "num_attention_heads": 12
+    },
+    "Wan2.2-TI2V-5B": {
+      "model_class": "WanPipeline",
+      "transformer_class": "WanTransformer3DModel",
+      "num_layers": 30,
+      "num_attention_heads": 24
+    },
+    "SD3.5-Medium": {
+      "model_class": "StableDiffusion3Pipeline",
+      "transformer_class": "SD3Transformer2DModel",
+      "num_layers": 24,
+      "num_attention_heads": 24
+    }
+  }
+}
+reused_calibration_bundle=/shared/output/DITSERVE/acceptance/d20261106-formal-v2-wan22-b1-21a1ca3-r1/bundle.json sha256=94c3238aee42925b57eb10dc1ad086c656db280cfba5c079b0a53d195aa62ff6 calibration_match_mode=homogeneous_topology_signature gpu_count=8 gpu_model=NVIDIA A100-PCIE-40GB
+{"output": "/shared/output/DITSERVE/acceptance/d20261112-formal-v2-abl-cfg2-g2-8gpu-8c50c7a-r1/serving-gamma2-abl-cfg2.json", "sha256": "6c2d8969e6c04d69bb09414a81bd082e5d62f2951ef46abdb9bb1ecc7bcedd31", "scientific_qualification": "pending"}
+Filesystem                           Size  Used Avail Use% Mounted on
+192.168.1.114:/data/share/jjjkairos  1.0T  784G  241G  77% /shared
+{
+  "archive": {
+    "deleted": 0,
+    "format": "ditserve.results-summary.v1",
+    "load_ms": 0.0,
+    "raw_re_evaluable": false,
+    "raw_re_evaluated": false,
+    "reclaimed_bytes": 0,
+    "report": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation/d20261112-formal-v2-abl-cfg2-g2-8gpu-8c50c7a-r1-gamma2-abl-cfg2/20261112-d20261112-formal-v2-abl-cfg2-g2-8gpu-8c50c7a-r1-gamma2-abl-cfg2.md",
+    "results_usage": {
+      "allocated_bytes": 24576,
+      "bytes": 20365,
+      "files": 2
+    },
+    "resumable": false,
+    "retained": 0,
+    "scope": "summary checksum and report consistency; aggregates only, no scientific qualification",
+    "status": "completed",
+    "summary": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation/d20261112-formal-v2-abl-cfg2-g2-8gpu-8c50c7a-r1-gamma2-abl-cfg2/summary.json",
+    "summary_sha256": "276170379138a41d6f4daa90e771823982dda593246aacc5e1401295f7107957",
+    "work_dir": "/shared/output/DITSERVE/.cache/results-work/formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation/d20261112-formal-v2-abl-cfg2-g2-8gpu-8c50c7a-r1-gamma2-abl-cfg2",
+    "work_usage": {
+      "allocated_bytes": 57057280,
+      "bytes": 56325221,
+      "files": 317
+    },
+    "worker_operation_ms": 6134.374050423503
+  },
+  "failures": [],
+  "metrics": {
+    "communication_p50_ms": null,
+    "communication_p99_ms": null,
+    "completed": 300,
+    "control_ms": 0.0,
+    "deadline_attainment": 0.71,
+    "denominator": "all frozen requests, including failed and blocked",
+    "failed": 0,
+    "incomplete": 0,
+    "latency_p50_ms": 24441.739276537475,
+    "latency_p95_ms": 489384.0125452367,
+    "model_ms": 18391104.40057035,
+    "observation_count": 3,
+    "observation_ms": 2716410.457942635,
+    "ontime": 213,
+    "qualification_status": "unverified",
+    "qualification_verified_requests": 0,
+    "qualified_goodput_rps": null,
+    "qualified_ontime": 0,
+    "requests": 300
+  },
+  "run_id": "d20261112-formal-v2-abl-cfg2-g2-8gpu-8c50c7a-r1-gamma2-abl-cfg2",
+  "status": "completed"
+}
+{
+  "format": "ditserve.results-summary.v1",
+  "load_ms": 0.0,
+  "raw_re_evaluable": false,
+  "raw_re_evaluated": false,
+  "report": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation/d20261112-formal-v2-abl-cfg2-g2-8gpu-8c50c7a-r1-gamma2-abl-cfg2/20261112-d20261112-formal-v2-abl-cfg2-g2-8gpu-8c50c7a-r1-gamma2-abl-cfg2.md",
+  "resumable": false,
+  "scope": "summary checksum and report consistency; aggregates only, no scientific qualification",
+  "status": "verified",
+  "summary": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation/d20261112-formal-v2-abl-cfg2-g2-8gpu-8c50c7a-r1-gamma2-abl-cfg2/summary.json",
+  "summary_sha256": "24477ab1328fffb7056fdb9eab3b18ad19cedcd9973ecdaabda77c6364249409",
+  "worker_operation_ms": 25.027016177773476
+}

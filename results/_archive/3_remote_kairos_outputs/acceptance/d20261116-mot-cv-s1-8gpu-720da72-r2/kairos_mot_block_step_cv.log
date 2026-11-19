@@ -1,0 +1,641 @@
+== kairos_mot_block_step_cv.sh run=d20261116-mot-cv-s1-8gpu-720da72-r2 host=d20261116-mot-cv-s1-8gpu-720da72-r2-master-0 2026-11-16T10:13:55+00:00
+build=720da72 core=5fca839ebbb3e2df package=/shared/code/DITSERVE/builds/720da72/share/ditserve
+ditserve 0.4.0
+Filesystem                           Size  Used Avail Use% Mounted on
+192.168.1.114:/data/share/jjjkairos  1.0T  789G  235G  78% /shared
+GPU 0: NVIDIA A100-PCIE-40GB (UUID: GPU-488f5047-729a-fdfa-601b-7ba98b88a814)
+GPU 1: NVIDIA A100-PCIE-40GB (UUID: GPU-4a80f271-d669-dad2-0301-0d7dd15a4095)
+GPU 2: NVIDIA A100-PCIE-40GB (UUID: GPU-dd208b13-f954-864c-d65a-05fe43dc8613)
+GPU 3: NVIDIA A100-PCIE-40GB (UUID: GPU-d84c993d-42a5-a56b-86cc-2ad8254c2351)
+GPU 4: NVIDIA A100-PCIE-40GB (UUID: GPU-50f853c6-0c1d-425b-af23-c022a616c030)
+GPU 5: NVIDIA A100-PCIE-40GB (UUID: GPU-d48241f7-4e77-e195-59a0-63552f67e285)
+GPU 6: NVIDIA A100-PCIE-40GB (UUID: GPU-4f488320-12e4-9e69-aee0-d3e9e5dbb452)
+GPU 7: NVIDIA A100-PCIE-40GB (UUID: GPU-8940ccee-259b-0b4f-f459-b9811246fae9)
+	[4mGPU0	GPU1	GPU2	GPU3	GPU4	GPU5	GPU6	GPU7	CPU Affinity	NUMA Affinity	GPU NUMA ID[0m
+GPU0	 X 	PHB	PHB	PHB	PHB	PHB	PHB	PHB	0-79	0-1		N/A
+GPU1	PHB	 X 	PHB	PHB	PHB	PHB	PHB	PHB	0-79	0-1		N/A
+GPU2	PHB	PHB	 X 	PHB	PHB	PHB	PHB	PHB	0-79	0-1		N/A
+GPU3	PHB	PHB	PHB	 X 	PHB	PHB	PHB	PHB	0-79	0-1		N/A
+GPU4	PHB	PHB	PHB	PHB	 X 	PHB	PHB	PHB	0-79	0-1		N/A
+GPU5	PHB	PHB	PHB	PHB	PHB	 X 	PHB	PHB	0-79	0-1		N/A
+GPU6	PHB	PHB	PHB	PHB	PHB	PHB	 X 	PHB	0-79	0-1		N/A
+GPU7	PHB	PHB	PHB	PHB	PHB	PHB	PHB	 X 	0-79	0-1		N/A
+
+Legend:
+
+Filesystem                           Size  Used Avail Use% Mounted on
+tmpfs                                 32G     0   32G   0% /dev/shm
+192.168.1.114:/data/share/jjjkairos  1.0T  789G  235G  78% /shared
+[Progress] Starting Motivation CV collector shard=s1 (sd35=15, wan22=14, total=29)
+Set TORCH_CUDA_ARCH_LIST to 8.0
+Set TORCH_CUDA_ARCH_LIST to 8.0
+Set TORCH_CUDA_ARCH_LIST to 8.0
+Set TORCH_CUDA_ARCH_LIST to 8.0
+Set TORCH_CUDA_ARCH_LIST to 8.0
+Set TORCH_CUDA_ARCH_LIST to 8.0
+Set TORCH_CUDA_ARCH_LIST to 8.0
+Set TORCH_CUDA_ARCH_LIST to 8.0
+`torch_dtype` is deprecated! Use `dtype` instead!
+Loading checkpoint shards:   0%|          | 0/5 [00:00<?, ?it/s]Loading checkpoint shards:  20%|██        | 1/5 [00:04<00:18,  4.73s/it]Loading checkpoint shards:  40%|████      | 2/5 [00:09<00:14,  4.81s/it]Loading checkpoint shards:  60%|██████    | 3/5 [00:14<00:09,  4.81s/it]Loading checkpoint shards:  80%|████████  | 4/5 [00:19<00:04,  4.88s/it]Loading checkpoint shards: 100%|██████████| 5/5 [00:22<00:00,  4.14s/it]Loading checkpoint shards: 100%|██████████| 5/5 [00:22<00:00,  4.44s/it]
+Loading checkpoint shards:   0%|          | 0/5 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/5 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/5 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/5 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/5 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/5 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/5 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/5 [00:00<?, ?it/s]Loading checkpoint shards:  20%|██        | 1/5 [00:05<00:21,  5.38s/it]Loading checkpoint shards:  20%|██        | 1/5 [00:05<00:20,  5.21s/it]Loading checkpoint shards:  20%|██        | 1/5 [00:05<00:21,  5.32s/it]Loading checkpoint shards:  20%|██        | 1/5 [00:05<00:21,  5.38s/it]Loading checkpoint shards:  20%|██        | 1/5 [00:05<00:21,  5.34s/it]Loading checkpoint shards:  20%|██        | 1/5 [00:05<00:21,  5.37s/it]Loading checkpoint shards:  20%|██        | 1/5 [00:05<00:21,  5.34s/it]Loading checkpoint shards:  20%|██        | 1/5 [00:05<00:22,  5.65s/it]Loading checkpoint shards:  40%|████      | 2/5 [00:11<00:17,  5.82s/it]Loading checkpoint shards:  40%|████      | 2/5 [00:11<00:17,  5.83s/it]Loading checkpoint shards:  40%|████      | 2/5 [00:11<00:17,  5.83s/it]Loading checkpoint shards:  40%|████      | 2/5 [00:11<00:17,  5.83s/it]Loading checkpoint shards:  40%|████      | 2/5 [00:11<00:17,  5.94s/it]Loading checkpoint shards:  40%|████      | 2/5 [00:11<00:17,  5.76s/it]Loading checkpoint shards:  40%|████      | 2/5 [00:11<00:17,  5.82s/it]Loading checkpoint shards:  40%|████      | 2/5 [00:11<00:17,  5.81s/it]Loading checkpoint shards:  60%|██████    | 3/5 [00:17<00:11,  5.75s/it]Loading checkpoint shards:  60%|██████    | 3/5 [00:17<00:11,  5.82s/it]Loading checkpoint shards:  60%|██████    | 3/5 [00:17<00:11,  5.76s/it]Loading checkpoint shards:  60%|██████    | 3/5 [00:17<00:11,  5.76s/it]Loading checkpoint shards:  60%|██████    | 3/5 [00:17<00:11,  5.76s/it]Loading checkpoint shards:  60%|██████    | 3/5 [00:17<00:11,  5.73s/it]Loading checkpoint shards:  60%|██████    | 3/5 [00:17<00:11,  5.76s/it]Loading checkpoint shards:  60%|██████    | 3/5 [00:17<00:11,  5.76s/it]Loading checkpoint shards:  80%|████████  | 4/5 [00:23<00:05,  5.76s/it]Loading checkpoint shards:  80%|████████  | 4/5 [00:22<00:05,  5.72s/it]Loading checkpoint shards:  80%|████████  | 4/5 [00:22<00:05,  5.73s/it]Loading checkpoint shards:  80%|████████  | 4/5 [00:22<00:05,  5.73s/it]Loading checkpoint shards:  80%|████████  | 4/5 [00:22<00:05,  5.72s/it]Loading checkpoint shards:  80%|████████  | 4/5 [00:22<00:05,  5.73s/it]Loading checkpoint shards:  80%|████████  | 4/5 [00:22<00:05,  5.72s/it]Loading checkpoint shards:  80%|████████  | 4/5 [00:22<00:05,  5.71s/it]Loading checkpoint shards: 100%|██████████| 5/5 [00:23<00:00,  3.82s/it]Loading checkpoint shards: 100%|██████████| 5/5 [00:23<00:00,  4.66s/it]
+Loading checkpoint shards: 100%|██████████| 5/5 [00:23<00:00,  3.82s/it]Loading checkpoint shards: 100%|██████████| 5/5 [00:23<00:00,  4.66s/it]
+Loading checkpoint shards: 100%|██████████| 5/5 [00:23<00:00,  3.82s/it]Loading checkpoint shards: 100%|██████████| 5/5 [00:23<00:00,  4.66s/it]
+Loading checkpoint shards: 100%|██████████| 5/5 [00:23<00:00,  3.81s/it]Loading checkpoint shards: 100%|██████████| 5/5 [00:23<00:00,  3.84s/it]Loading checkpoint shards: 100%|██████████| 5/5 [00:23<00:00,  3.80s/it]Loading checkpoint shards: 100%|██████████| 5/5 [00:23<00:00,  4.66s/it]
+Loading checkpoint shards: 100%|██████████| 5/5 [00:23<00:00,  4.72s/it]
+Loading checkpoint shards: 100%|██████████| 5/5 [00:23<00:00,  4.63s/it]
+Loading checkpoint shards: 100%|██████████| 5/5 [00:23<00:00,  3.81s/it]Loading checkpoint shards: 100%|██████████| 5/5 [00:23<00:00,  4.66s/it]
+Loading checkpoint shards: 100%|██████████| 5/5 [00:23<00:00,  3.81s/it]Loading checkpoint shards: 100%|██████████| 5/5 [00:23<00:00,  4.65s/it]
+INFO 11-16 10:15:12 [config.py:207] Pipeline patch number not set, using default value 1
+INFO 11-16 10:15:12 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)
+DEBUG 11-16 10:15:12 [compat.py:39] xfuser has no installed metadata; not checking diffusers version
+WARNING 11-16 10:15:12 [logger.py:126] Using SDPA_FLASH as attention backend.
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+INFO 11-16 10:15:12 [config.py:207] Pipeline patch number not set, using default value 1
+INFO 11-16 10:15:12 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)
+DEBUG 11-16 10:15:12 [compat.py:39] xfuser has no installed metadata; not checking diffusers version
+INFO 11-16 10:15:13 [config.py:207] Pipeline patch number not set, using default value 1
+INFO 11-16 10:15:13 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)
+DEBUG 11-16 10:15:13 [compat.py:39] xfuser has no installed metadata; not checking diffusers version
+INFO 11-16 10:15:14 [config.py:207] Pipeline patch number not set, using default value 1
+INFO 11-16 10:15:14 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)
+DEBUG 11-16 10:15:14 [compat.py:39] xfuser has no installed metadata; not checking diffusers version
+INFO 11-16 10:15:14 [config.py:207] Pipeline patch number not set, using default value 1
+INFO 11-16 10:15:14 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)
+DEBUG 11-16 10:15:14 [compat.py:39] xfuser has no installed metadata; not checking diffusers version
+INFO 11-16 10:15:14 [config.py:207] Pipeline patch number not set, using default value 1
+INFO 11-16 10:15:14 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)
+DEBUG 11-16 10:15:14 [compat.py:39] xfuser has no installed metadata; not checking diffusers version
+INFO 11-16 10:15:14 [config.py:207] Pipeline patch number not set, using default value 1
+INFO 11-16 10:15:14 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)
+DEBUG 11-16 10:15:14 [compat.py:39] xfuser has no installed metadata; not checking diffusers version
+INFO 11-16 10:15:14 [config.py:207] Pipeline patch number not set, using default value 1
+INFO 11-16 10:15:14 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)
+DEBUG 11-16 10:15:14 [compat.py:39] xfuser has no installed metadata; not checking diffusers version
+[Progress][Wan2.2] Ready in 56.7s (blocks=30, in_ch=48, spatial_stride=16, expand_ts=True, configs=14)
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][Wan2.2] 256p sp1 (gpus=1) in 29.1s | step_mean=410.7ms step_tCV=0.33% xPrompt_CV=0.42% blk_tCV=0.68% blk_sCV=0.31% hbm=9.79GiB
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][Wan2.2] 256p sp2 (gpus=2) in 33.1s | step_mean=463.7ms step_tCV=0.92% xPrompt_CV=1.36% blk_tCV=2.04% blk_sCV=1.16% hbm=9.63GiB
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][Wan2.2] 256p sp4 (gpus=4) in 29.7s | step_mean=411.2ms step_tCV=1.01% xPrompt_CV=1.63% blk_tCV=1.48% blk_sCV=1.26% hbm=9.55GiB
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][Wan2.2] 256p sp8 (gpus=8) in 22.3s | step_mean=295.9ms step_tCV=1.47% xPrompt_CV=2.44% blk_tCV=1.33% blk_sCV=1.89% hbm=9.52GiB
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][Wan2.2] 256p cfg2 (gpus=2) in 14.9s | step_mean=212.3ms step_tCV=0.51% xPrompt_CV=0.53% blk_tCV=0.77% blk_sCV=0.49% hbm=9.80GiB
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][Wan2.2] 256p cfg2sp2 (gpus=4) in 20.5s | step_mean=290.8ms step_tCV=3.50% xPrompt_CV=3.53% blk_tCV=4.52% blk_sCV=3.81% hbm=9.63GiB
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][Wan2.2] 256p cfg2sp4 (gpus=8) in 14.9s | step_mean=207.4ms step_tCV=0.24% xPrompt_CV=0.25% blk_tCV=0.90% blk_sCV=0.37% hbm=9.55GiB
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][Wan2.2] 480p sp1 (gpus=1) in 129.5s | step_mean=1847.4ms step_tCV=0.18% xPrompt_CV=0.29% blk_tCV=0.82% blk_sCV=0.14% hbm=11.13GiB
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][Wan2.2] 480p sp2 (gpus=2) in 121.2s | step_mean=1729.6ms step_tCV=0.11% xPrompt_CV=0.12% blk_tCV=0.82% blk_sCV=0.29% hbm=10.48GiB
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][Wan2.2] 480p sp4 (gpus=4) in 107.1s | step_mean=1527.9ms step_tCV=0.05% xPrompt_CV=0.06% blk_tCV=0.39% blk_sCV=0.08% hbm=10.15GiB
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][Wan2.2] 480p sp8 (gpus=8) in 65.5s | step_mean=932.7ms step_tCV=0.11% xPrompt_CV=0.11% blk_tCV=0.72% blk_sCV=0.08% hbm=9.99GiB
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][Wan2.2] 480p cfg2 (gpus=2) in 67.0s | step_mean=956.0ms step_tCV=0.12% xPrompt_CV=0.22% blk_tCV=1.06% blk_sCV=0.51% hbm=11.14GiB
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][Wan2.2] 480p cfg2sp2 (gpus=4) in 73.5s | step_mean=1049.6ms step_tCV=1.13% xPrompt_CV=1.21% blk_tCV=1.72% blk_sCV=3.85% hbm=10.48GiB
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][Wan2.2] 480p cfg2sp4 (gpus=8) in 53.9s | step_mean=767.9ms step_tCV=0.08% xPrompt_CV=0.08% blk_tCV=0.34% blk_sCV=0.09% hbm=10.15GiB
+Loading pipeline components...:   0%|          | 0/8 [00:00<?, ?it/s]Loading pipeline components...:   0%|          | 0/8 [00:00<?, ?it/s]Loading pipeline components...:   0%|          | 0/8 [00:00<?, ?it/s]Loading pipeline components...:   0%|          | 0/8 [00:00<?, ?it/s]Loading pipeline components...:   0%|          | 0/8 [00:00<?, ?it/s]Loading pipeline components...:   0%|          | 0/8 [00:00<?, ?it/s]Loading pipeline components...:   0%|          | 0/8 [00:00<?, ?it/s]`torch_dtype` is deprecated! Use `dtype` instead!
+`torch_dtype` is deprecated! Use `dtype` instead!
+`torch_dtype` is deprecated! Use `dtype` instead!
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading pipeline components...:  12%|█▎        | 1/8 [00:00<00:00,  7.26it/s]You set `add_prefix_space`. The tokenizer needs to be converted from the slow tokenizers
+Loading pipeline components...:  12%|█▎        | 1/8 [00:00<00:03,  1.92it/s]Loading pipeline components...:  25%|██▌       | 2/8 [00:00<00:01,  3.33it/s]`torch_dtype` is deprecated! Use `dtype` instead!
+Loading pipeline components...:  25%|██▌       | 2/8 [00:00<00:01,  3.13it/s]`torch_dtype` is deprecated! Use `dtype` instead!
+Loading pipeline components...:  38%|███▊      | 3/8 [00:01<00:02,  1.70it/s]Loading pipeline components...:  12%|█▎        | 1/8 [00:01<00:11,  1.61s/it]Loading pipeline components...:  12%|█▎        | 1/8 [00:01<00:11,  1.61s/it]Loading pipeline components...:  38%|███▊      | 3/8 [00:01<00:03,  1.55it/s]You set `add_prefix_space`. The tokenizer needs to be converted from the slow tokenizers
+You set `add_prefix_space`. The tokenizer needs to be converted from the slow tokenizers
+Loading pipeline components...:  25%|██▌       | 2/8 [00:01<00:04,  1.20it/s]Loading pipeline components...:  25%|██▌       | 2/8 [00:01<00:05,  1.20it/s]Loading pipeline components...:  50%|█████     | 4/8 [00:02<00:01,  2.74it/s]Loading pipeline components...:  12%|█▎        | 1/8 [00:02<00:20,  2.98s/it]`torch_dtype` is deprecated! Use `dtype` instead!
+Loading pipeline components...:  12%|█▎        | 1/8 [00:02<00:20,  2.99s/it]Loading pipeline components...:  62%|██████▎   | 5/8 [00:02<00:02,  1.49it/s]You set `add_prefix_space`. The tokenizer needs to be converted from the slow tokenizers
+Loading pipeline components...:  25%|██▌       | 2/8 [00:03<00:07,  1.32s/it]You set `add_prefix_space`. The tokenizer needs to be converted from the slow tokenizers
+Loading pipeline components...:  50%|█████     | 4/8 [00:03<00:02,  1.48it/s]`torch_dtype` is deprecated! Use `dtype` instead!
+Loading pipeline components...:  75%|███████▌  | 6/8 [00:03<00:01,  1.94it/s]Loading pipeline components...:  62%|██████▎   | 5/8 [00:03<00:01,  2.15it/s]Loading pipeline components...:  88%|████████▊ | 7/8 [00:04<00:00,  1.43it/s]Loading pipeline components...: 100%|██████████| 8/8 [00:04<00:00,  1.71it/s]
+Loading pipeline components...:  88%|████████▊ | 7/8 [00:04<00:00,  1.93it/s]Loading pipeline components...:  62%|██████▎   | 5/8 [00:04<00:02,  1.17it/s]Loading pipeline components...:  12%|█▎        | 1/8 [00:04<00:32,  4.71s/it]Loading pipeline components...:  75%|███████▌  | 6/8 [00:04<00:01,  1.03it/s]Loading pipeline components...:  62%|██████▎   | 5/8 [00:04<00:03,  1.13s/it]Loading pipeline components...:  38%|███▊      | 3/8 [00:04<00:08,  1.74s/it]You set `add_prefix_space`. The tokenizer needs to be converted from the slow tokenizers
+Loading pipeline components...: 100%|██████████| 8/8 [00:04<00:00,  1.67it/s]
+Loading pipeline components...: 100%|██████████| 8/8 [00:04<00:00,  1.79it/s]Loading pipeline components...: 100%|██████████| 8/8 [00:04<00:00,  1.66it/s]
+Loading pipeline components...:  38%|███▊      | 3/8 [00:04<00:06,  1.27s/it]Loading pipeline components...:  75%|███████▌  | 6/8 [00:04<00:01,  1.61it/s]Loading pipeline components...:  88%|████████▊ | 7/8 [00:04<00:00,  1.93it/s]Loading pipeline components...: 100%|██████████| 8/8 [00:04<00:00,  1.62it/s]
+Loading pipeline components...:  75%|███████▌  | 6/8 [00:05<00:01,  1.10it/s]Loading pipeline components...:  88%|████████▊ | 7/8 [00:05<00:00,  1.35it/s]Loading pipeline components...: 100%|██████████| 8/8 [00:06<00:00,  1.32it/s]
+Loading pipeline components...:  62%|██████▎   | 5/8 [00:06<00:02,  1.08it/s]You set `add_prefix_space`. The tokenizer needs to be converted from the slow tokenizers
+Loading pipeline components...: 100%|██████████| 8/8 [00:06<00:00,  1.32it/s]Loading pipeline components...: 100%|██████████| 8/8 [00:06<00:00,  1.29it/s]
+Loading pipeline components...:  75%|███████▌  | 6/8 [00:06<00:01,  1.33it/s]Loading pipeline components...: 100%|██████████| 8/8 [00:06<00:00,  2.19it/s]Loading pipeline components...: 100%|██████████| 8/8 [00:06<00:00,  1.23it/s]
+Loading checkpoint shards:  50%|█████     | 1/2 [00:06<00:06,  6.83s/it]Loading checkpoint shards: 100%|██████████| 2/2 [00:11<00:00,  5.72s/it]Loading checkpoint shards: 100%|██████████| 2/2 [00:11<00:00,  5.88s/it]
+Loading pipeline components...:   0%|          | 0/9 [00:00<?, ?it/s]Loading pipeline components...:  22%|██▏       | 2/9 [00:00<00:00, 11.23it/s]Loading pipeline components...:  44%|████▍     | 4/9 [00:01<00:02,  2.29it/s]You set `add_prefix_space`. The tokenizer needs to be converted from the slow tokenizers
+Loading pipeline components...:  78%|███████▊  | 7/9 [00:01<00:00,  3.87it/s]Loading pipeline components...: 100%|██████████| 9/9 [00:02<00:00,  3.63it/s]Loading pipeline components...: 100%|██████████| 9/9 [00:02<00:00,  3.59it/s]
+INFO 11-16 10:28:38 [config.py:207] Pipeline patch number not set, using default value 1
+INFO 11-16 10:28:38 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping .pos_embed in model class SD3Transformer2DModel with xFuserPatchEmbedWrapper
+INFO 11-16 10:28:38 [config.py:207] Pipeline patch number not set, using default value 1
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping pos_embed.module.proj in model class SD3Transformer2DModel with xFuserConv2dWrapper
+INFO 11-16 10:28:38 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)
+INFO 11-16 10:28:38 [config.py:207] Pipeline patch number not set, using default value 1
+INFO 11-16 10:28:38 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)
+INFO 11-16 10:28:38 [config.py:207] Pipeline patch number not set, using default value 1
+INFO 11-16 10:28:38 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.0.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.0.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [config.py:207] Pipeline patch number not set, using default value 1
+INFO 11-16 10:28:38 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping .pos_embed in model class SD3Transformer2DModel with xFuserPatchEmbedWrapper
+INFO 11-16 10:28:38 [config.py:207] Pipeline patch number not set, using default value 1
+INFO 11-16 10:28:38 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.1.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [config.py:207] Pipeline patch number not set, using default value 1
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping pos_embed.module.proj in model class SD3Transformer2DModel with xFuserConv2dWrapper
+INFO 11-16 10:28:38 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.1.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping .pos_embed in model class SD3Transformer2DModel with xFuserPatchEmbedWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping .pos_embed in model class SD3Transformer2DModel with xFuserPatchEmbedWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.0.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping pos_embed.module.proj in model class SD3Transformer2DModel with xFuserConv2dWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.2.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.2.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping pos_embed.module.proj in model class SD3Transformer2DModel with xFuserConv2dWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.0.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.0.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.3.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.0.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.0.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.3.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.1.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.0.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping .pos_embed in model class SD3Transformer2DModel with xFuserPatchEmbedWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.1.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.4.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping .pos_embed in model class SD3Transformer2DModel with xFuserPatchEmbedWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.4.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.1.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping pos_embed.module.proj in model class SD3Transformer2DModel with xFuserConv2dWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.2.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.1.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.1.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.2.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.1.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping pos_embed.module.proj in model class SD3Transformer2DModel with xFuserConv2dWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.5.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.5.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.2.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.0.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.3.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.2.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.2.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.3.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.0.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.0.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.2.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.6.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.6.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.0.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.3.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.4.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.3.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.3.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping .pos_embed in model class SD3Transformer2DModel with xFuserPatchEmbedWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.4.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.3.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.7.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.1.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.7.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.1.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.4.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.1.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.5.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.4.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping pos_embed.module.proj in model class SD3Transformer2DModel with xFuserConv2dWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.4.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.1.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.4.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.5.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.8.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.8.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.2.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.5.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.2.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.5.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.6.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.2.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.5.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.0.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.2.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.5.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.6.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.9.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.0.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.9.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.3.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.6.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.3.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.6.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.7.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.6.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.3.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.3.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.6.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.7.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.7.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.4.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.4.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.7.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.4.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.7.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.1.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.4.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.8.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.10.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.7.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.1.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.8.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.10.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.5.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.8.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.5.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.8.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.8.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.5.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.5.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.9.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.8.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.2.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.11.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.9.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.2.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.11.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.9.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.6.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.6.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.9.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.9.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.6.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.6.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.9.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.3.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.12.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.3.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.12.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.7.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.7.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.7.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.7.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.13.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.4.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.4.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.8.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.8.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.14.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.8.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.10.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.8.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.5.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.10.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.5.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.15.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.9.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.9.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.9.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.11.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.9.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.16.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.6.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.11.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.6.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.17.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.12.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.12.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.18.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.7.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.7.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.13.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.19.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.8.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.20.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.14.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.8.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.10.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.15.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.21.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.10.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.9.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.9.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.22.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.16.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.11.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.11.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 1] Wrapping transformer_blocks.23.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.17.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.12.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.10.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.18.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.12.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.10.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.19.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.13.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.10.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.11.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.20.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.10.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.14.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.11.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.10.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.21.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.15.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.11.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.12.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.11.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.10.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.22.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.12.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.16.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.12.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.10.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.11.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_pipeline.py:508] Scheduler found, trying to parallel scheduler...
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 7] Wrapping transformer_blocks.23.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.17.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.13.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.12.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.10.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.11.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.18.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.14.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.13.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.12.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.11.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.11.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.12.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.19.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.14.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.15.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.20.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.12.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.13.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.15.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.16.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.12.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.21.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.16.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.14.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.17.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.13.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.22.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.17.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.15.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.18.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.14.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_pipeline.py:508] Scheduler found, trying to parallel scheduler...
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 2] Wrapping transformer_blocks.23.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.18.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.16.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.19.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.15.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.19.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.17.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.20.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.16.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [config.py:207] Pipeline patch number not set, using default value 1
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.20.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.18.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.17.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.21.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.21.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.18.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.19.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.22.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+WARNING 11-16 10:28:38 [logger.py:126] Runtime state is already initialized, reinitializing with pipeline...
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.22.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.19.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.20.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 5] Wrapping transformer_blocks.23.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 4] Wrapping transformer_blocks.23.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.21.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.20.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping .pos_embed in model class SD3Transformer2DModel with xFuserPatchEmbedWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.21.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.22.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_pipeline.py:508] Scheduler found, trying to parallel scheduler...
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping pos_embed.module.proj in model class SD3Transformer2DModel with xFuserConv2dWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.22.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 3] Wrapping transformer_blocks.23.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.0.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 6] Wrapping transformer_blocks.23.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.0.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.1.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_pipeline.py:508] Scheduler found, trying to parallel scheduler...
+INFO 11-16 10:28:38 [base_pipeline.py:508] Scheduler found, trying to parallel scheduler...
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.1.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.2.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.2.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.3.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_pipeline.py:508] Scheduler found, trying to parallel scheduler...
+INFO 11-16 10:28:38 [base_pipeline.py:508] Scheduler found, trying to parallel scheduler...
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.3.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.4.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.4.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.5.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.5.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.6.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.6.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.7.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.7.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.8.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.8.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.9.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.9.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.10.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.10.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.11.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.11.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.12.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.12.attn2 in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.13.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.14.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.15.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.16.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.17.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.18.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.19.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.20.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.21.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.22.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_model.py:83] [RANK 0] Wrapping transformer_blocks.23.attn in model class SD3Transformer2DModel with xFuserAttentionWrapper
+INFO 11-16 10:28:38 [base_pipeline.py:508] Scheduler found, trying to parallel scheduler...
+[Progress][SD3.5] Ready in 20.8s (blocks=24, configs=15)
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][SD3.5] 512x512 sp1 (gpus=1) in 5.7s | step_mean=66.07ms step_tCV=2.34% xPrompt_CV=2.44% blk_tCV=6.50% blk_hom_sCV=1.70% hbm=6.41GiB
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][SD3.5] 512x512 sp2 (gpus=2) in 11.1s | step_mean=127.54ms step_tCV=0.45% xPrompt_CV=0.46% blk_tCV=2.03% blk_hom_sCV=0.21% hbm=6.59GiB
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][SD3.5] 512x512 sp4 (gpus=4) in 13.1s | step_mean=149.68ms step_tCV=0.20% xPrompt_CV=0.20% blk_tCV=1.01% blk_hom_sCV=0.12% hbm=6.57GiB
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][SD3.5] 512x512 sp8 (gpus=8) in 11.8s | step_mean=134.99ms step_tCV=0.12% xPrompt_CV=0.12% blk_tCV=0.50% blk_hom_sCV=0.09% hbm=6.45GiB
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][SD3.5] 512x512 cfg2 (gpus=2) in 5.7s | step_mean=66.02ms step_tCV=1.10% xPrompt_CV=1.21% blk_tCV=4.19% blk_hom_sCV=0.54% hbm=6.41GiB
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][SD3.5] 1024x1024 sp1 (gpus=1) in 18.5s | step_mean=217.23ms step_tCV=0.32% xPrompt_CV=0.36% blk_tCV=0.56% blk_hom_sCV=0.05% hbm=6.71GiB
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][SD3.5] 1024x1024 sp2 (gpus=2) in 31.4s | step_mean=368.47ms step_tCV=0.28% xPrompt_CV=0.30% blk_tCV=1.46% blk_hom_sCV=0.14% hbm=7.36GiB
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][SD3.5] 1024x1024 sp4 (gpus=4) in 33.4s | step_mean=392.54ms step_tCV=0.12% xPrompt_CV=0.12% blk_tCV=0.55% blk_hom_sCV=0.06% hbm=7.26GiB
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][SD3.5] 1024x1024 sp8 (gpus=8) in 24.5s | step_mean=287.67ms step_tCV=0.15% xPrompt_CV=0.16% blk_tCV=0.81% blk_hom_sCV=0.08% hbm=6.80GiB
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][SD3.5] 1024x1024 cfg2 (gpus=2) in 9.6s | step_mean=112.56ms step_tCV=0.47% xPrompt_CV=0.54% blk_tCV=0.60% blk_hom_sCV=0.04% hbm=6.70GiB
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][SD3.5] 1440x1440 sp1 (gpus=1) in 43.1s | step_mean=506.26ms step_tCV=0.20% xPrompt_CV=0.21% blk_tCV=0.59% blk_hom_sCV=0.15% hbm=7.20GiB
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][SD3.5] 1440x1440 sp2 (gpus=2) in 63.1s | step_mean=741.10ms step_tCV=0.20% xPrompt_CV=0.22% blk_tCV=1.06% blk_hom_sCV=0.10% hbm=8.37GiB
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[rank1]: Traceback (most recent call last):
+[rank1]:   File "/shared/data/DITSERVE/scripts/run_mot_block_step_cv.py", line 1651, in <module>
+[rank1]:     main()
+[rank1]:   File "/shared/data/DITSERVE/scripts/run_mot_block_step_cv.py", line 1637, in main
+[rank1]:     run_sd35_configs(sd35_cfgs, local_rank, world_size, device, mgr, _flush_checkpoint)
+[rank1]:   File "/shared/data/DITSERVE/scripts/run_mot_block_step_cv.py", line 1223, in run_sd35_configs
+[rank1]:     _ = _run_sd35_prompt(encoded_prompts[0], 1, False)
+[rank1]:   File "/shared/data/DITSERVE/scripts/run_mot_block_step_cv.py", line 1202, in _run_sd35_prompt
+[rank1]:     lat_local = _token_step(lat_local, t)
+[rank1]:   File "/shared/data/DITSERVE/scripts/run_mot_block_step_cv.py", line 1183, in _token_step
+[rank1]:     hs = (raw_proj_conv(lat_in).flatten(2).transpose(1, 2) + pos_local).to(lat_in.dtype)
+[rank1]: RuntimeError: The size of tensor a (2025) must match the size of tensor b (0) at non-singleton dimension 1
+[rank2]: Traceback (most recent call last):
+[rank2]:   File "/shared/data/DITSERVE/scripts/run_mot_block_step_cv.py", line 1651, in <module>
+[rank2]:     main()
+[rank2]:   File "/shared/data/DITSERVE/scripts/run_mot_block_step_cv.py", line 1637, in main
+[rank2]:     run_sd35_configs(sd35_cfgs, local_rank, world_size, device, mgr, _flush_checkpoint)
+[rank2]:   File "/shared/data/DITSERVE/scripts/run_mot_block_step_cv.py", line 1223, in run_sd35_configs
+[rank2]:     _ = _run_sd35_prompt(encoded_prompts[0], 1, False)
+[rank2]:   File "/shared/data/DITSERVE/scripts/run_mot_block_step_cv.py", line 1202, in _run_sd35_prompt
+[rank2]:     lat_local = _token_step(lat_local, t)
+[rank2]:   File "/shared/data/DITSERVE/scripts/run_mot_block_step_cv.py", line 1183, in _token_step
+[rank2]:     hs = (raw_proj_conv(lat_in).flatten(2).transpose(1, 2) + pos_local).to(lat_in.dtype)
+[rank2]: RuntimeError: The size of tensor a (2025) must match the size of tensor b (0) at non-singleton dimension 1
+[rank3]: Traceback (most recent call last):
+[rank3]:   File "/shared/data/DITSERVE/scripts/run_mot_block_step_cv.py", line 1651, in <module>
+[rank3]:     main()
+[rank3]:   File "/shared/data/DITSERVE/scripts/run_mot_block_step_cv.py", line 1637, in main
+[rank3]:     run_sd35_configs(sd35_cfgs, local_rank, world_size, device, mgr, _flush_checkpoint)
+[rank3]:   File "/shared/data/DITSERVE/scripts/run_mot_block_step_cv.py", line 1223, in run_sd35_configs
+[rank3]:     _ = _run_sd35_prompt(encoded_prompts[0], 1, False)
+[rank3]:   File "/shared/data/DITSERVE/scripts/run_mot_block_step_cv.py", line 1202, in _run_sd35_prompt
+[rank3]:     lat_local = _token_step(lat_local, t)
+[rank3]:   File "/shared/data/DITSERVE/scripts/run_mot_block_step_cv.py", line 1183, in _token_step
+[rank3]:     hs = (raw_proj_conv(lat_in).flatten(2).transpose(1, 2) + pos_local).to(lat_in.dtype)
+[rank3]: RuntimeError: The size of tensor a (2025) must match the size of tensor b (0) at non-singleton dimension 1
+[rank1]:[W1116 10:33:10.939851164 ProcessGroupNCCL.cpp:1553] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[rank2]:[W1116 10:33:10.014623430 ProcessGroupNCCL.cpp:1553] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[rank3]:[W1116 10:33:11.195834554 ProcessGroupNCCL.cpp:1553] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+W1116 10:33:14.615000 134 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 146 closing signal SIGTERM
+W1116 10:33:14.618000 134 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 147 closing signal SIGTERM
+W1116 10:33:14.619000 134 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 148 closing signal SIGTERM
+W1116 10:33:14.619000 134 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 150 closing signal SIGTERM
+W1116 10:33:14.620000 134 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 151 closing signal SIGTERM
+W1116 10:33:14.620000 134 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 152 closing signal SIGTERM
+W1116 10:33:14.621000 134 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 153 closing signal SIGTERM
+E1116 10:33:16.268000 134 torch/distributed/elastic/multiprocessing/api.py:984] failed (exitcode: 1) local_rank: 3 (pid: 149) of binary: /opt/venv/bin/python
+Traceback (most recent call last):
+  File "/opt/venv/bin/torchrun", line 7, in <module>
+    sys.exit(main())
+  File "/opt/venv/lib/python3.10/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 362, in wrapper
+    return f(*args, **kwargs)
+  File "/opt/venv/lib/python3.10/site-packages/torch/distributed/run.py", line 991, in main
+    run(args)
+  File "/opt/venv/lib/python3.10/site-packages/torch/distributed/run.py", line 982, in run
+    elastic_launch(
+  File "/opt/venv/lib/python3.10/site-packages/torch/distributed/launcher/api.py", line 170, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/opt/venv/lib/python3.10/site-packages/torch/distributed/launcher/api.py", line 317, in launch_agent
+    raise ChildFailedError(
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+/shared/data/DITSERVE/scripts/run_mot_block_step_cv.py FAILED
+------------------------------------------------------------
+Failures:
+[1]:
+  time      : 2026-11-16_10:33:16
+  host      : d20261116-mot-cv-s1-8gpu-720da72-r2-master-0
+  rank      : 0 (local_rank: 0)
+  exitcode  : -15 (pid: 146)
+  error_file: <N/A>
+  traceback : Signal 15 (SIGTERM) received by PID 146
+[2]:
+  time      : 2026-11-16_10:33:16
+  host      : d20261116-mot-cv-s1-8gpu-720da72-r2-master-0
+  rank      : 1 (local_rank: 1)
+  exitcode  : 1 (pid: 147)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[3]:
+  time      : 2026-11-16_10:33:16
+  host      : d20261116-mot-cv-s1-8gpu-720da72-r2-master-0
+  rank      : 2 (local_rank: 2)
+  exitcode  : 1 (pid: 148)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[4]:
+  time      : 2026-11-16_10:33:16
+  host      : d20261116-mot-cv-s1-8gpu-720da72-r2-master-0
+  rank      : 4 (local_rank: 4)
+  exitcode  : -15 (pid: 150)
+  error_file: <N/A>
+  traceback : Signal 15 (SIGTERM) received by PID 150
+[5]:
+  time      : 2026-11-16_10:33:16
+  host      : d20261116-mot-cv-s1-8gpu-720da72-r2-master-0
+  rank      : 5 (local_rank: 5)
+  exitcode  : -15 (pid: 151)
+  error_file: <N/A>
+  traceback : Signal 15 (SIGTERM) received by PID 151
+[6]:
+  time      : 2026-11-16_10:33:16
+  host      : d20261116-mot-cv-s1-8gpu-720da72-r2-master-0
+  rank      : 6 (local_rank: 6)
+  exitcode  : -15 (pid: 152)
+  error_file: <N/A>
+  traceback : Signal 15 (SIGTERM) received by PID 152
+[7]:
+  time      : 2026-11-16_10:33:16
+  host      : d20261116-mot-cv-s1-8gpu-720da72-r2-master-0
+  rank      : 7 (local_rank: 7)
+  exitcode  : -15 (pid: 153)
+  error_file: <N/A>
+  traceback : Signal 15 (SIGTERM) received by PID 153
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2026-11-16_10:33:14
+  host      : d20261116-mot-cv-s1-8gpu-720da72-r2-master-0
+  rank      : 3 (local_rank: 3)
+  exitcode  : 1 (pid: 149)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================

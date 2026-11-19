@@ -1,0 +1,17 @@
+{
+ "commit": "01bee016a3af27ca128a427d165a649c62c98d9a",
+ "subject": "fix(sd35_batch): resolve varlen FlashAttention across flash_attn, vLLM, and torch.nn.attention.varlen",
+ "built_utc": "2026-11-15T14:28:51+00:00",
+ "builder_image": "cluster-cmake-install",
+ "runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "tested_runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "core_sha256": "e19718803c044d609e8767f9b989d0c25fa21efb551e965566a5ad95f62a03b1",
+ "runtime_smoke": "passed_cluster",
+ "local_checks": [
+  "cmake",
+  "ctest",
+  "installed_doctor"
+ ],
+ "files": 269,
+ "bytes": 5542407
+}

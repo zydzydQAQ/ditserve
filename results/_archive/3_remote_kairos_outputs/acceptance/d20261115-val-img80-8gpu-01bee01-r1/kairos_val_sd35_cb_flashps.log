@@ -1,0 +1,273 @@
+== kairos_val_sd35_cb_flashps.sh run=d20261115-val-img80-8gpu-01bee01-r1 host=d20261115-val-img80-8gpu-01bee01-r1-master-0 2026-11-15T14:28:59+00:00
+build=01bee01 core=e19718803c044d60 package=/shared/code/DITSERVE/builds/01bee01/share/ditserve
+ditserve 0.4.0
+GPU 0: NVIDIA A100-PCIE-40GB (UUID: GPU-488f5047-729a-fdfa-601b-7ba98b88a814)
+GPU 1: NVIDIA A100-PCIE-40GB (UUID: GPU-4a80f271-d669-dad2-0301-0d7dd15a4095)
+GPU 2: NVIDIA A100-PCIE-40GB (UUID: GPU-dd208b13-f954-864c-d65a-05fe43dc8613)
+GPU 3: NVIDIA A100-PCIE-40GB (UUID: GPU-d84c993d-42a5-a56b-86cc-2ad8254c2351)
+GPU 4: NVIDIA A100-PCIE-40GB (UUID: GPU-50f853c6-0c1d-425b-af23-c022a616c030)
+GPU 5: NVIDIA A100-PCIE-40GB (UUID: GPU-d48241f7-4e77-e195-59a0-63552f67e285)
+GPU 6: NVIDIA A100-PCIE-40GB (UUID: GPU-4f488320-12e4-9e69-aee0-d3e9e5dbb452)
+GPU 7: NVIDIA A100-PCIE-40GB (UUID: GPU-8940ccee-259b-0b4f-f459-b9811246fae9)
+Filesystem                           Size  Used Avail Use% Mounted on
+tmpfs                                 32G     0   32G   0% /dev/shm
+192.168.1.114:/data/share/jjjkairos  1.0T  787G  237G  77% /shared
+memlock=8192 nproc=8 cgroup_memory_max=549755813888
+== running 5 Python functional domain test suites
+  test_domain_control.py: 22 passed (14.806s)
+  test_domain_block_executor.py: 11 passed (0.729s)
+  test_domain_memory.py: 10 passed (8.081s)
+  test_domain_collectives.py: 8 passed (0.248s)
+reused_calibration_bundle=/tmp/ditserve-ut-TestCalibrationBundlePro-9am9xiq1/candidate-bundle.json sha256=425176489fc3eb9f2fa919b62e333fb1dd380603eaa92aeba81ca40cebd29092 calibration_match_mode=exact_uuid
+reused_calibration_bundle=/tmp/ditserve-ut-TestCalibrationBundlePro-9am9xiq1/candidate-bundle.json sha256=425176489fc3eb9f2fa919b62e333fb1dd380603eaa92aeba81ca40cebd29092 calibration_match_mode=homogeneous_topology_signature gpu_count=8 gpu_model=NVIDIA A100-PCIE-40GB
+{"output": "/tmp/ditserve-ut-TestAbsoluteRateServing.-unkw3q__/serving-rate-08.json", "sha256": "ea3903eb24e70985370ea469ebea21e163d2324d46f6337ebb6906b36bc8e070", "scientific_qualification": "pending"}
+{"output": "/tmp/ditserve-ut-TestAbsoluteRateServing.-unkw3q__/serving-load-1p75.json", "sha256": "80d79923587eee9153d147b4b58daaede3c85fbd9e401883e4d07c635d673c44", "scientific_qualification": "pending"}
+usage: - [-h] [--split SPLIT] [--seed SEED]
+         [--load LOAD | --rate-rpm RATE_RPM] [--video-fraction VIDEO_FRACTION]
+         [--slo-scale SLO_SCALE]
+         [--resolution-distribution RESOLUTION_DISTRIBUTION] [--cv CV]
+         [--pattern PATTERN] [--suite SUITE] [--policies POLICIES]
+         [--num-gpus {2,4,6,8,16}] [--diagnostic DIAGNOSTIC]
+         [--allow-Cross-uuid]
+-: error: argument --rate-rpm: not allowed with argument --load
+  test_domain_archive.py: 12 passed (1.373s)
+domain_suites: {"returncode": 0, "elapsed_s": 25.238, "passed": 63, "failed_count": 0, "suites": ["test_domain_control.py", "test_domain_block_executor.py", "test_domain_memory.py", "test_domain_collectives.py", "test_domain_archive.py"], "per_suite": {"test_domain_control.py": {"passed": 22, "elapsed_s": 14.806}, "test_domain_block_executor.py": {"passed": 11, "elapsed_s": 0.729}, "test_domain_memory.py": {"passed": 10, "elapsed_s": 8.081}, "test_domain_collectives.py": {"passed": 8, "elapsed_s": 0.248}, "test_domain_archive.py": {"passed": 12, "elapsed_s": 1.373}}, "summary_lines": ["63 passed in 25.238s"]}
+== Parallelizing SD3.5 validation across 3 of 8 GPUs (cuda:0=Exp C, cuda:1=Exp A, cuda:2=Exp B)
+Loading pipeline components...:   0%|          | 0/9 [00:00<?, ?it/s]Loading pipeline components...:   0%|          | 0/9 [00:00<?, ?it/s]`torch_dtype` is deprecated! Use `dtype` instead!
+You set `add_prefix_space`. The tokenizer needs to be converted from the slow tokenizers
+
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s][ALoading pipeline components...:   0%|          | 0/9 [00:00<?, ?it/s]`torch_dtype` is deprecated! Use `dtype` instead!
+Loading pipeline components...:  11%|█         | 1/9 [00:00<00:02,  3.51it/s]Loading pipeline components...:  33%|███▎      | 3/9 [00:00<00:00,  7.83it/s]`torch_dtype` is deprecated! Use `dtype` instead!
+Loading pipeline components...:  44%|████▍     | 4/9 [00:00<00:00,  5.90it/s]Loading pipeline components...:  11%|█         | 1/9 [00:00<00:03,  2.13it/s]Loading pipeline components...:  56%|█████▌    | 5/9 [00:00<00:00,  5.83it/s]
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s][A
+Loading checkpoint shards:  50%|█████     | 1/2 [00:05<00:05,  5.75s/it][ALoading pipeline components...:  22%|██▏       | 2/9 [00:06<00:26,  3.76s/it]
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s][A
+Loading checkpoint shards:  50%|█████     | 1/2 [00:07<00:07,  7.38s/it][A
+Loading checkpoint shards:  50%|█████     | 1/2 [00:04<00:04,  4.85s/it][A
+Loading checkpoint shards: 100%|██████████| 2/2 [00:11<00:00,  5.49s/it][ALoading checkpoint shards: 100%|██████████| 2/2 [00:11<00:00,  5.53s/it]
+Loading pipeline components...:  67%|██████▋   | 6/9 [00:11<00:11,  3.68s/it]Loading pipeline components...:  78%|███████▊  | 7/9 [00:12<00:05,  2.68s/it]
+Loading checkpoint shards: 100%|██████████| 2/2 [00:13<00:00,  6.62s/it][ALoading checkpoint shards: 100%|██████████| 2/2 [00:13<00:00,  6.73s/it]
+Loading pipeline components...:  11%|█         | 1/9 [00:13<01:48, 13.52s/it]Loading pipeline components...:  33%|███▎      | 3/9 [00:14<00:22,  3.68s/it]Loading pipeline components...: 100%|██████████| 9/9 [00:14<00:00,  1.78s/it]Loading pipeline components...: 100%|██████████| 9/9 [00:14<00:00,  1.56s/it]
+Loading pipeline components...:  44%|████▍     | 4/9 [00:14<00:12,  2.47s/it]
+Loading checkpoint shards: 100%|██████████| 2/2 [00:08<00:00,  4.17s/it][ALoading checkpoint shards: 100%|██████████| 2/2 [00:08<00:00,  4.28s/it]
+Loading pipeline components...:  33%|███▎      | 3/9 [00:15<00:35,  5.98s/it]Loading pipeline components...:  56%|█████▌    | 5/9 [00:15<00:10,  2.69s/it]Loading pipeline components...:  56%|█████▌    | 5/9 [00:16<00:09,  2.30s/it]Loading pipeline components...:  78%|███████▊  | 7/9 [00:19<00:04,  2.43s/it]You set `add_prefix_space`. The tokenizer needs to be converted from the slow tokenizers
+Loading pipeline components...: 100%|██████████| 9/9 [00:20<00:00,  1.58s/it]Loading pipeline components...: 100%|██████████| 9/9 [00:20<00:00,  2.25s/it]
+Loading pipeline components...:  78%|███████▊  | 7/9 [00:21<00:05,  2.51s/it]You set `add_prefix_space`. The tokenizer needs to be converted from the slow tokenizers
+Loading pipeline components...:  89%|████████▉ | 8/9 [00:21<00:01,  1.94s/it]Loading pipeline components...: 100%|██████████| 9/9 [00:21<00:00,  2.44s/it]
+Set TORCH_CUDA_ARCH_LIST to 8.0
+INFO 11-15 14:31:45 [config.py:207] Pipeline patch number not set, using default value 1
+INFO 11-15 14:31:45 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)
+DEBUG 11-15 14:31:45 [compat.py:39] xfuser has no installed metadata; not checking diffusers version
+WARNING 11-15 14:31:45 [logger.py:126] Using SDPA_FLASH as attention backend.
+INFO 11-15 14:31:45 [base_pipeline.py:508] Scheduler found, trying to parallel scheduler...
+Set TORCH_CUDA_ARCH_LIST to 8.0
+INFO 11-15 14:31:46 [config.py:207] Pipeline patch number not set, using default value 1
+INFO 11-15 14:31:46 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)
+DEBUG 11-15 14:31:46 [compat.py:39] xfuser has no installed metadata; not checking diffusers version
+WARNING 11-15 14:31:46 [logger.py:126] Using SDPA_FLASH as attention backend.
+INFO 11-15 14:31:46 [base_pipeline.py:508] Scheduler found, trying to parallel scheduler...
+== [GPU shard exp_b] Running Exp B: FlashPS Fig. 10 3-stream async pipeline
+Set TORCH_CUDA_ARCH_LIST to 8.0
+INFO 11-15 14:31:47 [config.py:207] Pipeline patch number not set, using default value 1
+INFO 11-15 14:31:47 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)
+DEBUG 11-15 14:31:47 [compat.py:39] xfuser has no installed metadata; not checking diffusers version
+WARNING 11-15 14:31:47 [logger.py:126] Using SDPA_FLASH as attention backend.
+INFO 11-15 14:31:47 [base_pipeline.py:508] Scheduler found, trying to parallel scheduler...
+== [GPU shard exp_a] Running Exp A: Packed flash_attn_varlen_func & resolution-spread matrix
+== [GPU shard exp_c] Running Exp C: Tier-1 lossless CPU T5-XXL split cache & threading
+== [GPU shard exp_a] finished cleanly
+== [GPU shard exp_b] finished cleanly
+== [GPU shard exp_c] finished cleanly
+{"verdict": "PASS", "checks": {"pytest_5_domains_passed": true, "flash_attn_varlen_active": true, "flash_attn_varlen_faster_than_grouped_sdpa": true, "controller_admits_512_1024_and_blocks_512_1440": true, "async_vae_eliminates_retire_stall": true, "flashps_3stream_faster_than_sequential": true, "cpu_t5_split_lossless_zero_diff": true, "cpu_t5_split_faster_than_baseline": true}}
+== chaining 8-GPU formal-mixed-v2 serving evaluation (d20261115-val-img80-8gpu-01bee01-r1-serve)
+Filesystem                           Size  Used Avail Use% Mounted on
+192.168.1.114:/data/share/jjjkairos  1.0T  787G  237G  77% /shared
+== kairos_formal_benchmark.sh run=d20261115-val-img80-8gpu-01bee01-r1-serve host=d20261115-val-img80-8gpu-01bee01-r1-master-0 2026-11-15T14:42:19+00:00
+build=01bee01 core=e19718803c044d60 package=/shared/code/DITSERVE/builds/01bee01/share/ditserve
+ditserve 0.4.0
+/shared/data/DITSERVE/scripts/releases/01bee01/benchmarks/formal_benchmark.py: OK
+serving_operator=/shared/data/DITSERVE/scripts/releases/01bee01/benchmarks compiler_sha256=9b8b64471cbb1f30eda877b6aa7239c2df5424c2d4f35385c724d095efddfdc1
+Filesystem                           Size  Used Avail Use% Mounted on
+192.168.1.114:/data/share/jjjkairos  1.0T  787G  237G  77% /shared
+{"output": "/shared/output/DITSERVE/acceptance/d20261115-val-img80-8gpu-01bee01-r1-serve/input-preflight.json", "sha256": "9be8f4d04db6305c096ad03a253146b229b53cd43947f7e7eb3744da64a3f838", "scientific_qualification": "pending"}
+{
+  "output": "/shared/output/DITSERVE/acceptance/d20261115-val-img80-8gpu-01bee01-r1-serve/runtime-facts.json",
+  "gpus": [
+    "0, GPU-488f5047-729a-fdfa-601b-7ba98b88a814, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "1, GPU-4a80f271-d669-dad2-0301-0d7dd15a4095, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "2, GPU-dd208b13-f954-864c-d65a-05fe43dc8613, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "3, GPU-d84c993d-42a5-a56b-86cc-2ad8254c2351, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "4, GPU-50f853c6-0c1d-425b-af23-c022a616c030, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "5, GPU-d48241f7-4e77-e195-59a0-63552f67e285, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "6, GPU-4f488320-12e4-9e69-aee0-d3e9e5dbb452, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "7, GPU-8940ccee-259b-0b4f-f459-b9811246fae9, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0"
+  ],
+  "packages": {
+    "torch": "2.10.0+cu126",
+    "diffusers": "0.36.0",
+    "transformers": "4.57.6",
+    "cache-dit": "1.5.0",
+    "accelerate": "1.12.0",
+    "safetensors": "0.8.0",
+    "numpy": "2.2.6"
+  },
+  "models": {
+    "Wan2.1-T2V-1.3B": {
+      "model_class": "WanPipeline",
+      "transformer_class": "WanTransformer3DModel",
+      "num_layers": 30,
+      "num_attention_heads": 12
+    },
+    "Wan2.2-TI2V-5B": {
+      "model_class": "WanPipeline",
+      "transformer_class": "WanTransformer3DModel",
+      "num_layers": 30,
+      "num_attention_heads": 24
+    },
+    "SD3.5-Medium": {
+      "model_class": "StableDiffusion3Pipeline",
+      "transformer_class": "SD3Transformer2DModel",
+      "num_layers": 24,
+      "num_attention_heads": 24
+    }
+  }
+}
+reused_calibration_bundle=/shared/output/DITSERVE/acceptance/d20261106-formal-v2-wan22-b1-21a1ca3-r1/bundle.json sha256=94c3238aee42925b57eb10dc1ad086c656db280cfba5c079b0a53d195aa62ff6 calibration_match_mode=homogeneous_topology_signature gpu_count=8 gpu_model=NVIDIA A100-PCIE-40GB
+{"output": "/shared/output/DITSERVE/acceptance/d20261115-val-img80-8gpu-01bee01-r1-serve/serving-img80-uniform.json", "sha256": "2efc1af867bc8c98283b71e3bc29f1ce39ad1117bc8f6d0e38aaf420b2744e65", "scientific_qualification": "pending"}
+Filesystem                           Size  Used Avail Use% Mounted on
+192.168.1.114:/data/share/jjjkairos  1.0T  787G  237G  77% /shared
+{
+  "archive": {
+    "deleted": 0,
+    "format": "ditserve.results-summary.v1",
+    "load_ms": 0.0,
+    "raw_re_evaluable": false,
+    "raw_re_evaluated": false,
+    "reclaimed_bytes": 0,
+    "report": "/shared/output/DITSERVE/results/formal-wan22-test-poisson-s301-l1p75-v0p2-slo1p5-ablation/d20261115-val-img80-8gpu-01bee01-r1-serve-img80-uniform/20261115-d20261115-val-img80-8gpu-01bee01-r1-serve-img80-uniform.md",
+    "results_usage": {
+      "allocated_bytes": 16384,
+      "bytes": 12586,
+      "files": 2
+    },
+    "resumable": false,
+    "retained": 0,
+    "scope": "summary checksum and report consistency; aggregates only, no scientific qualification",
+    "status": "completed",
+    "summary": "/shared/output/DITSERVE/results/formal-wan22-test-poisson-s301-l1p75-v0p2-slo1p5-ablation/d20261115-val-img80-8gpu-01bee01-r1-serve-img80-uniform/summary.json",
+    "summary_sha256": "0b65ec8320123acaba3aa3c6d0a3f864c3358e47c8810ed01b759068ffabf3d0",
+    "work_dir": "/shared/output/DITSERVE/.cache/results-work/formal-wan22-test-poisson-s301-l1p75-v0p2-slo1p5-ablation/d20261115-val-img80-8gpu-01bee01-r1-serve-img80-uniform",
+    "work_usage": {
+      "allocated_bytes": 20332544,
+      "bytes": 19734588,
+      "files": 249
+    },
+    "worker_operation_ms": 1820.6003922969103
+  },
+  "failures": [],
+  "metrics": {
+    "communication_p50_ms": null,
+    "communication_p99_ms": null,
+    "completed": 100,
+    "control_ms": 0.0,
+    "deadline_attainment": 0.98,
+    "denominator": "all frozen requests, including failed and blocked",
+    "failed": 0,
+    "incomplete": 0,
+    "latency_p50_ms": 7184.308995114647,
+    "latency_p95_ms": 281329.296502664,
+    "model_ms": 1850255.0387364319,
+    "observation_count": 1,
+    "observation_ms": 516565.9208986908,
+    "ontime": 98,
+    "qualification_status": "unverified",
+    "qualification_verified_requests": 0,
+    "qualified_goodput_rps": null,
+    "qualified_ontime": 0,
+    "requests": 100
+  },
+  "run_id": "d20261115-val-img80-8gpu-01bee01-r1-serve-img80-uniform",
+  "status": "completed"
+}
+{
+  "format": "ditserve.results-summary.v1",
+  "load_ms": 0.0,
+  "raw_re_evaluable": false,
+  "raw_re_evaluated": false,
+  "report": "/shared/output/DITSERVE/results/formal-wan22-test-poisson-s301-l1p75-v0p2-slo1p5-ablation/d20261115-val-img80-8gpu-01bee01-r1-serve-img80-uniform/20261115-d20261115-val-img80-8gpu-01bee01-r1-serve-img80-uniform.md",
+  "resumable": false,
+  "scope": "summary checksum and report consistency; aggregates only, no scientific qualification",
+  "status": "verified",
+  "summary": "/shared/output/DITSERVE/results/formal-wan22-test-poisson-s301-l1p75-v0p2-slo1p5-ablation/d20261115-val-img80-8gpu-01bee01-r1-serve-img80-uniform/summary.json",
+  "summary_sha256": "35c6a3b7712096aff3c080828ffb2a8643d18ac63c092278c3741e3704103743",
+  "worker_operation_ms": 24.634964764118195
+}
+{"output": "/shared/output/DITSERVE/acceptance/d20261115-val-img80-8gpu-01bee01-r1-serve/serving-img80-skewed.json", "sha256": "fa991ebd9003eaf81e813d9571408ca93aaf0684eec534d447abcac587d0b39a", "scientific_qualification": "pending"}
+Filesystem                           Size  Used Avail Use% Mounted on
+192.168.1.114:/data/share/jjjkairos  1.0T  787G  237G  77% /shared
+{
+  "archive": {
+    "deleted": 0,
+    "format": "ditserve.results-summary.v1",
+    "load_ms": 0.0,
+    "raw_re_evaluable": false,
+    "raw_re_evaluated": false,
+    "reclaimed_bytes": 0,
+    "report": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-l1p75-v0p2-slo1p5-skewed-cv2p0-ablation/d20261115-val-img80-8gpu-01bee01-r1-serve-img80-skewed/20261115-d20261115-val-img80-8gpu-01bee01-r1-serve-img80-skewed.md",
+    "results_usage": {
+      "allocated_bytes": 16384,
+      "bytes": 12633,
+      "files": 2
+    },
+    "resumable": false,
+    "retained": 0,
+    "scope": "summary checksum and report consistency; aggregates only, no scientific qualification",
+    "status": "completed",
+    "summary": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-l1p75-v0p2-slo1p5-skewed-cv2p0-ablation/d20261115-val-img80-8gpu-01bee01-r1-serve-img80-skewed/summary.json",
+    "summary_sha256": "32d88184a5b3d97215b11b6e72db46ef32496b74d26d53d7d9bd84c7a58bbce6",
+    "work_dir": "/shared/output/DITSERVE/.cache/results-work/formal-wan22-test-gamma-s301-l1p75-v0p2-slo1p5-skewed-cv2p0-ablation/d20261115-val-img80-8gpu-01bee01-r1-serve-img80-skewed",
+    "work_usage": {
+      "allocated_bytes": 20336640,
+      "bytes": 19739480,
+      "files": 249
+    },
+    "worker_operation_ms": 1806.337459012866
+  },
+  "failures": [],
+  "metrics": {
+    "communication_p50_ms": null,
+    "communication_p99_ms": null,
+    "completed": 100,
+    "control_ms": 0.0,
+    "deadline_attainment": 0.96,
+    "denominator": "all frozen requests, including failed and blocked",
+    "failed": 0,
+    "incomplete": 0,
+    "latency_p50_ms": 14437.997439514002,
+    "latency_p95_ms": 345441.7416267835,
+    "model_ms": 2462482.267240243,
+    "observation_count": 1,
+    "observation_ms": 623354.670887813,
+    "ontime": 96,
+    "qualification_status": "unverified",
+    "qualification_verified_requests": 0,
+    "qualified_goodput_rps": null,
+    "qualified_ontime": 0,
+    "requests": 100
+  },
+  "run_id": "d20261115-val-img80-8gpu-01bee01-r1-serve-img80-skewed",
+  "status": "completed"
+}
+{
+  "format": "ditserve.results-summary.v1",
+  "load_ms": 0.0,
+  "raw_re_evaluable": false,
+  "raw_re_evaluated": false,
+  "report": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-l1p75-v0p2-slo1p5-skewed-cv2p0-ablation/d20261115-val-img80-8gpu-01bee01-r1-serve-img80-skewed/20261115-d20261115-val-img80-8gpu-01bee01-r1-serve-img80-skewed.md",
+  "resumable": false,
+  "scope": "summary checksum and report consistency; aggregates only, no scientific qualification",
+  "status": "verified",
+  "summary": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-l1p75-v0p2-slo1p5-skewed-cv2p0-ablation/d20261115-val-img80-8gpu-01bee01-r1-serve-img80-skewed/summary.json",
+  "summary_sha256": "439d23ed1fb7ded7e66bdb10b535d4527bfc6fa2f3fb1c1f081cd8fc46539cc8",
+  "worker_operation_ms": 24.64056946337223
+}

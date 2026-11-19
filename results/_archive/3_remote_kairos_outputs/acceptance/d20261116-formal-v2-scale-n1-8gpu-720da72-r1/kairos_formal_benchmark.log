@@ -1,0 +1,258 @@
+== kairos_formal_benchmark.sh run=d20261116-formal-v2-scale-n1-8gpu-720da72-r1 host=d20261116-formal-v2-scale-n1-8gpu-720da72-r1-master-0 2026-11-15T17:24:56+00:00
+build=720da72 core=5fca839ebbb3e2df package=/shared/code/DITSERVE/builds/720da72/share/ditserve
+ditserve 0.4.0
+/shared/data/DITSERVE/scripts/releases/720da72/benchmarks/formal_benchmark.py: OK
+serving_operator=/shared/data/DITSERVE/scripts/releases/720da72/benchmarks compiler_sha256=9b8b64471cbb1f30eda877b6aa7239c2df5424c2d4f35385c724d095efddfdc1
+Filesystem                           Size  Used Avail Use% Mounted on
+192.168.1.114:/data/share/jjjkairos  1.0T  788G  237G  77% /shared
+{"output": "/shared/output/DITSERVE/acceptance/d20261116-formal-v2-scale-n1-8gpu-720da72-r1/input-preflight.json", "sha256": "9be8f4d04db6305c096ad03a253146b229b53cd43947f7e7eb3744da64a3f838", "scientific_qualification": "pending"}
+{
+  "output": "/shared/output/DITSERVE/acceptance/d20261116-formal-v2-scale-n1-8gpu-720da72-r1/runtime-facts.json",
+  "gpus": [
+    "0, GPU-488f5047-729a-fdfa-601b-7ba98b88a814, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "1, GPU-4a80f271-d669-dad2-0301-0d7dd15a4095, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "2, GPU-dd208b13-f954-864c-d65a-05fe43dc8613, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "3, GPU-d84c993d-42a5-a56b-86cc-2ad8254c2351, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "4, GPU-50f853c6-0c1d-425b-af23-c022a616c030, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "5, GPU-d48241f7-4e77-e195-59a0-63552f67e285, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "6, GPU-4f488320-12e4-9e69-aee0-d3e9e5dbb452, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "7, GPU-8940ccee-259b-0b4f-f459-b9811246fae9, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0"
+  ],
+  "packages": {
+    "torch": "2.10.0+cu126",
+    "diffusers": "0.36.0",
+    "transformers": "4.57.6",
+    "cache-dit": "1.5.0",
+    "accelerate": "1.12.0",
+    "safetensors": "0.8.0",
+    "numpy": "2.2.6"
+  },
+  "models": {
+    "Wan2.1-T2V-1.3B": {
+      "model_class": "WanPipeline",
+      "transformer_class": "WanTransformer3DModel",
+      "num_layers": 30,
+      "num_attention_heads": 12
+    },
+    "Wan2.2-TI2V-5B": {
+      "model_class": "WanPipeline",
+      "transformer_class": "WanTransformer3DModel",
+      "num_layers": 30,
+      "num_attention_heads": 24
+    },
+    "SD3.5-Medium": {
+      "model_class": "StableDiffusion3Pipeline",
+      "transformer_class": "SD3Transformer2DModel",
+      "num_layers": 24,
+      "num_attention_heads": 24
+    }
+  }
+}
+reused_calibration_bundle=/shared/output/DITSERVE/acceptance/d20261106-formal-v2-wan22-b1-21a1ca3-r1/bundle.json sha256=94c3238aee42925b57eb10dc1ad086c656db280cfba5c079b0a53d195aa62ff6 calibration_match_mode=homogeneous_topology_signature gpu_count=8 gpu_model=NVIDIA A100-PCIE-40GB
+{"output": "/shared/output/DITSERVE/acceptance/d20261116-formal-v2-scale-n1-8gpu-720da72-r1/serving-p-gpu-4.json", "sha256": "d2979ba2baf36d8bde2cde563d142661f16611ff668056b1f9a5b65fc9478d60", "scientific_qualification": "pending"}
+Filesystem                           Size  Used Avail Use% Mounted on
+192.168.1.114:/data/share/jjjkairos  1.0T  788G  237G  77% /shared
+{
+  "archive": {
+    "deleted": 0,
+    "format": "ditserve.results-summary.v1",
+    "load_ms": 0.0,
+    "raw_re_evaluable": false,
+    "raw_re_evaluated": false,
+    "reclaimed_bytes": 0,
+    "report": "/shared/output/DITSERVE/results/formal-wan22-test-poisson-s301-r6rpm-v0p5-slo1p5-g4gpu-scalability/d20261116-formal-v2-scale-n1-8gpu-720da72-r1-p-gpu-4/20261115-d20261116-formal-v2-scale-n1-8gpu-720da72-r1-p-gpu-4.md",
+    "results_usage": {
+      "allocated_bytes": 16384,
+      "bytes": 12377,
+      "files": 2
+    },
+    "resumable": false,
+    "retained": 0,
+    "scope": "summary checksum and report consistency; aggregates only, no scientific qualification",
+    "status": "completed",
+    "summary": "/shared/output/DITSERVE/results/formal-wan22-test-poisson-s301-r6rpm-v0p5-slo1p5-g4gpu-scalability/d20261116-formal-v2-scale-n1-8gpu-720da72-r1-p-gpu-4/summary.json",
+    "summary_sha256": "c8a30250fe04d36d527f1cb56a9448bc0788ca03535df260d29268cb78202b5b",
+    "work_dir": "/shared/output/DITSERVE/.cache/results-work/formal-wan22-test-poisson-s301-r6rpm-v0p5-slo1p5-g4gpu-scalability/d20261116-formal-v2-scale-n1-8gpu-720da72-r1-p-gpu-4",
+    "work_usage": {
+      "allocated_bytes": 17076224,
+      "bytes": 16509000,
+      "files": 233
+    },
+    "worker_operation_ms": 1485.742636024952
+  },
+  "failures": [],
+  "metrics": {
+    "communication_p50_ms": null,
+    "communication_p99_ms": null,
+    "completed": 50,
+    "control_ms": 0.0,
+    "deadline_attainment": 0.94,
+    "denominator": "all frozen requests, including failed and blocked",
+    "failed": 0,
+    "incomplete": 0,
+    "latency_p50_ms": 15204.171400027975,
+    "latency_p95_ms": 460295.90872295154,
+    "model_ms": 1768041.1684834082,
+    "observation_count": 1,
+    "observation_ms": 989506.1409920454,
+    "ontime": 47,
+    "qualification_status": "unverified",
+    "qualification_verified_requests": 0,
+    "qualified_goodput_rps": null,
+    "qualified_ontime": 0,
+    "requests": 50
+  },
+  "run_id": "d20261116-formal-v2-scale-n1-8gpu-720da72-r1-p-gpu-4",
+  "status": "completed"
+}
+{
+  "format": "ditserve.results-summary.v1",
+  "load_ms": 0.0,
+  "raw_re_evaluable": false,
+  "raw_re_evaluated": false,
+  "report": "/shared/output/DITSERVE/results/formal-wan22-test-poisson-s301-r6rpm-v0p5-slo1p5-g4gpu-scalability/d20261116-formal-v2-scale-n1-8gpu-720da72-r1-p-gpu-4/20261115-d20261116-formal-v2-scale-n1-8gpu-720da72-r1-p-gpu-4.md",
+  "resumable": false,
+  "scope": "summary checksum and report consistency; aggregates only, no scientific qualification",
+  "status": "verified",
+  "summary": "/shared/output/DITSERVE/results/formal-wan22-test-poisson-s301-r6rpm-v0p5-slo1p5-g4gpu-scalability/d20261116-formal-v2-scale-n1-8gpu-720da72-r1-p-gpu-4/summary.json",
+  "summary_sha256": "af8a2c68b41e7b75d691783a16f9362d0af737d90c26a2c527841c7f1e4888e1",
+  "worker_operation_ms": 24.689102545380592
+}
+{"output": "/shared/output/DITSERVE/acceptance/d20261116-formal-v2-scale-n1-8gpu-720da72-r1/serving-g2-gpu-4.json", "sha256": "5701d884722027112fef01a8610921a207e18d5cc09119b595018745e335d32c", "scientific_qualification": "pending"}
+Filesystem                           Size  Used Avail Use% Mounted on
+192.168.1.114:/data/share/jjjkairos  1.0T  788G  237G  77% /shared
+{
+  "archive": {
+    "deleted": 0,
+    "format": "ditserve.results-summary.v1",
+    "load_ms": 0.0,
+    "raw_re_evaluable": false,
+    "raw_re_evaluated": false,
+    "reclaimed_bytes": 0,
+    "report": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-r6rpm-v0p5-slo1p5-cv2p0-g4gpu-scalability/d20261116-formal-v2-scale-n1-8gpu-720da72-r1-g2-gpu-4/20261115-d20261116-formal-v2-scale-n1-8gpu-720da72-r1-g2-gpu-4.md",
+    "results_usage": {
+      "allocated_bytes": 16384,
+      "bytes": 12476,
+      "files": 2
+    },
+    "resumable": false,
+    "retained": 0,
+    "scope": "summary checksum and report consistency; aggregates only, no scientific qualification",
+    "status": "completed",
+    "summary": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-r6rpm-v0p5-slo1p5-cv2p0-g4gpu-scalability/d20261116-formal-v2-scale-n1-8gpu-720da72-r1-g2-gpu-4/summary.json",
+    "summary_sha256": "a8194304822f134182741fd8301d5c42e7508d9887c2554ff6112c4477673165",
+    "work_dir": "/shared/output/DITSERVE/.cache/results-work/formal-wan22-test-gamma-s301-r6rpm-v0p5-slo1p5-cv2p0-g4gpu-scalability/d20261116-formal-v2-scale-n1-8gpu-720da72-r1-g2-gpu-4",
+    "work_usage": {
+      "allocated_bytes": 17002496,
+      "bytes": 16433765,
+      "files": 233
+    },
+    "worker_operation_ms": 1735.206425189972
+  },
+  "failures": [],
+  "metrics": {
+    "communication_p50_ms": null,
+    "communication_p99_ms": null,
+    "completed": 50,
+    "control_ms": 0.0,
+    "deadline_attainment": 0.92,
+    "denominator": "all frozen requests, including failed and blocked",
+    "failed": 0,
+    "incomplete": 0,
+    "latency_p50_ms": 17395.170917396274,
+    "latency_p95_ms": 339000.2036884972,
+    "model_ms": 1783087.3088553967,
+    "observation_count": 1,
+    "observation_ms": 945817.0656431466,
+    "ontime": 46,
+    "qualification_status": "unverified",
+    "qualification_verified_requests": 0,
+    "qualified_goodput_rps": null,
+    "qualified_ontime": 0,
+    "requests": 50
+  },
+  "run_id": "d20261116-formal-v2-scale-n1-8gpu-720da72-r1-g2-gpu-4",
+  "status": "completed"
+}
+{
+  "format": "ditserve.results-summary.v1",
+  "load_ms": 0.0,
+  "raw_re_evaluable": false,
+  "raw_re_evaluated": false,
+  "report": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-r6rpm-v0p5-slo1p5-cv2p0-g4gpu-scalability/d20261116-formal-v2-scale-n1-8gpu-720da72-r1-g2-gpu-4/20261115-d20261116-formal-v2-scale-n1-8gpu-720da72-r1-g2-gpu-4.md",
+  "resumable": false,
+  "scope": "summary checksum and report consistency; aggregates only, no scientific qualification",
+  "status": "verified",
+  "summary": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-r6rpm-v0p5-slo1p5-cv2p0-g4gpu-scalability/d20261116-formal-v2-scale-n1-8gpu-720da72-r1-g2-gpu-4/summary.json",
+  "summary_sha256": "660a837ccc4315bcc08ca3b114083191ceb2e426dbf2ff1270d5b8bb70a3d6d1",
+  "worker_operation_ms": 24.723663926124573
+}
+{"output": "/shared/output/DITSERVE/acceptance/d20261116-formal-v2-scale-n1-8gpu-720da72-r1/serving-gamma2-abl.json", "sha256": "93e2be1ac8f8598851e2e1652232f3972af021a1ec36c4dcb13fe3e4854d5223", "scientific_qualification": "pending"}
+Filesystem                           Size  Used Avail Use% Mounted on
+192.168.1.114:/data/share/jjjkairos  1.0T  788G  237G  77% /shared
+{
+  "archive": {
+    "deleted": 0,
+    "format": "ditserve.results-summary.v1",
+    "load_ms": 0.0,
+    "raw_re_evaluable": false,
+    "raw_re_evaluated": false,
+    "reclaimed_bytes": 0,
+    "report": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation/d20261116-formal-v2-scale-n1-8gpu-720da72-r1-gamma2-abl/20261115-d20261116-formal-v2-scale-n1-8gpu-720da72-r1-gamma2-abl.md",
+    "results_usage": {
+      "allocated_bytes": 16384,
+      "bytes": 12629,
+      "files": 2
+    },
+    "resumable": false,
+    "retained": 0,
+    "scope": "summary checksum and report consistency; aggregates only, no scientific qualification",
+    "status": "completed",
+    "summary": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation/d20261116-formal-v2-scale-n1-8gpu-720da72-r1-gamma2-abl/summary.json",
+    "summary_sha256": "faeac4c9a15383f7c43a6967437064086d57db235e276eabc8689021c4846d7f",
+    "work_dir": "/shared/output/DITSERVE/.cache/results-work/formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation/d20261116-formal-v2-scale-n1-8gpu-720da72-r1-gamma2-abl",
+    "work_usage": {
+      "allocated_bytes": 28962816,
+      "bytes": 28361714,
+      "files": 249
+    },
+    "worker_operation_ms": 3926.9683305174112
+  },
+  "failures": [],
+  "metrics": {
+    "communication_p50_ms": null,
+    "communication_p99_ms": null,
+    "completed": 100,
+    "control_ms": 0.0,
+    "deadline_attainment": 0.92,
+    "denominator": "all frozen requests, including failed and blocked",
+    "failed": 0,
+    "incomplete": 0,
+    "latency_p50_ms": 16593.616360113716,
+    "latency_p95_ms": 750933.6896760234,
+    "model_ms": 3571456.5000636606,
+    "observation_count": 1,
+    "observation_ms": 960429.9090299755,
+    "ontime": 92,
+    "qualification_status": "unverified",
+    "qualification_verified_requests": 0,
+    "qualified_goodput_rps": null,
+    "qualified_ontime": 0,
+    "requests": 100
+  },
+  "run_id": "d20261116-formal-v2-scale-n1-8gpu-720da72-r1-gamma2-abl",
+  "status": "completed"
+}
+{
+  "format": "ditserve.results-summary.v1",
+  "load_ms": 0.0,
+  "raw_re_evaluable": false,
+  "raw_re_evaluated": false,
+  "report": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation/d20261116-formal-v2-scale-n1-8gpu-720da72-r1-gamma2-abl/20261115-d20261116-formal-v2-scale-n1-8gpu-720da72-r1-gamma2-abl.md",
+  "resumable": false,
+  "scope": "summary checksum and report consistency; aggregates only, no scientific qualification",
+  "status": "verified",
+  "summary": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation/d20261116-formal-v2-scale-n1-8gpu-720da72-r1-gamma2-abl/summary.json",
+  "summary_sha256": "a135e5e28eac29c929ca6523a5c3c12cd44f036a5a8bce1e8365d8a71f784001",
+  "worker_operation_ms": 24.548199027776718
+}

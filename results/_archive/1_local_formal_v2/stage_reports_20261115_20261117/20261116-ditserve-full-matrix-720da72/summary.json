@@ -1,0 +1,125 @@
+{
+  "schema": "ditserve.archive.full-matrix-cb-refresh.v1",
+  "date": "2026-11-16",
+  "build_commit": "720da72e883a6995de79a56df971d0cdf15c538f",
+  "core_sha256": "5fca839ebbb3e2df6c966a767dad7bfb638730ed01a9626dae27d63d4e3a9d44",
+  "runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+  "calibration_bundle_sha256": "3d838143675930045036f31ef7b9441751cb0cd2c00c0cdd1bfce3105f23e569",
+  "kairos_jobs": [
+    "d20261116-formal-v2-scale-n0-8gpu-720da72-r1",
+    "d20261116-formal-v2-scale-n1-8gpu-720da72-r1",
+    "d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1",
+    "d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1"
+  ],
+  "completed_cells": 42,
+  "headline_results": {
+    "5.2_Modality_Mix_Scale": {
+      "poisson_mean_sar_pct": 91.2,
+      "gamma_cv2_mean_sar_pct": 90.4,
+      "anchor_v0p5_sar_pct": {
+        "poisson": 96.0,
+        "gamma_cv2": 94.0
+      },
+      "anchor_norm_p95": {
+        "poisson": 1.0,
+        "gamma_cv2": 1.94
+      }
+    },
+    "5.3_Rate_Scale": {
+      "poisson_mean_sar_pct": 87.5,
+      "gamma_cv2_mean_sar_pct": 87.12,
+      "sd35_image_p95_range_s": {
+        "poisson": [
+          14.5,
+          15.43
+        ],
+        "gamma_cv2": [
+          14.73,
+          16.6
+        ]
+      }
+    },
+    "5.4_SLO_Scale": {
+      "poisson_mean_sar_pct": 90.6,
+      "gamma_cv2_mean_sar_pct": 87.6,
+      "strict_kappa_1p0x_sar_pct": {
+        "poisson": 69.0,
+        "gamma_cv2": 60.0
+      }
+    },
+    "5.5_Scalability": {
+      "pooled_374req_sar_pct": {
+        "poisson": 94.65,
+        "gamma_cv2": 93.05
+      },
+      "16gpu_goodput_scaling_vs_2gpu_x": {
+        "poisson": 7.49,
+        "gamma_cv2": 8.47
+      }
+    },
+    "5.6_Ablation_Study": {
+      "staircase_poisson_sar_pct": [
+        74.0,
+        87.0,
+        92.0,
+        94.0
+      ],
+      "staircase_gamma_cv2_sar_pct": [
+        64.0,
+        78.0,
+        93.0,
+        92.0
+      ],
+      "l1_cost_model_regret_pct": 0.0,
+      "tier1_sha256_parity": "624/624",
+      "factorized_cfg2_baselines_sar_pct": {
+        "poisson": {
+          "edf-bestfit-cfg2": 79.0,
+          "tetriserve-cfg2": 83.0,
+          "sbp-esp-cfg2": 85.0,
+          "DitServe": 94.0
+        },
+        "gamma_cv2": {
+          "edf-bestfit-cfg2": 65.0,
+          "tetriserve-cfg2": 72.0,
+          "sbp-esp-cfg2": 76.0,
+          "DitServe": 92.0
+        }
+      }
+    }
+  },
+  "ablation_leave_one_out": {
+    "poisson": {
+      "abl-no-block": 84.0,
+      "abl-first-fit": 82.0,
+      "abl-no-prune": 82.0,
+      "abl-no-cb": 92.0,
+      "DitServe": 94.0
+    },
+    "gamma_cv2": {
+      "abl-no-block": 85.0,
+      "abl-first-fit": 75.0,
+      "abl-no-prune": 86.0,
+      "abl-no-cb": 93.0,
+      "DitServe": 92.0
+    }
+  },
+  "tight_slo_kappa1p0_cb_rescue": {
+    "abl_no_cb_total_sar_pct": {
+      "poisson": 41.0,
+      "gamma_cv2": 36.0
+    },
+    "abl_no_cb_image_sar_pct": {
+      "poisson": 0.0,
+      "gamma_cv2": 0.0
+    },
+    "ditserve_total_sar_pct": {
+      "poisson": 69.0,
+      "gamma_cv2": 60.0
+    },
+    "ditserve_image_sar_pct": {
+      "poisson": 54.0,
+      "gamma_cv2": 44.0
+    }
+  }
+}

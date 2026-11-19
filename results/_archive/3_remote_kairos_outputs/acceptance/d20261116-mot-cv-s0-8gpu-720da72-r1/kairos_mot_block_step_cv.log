@@ -1,0 +1,106 @@
+== kairos_mot_block_step_cv.sh run=d20261116-mot-cv-s0-8gpu-720da72-r1 host=d20261116-mot-cv-s0-8gpu-720da72-r1-master-0 2026-11-16T09:40:05+00:00
+build=720da72 core=5fca839ebbb3e2df package=/shared/code/DITSERVE/builds/720da72/share/ditserve
+ditserve 0.4.0
+Filesystem                           Size  Used Avail Use% Mounted on
+192.168.1.114:/data/share/jjjkairos  1.0T  789G  235G  78% /shared
+GPU 0: NVIDIA A100-PCIE-40GB (UUID: GPU-afb5ebb2-a584-abce-e912-6cd50477f4bb)
+GPU 1: NVIDIA A100-PCIE-40GB (UUID: GPU-c2195fc4-0579-e149-dcd5-8f912dfb44c2)
+GPU 2: NVIDIA A100-PCIE-40GB (UUID: GPU-a331a424-15be-fa45-6b08-d951d2dce277)
+GPU 3: NVIDIA A100-PCIE-40GB (UUID: GPU-6c6892f8-1aa0-4c8f-d1ec-bc514adcbd42)
+GPU 4: NVIDIA A100-PCIE-40GB (UUID: GPU-9bd9082d-b7d4-f4de-cd0a-5788492a5247)
+GPU 5: NVIDIA A100-PCIE-40GB (UUID: GPU-bb1751f0-c0e1-a4e8-ae83-008e4246cced)
+GPU 6: NVIDIA A100-PCIE-40GB (UUID: GPU-979da027-ad90-4f70-6203-0e86fce22d4c)
+GPU 7: NVIDIA A100-PCIE-40GB (UUID: GPU-e6a7b9a6-b668-5e8d-5989-b9934c468d94)
+	[4mGPU0	GPU1	GPU2	GPU3	GPU4	GPU5	GPU6	GPU7	CPU Affinity	NUMA Affinity	GPU NUMA ID[0m
+GPU0	 X 	PHB	PHB	PHB	PHB	PHB	PHB	PHB	0-79	0-1		N/A
+GPU1	PHB	 X 	PHB	PHB	PHB	PHB	PHB	PHB	0-79	0-1		N/A
+GPU2	PHB	PHB	 X 	PHB	PHB	PHB	PHB	PHB	0-79	0-1		N/A
+GPU3	PHB	PHB	PHB	 X 	PHB	PHB	PHB	PHB	0-79	0-1		N/A
+GPU4	PHB	PHB	PHB	PHB	 X 	PHB	PHB	PHB	0-79	0-1		N/A
+GPU5	PHB	PHB	PHB	PHB	PHB	 X 	PHB	PHB	0-79	0-1		N/A
+GPU6	PHB	PHB	PHB	PHB	PHB	PHB	 X 	PHB	0-79	0-1		N/A
+GPU7	PHB	PHB	PHB	PHB	PHB	PHB	PHB	 X 	0-79	0-1		N/A
+
+Legend:
+
+Filesystem                           Size  Used Avail Use% Mounted on
+tmpfs                                 32G     0   32G   0% /dev/shm
+192.168.1.114:/data/share/jjjkairos  1.0T  789G  235G  78% /shared
+[Progress] Starting Motivation CV collector shard=s0 (sd35=0, wan22=7, total=7)
+Set TORCH_CUDA_ARCH_LIST to 8.0
+Set TORCH_CUDA_ARCH_LIST to 8.0
+Set TORCH_CUDA_ARCH_LIST to 8.0
+Set TORCH_CUDA_ARCH_LIST to 8.0
+Set TORCH_CUDA_ARCH_LIST to 8.0
+Set TORCH_CUDA_ARCH_LIST to 8.0
+Set TORCH_CUDA_ARCH_LIST to 8.0
+Set TORCH_CUDA_ARCH_LIST to 8.0
+`torch_dtype` is deprecated! Use `dtype` instead!
+Loading checkpoint shards:   0%|          | 0/5 [00:00<?, ?it/s]Loading checkpoint shards:  20%|██        | 1/5 [00:04<00:18,  4.71s/it]Loading checkpoint shards:  40%|████      | 2/5 [00:09<00:14,  4.71s/it]Loading checkpoint shards:  60%|██████    | 3/5 [00:14<00:09,  4.73s/it]Loading checkpoint shards:  80%|████████  | 4/5 [00:19<00:04,  4.78s/it]Loading checkpoint shards: 100%|██████████| 5/5 [00:21<00:00,  4.06s/it]Loading checkpoint shards: 100%|██████████| 5/5 [00:21<00:00,  4.36s/it]
+Loading checkpoint shards:   0%|          | 0/5 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/5 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/5 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/5 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/5 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/5 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/5 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/5 [00:00<?, ?it/s]Loading checkpoint shards:  20%|██        | 1/5 [00:04<00:19,  4.97s/it]Loading checkpoint shards:  20%|██        | 1/5 [00:04<00:19,  4.85s/it]Loading checkpoint shards:  20%|██        | 1/5 [00:04<00:19,  4.97s/it]Loading checkpoint shards:  20%|██        | 1/5 [00:04<00:19,  4.95s/it]Loading checkpoint shards:  20%|██        | 1/5 [00:04<00:19,  4.98s/it]Loading checkpoint shards:  20%|██        | 1/5 [00:05<00:21,  5.26s/it]Loading checkpoint shards:  20%|██        | 1/5 [00:04<00:19,  4.78s/it]Loading checkpoint shards:  20%|██        | 1/5 [00:04<00:19,  4.92s/it]Loading checkpoint shards:  40%|████      | 2/5 [00:10<00:15,  5.29s/it]Loading checkpoint shards:  40%|████      | 2/5 [00:10<00:16,  5.46s/it]Loading checkpoint shards:  40%|████      | 2/5 [00:10<00:15,  5.32s/it]Loading checkpoint shards:  40%|████      | 2/5 [00:10<00:16,  5.34s/it]Loading checkpoint shards:  40%|████      | 2/5 [00:10<00:16,  5.34s/it]Loading checkpoint shards:  40%|████      | 2/5 [00:10<00:15,  5.33s/it]Loading checkpoint shards:  40%|████      | 2/5 [00:10<00:15,  5.26s/it]Loading checkpoint shards:  40%|████      | 2/5 [00:10<00:16,  5.34s/it]Loading checkpoint shards:  60%|██████    | 3/5 [00:16<00:10,  5.41s/it]Loading checkpoint shards:  60%|██████    | 3/5 [00:16<00:10,  5.40s/it]Loading checkpoint shards:  60%|██████    | 3/5 [00:16<00:10,  5.41s/it]Loading checkpoint shards:  60%|██████    | 3/5 [00:16<00:10,  5.42s/it]Loading checkpoint shards:  60%|██████    | 3/5 [00:16<00:10,  5.48s/it]Loading checkpoint shards:  60%|██████    | 3/5 [00:15<00:10,  5.37s/it]Loading checkpoint shards:  60%|██████    | 3/5 [00:16<00:10,  5.41s/it]Loading checkpoint shards:  60%|██████    | 3/5 [00:15<00:10,  5.39s/it]Loading checkpoint shards:  80%|████████  | 4/5 [00:21<00:05,  5.42s/it]Loading checkpoint shards:  80%|████████  | 4/5 [00:21<00:05,  5.42s/it]Loading checkpoint shards:  80%|████████  | 4/5 [00:21<00:05,  5.39s/it]Loading checkpoint shards:  80%|████████  | 4/5 [00:21<00:05,  5.41s/it]Loading checkpoint shards:  80%|████████  | 4/5 [00:21<00:05,  5.42s/it]Loading checkpoint shards:  80%|████████  | 4/5 [00:21<00:05,  5.40s/it]Loading checkpoint shards:  80%|████████  | 4/5 [00:21<00:05,  5.42s/it]Loading checkpoint shards:  80%|████████  | 4/5 [00:21<00:05,  5.46s/it]Loading checkpoint shards: 100%|██████████| 5/5 [00:22<00:00,  3.63s/it]Loading checkpoint shards: 100%|██████████| 5/5 [00:21<00:00,  3.60s/it]Loading checkpoint shards: 100%|██████████| 5/5 [00:22<00:00,  4.44s/it]
+Loading checkpoint shards: 100%|██████████| 5/5 [00:21<00:00,  4.37s/it]
+Loading checkpoint shards: 100%|██████████| 5/5 [00:21<00:00,  3.61s/it]Loading checkpoint shards: 100%|██████████| 5/5 [00:21<00:00,  4.38s/it]
+Loading checkpoint shards: 100%|██████████| 5/5 [00:21<00:00,  3.61s/it]Loading checkpoint shards: 100%|██████████| 5/5 [00:21<00:00,  3.60s/it]Loading checkpoint shards: 100%|██████████| 5/5 [00:21<00:00,  4.38s/it]
+Loading checkpoint shards: 100%|██████████| 5/5 [00:21<00:00,  4.36s/it]
+Loading checkpoint shards: 100%|██████████| 5/5 [00:21<00:00,  3.59s/it]Loading checkpoint shards: 100%|██████████| 5/5 [00:21<00:00,  3.61s/it]Loading checkpoint shards: 100%|██████████| 5/5 [00:21<00:00,  4.38s/it]
+Loading checkpoint shards: 100%|██████████| 5/5 [00:21<00:00,  4.34s/it]
+Loading checkpoint shards: 100%|██████████| 5/5 [00:21<00:00,  3.61s/it]Loading checkpoint shards: 100%|██████████| 5/5 [00:21<00:00,  4.38s/it]
+INFO 11-16 09:41:20 [config.py:207] Pipeline patch number not set, using default value 1
+INFO 11-16 09:41:20 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)
+DEBUG 11-16 09:41:20 [compat.py:39] xfuser has no installed metadata; not checking diffusers version
+INFO 11-16 09:41:21 [config.py:207] Pipeline patch number not set, using default value 1
+INFO 11-16 09:41:21 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)
+DEBUG 11-16 09:41:21 [compat.py:39] xfuser has no installed metadata; not checking diffusers version
+INFO 11-16 09:41:22 [config.py:207] Pipeline patch number not set, using default value 1
+INFO 11-16 09:41:22 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)
+DEBUG 11-16 09:41:22 [compat.py:39] xfuser has no installed metadata; not checking diffusers version
+INFO 11-16 09:41:22 [config.py:207] Pipeline patch number not set, using default value 1
+INFO 11-16 09:41:22 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)
+DEBUG 11-16 09:41:22 [compat.py:39] xfuser has no installed metadata; not checking diffusers version
+INFO 11-16 09:41:22 [config.py:207] Pipeline patch number not set, using default value 1
+INFO 11-16 09:41:22 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)
+DEBUG 11-16 09:41:22 [compat.py:39] xfuser has no installed metadata; not checking diffusers version
+INFO 11-16 09:41:23 [config.py:207] Pipeline patch number not set, using default value 1
+INFO 11-16 09:41:23 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)
+DEBUG 11-16 09:41:23 [compat.py:39] xfuser has no installed metadata; not checking diffusers version
+INFO 11-16 09:41:24 [config.py:207] Pipeline patch number not set, using default value 1
+INFO 11-16 09:41:24 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)
+DEBUG 11-16 09:41:24 [compat.py:39] xfuser has no installed metadata; not checking diffusers version
+INFO 11-16 09:41:25 [config.py:207] Pipeline patch number not set, using default value 1
+INFO 11-16 09:41:25 [config.py:209] attn_layer_num_for_pp set, splitting attention layersto (None,)
+DEBUG 11-16 09:41:25 [compat.py:39] xfuser has no installed metadata; not checking diffusers version
+WARNING 11-16 09:41:25 [logger.py:126] Using SDPA_FLASH as attention backend.
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][Wan2.2] Ready in 58.3s (blocks=30, in_ch=48, spatial_stride=16, expand_ts=True, configs=7)
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][Wan2.2] 720p sp1 (gpus=1) in 323.9s | step_mean=4622.3ms step_tCV=0.17% xPrompt_CV=0.37% blk_tCV=0.89% blk_sCV=0.18% hbm=12.86GiB
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][Wan2.2] 720p sp2 (gpus=2) in 262.8s | step_mean=3745.3ms step_tCV=0.17% xPrompt_CV=0.20% blk_tCV=0.78% blk_sCV=0.50% hbm=11.57GiB
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][Wan2.2] 720p sp4 (gpus=4) in 218.2s | step_mean=3103.8ms step_tCV=0.16% xPrompt_CV=0.23% blk_tCV=0.46% blk_sCV=0.41% hbm=10.93GiB
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][Wan2.2] 720p sp8 (gpus=8) in 128.8s | step_mean=1815.6ms step_tCV=0.35% xPrompt_CV=0.57% blk_tCV=0.61% blk_sCV=0.71% hbm=10.60GiB
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][Wan2.2] 720p cfg2 (gpus=2) in 162.3s | step_mean=2317.2ms step_tCV=0.13% xPrompt_CV=0.28% blk_tCV=0.77% blk_sCV=0.23% hbm=12.86GiB
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][Wan2.2] 720p cfg2sp2 (gpus=4) in 164.5s | step_mean=2355.8ms step_tCV=1.14% xPrompt_CV=1.56% blk_tCV=1.49% blk_sCV=0.87% hbm=11.58GiB
+/opt/venv/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
+  return func(*args, **kwargs)
+[Progress][Wan2.2] 720p cfg2sp4 (gpus=8) in 109.6s | step_mean=1559.8ms step_tCV=0.05% xPrompt_CV=0.05% blk_tCV=0.31% blk_sCV=0.20% hbm=10.93GiB
+# Motivation Step & Block Predictability (CV%) Report — Shard `s0` (`d20261116-mot-cv-s0-8gpu-720da72-r1`)
+
+- **Timestamp (UTC)**: `2026-11-16T10:04:15+00:00`
+- **Host / Hardware**: `d20261116-mot-cv-s0-8gpu-720da72-r1-master-0` — `8x NVIDIA A100-PCIE-40GB`
+- **Build**: `720da72`
+- **Completed Configs**: `0`
+
+| Modality | Model | Resolution | Form | GPUs | Step Mean (ms) | Step P99/P50 | Step Temporal CV (%) | Cross-Prompt Step CV (%) | Block Mean (ms) | Block Temporal CV Mean / P95 / Max (%) | Block Spatial CV All / Homog (%) | Peak HBM (GiB) |
+| :--- | :--- | :--- | :--- | :---: | ---: | ---: | ---: | ---: | ---: | :---: | :---: | ---: |
+

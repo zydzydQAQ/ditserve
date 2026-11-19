@@ -1,0 +1,43 @@
+{
+  "schema": "ditserve.mot-block-step-cv.v1",
+  "run_id": "d20261116-mot-cv-s0-8gpu-720da72-r1",
+  "build": "720da72",
+  "shard": "s0",
+  "expected_configs": 7,
+  "completed_configs": 0,
+  "hostname": "d20261116-mot-cv-s0-8gpu-720da72-r1-master-0",
+  "gpu_name": "NVIDIA A100-PCIE-40GB",
+  "world_size": 8,
+  "timestamp_utc": "2026-11-16T10:04:15+00:00",
+  "prompts": {
+    "image_diffusiondb": [
+      {
+        "sample_id": "diffusiondb-80e644a1-bc4c-4fb9-98bb-c0e9ddace880.png",
+        "prompt": "a photo of a snow owl! and grizzly bear hybrid creature concept "
+      },
+      {
+        "sample_id": "diffusiondb-399a7e35-6644-409b-a248-a6967da44d15.png",
+        "prompt": "lovers being pulled apart across space & time, photorealistic by michael komarck, greg rutkowski, victo ngai, artgerm, willem claesz heda and j. dickenson "
+      },
+      {
+        "sample_id": "diffusiondb-07c5ee65-7ba0-4363-b508-380736dee0ca.png",
+        "prompt": "photo illustration comics painting of small scifi machine shop in a shipping container, scifi, cyberpunk, neon lighting, noir, digital photography, intricate detail, 8 k, volumetric lighting, artstation "
+      }
+    ],
+    "video_vidprom": [
+      {
+        "sample_id": "vidprom-58f6cd3d-5443-5b3b-a8b5-225e64b0581a",
+        "prompt": "Nature Peony Garden Japan  "
+      },
+      {
+        "sample_id": "vidprom-6aedf182-06b7-57dc-bf15-40162b2d041c",
+        "prompt": "girl lo-fi studyng at desk, warm lights, rainy outside  "
+      },
+      {
+        "sample_id": "vidprom-89be7e11-6b97-5e7d-8b84-cc12b6fed891",
+        "prompt": "wood cabin living room with a christmas tree and a working fireplace with big fire. Snow falling inside the room. Looped animation -ar 16:9  "
+      }
+    ]
+  },
+  "configs": []
+}

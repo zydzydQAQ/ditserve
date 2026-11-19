@@ -1,0 +1,145 @@
+{
+  "component_paths": {
+    "*": "wan22"
+  },
+  "files": [
+    {
+      "bytes": 17633,
+      "path": "README.md",
+      "sha256": "b7120bb210ab14defe6cabd7ac4bf568d0f5fde42f88ea4ac3cfec9516dc2c0c"
+    },
+    {
+      "bytes": 499,
+      "path": "model_index.json",
+      "sha256": "6a72faeb564b0e894aea8fc4ef27241106eb739e8584e869b61589a65473add7"
+    },
+    {
+      "bytes": 820,
+      "path": "scheduler/scheduler_config.json",
+      "sha256": "571a3eed68bcd943a61b9fea8efa9e141472216ada59f928c8b5128ce24b32e0"
+    },
+    {
+      "bytes": 855,
+      "path": "text_encoder/config.json",
+      "sha256": "a2bcb24699f6c009a2427432bdd483ef8b2b42a712abc9503759cdc77d171f07"
+    },
+    {
+      "bytes": 4935812536,
+      "path": "text_encoder/model-00001-of-00003.safetensors",
+      "sha256": "a8e861969c7433e707cc5a74065d795d36cca07ec96eb6763eb4083df7248f58"
+    },
+    {
+      "bytes": 4983103192,
+      "path": "text_encoder/model-00002-of-00003.safetensors",
+      "sha256": "d57d948ece4837d850b7a859a4415121d57cacf8b9ee1d4db200c67f592902d7"
+    },
+    {
+      "bytes": 1442935480,
+      "path": "text_encoder/model-00003-of-00003.safetensors",
+      "sha256": "0da9ee284e21d1406df708788db1d502d95d75f69faa25cd26151bf8829b7c5f"
+    },
+    {
+      "bytes": 22476,
+      "path": "text_encoder/model.safetensors.index.json",
+      "sha256": "31c4c7bcce679eaa0dd4667462394ddb013dc2f748e0bffc893dc9146a320dab"
+    },
+    {
+      "bytes": 7079,
+      "path": "tokenizer/special_tokens_map.json",
+      "sha256": "456b58fd240a06c743a7c2cf8008bec501240d68ebd1fc4018ea569505fea270"
+    },
+    {
+      "bytes": 4548313,
+      "path": "tokenizer/spiece.model",
+      "sha256": "e3909a67b780650b35cf529ac782ad2b6b26e6d1f849d3fbb6a872905f452458"
+    },
+    {
+      "bytes": 16837459,
+      "path": "tokenizer/tokenizer.json",
+      "sha256": "20a46ac256746594ed7e1e3ef733b83fbc5a6f0922aa7480eda961743de080ef"
+    },
+    {
+      "bytes": 61758,
+      "path": "tokenizer/tokenizer_config.json",
+      "sha256": "1d8d2a216bf8e70ac15b7ddcea566c4dd0433c024b39a58ca5e4c66bd78defbd"
+    },
+    {
+      "bytes": 495,
+      "path": "transformer/config.json",
+      "sha256": "dc00d9866e72cf77db6b531aaa33be4dc7148fef9338442bd0ae9181f7075e9b"
+    },
+    {
+      "bytes": 4978254344,
+      "path": "transformer/diffusion_pytorch_model-00001-of-00005.safetensors",
+      "sha256": "511bec832a201caa410d09c5ce7dbbf8ad2708c345d82038f684fc74cce982be"
+    },
+    {
+      "bytes": 4846784976,
+      "path": "transformer/diffusion_pytorch_model-00002-of-00005.safetensors",
+      "sha256": "7c42724912b1911429125dc50c0e9a49ccbada5a601b657d4ed2e15e7597c193"
+    },
+    {
+      "bytes": 4972658392,
+      "path": "transformer/diffusion_pytorch_model-00003-of-00005.safetensors",
+      "sha256": "e9c3d0c76de786566382f8258101fea973ae37681c6e9fe0e5fe1fb93b806424"
+    },
+    {
+      "bytes": 4846785080,
+      "path": "transformer/diffusion_pytorch_model-00004-of-00005.safetensors",
+      "sha256": "a331121771790939678db6f585553fd5184609f7d02593c699a4d241b0d834c5"
+    },
+    {
+      "bytes": 354751840,
+      "path": "transformer/diffusion_pytorch_model-00005-of-00005.safetensors",
+      "sha256": "78b655685c47efdb2349f36826bb101264e9f212a16325d584aeb5f53c88e719"
+    },
+    {
+      "bytes": 73297,
+      "path": "transformer/diffusion_pytorch_model.safetensors.index.json",
+      "sha256": "d6c1f72d86fbddef8fb5ef1c03f5b56b2bfdb6ae58032db98c6019fd1dae9021"
+    },
+    {
+      "bytes": 1701,
+      "path": "vae/config.json",
+      "sha256": "d996c340fe9a7df5d7371f76a7d8d6956f6c98256080074d8434fa5eeac11360"
+    },
+    {
+      "bytes": 2818777808,
+      "path": "vae/diffusion_pytorch_model.safetensors",
+      "sha256": "62cd18f19438e35b32ac63020e2852f566e9b02f46b6cdbd87972a356e3c6f4b"
+    }
+  ],
+  "model": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+  "qualification_scope": "official source and transferred bytes verified; numerical and GPU qualification pending",
+  "revision": "b8fff7315c768468a5333511427288870b2e9635",
+  "runtime_verification": "worker must hash every actual model file before loading",
+  "schema": "ditserve.model-manifest.v1",
+  "snapshot_kind": "official_runtime_subset",
+  "source": {
+    "official_upstream_metadata": {
+      "bytes": 9272,
+      "file": "models/upstream/wan22.json",
+      "sha256": "f7c70329ee38a8060b640194953844854c9a51bd729c40d85cfaa59bd1ba9d07"
+    },
+    "reviewed_handoff_plan": {
+      "bytes": 6438,
+      "file": "wan22-official-component-plan.json",
+      "sha256": "0c321f8e35a666b7aae5bbbf56fa8ef5cc630cd227546cc4eaed9ee292d085a1"
+    },
+    "verified_download_receipt": {
+      "bytes": 2252,
+      "file": "wan22-component-download.json",
+      "sha256": "b978738b39f464415015c26be3293642bdcfc9970d555aa36ea2e10685479d7a"
+    },
+    "verified_reuse_receipt": {
+      "bytes": 4152,
+      "file": "models/official-reuse-receipt.json",
+      "sha256": "10c50f13333921a9d669d964a62f1d5b01873de1361c7c3b11fc258e5c04803d"
+    },
+    "verified_upload_receipt": {
+      "bytes": 2274,
+      "file": "wan22-component-upload.json",
+      "sha256": "6282eccad0c383f84ee0b1b5fa010e35fd8ba04e3b9eb08cbe6bb965b568a686"
+    }
+  }
+}

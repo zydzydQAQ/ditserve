@@ -1,0 +1,17 @@
+{
+ "commit": "3878f018d3da99c0fd7526c2435d8d16fd927e8e",
+ "subject": "control: add 5-rung cumulative design staircase and multi-GPU CB slack guard",
+ "built_utc": "2026-11-16T22:58:10+00:00",
+ "builder_image": "cluster-cmake-install",
+ "runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "tested_runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "core_sha256": "0dcb5f73e15ccf00fcca5622893587e65170439e37515980bdb6224ed969ad35",
+ "runtime_smoke": "passed_cluster",
+ "local_checks": [
+  "cmake",
+  "ctest",
+  "installed_doctor"
+ ],
+ "files": 269,
+ "bytes": 5566570
+}

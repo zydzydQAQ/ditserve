@@ -1,0 +1,272 @@
+== kairos_val_sd35_cb_flashps.sh run=d20261115-val-sd35-cb-flashps-65ed8f3-r2 host=d20261115-val-sd35-cb-flashps-65ed8f3-r2-master-0 2026-11-15T13:36:01+00:00
+build=65ed8f3 core=069b1a1dc6650737 package=/shared/code/DITSERVE/builds/65ed8f3/share/ditserve
+ditserve 0.4.0
+GPU 0: NVIDIA A100-PCIE-40GB (UUID: GPU-7bb0920b-6181-9486-380c-042e9fe68433)
+Filesystem                           Size  Used Avail Use% Mounted on
+tmpfs                                 32G     0   32G   0% /dev/shm
+192.168.1.114:/data/share/jjjkairos  1.0T  787G  237G  77% /shared
+memlock=8192 nproc=8 cgroup_memory_max=68719476736
+== running 5 Python functional domain test suites
+  test_domain_control.py: 22 passed (13.671s)
+  test_domain_block_executor.py: 6 passed (0.148s)
+  test_domain_memory.py: 8 passed (1.527s)
+  test_domain_collectives.py: 7 passed (1.15s)
+reused_calibration_bundle=/tmp/ditserve-ut-TestCalibrationBundlePro-h3ny8ou5/candidate-bundle.json sha256=425176489fc3eb9f2fa919b62e333fb1dd380603eaa92aeba81ca40cebd29092 calibration_match_mode=exact_uuid
+reused_calibration_bundle=/tmp/ditserve-ut-TestCalibrationBundlePro-h3ny8ou5/candidate-bundle.json sha256=425176489fc3eb9f2fa919b62e333fb1dd380603eaa92aeba81ca40cebd29092 calibration_match_mode=homogeneous_topology_signature gpu_count=8 gpu_model=NVIDIA A100-PCIE-40GB
+{"output": "/tmp/ditserve-ut-TestAbsoluteRateServing.-02y7f65a/serving-rate-08.json", "sha256": "ea3903eb24e70985370ea469ebea21e163d2324d46f6337ebb6906b36bc8e070", "scientific_qualification": "pending"}
+{"output": "/tmp/ditserve-ut-TestAbsoluteRateServing.-02y7f65a/serving-load-1p75.json", "sha256": "80d79923587eee9153d147b4b58daaede3c85fbd9e401883e4d07c635d673c44", "scientific_qualification": "pending"}
+usage: - [-h] [--split SPLIT] [--seed SEED]
+         [--load LOAD | --rate-rpm RATE_RPM] [--video-fraction VIDEO_FRACTION]
+         [--slo-scale SLO_SCALE]
+         [--resolution-distribution RESOLUTION_DISTRIBUTION] [--cv CV]
+         [--pattern PATTERN] [--suite SUITE] [--policies POLICIES]
+         [--num-gpus {2,4,6,8,16}] [--diagnostic DIAGNOSTIC]
+         [--allow-Cross-uuid]
+-: error: argument --rate-rpm: not allowed with argument --load
+  test_domain_archive.py: 12 passed (0.883s)
+domain_suites: {"returncode": 1, "elapsed_s": 17.379, "passed": 55, "failed_count": 8, "suites": ["test_domain_control.py", "test_domain_block_executor.py", "test_domain_memory.py", "test_domain_collectives.py", "test_domain_archive.py"], "per_suite": {"test_domain_control.py": {"passed": 22, "elapsed_s": 13.671}, "test_domain_block_executor.py": {"passed": 6, "elapsed_s": 0.148}, "test_domain_memory.py": {"passed": 8, "elapsed_s": 1.527}, "test_domain_collectives.py": {"passed": 7, "elapsed_s": 1.15}, "test_domain_archive.py": {"passed": 12, "elapsed_s": 0.883}}, "summary_lines": ["8 failed, 55 passed in 17.379s"]}
+FAIL: test_domain_block_executor.py::TestWanBlockExecutorAndContinuationState::test_substep_quanta_match_full_step_and_interleaved_branches: mat1 and mat2 must have the same dtype, but got Half and Float
+Traceback (most recent call last):
+  File "/tmp/ditserve-simtests-d20261115-val-sd35-cb-flashps-65ed8f3-r2/run_domain_suites.py", line 302, in main
+    _call_with_fixtures(bound, f"{name}.{mname}")
+  File "/tmp/ditserve-simtests-d20261115-val-sd35-cb-flashps-65ed8f3-r2/run_domain_suites.py", line 230, in _call_with_fixtures
+    fn(**kwargs)
+  File "/shared/code/DITSERVE/builds/.src-65ed8f3/tests/python/test_domain_block_executor.py", line 318, in test_substep_quanta_match_full_step_and_interleaved_branches
+    rec = ex_ref.advance(cont_ref, blocks=q)
+  File "/shared/code/DITSERVE/builds/.src-65ed8f3/workers/ditserve/models/wan/block.py", line 584, in advance
+    completed = self._finish_branch(state)
+  File "/shared/code/DITSERVE/builds/.src-65ed8f3/workers/ditserve/models/wan/block.py", line 460, in _finish_branch
+    prediction = self._prediction(state.packet)
+  File "/shared/code/DITSERVE/builds/.src-65ed8f3/workers/ditserve/models/wan/block.py", line 445, in _prediction
+    hidden = model.proj_out(hidden)
+  File "/opt/venv/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/opt/venv/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/opt/venv/lib/python3.10/site-packages/torch/nn/modules/linear.py", line 134, in forward
+    return F.linear(input, self.weight, self.bias)
+RuntimeError: mat1 and mat2 must have the same dtype, but got Half and Float
+
+FAIL: test_domain_block_executor.py::TestWanBlockExecutorAndContinuationState::test_continuation_packet_export_import_and_sha256_tamper_rejection: mat1 and mat2 must have the same dtype, but got Half and Float
+Traceback (most recent call last):
+  File "/tmp/ditserve-simtests-d20261115-val-sd35-cb-flashps-65ed8f3-r2/run_domain_suites.py", line 302, in main
+    _call_with_fixtures(bound, f"{name}.{mname}")
+  File "/tmp/ditserve-simtests-d20261115-val-sd35-cb-flashps-65ed8f3-r2/run_domain_suites.py", line 230, in _call_with_fixtures
+    fn(**kwargs)
+  File "/shared/code/DITSERVE/builds/.src-65ed8f3/tests/python/test_domain_block_executor.py", line 356, in test_continuation_packet_export_import_and_sha256_tamper_rejection
+    ex_ref.advance(cont_ref, blocks=16)
+  File "/shared/code/DITSERVE/builds/.src-65ed8f3/workers/ditserve/models/wan/block.py", line 584, in advance
+    completed = self._finish_branch(state)
+  File "/shared/code/DITSERVE/builds/.src-65ed8f3/workers/ditserve/models/wan/block.py", line 460, in _finish_branch
+    prediction = self._prediction(state.packet)
+  File "/shared/code/DITSERVE/builds/.src-65ed8f3/workers/ditserve/models/wan/block.py", line 445, in _prediction
+    hidden = model.proj_out(hidden)
+  File "/opt/venv/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/opt/venv/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/opt/venv/lib/python3.10/site-packages/torch/nn/modules/linear.py", line 134, in forward
+    return F.linear(input, self.weight, self.bias)
+RuntimeError: mat1 and mat2 must have the same dtype, but got Half and Float
+
+FAIL: test_domain_block_executor.py::TestWanBlockExecutorAndContinuationState::test_cfg_fold_state_crosses_worker_boundary_via_export_import: mat1 and mat2 must have the same dtype, but got Half and Float
+Traceback (most recent call last):
+  File "/tmp/ditserve-simtests-d20261115-val-sd35-cb-flashps-65ed8f3-r2/run_domain_suites.py", line 302, in main
+    _call_with_fixtures(bound, f"{name}.{mname}")
+  File "/tmp/ditserve-simtests-d20261115-val-sd35-cb-flashps-65ed8f3-r2/run_domain_suites.py", line 230, in _call_with_fixtures
+    fn(**kwargs)
+  File "/shared/code/DITSERVE/builds/.src-65ed8f3/tests/python/test_domain_block_executor.py", line 397, in test_cfg_fold_state_crosses_worker_boundary_via_export_import
+    ex_src.advance(cont_src, blocks=16, cfg_folded=False)
+  File "/shared/code/DITSERVE/builds/.src-65ed8f3/workers/ditserve/models/wan/block.py", line 584, in advance
+    completed = self._finish_branch(state)
+  File "/shared/code/DITSERVE/builds/.src-65ed8f3/workers/ditserve/models/wan/block.py", line 460, in _finish_branch
+    prediction = self._prediction(state.packet)
+  File "/shared/code/DITSERVE/builds/.src-65ed8f3/workers/ditserve/models/wan/block.py", line 445, in _prediction
+    hidden = model.proj_out(hidden)
+  File "/opt/venv/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/opt/venv/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/opt/venv/lib/python3.10/site-packages/torch/nn/modules/linear.py", line 134, in forward
+    return F.linear(input, self.weight, self.bias)
+RuntimeError: mat1 and mat2 must have the same dtype, but got Half and Float
+
+FAIL: test_domain_block_executor.py::TestWanBlockExecutorAndContinuationState::test_one_tick_delayed_doorbell_stop_and_resume_parity: mat1 and mat2 must have the same dtype, but got Half and Float
+Traceback (most recent call last):
+  File "/tmp/ditserve-simtests-d20261115-val-sd35-cb-flashps-65ed8f3-r2/run_domain_suites.py", line 302, in main
+    _call_with_fixtures(bound, f"{name}.{mname}")
+  File "/tmp/ditserve-simtests-d20261115-val-sd35-cb-flashps-65ed8f3-r2/run_domain_suites.py", line 230, in _call_with_fixtures
+    fn(**kwargs)
+  File "/shared/code/DITSERVE/builds/.src-65ed8f3/tests/python/test_domain_block_executor.py", line 421, in test_one_tick_delayed_doorbell_stop_and_resume_parity
+    ex_ref.advance(cont_ref, blocks=16)
+  File "/shared/code/DITSERVE/builds/.src-65ed8f3/workers/ditserve/models/wan/block.py", line 584, in advance
+    completed = self._finish_branch(state)
+  File "/shared/code/DITSERVE/builds/.src-65ed8f3/workers/ditserve/models/wan/block.py", line 460, in _finish_branch
+    prediction = self._prediction(state.packet)
+  File "/shared/code/DITSERVE/builds/.src-65ed8f3/workers/ditserve/models/wan/block.py", line 445, in _prediction
+    hidden = model.proj_out(hidden)
+  File "/opt/venv/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/opt/venv/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/opt/venv/lib/python3.10/site-packages/torch/nn/modules/linear.py", line 134, in forward
+    return F.linear(input, self.weight, self.bias)
+RuntimeError: mat1 and mat2 must have the same dtype, but got Half and Float
+
+FAIL: test_domain_block_executor.py::TestSD35RaggedBatchingAndChunkedDecode::test_chunked_decode_parity_interleaved_isolation_and_async_decoder: Can't call numpy() on Tensor that requires grad. Use tensor.detach().numpy() instead.
+Traceback (most recent call last):
+  File "/tmp/ditserve-simtests-d20261115-val-sd35-cb-flashps-65ed8f3-r2/run_domain_suites.py", line 302, in main
+    _call_with_fixtures(bound, f"{name}.{mname}")
+  File "/tmp/ditserve-simtests-d20261115-val-sd35-cb-flashps-65ed8f3-r2/run_domain_suites.py", line 230, in _call_with_fixtures
+    fn(**kwargs)
+  File "/shared/code/DITSERVE/builds/.src-65ed8f3/tests/python/test_domain_block_executor.py", line 1011, in test_chunked_decode_parity_interleaved_isolation_and_async_decoder
+    expected = decode_final_latent(torch, pipe, latent)
+  File "/shared/code/DITSERVE/builds/.src-65ed8f3/workers/ditserve/models/pipeline.py", line 163, in decode_final_latent
+    array = pipe.video_processor.postprocess_video(video, output_type="np")
+  File "/shared/code/DITSERVE/builds/.src-65ed8f3/tests/python/test_domain_block_executor.py", line 1006, in postprocess_video
+    return video.permute(0, 2, 3, 4, 1).numpy()
+RuntimeError: Can't call numpy() on Tensor that requires grad. Use tensor.detach().numpy() instead.
+
+FAIL: test_domain_memory.py::TestTieredStatePoolAndRefreshCertificate::test_refresh_certificate_step_end_latent_only_migration_reduction: unsupported storage at solver.timesteps
+Traceback (most recent call last):
+  File "/tmp/ditserve-simtests-d20261115-val-sd35-cb-flashps-65ed8f3-r2/run_domain_suites.py", line 302, in main
+    _call_with_fixtures(bound, f"{name}.{mname}")
+  File "/tmp/ditserve-simtests-d20261115-val-sd35-cb-flashps-65ed8f3-r2/run_domain_suites.py", line 230, in _call_with_fixtures
+    fn(**kwargs)
+  File "/shared/code/DITSERVE/builds/.src-65ed8f3/tests/python/test_domain_memory.py", line 687, in test_refresh_certificate_step_end_latent_only_migration_reduction
+    full_manifest, full_tensors = pack_request(
+  File "/shared/code/DITSERVE/builds/.src-65ed8f3/workers/ditserve/models/wan/migration.py", line 206, in pack_request
+    base, tensors = _base_pack(worker, state)
+  File "/shared/code/DITSERVE/builds/.src-65ed8f3/workers/ditserve/models/wan/migration.py", line 137, in _base_pack
+    return pack_cache_off_request(_BaseView(worker, state, shadow), shadow)
+  File "/shared/code/DITSERVE/builds/.src-65ed8f3/workers/ditserve/models/wan/parallel.py", line 770, in pack_cache_off_request
+    tensor("solver." + name, scheduler[name])
+  File "/shared/code/DITSERVE/builds/.src-65ed8f3/workers/ditserve/models/wan/parallel.py", line 759, in tensor
+    raise ParallelContractError("unsupported storage at " + name)
+ditserve.models.wan.parallel.ParallelContractError: unsupported storage at solver.timesteps
+
+FAIL: test_domain_memory.py::TestLosslessUMT5TruncationAndNegativePromptCache::test_lossless_umt5_valid_token_truncation_max_abs_diff_zero: pytest.__spec__ is None
+Traceback (most recent call last):
+  File "/tmp/ditserve-simtests-d20261115-val-sd35-cb-flashps-65ed8f3-r2/run_domain_suites.py", line 302, in main
+    _call_with_fixtures(bound, f"{name}.{mname}")
+  File "/tmp/ditserve-simtests-d20261115-val-sd35-cb-flashps-65ed8f3-r2/run_domain_suites.py", line 230, in _call_with_fixtures
+    fn(**kwargs)
+  File "/shared/code/DITSERVE/builds/.src-65ed8f3/tests/python/test_domain_memory.py", line 809, in test_lossless_umt5_valid_token_truncation_max_abs_diff_zero
+    trimmed_out, active_seq_len = pool._encode_single_wan_text_trimmed(
+  File "/shared/code/DITSERVE/builds/.src-65ed8f3/workers/ditserve/models/encoder_pool.py", line 346, in _encode_single_wan_text_trimmed
+    from diffusers.pipelines.wan.pipeline_wan import prompt_clean
+  File "/opt/venv/lib/python3.10/site-packages/diffusers/pipelines/wan/pipeline_wan.py", line 20, in <module>
+    from transformers import AutoTokenizer, UMT5EncoderModel
+  File "/opt/venv/lib/python3.10/site-packages/transformers/__init__.py", line 27, in <module>
+    from . import dependency_versions_check
+  File "/opt/venv/lib/python3.10/site-packages/transformers/dependency_versions_check.py", line 16, in <module>
+    from .utils.versions import require_version, require_version_core
+  File "/opt/venv/lib/python3.10/site-packages/transformers/utils/__init__.py", line 24, in <module>
+    from .auto_docstring import (
+  File "/opt/venv/lib/python3.10/site-packages/transformers/utils/auto_docstring.py", line 30, in <module>
+    from .generic import ModelOutput
+  File "/opt/venv/lib/python3.10/site-packages/transformers/utils/generic.py", line 34, in <module>
+    from .import_utils import (
+  File "/opt/venv/lib/python3.10/site-packages/transformers/utils/import_utils.py", line 205, in <module>
+    _pytest_available = _is_package_available("pytest")
+  File "/opt/venv/lib/python3.10/site-packages/transformers/utils/import_utils.py", line 47, in _is_package_available
+    package_exists = importlib.util.find_spec(pkg_name) is not None
+  File "/usr/local/lib/python3.10/importlib/util.py", line 114, in find_spec
+    raise ValueError('{}.__spec__ is None'.format(name))
+ValueError: pytest.__spec__ is None
+
+FAIL: test_domain_collectives.py::TestCFG2xSPHybridParallelAndUlyssesCollectives::test_layout_handle_lockstep_pairing_and_ulysses_all_to_all_override: Failed to import diffusers.pipelines.pipeline_utils because of the following error (look up to see its traceback):
+Failed to import diffusers.models.autoencoders.autoencoder_kl because of the following error (look up to see its traceback):
+pytest.__spec__ is None
+Traceback (most recent call last):
+  File "/opt/venv/lib/python3.10/site-packages/diffusers/utils/import_utils.py", line 1016, in _get_module
+    return importlib.import_module("." + module_name, self.__name__)
+  File "/usr/local/lib/python3.10/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+  File "<frozen importlib._bootstrap>", line 1050, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 992, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1050, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1006, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 688, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 883, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/opt/venv/lib/python3.10/site-packages/diffusers/models/autoencoders/__init__.py", line 1, in <module>
+    from .autoencoder_asym_kl import AsymmetricAutoencoderKL
+  File "/opt/venv/lib/python3.10/site-packages/diffusers/models/autoencoders/autoencoder_asym_kl.py", line 22, in <module>
+    from ..modeling_utils import ModelMixin
+  File "/opt/venv/lib/python3.10/site-packages/diffusers/models/modeling_utils.py", line 41, in <module>
+    from ..quantizers import DiffusersAutoQuantizer, DiffusersQuantizer
+  File "/opt/venv/lib/python3.10/site-packages/diffusers/quantizers/__init__.py", line 18, in <module>
+    from .pipe_quant_config import PipelineQuantizationConfig
+  File "/opt/venv/lib/python3.10/site-packages/diffusers/quantizers/pipe_quant_config.py", line 23, in <module>
+    from transformers.utils.quantization_config import QuantizationConfigMixin as TransformersQuantConfigMixin
+  File "/opt/venv/lib/python3.10/site-packages/transformers/__init__.py", line 27, in <module>
+    from . import dependency_versions_check
+  File "/opt/venv/lib/python3.10/site-packages/transformers/dependency_versions_check.py", line 16, in <module>
+    from .utils.versions import require_version, require_version_core
+  File "/opt/venv/lib/python3.10/site-packages/transformers/utils/__init__.py", line 24, in <module>
+    from .auto_docstring import (
+  File "/opt/venv/lib/python3.10/site-packages/transformers/utils/auto_docstring.py", line 30, in <module>
+    from .generic import ModelOutput
+  File "/opt/venv/lib/python3.10/site-packages/transformers/utils/generic.py", line 34, in <module>
+    from .import_utils import (
+  File "/opt/venv/lib/python3.10/site-packages/transformers/utils/import_utils.py", line 205, in <module>
+    _pytest_available = _is_package_available("pytest")
+  File "/opt/venv/lib/python3.10/site-packages/transformers/utils/import_utils.py", line 47, in _is_package_available
+    package_exists = importlib.util.find_spec(pkg_name) is not None
+  File "/usr/local/lib/python3.10/importlib/util.py", line 114, in find_spec
+    raise ValueError('{}.__spec__ is None'.format(name))
+ValueError: pytest.__spec__ is None
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/opt/venv/lib/python3.10/site-packages/diffusers/utils/import_utils.py", line 1016, in _get_module
+    return importlib.import_module("." + module_name, self.__name__)
+  File "/usr/local/lib/python3.10/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+  File "<frozen importlib._bootstrap>", line 1050, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1006, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 688, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 883, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/opt/venv/lib/python3.10/site-packages/diffusers/pipelines/pipeline_utils.py", line 47, in <module>
+    from ..models import AutoencoderKL
+  File "<frozen importlib._bootstrap>", line 1075, in _handle_fromlist
+  File "/opt/venv/lib/python3.10/site-packages/diffusers/utils/import_utils.py", line 1006, in __getattr__
+    module = self._get_module(self._class_to_module[name])
+  File "/opt/venv/lib/python3.10/site-packages/diffusers/utils/import_utils.py", line 1018, in _get_module
+    raise RuntimeError(
+RuntimeError: Failed to import diffusers.models.autoencoders.autoencoder_kl because of the following error (look up to see its traceback):
+pytest.__spec__ is None
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/tmp/ditserve-simtests-d20261115-val-sd35-cb-flashps-65ed8f3-r2/run_domain_suites.py", line 302, in main
+    _call_with_fixtures(bound, f"{name}.{mname}")
+  File "/tmp/ditserve-simtests-d20261115-val-sd35-cb-flashps-65ed8f3-r2/run_domain_suites.py", line 230, in _call_with_fixtures
+    fn(**kwargs)
+  File "/shared/code/DITSERVE/builds/.src-65ed8f3/tests/python/test_domain_collectives.py", line 349, in test_layout_handle_lockstep_pairing_and_ulysses_all_to_all_override
+    import xfuser.core.distributed  # noqa: F401
+  File "/shared/code/DITSERVE/builds/.src-65ed8f3/workers/xfuser/__init__.py", line 2, in <module>
+    from xfuser.model_executor.pipelines import (
+  File "/shared/code/DITSERVE/builds/.src-65ed8f3/workers/xfuser/model_executor/pipelines/__init__.py", line 1, in <module>
+    from .base_pipeline import xFuserPipelineBaseWrapper
+  File "/shared/code/DITSERVE/builds/.src-65ed8f3/workers/xfuser/model_executor/pipelines/base_pipeline.py", line 10, in <module>
+    from diffusers import DiffusionPipeline
+  File "<frozen importlib._bootstrap>", line 1075, in _handle_fromlist
+  File "/opt/venv/lib/python3.10/site-packages/diffusers/utils/import_utils.py", line 1007, in __getattr__
+    value = getattr(module, name)
+  File "/opt/venv/lib/python3.10/site-packages/diffusers/utils/import_utils.py", line 1006, in __getattr__
+    module = self._get_module(self._class_to_module[name])
+  File "/opt/venv/lib/python3.10/site-packages/diffusers/utils/import_utils.py", line 1018, in _get_module
+    raise RuntimeError(
+RuntimeError: Failed to import diffusers.pipelines.pipeline_utils because of the following error (look up to see its traceback):
+Failed to import diffusers.models.autoencoders.autoencoder_kl because of the following error (look up to see its traceback):
+pytest.__spec__ is None
+

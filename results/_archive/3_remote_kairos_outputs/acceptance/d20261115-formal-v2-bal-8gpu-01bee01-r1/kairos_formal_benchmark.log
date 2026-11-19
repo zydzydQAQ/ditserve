@@ -1,0 +1,189 @@
+== kairos_formal_benchmark.sh run=d20261115-formal-v2-bal-8gpu-01bee01-r1 host=d20261115-formal-v2-bal-8gpu-01bee01-r1-master-0 2026-11-15T14:45:17+00:00
+build=01bee01 core=e19718803c044d60 package=/shared/code/DITSERVE/builds/01bee01/share/ditserve
+ditserve 0.4.0
+/shared/data/DITSERVE/scripts/releases/01bee01/benchmarks/formal_benchmark.py: OK
+serving_operator=/shared/data/DITSERVE/scripts/releases/01bee01/benchmarks compiler_sha256=9b8b64471cbb1f30eda877b6aa7239c2df5424c2d4f35385c724d095efddfdc1
+Filesystem                           Size  Used Avail Use% Mounted on
+192.168.1.114:/data/share/jjjkairos  1.0T  787G  237G  77% /shared
+{"output": "/shared/output/DITSERVE/acceptance/d20261115-formal-v2-bal-8gpu-01bee01-r1/input-preflight.json", "sha256": "9be8f4d04db6305c096ad03a253146b229b53cd43947f7e7eb3744da64a3f838", "scientific_qualification": "pending"}
+{
+  "output": "/shared/output/DITSERVE/acceptance/d20261115-formal-v2-bal-8gpu-01bee01-r1/runtime-facts.json",
+  "gpus": [
+    "0, GPU-afb5ebb2-a584-abce-e912-6cd50477f4bb, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "1, GPU-c2195fc4-0579-e149-dcd5-8f912dfb44c2, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "2, GPU-a331a424-15be-fa45-6b08-d951d2dce277, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "3, GPU-6c6892f8-1aa0-4c8f-d1ec-bc514adcbd42, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "4, GPU-9bd9082d-b7d4-f4de-cd0a-5788492a5247, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "5, GPU-bb1751f0-c0e1-a4e8-ae83-008e4246cced, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "6, GPU-979da027-ad90-4f70-6203-0e86fce22d4c, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "7, GPU-e6a7b9a6-b668-5e8d-5989-b9934c468d94, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0"
+  ],
+  "packages": {
+    "torch": "2.10.0+cu126",
+    "diffusers": "0.36.0",
+    "transformers": "4.57.6",
+    "cache-dit": "1.5.0",
+    "accelerate": "1.12.0",
+    "safetensors": "0.8.0",
+    "numpy": "2.2.6"
+  },
+  "models": {
+    "Wan2.1-T2V-1.3B": {
+      "model_class": "WanPipeline",
+      "transformer_class": "WanTransformer3DModel",
+      "num_layers": 30,
+      "num_attention_heads": 12
+    },
+    "Wan2.2-TI2V-5B": {
+      "model_class": "WanPipeline",
+      "transformer_class": "WanTransformer3DModel",
+      "num_layers": 30,
+      "num_attention_heads": 24
+    },
+    "SD3.5-Medium": {
+      "model_class": "StableDiffusion3Pipeline",
+      "transformer_class": "SD3Transformer2DModel",
+      "num_layers": 24,
+      "num_attention_heads": 24
+    }
+  }
+}
+reused_calibration_bundle=/shared/output/DITSERVE/acceptance/d20261106-formal-v2-wan22-b1-21a1ca3-r1/bundle.json sha256=94c3238aee42925b57eb10dc1ad086c656db280cfba5c079b0a53d195aa62ff6 calibration_match_mode=exact_uuid
+{"output": "/shared/output/DITSERVE/acceptance/d20261115-formal-v2-bal-8gpu-01bee01-r1/serving-anchor-cb.json", "sha256": "cd27d06deee8911caaee5104b0e71b38fc471e3021194aa9869276f4d9b5af4b", "scientific_qualification": "pending"}
+Filesystem                           Size  Used Avail Use% Mounted on
+192.168.1.114:/data/share/jjjkairos  1.0T  787G  237G  77% /shared
+{
+  "archive": {
+    "deleted": 0,
+    "format": "ditserve.results-summary.v1",
+    "load_ms": 0.0,
+    "raw_re_evaluable": false,
+    "raw_re_evaluated": false,
+    "reclaimed_bytes": 0,
+    "report": "/shared/output/DITSERVE/results/formal-wan22-test-poisson-s301-l1p75-v0p5-slo1p5-ablation/d20261115-formal-v2-bal-8gpu-01bee01-r1-anchor-cb/20261115-d20261115-formal-v2-bal-8gpu-01bee01-r1-anchor-cb.md",
+    "results_usage": {
+      "allocated_bytes": 16384,
+      "bytes": 12462,
+      "files": 2
+    },
+    "resumable": false,
+    "retained": 0,
+    "scope": "summary checksum and report consistency; aggregates only, no scientific qualification",
+    "status": "completed",
+    "summary": "/shared/output/DITSERVE/results/formal-wan22-test-poisson-s301-l1p75-v0p5-slo1p5-ablation/d20261115-formal-v2-bal-8gpu-01bee01-r1-anchor-cb/summary.json",
+    "summary_sha256": "b90c8f972a221ba6163b952d4a259ab68c1d50daa5a3b769b9f716ceb65654a7",
+    "work_dir": "/shared/output/DITSERVE/.cache/results-work/formal-wan22-test-poisson-s301-l1p75-v0p5-slo1p5-ablation/d20261115-formal-v2-bal-8gpu-01bee01-r1-anchor-cb",
+    "work_usage": {
+      "allocated_bytes": 29204480,
+      "bytes": 28607809,
+      "files": 249
+    },
+    "worker_operation_ms": 2773.9571016281843
+  },
+  "failures": [],
+  "metrics": {
+    "communication_p50_ms": null,
+    "communication_p99_ms": null,
+    "completed": 100,
+    "control_ms": 0.0,
+    "deadline_attainment": 0.95,
+    "denominator": "all frozen requests, including failed and blocked",
+    "failed": 0,
+    "incomplete": 0,
+    "latency_p50_ms": 15087.141917512985,
+    "latency_p95_ms": 369617.4554040615,
+    "model_ms": 3560286.617785734,
+    "observation_count": 1,
+    "observation_ms": 947274.4950801134,
+    "ontime": 95,
+    "qualification_status": "unverified",
+    "qualification_verified_requests": 0,
+    "qualified_goodput_rps": null,
+    "qualified_ontime": 0,
+    "requests": 100
+  },
+  "run_id": "d20261115-formal-v2-bal-8gpu-01bee01-r1-anchor-cb",
+  "status": "completed"
+}
+{
+  "format": "ditserve.results-summary.v1",
+  "load_ms": 0.0,
+  "raw_re_evaluable": false,
+  "raw_re_evaluated": false,
+  "report": "/shared/output/DITSERVE/results/formal-wan22-test-poisson-s301-l1p75-v0p5-slo1p5-ablation/d20261115-formal-v2-bal-8gpu-01bee01-r1-anchor-cb/20261115-d20261115-formal-v2-bal-8gpu-01bee01-r1-anchor-cb.md",
+  "resumable": false,
+  "scope": "summary checksum and report consistency; aggregates only, no scientific qualification",
+  "status": "verified",
+  "summary": "/shared/output/DITSERVE/results/formal-wan22-test-poisson-s301-l1p75-v0p5-slo1p5-ablation/d20261115-formal-v2-bal-8gpu-01bee01-r1-anchor-cb/summary.json",
+  "summary_sha256": "7c522066aa53cb75b2e76ab97249eeb11d0393a284d615463272db37cb80b0c2",
+  "worker_operation_ms": 24.528589099645615
+}
+{"output": "/shared/output/DITSERVE/acceptance/d20261115-formal-v2-bal-8gpu-01bee01-r1/serving-gamma2-cb.json", "sha256": "084755ac7b1af0c9e4218fe7f669e8b959fd0da214cb08b17ef7f4e3c4b8d996", "scientific_qualification": "pending"}
+Filesystem                           Size  Used Avail Use% Mounted on
+192.168.1.114:/data/share/jjjkairos  1.0T  787G  237G  77% /shared
+{
+  "archive": {
+    "deleted": 0,
+    "format": "ditserve.results-summary.v1",
+    "load_ms": 0.0,
+    "raw_re_evaluable": false,
+    "raw_re_evaluated": false,
+    "reclaimed_bytes": 0,
+    "report": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation/d20261115-formal-v2-bal-8gpu-01bee01-r1-gamma2-cb/20261115-d20261115-formal-v2-bal-8gpu-01bee01-r1-gamma2-cb.md",
+    "results_usage": {
+      "allocated_bytes": 16384,
+      "bytes": 12554,
+      "files": 2
+    },
+    "resumable": false,
+    "retained": 0,
+    "scope": "summary checksum and report consistency; aggregates only, no scientific qualification",
+    "status": "completed",
+    "summary": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation/d20261115-formal-v2-bal-8gpu-01bee01-r1-gamma2-cb/summary.json",
+    "summary_sha256": "802f49ecb745f1b0168dc3cff0854ac68882fff178741b230d8ae4a6b93d4df6",
+    "work_dir": "/shared/output/DITSERVE/.cache/results-work/formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation/d20261115-formal-v2-bal-8gpu-01bee01-r1-gamma2-cb",
+    "work_usage": {
+      "allocated_bytes": 29106176,
+      "bytes": 28508860,
+      "files": 249
+    },
+    "worker_operation_ms": 2821.3497567921877
+  },
+  "failures": [],
+  "metrics": {
+    "communication_p50_ms": null,
+    "communication_p99_ms": null,
+    "completed": 100,
+    "control_ms": 0.0,
+    "deadline_attainment": 0.92,
+    "denominator": "all frozen requests, including failed and blocked",
+    "failed": 0,
+    "incomplete": 0,
+    "latency_p50_ms": 17783.952848075016,
+    "latency_p95_ms": 735430.64832938,
+    "model_ms": 3585847.1541210213,
+    "observation_count": 1,
+    "observation_ms": 979113.8041708618,
+    "ontime": 92,
+    "qualification_status": "unverified",
+    "qualification_verified_requests": 0,
+    "qualified_goodput_rps": null,
+    "qualified_ontime": 0,
+    "requests": 100
+  },
+  "run_id": "d20261115-formal-v2-bal-8gpu-01bee01-r1-gamma2-cb",
+  "status": "completed"
+}
+{
+  "format": "ditserve.results-summary.v1",
+  "load_ms": 0.0,
+  "raw_re_evaluable": false,
+  "raw_re_evaluated": false,
+  "report": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation/d20261115-formal-v2-bal-8gpu-01bee01-r1-gamma2-cb/20261115-d20261115-formal-v2-bal-8gpu-01bee01-r1-gamma2-cb.md",
+  "resumable": false,
+  "scope": "summary checksum and report consistency; aggregates only, no scientific qualification",
+  "status": "verified",
+  "summary": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation/d20261115-formal-v2-bal-8gpu-01bee01-r1-gamma2-cb/summary.json",
+  "summary_sha256": "9086746f27a0e2d066fc65d810dc1cec576f58938af213d41871a6a60758eef4",
+  "worker_operation_ms": 24.608064442873
+}

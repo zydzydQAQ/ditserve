@@ -1,0 +1,72 @@
+{
+  "schema": "ditserve.archive.sbpc2-and-soak.v1",
+  "date": "2026-11-16",
+  "build_commit": "720da72e883a6995de79a56df971d0cdf15c538f",
+  "core_sha256": "5fca839ebbb3e2df6c966a767dad7bfb638730ed01a9626dae27d63d4e3a9d44",
+  "runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+  "calibration_bundle_sha256": "3d838143675930045036f31ef7b9441751cb0cd2c00c0cdd1bfce3105f23e569",
+  "kairos_jobs": [
+    "d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1",
+    "d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1"
+  ],
+  "completed_batch_cells": 34,
+  "completed_soak_cells": 3,
+  "sbp_c2_means_sar_pct": {
+    "5.2_Modality_Mix_Scale": {
+      "poisson": 86.6,
+      "gamma_cv2": 79.8
+    },
+    "5.3_Rate_Scale": {
+      "poisson": 81.75,
+      "gamma_cv2": 70.75
+    },
+    "5.4_SLO_Scale": {
+      "poisson": 72.6,
+      "gamma_cv2": 65.0
+    }
+  },
+  "abl_no_cb_720da72": {
+    "poisson_sar_pct": 94.0,
+    "gamma_cv2_sar_pct": 93.0
+  },
+  "soak_5phase_500req": {
+    "overall_500req_sar_pct": {
+      "TetriServe": 66.6,
+      "SBP+c2": 71.6,
+      "DitServe": 85.4
+    },
+    "phase_sar_pct": {
+      "P1": {
+        "TetriServe": 74.0,
+        "SBP+c2": 82.0,
+        "DitServe": 91.0
+      },
+      "P2": {
+        "TetriServe": 52.5,
+        "SBP+c2": 58.33,
+        "DitServe": 70.83
+      },
+      "P3": {
+        "TetriServe": 74.0,
+        "SBP+c2": 79.0,
+        "DitServe": 97.0
+      },
+      "P4": {
+        "TetriServe": 67.5,
+        "SBP+c2": 63.75,
+        "DitServe": 77.5
+      },
+      "P5": {
+        "TetriServe": 68.0,
+        "SBP+c2": 76.0,
+        "DitServe": 92.0
+      }
+    },
+    "ditserve_drift_slope_mb_per_hr": {
+      "hbm_mean": 1166.2382,
+      "shm_used": -3.4935,
+      "host_rss": 3584.1554
+    },
+    "oom_events": 0
+  }
+}

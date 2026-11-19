@@ -1,0 +1,141 @@
+{
+  "component_paths": {
+    "*": "wan21"
+  },
+  "files": [
+    {
+      "bytes": 4924,
+      "path": "MODEL_MANIFEST.json",
+      "sha256": "b9f914ec6c0a3639438bed76f45c4ad8e1bad834f93a8352c5b8f0156ee6258b"
+    },
+    {
+      "bytes": 18116,
+      "path": "README.md",
+      "sha256": "816554be63d52aceaf640948c87ae0888887846ee2d2cdcc48231b3322089e37"
+    },
+    {
+      "bytes": 400,
+      "path": "model_index.json",
+      "sha256": "b8b28e022329acf975e027579a1d2dc3de44dba28f4c909b98a880fbf5b0de7d"
+    },
+    {
+      "bytes": 751,
+      "path": "scheduler/scheduler_config.json",
+      "sha256": "3fed2abbd9bbc301a74db01947198057ec5049808910dccab320925bf27bea6e"
+    },
+    {
+      "bytes": 854,
+      "path": "text_encoder/config.json",
+      "sha256": "4087b6192155a4643f6d29fd326c4610103130674011ef4d0a53f8bce5de967d"
+    },
+    {
+      "bytes": 4972389712,
+      "path": "text_encoder/model-00001-of-00005.safetensors",
+      "sha256": "c0ef3a140898e228a3520c9adec60743d2e8e5b3d229651bb37f1a3921919f99"
+    },
+    {
+      "bytes": 4899225672,
+      "path": "text_encoder/model-00002-of-00005.safetensors",
+      "sha256": "481c7b2b39771c44df6dd8d13ee12ed072d731b4a650bd092885d4d52db229ad"
+    },
+    {
+      "bytes": 4966309504,
+      "path": "text_encoder/model-00003-of-00005.safetensors",
+      "sha256": "f93148bcc04052a169e1e49bfcf6125df6cf9bf243cb9c627da75266cf8e35c3"
+    },
+    {
+      "bytes": 4999880704,
+      "path": "text_encoder/model-00004-of-00005.safetensors",
+      "sha256": "a451792c739c05bca4606190cc2dd16731411bac03b4cf6aacc5767321f857c9"
+    },
+    {
+      "bytes": 2885866152,
+      "path": "text_encoder/model-00005-of-00005.safetensors",
+      "sha256": "7e76e18d224531b8197a46231cb53daf7f2f6ca707130252becf933026ac4eea"
+    },
+    {
+      "bytes": 22476,
+      "path": "text_encoder/model.safetensors.index.json",
+      "sha256": "8af791f24a6447aa30c95786f40adf23d3c9df97470d2f36159c8f1113f120b4"
+    },
+    {
+      "bytes": 7079,
+      "path": "tokenizer/special_tokens_map.json",
+      "sha256": "456b58fd240a06c743a7c2cf8008bec501240d68ebd1fc4018ea569505fea270"
+    },
+    {
+      "bytes": 4548313,
+      "path": "tokenizer/spiece.model",
+      "sha256": "e3909a67b780650b35cf529ac782ad2b6b26e6d1f849d3fbb6a872905f452458"
+    },
+    {
+      "bytes": 16837459,
+      "path": "tokenizer/tokenizer.json",
+      "sha256": "20a46ac256746594ed7e1e3ef733b83fbc5a6f0922aa7480eda961743de080ef"
+    },
+    {
+      "bytes": 61758,
+      "path": "tokenizer/tokenizer_config.json",
+      "sha256": "1d8d2a216bf8e70ac15b7ddcea566c4dd0433c024b39a58ca5e4c66bd78defbd"
+    },
+    {
+      "bytes": 465,
+      "path": "transformer/config.json",
+      "sha256": "0b093fa072e9ff28763febe9b964ee582f566733a6d6709deb9dfba1bde16b81"
+    },
+    {
+      "bytes": 4998781576,
+      "path": "transformer/diffusion_pytorch_model-00001-of-00002.safetensors",
+      "sha256": "6d011927dbd2cc8afe53d57abab04a8fd86f615d83324770d985fb058ece3a24"
+    },
+    {
+      "bytes": 677289072,
+      "path": "transformer/diffusion_pytorch_model-00002-of-00002.safetensors",
+      "sha256": "b92ec2309b1f239af6f746431815a881afcc938abb26a4f08d9a2fd6c892f872"
+    },
+    {
+      "bytes": 73296,
+      "path": "transformer/diffusion_pytorch_model.safetensors.index.json",
+      "sha256": "dcbcf3497134a3f50557ff069dd7d2c84b5c4d8c5932472f6bdb780fb4016589"
+    },
+    {
+      "bytes": 724,
+      "path": "vae/config.json",
+      "sha256": "f0c1cc1d7decb5badc384f54691746a27a9aeff49f7ebca974e583389342d527"
+    },
+    {
+      "bytes": 507591892,
+      "path": "vae/diffusion_pytorch_model.safetensors",
+      "sha256": "d6e524b3fffede1787a74e81b30976dce5400c4439ba64222168e607ed19e793"
+    }
+  ],
+  "model": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+  "qualification_scope": "intended upstream identity checked; numerical and runtime qualification pending",
+  "revision": "0fad780a534b6463e45facd96134c9f345acfa5b",
+  "runtime_verification": "pending; worker must hash every actual model file before loading",
+  "schema": "ditserve.model-manifest.v1",
+  "snapshot_kind": "official_runtime_subset",
+  "source": {
+    "bounded_metadata_observation": {
+      "bytes": 15898,
+      "file": "models/remote-metadata-check.json",
+      "sha256": "45e1252637e862cf24d88bf8fdb36a1cf1c35d4d7ca91f1eac7a034b61c46338"
+    },
+    "components": {
+      "wan21": {
+        "repository": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+        "revision": "0fad780a534b6463e45facd96134c9f345acfa5b",
+        "upstream_metadata": {
+          "bytes": 9496,
+          "file": "models/upstream/wan21.json",
+          "sha256": "99140be10a97358ec6575f8ceb7802b56419822b8495d4d274dab40e01d6d2d7"
+        }
+      }
+    },
+    "prior_handoff_manifest": {
+      "bytes": 4924,
+      "file": "models/wan21.original.json",
+      "sha256": "b9f914ec6c0a3639438bed76f45c4ad8e1bad834f93a8352c5b8f0156ee6258b"
+    }
+  }
+}

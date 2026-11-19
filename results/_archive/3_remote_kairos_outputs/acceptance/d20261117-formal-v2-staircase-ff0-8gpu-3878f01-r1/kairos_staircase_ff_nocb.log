@@ -1,0 +1,187 @@
+== kairos_staircase_ff_nocb.sh run=d20261117-formal-v2-staircase-ff0-8gpu-3878f01-r1 host=d20261117-formal-v2-staircase-ff0-8gpu-3878f01-r1-master-0 2026-11-17T00:17:48+00:00
+build=3878f01 core=0dcb5f73e15ccf00 package=/shared/code/DITSERVE/builds/3878f01/share/ditserve
+ditserve 0.4.0
+{"output": "/shared/output/DITSERVE/acceptance/d20261117-formal-v2-staircase-ff0-8gpu-3878f01-r1/input-preflight.json", "sha256": "9be8f4d04db6305c096ad03a253146b229b53cd43947f7e7eb3744da64a3f838", "scientific_qualification": "pending"}
+{
+  "output": "/shared/output/DITSERVE/acceptance/d20261117-formal-v2-staircase-ff0-8gpu-3878f01-r1/runtime-facts.json",
+  "gpus": [
+    "0, GPU-afb5ebb2-a584-abce-e912-6cd50477f4bb, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "1, GPU-c2195fc4-0579-e149-dcd5-8f912dfb44c2, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "2, GPU-a331a424-15be-fa45-6b08-d951d2dce277, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "3, GPU-6c6892f8-1aa0-4c8f-d1ec-bc514adcbd42, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "4, GPU-9bd9082d-b7d4-f4de-cd0a-5788492a5247, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "5, GPU-bb1751f0-c0e1-a4e8-ae83-008e4246cced, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "6, GPU-979da027-ad90-4f70-6203-0e86fce22d4c, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "7, GPU-e6a7b9a6-b668-5e8d-5989-b9934c468d94, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0"
+  ],
+  "packages": {
+    "torch": "2.10.0+cu126",
+    "diffusers": "0.36.0",
+    "transformers": "4.57.6",
+    "cache-dit": "1.5.0",
+    "accelerate": "1.12.0",
+    "safetensors": "0.8.0",
+    "numpy": "2.2.6"
+  },
+  "models": {
+    "Wan2.1-T2V-1.3B": {
+      "model_class": "WanPipeline",
+      "transformer_class": "WanTransformer3DModel",
+      "num_layers": 30,
+      "num_attention_heads": 12
+    },
+    "Wan2.2-TI2V-5B": {
+      "model_class": "WanPipeline",
+      "transformer_class": "WanTransformer3DModel",
+      "num_layers": 30,
+      "num_attention_heads": 24
+    },
+    "SD3.5-Medium": {
+      "model_class": "StableDiffusion3Pipeline",
+      "transformer_class": "SD3Transformer2DModel",
+      "num_layers": 24,
+      "num_attention_heads": 24
+    }
+  }
+}
+Wrote /shared/output/DITSERVE/acceptance/d20261117-formal-v2-staircase-ff0-8gpu-3878f01-r1/serving-ff0-p.json formal-wan22-test-poisson-s301-r76rpm-v0p3-slo1p25-ff0-p
+Wrote /shared/output/DITSERVE/acceptance/d20261117-formal-v2-staircase-ff0-8gpu-3878f01-r1/serving-ff0-g2.json formal-wan22-test-gamma-s301-r76rpm-v0p3-slo1p25-ff0-g2
+Filesystem                           Size  Used Avail Use% Mounted on
+192.168.1.114:/data/share/jjjkairos  1.0T  790G  235G  78% /shared
+== running id=d20261117-formal-v2-staircase-ff0-8gpu-3878f01-r1-ff0-p experiment=formal-wan22-test-poisson-s301-r76rpm-v0p3-slo1p25-ff0-p (2026-11-17T00:17:56+00:00)
+{
+  "archive": {
+    "deleted": 0,
+    "format": "ditserve.results-summary.v1",
+    "load_ms": 0.0,
+    "raw_re_evaluable": false,
+    "raw_re_evaluated": false,
+    "reclaimed_bytes": 0,
+    "report": "/shared/output/DITSERVE/results/formal-wan22-test-poisson-s301-r76rpm-v0p3-slo1p25-ff0-p/d20261117-formal-v2-staircase-ff0-8gpu-3878f01-r1-ff0-p/20261117-d20261117-formal-v2-staircase-ff0-8gpu-3878f01-r1-ff0-p.md",
+    "results_usage": {
+      "allocated_bytes": 16384,
+      "bytes": 12337,
+      "files": 2
+    },
+    "resumable": false,
+    "retained": 0,
+    "scope": "summary checksum and report consistency; aggregates only, no scientific qualification",
+    "status": "completed",
+    "summary": "/shared/output/DITSERVE/results/formal-wan22-test-poisson-s301-r76rpm-v0p3-slo1p25-ff0-p/d20261117-formal-v2-staircase-ff0-8gpu-3878f01-r1-ff0-p/summary.json",
+    "summary_sha256": "603978d12bc3e8207f6fc8f4341224b33d4a204bfabec5886cc8453be36a3b03",
+    "work_dir": "/shared/output/DITSERVE/.cache/results-work/formal-wan22-test-poisson-s301-r76rpm-v0p3-slo1p25-ff0-p/d20261117-formal-v2-staircase-ff0-8gpu-3878f01-r1-ff0-p",
+    "work_usage": {
+      "allocated_bytes": 18354176,
+      "bytes": 17755881,
+      "files": 249
+    },
+    "worker_operation_ms": 1641.7695712298155
+  },
+  "failures": [],
+  "metrics": {
+    "communication_p50_ms": null,
+    "communication_p99_ms": null,
+    "completed": 100,
+    "control_ms": 0.0,
+    "deadline_attainment": 0.58,
+    "denominator": "all frozen requests, including failed and blocked",
+    "failed": 0,
+    "incomplete": 0,
+    "latency_p50_ms": 15561.912201173209,
+    "latency_p95_ms": 448550.4290211225,
+    "model_ms": 2509392.0768282283,
+    "observation_count": 1,
+    "observation_ms": 625309.0358842164,
+    "ontime": 58,
+    "qualification_status": "unverified",
+    "qualification_verified_requests": 0,
+    "qualified_goodput_rps": null,
+    "qualified_ontime": 0,
+    "requests": 100
+  },
+  "run_id": "d20261117-formal-v2-staircase-ff0-8gpu-3878f01-r1-ff0-p",
+  "status": "completed"
+}
+{
+  "format": "ditserve.results-summary.v1",
+  "load_ms": 0.0,
+  "raw_re_evaluable": false,
+  "raw_re_evaluated": false,
+  "report": "/shared/output/DITSERVE/results/formal-wan22-test-poisson-s301-r76rpm-v0p3-slo1p25-ff0-p/d20261117-formal-v2-staircase-ff0-8gpu-3878f01-r1-ff0-p/20261117-d20261117-formal-v2-staircase-ff0-8gpu-3878f01-r1-ff0-p.md",
+  "resumable": false,
+  "scope": "summary checksum and report consistency; aggregates only, no scientific qualification",
+  "status": "verified",
+  "summary": "/shared/output/DITSERVE/results/formal-wan22-test-poisson-s301-r76rpm-v0p3-slo1p25-ff0-p/d20261117-formal-v2-staircase-ff0-8gpu-3878f01-r1-ff0-p/summary.json",
+  "summary_sha256": "ebd48e81d336d44d984a5f67d7e3177a2713ddc6d46eaa587a751952c35fa589",
+  "worker_operation_ms": 24.62790161371231
+}
+Filesystem                           Size  Used Avail Use% Mounted on
+192.168.1.114:/data/share/jjjkairos  1.0T  790G  235G  78% /shared
+== running id=d20261117-formal-v2-staircase-ff0-8gpu-3878f01-r1-ff0-g2 experiment=formal-wan22-test-gamma-s301-r76rpm-v0p3-slo1p25-ff0-g2 (2026-11-17T00:33:10+00:00)
+{
+  "archive": {
+    "deleted": 0,
+    "format": "ditserve.results-summary.v1",
+    "load_ms": 0.0,
+    "raw_re_evaluable": false,
+    "raw_re_evaluated": false,
+    "reclaimed_bytes": 0,
+    "report": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-r76rpm-v0p3-slo1p25-ff0-g2/d20261117-formal-v2-staircase-ff0-8gpu-3878f01-r1-ff0-g2/20261117-d20261117-formal-v2-staircase-ff0-8gpu-3878f01-r1-ff0-g2.md",
+    "results_usage": {
+      "allocated_bytes": 16384,
+      "bytes": 12322,
+      "files": 2
+    },
+    "resumable": false,
+    "retained": 0,
+    "scope": "summary checksum and report consistency; aggregates only, no scientific qualification",
+    "status": "completed",
+    "summary": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-r76rpm-v0p3-slo1p25-ff0-g2/d20261117-formal-v2-staircase-ff0-8gpu-3878f01-r1-ff0-g2/summary.json",
+    "summary_sha256": "392ea766bd679fd1f4401cf89db5b4cb8a6e9a43aed7ffe35731fa4e241bbbca",
+    "work_dir": "/shared/output/DITSERVE/.cache/results-work/formal-wan22-test-gamma-s301-r76rpm-v0p3-slo1p25-ff0-g2/d20261117-formal-v2-staircase-ff0-8gpu-3878f01-r1-ff0-g2",
+    "work_usage": {
+      "allocated_bytes": 19709952,
+      "bytes": 19110452,
+      "files": 249
+    },
+    "worker_operation_ms": 1810.6314800679684
+  },
+  "failures": [],
+  "metrics": {
+    "communication_p50_ms": null,
+    "communication_p99_ms": null,
+    "completed": 100,
+    "control_ms": 0.0,
+    "deadline_attainment": 0.46,
+    "denominator": "all frozen requests, including failed and blocked",
+    "failed": 0,
+    "incomplete": 0,
+    "latency_p50_ms": 17203.642287808965,
+    "latency_p95_ms": 448230.83151291026,
+    "model_ms": 2523075.91284235,
+    "observation_count": 1,
+    "observation_ms": 619488.9231715351,
+    "ontime": 46,
+    "qualification_status": "unverified",
+    "qualification_verified_requests": 0,
+    "qualified_goodput_rps": null,
+    "qualified_ontime": 0,
+    "requests": 100
+  },
+  "run_id": "d20261117-formal-v2-staircase-ff0-8gpu-3878f01-r1-ff0-g2",
+  "status": "completed"
+}
+{
+  "format": "ditserve.results-summary.v1",
+  "load_ms": 0.0,
+  "raw_re_evaluable": false,
+  "raw_re_evaluated": false,
+  "report": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-r76rpm-v0p3-slo1p25-ff0-g2/d20261117-formal-v2-staircase-ff0-8gpu-3878f01-r1-ff0-g2/20261117-d20261117-formal-v2-staircase-ff0-8gpu-3878f01-r1-ff0-g2.md",
+  "resumable": false,
+  "scope": "summary checksum and report consistency; aggregates only, no scientific qualification",
+  "status": "verified",
+  "summary": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-r76rpm-v0p3-slo1p25-ff0-g2/d20261117-formal-v2-staircase-ff0-8gpu-3878f01-r1-ff0-g2/summary.json",
+  "summary_sha256": "22347f9b209f5d2095d64eee2b9a21bfd9f49b21642d35d95dd4228b895398d1",
+  "worker_operation_ms": 24.688297882676125
+}
+== completed kairos_staircase_ff_nocb.sh run=d20261117-formal-v2-staircase-ff0-8gpu-3878f01-r1 (2026-11-17T00:46:57+00:00)

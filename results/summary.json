@@ -1,7 +1,8 @@
 {
   "schema": "ditserve.paper-results.index.v1",
-  "generated_date": "2026-11-16",
-  "latest_build_commit": "720da72",
+  "generated_date": "2026-11-19",
+  "latest_build_commit": "3878f01",
+  "main_matrix_build_commit": "720da72",
   "scalability_build_commit": "720da72",
   "container_image": "192.168.1.114:30500/jjjkairos/ditserve:external-serving-vllm-cu126-sm80-20261104-r3",
   "container_digest": "sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
@@ -83,6 +84,13 @@
       "latex_subsection": "Sustained Multi-Phase Stability",
       "latex_file": "body/05-evaluation.tex",
       "figures_and_tables": "500-Req 5-Phase Soak SLA & HBM/SHM/RSS Zero-Drift Telemetry"
+    },
+    {
+      "section": "5.9",
+      "directory": "5.9_Hardware_Generalizability_and_ISCA27_Supplements",
+      "latex_subsection": "Hardware Generalizability and ISCA27 Supplements",
+      "latex_file": "body/05-evaluation.tex",
+      "figures_and_tables": "Fig. 17 (3D Hardware Generalizability), Multi-Seed (301/302/303), Static-Part/xDiT-c2, 121f Elastic (>L*), Hyperparameter Sensitivity"
     }
   ],
   "headline_results": {
@@ -246,6 +254,44 @@
         "host_rss": 3584.1554
       },
       "oom_events": 0
+    },
+    "5.9_Hardware_Generalizability_and_ISCA27_Supplements": {
+      "provenance_jobs": [
+        "d20261117-rev-n0-8gpu-720da72-r1",
+        "d20261117-rev-n1-8gpu-720da72-r1"
+      ],
+      "multi_seed_301_302_303_sar_mean_std_pct": {
+        "poisson": {
+          "DitServe": [92.7, 4.2],
+          "SBP+c2": [83.0, 6.2],
+          "TetriServe": [76.0, 3.6],
+          "xDiT-c2": [57.7, 4.7]
+        },
+        "gamma_cv2": {
+          "DitServe": [91.7, 4.0],
+          "SBP+c2": [80.3, 1.5],
+          "TetriServe": [70.7, 3.1],
+          "xDiT-c2": [43.0, 6.1]
+        }
+      },
+      "anchor_static_baselines_sar_pct": {
+        "poisson": {
+          "DitServe": 96.0,
+          "Static-Part": 84.0,
+          "xDiT-c2": 54.0
+        },
+        "gamma_cv2": {
+          "DitServe": 94.0,
+          "Static-Part": 71.0,
+          "xDiT-c2": 36.0
+        }
+      },
+      "121f_720p_elastic_online_sar_pct": {
+        "DitServe": 50.0,
+        "SBP+c2": 16.7,
+        "ditserve_c2s2_widen_ratio": "4/6",
+        "ditserve_min_video_e2e_s": 213.4
+      }
     }
   }
 }

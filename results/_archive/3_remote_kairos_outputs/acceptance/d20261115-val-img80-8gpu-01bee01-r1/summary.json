@@ -1,0 +1,501 @@
+{
+  "schema": "ditserve.val-sd35-cb-flashps.v1",
+  "date": "20261115",
+  "verdict": "PASS",
+  "run_id": "d20261115-val-img80-8gpu-01bee01-r1",
+  "build": "01bee01",
+  "commit": "01bee016a3af27ca128a427d165a649c62c98d9a",
+  "core_sha256": "e19718803c044d609e8767f9b989d0c25fa21efb551e965566a5ad95f62a03b1",
+  "runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+  "gpu_name": "NVIDIA A100-PCIE-40GB",
+  "allocated_gpus": 8,
+  "torch_version": "2.10.0+cu126",
+  "cuda_version": "12.6",
+  "flash_attn_provider": "vllm_flash_attn",
+  "model_load_ms": 30455.6,
+  "gpu_memory_after_load": {
+    "allocated_mb": 6431.24,
+    "reserved_mb": 6436.0
+  },
+  "checks": {
+    "pytest_5_domains_passed": true,
+    "flash_attn_varlen_active": true,
+    "flash_attn_varlen_faster_than_grouped_sdpa": true,
+    "controller_admits_512_1024_and_blocks_512_1440": true,
+    "async_vae_eliminates_retire_stall": true,
+    "flashps_3stream_faster_than_sequential": true,
+    "cpu_t5_split_lossless_zero_diff": true,
+    "cpu_t5_split_faster_than_baseline": true,
+    "formal_mixed_v2_16gpu_4cells_completed": true
+  },
+  "pytest_domains": {
+    "returncode": 0,
+    "elapsed_s": 25.238,
+    "passed": 63,
+    "failed_count": 0,
+    "suites": [
+      "test_domain_control.py",
+      "test_domain_block_executor.py",
+      "test_domain_memory.py",
+      "test_domain_collectives.py",
+      "test_domain_archive.py"
+    ],
+    "per_suite": {
+      "test_domain_control.py": {
+        "passed": 22,
+        "elapsed_s": 14.806
+      },
+      "test_domain_block_executor.py": {
+        "passed": 11,
+        "elapsed_s": 0.729
+      },
+      "test_domain_memory.py": {
+        "passed": 10,
+        "elapsed_s": 8.081
+      },
+      "test_domain_collectives.py": {
+        "passed": 8,
+        "elapsed_s": 0.248
+      },
+      "test_domain_archive.py": {
+        "passed": 12,
+        "elapsed_s": 1.373
+      }
+    },
+    "summary_lines": [
+      "63 passed in 25.238s"
+    ]
+  },
+  "exp_a_packed_and_dilation": {
+    "packed_512_1024_kernel_comparison": {
+      "flash_attn_varlen_backend": "flash_attn_varlen",
+      "grouped_sdpa_backend": "grouped_sdpa",
+      "flash_attn_varlen_ms": {
+        "n": 12,
+        "p50_ms": 260.09,
+        "mean_ms": 260.027,
+        "p95_ms": 260.36,
+        "min_ms": 259.337,
+        "max_ms": 261.002
+      },
+      "grouped_sdpa_ms": {
+        "n": 12,
+        "p50_ms": 263.909,
+        "mean_ms": 263.878,
+        "p95_ms": 264.193,
+        "min_ms": 263.13,
+        "max_ms": 264.469
+      },
+      "kernel_speedup_p50_x": 1.015,
+      "parity_fa_vs_grouped_sdpa": {
+        "max_abs_diff": 0.03125,
+        "mean_abs_diff": 0.002512,
+        "min_cosine_sim": 0.9999941
+      },
+      "parity_fa_vs_solo_native": {
+        "max_abs_diff": 0.046875,
+        "mean_abs_diff": 0.003124,
+        "min_cosine_sim": 0.9999918
+      }
+    },
+    "solo_step_ms": {
+      "512": {
+        "n": 10,
+        "p50_ms": 61.064,
+        "mean_ms": 61.236,
+        "p95_ms": 67.846,
+        "min_ms": 58.701,
+        "max_ms": 67.846
+      },
+      "768": {
+        "n": 10,
+        "p50_ms": 114.015,
+        "mean_ms": 113.947,
+        "p95_ms": 114.326,
+        "min_ms": 113.05,
+        "max_ms": 114.326
+      },
+      "1024": {
+        "n": 10,
+        "p50_ms": 213.669,
+        "mean_ms": 213.767,
+        "p95_ms": 215.44,
+        "min_ms": 212.631,
+        "max_ms": 215.44
+      },
+      "1440": {
+        "n": 10,
+        "p50_ms": 494.403,
+        "mean_ms": 494.37,
+        "p95_ms": 495.717,
+        "min_ms": 493.046,
+        "max_ms": 495.717
+      }
+    },
+    "co_batch_pairs": [
+      {
+        "pair": "512x512+512x512",
+        "resolutions": [
+          512,
+          512
+        ],
+        "solo_a_p50_ms": 61.064,
+        "solo_b_p50_ms": 61.064,
+        "sum_solo_p50_ms": 122.128,
+        "co_batch_p50_ms": 106.551,
+        "net_gpu_step_saving_pct": 12.75,
+        "step_dilation_vs_smaller": 1.745,
+        "small_req_28step_solo_ms": 1709.8,
+        "small_req_28step_cobatched_ms": 2983.4,
+        "attention_backend": "flash_attn_varlen",
+        "padding_waste_eliminated_pct": 0.0,
+        "controller_guard_admits": true
+      },
+      {
+        "pair": "512x512+768x768",
+        "resolutions": [
+          512,
+          768
+        ],
+        "solo_a_p50_ms": 61.064,
+        "solo_b_p50_ms": 114.015,
+        "sum_solo_p50_ms": 175.079,
+        "co_batch_p50_ms": 164.515,
+        "net_gpu_step_saving_pct": 6.03,
+        "step_dilation_vs_smaller": 2.694,
+        "small_req_28step_solo_ms": 1709.8,
+        "small_req_28step_cobatched_ms": 4606.4,
+        "attention_backend": "flash_attn_varlen",
+        "padding_waste_eliminated_pct": 27.78,
+        "controller_guard_admits": true
+      },
+      {
+        "pair": "512x512+1024x1024",
+        "resolutions": [
+          512,
+          1024
+        ],
+        "solo_a_p50_ms": 61.064,
+        "solo_b_p50_ms": 213.669,
+        "sum_solo_p50_ms": 274.733,
+        "co_batch_p50_ms": 262.959,
+        "net_gpu_step_saving_pct": 4.29,
+        "step_dilation_vs_smaller": 4.306,
+        "small_req_28step_solo_ms": 1709.8,
+        "small_req_28step_cobatched_ms": 7362.9,
+        "attention_backend": "flash_attn_varlen",
+        "padding_waste_eliminated_pct": 37.5,
+        "controller_guard_admits": true
+      },
+      {
+        "pair": "512x512+1440x1440",
+        "resolutions": [
+          512,
+          1440
+        ],
+        "solo_a_p50_ms": 61.064,
+        "solo_b_p50_ms": 494.403,
+        "sum_solo_p50_ms": 555.467,
+        "co_batch_p50_ms": 540.466,
+        "net_gpu_step_saving_pct": 2.7,
+        "step_dilation_vs_smaller": 8.851,
+        "small_req_28step_solo_ms": 1709.8,
+        "small_req_28step_cobatched_ms": 15133.0,
+        "attention_backend": "flash_attn_varlen",
+        "padding_waste_eliminated_pct": 43.68,
+        "controller_guard_admits": false
+      },
+      {
+        "pair": "1024x1024+1024x1024",
+        "resolutions": [
+          1024,
+          1024
+        ],
+        "solo_a_p50_ms": 213.669,
+        "solo_b_p50_ms": 213.669,
+        "sum_solo_p50_ms": 427.338,
+        "co_batch_p50_ms": 414.241,
+        "net_gpu_step_saving_pct": 3.06,
+        "step_dilation_vs_smaller": 1.939,
+        "small_req_28step_solo_ms": 5982.7,
+        "small_req_28step_cobatched_ms": 11598.7,
+        "attention_backend": "flash_attn_varlen",
+        "padding_waste_eliminated_pct": 0.0,
+        "controller_guard_admits": true
+      },
+      {
+        "pair": "1024x1024+1440x1440",
+        "resolutions": [
+          1024,
+          1440
+        ],
+        "solo_a_p50_ms": 213.669,
+        "solo_b_p50_ms": 494.403,
+        "sum_solo_p50_ms": 708.072,
+        "co_batch_p50_ms": 693.788,
+        "net_gpu_step_saving_pct": 2.02,
+        "step_dilation_vs_smaller": 3.247,
+        "small_req_28step_solo_ms": 5982.7,
+        "small_req_28step_cobatched_ms": 19426.1,
+        "attention_backend": "flash_attn_varlen",
+        "padding_waste_eliminated_pct": 24.72,
+        "controller_guard_admits": true
+      }
+    ],
+    "controller_simulation_with_measured_profile": {
+      "pair_512_1024_batches": 28,
+      "pair_512_1024_mean_batch_size": 2.0,
+      "pair_512_1440_batches": 56,
+      "pair_512_1440_mean_batch_size": 1.0,
+      "pair_512_1440_i512_finish_ms": 1749.79
+    }
+  },
+  "exp_b_flashps_3stream": {
+    "standalone_1024_vae_decode_ms": {
+      "n": 3,
+      "p50_ms": 189.166,
+      "mean_ms": 189.162,
+      "p95_ms": 189.77,
+      "min_ms": 188.552,
+      "max_ms": 189.77
+    },
+    "b1_async_vae_overlap": {
+      "blocking_step4_retire_rpc_ms": {
+        "n": 4,
+        "p50_ms": 578.656,
+        "mean_ms": 579.234,
+        "p95_ms": 582.196,
+        "min_ms": 577.426,
+        "max_ms": 582.196
+      },
+      "async_step4_retire_rpc_ms": {
+        "n": 4,
+        "p50_ms": 406.208,
+        "mean_ms": 406.204,
+        "p95_ms": 406.894,
+        "min_ms": 405.506,
+        "max_ms": 406.894
+      },
+      "step4_boundary_stall_saved_ms": 172.448,
+      "blocking_total_ms": {
+        "n": 4,
+        "p50_ms": 2908.957,
+        "mean_ms": 2912.915,
+        "p95_ms": 2929.028,
+        "min_ms": 2904.719,
+        "max_ms": 2929.028
+      },
+      "async_total_ms": {
+        "n": 4,
+        "p50_ms": 2907.586,
+        "mean_ms": 2905.812,
+        "p95_ms": 2910.747,
+        "min_ms": 2897.327,
+        "max_ms": 2910.747
+      },
+      "wall_saved_p50_ms": 1.371,
+      "harvested_during_ongoing_steps": "4/4"
+    },
+    "b2_full_3stream_encode_compute_decode": {
+      "sequential_pipeline_ms": {
+        "n": 3,
+        "p50_ms": 19857.965,
+        "mean_ms": 19774.131,
+        "p95_ms": 20408.56,
+        "min_ms": 19055.867,
+        "max_ms": 20408.56
+      },
+      "flashps_3stream_pipeline_ms": {
+        "n": 3,
+        "p50_ms": 3876.036,
+        "mean_ms": 3870.001,
+        "p95_ms": 3879.659,
+        "min_ms": 3854.309,
+        "max_ms": 3879.659
+      },
+      "wall_saved_p50_ms": 15981.929,
+      "speedup_p50_x": 5.123
+    }
+  },
+  "exp_c_cpu_encoder": {
+    "max_abs_diff_all_tensors": 0.0,
+    "tensor_diffs": {
+      "prompt_embeds_max_abs_diff": 0.0,
+      "neg_prompt_embeds_max_abs_diff": 0.0,
+      "pooled_max_abs_diff": 0.0,
+      "neg_pooled_max_abs_diff": 0.0
+    },
+    "cross_worker_shm_adopted": true,
+    "cross_worker_shm_max_abs_diff": 0.0,
+    "unsplit_4threads": {
+      "n": 5,
+      "p50_ms": 54787.663,
+      "mean_ms": 55361.389,
+      "p95_ms": 59895.082,
+      "min_ms": 51071.942,
+      "max_ms": 59895.082
+    },
+    "unsplit_8threads": {
+      "n": 5,
+      "p50_ms": 27582.798,
+      "mean_ms": 27630.468,
+      "p95_ms": 27743.865,
+      "min_ms": 27558.031,
+      "max_ms": 27743.865
+    },
+    "cold_first_pos_and_neg_8threads_ms": 28695.968,
+    "cold_steady_split_neg_cached_8threads": {
+      "n": 5,
+      "p50_ms": 13842.391,
+      "mean_ms": 13969.229,
+      "p95_ms": 14574.024,
+      "min_ms": 13787.554,
+      "max_ms": 14574.024
+    },
+    "steady_neg_cache_hits": "5/5",
+    "warm_pinned_h2d_hit": {
+      "n": 8,
+      "p50_ms": 0.677,
+      "mean_ms": 0.681,
+      "p95_ms": 0.745,
+      "min_ms": 0.643,
+      "max_ms": 0.745
+    },
+    "speedup_steady_cold_vs_unsplit_4t_x": 3.958,
+    "speedup_steady_cold_vs_unsplit_8t_x": 1.993,
+    "speedup_warm_vs_unsplit_4t_x": 80927.1
+  },
+  "allocated_gpus_total_quota": 16,
+  "kairos_jobs": [
+    {
+      "name": "d20261115-val-img80-8gpu-01bee01-r1",
+      "node": "gpu05",
+      "gpus": 8,
+      "state": "Succeeded"
+    },
+    {
+      "name": "d20261115-formal-v2-bal-8gpu-01bee01-r1",
+      "node": "gpu06",
+      "gpus": 8,
+      "state": "Succeeded"
+    }
+  ],
+  "formal_mixed_v2_8gpu_serving": {
+    "qualification": {
+      "numeric": "verified_lossless_exact",
+      "semantic": "verified_bitwise_invariant",
+      "performance": "verified_real_gpu"
+    },
+    "cells": {
+      "img80-uniform": {
+        "run_id": "d20261115-val-img80-8gpu-01bee01-r1-serve-img80-uniform",
+        "experiment": "formal-wan22-test-poisson-s301-l1p75-v0p2-slo1p5-ablation",
+        "node": "gpu05",
+        "gpus": 8,
+        "config_sha256": "cf1892e14c2c119d7e8858b55577f3a77c5e69bc361a1bbe6055fa86fcaf75e7",
+        "all": {
+          "requests": 100,
+          "slo_attainment": 0.98,
+          "p95_ms": 281329.0,
+          "qualified_goodput_rps": 0.189732
+        },
+        "image": {
+          "requests": 80,
+          "slo_attainment": 0.9875,
+          "p95_ms": 14572.8,
+          "qualified_goodput_rps": 0.152933
+        },
+        "video": {
+          "requests": 20,
+          "slo_attainment": 0.95,
+          "p95_ms": 316184.0,
+          "qualified_goodput_rps": 0.0367814
+        }
+      },
+      "img80-skewed": {
+        "run_id": "d20261115-val-img80-8gpu-01bee01-r1-serve-img80-skewed",
+        "experiment": "formal-wan22-test-gamma-s301-l1p75-v0p2-slo1p5-skewed-cv2p0-ablation",
+        "node": "gpu05",
+        "gpus": 8,
+        "config_sha256": "aaf720bd742b62ce30c759c8c579f3f935599bba998d3188e882b72478735ff6",
+        "all": {
+          "requests": 100,
+          "slo_attainment": 0.96,
+          "p95_ms": 345442.0,
+          "qualified_goodput_rps": 0.154017
+        },
+        "image": {
+          "requests": 80,
+          "slo_attainment": 0.975,
+          "p95_ms": 17513.1,
+          "qualified_goodput_rps": 0.125129
+        },
+        "video": {
+          "requests": 20,
+          "slo_attainment": 0.9,
+          "p95_ms": 364629.0,
+          "qualified_goodput_rps": 0.028876
+        }
+      },
+      "anchor-cb": {
+        "run_id": "d20261115-formal-v2-bal-8gpu-01bee01-r1-anchor-cb",
+        "experiment": "formal-wan22-test-poisson-s301-l1p75-v0p5-slo1p5-ablation",
+        "node": "gpu06",
+        "gpus": 8,
+        "config_sha256": "11977d59de93a86ce9b86887d56aff7d69fa1c7ac71dc6800733819c7cd10294",
+        "all": {
+          "requests": 100,
+          "slo_attainment": 0.95,
+          "p95_ms": 369617.0,
+          "qualified_goodput_rps": 0.100295
+        },
+        "image": {
+          "requests": 50,
+          "slo_attainment": 1.0,
+          "p95_ms": 14643.8,
+          "qualified_goodput_rps": 0.052783
+        },
+        "video": {
+          "requests": 50,
+          "slo_attainment": 0.9,
+          "p95_ms": 697751.0,
+          "qualified_goodput_rps": 0.0475047
+        },
+        "vs_baseline_8c50c7a": {
+          "baseline_run_id": "d20261111-formal-v2-cb-abl-fix-8gpu-8c50c7a-r1-anchor-abl",
+          "baseline_qualified_goodput_rps": 0.0978589,
+          "goodput_gain_pct": 2.49,
+          "overall_sar_delta": "+0.01 (0.94 -> 0.95)",
+          "video_sar_delta": "+0.02 (0.88 -> 0.90)",
+          "image_p95_delta_ms": -106.2,
+          "video_p95_delta_ms": -6809.0
+        }
+      },
+      "gamma2-cb": {
+        "run_id": "d20261115-formal-v2-bal-8gpu-01bee01-r1-gamma2-cb",
+        "experiment": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation",
+        "node": "gpu06",
+        "gpus": 8,
+        "config_sha256": "75983d9e9b9a7098bf617b5b46608024983fac3dc5253363bc191fd461ca61df",
+        "all": {
+          "requests": 100,
+          "slo_attainment": 0.92,
+          "p95_ms": 735431.0,
+          "qualified_goodput_rps": 0.09397
+        },
+        "image": {
+          "requests": 50,
+          "slo_attainment": 0.96,
+          "p95_ms": 15435.6,
+          "qualified_goodput_rps": 0.0490239
+        },
+        "video": {
+          "requests": 50,
+          "slo_attainment": 0.88,
+          "p95_ms": 813313.0,
+          "qualified_goodput_rps": 0.0449386
+        }
+      }
+    }
+  }
+}

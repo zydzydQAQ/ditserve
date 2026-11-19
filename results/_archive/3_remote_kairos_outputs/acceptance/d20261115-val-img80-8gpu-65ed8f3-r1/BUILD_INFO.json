@@ -1,0 +1,17 @@
+{
+ "commit": "65ed8f301619b62930878a3cf4781a2b6e246565",
+ "subject": "fix(tests,sdpa): align domain tests with simulate RPC, 42-workload docs, and CPU SDPA/tensor shims",
+ "built_utc": "2026-11-15T13:04:13+00:00",
+ "builder_image": "cluster-cmake-install",
+ "runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "tested_runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "core_sha256": "069b1a1dc6650737cbd8102c24a75eb6e0f8be3f3dc18bde61c834fcee052bd9",
+ "runtime_smoke": "passed_cluster",
+ "local_checks": [
+  "cmake",
+  "ctest",
+  "installed_doctor"
+ ],
+ "files": 269,
+ "bytes": 5538360
+}

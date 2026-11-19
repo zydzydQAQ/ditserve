@@ -1,0 +1,144 @@
+Filesystem                           Size  Used Avail Use% Mounted on
+192.168.1.114:/data/share/jjjkairos  1.0T  789G  236G  78% /shared
+== building 5-phase 500-req soak config for policy=ditserve (2026-11-16T07:06:28+00:00)
+{"output": "/shared/output/DITSERVE/acceptance/d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1/serving-soak-5phase-ditserve.json", "experiment": "formal-wan22-test-soak5phase-s301-n500-slo1p5-ditserve", "requests": 500, "workload_sha256": "35868d647ad64fd9861dc8e8fd3ea8a55695a95dbb6f88667bee7471102de22f", "watchdog_seconds": 50120, "sha256": "dcab420e333c67a43acc3e39ddaad699db19510c19bb4ac6446c67fd90f30eba"}
+== running 5-phase 500-req soak: run_id=d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-soak-ditserve experiment=formal-wan22-test-soak5phase-s301-n500-slo1p5-ditserve (2026-11-16T07:06:29+00:00)
+{
+  "archive": {
+    "deleted": 0,
+    "format": "ditserve.results-summary.v1",
+    "load_ms": 0.0,
+    "raw_re_evaluable": false,
+    "raw_re_evaluated": false,
+    "reclaimed_bytes": 0,
+    "report": "/shared/output/DITSERVE/results/formal-wan22-test-soak5phase-s301-n500-slo1p5-ditserve/d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-soak-ditserve/20261116-d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-soak-ditserve.md",
+    "results_usage": {
+      "allocated_bytes": 16384,
+      "bytes": 12686,
+      "files": 2
+    },
+    "resumable": false,
+    "retained": 0,
+    "scope": "summary checksum and report consistency; aggregates only, no scientific qualification",
+    "status": "completed",
+    "summary": "/shared/output/DITSERVE/results/formal-wan22-test-soak5phase-s301-n500-slo1p5-ditserve/d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-soak-ditserve/summary.json",
+    "summary_sha256": "481beb90cafaad15f17bbf4021919ea00f6d5e9108226bdad5cb53d4ee03bd17",
+    "work_dir": "/shared/output/DITSERVE/.cache/results-work/formal-wan22-test-soak5phase-s301-n500-slo1p5-ditserve/d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-soak-ditserve",
+    "work_usage": {
+      "allocated_bytes": 119087104,
+      "bytes": 118487394,
+      "files": 249
+    },
+    "worker_operation_ms": 13665.2751006186
+  },
+  "failures": [],
+  "metrics": {
+    "communication_p50_ms": null,
+    "communication_p99_ms": null,
+    "completed": 500,
+    "control_ms": 0.0,
+    "deadline_attainment": 0.854,
+    "denominator": "all frozen requests, including failed and blocked",
+    "failed": 0,
+    "incomplete": 0,
+    "latency_p50_ms": 15355.748487401637,
+    "latency_p95_ms": 2399714.35344308,
+    "model_ms": 17128889.733425364,
+    "observation_count": 1,
+    "observation_ms": 4353821.616534144,
+    "ontime": 427,
+    "qualification_status": "unverified",
+    "qualification_verified_requests": 0,
+    "qualified_goodput_rps": null,
+    "qualified_ontime": 0,
+    "requests": 500
+  },
+  "run_id": "d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-soak-ditserve",
+  "status": "completed"
+}
+{
+  "format": "ditserve.results-summary.v1",
+  "load_ms": 0.0,
+  "raw_re_evaluable": false,
+  "raw_re_evaluated": false,
+  "report": "/shared/output/DITSERVE/results/formal-wan22-test-soak5phase-s301-n500-slo1p5-ditserve/d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-soak-ditserve/20261116-d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-soak-ditserve.md",
+  "resumable": false,
+  "scope": "summary checksum and report consistency; aggregates only, no scientific qualification",
+  "status": "verified",
+  "summary": "/shared/output/DITSERVE/results/formal-wan22-test-soak5phase-s301-n500-slo1p5-ditserve/d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-soak-ditserve/summary.json",
+  "summary_sha256": "414ea13a1994f6397e87610078a8689dfa3efa7c3929c8880815debd8dcb863b",
+  "worker_operation_ms": 25.562293827533722
+}
+== completed 5-phase 500-req soak for policy=ditserve (2026-11-16T08:23:10+00:00)
+Filesystem                           Size  Used Avail Use% Mounted on
+192.168.1.114:/data/share/jjjkairos  1.0T  789G  236G  78% /shared
+== building 5-phase 500-req soak config for policy=sbp-esp-cfg2 (2026-11-16T08:23:10+00:00)
+{"output": "/shared/output/DITSERVE/acceptance/d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1/serving-soak-5phase-sbp-esp-cfg2.json", "experiment": "formal-wan22-test-soak5phase-s301-n500-slo1p5-sbp-esp-cfg2", "requests": 500, "workload_sha256": "35868d647ad64fd9861dc8e8fd3ea8a55695a95dbb6f88667bee7471102de22f", "watchdog_seconds": 50120, "sha256": "e617070c14e599213e0d4a2947532baafe82ae714e0ccbf7a508bf0505048e48"}
+== running 5-phase 500-req soak: run_id=d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-soak-sbp-esp-cfg2 experiment=formal-wan22-test-soak5phase-s301-n500-slo1p5-sbp-esp-cfg2 (2026-11-16T08:23:11+00:00)
+{
+  "archive": {
+    "deleted": 0,
+    "format": "ditserve.results-summary.v1",
+    "load_ms": 0.0,
+    "raw_re_evaluable": false,
+    "raw_re_evaluated": false,
+    "reclaimed_bytes": 0,
+    "report": "/shared/output/DITSERVE/results/formal-wan22-test-soak5phase-s301-n500-slo1p5-sbp-esp-cfg2/d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-soak-sbp-esp-cfg2/20261116-d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-soak-sbp-esp-cfg2.md",
+    "results_usage": {
+      "allocated_bytes": 16384,
+      "bytes": 12409,
+      "files": 2
+    },
+    "resumable": false,
+    "retained": 0,
+    "scope": "summary checksum and report consistency; aggregates only, no scientific qualification",
+    "status": "completed",
+    "summary": "/shared/output/DITSERVE/results/formal-wan22-test-soak5phase-s301-n500-slo1p5-sbp-esp-cfg2/d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-soak-sbp-esp-cfg2/summary.json",
+    "summary_sha256": "00906c78bd5eaeaeffc10db675fa745441af11132853be5991d0ee8ec5464650",
+    "work_dir": "/shared/output/DITSERVE/.cache/results-work/formal-wan22-test-soak5phase-s301-n500-slo1p5-sbp-esp-cfg2/d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-soak-sbp-esp-cfg2",
+    "work_usage": {
+      "allocated_bytes": 86343680,
+      "bytes": 85744846,
+      "files": 249
+    },
+    "worker_operation_ms": 9684.565061703324
+  },
+  "failures": [],
+  "metrics": {
+    "communication_p50_ms": null,
+    "communication_p99_ms": null,
+    "completed": 500,
+    "control_ms": 0.0,
+    "deadline_attainment": 0.716,
+    "denominator": "all frozen requests, including failed and blocked",
+    "failed": 0,
+    "incomplete": 0,
+    "latency_p50_ms": 19782.976391001896,
+    "latency_p95_ms": 2242773.1513399086,
+    "model_ms": 29686758.32623104,
+    "observation_count": 1,
+    "observation_ms": 4117600.164303556,
+    "ontime": 358,
+    "qualification_status": "unverified",
+    "qualification_verified_requests": 0,
+    "qualified_goodput_rps": null,
+    "qualified_ontime": 0,
+    "requests": 500
+  },
+  "run_id": "d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-soak-sbp-esp-cfg2",
+  "status": "completed"
+}
+{
+  "format": "ditserve.results-summary.v1",
+  "load_ms": 0.0,
+  "raw_re_evaluable": false,
+  "raw_re_evaluated": false,
+  "report": "/shared/output/DITSERVE/results/formal-wan22-test-soak5phase-s301-n500-slo1p5-sbp-esp-cfg2/d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-soak-sbp-esp-cfg2/20261116-d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-soak-sbp-esp-cfg2.md",
+  "resumable": false,
+  "scope": "summary checksum and report consistency; aggregates only, no scientific qualification",
+  "status": "verified",
+  "summary": "/shared/output/DITSERVE/results/formal-wan22-test-soak5phase-s301-n500-slo1p5-sbp-esp-cfg2/d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-soak-sbp-esp-cfg2/summary.json",
+  "summary_sha256": "a37628b238bcd47f904d966c4cbe41c815e7d1dadfc4e0b937008a3632a8a12c",
+  "worker_operation_ms": 24.547984823584557
+}
+== completed 5-phase 500-req soak for policy=sbp-esp-cfg2 (2026-11-16T09:35:47+00:00)

@@ -1,0 +1,9 @@
+{
+  "schema": "ditserve.torch-checkpoint.v1",
+  "filename": "alexnet-owt-7be5be79.pth",
+  "remote_path": "/data/share/jjjkairos/data/DITSERVE/models/torch/hub/checkpoints/alexnet-owt-7be5be79.pth",
+  "container_path": "/shared/data/DITSERVE/models/torch/hub/checkpoints/alexnet-owt-7be5be79.pth",
+  "source_url": "https://download.pytorch.org/models/alexnet-owt-7be5be79.pth",
+  "sha256": "7be5be791159472b1fbf3c69796f7cb30dca7ad8466c2df70058c37116cdee02",
+  "usage": "LPIPS AlexNet backbone for optional perceptual quality checks"
+}

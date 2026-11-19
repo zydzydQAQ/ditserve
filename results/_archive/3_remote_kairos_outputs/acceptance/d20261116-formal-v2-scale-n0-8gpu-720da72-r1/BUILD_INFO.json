@@ -1,0 +1,17 @@
+{
+ "commit": "720da72e883a6995de79a56df971d0cdf15c538f",
+ "subject": "control,sd35: refine block-diagonal packed CB pricing, in-flight piggyback guard, and SLO-safe mid-batch async decode",
+ "built_utc": "2026-11-15T16:39:50+00:00",
+ "builder_image": "cluster-cmake-install",
+ "runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "tested_runtime_image": "192.168.1.114:30500/jjjkairos/ditserve@sha256:3d8bcd2edf64c889977042569555177503c10834023b58f07f14f68cfe8bca05",
+ "core_sha256": "5fca839ebbb3e2df6c966a767dad7bfb638730ed01a9626dae27d63d4e3a9d44",
+ "runtime_smoke": "passed_cluster",
+ "local_checks": [
+  "cmake",
+  "ctest",
+  "installed_doctor"
+ ],
+ "files": 269,
+ "bytes": 5554964
+}

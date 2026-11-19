@@ -1,0 +1,189 @@
+== kairos_formal_benchmark.sh run=d20261115-val-img80-8gpu-01bee01-r1-serve host=d20261115-val-img80-8gpu-01bee01-r1-master-0 2026-11-15T14:42:19+00:00
+build=01bee01 core=e19718803c044d60 package=/shared/code/DITSERVE/builds/01bee01/share/ditserve
+ditserve 0.4.0
+/shared/data/DITSERVE/scripts/releases/01bee01/benchmarks/formal_benchmark.py: OK
+serving_operator=/shared/data/DITSERVE/scripts/releases/01bee01/benchmarks compiler_sha256=9b8b64471cbb1f30eda877b6aa7239c2df5424c2d4f35385c724d095efddfdc1
+Filesystem                           Size  Used Avail Use% Mounted on
+192.168.1.114:/data/share/jjjkairos  1.0T  787G  237G  77% /shared
+{"output": "/shared/output/DITSERVE/acceptance/d20261115-val-img80-8gpu-01bee01-r1-serve/input-preflight.json", "sha256": "9be8f4d04db6305c096ad03a253146b229b53cd43947f7e7eb3744da64a3f838", "scientific_qualification": "pending"}
+{
+  "output": "/shared/output/DITSERVE/acceptance/d20261115-val-img80-8gpu-01bee01-r1-serve/runtime-facts.json",
+  "gpus": [
+    "0, GPU-488f5047-729a-fdfa-601b-7ba98b88a814, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "1, GPU-4a80f271-d669-dad2-0301-0d7dd15a4095, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "2, GPU-dd208b13-f954-864c-d65a-05fe43dc8613, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "3, GPU-d84c993d-42a5-a56b-86cc-2ad8254c2351, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "4, GPU-50f853c6-0c1d-425b-af23-c022a616c030, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "5, GPU-d48241f7-4e77-e195-59a0-63552f67e285, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "6, GPU-4f488320-12e4-9e69-aee0-d3e9e5dbb452, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0",
+    "7, GPU-8940ccee-259b-0b4f-f459-b9811246fae9, NVIDIA A100-PCIE-40GB, 40960 MiB, 570.133.20, 8.0"
+  ],
+  "packages": {
+    "torch": "2.10.0+cu126",
+    "diffusers": "0.36.0",
+    "transformers": "4.57.6",
+    "cache-dit": "1.5.0",
+    "accelerate": "1.12.0",
+    "safetensors": "0.8.0",
+    "numpy": "2.2.6"
+  },
+  "models": {
+    "Wan2.1-T2V-1.3B": {
+      "model_class": "WanPipeline",
+      "transformer_class": "WanTransformer3DModel",
+      "num_layers": 30,
+      "num_attention_heads": 12
+    },
+    "Wan2.2-TI2V-5B": {
+      "model_class": "WanPipeline",
+      "transformer_class": "WanTransformer3DModel",
+      "num_layers": 30,
+      "num_attention_heads": 24
+    },
+    "SD3.5-Medium": {
+      "model_class": "StableDiffusion3Pipeline",
+      "transformer_class": "SD3Transformer2DModel",
+      "num_layers": 24,
+      "num_attention_heads": 24
+    }
+  }
+}
+reused_calibration_bundle=/shared/output/DITSERVE/acceptance/d20261106-formal-v2-wan22-b1-21a1ca3-r1/bundle.json sha256=94c3238aee42925b57eb10dc1ad086c656db280cfba5c079b0a53d195aa62ff6 calibration_match_mode=homogeneous_topology_signature gpu_count=8 gpu_model=NVIDIA A100-PCIE-40GB
+{"output": "/shared/output/DITSERVE/acceptance/d20261115-val-img80-8gpu-01bee01-r1-serve/serving-img80-uniform.json", "sha256": "2efc1af867bc8c98283b71e3bc29f1ce39ad1117bc8f6d0e38aaf420b2744e65", "scientific_qualification": "pending"}
+Filesystem                           Size  Used Avail Use% Mounted on
+192.168.1.114:/data/share/jjjkairos  1.0T  787G  237G  77% /shared
+{
+  "archive": {
+    "deleted": 0,
+    "format": "ditserve.results-summary.v1",
+    "load_ms": 0.0,
+    "raw_re_evaluable": false,
+    "raw_re_evaluated": false,
+    "reclaimed_bytes": 0,
+    "report": "/shared/output/DITSERVE/results/formal-wan22-test-poisson-s301-l1p75-v0p2-slo1p5-ablation/d20261115-val-img80-8gpu-01bee01-r1-serve-img80-uniform/20261115-d20261115-val-img80-8gpu-01bee01-r1-serve-img80-uniform.md",
+    "results_usage": {
+      "allocated_bytes": 16384,
+      "bytes": 12586,
+      "files": 2
+    },
+    "resumable": false,
+    "retained": 0,
+    "scope": "summary checksum and report consistency; aggregates only, no scientific qualification",
+    "status": "completed",
+    "summary": "/shared/output/DITSERVE/results/formal-wan22-test-poisson-s301-l1p75-v0p2-slo1p5-ablation/d20261115-val-img80-8gpu-01bee01-r1-serve-img80-uniform/summary.json",
+    "summary_sha256": "0b65ec8320123acaba3aa3c6d0a3f864c3358e47c8810ed01b759068ffabf3d0",
+    "work_dir": "/shared/output/DITSERVE/.cache/results-work/formal-wan22-test-poisson-s301-l1p75-v0p2-slo1p5-ablation/d20261115-val-img80-8gpu-01bee01-r1-serve-img80-uniform",
+    "work_usage": {
+      "allocated_bytes": 20332544,
+      "bytes": 19734588,
+      "files": 249
+    },
+    "worker_operation_ms": 1820.6003922969103
+  },
+  "failures": [],
+  "metrics": {
+    "communication_p50_ms": null,
+    "communication_p99_ms": null,
+    "completed": 100,
+    "control_ms": 0.0,
+    "deadline_attainment": 0.98,
+    "denominator": "all frozen requests, including failed and blocked",
+    "failed": 0,
+    "incomplete": 0,
+    "latency_p50_ms": 7184.308995114647,
+    "latency_p95_ms": 281329.296502664,
+    "model_ms": 1850255.0387364319,
+    "observation_count": 1,
+    "observation_ms": 516565.9208986908,
+    "ontime": 98,
+    "qualification_status": "unverified",
+    "qualification_verified_requests": 0,
+    "qualified_goodput_rps": null,
+    "qualified_ontime": 0,
+    "requests": 100
+  },
+  "run_id": "d20261115-val-img80-8gpu-01bee01-r1-serve-img80-uniform",
+  "status": "completed"
+}
+{
+  "format": "ditserve.results-summary.v1",
+  "load_ms": 0.0,
+  "raw_re_evaluable": false,
+  "raw_re_evaluated": false,
+  "report": "/shared/output/DITSERVE/results/formal-wan22-test-poisson-s301-l1p75-v0p2-slo1p5-ablation/d20261115-val-img80-8gpu-01bee01-r1-serve-img80-uniform/20261115-d20261115-val-img80-8gpu-01bee01-r1-serve-img80-uniform.md",
+  "resumable": false,
+  "scope": "summary checksum and report consistency; aggregates only, no scientific qualification",
+  "status": "verified",
+  "summary": "/shared/output/DITSERVE/results/formal-wan22-test-poisson-s301-l1p75-v0p2-slo1p5-ablation/d20261115-val-img80-8gpu-01bee01-r1-serve-img80-uniform/summary.json",
+  "summary_sha256": "35c6a3b7712096aff3c080828ffb2a8643d18ac63c092278c3741e3704103743",
+  "worker_operation_ms": 24.634964764118195
+}
+{"output": "/shared/output/DITSERVE/acceptance/d20261115-val-img80-8gpu-01bee01-r1-serve/serving-img80-skewed.json", "sha256": "fa991ebd9003eaf81e813d9571408ca93aaf0684eec534d447abcac587d0b39a", "scientific_qualification": "pending"}
+Filesystem                           Size  Used Avail Use% Mounted on
+192.168.1.114:/data/share/jjjkairos  1.0T  787G  237G  77% /shared
+{
+  "archive": {
+    "deleted": 0,
+    "format": "ditserve.results-summary.v1",
+    "load_ms": 0.0,
+    "raw_re_evaluable": false,
+    "raw_re_evaluated": false,
+    "reclaimed_bytes": 0,
+    "report": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-l1p75-v0p2-slo1p5-skewed-cv2p0-ablation/d20261115-val-img80-8gpu-01bee01-r1-serve-img80-skewed/20261115-d20261115-val-img80-8gpu-01bee01-r1-serve-img80-skewed.md",
+    "results_usage": {
+      "allocated_bytes": 16384,
+      "bytes": 12633,
+      "files": 2
+    },
+    "resumable": false,
+    "retained": 0,
+    "scope": "summary checksum and report consistency; aggregates only, no scientific qualification",
+    "status": "completed",
+    "summary": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-l1p75-v0p2-slo1p5-skewed-cv2p0-ablation/d20261115-val-img80-8gpu-01bee01-r1-serve-img80-skewed/summary.json",
+    "summary_sha256": "32d88184a5b3d97215b11b6e72db46ef32496b74d26d53d7d9bd84c7a58bbce6",
+    "work_dir": "/shared/output/DITSERVE/.cache/results-work/formal-wan22-test-gamma-s301-l1p75-v0p2-slo1p5-skewed-cv2p0-ablation/d20261115-val-img80-8gpu-01bee01-r1-serve-img80-skewed",
+    "work_usage": {
+      "allocated_bytes": 20336640,
+      "bytes": 19739480,
+      "files": 249
+    },
+    "worker_operation_ms": 1806.337459012866
+  },
+  "failures": [],
+  "metrics": {
+    "communication_p50_ms": null,
+    "communication_p99_ms": null,
+    "completed": 100,
+    "control_ms": 0.0,
+    "deadline_attainment": 0.96,
+    "denominator": "all frozen requests, including failed and blocked",
+    "failed": 0,
+    "incomplete": 0,
+    "latency_p50_ms": 14437.997439514002,
+    "latency_p95_ms": 345441.7416267835,
+    "model_ms": 2462482.267240243,
+    "observation_count": 1,
+    "observation_ms": 623354.670887813,
+    "ontime": 96,
+    "qualification_status": "unverified",
+    "qualification_verified_requests": 0,
+    "qualified_goodput_rps": null,
+    "qualified_ontime": 0,
+    "requests": 100
+  },
+  "run_id": "d20261115-val-img80-8gpu-01bee01-r1-serve-img80-skewed",
+  "status": "completed"
+}
+{
+  "format": "ditserve.results-summary.v1",
+  "load_ms": 0.0,
+  "raw_re_evaluable": false,
+  "raw_re_evaluated": false,
+  "report": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-l1p75-v0p2-slo1p5-skewed-cv2p0-ablation/d20261115-val-img80-8gpu-01bee01-r1-serve-img80-skewed/20261115-d20261115-val-img80-8gpu-01bee01-r1-serve-img80-skewed.md",
+  "resumable": false,
+  "scope": "summary checksum and report consistency; aggregates only, no scientific qualification",
+  "status": "verified",
+  "summary": "/shared/output/DITSERVE/results/formal-wan22-test-gamma-s301-l1p75-v0p2-slo1p5-skewed-cv2p0-ablation/d20261115-val-img80-8gpu-01bee01-r1-serve-img80-skewed/summary.json",
+  "summary_sha256": "439d23ed1fb7ded7e66bdb10b535d4527bfc6fa2f3fb1c1f081cd8fc46539cc8",
+  "worker_operation_ms": 24.64056946337223
+}

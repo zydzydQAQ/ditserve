@@ -2,6 +2,22 @@
   "schema": "ditserve.compact_run_ledger_index.v1",
   "entries": [
     {
+      "trace": "formal-wan22-121f-720p-elastic-s301-n12-r1p4rpm-vslo0p52",
+      "job_slice": "d20261117-rev-n0-8gpu-720da72-r1-121f-elastic",
+      "file": "formal-wan22-121f-720p-elastic-s301-n12-r1p4rpm-vslo0p52__d20261117-rev-n0-8gpu-720da72-r1-121f-elastic.ledger.json.gz",
+      "requests_count": 36,
+      "compressed_bytes": 91937,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-l1p75-v0p2-slo1p5-skewed-cv2p0-ablation",
+      "job_slice": "d20261115-val-img80-8gpu-01bee01-r1-serve-img80-skewed",
+      "file": "formal-wan22-test-gamma-s301-l1p75-v0p2-slo1p5-skewed-cv2p0-ablation__d20261115-val-img80-8gpu-01bee01-r1-serve-img80-skewed.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 242180,
+      "status": "ok"
+    },
+    {
       "trace": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation",
       "job_slice": "d20261107-formal-v2-ablation-8gpu-5d9ee3f-r1-gamma2-abl",
       "file": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation__d20261107-formal-v2-ablation-8gpu-5d9ee3f-r1-gamma2-abl.ledger.json.gz",
@@ -19,18 +35,18 @@
     },
     {
       "trace": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation",
-      "job_slice": "d20261111-formal-v2-cb-abl-fix-8gpu-8c50c7a-r1-gamma2-abl",
-      "file": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation__d20261111-formal-v2-cb-abl-fix-8gpu-8c50c7a-r1-gamma2-abl.ledger.json.gz",
-      "requests_count": 100,
-      "compressed_bytes": 276503,
-      "status": "ok"
-    },
-    {
-      "trace": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation",
       "job_slice": "d20261111-formal-v2-cb-abl-fix-8gpu-8c50c7a-r1-gamma2-abl-loo",
       "file": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation__d20261111-formal-v2-cb-abl-fix-8gpu-8c50c7a-r1-gamma2-abl-loo.ledger.json.gz",
       "requests_count": 0,
       "compressed_bytes": 10212,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation",
+      "job_slice": "d20261111-formal-v2-cb-abl-fix-8gpu-8c50c7a-r1-gamma2-abl",
+      "file": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation__d20261111-formal-v2-cb-abl-fix-8gpu-8c50c7a-r1-gamma2-abl.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 276503,
       "status": "ok"
     },
     {
@@ -50,9 +66,60 @@
       "status": "ok"
     },
     {
-      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p1-slo1p5-cv2p0-sweep",
-      "job_slice": "d20261108-formal-v2-modality-mix-8gpu-43f1ca3-r1-g2-mix-0p1",
-      "status": "skipped_permission_denied"
+      "trace": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation",
+      "job_slice": "d20261115-formal-v2-bal-8gpu-01bee01-r1-gamma2-cb",
+      "file": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation__d20261115-formal-v2-bal-8gpu-01bee01-r1-gamma2-cb.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 288570,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation",
+      "job_slice": "d20261115-formal-v2-bal-8gpu-65ed8f3-r1-gamma2-cb",
+      "file": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation__d20261115-formal-v2-bal-8gpu-65ed8f3-r1-gamma2-cb.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 288777,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation",
+      "job_slice": "d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-gamma2-abl-loo",
+      "file": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation__d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-gamma2-abl-loo.ledger.json.gz",
+      "requests_count": 300,
+      "compressed_bytes": 844885,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation",
+      "job_slice": "d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-gamma2-abl-nocb",
+      "file": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation__d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-gamma2-abl-nocb.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 206303,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation",
+      "job_slice": "d20261116-formal-v2-scale-n1-8gpu-720da72-r1-gamma2-abl",
+      "file": "formal-wan22-test-gamma-s301-l1p75-v0p5-slo1p5-cv2p0-ablation__d20261116-formal-v2-scale-n1-8gpu-720da72-r1-gamma2-abl.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 288824,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p1-slo1p5-cv2p0-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-mix-0p1",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p1-slo1p5-cv2p0-cfg2__d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-mix-0p1.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 74150,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p1-slo1p5-cv2p0-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-mix-0p1",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p1-slo1p5-cv2p0-ditserve__d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-mix-0p1.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 220586,
+      "status": "ok"
     },
     {
       "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p1-slo1p5-cv2p0-sweep",
@@ -60,6 +127,22 @@
       "file": "formal-wan22-test-gamma-s301-r12rpm-v0p1-slo1p5-cv2p0-sweep__d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-mix-0p1.ledger.json.gz",
       "requests_count": 500,
       "compressed_bytes": 414397,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p3-slo1p5-cv2p0-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-mix-0p3",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p3-slo1p5-cv2p0-cfg2__d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-mix-0p3.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 140542,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p3-slo1p5-cv2p0-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-mix-0p3",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p3-slo1p5-cv2p0-ditserve__d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-mix-0p3.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 255795,
       "status": "ok"
     },
     {
@@ -71,11 +154,27 @@
       "status": "ok"
     },
     {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p0-cv2p0-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-slo-1p0",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p0-cv2p0-cfg2__d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-slo-1p0.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 202524,
+      "status": "ok"
+    },
+    {
       "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p0-cv2p0-ditserve",
       "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-g2-slo-1p0",
       "file": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p0-cv2p0-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-g2-slo-1p0.ledger.json.gz",
       "requests_count": 100,
       "compressed_bytes": 278004,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p0-cv2p0-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-slo-1p0",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p0-cv2p0-ditserve__d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-slo-1p0.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 291834,
       "status": "ok"
     },
     {
@@ -87,6 +186,14 @@
       "status": "ok"
     },
     {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p25-cv2p0-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-slo-1p25",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p25-cv2p0-cfg2__d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-slo-1p25.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 203598,
+      "status": "ok"
+    },
+    {
       "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p25-cv2p0-ditserve",
       "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-g2-slo-1p25",
       "file": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p25-cv2p0-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-g2-slo-1p25.ledger.json.gz",
@@ -95,11 +202,27 @@
       "status": "ok"
     },
     {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p25-cv2p0-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-slo-1p25",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p25-cv2p0-ditserve__d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-slo-1p25.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 290183,
+      "status": "ok"
+    },
+    {
       "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p25-cv2p0-sweep",
       "job_slice": "d20261107-formal-v2-slo-scale-8gpu-7a77c45-r1-g2-slo-1p25",
       "file": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p25-cv2p0-sweep__d20261107-formal-v2-slo-scale-8gpu-7a77c45-r1-g2-slo-1p25.ledger.json.gz",
       "requests_count": 500,
       "compressed_bytes": 903187,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p5-cv2p0-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-slo-1p5",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p5-cv2p0-cfg2__d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-slo-1p5.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 204176,
       "status": "ok"
     },
     {
@@ -119,11 +242,35 @@
       "status": "ok"
     },
     {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p5-cv2p0-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-slo-1p5",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p5-cv2p0-ditserve__d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-slo-1p5.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 288526,
+      "status": "ok"
+    },
+    {
       "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p5-cv2p0-sweep",
       "job_slice": "d20261107-formal-v2-slo-scale-8gpu-7a77c45-r1-g2-slo-1p5",
       "file": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p5-cv2p0-sweep__d20261107-formal-v2-slo-scale-8gpu-7a77c45-r1-g2-slo-1p5.ledger.json.gz",
       "requests_count": 500,
       "compressed_bytes": 902684,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p5-cv2p0-xditc2",
+      "job_slice": "d20261117-rev-n0-8gpu-720da72-r1-g2-s301-xditc2",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p5-cv2p0-xditc2__d20261117-rev-n0-8gpu-720da72-r1-g2-s301-xditc2.ledger.json.gz",
+      "requests_count": 200,
+      "compressed_bytes": 388185,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p75-cv2p0-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-slo-1p75",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p75-cv2p0-cfg2__d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-slo-1p75.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 203936,
       "status": "ok"
     },
     {
@@ -135,11 +282,27 @@
       "status": "ok"
     },
     {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p75-cv2p0-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-slo-1p75",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p75-cv2p0-ditserve__d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-slo-1p75.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 286143,
+      "status": "ok"
+    },
+    {
       "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p75-cv2p0-sweep",
       "job_slice": "d20261107-formal-v2-slo-scale-8gpu-7a77c45-r1-g2-slo-1p75",
       "file": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo1p75-cv2p0-sweep__d20261107-formal-v2-slo-scale-8gpu-7a77c45-r1-g2-slo-1p75.ledger.json.gz",
       "requests_count": 500,
       "compressed_bytes": 903691,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo2p0-cv2p0-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-slo-2p0",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo2p0-cv2p0-cfg2__d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-slo-2p0.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 203423,
       "status": "ok"
     },
     {
@@ -151,11 +314,35 @@
       "status": "ok"
     },
     {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo2p0-cv2p0-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-slo-2p0",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo2p0-cv2p0-ditserve__d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-slo-2p0.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 283549,
+      "status": "ok"
+    },
+    {
       "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo2p0-cv2p0-sweep",
       "job_slice": "d20261107-formal-v2-slo-scale-8gpu-7a77c45-r1-g2-slo-2p0",
       "file": "formal-wan22-test-gamma-s301-r12rpm-v0p5-slo2p0-cv2p0-sweep__d20261107-formal-v2-slo-scale-8gpu-7a77c45-r1-g2-slo-2p0.ledger.json.gz",
       "requests_count": 500,
       "compressed_bytes": 903571,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p7-slo1p5-cv2p0-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-mix-0p7",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p7-slo1p5-cv2p0-cfg2__d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-mix-0p7.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 264556,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p7-slo1p5-cv2p0-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-mix-0p7",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p7-slo1p5-cv2p0-ditserve__d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-mix-0p7.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 318258,
       "status": "ok"
     },
     {
@@ -167,11 +354,43 @@
       "status": "ok"
     },
     {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p9-slo1p5-cv2p0-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-mix-0p9",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p9-slo1p5-cv2p0-cfg2__d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-mix-0p9.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 322814,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p9-slo1p5-cv2p0-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-mix-0p9",
+      "file": "formal-wan22-test-gamma-s301-r12rpm-v0p9-slo1p5-cv2p0-ditserve__d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-mix-0p9.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 345348,
+      "status": "ok"
+    },
+    {
       "trace": "formal-wan22-test-gamma-s301-r12rpm-v0p9-slo1p5-cv2p0-sweep",
       "job_slice": "d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-mix-0p9",
       "file": "formal-wan22-test-gamma-s301-r12rpm-v0p9-slo1p5-cv2p0-sweep__d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-mix-0p9.ledger.json.gz",
       "requests_count": 500,
       "compressed_bytes": 1526860,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r16rpm-v0p5-slo1p5-cv2p0-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-rate-16",
+      "file": "formal-wan22-test-gamma-s301-r16rpm-v0p5-slo1p5-cv2p0-cfg2__d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-rate-16.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 204423,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r16rpm-v0p5-slo1p5-cv2p0-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-rate-16",
+      "file": "formal-wan22-test-gamma-s301-r16rpm-v0p5-slo1p5-cv2p0-ditserve__d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-rate-16.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 289896,
       "status": "ok"
     },
     {
@@ -183,11 +402,43 @@
       "status": "ok"
     },
     {
+      "trace": "formal-wan22-test-gamma-s301-r20rpm-v0p5-slo1p5-cv2p0-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-rate-20",
+      "file": "formal-wan22-test-gamma-s301-r20rpm-v0p5-slo1p5-cv2p0-cfg2__d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-rate-20.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 204022,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r20rpm-v0p5-slo1p5-cv2p0-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-rate-20",
+      "file": "formal-wan22-test-gamma-s301-r20rpm-v0p5-slo1p5-cv2p0-ditserve__d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-rate-20.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 290718,
+      "status": "ok"
+    },
+    {
       "trace": "formal-wan22-test-gamma-s301-r20rpm-v0p5-slo1p5-cv2p0-sweep",
       "job_slice": "d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-rate-20",
       "file": "formal-wan22-test-gamma-s301-r20rpm-v0p5-slo1p5-cv2p0-sweep__d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-rate-20.ledger.json.gz",
       "requests_count": 500,
       "compressed_bytes": 989665,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r24rpm-v0p5-slo1p5-cv2p0-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-rate-24",
+      "file": "formal-wan22-test-gamma-s301-r24rpm-v0p5-slo1p5-cv2p0-cfg2__d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-rate-24.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 204632,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r24rpm-v0p5-slo1p5-cv2p0-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-rate-24",
+      "file": "formal-wan22-test-gamma-s301-r24rpm-v0p5-slo1p5-cv2p0-ditserve__d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-rate-24.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 290876,
       "status": "ok"
     },
     {
@@ -199,11 +450,35 @@
       "status": "ok"
     },
     {
+      "trace": "formal-wan22-test-gamma-s301-r24rpm-v0p5-slo1p5-cv2p0-g16gpu-scalability",
+      "job_slice": "d20261116-formal-v2-scale-n0-8gpu-720da72-r1-g2-gpu-16",
+      "file": "formal-wan22-test-gamma-s301-r24rpm-v0p5-slo1p5-cv2p0-g16gpu-scalability__d20261116-formal-v2-scale-n0-8gpu-720da72-r1-g2-gpu-16.ledger.json.gz",
+      "requests_count": 200,
+      "compressed_bytes": 563906,
+      "status": "ok"
+    },
+    {
       "trace": "formal-wan22-test-gamma-s301-r24rpm-v0p5-slo1p5-cv2p0-sweep",
       "job_slice": "d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-rate-24",
       "file": "formal-wan22-test-gamma-s301-r24rpm-v0p5-slo1p5-cv2p0-sweep__d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-rate-24.ledger.json.gz",
       "requests_count": 500,
       "compressed_bytes": 991317,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r28rpm-v0p5-slo1p5-cv2p0-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-rate-28",
+      "file": "formal-wan22-test-gamma-s301-r28rpm-v0p5-slo1p5-cv2p0-cfg2__d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-rate-28.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 204518,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r28rpm-v0p5-slo1p5-cv2p0-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-rate-28",
+      "file": "formal-wan22-test-gamma-s301-r28rpm-v0p5-slo1p5-cv2p0-ditserve__d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-rate-28.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 291129,
       "status": "ok"
     },
     {
@@ -215,11 +490,43 @@
       "status": "ok"
     },
     {
+      "trace": "formal-wan22-test-gamma-s301-r32rpm-v0p5-slo1p5-cv2p0-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-rate-32",
+      "file": "formal-wan22-test-gamma-s301-r32rpm-v0p5-slo1p5-cv2p0-cfg2__d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-rate-32.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 204884,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r32rpm-v0p5-slo1p5-cv2p0-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-rate-32",
+      "file": "formal-wan22-test-gamma-s301-r32rpm-v0p5-slo1p5-cv2p0-ditserve__d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-rate-32.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 291350,
+      "status": "ok"
+    },
+    {
       "trace": "formal-wan22-test-gamma-s301-r32rpm-v0p5-slo1p5-cv2p0-sweep",
       "job_slice": "d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-rate-32",
       "file": "formal-wan22-test-gamma-s301-r32rpm-v0p5-slo1p5-cv2p0-sweep__d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-rate-32.ledger.json.gz",
       "requests_count": 500,
       "compressed_bytes": 992479,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r36rpm-v0p5-slo1p5-cv2p0-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-rate-36",
+      "file": "formal-wan22-test-gamma-s301-r36rpm-v0p5-slo1p5-cv2p0-cfg2__d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-rate-36.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 204621,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r36rpm-v0p5-slo1p5-cv2p0-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-rate-36",
+      "file": "formal-wan22-test-gamma-s301-r36rpm-v0p5-slo1p5-cv2p0-ditserve__d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-rate-36.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 291683,
       "status": "ok"
     },
     {
@@ -239,6 +546,14 @@
       "status": "ok"
     },
     {
+      "trace": "formal-wan22-test-gamma-s301-r3rpm-v0p5-slo1p5-cv2p0-g2gpu-scalability",
+      "job_slice": "d20261116-formal-v2-scale-n0-8gpu-720da72-r1-g2-gpu-2",
+      "file": "formal-wan22-test-gamma-s301-r3rpm-v0p5-slo1p5-cv2p0-g2gpu-scalability__d20261116-formal-v2-scale-n0-8gpu-720da72-r1-g2-gpu-2.ledger.json.gz",
+      "requests_count": 24,
+      "compressed_bytes": 76503,
+      "status": "ok"
+    },
+    {
       "trace": "formal-wan22-test-gamma-s301-r6rpm-v0p5-slo1p5-cv2p0-g4gpu-scalability",
       "job_slice": "d20261110-formal-v2-scale-g4-8gpu-ae4ba3d-r1-g2-gpu-4",
       "file": "formal-wan22-test-gamma-s301-r6rpm-v0p5-slo1p5-cv2p0-g4gpu-scalability__d20261110-formal-v2-scale-g4-8gpu-ae4ba3d-r1-g2-gpu-4.ledger.json.gz",
@@ -247,11 +562,75 @@
       "status": "ok"
     },
     {
+      "trace": "formal-wan22-test-gamma-s301-r6rpm-v0p5-slo1p5-cv2p0-g4gpu-scalability",
+      "job_slice": "d20261116-formal-v2-scale-n1-8gpu-720da72-r1-g2-gpu-4",
+      "file": "formal-wan22-test-gamma-s301-r6rpm-v0p5-slo1p5-cv2p0-g4gpu-scalability__d20261116-formal-v2-scale-n1-8gpu-720da72-r1-g2-gpu-4.ledger.json.gz",
+      "requests_count": 50,
+      "compressed_bytes": 147907,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r76rpm-v0p3-slo1p25-cv2p0-staircase",
+      "job_slice": "d20261117-formal-v2-staircase-g2-8gpu-3878f01-r1-staircase-g2",
+      "file": "formal-wan22-test-gamma-s301-r76rpm-v0p3-slo1p25-cv2p0-staircase__d20261117-formal-v2-staircase-g2-8gpu-3878f01-r1-staircase-g2.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 775197,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r76rpm-v0p3-slo1p25-ff0-g2",
+      "job_slice": "d20261117-formal-v2-staircase-ff0-8gpu-3878f01-r1-ff0-g2",
+      "file": "formal-wan22-test-gamma-s301-r76rpm-v0p3-slo1p25-ff0-g2__d20261117-formal-v2-staircase-ff0-8gpu-3878f01-r1-ff0-g2.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 158516,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r8rpm-v0p5-slo1p5-cv2p0-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-rate-8",
+      "file": "formal-wan22-test-gamma-s301-r8rpm-v0p5-slo1p5-cv2p0-cfg2__d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-g2-rate-8.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 203014,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s301-r8rpm-v0p5-slo1p5-cv2p0-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-rate-8",
+      "file": "formal-wan22-test-gamma-s301-r8rpm-v0p5-slo1p5-cv2p0-ditserve__d20261116-formal-v2-cb-ref-g2-8gpu-720da72-r1-g2-rate-8.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 286821,
+      "status": "ok"
+    },
+    {
       "trace": "formal-wan22-test-gamma-s301-r8rpm-v0p5-slo1p5-cv2p0-sweep",
       "job_slice": "d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-rate-8",
       "file": "formal-wan22-test-gamma-s301-r8rpm-v0p5-slo1p5-cv2p0-sweep__d20261109-formal-v2-g2-mix-rate-8gpu-1b54f37-r1-g2-rate-8.ledger.json.gz",
       "requests_count": 500,
       "compressed_bytes": 979797,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s302-r12rpm-v0p5-slo1p5-cv2p0-seed302",
+      "job_slice": "d20261117-rev-n1-8gpu-720da72-r1-g2-s302",
+      "file": "formal-wan22-test-gamma-s302-r12rpm-v0p5-slo1p5-cv2p0-seed302__d20261117-rev-n1-8gpu-720da72-r1-g2-s302.ledger.json.gz",
+      "requests_count": 400,
+      "compressed_bytes": 847338,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-gamma-s303-r12rpm-v0p5-slo1p5-cv2p0-seed303",
+      "job_slice": "d20261117-rev-n1-8gpu-720da72-r1-g2-s303",
+      "file": "formal-wan22-test-gamma-s303-r12rpm-v0p5-slo1p5-cv2p0-seed303__d20261117-rev-n1-8gpu-720da72-r1-g2-s303.ledger.json.gz",
+      "requests_count": 400,
+      "compressed_bytes": 860197,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-l1p75-v0p2-slo1p5-ablation",
+      "job_slice": "d20261115-val-img80-8gpu-01bee01-r1-serve-img80-uniform",
+      "file": "formal-wan22-test-poisson-s301-l1p75-v0p2-slo1p5-ablation__d20261115-val-img80-8gpu-01bee01-r1-serve-img80-uniform.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 243779,
       "status": "ok"
     },
     {
@@ -287,11 +666,67 @@
       "status": "ok"
     },
     {
+      "trace": "formal-wan22-test-poisson-s301-l1p75-v0p5-slo1p5-ablation",
+      "job_slice": "d20261115-formal-v2-bal-8gpu-01bee01-r1-anchor-cb",
+      "file": "formal-wan22-test-poisson-s301-l1p75-v0p5-slo1p5-ablation__d20261115-formal-v2-bal-8gpu-01bee01-r1-anchor-cb.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 293424,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-l1p75-v0p5-slo1p5-ablation",
+      "job_slice": "d20261115-formal-v2-bal-8gpu-65ed8f3-r1-anchor-cb",
+      "file": "formal-wan22-test-poisson-s301-l1p75-v0p5-slo1p5-ablation__d20261115-formal-v2-bal-8gpu-65ed8f3-r1-anchor-cb.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 293557,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-l1p75-v0p5-slo1p5-ablation",
+      "job_slice": "d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-anchor-abl-loo",
+      "file": "formal-wan22-test-poisson-s301-l1p75-v0p5-slo1p5-ablation__d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-anchor-abl-loo.ledger.json.gz",
+      "requests_count": 300,
+      "compressed_bytes": 858974,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-l1p75-v0p5-slo1p5-ablation",
+      "job_slice": "d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-anchor-abl-nocb",
+      "file": "formal-wan22-test-poisson-s301-l1p75-v0p5-slo1p5-ablation__d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-anchor-abl-nocb.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 205051,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-l1p75-v0p5-slo1p5-ablation",
+      "job_slice": "d20261116-formal-v2-scale-n0-8gpu-720da72-r1-anchor-abl",
+      "file": "formal-wan22-test-poisson-s301-l1p75-v0p5-slo1p5-ablation__d20261116-formal-v2-scale-n0-8gpu-720da72-r1-anchor-abl.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 292258,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p1-slo1p5-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-p-mix-0p1",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p1-slo1p5-cfg2__d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-p-mix-0p1.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 73539,
+      "status": "ok"
+    },
+    {
       "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p1-slo1p5-ditserve",
       "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-mix-0p1",
       "file": "formal-wan22-test-poisson-s301-r12rpm-v0p1-slo1p5-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-mix-0p1.ledger.json.gz",
       "requests_count": 100,
       "compressed_bytes": 207358,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p1-slo1p5-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-mix-0p1",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p1-slo1p5-ditserve__d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-mix-0p1.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 220534,
       "status": "ok"
     },
     {
@@ -303,11 +738,27 @@
       "status": "ok"
     },
     {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p3-slo1p5-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-p-mix-0p3",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p3-slo1p5-cfg2__d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-p-mix-0p3.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 140278,
+      "status": "ok"
+    },
+    {
       "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p3-slo1p5-ditserve",
       "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-mix-0p3",
       "file": "formal-wan22-test-poisson-s301-r12rpm-v0p3-slo1p5-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-mix-0p3.ledger.json.gz",
       "requests_count": 100,
       "compressed_bytes": 243570,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p3-slo1p5-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-mix-0p3",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p3-slo1p5-ditserve__d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-mix-0p3.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 258671,
       "status": "ok"
     },
     {
@@ -319,11 +770,27 @@
       "status": "ok"
     },
     {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p0-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-p-slo-1p0",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p0-cfg2__d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-p-slo-1p0.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 202925,
+      "status": "ok"
+    },
+    {
       "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p0-ditserve",
       "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-slo-1p0",
       "file": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p0-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-slo-1p0.ledger.json.gz",
       "requests_count": 100,
       "compressed_bytes": 280096,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p0-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-slo-1p0",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p0-ditserve__d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-slo-1p0.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 293194,
       "status": "ok"
     },
     {
@@ -335,11 +802,27 @@
       "status": "ok"
     },
     {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p25-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-p-slo-1p25",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p25-cfg2__d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-p-slo-1p25.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 203107,
+      "status": "ok"
+    },
+    {
       "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p25-ditserve",
       "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-slo-1p25",
       "file": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p25-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-slo-1p25.ledger.json.gz",
       "requests_count": 100,
       "compressed_bytes": 278755,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p25-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-slo-1p25",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p25-ditserve__d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-slo-1p25.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 292802,
       "status": "ok"
     },
     {
@@ -351,11 +834,27 @@
       "status": "ok"
     },
     {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p5-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-p-rate-12",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p5-cfg2__d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-p-rate-12.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 203193,
+      "status": "ok"
+    },
+    {
       "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p5-ditserve",
       "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-12",
       "file": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p5-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-12.ledger.json.gz",
       "requests_count": 100,
       "compressed_bytes": 279067,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p5-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-rate-12",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p5-ditserve__d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-rate-12.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 292556,
       "status": "ok"
     },
     {
@@ -367,11 +866,35 @@
       "status": "ok"
     },
     {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p5-xditc2",
+      "job_slice": "d20261117-rev-n0-8gpu-720da72-r1-p-s301-xditc2",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p5-xditc2__d20261117-rev-n0-8gpu-720da72-r1-p-s301-xditc2.ledger.json.gz",
+      "requests_count": 200,
+      "compressed_bytes": 387799,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p75-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-p-slo-1p75",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p75-cfg2__d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-p-slo-1p75.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 203054,
+      "status": "ok"
+    },
+    {
       "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p75-ditserve",
       "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-slo-1p75",
       "file": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p75-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-slo-1p75.ledger.json.gz",
       "requests_count": 100,
       "compressed_bytes": 277640,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p75-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-slo-1p75",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo1p75-ditserve__d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-slo-1p75.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 292746,
       "status": "ok"
     },
     {
@@ -383,11 +906,27 @@
       "status": "ok"
     },
     {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo2p0-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-p-slo-2p0",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo2p0-cfg2__d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-p-slo-2p0.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 203067,
+      "status": "ok"
+    },
+    {
       "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo2p0-ditserve",
       "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-slo-2p0",
       "file": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo2p0-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-slo-2p0.ledger.json.gz",
       "requests_count": 100,
       "compressed_bytes": 276678,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo2p0-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-slo-2p0",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p5-slo2p0-ditserve__d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-slo-2p0.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 292493,
       "status": "ok"
     },
     {
@@ -399,11 +938,27 @@
       "status": "ok"
     },
     {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p7-slo1p5-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-p-mix-0p7",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p7-slo1p5-cfg2__d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-p-mix-0p7.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 265182,
+      "status": "ok"
+    },
+    {
       "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p7-slo1p5-ditserve",
       "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-mix-0p7",
       "file": "formal-wan22-test-poisson-s301-r12rpm-v0p7-slo1p5-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-mix-0p7.ledger.json.gz",
       "requests_count": 100,
       "compressed_bytes": 308357,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p7-slo1p5-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-mix-0p7",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p7-slo1p5-ditserve__d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-mix-0p7.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 321578,
       "status": "ok"
     },
     {
@@ -415,11 +970,27 @@
       "status": "ok"
     },
     {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p9-slo1p5-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-p-mix-0p9",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p9-slo1p5-cfg2__d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-p-mix-0p9.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 323668,
+      "status": "ok"
+    },
+    {
       "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p9-slo1p5-ditserve",
       "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-mix-0p9",
       "file": "formal-wan22-test-poisson-s301-r12rpm-v0p9-slo1p5-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-mix-0p9.ledger.json.gz",
       "requests_count": 100,
       "compressed_bytes": 334127,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r12rpm-v0p9-slo1p5-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-mix-0p9",
+      "file": "formal-wan22-test-poisson-s301-r12rpm-v0p9-slo1p5-ditserve__d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-mix-0p9.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 345057,
       "status": "ok"
     },
     {
@@ -431,9 +1002,12 @@
       "status": "ok"
     },
     {
-      "trace": "formal-wan22-test-poisson-s301-r15rpm-v0p5-slo1p5-sweep",
-      "job_slice": "d20261107-formal-v2-rate-rpm-p2-ff5b7cd-r1-rate-15",
-      "status": "skipped_permission_denied"
+      "trace": "formal-wan22-test-poisson-s301-r16rpm-v0p5-slo1p5-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-p-rate-16",
+      "file": "formal-wan22-test-poisson-s301-r16rpm-v0p5-slo1p5-cfg2__d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-p-rate-16.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 204084,
+      "status": "ok"
     },
     {
       "trace": "formal-wan22-test-poisson-s301-r16rpm-v0p5-slo1p5-ditserve",
@@ -441,6 +1015,14 @@
       "file": "formal-wan22-test-poisson-s301-r16rpm-v0p5-slo1p5-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-16.ledger.json.gz",
       "requests_count": 100,
       "compressed_bytes": 279901,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r16rpm-v0p5-slo1p5-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-rate-16",
+      "file": "formal-wan22-test-poisson-s301-r16rpm-v0p5-slo1p5-ditserve__d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-rate-16.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 293559,
       "status": "ok"
     },
     {
@@ -452,11 +1034,27 @@
       "status": "ok"
     },
     {
+      "trace": "formal-wan22-test-poisson-s301-r20rpm-v0p5-slo1p5-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-p-rate-20",
+      "file": "formal-wan22-test-poisson-s301-r20rpm-v0p5-slo1p5-cfg2__d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-p-rate-20.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 203884,
+      "status": "ok"
+    },
+    {
       "trace": "formal-wan22-test-poisson-s301-r20rpm-v0p5-slo1p5-ditserve",
       "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-20",
       "file": "formal-wan22-test-poisson-s301-r20rpm-v0p5-slo1p5-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-20.ledger.json.gz",
       "requests_count": 100,
       "compressed_bytes": 280455,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r20rpm-v0p5-slo1p5-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-rate-20",
+      "file": "formal-wan22-test-poisson-s301-r20rpm-v0p5-slo1p5-ditserve__d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-rate-20.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 294421,
       "status": "ok"
     },
     {
@@ -468,11 +1066,27 @@
       "status": "ok"
     },
     {
+      "trace": "formal-wan22-test-poisson-s301-r24rpm-v0p5-slo1p5-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-p-rate-24",
+      "file": "formal-wan22-test-poisson-s301-r24rpm-v0p5-slo1p5-cfg2__d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-p-rate-24.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 204128,
+      "status": "ok"
+    },
+    {
       "trace": "formal-wan22-test-poisson-s301-r24rpm-v0p5-slo1p5-ditserve",
       "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-24",
       "file": "formal-wan22-test-poisson-s301-r24rpm-v0p5-slo1p5-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-24.ledger.json.gz",
       "requests_count": 100,
       "compressed_bytes": 281438,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r24rpm-v0p5-slo1p5-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-rate-24",
+      "file": "formal-wan22-test-poisson-s301-r24rpm-v0p5-slo1p5-ditserve__d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-rate-24.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 294895,
       "status": "ok"
     },
     {
@@ -492,11 +1106,27 @@
       "status": "ok"
     },
     {
+      "trace": "formal-wan22-test-poisson-s301-r24rpm-v0p5-slo1p5-g16gpu-scalability",
+      "job_slice": "d20261116-formal-v2-scale-n0-8gpu-720da72-r1-p-gpu-16",
+      "file": "formal-wan22-test-poisson-s301-r24rpm-v0p5-slo1p5-g16gpu-scalability__d20261116-formal-v2-scale-n0-8gpu-720da72-r1-p-gpu-16.ledger.json.gz",
+      "requests_count": 200,
+      "compressed_bytes": 572282,
+      "status": "ok"
+    },
+    {
       "trace": "formal-wan22-test-poisson-s301-r24rpm-v0p5-slo1p5-sweep",
       "job_slice": "d20261107-formal-v2-rate-rpm-p2-5d9ee3f-r1-rate-24",
       "file": "formal-wan22-test-poisson-s301-r24rpm-v0p5-slo1p5-sweep__d20261107-formal-v2-rate-rpm-p2-5d9ee3f-r1-rate-24.ledger.json.gz",
       "requests_count": 500,
       "compressed_bytes": 906729,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r28rpm-v0p5-slo1p5-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-p-rate-28",
+      "file": "formal-wan22-test-poisson-s301-r28rpm-v0p5-slo1p5-cfg2__d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-p-rate-28.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 204690,
       "status": "ok"
     },
     {
@@ -508,11 +1138,27 @@
       "status": "ok"
     },
     {
+      "trace": "formal-wan22-test-poisson-s301-r28rpm-v0p5-slo1p5-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-rate-28",
+      "file": "formal-wan22-test-poisson-s301-r28rpm-v0p5-slo1p5-ditserve__d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-rate-28.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 295212,
+      "status": "ok"
+    },
+    {
       "trace": "formal-wan22-test-poisson-s301-r28rpm-v0p5-slo1p5-sweep",
       "job_slice": "d20261107-formal-v2-rate-rpm-p2-5d9ee3f-r1-rate-28",
       "file": "formal-wan22-test-poisson-s301-r28rpm-v0p5-slo1p5-sweep__d20261107-formal-v2-rate-rpm-p2-5d9ee3f-r1-rate-28.ledger.json.gz",
       "requests_count": 500,
       "compressed_bytes": 908536,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r32rpm-v0p5-slo1p5-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-p-rate-32",
+      "file": "formal-wan22-test-poisson-s301-r32rpm-v0p5-slo1p5-cfg2__d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-p-rate-32.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 204845,
       "status": "ok"
     },
     {
@@ -524,6 +1170,14 @@
       "status": "ok"
     },
     {
+      "trace": "formal-wan22-test-poisson-s301-r32rpm-v0p5-slo1p5-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-rate-32",
+      "file": "formal-wan22-test-poisson-s301-r32rpm-v0p5-slo1p5-ditserve__d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-rate-32.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 295660,
+      "status": "ok"
+    },
+    {
       "trace": "formal-wan22-test-poisson-s301-r32rpm-v0p5-slo1p5-sweep",
       "job_slice": "d20261107-formal-v2-rate-rpm-p2-5d9ee3f-r1-rate-32",
       "file": "formal-wan22-test-poisson-s301-r32rpm-v0p5-slo1p5-sweep__d20261107-formal-v2-rate-rpm-p2-5d9ee3f-r1-rate-32.ledger.json.gz",
@@ -532,11 +1186,27 @@
       "status": "ok"
     },
     {
+      "trace": "formal-wan22-test-poisson-s301-r36rpm-v0p5-slo1p5-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-p-rate-36",
+      "file": "formal-wan22-test-poisson-s301-r36rpm-v0p5-slo1p5-cfg2__d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-p-rate-36.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 204552,
+      "status": "ok"
+    },
+    {
       "trace": "formal-wan22-test-poisson-s301-r36rpm-v0p5-slo1p5-ditserve",
       "job_slice": "d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-36",
       "file": "formal-wan22-test-poisson-s301-r36rpm-v0p5-slo1p5-ditserve__d20261108-formal-v2-cb-refresh-8gpu-1b54f37-r1-p-rate-36.ledger.json.gz",
       "requests_count": 100,
       "compressed_bytes": 282586,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r36rpm-v0p5-slo1p5-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-rate-36",
+      "file": "formal-wan22-test-poisson-s301-r36rpm-v0p5-slo1p5-ditserve__d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-rate-36.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 294441,
       "status": "ok"
     },
     {
@@ -556,6 +1226,14 @@
       "status": "ok"
     },
     {
+      "trace": "formal-wan22-test-poisson-s301-r3rpm-v0p5-slo1p5-g2gpu-scalability",
+      "job_slice": "d20261116-formal-v2-scale-n0-8gpu-720da72-r1-p-gpu-2",
+      "file": "formal-wan22-test-poisson-s301-r3rpm-v0p5-slo1p5-g2gpu-scalability__d20261116-formal-v2-scale-n0-8gpu-720da72-r1-p-gpu-2.ledger.json.gz",
+      "requests_count": 24,
+      "compressed_bytes": 77963,
+      "status": "ok"
+    },
+    {
       "trace": "formal-wan22-test-poisson-s301-r6rpm-v0p5-slo1p5-g4gpu-scalability",
       "job_slice": "d20261110-formal-v2-scale-g4-8gpu-ae4ba3d-r1-p-gpu-4",
       "file": "formal-wan22-test-poisson-s301-r6rpm-v0p5-slo1p5-g4gpu-scalability__d20261110-formal-v2-scale-g4-8gpu-ae4ba3d-r1-p-gpu-4.ledger.json.gz",
@@ -565,13 +1243,35 @@
     },
     {
       "trace": "formal-wan22-test-poisson-s301-r6rpm-v0p5-slo1p5-g4gpu-scalability",
-      "job_slice": "d20261110-formal-v2-scale-n1-8gpu-0ef480f-r1-p-gpu-4",
-      "status": "skipped_permission_denied"
+      "job_slice": "d20261116-formal-v2-scale-n1-8gpu-720da72-r1-p-gpu-4",
+      "file": "formal-wan22-test-poisson-s301-r6rpm-v0p5-slo1p5-g4gpu-scalability__d20261116-formal-v2-scale-n1-8gpu-720da72-r1-p-gpu-4.ledger.json.gz",
+      "requests_count": 50,
+      "compressed_bytes": 151439,
+      "status": "ok"
     },
     {
-      "trace": "formal-wan22-test-poisson-s301-r7rpm-v0p5-slo1p5-sweep",
-      "job_slice": "d20261107-formal-v2-rate-rpm-p1-ff5b7cd-r1-rate-07",
-      "status": "skipped_permission_denied"
+      "trace": "formal-wan22-test-poisson-s301-r76rpm-v0p3-slo1p25-ff0-p",
+      "job_slice": "d20261117-formal-v2-staircase-ff0-8gpu-3878f01-r1-ff0-p",
+      "file": "formal-wan22-test-poisson-s301-r76rpm-v0p3-slo1p25-ff0-p__d20261117-formal-v2-staircase-ff0-8gpu-3878f01-r1-ff0-p.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 146042,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r76rpm-v0p3-slo1p25-staircase",
+      "job_slice": "d20261117-formal-v2-staircase-p-8gpu-3878f01-r1-staircase-p",
+      "file": "formal-wan22-test-poisson-s301-r76rpm-v0p3-slo1p25-staircase__d20261117-formal-v2-staircase-p-8gpu-3878f01-r1-staircase-p.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 778102,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s301-r8rpm-v0p5-slo1p5-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-p-rate-8",
+      "file": "formal-wan22-test-poisson-s301-r8rpm-v0p5-slo1p5-cfg2__d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-p-rate-8.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 201601,
+      "status": "ok"
     },
     {
       "trace": "formal-wan22-test-poisson-s301-r8rpm-v0p5-slo1p5-ditserve",
@@ -582,11 +1282,59 @@
       "status": "ok"
     },
     {
+      "trace": "formal-wan22-test-poisson-s301-r8rpm-v0p5-slo1p5-ditserve",
+      "job_slice": "d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-rate-8",
+      "file": "formal-wan22-test-poisson-s301-r8rpm-v0p5-slo1p5-ditserve__d20261116-formal-v2-cb-ref-p-8gpu-720da72-r1-p-rate-8.ledger.json.gz",
+      "requests_count": 100,
+      "compressed_bytes": 289264,
+      "status": "ok"
+    },
+    {
       "trace": "formal-wan22-test-poisson-s301-r8rpm-v0p5-slo1p5-sweep",
       "job_slice": "d20261107-formal-v2-rate-rpm-p1-5d9ee3f-r1-rate-08",
       "file": "formal-wan22-test-poisson-s301-r8rpm-v0p5-slo1p5-sweep__d20261107-formal-v2-rate-rpm-p1-5d9ee3f-r1-rate-08.ledger.json.gz",
       "requests_count": 500,
       "compressed_bytes": 896620,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s302-r12rpm-v0p5-slo1p5-seed302",
+      "job_slice": "d20261117-rev-n0-8gpu-720da72-r1-p-s302",
+      "file": "formal-wan22-test-poisson-s302-r12rpm-v0p5-slo1p5-seed302__d20261117-rev-n0-8gpu-720da72-r1-p-s302.ledger.json.gz",
+      "requests_count": 400,
+      "compressed_bytes": 856200,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-poisson-s303-r12rpm-v0p5-slo1p5-seed303",
+      "job_slice": "d20261117-rev-n1-8gpu-720da72-r1-p-s303",
+      "file": "formal-wan22-test-poisson-s303-r12rpm-v0p5-slo1p5-seed303__d20261117-rev-n1-8gpu-720da72-r1-p-s303.ledger.json.gz",
+      "requests_count": 400,
+      "compressed_bytes": 868281,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-soak5phase-s301-n500-slo1p5-ditserve",
+      "job_slice": "d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-soak-ditserve",
+      "file": "formal-wan22-test-soak5phase-s301-n500-slo1p5-ditserve__d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-soak-ditserve.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 1348248,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-soak5phase-s301-n500-slo1p5-sbp-esp-cfg2",
+      "job_slice": "d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-soak-sbp-esp-cfg2",
+      "file": "formal-wan22-test-soak5phase-s301-n500-slo1p5-sbp-esp-cfg2__d20261116-formal-v2-sbpc2-n0-8gpu-720da72-r1-soak-sbp-esp-cfg2.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 900340,
+      "status": "ok"
+    },
+    {
+      "trace": "formal-wan22-test-soak5phase-s301-n500-slo1p5-tetriserve",
+      "job_slice": "d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-soak-tetriserve",
+      "file": "formal-wan22-test-soak5phase-s301-n500-slo1p5-tetriserve__d20261116-formal-v2-sbpc2-n1-8gpu-720da72-r1-soak-tetriserve.ledger.json.gz",
+      "requests_count": 500,
+      "compressed_bytes": 899167,
       "status": "ok"
     }
   ]
